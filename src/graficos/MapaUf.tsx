@@ -40,7 +40,7 @@ export function MapaUf({
   const container = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(420);
 
-  useEffect(() => {
+  useEffect(function acompanharLarguraDoContainer() {
     const alvo = container.current;
     if (!alvo) return;
     const observador = new ResizeObserver(([entrada]) => {

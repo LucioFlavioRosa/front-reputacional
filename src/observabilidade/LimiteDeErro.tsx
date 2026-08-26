@@ -11,13 +11,26 @@
 
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { Modal } from '@/componentes/basicos';
 import { registrarErro } from '@/observabilidade/telemetria';
 
 interface Estado {
   erro: Error | null;
 }
 
-export class LimiteDeErro extends Component<{ children: ReactNode }, Estado> {
+interface Props {
+  children: ReactNode;
+  /** Presente quando o limite envolve algo que abre POR CIMA do painel.
+   *
+   *  Muda a saída oferecida, e a diferença importa: dentro de um modal, o card
+   *  de página inteira apareceria sem nenhum jeito de fechar, e "Recarregar"
+   *  — que derruba o painel inteiro para desfazer a abertura de uma ficha —
+   *  seria uma resposta grande demais para o problema.
+   */
+  aoFechar?: () => void;
+}
+
+export class LimiteDeErro extends Component<Props, Estado> {
   state: Estado = { erro: null };
 
   static getDerivedStateFromError(erro: Error): Estado {
@@ -36,6 +49,41 @@ export class LimiteDeErro extends Component<{ children: ReactNode }, Estado> {
 
   render() {
     if (!this.state.erro) return this.props.children;
+
+    const { aoFechar } = this.props;
+
+    // Sobre o painel, a moldura é a MESMA dos outros modais — mesma sobreposição,
+    // mesmo botão de fechar, mesma tecla Esc. Um erro não é hora de a interface
+    // mudar de vocabulário com quem já está confuso.
+    if (aoFechar) {
+      return (
+        <Modal titulo="Esta janela não conseguiu carregar" aoFechar={aoFechar} largura={560}>
+          <p style={{ fontSize: 14, color: 'var(--cinza-3)', lineHeight: 1.6 }}>
+            A falha foi registrada com o horário e o ponto exato do código. Feche e
+            tente de novo; se voltar a acontecer no mesmo registro, avise a equipe —
+            o registro já está lá.
+          </p>
+          <details style={{ marginTop: 16 }}>
+            <summary style={{ fontSize: 13, color: 'var(--cinza-2)', cursor: 'pointer' }}>
+              Detalhe técnico
+            </summary>
+            <pre
+              style={{
+                marginTop: 10,
+                padding: 12,
+                background: 'var(--bg-app)',
+                borderRadius: 'var(--r-card-int)',
+                fontSize: 12,
+                overflowX: 'auto',
+                color: 'var(--cinza-3)',
+              }}
+            >
+              {this.state.erro.message}
+            </pre>
+          </details>
+        </Modal>
+      );
+    }
 
     return (
       <div

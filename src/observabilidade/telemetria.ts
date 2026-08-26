@@ -13,15 +13,84 @@
  *
  *  Sem connection string nada é inicializado e todas as funções viram no-op —
  *  é o que permite desenvolver sem recurso provisionado no Azure.
+ *
+ *  O SDK É CARREGADO SOB DEMANDA, e a razão é medida: importado estaticamente,
+ *  ele acrescenta 193 KB ao pacote inicial — 55% a mais que os 354 KB do resto
+ *  do painel. Em desenvolvimento isso não aparece, porque sem a connection
+ *  string o Vite elimina o SDK inteiro por código morto; o custo existe só em
+ *  produção, que é justamente onde ninguém está olhando o tamanho do bundle.
+ *
+ *  Telemetria não é necessária para a primeira pintura. O `import()` a tira do
+ *  caminho crítico e a deixa chegar quando chegar.
+ *
+ *  O QUE ACONTECE NO INTERVALO: o que for registrado antes de o SDK carregar
+ *  entra numa fila e é enviado quando ele chega. Não é refinamento — o caso que
+ *  mais importa é o erro durante a primeira renderização, que é o motivo de a
+ *  telemetria existir e aconteceria justamente nesse intervalo.
  */
 
-import { ApplicationInsights } from '@microsoft/applicationinsights-web';
-import type { SeverityLevel } from '@microsoft/applicationinsights-web';
+// `import type`, e não `import`: tipo é apagado na compilação, então isto NÃO
+// traz o SDK para o pacote. Trocar por um import normal desfaz tudo o que está
+// escrito acima, e nada além do tamanho do arquivo denuncia.
+import type { ApplicationInsights, SeverityLevel } from '@microsoft/applicationinsights-web';
 
 const CONEXAO = import.meta.env.VITE_APPINSIGHTS_CONNECTION_STRING as string | undefined;
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
 let cliente: ApplicationInsights | null = null;
+
+/** Estado do carregamento, para não tentar de novo nem enfileirar à toa. */
+let situacao: 'parado' | 'carregando' | 'pronto' | 'falhou' = 'parado';
+
+interface Registro {
+  acao: (c: ApplicationInsights) => void;
+  /** O que fazer se o SDK NUNCA chegar. Ver `iniciarTelemetria`. */
+  aoDesistir?: () => void;
+}
+
+/** O que foi registrado antes de o SDK chegar. */
+const fila: Registro[] = [];
+
+/** Teto da fila.
+ *
+ *  Um laço de erro — componente que quebra, tenta de novo e quebra outra vez —
+ *  encheria a memória enquanto o SDK ainda carrega. Trinta cabe qualquer
+ *  rajada de partida; o que passar disso é repetição, e repetição não informa
+ *  nada que os trinta primeiros já não digam.
+ */
+const TETO_DA_FILA = 30;
+
+/** Executa agora, ou enfileira. Devolve `false` quando não fez nem uma coisa
+ *  nem outra — fila cheia, SDK que não carregou, telemetria não configurada.
+ *
+ *  O retorno existe por causa de `registrarErro`: para view e evento, perder um
+ *  registro é perder um número. Para erro, perder é perder a única notícia de
+ *  que algo quebrou, e aí o console tem de receber.
+ */
+function aoCarregar(
+  acao: (c: ApplicationInsights) => void,
+  aoDesistir?: () => void,
+): boolean {
+  if (cliente) {
+    try {
+      acao(cliente);
+      return true;
+    } catch (falha) {
+      // O SDK levantando é raro, mas o lugar onde acontece é o pior possível:
+      // `registrarErro` é chamado de dentro de `componentDidCatch`, então uma
+      // exceção aqui seria uma SEGUNDA falha durante o tratamento da primeira.
+      //
+      // Devolver `false` faz o chamador cair no console, que é o que resta.
+      console.error('[painel] telemetria falhou ao registrar', falha);
+      return false;
+    }
+  }
+  if (situacao === 'carregando' && fila.length < TETO_DA_FILA) {
+    fila.push({ acao, aoDesistir });
+    return true;
+  }
+  return false;
+}
 
 /** Domínio da API, para o SDK saber a quem enviar o cabeçalho de correlação. */
 function dominioDaApi(): string[] {
@@ -34,9 +103,59 @@ function dominioDaApi(): string[] {
 }
 
 export function iniciarTelemetria(): void {
-  if (cliente || !CONEXAO) return;
+  if (situacao !== 'parado' || !CONEXAO) return;
+  situacao = 'carregando';
 
-  cliente = new ApplicationInsights({
+  void import('@microsoft/applicationinsights-web')
+    .then(({ ApplicationInsights }) => {
+      // `montar` DEVOLVE a instância em vez de só atribuir: é o que dá ao
+      // TypeScript um valor comprovadamente não-nulo para o esvaziamento
+      // abaixo, sem `!`.
+      const pronto = montar(ApplicationInsights);
+      cliente = pronto;
+      situacao = 'pronto';
+
+      // A fila é esvaziada UMA vez: `aoCarregar` já enxerga `cliente` daqui em
+      // diante e executa direto.
+      //
+      // Cada ação vai em `try` PRÓPRIO. Sem isso, uma que levantasse — telemetria
+      // com propriedade que não serializa, por exemplo — interromperia o laço,
+      // levaria junto as que ainda não saíram, e a exceção cairia no `catch` de
+      // baixo marcando como FALHO um SDK que carregou bem. Telemetria quebrando
+      // o que ela observa é o pior desfecho possível.
+      for (const { acao } of fila.splice(0)) {
+        try {
+          acao(pronto);
+        } catch (falha) {
+          console.error('[painel] registro enfileirado falhou', falha);
+        }
+      }
+    })
+    .catch((falha: unknown) => {
+      situacao = 'falhou';
+      console.error('[painel] telemetria não carregou', falha);
+
+      // A fila precisa sair por algum lugar. Descartá-la calada faria a falha
+      // de CARREGAMENTO apagar também os erros que ela deveria ajudar a
+      // explicar — e o erro da primeira renderização, o mais valioso de todos,
+      // é exatamente um dos que estariam aqui.
+      //
+      // Só `registrarErro` fornece `aoDesistir`: view e evento perdidos são um
+      // número a menos, e não vale sujar o console com eles.
+      for (const { aoDesistir } of fila.splice(0)) {
+        try {
+          aoDesistir?.();
+        } catch {
+          /* Um fallback que quebra não pode derrubar os outros. */
+        }
+      }
+    });
+}
+
+function montar(
+  ApplicationInsights: typeof import('@microsoft/applicationinsights-web').ApplicationInsights,
+): ApplicationInsights {
+  const instancia = new ApplicationInsights({
     config: {
       connectionString: CONEXAO,
 
@@ -117,22 +236,23 @@ export function iniciarTelemetria(): void {
     },
   });
 
-  cliente.loadAppInsights();
+  instancia.loadAppInsights();
 
   // `cloud_RoleName` é o que separa este serviço do backend quando os dois
   // mandam para o mesmo recurso — e o que faz o Application Map desenhar a
   // seta de um para o outro.
-  cliente.addTelemetryInitializer((item) => {
+  instancia.addTelemetryInitializer((item) => {
     item.tags = item.tags ?? {};
     item.tags['ai.cloud.role'] = 'painel-reputacional-web';
   });
 
-  cliente.trackPageView();
+  instancia.trackPageView();
+  return instancia;
 }
 
 /** Marca a troca de view. A nav é por estado, então isto é manual. */
 export function registrarView(view: string): void {
-  cliente?.trackPageView({ name: view, uri: `/${view}` });
+  aoCarregar((c) => c.trackPageView({ name: view, uri: `/${view}` }));
 }
 
 /** Erro de verdade — vai para `exceptions` no App Insights. */
@@ -140,17 +260,24 @@ export function registrarErro(
   erro: Error,
   contexto: Record<string, unknown> = {},
 ): void {
-  if (!cliente) {
-    // Sem telemetria configurada, o console é o único lugar que resta. Melhor
-    // do que engolir: em desenvolvimento é onde o programador vai olhar.
-    console.error('[painel]', erro, contexto);
-    return;
-  }
-  cliente.trackException({
-    exception: erro,
-    severityLevel: 3 as SeverityLevel, // Error
-    properties: contexto,
-  });
+  const noConsole = () => console.error('[painel]', erro, contexto);
+
+  const registrado = aoCarregar(
+    (c) =>
+      c.trackException({
+        exception: erro,
+        severityLevel: 3 as SeverityLevel, // Error
+        properties: contexto,
+      }),
+    // Se o SDK nunca chegar, este erro ainda precisa aparecer em algum lugar.
+    noConsole,
+  );
+
+  // Quando não há para onde mandar, o console é o que resta — e é melhor do que
+  // engolir. Cobre os três casos de uma vez: telemetria não configurada (o
+  // desenvolvimento, onde o programador está olhando o console), SDK que não
+  // carregou, e fila cheia.
+  if (!registrado) noConsole();
 }
 
 /** Evento de negócio — para responder "quantas pessoas exportaram CSV". */
@@ -158,15 +285,20 @@ export function registrarEvento(
   nome: string,
   propriedades: Record<string, unknown> = {},
 ): void {
-  cliente?.trackEvent({ name: nome }, propriedades);
+  aoCarregar((c) => c.trackEvent({ name: nome }, propriedades));
 }
 
 /** Quem está usando. Permite filtrar erros por pessoa no portal. */
 export function identificarUsuario(id: string): void {
-  cliente?.setAuthenticatedUserContext(id);
+  aoCarregar((c) => c.setAuthenticatedUserContext(id));
 }
 
-/** Garante o envio antes de a aba fechar. */
+/** Garante o envio antes de a aba fechar.
+ *
+ *  NÃO passa pela fila, de propósito: se o SDK ainda não carregou quando a aba
+ *  fecha, não há para onde descarregar, e enfileirar seria guardar trabalho
+ *  para um momento que não vem.
+ */
 export function descarregarTelemetria(): void {
   cliente?.flush();
 }

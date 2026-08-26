@@ -1,8 +1,14 @@
 /** Cor e rótulo de cada frente, e os demais vocabulários visuais.
  *
- *  As cores vêm do guia oficial da Aegea. Governo e Legislativo usam texto
- *  escuro sobre o próprio fundo — turquesa e amarelo não sustentam texto
- *  branco com contraste suficiente.
+ *  As cores vêm do guia oficial da Aegea.
+ *
+ *  O CHIP É TEXTO DE 11px EM PESO 700, então o limiar de contraste que vale é
+ *  4,5:1 — o de texto normal. "Texto grande", que se contenta com 3:1, começa
+ *  em 18,66px negrito. Nenhum chip deste painel chega perto disso.
+ *
+ *  A escolha do texto sobre cada fundo está medida em `FUNDO_CLARO`, e não no
+ *  olho: três frentes reprovavam, e uma delas — Eventos, laranja com texto
+ *  branco — ficava em 2,20:1, menos da metade do exigido.
  */
 
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
@@ -12,7 +18,14 @@ export const CORES_DE_FRENTE: Record<Frente, string> = {
   governo: '#17E3CB',
   parceiros: '#A11FFF',
   eventos: '#FE952B',
-  investidores: '#E12379',
+  // Magenta Pitaia do guia é `#E12379`, e com texto branco dá 4,45:1 — reprova
+  // por 0,05. É o único caso em que trocar a cor do TEXTO não resolve: escuro
+  // sobre ele dá 3,20, pior ainda.
+  //
+  // `#DF2378` é 1% mais escuro e fecha em 4,52:1. A diferença é indistinguível
+  // a olho e mantém a leitura da marca; a alternativa seria deixar o rótulo
+  // ilegível para quem enxerga menos.
+  investidores: '#DF2378',
   legislativo: '#F8DC00',
   interna: '#8C91A4',
 };
@@ -27,8 +40,25 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   interna: 'Interna',
 };
 
-/** Frentes cujo chip precisa de texto escuro para o contraste fechar. */
-const FUNDO_CLARO: ReadonlySet<Frente> = new Set<Frente>(['governo', 'legislativo']);
+/** Frentes cujo chip precisa de texto escuro para o contraste fechar.
+ *
+ *  Medido contra `#00312C` (o escuro) e `#FFFFFF`, em razão WCAG:
+ *
+ *    governo      #17E3CB   escuro 8,73   branco 1,63
+ *    legislativo  #F8DC00   escuro 10,32  branco 1,38
+ *    eventos      #FE952B   escuro 6,47   branco 2,20
+ *    interna      #8C91A4   escuro 4,54   branco 3,13
+ *
+ *  As quatro só passam com texto escuro. As outras três — Imprensa (10,37),
+ *  Parceiros (5,05) e Investidores (4,52 depois do ajuste acima) — passam com
+ *  branco, e só com branco.
+ */
+const FUNDO_CLARO: ReadonlySet<Frente> = new Set<Frente>([
+  'governo',
+  'legislativo',
+  'eventos',
+  'interna',
+]);
 
 export function textoSobreFrente(frente: Frente): string {
   return FUNDO_CLARO.has(frente) ? '#00312C' : '#FFFFFF';

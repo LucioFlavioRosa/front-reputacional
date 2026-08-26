@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { obterEu } from '@/api/cliente';
 import { DrawerDeFiltros } from '@/componentes/FiltrosDrawer';
 import { Carregando } from '@/componentes/basicos';
+import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
 import { Acessos } from '@/paginas/Acessos';
@@ -57,7 +58,7 @@ export function App() {
    * Por isso a falha é silenciosa — mostrar mensagem de erro para quem só abriu
    * o site pela primeira vez seria ruído.
    */
-  useEffect(() => {
+  useEffect(function conferirSessaoAoAbrir() {
     let vivo = true;
     obterEu()
       .then((quem) => {
@@ -71,7 +72,7 @@ export function App() {
       .finally(() => {
         if (vivo) definirVerificandoSessao(false);
       });
-    return () => {
+    return function cancelarConferenciaDeSessao() {
       vivo = false;
     };
   }, []);
@@ -140,7 +141,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   // A navegação é por estado, não por URL: o rastreio automático de rota do
   // SDK depende do history API e nunca dispararia. Sem isto, todo erro seria
   // atribuído à tela inicial e não à que o usuário estava vendo de fato.
-  useEffect(() => {
+  useEffect(function registrarTrocaDeView() {
     registrarView(view);
   }, [view]);
 
@@ -160,32 +161,54 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
         // se ganha é não mostrar a todo mundo uma porta que só alguns abrem.
         administraAcessos={eu?.papel?.administra_acessos ?? false}
       >
-        {view === 'inicio' ? <Inicio irPara={definirView} /> : null}
-        {view === 'painel' ? <Painel aoAbrirFrente={abrirFrente} /> : null}
-        {view === 'frentes' ? (
-          <Frentes
-            frente={frenteAberta}
-            aoTrocarFrente={definirFrenteAberta}
-            aoAbrirFicha={definirFichaAberta}
-          />
-        ) : null}
-        {view === 'status' ? <Status aoAbrirFicha={definirFichaAberta} /> : null}
-        {view === 'resultado' ? <Resultado /> : null}
-        {view === 'portavozes' ? <PortaVozes /> : null}
-        {view === 'interlocutores' ? <Interlocutores /> : null}
-        {view === 'base' ? <Base aoAbrirFicha={definirFichaAberta} /> : null}
-        {view === 'cadastro' ? <Cadastro aoSalvar={() => definirView('base')} /> : null}
-        {view === 'acessos' ? <Acessos /> : null}
+        {/* O limite fica AQUI, e não só na raiz, para a falha de uma tela não
+            levar o painel inteiro junto. Com ele na raiz apenas, um erro dentro
+            do mapa apagava a navegação também, e a única saída era recarregar.
+
+            `key={view}` é o que dá a saída: trocar de tela remonta o limite e
+            zera o erro, então a pessoa navega para outro lugar em vez de ficar
+            presa. Sem a chave, o limite guardaria o erro para sempre e toda
+            tela seguinte nasceria quebrada.
+
+            É também o que torna verdadeira a frase do fallback, "esta tela não
+            conseguiu carregar". Na raiz, ela era imprecisa: quem não carregava
+            era o painel. */}
+        <LimiteDeErro key={view}>
+          {view === 'inicio' ? <Inicio irPara={definirView} /> : null}
+          {view === 'painel' ? <Painel aoAbrirFrente={abrirFrente} /> : null}
+          {view === 'frentes' ? (
+            <Frentes
+              frente={frenteAberta}
+              aoTrocarFrente={definirFrenteAberta}
+              aoAbrirFicha={definirFichaAberta}
+            />
+          ) : null}
+          {view === 'status' ? <Status aoAbrirFicha={definirFichaAberta} /> : null}
+          {view === 'resultado' ? <Resultado /> : null}
+          {view === 'portavozes' ? <PortaVozes /> : null}
+          {view === 'interlocutores' ? <Interlocutores /> : null}
+          {view === 'base' ? <Base aoAbrirFicha={definirFichaAberta} /> : null}
+          {view === 'cadastro' ? <Cadastro aoSalvar={() => definirView('base')} /> : null}
+          {view === 'acessos' ? <Acessos /> : null}
+        </LimiteDeErro>
       </Layout>
 
       <DrawerDeFiltros />
 
+      {/* Ficha e relatório abrem POR CIMA do painel, então merecem limite
+          próprio: um registro com dado estranho não pode derrubar a tela que
+          continua atrás dele. A chave é o id, para que abrir outra ficha depois
+          de uma quebrada comece limpa. */}
       {fichaAberta ? (
-        <Ficha id={fichaAberta} aoFechar={() => definirFichaAberta(null)} />
+        <LimiteDeErro key={`ficha-${fichaAberta}`} aoFechar={() => definirFichaAberta(null)}>
+          <Ficha id={fichaAberta} aoFechar={() => definirFichaAberta(null)} />
+        </LimiteDeErro>
       ) : null}
 
       {relatorioAberto ? (
-        <GerarRelatorio aoFechar={() => definirRelatorioAberto(false)} />
+        <LimiteDeErro aoFechar={() => definirRelatorioAberto(false)}>
+          <GerarRelatorio aoFechar={() => definirRelatorioAberto(false)} />
+        </LimiteDeErro>
       ) : null}
     </>
   );

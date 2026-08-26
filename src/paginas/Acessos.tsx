@@ -64,7 +64,7 @@ export function Acessos() {
     }
   };
 
-  useEffect(() => {
+  useEffect(function carregarPessoasAoAbrir() {
     void carregar();
   }, []);
 
@@ -174,7 +174,7 @@ function Tabela({
                 <br />
                 <span style={{ color: 'var(--cinza-2)' }}>{pessoa.email}</span>
                 {!pessoa.ativo && (
-                  <Selo rotulo="inativo" fundo="var(--vermelho-claro)" texto="var(--vermelho)" />
+                  <Selo rotulo="inativo" fundo="var(--erro-bg)" texto="var(--erro-fg)" />
                 )}
               </td>
               <td style={celula}>
@@ -210,7 +210,7 @@ function Alcance({ pessoa }: { pessoa: Acesso }) {
   if (pessoa.frentes.length === 0 && pessoa.unidades.length === 0) {
     // O caso que confunde: tem papel e não vê nada. É o padrão de quem foi
     // criado sem escopo — e a mensagem precisa dizer isso, não ficar em branco.
-    return <span style={{ color: 'var(--vermelho)' }}>Nada — sem escopo</span>;
+    return <span style={{ color: 'var(--erro-fg)' }}>Nada — sem escopo</span>;
   }
   return (
     <span>
@@ -229,7 +229,7 @@ function Prazo({ ate }: { ate: string | null }) {
   const perto = faltam >= 0 && faltam <= DIAS_DE_ALERTA;
 
   return (
-    <span style={{ color: vencido || perto ? 'var(--vermelho)' : undefined }}>
+    <span style={{ color: vencido || perto ? 'var(--erro-fg)' : undefined }}>
       {dataCompleta(ate)}
       <br />
       <span style={{ fontSize: 12 }}>
@@ -387,7 +387,7 @@ function FormularioDeConcessao({
 function Historico({ pessoa, aoFechar }: { pessoa: Acesso; aoFechar: () => void }) {
   const [linhas, definirLinhas] = useState<TrilhaDeAcesso[] | null>(null);
 
-  useEffect(() => {
+  useEffect(function carregarHistoricoDaPessoa() {
     historicoDeAcesso(pessoa.id)
       .then(definirLinhas)
       .catch(() => definirLinhas([]));
@@ -414,8 +414,8 @@ function Historico({ pessoa, aoFechar }: { pessoa: Acesso; aoFechar: () => void 
                   {linha.concedido_por ?? (
                     <Selo
                       rotulo={`fora do sistema (${linha.origem ?? '?'})`}
-                      fundo="var(--vermelho-claro)"
-                      texto="var(--vermelho)"
+                      fundo="var(--erro-bg)"
+                      texto="var(--erro-fg)"
                     />
                   )}
                 </td>

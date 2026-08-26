@@ -155,8 +155,8 @@ export function Login({
                 margin: '0 0 12px',
                 padding: '10px 12px',
                 borderRadius: 8,
-                background: 'var(--vermelho-claro)',
-                color: 'var(--vermelho)',
+                background: 'var(--erro-bg)',
+                color: 'var(--erro-fg)',
                 fontSize: 13,
               }}
             >

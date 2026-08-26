@@ -67,7 +67,7 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
   const recarregar = useCallback(() => definirVersao((v) => v + 1), []);
 
   // Os diretórios mudam raramente: carregam uma vez e servem todas as telas.
-  useEffect(() => {
+  useEffect(function carregarCatalogo() {
     let ativo = true;
     Promise.all([
       obterDicionarios(),
@@ -82,7 +82,7 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
       .catch((falha: Error) => {
         if (ativo) definirErro(falha.message);
       });
-    return () => {
+    return function cancelarCargaDoCatalogo() {
       ativo = false;
     };
   }, [versao]);
@@ -92,7 +92,7 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
   // Os dados anteriores permanecem em tela durante o refetch. Trocar tudo por
   // um esqueleto a cada clique de filtro faria a página saltar de altura e
   // piscar — o painel inteiro some e volta para mudar um número.
-  useEffect(() => {
+  useEffect(function buscarInteracoesDoRecorte() {
     let ativo = true;
     definirAtualizando(true);
     definirErro(null);
@@ -113,7 +113,7 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
         definirCarregando(false);
       });
 
-    return () => {
+    return function cancelarBuscaDeInteracoes() {
       ativo = false;
     };
   }, [recorte, versao]);

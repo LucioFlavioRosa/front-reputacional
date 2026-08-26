@@ -85,14 +85,14 @@ export function Ficha({ id, aoFechar }: { id: string; aoFechar: () => void }) {
   const [interacao, definirInteracao] = useState<Interacao | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
 
-  useEffect(() => {
+  useEffect(function buscarInteracaoDaFicha() {
     let ativo = true;
     definirInteracao(null);
     definirErro(null);
     obterInteracao(id)
       .then((dados) => ativo && definirInteracao(dados))
       .catch((falha: Error) => ativo && definirErro(falha.message));
-    return () => {
+    return function cancelarBuscaDaInteracao() {
       ativo = false;
     };
   }, [id]);
