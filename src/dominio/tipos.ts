@@ -126,8 +126,40 @@ export interface UnidadeDeNegocio {
   ordem: number;
 }
 
+/** Um nível de relevância — o que o painel chama de "tier".
+ *
+ *  O `id` é o PRÓPRIO número do tier, e não uma sequência interna: é ele que
+ *  vai em `Interacao.tier`, aparece na tela e sai na exportação.
+ */
+export interface Relevancia {
+  id: number;
+  nome: string;
+  ordem: number;
+}
+
+/** UF, ou um dos dois valores que o mapa trata à parte (`NA`, `IN`). */
+export interface Abrangencia {
+  codigo: string;
+  nome: string;
+}
+
+/** Grupo de status: sustenta a taxa de resolutividade. */
+export interface GrupoDeStatusDoDicionario {
+  codigo: string;
+  nome: string;
+}
+
+/** Tudo o que o filtro do painel oferece.
+ *
+ *  NENHUMA opção de filtro pode estar escrita no código desta pasta: toda lista
+ *  sai daqui, e este objeto vem de `GET /api/dicionarios`. Uma linha nova num
+ *  dicionário do banco aparece na próxima carga da tela, sem build nem deploy.
+ */
 export interface Dicionarios {
   frentes: FrenteDoDicionario[];
+  relevancias: Relevancia[];
+  ufs: Abrangencia[];
+  grupos_de_status: GrupoDeStatusDoDicionario[];
   status: StatusDoDicionario[];
   esferas: ItemDeDicionario[];
   climas: (ItemDeDicionario & { cor_hex: string })[];

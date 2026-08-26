@@ -23,10 +23,10 @@ import { ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente } from '@/dominio/tipos';
 
-const UFS = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
-  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
-];
+// As 27 UFs saíram daqui: vêm de `catalogo.dicionarios.ufs`, montado a
+// partir do domínio `abrangencia` do Postgres — o mesmo que recusa uma UF
+// inválida na escrita. O formulário passa a oferecer exatamente o que o
+// banco aceita, nem mais nem menos.
 
 /** Quais blocos de extensão cada frente mostra. Governo, Parceiros e Eventos
  *  usam o mesmo bloco — só Eventos acrescenta o nome do evento. */
@@ -223,11 +223,9 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
               onChange={(evento) => alterar('uf', evento.target.value)}
             >
               <option value="">Selecione…</option>
-              <option value="NA">Nacional</option>
-              <option value="IN">Internacional</option>
-              {UFS.map((uf) => (
-                <option key={uf} value={uf}>
-                  {uf}
+              {catalogo?.dicionarios.ufs.map((abrangencia) => (
+                <option key={abrangencia.codigo} value={abrangencia.codigo}>
+                  {abrangencia.nome}
                 </option>
               ))}
             </select>
@@ -289,9 +287,14 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
               onChange={(evento) => alterar('tier', evento.target.value)}
             >
               <option value="">Não classificada</option>
-              <option value="1">Tier 1</option>
-              <option value="2">Tier 2</option>
-              <option value="3">Tier 3</option>
+              {/* Do banco, e nao escrito aqui — pelo mesmo motivo do filtro. Um
+                  nivel que o painel oferece para FILTRAR e nao oferece para
+                  CLASSIFICAR seria um filtro que nunca acha nada. */}
+              {catalogo?.dicionarios.relevancias.map((nivel) => (
+                <option key={nivel.id} value={nivel.id}>
+                  {nivel.nome}
+                </option>
+              ))}
             </select>
           </Campo>
 

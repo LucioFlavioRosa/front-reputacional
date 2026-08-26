@@ -133,7 +133,9 @@ export function App() {
 }
 
 function Aplicativo({ eu }: { eu: Eu | null }) {
-  const [view, definirView] = useState<View>('painel');
+  // A capa, e não o painel. Quem abre o endereço vê primeiro o que o
+  // produto é; o CRM é uma escolha, e não o lugar onde se cai.
+  const [view, definirView] = useState<View>('inicio');
   const [frenteAberta, definirFrenteAberta] = useState<Frente>('imprensa');
   const [fichaAberta, definirFichaAberta] = useState<string | null>(null);
   const [relatorioAberto, definirRelatorioAberto] = useState(false);

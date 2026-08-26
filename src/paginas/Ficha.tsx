@@ -26,6 +26,7 @@ import {
   nomeDoInterlocutor,
   nomesDosTemas,
   rotuloDeCodigo,
+  rotuloDeRelevancia,
 } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 
@@ -123,7 +124,7 @@ export function Ficha({ id, aoFechar }: { id: string; aoFechar: () => void }) {
       subtitulo={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
           {ROTULOS_DE_FRENTE[interacao.frente]} · {dataCompleta(interacao.data_interacao)}
-          {interacao.tier ? ` · Tier ${interacao.tier}` : ''}
+          {interacao.tier ? ` · ${rotuloDeRelevancia(catalogo, interacao.tier)}` : ''}
         </span>
       }
       aoFechar={aoFechar}

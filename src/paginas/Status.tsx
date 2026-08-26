@@ -29,6 +29,7 @@ import {
   nomeDaInstituicao,
   resolutividade,
   rotuloDeCodigo,
+  rotuloDeRelevancia,
 } from '@/dominio/derivacoes';
 
 export function Status({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
@@ -212,7 +213,7 @@ export function Status({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void })
                   <div style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 6px' }}>
                     {dataCompleta(interacao.data_interacao)} ·{' '}
                     {rotuloDeCodigo(catalogo, 'status', interacao.status)}
-                    {interacao.tier ? ` · Tier ${interacao.tier}` : ''}
+                    {interacao.tier ? ` · ${rotuloDeRelevancia(catalogo, interacao.tier)}` : ''}
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.55 }}>
                     {truncar(interacao.pendencias || interacao.pauta, 220)}

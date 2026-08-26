@@ -5,7 +5,7 @@
  */
 
 import type { Catalogo } from '@/dominio/derivacoes';
-import { rotuloDeCodigo } from '@/dominio/derivacoes';
+import { rotuloDeCodigo, rotuloDeRelevancia } from '@/dominio/derivacoes';
 import { ATALHOS_DE_PERIODO } from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
 import { ROTULOS_DE_FRENTE, ROTULOS_DE_GRUPO } from '@/dominio/frentes';
@@ -26,7 +26,7 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
   if (recorte.uf) {
     partes.push(recorte.uf === 'NA' ? 'Nacional' : recorte.uf === 'IN' ? 'Internacional' : recorte.uf);
   }
-  if (recorte.tier) partes.push(`Tier ${recorte.tier}`);
+  if (recorte.tier) partes.push(rotuloDeRelevancia(catalogo, recorte.tier));
   if (recorte.grupo) partes.push(ROTULOS_DE_GRUPO[recorte.grupo]);
   if (recorte.unidade) partes.push(recorte.unidade);
   if (recorte.entidade) partes.push(recorte.entidade);

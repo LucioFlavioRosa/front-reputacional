@@ -1,5 +1,9 @@
 /** Casca do aplicativo: marca, navegação, ações e a barra do recorte.
  *
+ *  A CAPA (`inicio`) NÃO TEM NAVEGAÇÃO. O cabeçalho fica com a marca e nada
+ *  mais, e as abas aparecem ao entrar no CRM dos Stakeholders. Voltar para a
+ *  capa pela marca esconde tudo de novo.
+ *
  *  Regras de navegação que o handoff fixa:
  *   - a nav é o único caminho para cada view;
  *   - ações (novo registro, gerar relatório) são botões do header;
@@ -70,6 +74,9 @@ export function Layout({
 }) {
   const { recorte, catalogo, filtrosAtivos, abrirDrawer, limparRecorte, total, atualizando } =
     usePainel();
+
+  //: Na capa o cabeçalho é só a marca. Ver o comentário na `<nav>`.
+  const naCapa = view === 'inicio';
 
   const navegar = (destino: View) => {
     // Painel é o ponto de partida limpo: entrar nele descarta o recorte.
@@ -143,6 +150,22 @@ export function Layout({
             </span>
           </button>
 
+          {/* A NAVEGAÇÃO SÓ EXISTE DENTRO DO CRM.
+              Na capa o cabeçalho fica com a marca e mais nada: quem chega vê o
+              produto antes do maquinário. As abas aparecem ao entrar pelo cartão
+              "CRM dos Stakeholders", e somem de novo ao voltar para a capa.
+
+              É `view === 'inicio'`, e não um estado próprio de "já entrou":
+              estado separado poderia discordar da tela em que se está — nav
+              visível na capa, ou capa sem saída — e não haveria nada que os
+              obrigasse a concordar. Aqui a pergunta "estou na capa?" tem uma
+              resposta só.
+
+              O `<div>` vazio no lugar mantém a marca à esquerda: sem ele, o
+              `flex: 1` some junto com a nav e o cabeçalho colapsa. */}
+          {naCapa ? (
+            <div style={{ flex: 1 }} />
+          ) : (
           <nav className="cabecalho__nav" style={{ display: 'flex', gap: 2, flex: 1, overflowX: 'auto' }}>
             {[
               ...NAVEGACAO,
@@ -176,13 +199,20 @@ export function Layout({
               );
             })}
           </nav>
+          )}
 
-          <div className="cabecalho__acoes" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
-            <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
-            <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
-              Novo registro
-            </Botao>
-          </div>
+          {/* Gerar relatório e Novo registro também são do CRM: os dois agem
+              sobre o recorte e sobre a base, que na capa ainda não estão em
+              jogo. Oferecer "Novo registro" antes de a pessoa ter visto um
+              registro seria pedir uma decisão sem contexto. */}
+          {naCapa ? null : (
+            <div className="cabecalho__acoes" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
+              <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
+              <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
+                Novo registro
+              </Botao>
+            </div>
+          )}
         </div>
 
         {view !== 'inicio' && view !== 'cadastro' ? (

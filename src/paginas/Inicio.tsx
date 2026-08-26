@@ -139,8 +139,13 @@ export function Inicio({ irPara }: { irPara: (view: View) => void }) {
         <div
           className="grade grade--auto" style={{ gap: 14 }}
         >
+          {/* Estes cartões NÃO navegam, e é decisão.
+              Descrevem as sete frentes que o CRM cobre — são conteúdo da capa,
+              não atalho. A porta de entrada é uma só, o cartão "CRM dos
+              Stakeholders": foi o que o pedido definiu, e uma segunda entrada
+              faria a barra superior aparecer sem ninguém ter escolhido entrar. */}
           {FRENTES_DE_ANALISE.map((frente) => (
-            <Cartao key={frente.titulo} estilo={{ padding: 18 }} aoClicar={() => irPara('frentes')}>
+            <Cartao key={frente.titulo} estilo={{ padding: 18 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{frente.titulo}</div>
               <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 5 }}>
                 {frente.descricao}

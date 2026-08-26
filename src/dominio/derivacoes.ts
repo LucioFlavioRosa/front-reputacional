@@ -110,6 +110,26 @@ export function rotuloDeCodigo(
   return lista.find((item) => item.codigo === codigo)?.nome ?? codigo;
 }
 
+/** O nome do nível de relevância, como está no banco.
+ *
+ *  NÃO monte `Tier ${n}` na tela. Os nomes vivem em `relevancia` e são
+ *  editáveis por `update`: trocar 'Tier 4' por 'Regional' tem de mudar a Base,
+ *  a Ficha e o resumo do recorte junto com o filtro. Enquanto quatro telas
+ *  montavam o texto sozinhas, renomear mudava só o dropdown, e a mesma
+ *  interação aparecia como "Regional" num lugar e "Tier 5" no outro.
+ *
+ *  O `?? \`Tier ${tier}\`` no fim cobre o registro cujo nível foi desativado:
+ *  ele sai do dicionário, mas os registros que já o usavam continuam existindo
+ *  e precisam mostrar alguma coisa.
+ */
+export function rotuloDeRelevancia(
+  catalogo: Catalogo | null,
+  tier: number | null,
+): string {
+  if (!tier) return '—';
+  return catalogo?.dicionarios.relevancias.find((n) => n.id === tier)?.nome ?? `Tier ${tier}`;
+}
+
 export function nomesDosTemas(catalogo: Catalogo, ids: number[]): string[] {
   const porId = new Map(catalogo.dicionarios.temas.map((t) => [t.id, t.nome]));
   return ids.map((id) => porId.get(id)).filter((n): n is string => Boolean(n));

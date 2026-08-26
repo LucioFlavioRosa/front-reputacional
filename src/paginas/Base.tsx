@@ -14,6 +14,7 @@ import {
   nomeDoInterlocutor,
   nomesDosTemas,
   rotuloDeCodigo,
+  rotuloDeRelevancia,
 } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 
@@ -156,7 +157,7 @@ function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
     interlocutor: nomeDoInterlocutor(catalogo, interacao.interlocutor_id),
     pauta: interacao.pauta,
     uf: rotuloDeAbrangencia(interacao.uf),
-    tier: interacao.tier ? `Tier ${interacao.tier}` : '—',
+    tier: rotuloDeRelevancia(catalogo, interacao.tier),
     status: rotuloDeCodigo(catalogo, 'status', interacao.status),
     tags: nomesDosTemas(catalogo, interacao.temas).join(', '),
   };
