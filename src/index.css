@@ -1,0 +1,222 @@
+/* Tokens do guia visual oficial da Aegea (PPT_Padrao_Aegea_V4.pdf).
+   Espelham DESIGN-TOKENS.md do pacote de handoff — se um valor divergir de lá,
+   o handoff é a fonte da verdade. */
+
+:root {
+  /* Paleta principal */
+  --azul-mar: #0027BD;
+  --azul-mar-sombra: #111799;
+  --turquesa-rio: #17E3CB;
+  --turquesa-sombra: #9DEEE7;
+
+  /* Paleta secundária — detalhes, ícones e gráficos */
+  --amarelo-pequi: #F8DC00;
+  --laranja-baia: #FE952B;
+  --vermelho-pitanga: #FF5C60;
+  --magenta-pitaia: #E12379;
+  --roxo-acai: #A11FFF;
+  --rosa-goiaba: #FF8FE1;
+
+  /* Neutros */
+  --branco: #FFFFFF;
+  --cinza-1: #E2E5F0;
+  --cinza-2: #8C91A4;
+  --cinza-3: #44495C;
+  --cinza-4: #191B23;
+
+  /* Aplicação */
+  --bg-app: #F4F6FC;
+  --bg-trilho: #EEF1F8;
+  --bg-hover: #F8FAFF;
+  --bg-rodape-card: #FAFBFE;
+  --borda: #E2E5F0;
+  --borda-input: #D5DAEA;
+  --texto-placeholder: #A6ABBD;
+
+  /* Semânticos */
+  --ok-bg: #DFFAF6;      --ok-fg: #0A6B60;
+  --atencao-bg: #FFF1DC; --atencao-fg: #8A4E00;
+  --erro-bg: #FFE7E8;    --erro-fg: #B32328;
+  --sobre-turquesa: #00312C;
+
+  /* Frentes */
+  --frente-imprensa: #0027BD;
+  --frente-governo: #17E3CB;
+  --frente-parceiros: #A11FFF;
+  --frente-eventos: #FE952B;
+  --frente-investidores: #E12379;
+  --frente-legislativo: #F8DC00;
+  --frente-interna: #8C91A4;
+
+  /* Clima */
+  --clima-propositivo: #17E3CB;
+  --clima-neutro: #8C91A4;
+  --clima-tenso: #FF5C60;
+
+  /* Resultado */
+  --res-avancou: #17E3CB;
+  --res-mantido: #0027BD;
+  --res-recuou: #FF5C60;
+  --res-sem-definicao: #D5DAEA;
+
+  /* Status por grupo */
+  --grupo-resolvido: #17E3CB;
+  --grupo-aberto: #FE952B;
+  --grupo-declinado: #FF5C60;
+
+  /* Tipografia */
+  --font-sans: "DM Sans", Arial, sans-serif;
+  --font-destaque: Georgia, "Times New Roman", serif; /* usado em itálico */
+
+  /* Raios */
+  --r-chip: 5px;
+  --r-btn: 9px;
+  --r-card-int: 12px;
+  --r-card: 14px;
+  --r-destaque: 16px;
+
+  /* Sombras */
+  --sh-card-hover: 0 6px 18px rgba(0, 39, 189, 0.10);
+  --sh-tooltip: 0 8px 24px rgba(25, 27, 35, 0.22);
+  --sh-modal: 0 24px 64px rgba(25, 27, 35, 0.28);
+  --sh-drawer: 0 0 40px rgba(25, 27, 35, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--cinza-4);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Georgia itálico é o equivalente ao Aegea Move do guia oficial. */
+.destaque {
+  font-family: var(--font-destaque);
+  font-style: italic;
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+p { margin: 0; }
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: 14px; }
+
+/* Kicker: rótulo de seção em caixa alta. */
+.kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cinza-2);
+}
+
+/* Números grandes e colunas de dígitos alinham melhor com tabular. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+:focus-visible {
+  outline: 2px solid var(--azul-mar);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Rolagem interna dos blocos densos (base, filas, tabelas). */
+.rolagem-interna { overflow: auto; }
+.rolagem-interna::-webkit-scrollbar { width: 10px; height: 10px; }
+.rolagem-interna::-webkit-scrollbar-thumb {
+  background: var(--cinza-1);
+  border-radius: 5px;
+  border: 3px solid var(--branco);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; }
+  .sem-impressao { display: none !important; }
+}
+
+/* Grades responsivas.
+   As telas usam estas classes em vez de `gridTemplateColumns` embutido, porque
+   estilo inline não alcança media query — e sem breakpoint o painel de seis
+   KPIs vira uma coluna ilegível de 40px no celular. */
+.grade { display: grid; }
+.grade--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grade--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grade--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grade--destaque { grid-template-columns: 1.35fr 1fr 1fr; }
+.grade--mapa { grid-template-columns: 1.3fr 1fr; }
+.grade--auto { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+
+@media (max-width: 1040px) {
+  .grade--4,
+  .grade--destaque { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grade--mapa { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .grade--2,
+  .grade--3,
+  .grade--4,
+  .grade--destaque { grid-template-columns: 1fr; }
+  .area-principal { padding: 20px 16px 48px !important; }
+}
+
+/* Tela de entrada: duas colunas no desktop, arte vira cabeçalho no celular.
+   As medidas vêm do handoff. */
+.entrada { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
+.entrada__arte { padding: 44px 48px; }
+
+@media (max-width: 880px) {
+  .entrada { grid-template-columns: 1fr; min-height: 100%; }
+  .entrada__arte { min-height: 240px; padding: 28px 24px; }
+  .entrada__titulo { font-size: 28px !important; }
+}
+
+@media (max-width: 520px) {
+  .entrada__numeros { display: none !important; }
+  .entrada__titulo { font-size: 24px !important; }
+}
+
+/* Faixa ondulada dupla — o elemento orgânico da marca Aegea, que fecha o hero.
+   Duas ondas defasadas dão a leitura de água em movimento sem animação. */
+.onda-do-hero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 46px;
+  display: block;
+  pointer-events: none;
+}
+
+/* Cabeçalho no celular.
+   Marca, nav e ações não cabem numa linha só: em 390px o conjunto forçava
+   454px de largura e a página inteira vazava na horizontal. Abaixo de 760px
+   cada um ganha a sua linha; a nav mantém a rolagem lateral própria. */
+@media (max-width: 760px) {
+  .cabecalho__linha {
+    flex-wrap: wrap;
+    height: auto !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+  .cabecalho__acoes { order: 2; width: 100%; }
+  .cabecalho__acoes > button { flex: 1; }
+  .cabecalho__nav { order: 3; width: 100%; }
+  .cabecalho__recorte {
+    flex-wrap: wrap;
+    padding: 0 16px 12px !important;
+    row-gap: 8px;
+  }
+  .cabecalho__resumo { order: 3; width: 100%; }
+}

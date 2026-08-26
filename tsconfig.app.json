@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "allowArbitraryExtensions": true,
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+
+    /* `@/` aponta para `src/`. Espelha o `resolve.alias` do `vite.config.ts`;
+       os dois precisam concordar, senão o editor e o build discordam.
+
+       Sem `baseUrl`: ele está descontinuado no TypeScript 6 e para de
+       funcionar no 7. Os caminhos de `paths` já resolvem relativos a ESTE
+       arquivo, que é o que se quer. */
+    "paths": { "@/*": ["./src/*"] },
+
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Estava DESLIGADO no repositório de origem, e ligá-lo não custou um
+       erro sequer — o código já era estrito, só faltava a checagem exigir.
+
+       Sem isto, `strictNullChecks` fica fora e o compilador deixa passar
+       `undefined` onde o tipo diz que há valor: a classe de defeito mais comum
+       em JavaScript, e justamente a que TypeScript existe para pegar. */
+    "strict": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}

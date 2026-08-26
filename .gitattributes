@@ -1,0 +1,21 @@
+# Quebra de linha LF no repositório, sempre.
+#
+# A imagem é construída em Linux (`node:22-alpine` e depois `nginx:1.27-alpine`)
+# e o `nginx.conf` é processado por `sed` dentro do contêiner. Um arquivo com
+# CRLF faz o `sed` casar errado e o marcador `__CONNECT_SRC__` sobreviver — o
+# build falha, o que é o comportamento certo, mas por um motivo que só acontece
+# em quem clonou no Windows e nunca em quem clonou no Mac.
+#
+# `eol=lf` normaliza na entrada E na saída: o arquivo fica LF também na cópia de
+# trabalho, então o que você edita é o que o contêiner recebe.
+* text=auto eol=lf
+
+# Binários.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# `package-lock.json` é gerado. Marcar como tal tira o ruído do diff na revisão.
+package-lock.json linguist-generated=true -diff
