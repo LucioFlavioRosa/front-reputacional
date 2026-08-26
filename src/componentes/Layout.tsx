@@ -1,8 +1,9 @@
 /** Casca do aplicativo: marca, navegação, ações e a barra do recorte.
  *
- *  A CAPA (`inicio`) NÃO TEM NAVEGAÇÃO. O cabeçalho fica com a marca e nada
- *  mais, e as abas aparecem ao entrar no CRM dos Stakeholders. Voltar para a
- *  capa pela marca esconde tudo de novo.
+ *  A CAPA (`inicio`) NÃO TEM CABEÇALHO — nem abas, nem marca, nem ações. Ela é
+ *  a imagem com "O relacionamento institucional medido", e o caminho para
+ *  dentro é o cartão "CRM dos Stakeholders". O cabeçalho inteiro aparece nas
+ *  demais telas, e é nelas que a marca serve de volta para a capa.
  *
  *  Regras de navegação que o handoff fixa:
  *   - a nav é o único caminho para cada view;
@@ -75,7 +76,12 @@ export function Layout({
   const { recorte, catalogo, filtrosAtivos, abrirDrawer, limparRecorte, total, atualizando } =
     usePainel();
 
-  //: Na capa o cabeçalho é só a marca. Ver o comentário na `<nav>`.
+  //: A capa não renderiza cabeçalho. Ver o comentário sobre o `<header>`.
+  //
+  //  É `view === 'inicio'`, e não um estado próprio de "já entrou no CRM":
+  //  estado separado poderia discordar da tela em que se está — cabeçalho
+  //  visível na capa, ou capa sem saída — e nada os obrigaria a concordar.
+  //  Aqui a pergunta "estou na capa?" tem uma resposta só.
   const naCapa = view === 'inicio';
 
   const navegar = (destino: View) => {
@@ -86,6 +92,13 @@ export function Layout({
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* NA CAPA NÃO HÁ CABEÇALHO NENHUM — nem as abas, nem a marca.
+          A página abre na imagem com "O relacionamento institucional medido", e
+          o único caminho para dentro é o cartão "CRM dos Stakeholders".
+
+          O cabeçalho volta inteiro em qualquer outra tela, e é lá que a marca
+          serve para alguma coisa: ela é o caminho de volta para a capa. */}
+      {naCapa ? null : (
       <header
         className="sem-impressao"
         style={{
@@ -150,22 +163,6 @@ export function Layout({
             </span>
           </button>
 
-          {/* A NAVEGAÇÃO SÓ EXISTE DENTRO DO CRM.
-              Na capa o cabeçalho fica com a marca e mais nada: quem chega vê o
-              produto antes do maquinário. As abas aparecem ao entrar pelo cartão
-              "CRM dos Stakeholders", e somem de novo ao voltar para a capa.
-
-              É `view === 'inicio'`, e não um estado próprio de "já entrou":
-              estado separado poderia discordar da tela em que se está — nav
-              visível na capa, ou capa sem saída — e não haveria nada que os
-              obrigasse a concordar. Aqui a pergunta "estou na capa?" tem uma
-              resposta só.
-
-              O `<div>` vazio no lugar mantém a marca à esquerda: sem ele, o
-              `flex: 1` some junto com a nav e o cabeçalho colapsa. */}
-          {naCapa ? (
-            <div style={{ flex: 1 }} />
-          ) : (
           <nav className="cabecalho__nav" style={{ display: 'flex', gap: 2, flex: 1, overflowX: 'auto' }}>
             {[
               ...NAVEGACAO,
@@ -199,23 +196,21 @@ export function Layout({
               );
             })}
           </nav>
-          )}
 
-          {/* Gerar relatório e Novo registro também são do CRM: os dois agem
-              sobre o recorte e sobre a base, que na capa ainda não estão em
-              jogo. Oferecer "Novo registro" antes de a pessoa ter visto um
-              registro seria pedir uma decisão sem contexto. */}
-          {naCapa ? null : (
-            <div className="cabecalho__acoes" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
-              <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
-              <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
-                Novo registro
-              </Botao>
-            </div>
-          )}
+          <div className="cabecalho__acoes" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
+            <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
+            <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
+              Novo registro
+            </Botao>
+          </div>
         </div>
 
-        {view !== 'inicio' && view !== 'cadastro' ? (
+        {/* `view !== 'inicio'` saiu daqui, e não por estilo: com o
+            cabeçalho inteiro fora da capa, o TypeScript passou a provar que
+            `view` nunca é `'inicio'` neste ponto, e acusou a comparação
+            impossível. Uma condição que não pode ser falsa é uma regra que
+            parece existir e não existe. */}
+        {view !== 'cadastro' ? (
           <div
             className="cabecalho__recorte"
             style={{
@@ -281,17 +276,22 @@ export function Layout({
           </div>
         ) : null}
       </header>
+      )}
 
       {/* Durante o refetch o conteúdo anterior fica em tela, apenas mais
           apagado: sem salto de altura e sem piscar a cada filtro. */}
       <main
-        className="area-principal"
+        className={naCapa ? 'area-principal area-principal--capa' : 'area-principal'}
         style={{
           flex: 1,
           maxWidth: 1440,
           width: '100%',
           margin: '0 auto',
-          padding: '28px 32px 64px',
+        // O recuo do TOPO na capa é zerado por `.area-principal--capa` no
+        // `index.css`, e não aqui. Tem de ser lá porque a regra de celular
+        // usa `!important`, que vence estilo inline: feito daqui, o ajuste
+        // funcionava no desktop e silenciosamente não no telefone.
+        padding: '28px 32px 64px',
           opacity: atualizando ? 0.55 : 1,
           transition: 'opacity .12s',
         }}

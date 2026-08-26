@@ -136,6 +136,9 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   // A capa, e não o painel. Quem abre o endereço vê primeiro o que o
   // produto é; o CRM é uma escolha, e não o lugar onde se cai.
   const [view, definirView] = useState<View>('inicio');
+  //: A capa não tem cabeçalho. Ver o `saida` do `LimiteDeErro` abaixo.
+  const naCapa = view === 'inicio';
+
   const [frenteAberta, definirFrenteAberta] = useState<Frente>('imprensa');
   const [fichaAberta, definirFichaAberta] = useState<string | null>(null);
   const [relatorioAberto, definirRelatorioAberto] = useState(false);
@@ -175,7 +178,20 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             É também o que torna verdadeira a frase do fallback, "esta tela não
             conseguiu carregar". Na raiz, ela era imprecisa: quem não carregava
             era o painel. */}
-        <LimiteDeErro key={view}>
+        <LimiteDeErro
+          key={view}
+          // Só a capa recebe saída, e é onde ela é indispensável: sem
+          // cabeçalho, uma exceção ali deixa a pessoa sem navegação E sem o
+          // cartão de entrada, e recarregar devolve a mesma tela quebrada.
+          //
+          // Nas outras telas o cabeçalho fica FORA deste limite, então a
+          // navegação sobrevive à falha e a saída já existe.
+          saida={
+            naCapa
+              ? { rotulo: 'Ir para o CRM', aoAcionar: () => definirView('painel') }
+              : undefined
+          }
+        >
           {view === 'inicio' ? <Inicio irPara={definirView} /> : null}
           {view === 'painel' ? <Painel aoAbrirFrente={abrirFrente} /> : null}
           {view === 'frentes' ? (

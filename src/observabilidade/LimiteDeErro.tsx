@@ -19,6 +19,18 @@ interface Estado {
 }
 
 interface Props {
+  /** Uma saída além de "Recarregar", para telas onde recarregar não resolve.
+   *
+   *  A capa é o caso: ela NÃO tem cabeçalho, então uma exceção ali deixa a
+   *  pessoa sem navegação e sem o cartão de entrada — e recarregar traz de
+   *  volta a mesma tela quebrada. Fica-se preso num laço.
+   *
+   *  Nas telas internas isso não acontece, porque o cabeçalho fica FORA do
+   *  limite e a navegação sobrevive à falha. É o que este limite promete, e
+   *  a capa era o único lugar onde a promessa não se cumpria.
+   */
+  saida?: { rotulo: string; aoAcionar: () => void };
+
   children: ReactNode;
   /** Presente quando o limite envolve algo que abre POR CIMA do painel.
    *
@@ -126,24 +138,49 @@ export class LimiteDeErro extends Component<Props, Estado> {
           </pre>
         </details>
 
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          style={{
-            marginTop: 20,
-            height: 40,
-            padding: '0 18px',
-            border: 'none',
-            borderRadius: 'var(--r-btn)',
-            background: 'var(--azul-mar)',
-            color: 'var(--branco)',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          Recarregar
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              height: 40,
+              padding: '0 18px',
+              border: 'none',
+              borderRadius: 'var(--r-btn)',
+              background: 'var(--azul-mar)',
+              color: 'var(--branco)',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Recarregar
+          </button>
+
+          {/* A saída vem DEPOIS de "Recarregar", e em estilo secundário:
+              recarregar resolve a falha passageira, que é a maioria. Esta é
+              para quando não resolve — e é a única que existe quando a tela
+              quebrada é justamente a que não tem navegação. */}
+          {this.props.saida ? (
+            <button
+              type="button"
+              onClick={this.props.saida.aoAcionar}
+              style={{
+                  height: 40,
+                  padding: '0 18px',
+                  border: '1px solid var(--borda-input)',
+                  borderRadius: 'var(--r-btn)',
+                  background: 'var(--branco)',
+                  color: 'var(--cinza-3)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+              }}
+            >
+              {this.props.saida.rotulo}
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   }

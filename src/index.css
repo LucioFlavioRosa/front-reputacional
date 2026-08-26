@@ -170,6 +170,16 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   .area-principal { padding: 20px 16px 48px !important; }
 }
 
+/* A capa não tem cabeçalho, então não tem do que se afastar: o recuo do topo
+   viraria uma faixa branca acima da imagem.
+
+   Precisa vir DEPOIS da regra de celular acima e com `!important`, e as duas
+   coisas são obrigatórias. Aquela regra já usa `!important`, o que derrota
+   qualquer estilo inline — feito no componente, este ajuste funcionava no
+   desktop e silenciosamente não no telefone, que é onde ninguém teria
+   olhado. Mesma especificidade, então quem vem depois vence. */
+.area-principal--capa { padding-top: 0 !important; }
+
 /* Tela de entrada: duas colunas no desktop, arte vira cabeçalho no celular.
    As medidas vêm do handoff. */
 .entrada { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
