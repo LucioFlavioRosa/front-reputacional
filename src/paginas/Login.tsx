@@ -1,26 +1,37 @@
-/** Login — entrada pelo SSO da Microsoft.
+/** Login — duas portas: o SSO da Microsoft e e-mail com senha.
  *
- *  O botão MANDA o navegador para `/api/auth/login`, que começa o fluxo OIDC
- *  (authorization code + PKCE) e volta em `/api/auth/callback` com a sessão
- *  pronta. Sair daqui é sair da aplicação: o redirecionamento é do navegador,
- *  não uma chamada de API.
+ *  O SSO ESTÁ DESLIGADO nesta versão, e desligado de propósito. O botão
+ *  aparece, diz que aparece, e não sai daqui: `SSO_LIGADO` é a única chave, e
+ *  ligá-la devolve o fluxo OIDC inteiro, que continua implementado no backend
+ *  (`/api/auth/login` → `/api/auth/callback`).
+ *
+ *  Mostrar o botão apagado, em vez de escondê-lo, é decisão: quem é da Aegea
+ *  chega esperando entrar com a conta corporativa, e uma tela que só oferece
+ *  senha faria a pessoa achar que abriu o sistema errado. O botão diz "vem aí".
+ *
+ *  A ENTRADA POR SENHA existe para quem não está no Entra ID — agência,
+ *  consultor, alguém de investida ainda não integrada. Manda e-mail e senha
+ *  para `/api/auth/senha`, que responde 204 com o mesmo cookie de sessão que o
+ *  SSO emitiria. Daqui para a frente o resto da aplicação não sabe por qual
+ *  porta a pessoa entrou.
  *
  *  A decisão entre "seguir para o painel" e "sair para o SSO" mora em
- *  `entrada.ts`, fora do componente, porque é lá que ela pode ser testada — ver
- *  `entrada.test.ts`.
- *
- *  Nunca existe cadastro local de senha: o papel vem da tabela `papel`, depois
- *  da autenticação.
+ *  `entrada.ts`, fora do componente, porque é lá que ela pode ser testada.
  */
 
 import { useState } from 'react';
 import { OndaDoHero } from '@/componentes/Onda';
+import { entrarPorSenha } from '@/api/cliente';
 import { entrarNoPainel } from '@/dominio/entrada';
 
-const PERFIS = [
-  { rotulo: 'Analista', descricao: 'cadastra e edita os próprios registros', cor: '#0027BD' },
-  { rotulo: 'Coordenação', descricao: 'edita tudo e administra os dicionários', cor: '#17E3CB' },
-  { rotulo: 'Diretoria', descricao: 'somente leitura das análises', cor: '#8C91A4' },
+/** O SSO volta trocando isto para `true`. Nada mais precisa mudar aqui. */
+const SSO_LIGADO = false;
+
+/** Os três módulos da plataforma, na ordem em que a capa os apresenta. */
+const MODULOS = [
+  { nome: 'CRM dos Stakeholders', estado: 'Disponível' },
+  { nome: 'Síntese Executiva', estado: 'Em construção' },
+  { nome: 'Score Executivo', estado: 'Em construção' },
 ];
 
 export function Login({
@@ -41,18 +52,34 @@ export function Login({
   /** Falha ao confirmar a sessão. Aparece aqui, e não na tela seguinte. */
   erro?: string | null;
 }) {
-  const [redirecionando, definirRedirecionando] = useState(false);
-  const ocupado = (redirecionando || carregando) && !erro;
+  const [email, definirEmail] = useState('');
+  const [senha, definirSenha] = useState('');
+  const [enviando, definirEnviando] = useState(false);
+  const [falha, definirFalha] = useState<string | null>(null);
 
-  // A decisão mora em `entrada.ts`, e o componente só liga os fios: uma função
-  // que confirma a sessão, outra que sai da aplicação. Foi assim que ela virou
-  // testável — ver `entrada.test.ts`, que cobre justamente o caso que quebrava.
-  const entrar = () => {
-    definirRedirecionando(true);
-    return entrarNoPainel(aoEntrar, (url) => {
-      window.location.href = url;
-    });
-  };
+  const ocupado = enviando || (carregando && !erro);
+
+  async function submeter(evento: React.FormEvent) {
+    evento.preventDefault();
+    definirFalha(null);
+    definirEnviando(true);
+    try {
+      await entrarPorSenha(email.trim(), senha);
+      // A sessão está no cookie. `aoEntrar` confirma e o App troca de tela — o
+      // mesmo caminho do retorno do SSO, e não um segundo fluxo paralelo.
+      await entrarNoPainel(aoEntrar, (url) => {
+        window.location.href = url;
+      });
+    } catch (erroDoServidor) {
+      definirFalha(
+        erroDoServidor instanceof Error
+          ? erroDoServidor.message
+          : 'Não foi possível entrar. Tente de novo.',
+      );
+    } finally {
+      definirEnviando(false);
+    }
+  }
 
   return (
     <div className="entrada">
@@ -64,172 +91,237 @@ export function Login({
           flexDirection: 'column',
           justifyContent: 'space-between',
           color: 'var(--branco)',
+          // O véu escuro NÃO é enfeite: a água é clara, e sobre ela o texto
+          // branco ficava abaixo do mínimo de contraste da WCAG. O gradiente da
+          // marca por cima resolve as duas coisas — legibilidade e identidade.
           backgroundImage:
-            // Véu de rodapé. O gradiente da marca termina quase transparente,
-            // e ali a água é clara: os números ficavam em 2,49:1 de contraste,
-            // abaixo do mínimo de 3:1 até para texto grande. Este véu escurece
-            // só o terço inferior, onde o texto está, sem mexer na identidade.
-            'linear-gradient(to top, rgba(0,25,120,0.66) 0%, rgba(0,25,120,0.22) 24%, rgba(0,25,120,0) 44%), ' +
-            'linear-gradient(155deg, rgba(0,39,189,0.72) 0%, rgba(0,39,189,0.44) 52%, rgba(23,227,203,0.14) 100%), ' +
-            'url(/imagens/hero-agua.png)',
-          backgroundSize: 'cover, cover, auto 140%',
-          backgroundPosition: 'center, center, center bottom',
+            'linear-gradient(160deg, rgba(0,39,189,0.90) 0%, rgba(0,39,189,0.58) 46%, rgba(0,49,44,0.68) 100%), url(/imagens/entrada-agua.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span
-            aria-hidden
-            style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--turquesa-rio)' }}
-          />
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-            }}
+        <div>
+          <div
+            className="kicker"
+            style={{ color: 'var(--turquesa-sombra)', letterSpacing: '0.12em' }}
           >
             Aegea · Reputação
-          </span>
-        </div>
-
-        <div>
+          </div>
           <h1
             className="entrada__titulo"
             style={{
               fontSize: 40,
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.12,
-              textShadow: '0 2px 18px rgba(0,25,120,0.4)',
-              maxWidth: '17ch',
+              lineHeight: 1.08,
+              marginTop: 14,
+              maxWidth: '16ch',
+              textShadow: '0 2px 18px rgba(0,25,120,0.45)',
             }}
           >
-            O relacionamento institucional em{' '}
+            O relacionamento institucional{' '}
             <span className="destaque" style={{ color: 'var(--turquesa-rio)' }}>
-              um lugar
+              medido
             </span>
           </h1>
-          <p style={{ fontSize: 15, color: '#EAEEFC', marginTop: 14, maxWidth: '48ch' }}>
-            Imprensa, governo, parceiros, eventos, investidores, legislativo e demandas internas —
-            registrados uma vez, lidos por todo mundo.
-          </p>
         </div>
 
-        <div className="entrada__numeros" style={{ display: 'flex', gap: 40 }}>
-          {[
-            ['7', 'frentes'],
-            ['11', 'fontes'],
-            ['28', 'unidades'],
-          ].map(([numero, rotulo]) => (
-            <div key={rotulo}>
-              <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em' }}>
-                {numero}
-              </div>
-              <div style={{ fontSize: 12, color: '#C9D2F5' }}>{rotulo}</div>
+        <div className="entrada__numeros" style={{ display: 'grid', gap: 10, maxWidth: 380 }}>
+          {MODULOS.map((modulo) => (
+            <div
+              key={modulo.nome}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '11px 14px',
+                borderRadius: 'var(--r-card-int)',
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.16)',
+                fontSize: 13,
+              }}
+            >
+              <span style={{ fontWeight: 700 }}>{modulo.nome}</span>
+              <span style={{ fontSize: 11, opacity: 0.82, whiteSpace: 'nowrap' }}>
+                {modulo.estado}
+              </span>
             </div>
           ))}
         </div>
-        <OndaDoHero corDeBaixo="var(--branco)" />
+
+        <OndaDoHero />
       </aside>
 
       <main
+        className="entrada__forma"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'var(--branco)',
-          padding: 32,
+          // O recuo encolhe no celular por `index.css`, e não aqui: 32px de
+          // cada lado são 16% de uma tela de 390px, e o formulário ficava
+          // espremido contra as bordas.
+          padding: '44px 32px',
+          background: 'var(--bg-app)',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 392 }}>
-          <h2 style={{ fontSize: 22 }}>Entrar</h2>
-          <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 6, marginBottom: 24 }}>
-            O acesso usa a conta corporativa. Não há senha cadastrada neste sistema.
+        <div style={{ width: '100%', maxWidth: 360 }}>
+          <div className="kicker" style={{ color: 'var(--cinza-2)' }}>
+            Entrar
+          </div>
+          <h2 style={{ fontSize: 24, marginTop: 8 }}>Painel Reputacional</h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--cinza-3)',
+              marginTop: 8,
+              lineHeight: 1.6,
+            }}
+          >
+            Use a conta corporativa da Aegea. Se você é de fora e recebeu um
+            acesso, entre com e-mail e senha.
           </p>
 
-          {erro && (
-            <p
-              role="alert"
-              style={{
-                margin: '0 0 12px',
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: 'var(--erro-bg)',
-                color: 'var(--erro-fg)',
-                fontSize: 13,
-              }}
-            >
-              {erro}
-            </p>
-          )}
-
+          {/* O SSO primeiro: é o caminho da maioria, e a ordem na tela é a
+              ordem da expectativa de quem chega. */}
           <button
             type="button"
-            onClick={entrar}
-            disabled={ocupado}
+            disabled={!SSO_LIGADO}
+            onClick={() =>
+              entrarNoPainel(aoEntrar, (url) => {
+                window.location.href = url;
+              })
+            }
             style={{
               width: '100%',
-              height: 50,
+              marginTop: 22,
+              height: 46,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 11,
-              border: `1px solid ${ocupado ? 'var(--azul-mar)' : 'var(--borda-input)'}`,
-              borderRadius: 10,
+              gap: 10,
+              borderRadius: 'var(--r-btn)',
+              border: '1px solid var(--borda-input)',
               background: 'var(--branco)',
+              color: SSO_LIGADO ? 'var(--cinza-4)' : 'var(--texto-placeholder)',
               fontSize: 14,
-              fontWeight: 500,
-              cursor: ocupado ? 'wait' : 'pointer',
+              fontWeight: 700,
+              cursor: SSO_LIGADO ? 'pointer' : 'not-allowed',
             }}
           >
-            {ocupado ? (
-              <>
-                <Girando />
-                Redirecionando para a Microsoft…
-              </>
-            ) : (
-              <>
-                <LogoMicrosoft />
-                Entrar com a conta Microsoft Aegea
-              </>
-            )}
+            <LogotipoDaMicrosoft apagado={!SSO_LIGADO} />
+            Entrar com a conta Aegea
           </button>
 
-          <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 12, lineHeight: 1.55 }}>
-            Entra pelo Microsoft Entra ID do tenant <strong>aegea.com.br</strong>, com MFA quando
-            exigido pela política da companhia.
-          </p>
+          {SSO_LIGADO ? null : (
+            <p
+              style={{
+                fontSize: 12,
+                // `--cinza-3`, e NÃO `--cinza-2`: sobre `--bg-app` o cinza-2 dá
+                // 2,90:1, abaixo do mínimo de 4,5 da WCAG para texto normal.
+                // O cinza-3 dá 8,26 e continua lendo como texto secundário.
+                color: 'var(--cinza-3)',
+                marginTop: 8,
+                lineHeight: 1.5,
+              }}
+            >
+              O acesso pelo SSO da Microsoft ainda não está liberado. Use e-mail e
+              senha por enquanto.
+            </p>
+          )}
 
-          <div style={{ marginTop: 30 }}>
-            <div className="kicker" style={{ marginBottom: 10 }}>
-              Perfis de acesso
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {PERFIS.map((perfil) => (
-                <div key={perfil.rotulo} style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: perfil.cor,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontSize: 13 }}>
-                    <strong>{perfil.rotulo}</strong>{' '}
-                    <span style={{ color: 'var(--cinza-2)' }}>— {perfil.descricao}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              margin: '22px 0',
+              color: 'var(--cinza-2)',
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span style={{ flex: 1, height: 1, background: 'var(--borda)' }} />
+            ou
+            <span style={{ flex: 1, height: 1, background: 'var(--borda)' }} />
           </div>
 
-          <p style={{ fontSize: 11, color: 'var(--texto-placeholder)', marginTop: 28, lineHeight: 1.6 }}>
-            Ao entrar você concorda com os Termos de Uso e a Política de Privacidade. Cada acesso é
-            registrado para auditoria.
+          <form onSubmit={submeter} style={{ display: 'grid', gap: 14 }}>
+            <label style={{ display: 'block' }}>
+              <span style={rotulo}>E-mail</span>
+              <input
+                type="email"
+                required
+                autoComplete="username"
+                value={email}
+                onChange={(evento) => definirEmail(evento.target.value)}
+                placeholder="voce@empresa.com.br"
+                style={entrada}
+              />
+            </label>
+
+            <label style={{ display: 'block' }}>
+              <span style={rotulo}>Senha</span>
+              <input
+                type="password"
+                required
+                // `current-password` e não `new-password`: é o que faz o
+                // gerenciador de senhas oferecer a que já existe, em vez de
+                // propor uma nova a cada visita.
+                autoComplete="current-password"
+                value={senha}
+                onChange={(evento) => definirSenha(evento.target.value)}
+                style={entrada}
+              />
+            </label>
+
+            {/* A falha da senha e a falha de sessão aparecem no MESMO lugar:
+                para quem está olhando, as duas são "não entrei". */}
+            {falha || erro ? (
+              <div
+                role="alert"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 'var(--r-card-int)',
+                  background: 'var(--erro-bg)',
+                  color: 'var(--erro-fg)',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                }}
+              >
+                {falha ?? erro}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={ocupado}
+              style={{
+                height: 46,
+                borderRadius: 'var(--r-btn)',
+                border: 'none',
+                background: ocupado ? 'var(--cinza-2)' : 'var(--azul-mar)',
+                color: 'var(--branco)',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: ocupado ? 'progress' : 'pointer',
+              }}
+            >
+              {ocupado ? 'Entrando…' : 'Entrar'}
+            </button>
+          </form>
+
+          <p
+            style={{
+              fontSize: 12,
+              // Mesmo motivo do aviso do SSO: `--cinza-2` reprova a WCAG aqui.
+              color: 'var(--cinza-3)',
+              marginTop: 20,
+              lineHeight: 1.6,
+            }}
+          >
+            Esqueceu a senha? Peça à coordenação do painel — não há redefinição
+            automática.
           </p>
         </div>
       </main>
@@ -237,43 +329,40 @@ export function Login({
   );
 }
 
-function LogoMicrosoft() {
-  const quadrantes = ['#F25022', '#7FBA00', '#00A4EF', '#FFB900'];
-  return (
-    <span
-      aria-hidden
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 2,
-        width: 18,
-        height: 18,
-        flexShrink: 0,
-      }}
-    >
-      {quadrantes.map((cor) => (
-        <span key={cor} style={{ background: cor }} />
-      ))}
-    </span>
-  );
-}
+const rotulo: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--cinza-3)',
+  marginBottom: 6,
+};
 
-function Girando() {
+const entrada: React.CSSProperties = {
+  width: '100%',
+  height: 44,
+  padding: '0 13px',
+  borderRadius: 'var(--r-btn)',
+  border: '1px solid var(--borda-input)',
+  background: 'var(--branco)',
+  fontSize: 14,
+  fontFamily: 'inherit',
+};
+
+/** Os quatro quadrados da Microsoft, em cinza quando o SSO está desligado.
+ *
+ *  Desenhado aqui, e não importado: são quatro retângulos, e trazer uma
+ *  biblioteca de ícones para isto custaria mais bytes do que o resto da tela.
+ */
+function LogotipoDaMicrosoft({ apagado }: { apagado: boolean }) {
+  const cores = apagado
+    ? ['#C7CBD9', '#C7CBD9', '#C7CBD9', '#C7CBD9']
+    : ['#F25022', '#7FBA00', '#00A4EF', '#FFB900'];
   return (
-    <>
-      <style>{`@keyframes girar { to { transform: rotate(360deg) } }`}</style>
-      <span
-        aria-hidden
-        style={{
-          width: 15,
-          height: 15,
-          borderRadius: '50%',
-          border: '2px solid var(--borda-input)',
-          borderTopColor: 'var(--azul-mar)',
-          animation: 'girar .7s linear infinite',
-          flexShrink: 0,
-        }}
-      />
-    </>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden focusable="false">
+      <rect x="0" y="0" width="7" height="7" fill={cores[0]} />
+      <rect x="9" y="0" width="7" height="7" fill={cores[1]} />
+      <rect x="0" y="9" width="7" height="7" fill={cores[2]} />
+      <rect x="9" y="9" width="7" height="7" fill={cores[3]} />
+    </svg>
   );
 }

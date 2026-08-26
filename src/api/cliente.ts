@@ -194,6 +194,24 @@ export async function obterEu(): Promise<Eu> {
  * aqui seria um redirecionamento aberto, e o `_destino_seguro` da rota já
  * derruba `//outro.site` e esquema explícito.
  */
+/**
+ * Entrada por e-mail e senha, para quem não está no Entra ID.
+ *
+ * Responde 204 e a sessão vem no cookie — nada do usuário volta no corpo. Quem
+ * precisa saber quem entrou chama `obterEu()` em seguida, que é a rota que já
+ * existe para essa pergunta.
+ *
+ * A senha NÃO é guardada, nem em memória além da chamada, nem em
+ * `localStorage`. O que persiste é o cookie de sessão, que é `httpOnly` e o
+ * JavaScript não lê.
+ */
+export function entrarPorSenha(email: string, senha: string): Promise<void> {
+  return requisitar<void>('/api/auth/senha', {
+    method: 'POST',
+    body: JSON.stringify({ email, senha }),
+  });
+}
+
 export function urlDeLogin(destino = '/painel'): string {
   return `${BASE}/api/auth/login?redirect=${encodeURIComponent(destino)}`;
 }

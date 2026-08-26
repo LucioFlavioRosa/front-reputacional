@@ -3,9 +3,22 @@
 import { Cartao } from '@/componentes/basicos';
 import { OndaDoHero } from '@/componentes/Onda';
 import type { View } from '@/componentes/Layout';
+import type { Portal } from '@/dominio/tipos';
 
-const ONDA_1: { view: View | null; titulo: string; descricao: string; pronto: boolean }[] = [
+/** As três divisões da plataforma.
+ *
+ *  `portal` é o que amarra cada cartão à permissão: quem não alcança o portal
+ *  não vê o cartão. Ver `portaisDe` em `@/dominio/tipos`.
+ */
+const ONDA_1: {
+  portal: Portal;
+  view: View | null;
+  titulo: string;
+  descricao: string;
+  pronto: boolean;
+}[] = [
   {
+    portal: 'crm',
     view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:
@@ -13,12 +26,14 @@ const ONDA_1: { view: View | null; titulo: string; descricao: string; pronto: bo
     pronto: true,
   },
   {
+    portal: 'sintese',
     view: null,
     titulo: 'Síntese Executiva',
     descricao: 'Leitura consolidada do período para a diretoria, com o recorte impresso.',
     pronto: false,
   },
   {
+    portal: 'score',
     view: null,
     titulo: 'Score Executivo',
     descricao:
@@ -46,7 +61,20 @@ const ONDAS = [
   'Onda 6 · Preditivo',
 ];
 
-export function Inicio({ irPara }: { irPara: (view: View) => void }) {
+export function Inicio({
+  irPara,
+  portais,
+}: {
+  irPara: (view: View) => void;
+  /** Os portais que o papel de quem está logado abre. */
+  portais: Set<Portal>;
+}) {
+  // Esconder um portal é conveniência de tela, NUNCA controle: quem decide é o
+  // backend, que responde 403 a quem forçar a navegação. O que se evita aqui é
+  // oferecer uma porta que não abre — pior do que não mostrá-la, porque nesse
+  // caso o convite partiu de nós.
+  const meus = ONDA_1.filter((modulo) => portais.has(modulo.portal));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <section
@@ -95,8 +123,18 @@ export function Inicio({ irPara }: { irPara: (view: View) => void }) {
         <div className="kicker" style={{ marginBottom: 12 }}>
           MVP · Onda 1 — os três painéis executivos
         </div>
+        {meus.length === 0 ? (
+          <Cartao estilo={{ padding: 24 }}>
+            <h2 style={{ fontSize: 17 }}>Seu acesso ainda não foi liberado</h2>
+            <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 8, lineHeight: 1.6 }}>
+              Você entrou, mas nenhum dos módulos está liberado para o seu perfil.
+              Peça à coordenação do painel.
+            </p>
+          </Cartao>
+        ) : null}
+
         <div className="grade grade--destaque" style={{ gap: 16 }}>
-          {ONDA_1.map((modulo) => (
+          {meus.map((modulo) => (
             <Cartao
               key={modulo.titulo}
               aoClicar={modulo.view ? () => irPara(modulo.view!) : undefined}

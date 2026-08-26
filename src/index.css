@@ -194,6 +194,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 @media (max-width: 520px) {
   .entrada__numeros { display: none !important; }
   .entrada__titulo { font-size: 24px !important; }
+
+  /* 32px de cada lado são 16% de uma tela de 390px. O formulário tem largura
+     máxima de 360px e não precisa da margem: encolher aqui é o que o tira de
+     encostado nas bordas. */
+  .entrada__forma { padding: 32px 18px !important; }
 }
 
 /* Faixa ondulada dupla — o elemento orgânico da marca Aegea, que fecha o hero.

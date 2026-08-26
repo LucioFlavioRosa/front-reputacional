@@ -203,7 +203,17 @@ export interface PessoaAegea {
 
 /* -- acesso --------------------------------------------------------------- */
 
-export type Perfil = 'analista' | 'coordenacao' | 'diretoria' | 'externo';
+/** Os papéis de partida, que são a divisão por PORTAL.
+ *
+ *  A lista pode crescer sem passar por aqui: `papel` é tabela no banco, e um
+ *  papel novo é um `insert`. Por isso NADA na tela deve comparar contra estes
+ *  códigos para decidir permissão — quem decide são as bandeiras de
+ *  `PapelDeAcesso`, e no fim das contas o backend, que responde 403.
+ */
+export type Perfil = 'plataforma' | 'crm' | 'sintese' | 'score';
+
+/** As três divisões da plataforma, como a capa as oferece. */
+export type Portal = 'crm' | 'sintese' | 'score';
 
 /**
  * O que o usuário pode fazer. Espelha a tabela `papel` do backend.
@@ -226,6 +236,31 @@ export interface PapelDeAcesso {
   ve_campos_sensiveis: boolean;
   ve_diretorio: boolean;
   pode_exportar: boolean;
+
+  /** ONDE a pessoa entra — dimensão separada do que ela faz lá dentro.
+   *
+   *  Sem essa separação a lista de papéis multiplicaria: "lê a Síntese" e "lê a
+   *  Síntese e o Score" seriam papéis diferentes, e cada portal novo dobraria a
+   *  tabela.
+   */
+  acessa_crm: boolean;
+  acessa_sintese: boolean;
+  acessa_score: boolean;
+}
+
+/** Os portais que este papel abre.
+ *
+ *  Esconder um portal é conveniência de tela, nunca controle: quem decide é o
+ *  backend. Uma pessoa que force a navegação para um portal fechado leva 403 do
+ *  mesmo jeito — o que se evita aqui é oferecer uma porta que não abre.
+ */
+export function portaisDe(papel: PapelDeAcesso | null): Set<Portal> {
+  const abertos = new Set<Portal>();
+  if (!papel) return abertos;
+  if (papel.acessa_crm) abertos.add('crm');
+  if (papel.acessa_sintese) abertos.add('sintese');
+  if (papel.acessa_score) abertos.add('score');
+  return abertos;
 }
 
 /**

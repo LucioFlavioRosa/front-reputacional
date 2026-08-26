@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { obterEu } from '@/api/cliente';
 import { DrawerDeFiltros } from '@/componentes/FiltrosDrawer';
 import { Carregando } from '@/componentes/basicos';
+import { portaisDe } from '@/dominio/tipos';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
@@ -192,7 +193,9 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               : undefined
           }
         >
-          {view === 'inicio' ? <Inicio irPara={definirView} /> : null}
+          {view === 'inicio' ? (
+              <Inicio irPara={definirView} portais={portaisDe(eu?.papel ?? null)} />
+            ) : null}
           {view === 'painel' ? <Painel aoAbrirFrente={abrirFrente} /> : null}
           {view === 'frentes' ? (
             <Frentes
