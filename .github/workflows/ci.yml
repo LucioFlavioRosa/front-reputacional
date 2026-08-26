@@ -1,0 +1,193 @@
+name: CI
+
+# Em push para `main` e em todo pull request. O que interessa é o que vai para
+# `main` e o que pede para entrar nela.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push novo cancela a execução anterior do MESMO branch. Sem isto, uma
+# sequência de commits enfileira execuções que já nasceram obsoletas.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Só leitura. Nada aqui publica nem comenta — não há motivo para o token poder.
+permissions:
+  contents: read
+
+# AS VERSÕES DAS AÇÕES: majors, e todas em Node 24.
+#
+# O runner do GitHub aposentou o Node 20 em setembro de 2025 e passou a executar
+# em Node 24 as ações que ainda declaram `node20`, emitindo aviso em toda
+# execução. Estas quatro majors declaram `node24` e exigem runner >= v2.327.1 —
+# o `ubuntu-latest` hospedado passou disso há muito.
+
+env:
+  # A versão que a imagem de produção usa. Ver o `Dockerfile`.
+  NODE_PRODUCAO: "22"
+
+jobs:
+  # ===========================================================================
+  qualidade:
+    name: Lint e tipos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_PRODUCAO }}
+          cache: npm
+
+      # `npm ci` e não `install`: respeita o lockfile exatamente, então o CI de
+      # hoje instala o mesmo que o de amanhã — e o mesmo que o `Dockerfile`.
+      - run: npm ci
+
+      # `react/rules-of-hooks` está como `error` no `.oxlintrc.json`, então este
+      # passo REPROVA de verdade. Não é decorativo: o repositório já nasceu uma
+      # vez com esse erro presente, e sem um portão ninguém percebe.
+      - name: oxlint
+        run: npm run lint
+
+      # Separado do build, e antes dele, porque a mensagem fica mais direta:
+      # erro de tipo aparece como erro de tipo, e não no meio da saída do
+      # bundler.
+      #
+      # `--force` porque o cache incremental do `tsc -b` mora em
+      # `node_modules/.tmp`, que o `cache: npm` acima pode restaurar — sem ele o
+      # typecheck passaria sem checar nada.
+      - name: tsc
+        run: npx tsc -b --force
+
+  # ===========================================================================
+  testes:
+    name: Testes · Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 é o que a imagem de produção roda; 24 é o LTS seguinte. Rodar os
+        # dois é o que impede "passa aqui e quebra quando alguém atualizar".
+        node: ["22", "24"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      # Os 72 testes são todos de `src/dominio/` — TypeScript puro. NÃO há teste
+      # de componente, e isso é lacuna conhecida, não decisão: as telas são
+      # conferidas contra o protótipo a olho. Ver o README.
+      - name: vitest
+        run: npm test
+
+  # ===========================================================================
+  imagem:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    # Não faz sentido construir a imagem se o código nem passa no linter.
+    needs: [qualidade]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # `VITE_API_URL` de propósito DIFERENTE do padrão: é o que permite provar,
+      # no passo seguinte, que o valor atravessou os dois estágios do build — o
+      # bundle e a CSP do nginx. Com o valor padrão, um `sed` que não
+      # substituísse nada passaria despercebido.
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: front-reputacional:ci
+          build-args: |
+            VITE_API_URL=https://api-de-teste.exemplo.br
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # O build sozinho prova pouco: o `Dockerfile` monta a CSP por `sed` sobre o
+      # `nginx.conf`, e um marcador não substituído faria o navegador bloquear
+      # TODA chamada — tela vazia, sem erro no servidor. Aqui a imagem sobe e a
+      # resposta real é conferida.
+      - name: A imagem sobe e serve a página
+        run: |
+          set -euo pipefail
+          docker run -d --name web -p 8080:80 front-reputacional:ci >/dev/null
+
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+
+          echo "- a pagina responde e e o painel"
+          curl -fsS http://127.0.0.1:8080/ | grep -q "Painel Reputacional Aegea"
+
+          echo "- o bundle e servido"
+          arquivo=$(curl -fsS http://127.0.0.1:8080/ | grep -o "/assets/index-[^\"]*\.js" | head -1)
+          test -n "$arquivo"
+          curl -fsS "http://127.0.0.1:8080$arquivo" >/dev/null
+          echo "  $arquivo"
+
+          echo "- a CSP levou o endereco da API"
+          csp=$(curl -fsSI http://127.0.0.1:8080/ | tr -d "\r" | sed -n "s/^[Cc]ontent-[Ss]ecurity-[Pp]olicy: //p")
+          echo "  $csp"
+          case "$csp" in
+            *"api-de-teste.exemplo.br"*) ;;
+            *) echo "::error::a CSP nao levou o VITE_API_URL"; exit 1 ;;
+          esac
+
+          echo "- nenhum marcador sobreviveu ao sed"
+          case "$csp" in
+            *__CONNECT_SRC__*|*__HSTS__*)
+              echo "::error::marcador nao substituido na CSP"
+              exit 1
+              ;;
+          esac
+
+          echo "- sem HSTS, que e o padrao (HSTS=off)"
+          if curl -fsSI http://127.0.0.1:8080/ | grep -qi "Strict-Transport-Security"; then
+            echo "::error::HSTS presente sem ninguem ter pedido"
+            exit 1
+          fi
+
+      - name: Log do nginx em caso de falha
+        if: failure()
+        run: docker logs web || true
+
+  # ===========================================================================
+  # Um alvo só para a regra de proteção do branch apontar.
+  #
+  # Sem isto, proteger `main` exigiria listar cada combinação da matriz pelo
+  # nome — e acrescentar uma versão de Node passaria a exigir mexer na
+  # configuração do repositório, coisa que ninguém lembra de fazer. O resultado
+  # seria uma proteção que silenciosamente deixa de cobrir o caso novo.
+  #
+  # `if: always()` para este job rodar mesmo com etapa anterior falhando: é
+  # justamente aí que ele precisa reprovar.
+  resumo:
+    name: CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [qualidade, testes, imagem]
+    steps:
+      - name: Alguma etapa falhou?
+        run: |
+          echo "qualidade: ${{ needs.qualidade.result }}"
+          echo "testes:    ${{ needs.testes.result }}"
+          echo "imagem:    ${{ needs.imagem.result }}"
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}; then
+            echo "::error::alguma etapa do CI nao passou"
+            exit 1
+          fi

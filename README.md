@@ -108,4 +108,24 @@ Testing Library.
   tem rotas de métrica prontas (`/api/metricas/*`) que o front ainda não
   consome.
 - **Não importa planilha.** A tela não existe; o schema do lado do back existe.
-- **Não tem CI.** Nenhum workflow neste repositório ainda.
+## CI
+
+`.github/workflows/ci.yml`, quatro etapas em push para `main` e em todo PR:
+
+| Etapa | O que roda |
+|---|---|
+| **Lint e tipos** | `npm ci`, `npm run lint`, `npx tsc -b --force` |
+| **Testes** | `npm test` em Node 22 (produção) e 24 (LTS seguinte) |
+| **Imagem Docker** | constrói e **sobe** a imagem, conferindo a página real |
+| **CI** | agrega as três — é neste nome que a proteção de branch deve apontar |
+
+A etapa da imagem faz o que o build sozinho não faz. O `Dockerfile` monta a CSP
+por `sed` sobre o `nginx.conf`, e um marcador não substituído faria o navegador
+bloquear toda chamada à API — tela vazia, sem erro no servidor. O CI constrói
+com um `VITE_API_URL` **diferente do padrão** e confere que ele chegou à CSP da
+resposta, que nenhum marcador sobreviveu, e que o HSTS está ausente (o padrão
+é `off`).
+
+`tsc -b` roda com `--force` de propósito: o cache incremental mora em
+`node_modules/.tmp`, que o cache de npm do CI pode restaurar — sem `--force` o
+typecheck passaria sem checar nada.
