@@ -52,7 +52,24 @@ interface EstadoDoPainel {
 
 const Contexto = createContext<EstadoDoPainel | null>(null);
 
-export function ProvedorDoPainel({ children }: { children: ReactNode }) {
+export function ProvedorDoPainel({
+  children,
+  alcancaOCrm,
+}: {
+  children: ReactNode;
+  /**
+   * Se quem está logado abre o CRM dos Stakeholders.
+   *
+   * Este provedor busca dicionários, diretórios e a base inteira — tudo do
+   * CRM. Para quem não abre aquele portal, o backend responde 403 em todas
+   * essas chamadas, e a tela mostrava erro logo ao entrar: um erro correto,
+   * numa tela que nem oferece o módulo.
+   *
+   * NÃO é controle de acesso. Quem decide é o backend, e ele decide bem — o
+   * que se evita aqui é PEDIR o que se sabe que será negado.
+   */
+  alcancaOCrm: boolean;
+}) {
   const [recorte, definirRecorte] = useState<Recorte>({});
   const [catalogo, definirCatalogo] = useState<Catalogo | null>(null);
   const [interacoes, definirInteracoes] = useState<Interacao[]>([]);
@@ -68,6 +85,12 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
 
   // Os diretórios mudam raramente: carregam uma vez e servem todas as telas.
   useEffect(function carregarCatalogo() {
+    if (!alcancaOCrm) {
+      // Sem o portal, não há o que carregar — e pedir renderia 403.
+      definirCarregando(false);
+      return;
+    }
+
     let ativo = true;
     Promise.all([
       obterDicionarios(),
@@ -85,7 +108,7 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
     return function cancelarCargaDoCatalogo() {
       ativo = false;
     };
-  }, [versao]);
+  }, [versao, alcancaOCrm]);
 
   // O recorte muda: rebusca o conjunto inteiro.
   //
@@ -93,6 +116,11 @@ export function ProvedorDoPainel({ children }: { children: ReactNode }) {
   // um esqueleto a cada clique de filtro faria a página saltar de altura e
   // piscar — o painel inteiro some e volta para mudar um número.
   useEffect(function buscarInteracoesDoRecorte() {
+    if (!alcancaOCrm) {
+      definirCarregando(false);
+      return;
+    }
+
     let ativo = true;
     definirAtualizando(true);
     definirErro(null);

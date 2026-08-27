@@ -126,8 +126,11 @@ export function App() {
   if (!autenticado)
     return <Login aoEntrar={entrar} carregando={preparando} erro={falhaNaEntrada} />;
 
+  // O provedor busca dicionários, diretórios e a base — tudo do CRM.
+  // Quem não abre aquele portal receberia 403 em todas essas chamadas, e
+  // veria erro ao entrar numa tela que nem oferece o módulo.
   return (
-    <ProvedorDoPainel>
+    <ProvedorDoPainel alcancaOCrm={portaisDe(eu?.papel ?? null).has('crm')}>
       <Aplicativo eu={eu} />
     </ProvedorDoPainel>
   );
