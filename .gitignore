@@ -9,6 +9,11 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Resíduo de execução de navegador (Playwright e afins). Aparece quando
+# alguém roda teste de ponta a ponta na máquina; não é artefato do projeto.
+test-results
+playwright-report
 dist-ssr
 *.local
 
