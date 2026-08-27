@@ -60,6 +60,7 @@ export function Layout({
   irPara,
   aoGerarRelatorio,
   eu,
+  podeCriar,
   administraAcessos = false,
   children,
 }: {
@@ -74,6 +75,14 @@ export function Layout({
    */
   /** Quem está logado. O menu da conta mostra papel, módulos e permissões. */
   eu: Eu | null;
+  /** Se o papel permite registrar interações. Esconde a porta do cadastro.
+   *
+   *  OBRIGATÓRIA, sem valor padrão. Um padrão `false` seria fail-closed e
+   *  esconderia um esquecimento: quem montasse o Layout sem passar a prop veria
+   *  o botão sumir para todo mundo, sem nada acusar. Sem padrão, o TypeScript
+   *  cobra na compilação — que é onde se quer descobrir.
+   */
+  podeCriar: boolean;
   administraAcessos?: boolean;
   aoGerarRelatorio: () => void;
   children: ReactNode;
@@ -207,9 +216,25 @@ export function Layout({
             style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}
           >
             <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
-            <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
-              Novo registro
-            </Botao>
+
+            {/* CRIAR É UMA FORMA DE EDITAR, e quem só lê não deve nem ver a
+                porta. Antes o botão aparecia para todo mundo: a pessoa abria o
+                formulário, preenchia os campos, e só descobria no salvar — com
+                um 403 correto do backend e o trabalho perdido.
+
+                Isto é conveniência de tela, não controle: quem forçar a
+                navegação leva 403 do mesmo jeito, e a própria tela de cadastro
+                também recusa. São duas camadas porque esconder o botão nunca
+                foi proteção. */}
+            {podeCriar ? (
+              <Botao
+                variante="primario"
+                aoClicar={() => irPara('cadastro')}
+                estilo={{ height: 36 }}
+              >
+                Novo registro
+              </Botao>
+            ) : null}
 
             {/* Por último, e à direita de tudo: é onde a barra de todo sistema
                 põe a conta, e contrariar isso faria a pessoa procurar. */}

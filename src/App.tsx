@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { obterEu } from '@/api/cliente';
 import { DrawerDeFiltros } from '@/componentes/FiltrosDrawer';
-import { Carregando } from '@/componentes/basicos';
+import { Botao, Carregando, Cartao } from '@/componentes/basicos';
 import { portaisDe } from '@/dominio/tipos';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
@@ -165,6 +165,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
         view={view}
         irPara={definirView}
         eu={eu}
+        podeCriar={eu?.papel?.pode_criar ?? false}
         aoGerarRelatorio={() => definirRelatorioAberto(true)}
         // Esconder a entrada de quem não administra acessos é conveniência de
         // tela, não controle: o backend recusa com 403 de qualquer forma. O que
@@ -213,7 +214,18 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {view === 'portavozes' ? <PortaVozes /> : null}
           {view === 'interlocutores' ? <Interlocutores /> : null}
           {view === 'base' ? <Base aoAbrirFicha={definirFichaAberta} /> : null}
-          {view === 'cadastro' ? <Cadastro aoSalvar={() => definirView('base')} /> : null}
+          {/* A TELA também recusa, e não só o botão.
+              A navegação é por estado, então uma tela alcançável por um caminho
+              que ninguém previu continua alcançável. Guardar só o botão seria
+              proteger a porta e deixar a janela aberta — e o formulário
+              preenchido acabaria num 403 do backend. */}
+          {view === 'cadastro' ? (
+            eu?.papel?.pode_criar ? (
+              <Cadastro aoSalvar={() => definirView('base')} />
+            ) : (
+              <SemPermissaoParaCriar irPara={definirView} />
+            )
+          ) : null}
           {view === 'acessos' ? <Acessos /> : null}
         </LimiteDeErro>
       </Layout>
@@ -236,5 +248,32 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
         </LimiteDeErro>
       ) : null}
     </>
+  );
+}
+
+/** O que aparece no lugar do formulário quando o papel não cria.
+ *
+ *  Diz o motivo e oferece uma saída. Uma tela vazia, ou o formulário que
+ *  recusaria no fim, fariam a pessoa concluir que o sistema está quebrado —
+ *  quando a resposta é "seu perfil não faz isto", que é acionável.
+ */
+function SemPermissaoParaCriar({ irPara }: { irPara: (view: View) => void }) {
+  return (
+    <Cartao estilo={{ padding: 28, maxWidth: 520 }}>
+      <div className="kicker" style={{ color: 'var(--cinza-3)' }}>
+        Registrar interação
+      </div>
+      <h1 style={{ fontSize: 20, marginTop: 8 }}>Seu perfil não registra interações</h1>
+      <p style={{ fontSize: 14, color: 'var(--cinza-3)', marginTop: 10, lineHeight: 1.6 }}>
+        Você consulta e exporta a base, mas não cria nem edita registros. Se
+        precisar registrar uma interação, peça à coordenação do painel — o menu
+        da sua conta, no canto da barra, mostra tudo o que o seu perfil alcança.
+      </p>
+      <div style={{ marginTop: 18 }}>
+        <Botao variante="primario" aoClicar={() => irPara('base')}>
+          Ver a base de registros
+        </Botao>
+      </div>
+    </Cartao>
   );
 }
