@@ -103,3 +103,20 @@ export function urlSegura(valor: string | null | undefined): string | null {
     return null;
   }
 }
+
+/** As duas iniciais que identificam a conta no avatar da barra.
+ *
+ *  Primeiro nome e ÚLTIMO sobrenome, e não os dois primeiros: numa equipe há
+ *  vários "Silva" e poucos "Costa". Duas letras num círculo de 36px é tudo o
+ *  que distingue uma conta da outra ali.
+ *
+ *  Mora AQUI, e não no componente, por uma razão de ferramenta: exportar uma
+ *  função de um arquivo que também exporta componente quebra o Fast Refresh do
+ *  Vite — a tela recarrega inteira a cada edição em vez de preservar o estado.
+ */
+export function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '?';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}

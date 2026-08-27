@@ -212,6 +212,26 @@ export function entrarPorSenha(email: string, senha: string): Promise<void> {
   });
 }
 
+/**
+ * Encerra a sessão.
+ *
+ * O cookie é `httpOnly`, então o JavaScript não consegue apagá-lo: quem apaga é
+ * o servidor, no `Set-Cookie` da resposta. Por isso sair é uma CHAMADA, e não
+ * uma linha de `document.cookie`.
+ *
+ * LEVANTA se falhar, e a primeira versão não levantava — engolia a exceção e
+ * recarregava a página de qualquer jeito. Parecia defensivo e era o contrário:
+ * medido, um logout com token anti-CSRF vencido devolve 403 e a SESSÃO
+ * SOBREVIVE. A pessoa clicava em Sair, a página recarregava, e ela voltava
+ * logada sem nenhum sinal de que não tinha saído.
+ *
+ * Achar que saiu e não ter saído é pior do que ver um erro — especialmente num
+ * computador compartilhado, que é justamente quando alguém clica em Sair.
+ */
+export function sair(): Promise<void> {
+  return requisitar<void>('/api/auth/logout', { method: 'POST' });
+}
+
 export function urlDeLogin(destino = '/painel'): string {
   return `${BASE}/api/auth/login?redirect=${encodeURIComponent(destino)}`;
 }

@@ -13,6 +13,8 @@
  */
 
 import type { ReactNode } from 'react';
+import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
+import type { Eu } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao } from '@/componentes/basicos';
@@ -57,6 +59,7 @@ export function Layout({
   view,
   irPara,
   aoGerarRelatorio,
+  eu,
   administraAcessos = false,
   children,
 }: {
@@ -69,6 +72,8 @@ export function Layout({
    * tela chamaria a API do mesmo jeito se alguém forçasse a navegação. O que se
    * ganha é não mostrar a todo mundo uma porta que só alguns abrem.
    */
+  /** Quem está logado. O menu da conta mostra papel, módulos e permissões. */
+  eu: Eu | null;
   administraAcessos?: boolean;
   aoGerarRelatorio: () => void;
   children: ReactNode;
@@ -197,11 +202,18 @@ export function Layout({
             })}
           </nav>
 
-          <div className="cabecalho__acoes" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
+          <div
+            className="cabecalho__acoes"
+            style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}
+          >
             <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
             <Botao variante="primario" aoClicar={() => irPara('cadastro')} estilo={{ height: 36 }}>
               Novo registro
             </Botao>
+
+            {/* Por último, e à direita de tudo: é onde a barra de todo sistema
+                põe a conta, e contrariar isso faria a pessoa procurar. */}
+            <MenuDoUsuario eu={eu} />
           </div>
         </div>
 

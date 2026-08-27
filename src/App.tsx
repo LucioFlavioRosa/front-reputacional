@@ -164,6 +164,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
       <Layout
         view={view}
         irPara={definirView}
+        eu={eu}
         aoGerarRelatorio={() => definirRelatorioAberto(true)}
         // Esconder a entrada de quem não administra acessos é conveniência de
         // tela, não controle: o backend recusa com 403 de qualquer forma. O que
