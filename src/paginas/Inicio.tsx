@@ -93,7 +93,8 @@ export function Inicio({
           color: 'var(--branco)',
         }}
       >
-        <div>
+        {/* A classe reserva espaço para o menu da conta, que flutua no canto. */}
+        <div className="entrada__hero-texto">
           <div className="kicker" style={{ color: 'var(--turquesa-sombra)' }}>
             Aegea · Reputação
           </div>

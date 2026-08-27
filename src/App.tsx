@@ -10,6 +10,7 @@ import { obterEu } from '@/api/cliente';
 import { DrawerDeFiltros } from '@/componentes/FiltrosDrawer';
 import { Botao, Carregando, Cartao } from '@/componentes/basicos';
 import { portaisDe } from '@/dominio/tipos';
+import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
@@ -161,6 +162,28 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
   return (
     <>
+      {/* A CAPA NÃO TEM CABEÇALHO, mas precisa de saída.
+          Sem isto, quem abre o painel e decide sair tem de ENTRAR no CRM
+          primeiro para achar o botão — pedir que a pessoa avance para poder
+          recuar.
+
+          É o MESMO menu da barra, e não um botão "Sair" solto: sair mora em um
+          lugar só na aplicação inteira, e duas formas diferentes de fazer a
+          mesma coisa ensinam que há duas coisas.
+
+          `fixed`, e não `absolute`: com `absolute` ele rolava junto com a
+          página e sumia ao descer para os cartões — e a saída precisa estar
+          disponível o tempo todo. Posicionamento e recuo em `index.css`, sob
+          `.capa__conta`, porque a colisão com o texto do hero depende da
+          largura da tela. De quebra, quem está na capa
+          consegue conferir o próprio papel — que é justamente o que explica por
+          que ela vê um cartão e não três. */}
+      {naCapa ? (
+        <div className="capa__conta">
+          <MenuDoUsuario eu={eu} />
+        </div>
+      ) : null}
+
       <Layout
         view={view}
         irPara={definirView}

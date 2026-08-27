@@ -180,6 +180,20 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
    olhado. Mesma especificidade, então quem vem depois vence. */
 .area-principal--capa { padding-top: 0 !important; }
 
+/* O menu da conta na capa, que não tem cabeçalho.
+   `fixed` e não `absolute`: precisa continuar alcançável depois de rolar até os
+   cartões — com `absolute` ele saía da tela junto com o topo. */
+.capa__conta { position: fixed; top: 20px; right: 24px; z-index: 30; }
+
+/* No celular ele encostava no texto do hero: medido em 390px, o avatar ocupava
+   x=330..366 e o kicker "Aegea · Reputação" ia até x=365. Reservar a faixa é o
+   que impede a sobreposição — encolher o avatar não resolveria, porque o texto
+   é que se estende. */
+@media (max-width: 520px) {
+  .capa__conta { top: 12px; right: 12px; }
+  .entrada__hero-texto { padding-right: 52px; }
+}
+
 /* Tela de entrada: duas colunas no desktop, arte vira cabeçalho no celular.
    As medidas vêm do handoff. */
 .entrada { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
