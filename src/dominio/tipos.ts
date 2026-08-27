@@ -210,7 +210,15 @@ export interface PessoaAegea {
  *  códigos para decidir permissão — quem decide são as bandeiras de
  *  `PapelDeAcesso`, e no fim das contas o backend, que responde 403.
  */
-export type Perfil = 'plataforma' | 'crm' | 'sintese' | 'score';
+export type Perfil =
+  | 'plataforma_leitura'
+  | 'plataforma_edicao'
+  | 'crm_leitura'
+  | 'crm_edicao'
+  | 'sintese_leitura'
+  | 'sintese_edicao'
+  | 'score_leitura'
+  | 'score_edicao';
 
 /** As três divisões da plataforma, como a capa as oferece. */
 export type Portal = 'crm' | 'sintese' | 'score';

@@ -12,7 +12,7 @@ import type { PapelDeAcesso } from '@/dominio/tipos';
 
 function papel(parcial: Partial<PapelDeAcesso>): PapelDeAcesso {
   return {
-    codigo: 'crm',
+    codigo: 'crm_edicao',
     nome: 'CRM',
     pode_criar: false,
     pode_editar_proprio: false,
@@ -42,7 +42,7 @@ describe('portaisDe', () => {
 
   it('a plataforma abre os três', () => {
     const todos = portaisDe(
-      papel({ codigo: 'plataforma', acessa_crm: true, acessa_sintese: true, acessa_score: true }),
+      papel({ codigo: 'plataforma_edicao', acessa_crm: true, acessa_sintese: true, acessa_score: true }),
     );
     expect([...todos].sort()).toEqual(['crm', 'score', 'sintese']);
   });
