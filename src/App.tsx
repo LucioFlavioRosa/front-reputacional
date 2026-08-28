@@ -180,7 +180,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           que ela vê um cartão e não três. */}
       {naCapa ? (
         <div className="capa__conta">
-          <MenuDoUsuario eu={eu} />
+          <MenuDoUsuario eu={eu} lugar="capa" />
         </div>
       ) : null}
 

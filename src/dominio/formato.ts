@@ -114,6 +114,26 @@ export function urlSegura(valor: string | null | undefined): string | null {
  *  função de um arquivo que também exporta componente quebra o Fast Refresh do
  *  Vite — a tela recarrega inteira a cada edição em vez de preservar o estado.
  */
+/** O nome de quem está logado, pronto para caber num controle de largura fixa.
+ *
+ *  Só normaliza o espaço. A largura é problema do CSS, e é lá que ele está
+ *  resolvido — `max-width` mais reticência no `span` da pastilha.
+ *
+ *  ESTA FUNÇÃO JÁ CORTOU, e cortar era pior. A primeira versão devolvia o
+ *  primeiro nome, e "CRM · leitura" e "CRM · edição" viravam ambos "CRM" — o
+ *  controle que existe para dizer quem está logado escondia exatamente isso.
+ *  A segunda cortava acima de 20 caracteres, número escolhido porque
+ *  "Plataforma · edição" tem 19: era ajustar a regra ao dado que eu tinha na
+ *  mão. Com nomes reais do Entra ID ela reaparece pelo avesso — "Ana Paula
+ *  Rodrigues Lima" viraria "Ana", enquanto "Ana Paula Rodrig…" cabe e
+ *  distingue Ana Paula de Ana Carolina.
+ *
+ *  Reticência informa mais que amputação, e não precisa de um limite mágico.
+ */
+export function nomeParaExibir(nome: string): string {
+  return nome.trim().replace(/\s+/g, ' ');
+}
+
 export function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return '?';

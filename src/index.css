@@ -185,14 +185,34 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
    cartões — com `absolute` ele saía da tela junto com o topo. */
 .capa__conta { position: fixed; top: 20px; right: 24px; z-index: 30; }
 
+/* "Conta" e o rotulo do CELULAR: no desktop o nome ja esta escrito ao lado, e
+   repetir a palavra seria ruido.
+
+   Esta regra precisa vir ANTES da media query, e nao depois. Sao a mesma
+   especificidade, entao quem vence e a ultima declarada — declarada depois,
+   ela anulava a da media query em TODAS as larguras, e o rotulo do celular
+   simplesmente nao aparecia. Foi assim que o `!important` da versao anterior
+   deste arquivo nasceu: mascarando um problema de ordem. */
+.menu-conta__conta { display: none; }
+
 /* No celular ele encostava no texto do hero: medido em 390px, o avatar ocupava
    x=330..366 e o kicker "Aegea · Reputação" ia até x=365. Reservar a faixa é o
    que impede a sobreposição — encolher o avatar não resolveria, porque o texto
    é que se estende. */
 @media (max-width: 520px) {
   .capa__conta { top: 12px; right: 12px; }
-  .entrada__hero-texto { padding-right: 52px; }
+
+  /* No celular o NOME sai e a palavra "Conta" entra no lugar.
+     Nao cabem os dois: 360px de largura nao comportam "Plataforma · edicao" E
+     o titulo, e o titulo e o motivo de a capa existir. Mas ficar sem NENHUM
+     rotulo era voltar ao circulo mudo que causou este conserto — um avatar de
+     36px nao se anuncia como controle, e o Codex mediu que a seta sozinha nao
+     resolve. "Conta" cabe em cinco letras. */
+  .menu-conta__nome { display: none; }
+  .menu-conta__conta { display: inline; }
+  .entrada__hero-texto { padding-right: 108px; }
 }
+
 
 /* Tela de entrada: duas colunas no desktop, arte vira cabeçalho no celular.
    As medidas vêm do handoff. */

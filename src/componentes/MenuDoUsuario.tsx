@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { sair } from '@/api/cliente';
-import { dataCompleta, iniciais } from '@/dominio/formato';
+import { dataCompleta, iniciais, nomeParaExibir } from '@/dominio/formato';
 import { portaisDe } from '@/dominio/tipos';
 import type { Eu, Portal } from '@/dominio/tipos';
 
@@ -42,12 +42,30 @@ const PERMISSOES: { chave: keyof NonNullable<Eu['papel']>; rotulo: string }[] = 
   { chave: 'administra_acessos', rotulo: 'Administrar acessos' },
 ];
 
-export function MenuDoUsuario({ eu }: { eu: Eu | null }) {
+/** Onde o controle está pousado.
+ *
+ *  `barra` é a barra branca do painel: ali um círculo de 36px basta, porque o
+ *  fundo é liso e o entorno já é cheio de controles — a pessoa lê aquele canto
+ *  como "coisas da minha conta".
+ *
+ *  `capa` é a foto d'água da página inicial, e ali o mesmo círculo SUMIU. Não
+ *  por falta de contraste medido — foram 9,17:1 — mas porque a medição foi
+ *  feita contra o topo escuro do gradiente, e ele pousa no canto direito, que
+ *  é quase branco. Pior: numa capa sem nenhum outro controle, um círculo com
+ *  duas letras não se anuncia como botão; lê-se como enfeite da arte.
+ *
+ *  Por isso a capa ganha uma PASTILHA: fundo sólido, o primeiro nome escrito e
+ *  uma seta. O que a torna um controle não é o contraste, é o rótulo.
+ */
+export type LugarDoMenu = 'barra' | 'capa';
+
+export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: LugarDoMenu }) {
   const [aberto, definirAberto] = useState(false);
   const [saindo, definirSaindo] = useState(false);
   const [falhaAoSair, definirFalhaAoSair] = useState<string | null>(null);
   const caixa = useRef<HTMLDivElement>(null);
   const avatar = useRef<HTMLButtonElement>(null);
+  const naCapa = lugar === 'capa';
 
   // Fecha ao clicar fora e ao teclar Esc — as duas saídas que quem usa um menu
   // suspenso já espera. Sem elas, o painel fica preso na tela e a pessoa
@@ -121,23 +139,121 @@ export function MenuDoUsuario({ eu }: { eu: Eu | null }) {
         // por `aria-expanded` e `aria-controls`.
         aria-expanded={aberto}
         aria-controls="menu-do-usuario"
+        // O BOTÃO FICAVA MUDO NO CELULAR, e isso não era rótulo pobre: era
+        // ausência de nome acessível. O avatar e a seta são `aria-hidden`, e
+        // abaixo de 520px o nome vai a `display: none` — que o remove da
+        // árvore de acessibilidade, não só da tela. Sobrava um botão sem nome
+        // algum, e quem navega por leitor de tela ouvia "botão".
+        //
+        // O rótulo diz o que há DENTRO, e não só de quem é a conta: "sair" é a
+        // razão de a maioria das pessoas abrir isto, e é a palavra que elas
+        // procuram.
+        aria-label={`Conta de ${eu.nome} — permissões e sair`}
         title={`${eu.nome} — ${eu.papel?.nome ?? 'sem papel'}`}
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
-          border: aberto ? '2px solid var(--azul-mar)' : '1px solid var(--borda-input)',
-          background: 'var(--bg-trilho)',
-          color: 'var(--azul-mar)',
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        className={naCapa ? 'menu-conta__pastilha' : undefined}
+        style={
+          naCapa
+            ? {
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                height: 36,
+                padding: '0 12px 0 4px',
+                borderRadius: 999,
+                // Fundo SÓLIDO, e não translúcido: atrás dele passa uma foto
+                // com respingos claros e escuros, e qualquer transparência faz
+                // o rótulo mudar de legibilidade conforme o pedaço da onda.
+                background: 'var(--branco)',
+                // BORDA ESCURA, e não `--borda` (#E2E5F0, quase branco).
+                //
+                // O texto passava folgado — 10,37:1 contra o branco. O que não
+                // passava era a FORMA: medido sobre a foto, o branco da
+                // pastilha contra a água clara deu 1,08:1, e um componente
+                // precisa de 3:1 no próprio limite (WCAG 1.4.11). Uma placa
+                // branca sobre água quase branca não tem contorno, e um
+                // contorno quase branco não o devolve.
+                //
+                // `--azul-mar` resolve nos dois extremos do gradiente: contra a
+                // água clara é a borda que marca o limite; contra a água escura
+                // do topo é o branco interno. Sempre uma das duas fronteiras
+                // passa, e a pastilha nunca some.
+                //
+                // 2px, e não 1,5. Com 1,5 o Chrome arredondava para 1px CSS e o
+                // que sobrava do traço era antialiasing: medido no topo da
+                // pastilha, o pixel lia `rgb(131,150,223)` — azul diluído, não
+                // `#0027BD` — e o limite caía para 2,06:1 sobre a água clara.
+                // Uma borda fina demais para sobreviver ao próprio antialiasing
+                // não é uma borda; é uma intenção.
+                border: `2px solid var(${aberto ? '--azul-mar-sombra' : '--azul-mar'})`,
+                boxShadow: '0 2px 10px rgba(0,25,120,0.18)',
+                color: 'var(--azul-mar)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }
+            : {
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                border: aberto ? '2px solid var(--azul-mar)' : '1px solid var(--borda-input)',
+                background: 'var(--bg-trilho)',
+                color: 'var(--azul-mar)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }
+        }
       >
-        {iniciais(eu.nome)}
+        {naCapa ? (
+          <>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--bg-trilho)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 11,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {iniciais(eu.nome)}
+            </span>
+            {/* O nome INTEIRO, normalizado. Quem corta é o CSS logo abaixo,
+                com reticência, e é o único que corta: `nomeParaExibir` só
+                arruma espaço.
+
+                Já houve duas regras de corte aqui, e as duas apagavam
+                identidade — ver o comentário de `nomeParaExibir`. O nome
+                completo está no painel, a um clique. */}
+            <span
+              className="menu-conta__nome"
+              style={{ maxWidth: 168, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {nomeParaExibir(eu.nome)}
+            </span>
+            {/* NO CELULAR O NOME NÃO CABE, mas alguma palavra tem de caber.
+                Sem nenhuma, a pastilha volta a ser o círculo mudo que causou
+                todo este conserto. "Conta" e não "Sair" porque o botão ABRE um
+                painel; prometer a saída e entregar um menu é a mesma classe de
+                mentira que `role="menu"` seria. */}
+            <span aria-hidden="true" className="menu-conta__conta">
+              Conta
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 10, opacity: 0.7 }}>
+              ▾
+            </span>
+          </>
+        ) : (
+          iniciais(eu.nome)
+        )}
       </button>
 
       {aberto ? (
