@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   concederAcesso,
+  definirSituacaoDeAcesso,
   historicoDeAcesso,
   listarAcessos,
   listarPapeis,
@@ -45,12 +46,13 @@ import type { Acesso, PapelDisponivel, TrilhaDeAcesso } from '@/dominio/tipos';
 /** Abaixo disto o prazo aparece em vermelho: é hora de renovar ou encerrar. */
 const DIAS_DE_ALERTA = 30;
 
-export function Acessos() {
+export function Acessos({ euId }: { euId: string | null }) {
   const [pessoas, definirPessoas] = useState<Acesso[] | null>(null);
   const [papeis, definirPapeis] = useState<PapelDisponivel[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [emEdicao, definirEmEdicao] = useState<Acesso | null>(null);
   const [emHistorico, definirEmHistorico] = useState<Acesso | null>(null);
+  const [aDesativar, definirADesativar] = useState<Acesso | null>(null);
 
   const carregar = async () => {
     definirErro(null);
@@ -67,6 +69,22 @@ export function Acessos() {
   useEffect(function carregarPessoasAoAbrir() {
     void carregar();
   }, []);
+
+  /** Religar é reversível e não tira nada de ninguém: vai direto.
+   *
+   *  Desligar passa pela confirmação — ver `ConfirmarDesativacao`. Pedir
+   *  confirmação para as duas faria a pessoa aprender a clicar em "sim" sem
+   *  ler, e aí a confirmação que importa também deixaria de ser lida.
+   */
+  const reativar = async (pessoa: Acesso) => {
+    definirErro(null);
+    try {
+      await definirSituacaoDeAcesso(pessoa.id, true);
+      await carregar();
+    } catch (falha) {
+      definirErro(falha instanceof Error ? falha.message : 'Falha ao reativar.');
+    }
+  };
 
   const { internos, externos, semAcesso } = useMemo(() => {
     const todas = pessoas ?? [];
@@ -99,6 +117,9 @@ export function Acessos() {
               pessoas={semAcesso}
               aoEditar={definirEmEdicao}
               aoVerHistorico={definirEmHistorico}
+              aoDesativar={definirADesativar}
+              aoReativar={reativar}
+              euId={euId}
             />
           </Cartao>
         )}
@@ -109,6 +130,9 @@ export function Acessos() {
             mostrarPrazo
             aoEditar={definirEmEdicao}
             aoVerHistorico={definirEmHistorico}
+            aoDesativar={definirADesativar}
+            aoReativar={reativar}
+            euId={euId}
           />
         </Cartao>
 
@@ -117,6 +141,9 @@ export function Acessos() {
             pessoas={internos}
             aoEditar={definirEmEdicao}
             aoVerHistorico={definirEmHistorico}
+            aoDesativar={definirADesativar}
+            aoReativar={reativar}
+            euId={euId}
           />
         </Cartao>
       </Secao>
@@ -136,6 +163,17 @@ export function Acessos() {
       {emHistorico && (
         <Historico pessoa={emHistorico} aoFechar={() => definirEmHistorico(null)} />
       )}
+
+      {aDesativar && (
+        <ConfirmarDesativacao
+          pessoa={aDesativar}
+          aoFechar={() => definirADesativar(null)}
+          aoConfirmar={async () => {
+            definirADesativar(null);
+            await carregar();
+          }}
+        />
+      )}
     </>
   );
 }
@@ -145,11 +183,18 @@ function Tabela({
   mostrarPrazo = false,
   aoEditar,
   aoVerHistorico,
+  aoDesativar,
+  aoReativar,
+  euId,
 }: {
   pessoas: Acesso[];
   mostrarPrazo?: boolean;
   aoEditar: (p: Acesso) => void;
   aoVerHistorico: (p: Acesso) => void;
+  aoDesativar: (p: Acesso) => void;
+  aoReativar: (p: Acesso) => void | Promise<void>;
+  /** Quem está olhando. A própria linha não ganha botão de desativar. */
+  euId: string | null;
 }) {
   if (pessoas.length === 0) return <Vazio mensagem="Ninguém nesta situação." />;
 
@@ -195,7 +240,22 @@ function Tabela({
                 <Botao variante="secundario" aoClicar={() => aoVerHistorico(pessoa)}>
                   Histórico
                 </Botao>{' '}
-                <Botao aoClicar={() => aoEditar(pessoa)}>Alterar</Botao>
+                <Botao aoClicar={() => aoEditar(pessoa)}>Alterar</Botao>{' '}
+                {/* A PRÓPRIA LINHA NÃO GANHA BOTÃO.
+                    O backend recusa ("Ninguém desativa a própria conta"), e
+                    oferecer o botão seria convidar para uma porta que não
+                    abre — a pessoa clica, lê o nome no modal, digita, e só
+                    então leva 403. Esconder é conveniência de tela; quem
+                    decide continua sendo o backend. */}
+                {pessoa.id === euId ? null : pessoa.ativo ? (
+                  <Botao variante="secundario" aoClicar={() => aoDesativar(pessoa)}>
+                    Desativar
+                  </Botao>
+                ) : (
+                  <Botao variante="secundario" aoClicar={() => void aoReativar(pessoa)}>
+                    Reativar
+                  </Botao>
+                )}
               </td>
             </tr>
           ))}
@@ -438,3 +498,96 @@ const celulaDeCabecalho = {
 
 const celula = { padding: '10px', verticalAlign: 'top' as const };
 
+/** A confirmação de desativar, com o nome digitado.
+ *
+ *  NÃO é cerimônia. Desativar é a ÚNICA remoção que o produto tem — ninguém é
+ *  apagado, porque `interacao.criado_por` e mais nove chaves apontam para
+ *  `usuario` e apagar a pessoa apagaria a autoria dos registros dela. Então
+ *  este botão é o fim da linha, e ele fica na mesma coluna de "Alterar", a um
+ *  pixel de distância.
+ *
+ *  Digitar o nome não é para dificultar: é para obrigar a LER de quem se
+ *  trata. Um "tem certeza?" seria clicado no reflexo, e numa tabela com
+ *  dezenas de linhas a pessoa errada está sempre a uma linha da certa.
+ *
+ *  O efeito é imediato — o backend descarta a permissão em cache no ato —, e é
+ *  isso que o texto promete. Reversível pelo botão Reativar, que não pede
+ *  confirmação nenhuma.
+ */
+function ConfirmarDesativacao({
+  pessoa,
+  aoFechar,
+  aoConfirmar,
+}: {
+  pessoa: Acesso;
+  aoFechar: () => void;
+  aoConfirmar: () => void | Promise<void>;
+}) {
+  const [digitado, definirDigitado] = useState('');
+  const [salvando, definirSalvando] = useState(false);
+  const [erro, definirErro] = useState<string | null>(null);
+
+  // Comparação frouxa de propósito: espaço sobrando e caixa não são o ponto.
+  // O ponto é ter lido o nome.
+  const confere =
+    digitado.trim().replace(/\s+/g, ' ').toLowerCase() ===
+    pessoa.nome.trim().replace(/\s+/g, ' ').toLowerCase();
+
+  const desativar = async () => {
+    definirErro(null);
+    definirSalvando(true);
+    try {
+      await definirSituacaoDeAcesso(pessoa.id, false);
+      await aoConfirmar();
+    } catch (falha) {
+      definirSalvando(false);
+      definirErro(falha instanceof Error ? falha.message : 'Falha ao desativar.');
+    }
+  };
+
+  return (
+    <Modal titulo="Desativar acesso" aoFechar={aoFechar} largura={520}>
+      <p style={{ fontSize: 14, lineHeight: 1.6, margin: '0 0 12px' }}>
+        <strong>{pessoa.nome}</strong> perde o acesso ao painel imediatamente,
+        e não consegue mais entrar — nem pelo SSO.
+      </p>
+      <p style={{ fontSize: 13, color: 'var(--cinza-2)', lineHeight: 1.6, margin: '0 0 16px' }}>
+        Os registros que essa pessoa criou permanecem, com o nome dela. Nada é
+        apagado, e o acesso pode ser devolvido depois pelo botão Reativar.
+      </p>
+
+      <Campo rotulo={`Digite “${pessoa.nome}” para confirmar`}>
+        <input
+          style={estiloDeEntrada}
+          value={digitado}
+          onChange={(evento) => definirDigitado(evento.target.value)}
+          autoFocus
+          aria-describedby="por-que-digitar"
+        />
+      </Campo>
+      <p id="por-que-digitar" style={{ fontSize: 12, color: 'var(--cinza-3)', margin: '6px 0 0' }}>
+        Pedimos o nome para você conferir de quem se trata — as linhas da
+        tabela são parecidas.
+      </p>
+
+      {erro && (
+        <div style={{ marginTop: 14 }}>
+          <FaixaDeErro mensagem={erro} />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <Botao variante="secundario" aoClicar={aoFechar}>
+          Cancelar
+        </Botao>
+        <Botao
+          variante="primario"
+          aoClicar={() => void desativar()}
+          desabilitado={!confere || salvando}
+        >
+          {salvando ? 'Desativando…' : 'Desativar acesso'}
+        </Botao>
+      </div>
+    </Modal>
+  );
+}

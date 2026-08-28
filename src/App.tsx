@@ -249,7 +249,10 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               <SemPermissaoParaCriar irPara={definirView} />
             )
           ) : null}
-          {view === 'acessos' ? <Acessos /> : null}
+          {/* `euId` para a tela saber qual linha é a de quem está olhando:
+              ninguém desativa a própria conta, e oferecer o botão seria
+              convidar para uma porta que responde 403. */}
+          {view === 'acessos' ? <Acessos euId={eu?.id ?? null} /> : null}
         </LimiteDeErro>
       </Layout>
 

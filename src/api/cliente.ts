@@ -297,6 +297,24 @@ export function concederAcesso(id: string, concessao: Concessao): Promise<void> 
   });
 }
 
+/**
+ * Desliga ou religa uma conta — a REMOÇÃO do produto.
+ *
+ * `PATCH` e não `DELETE`: ninguém é apagado. Dez chaves estrangeiras apontam
+ * para `usuario`, e `interacao.criado_por` é obrigatória — apagar a pessoa
+ * apagaria a autoria dos registros que ela criou. Desligar preserva o
+ * histórico e tira o acesso.
+ *
+ * O efeito é imediato: o backend descarta a permissão em cache no ato, então
+ * a pessoa cai na requisição seguinte, e não ao fim da sessão.
+ */
+export function definirSituacaoDeAcesso(id: string, ativo: boolean): Promise<void> {
+  return requisitar<void>(`/api/acessos/${id}/situacao`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ativo }),
+  });
+}
+
 export function historicoDeAcesso(id: string): Promise<TrilhaDeAcesso[]> {
   return requisitar<TrilhaDeAcesso[]>(`/api/acessos/${id}/historico`);
 }
