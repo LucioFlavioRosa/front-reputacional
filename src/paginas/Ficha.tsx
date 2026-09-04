@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { obterInteracao } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
+  Botao,
   Carregando,
   Chip,
   ChipDeFrente,
@@ -81,7 +82,16 @@ const EXTENSAO_POR_FRENTE: Record<Frente, { campo: string; rotulo: string }[]> =
   ],
 };
 
-export function Ficha({ id, aoFechar }: { id: string; aoFechar: () => void }) {
+export function Ficha({
+  id,
+  aoFechar,
+  aoEditar,
+}: {
+  id: string;
+  aoFechar: () => void;
+  /** Ausente quando o perfil não edita — e aí o botão não aparece. */
+  aoEditar?: (id: string) => void;
+}) {
   const { catalogo } = usePainel();
   const [interacao, definirInteracao] = useState<Interacao | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
@@ -242,6 +252,20 @@ export function Ficha({ id, aoFechar }: { id: string; aoFechar: () => void }) {
           </section>
         ) : null}
 
+        {/* O CICLO DA AGENDA ------------------------------------------------
+            Expectativa e relato lado a lado, e clima esperado ao lado do real:
+            e a distancia entre eles que responde "o que prometemos costuma
+            acontecer?". Separados em telas diferentes, ninguem compara. */}
+        <CicloDaAgenda interacao={interacao} catalogo={catalogo} />
+
+        {aoEditar ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Botao variante="primario" aoClicar={() => aoEditar(interacao.id)}>
+              Editar registro
+            </Botao>
+          </div>
+        ) : null}
+
         {faltando.length ? (
           <p style={{ fontSize: 11, color: 'var(--texto-placeholder)' }}>
             Sem preenchimento nesta frente: {faltando.join(', ')}.
@@ -282,4 +306,152 @@ function camposAplicaveisVazios(interacao: Interacao, catalogo: Catalogo): strin
   void catalogo;
 
   return faltando;
+}
+
+/** O ciclo: o previsto, o real, e o que veio depois.
+ *
+ *  Some inteiro quando nada foi informado. Uma seção com seis "não informado"
+ *  ocupa a ficha sem dizer nada — e a maioria dos 60 registros veio de
+ *  planilha, sem nenhum destes campos.
+ */
+function CicloDaAgenda({
+  interacao,
+  catalogo,
+}: {
+  interacao: Interacao;
+  catalogo: Catalogo;
+}) {
+  const participantes = interacao.outra_parte ?? [];
+  const materiais = interacao.materiais ?? [];
+  const temCiclo =
+    interacao.expectativa ||
+    interacao.clima_esperado ||
+    interacao.declinado_por ||
+    interacao.preve_desdobramento != null ||
+    participantes.length > 0 ||
+    materiais.length > 0;
+
+  if (!temCiclo) return null;
+
+  return (
+    <>
+      {(interacao.expectativa || interacao.clima_esperado) && (
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            O que se esperava
+          </div>
+          {interacao.expectativa ? (
+            <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.6, margin: 0 }}>
+              {interacao.expectativa}
+            </p>
+          ) : null}
+          {interacao.clima_esperado ? (
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 8 }}>
+              Clima esperado:{' '}
+              <strong>{rotuloDeCodigo(catalogo, 'climas', interacao.clima_esperado)}</strong>
+              {interacao.clima ? (
+                <>
+                  {' · '}o que houve:{' '}
+                  <strong>{rotuloDeCodigo(catalogo, 'climas', interacao.clima)}</strong>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </section>
+      )}
+
+      {interacao.declinado_por ? (
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Declinada
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.6, margin: 0 }}>
+            {/* Quem declinou vem PRIMEIRO: declinar é escolha da Aegea, ser
+                declinado é porta que se fechou. O motivo só se lê à luz do
+                lado. */}
+            <strong>
+              {interacao.declinado_por === 'aegea' ? 'Pela Aegea' : 'Pela outra parte'}
+            </strong>
+            {interacao.motivo_declinio ? ` — ${interacao.motivo_declinio}` : ''}
+          </p>
+        </section>
+      ) : null}
+
+      {participantes.length > 0 && (
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Quem participou
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {participantes.map((pessoa) => (
+              <div key={pessoa.interlocutor_id} style={{ fontSize: 13 }}>
+                {nomeDoInterlocutor(catalogo, pessoa.interlocutor_id)}
+                {pessoa.principal ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · representa a outra parte</span>
+                ) : null}
+                {/* "Não informado" fica implícito pela ausência: escrevê-lo em
+                    toda linha de um registro antigo viraria ruído. Mas FALTOU
+                    aparece com destaque — uma reunião em que o decisor não veio
+                    não é a reunião que foi pedida. */}
+                {pessoa.presenca === 'ausente' ? (
+                  <span style={{ color: 'var(--erro-fg)', fontWeight: 600 }}> · faltou</span>
+                ) : pessoa.presenca === 'presente' ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · compareceu</span>
+                ) : pessoa.presenca === 'previsto' ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · previsto</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {materiais.length > 0 && (
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Materiais
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {materiais.map((material) => {
+              const link = urlSegura(material.url);
+              return (
+                <div key={material.id ?? material.titulo} style={{ fontSize: 13 }}>
+                  <span style={{ color: 'var(--cinza-2)' }}>
+                    {material.momento === 'apoio'
+                      ? 'Apoio'
+                      : material.momento === 'obtido'
+                        ? 'Obtido'
+                        : 'Produzido'}
+                    {' · '}
+                  </span>
+                  {link ? (
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: 'var(--azul-mar)' }}
+                    >
+                      {material.titulo}
+                    </a>
+                  ) : (
+                    // Mesmo tratamento que `registro_url` já dava: link que não
+                    // navega vira texto, e a ficha diz por quê.
+                    <span title="O endereço não é um link navegável.">{material.titulo}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {interacao.preve_desdobramento != null && (
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
+          {interacao.preve_desdobramento
+            ? 'Prevê desdobramento em outra agenda.'
+            : 'Não prevê desdobramento.'}
+        </p>
+      )}
+    </>
+  );
 }

@@ -114,6 +114,26 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     criado_por: null,
     criado_em: null,
     atualizado_em: null,
+
+    // O ciclo da agenda. O molde precisa trazer TODOS os campos: o `Partial`
+
+    // dos ajustes cobre o que cada teste quer mudar, e o resto vem daqui.
+
+    expectativa: null,
+
+    clima_esperado: null,
+
+    declinado_por: null,
+
+    motivo_declinio: null,
+
+    origem_interacao_id: null,
+
+    preve_desdobramento: null,
+
+    outra_parte: [],
+
+    materiais: [],
     ...ajustes,
   };
 }

@@ -259,6 +259,7 @@ export function Botao({
   tipo = 'button',
   desabilitado,
   estilo,
+  rotuloAcessivel,
   titulo,
 }: {
   children: ReactNode;
@@ -267,6 +268,12 @@ export function Botao({
   tipo?: 'button' | 'submit';
   desabilitado?: boolean;
   estilo?: CSSProperties;
+  /** Nome para leitor de tela, quando o texto visível se repete.
+   *
+   *  Seis botões "Remover" numa lista dizem a mesma coisa em voz alta e não
+   *  distinguem o que cada um remove. Aqui vira "Remover a pessoa 2".
+   */
+  rotuloAcessivel?: string;
   titulo?: string;
 }) {
   const variantes: Record<string, CSSProperties> = {
@@ -295,6 +302,7 @@ export function Botao({
       type={tipo}
       onClick={aoClicar}
       disabled={desabilitado}
+      aria-label={rotuloAcessivel}
       title={titulo}
       style={{
         padding: '0 16px',

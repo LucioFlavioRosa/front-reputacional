@@ -146,6 +146,26 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
   const [frenteAberta, definirFrenteAberta] = useState<Frente>('imprensa');
   const [fichaAberta, definirFichaAberta] = useState<string | null>(null);
+  //: A agenda que o formulário está editando. Nulo = está criando uma nova.
+  //:
+  //: Mora aqui, e não dentro do formulário, porque quem decide "editar isto" é
+  //: a ficha — e as duas telas não se conhecem.
+  const [emEdicao, definirEmEdicao] = useState<string | null>(null);
+
+  /** Navega, e ESQUECE o registro em edição.
+   *
+   *  `emEdicao` sobrevivia à navegação: quem abrisse A para editar, saísse sem
+   *  salvar e clicasse em "Novo registro" caía num formulário em modo EDIÇÃO —
+   *  e o salvamento virava um `PATCH` que sobrescrevia A. A pessoa acreditava
+   *  estar criando; o sistema estava apagando.
+   *
+   *  Só a ficha entra em edição, e ela chama `definirEmEdicao` DEPOIS desta.
+   *  Todo o resto da navegação passa por aqui e sai do modo edição.
+   */
+  const navegar = (destino: View) => {
+    definirEmEdicao(null);
+    definirView(destino);
+  };
   const [relatorioAberto, definirRelatorioAberto] = useState(false);
 
   // A navegação é por estado, não por URL: o rastreio automático de rota do
@@ -186,7 +206,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
       <Layout
         view={view}
-        irPara={definirView}
+        irPara={navegar}
         eu={eu}
         podeCriar={eu?.papel?.pode_criar ?? false}
         aoGerarRelatorio={() => definirRelatorioAberto(true)}
@@ -244,7 +264,19 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               preenchido acabaria num 403 do backend. */}
           {view === 'cadastro' ? (
             eu?.papel?.pode_criar ? (
-              <Cadastro aoSalvar={() => definirView('base')} />
+              <Cadastro
+                  // `key` força um formulário NOVO ao trocar de registro.
+                  // Sem ela, React reaproveita o estado: abrir a ficha de outra
+                  // agenda mostraria os campos da anterior até o carregamento
+                  // terminar, e um salvamento apressado gravaria o que estava
+                  // na tela.
+                  key={emEdicao ?? 'nova'}
+                  id={emEdicao ?? undefined}
+                  aoSalvar={() => {
+                    definirEmEdicao(null);
+                    definirView('base');
+                  }}
+                />
             ) : (
               <SemPermissaoParaCriar irPara={definirView} />
             )
@@ -264,7 +296,25 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           de uma quebrada comece limpa. */}
       {fichaAberta ? (
         <LimiteDeErro key={`ficha-${fichaAberta}`} aoFechar={() => definirFichaAberta(null)}>
-          <Ficha id={fichaAberta} aoFechar={() => definirFichaAberta(null)} />
+          <Ficha
+            id={fichaAberta}
+            aoFechar={() => definirFichaAberta(null)}
+            aoEditar={
+              // Só oferece editar a quem edita. Esconder o botão é
+              // conveniência: o backend recusa de qualquer jeito, e a ficha
+              // continua abrindo para quem só lê.
+              eu?.papel?.pode_criar
+                ? (id) => {
+                    definirFichaAberta(null);
+                    // `definirView` cru, e não `navegar`: este é o ÚNICO
+                    // caminho que entra em modo edição, e `navegar` limparia
+                    // o id que acabamos de definir.
+                    definirEmEdicao(id);
+                    definirView('cadastro');
+                  }
+                : undefined
+            }
+          />
         </LimiteDeErro>
       ) : null}
 

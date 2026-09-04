@@ -4,8 +4,13 @@
  *  frente fica escondido no formulário: o que não se aplica não é enviado.
  */
 
-import { useState } from 'react';
-import { criarInteracao } from '@/api/cliente';
+import { useEffect, useId, useState } from 'react';
+import {
+  criarInteracao,
+  editarInteracao,
+  listarInteracoes,
+  obterInteracao,
+} from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
   Botao,
@@ -21,7 +26,7 @@ import {
 import { hojeLocal } from '@/dominio/formato';
 import { ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import { FRENTES } from '@/dominio/tipos';
-import type { Frente } from '@/dominio/tipos';
+import type { Frente, Interacao } from '@/dominio/tipos';
 
 // As 27 UFs saíram daqui: vêm de `catalogo.dicionarios.ufs`, montado a
 // partir do domínio `abrangencia` do Postgres — o mesmo que recusa uma UF
@@ -65,7 +70,63 @@ interface Formulario {
   temas: number[];
   portaVozes: string[];
   extensao: Record<string, string>;
+
+  // -- o ciclo da agenda ---------------------------------------------------
+  //
+  // O formulario deixou de descrever um fato consumado e passou a acompanhar
+  // uma agenda: pedida, planejada, confirmada ou declinada, realizada, e
+  // desdobrada em outra. Os campos abaixo sao a metade PREVISTA — e e a
+  // distancia entre ela e o relato que mede se o que se promete acontece.
+  expectativa: string;
+  clima_esperado: string;
+  declinado_por: string;
+  motivo_declinio: string;
+  origem_interacao_id: string;
+  //: Tres estados, e nao dois: '' e NAO INFORMADO, e some da tela como tal.
+  //: Um `boolean` faria toda agenda antiga afirmar "nao preve desdobramento",
+  //: que e uma decisao que ninguem tomou.
+  preve_desdobramento: '' | 'sim' | 'nao';
+  outraParte: ParticipanteNoForm[];
+  materiais: MaterialNoForm[];
 }
+
+/** Alguem da outra parte nesta agenda. */
+interface ParticipanteNoForm {
+  interlocutor_id: string;
+  //: '' = nao informado. Ver `PRESENCAS`.
+  presenca: string;
+  principal: boolean;
+}
+
+/** Um documento da agenda. */
+interface MaterialNoForm {
+  //: Volta no PATCH para o backend NAO recriar o material — e o que preserva
+  //: a identidade entre salvamentos. Material novo nao tem.
+  id?: string;
+  momento: string;
+  titulo: string;
+  url: string;
+  observacao: string;
+}
+
+/** As tres presencas, com o rotulo que a pessoa le.
+ *
+ *  `ausente` e a mais valiosa das tres: uma reuniao em que o decisor nao
+ *  apareceu nao e a reuniao que foi pedida, ainda que conste como realizada.
+ */
+const PRESENCAS: { valor: string; rotulo: string }[] = [
+  { valor: '', rotulo: 'Nao informado' },
+  { valor: 'previsto', rotulo: 'Previsto' },
+  { valor: 'presente', rotulo: 'Compareceu' },
+  { valor: 'ausente', rotulo: 'Faltou' },
+];
+
+/** Os tres momentos do material. Apoio e antes; os outros dois, depois. */
+const MOMENTOS: { valor: string; rotulo: string }[] = [
+  { valor: 'apoio', rotulo: 'Apoio (antes da reuniao)' },
+  { valor: 'obtido', rotulo: 'Obtido na reuniao' },
+  { valor: 'produzido', rotulo: 'Produzido na reuniao' },
+];
 
 const VAZIO: Formulario = {
   frente: 'imprensa',
@@ -90,14 +151,83 @@ const VAZIO: Formulario = {
   temas: [],
   portaVozes: [],
   extensao: {},
+  expectativa: '',
+  clima_esperado: '',
+  declinado_por: '',
+  motivo_declinio: '',
+  origem_interacao_id: '',
+  preve_desdobramento: '',
+  outraParte: [],
+  materiais: [],
 };
 
-export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
+export function Cadastro({
+  aoSalvar,
+  id,
+}: {
+  aoSalvar: () => void;
+  /** Quando vem, o formulário EDITA em vez de criar.
+   *
+   *  UM formulário para as duas coisas, e não dois. A agenda tem trinta e
+   *  poucos campos, quatro blocos condicionais por frente e duas listas; em
+   *  duas telas, elas divergiriam — um campo novo entraria numa e não na
+   *  outra, e ninguém notaria até alguém perder o que digitou.
+   */
+  id?: string;
+}) {
   const { catalogo, recarregar } = usePainel();
   const [form, definirForm] = useState<Formulario>(VAZIO);
+  const [carregando, definirCarregando] = useState(Boolean(id));
+  //: As agendas que podem ter dado origem a esta. Carregadas uma vez.
+  const [agendas, definirAgendas] = useState<Interacao[]>([]);
   const [enviando, definirEnviando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
   const [sucesso, definirSucesso] = useState(false);
+
+  // ANTES DO `return` CONDICIONAL, e nao depois.
+  //
+  // Hook chamado abaixo de um `return` só roda em alguns renders, e o React
+  // passa a casar o estado errado entre eles — o `oxlint` acusa
+  // `rules-of-hooks`. Eu tinha posto junto de `enviar`, que fica depois do
+  // `if (!catalogo)`.
+  useEffect(function carregarAgendasParaOrigem() {
+    let vivo = true;
+    // A lista serve só para escolher a agenda de origem, então não precisa ser
+    // completa nem recente: `limite` alto e uma consulta só. Buscar sob demanda
+    // exigiria um campo de busca, e o volume aqui não justifica.
+    // Recorte VAZIO: a origem pode ser qualquer agenda, de qualquer frente —
+    // um desdobramento cruza fronteiras por natureza (a conversa com o orgao
+    // nasce da materia na imprensa). `tamanho` e o maximo que o backend aceita.
+    listarInteracoes({}, { tamanho: 200, ordenacao: 'data_desc' })
+      .then((pagina) => vivo && definirAgendas(pagina.itens ?? []))
+      .catch(() => {
+        // Silencioso de propósito: sem a lista, o campo de origem fica vazio e
+        // o resto do formulário continua utilizável. Derrubar o cadastro
+        // inteiro porque uma conveniência falhou seria pior.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  useEffect(
+    function carregarParaEditar() {
+      if (!id) return;
+      let vivo = true;
+      definirCarregando(true);
+      obterInteracao(id)
+        .then((interacao) => {
+          if (!vivo) return;
+          definirForm(paraFormulario(interacao));
+        })
+        .catch((falha: Error) => vivo && definirErro(falha.message))
+        .finally(() => vivo && definirCarregando(false));
+      return () => {
+        vivo = false;
+      };
+    },
+    [id],
+  );
 
   if (!catalogo) return <Carregando />;
 
@@ -118,11 +248,32 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
   };
 
   const enviar = async () => {
+    // O QUE O SERVIDOR NÃO TEM COMO RECUSAR DE FORMA ÚTIL.
+    //
+    // Material pela metade seria descartado antes de sair da tela, e a pessoa
+    // veria "registro salvo" com um material a menos — sem erro, sem pista.
+    const impedimento = impedimentoNoFormulario(form);
+    if (impedimento) {
+      definirErro(impedimento);
+      definirSucesso(false);
+      return;
+    }
+
     definirEnviando(true);
     definirErro(null);
     try {
-      await criarInteracao(montarCorpo(form));
-      definirForm({ ...VAZIO, frente: form.frente });
+      if (id) {
+        // `PATCH` com o corpo INTEIRO, e não só o que mudou.
+        //
+        // O formulário carregou tudo e a pessoa editou o que quis; mandar o
+        // conjunto é o que garante que remover um material ou desmarcar o
+        // principal chegue como remoção. Mandar só a diferença exigiria a tela
+        // saber o que veio do servidor, e ela passaria a ter duas verdades.
+        await editarInteracao(id, montarCorpo(form, true));
+      } else {
+        await criarInteracao(montarCorpo(form));
+        definirForm({ ...VAZIO, frente: form.frente });
+      }
       definirSucesso(true);
       recarregar();
       aoSalvar();
@@ -132,6 +283,8 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
       definirEnviando(false);
     }
   };
+
+  if (carregando) return <Carregando rotulo="Carregando o registro…" />;
 
   const bloco = BLOCO_POR_FRENTE[form.frente];
   const formatosDaFrente = catalogo.dicionarios.formatos.filter((formato) =>
@@ -201,20 +354,13 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
             </select>
           </Campo>
 
-          <Campo rotulo="Interlocutor" dica="A pessoa da outra ponta — nunca a instituição.">
-            <select
-              style={estiloDeEntrada}
-              value={form.interlocutor_id}
-              onChange={(evento) => alterar('interlocutor_id', evento.target.value)}
-            >
-              <option value="">Sem interlocutor identificado</option>
-              {[...catalogo.interlocutores.values()].map((pessoa) => (
-                <option key={pessoa.id} value={pessoa.id}>
-                  {pessoa.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
+          {/* O CAMPO "INTERLOCUTOR" SAIU DAQUI.
+              Ele mostrava UMA pessoa, e a agenda tem várias. Agora todas moram
+              em "Quem participa", e quem representa a outra parte é a marcada
+              como principal — que é exatamente o contrato do backend: a lista
+              manda, a coluna é projeção dela.
+              Mantê-lo aqui deixaria duas telas para o mesmo fato, capazes de
+              discordar entre si. */}
 
           <Campo rotulo="Abrangência" obrigatorio dica="O mapa do painel depende deste campo.">
             <select
@@ -548,6 +694,162 @@ export function Cadastro({ aoSalvar }: { aoSalvar: () => void }) {
         </div>
       </Secao>
 
+      {/* ANTES DA REUNIAO ------------------------------------------------
+          Separada do "Conteudo" de proposito: o que se ESPERA e escrito antes,
+          e o relato depois. Lado a lado numa secao so, a pessoa preencheria os
+          dois no mesmo momento — e a comparacao entre o previsto e o que houve,
+          que e a razao de existir destes campos, deixaria de significar algo. */}
+      <Secao titulo="Antes da reunião">
+        <Cartao>
+          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+            O que se espera desta agenda. Preencha antes; depois compare com o
+            relato — é essa distância que mostra se o que planejamos acontece.
+          </p>
+
+          <Campo rotulo="Expectativa">
+            <textarea
+              style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
+              value={form.expectativa}
+              onChange={(evento) => alterar('expectativa', evento.target.value)}
+              placeholder="O que precisa sair desta reunião para ela ter valido a pena."
+            />
+          </Campo>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+            <CampoDeDicionario
+              rotulo="Clima esperado"
+              itens={catalogo.dicionarios.climas}
+              valor={form.clima_esperado}
+              aoMudar={(v) => alterar('clima_esperado', v)}
+            />
+            <Campo
+              rotulo="Veio de outra agenda?"
+              dica="Encadear as conversas é o que transforma reuniões soltas em agenda com histórico."
+            >
+              <select
+                style={estiloDeEntrada}
+                value={form.origem_interacao_id}
+                onChange={(evento) =>
+                  alterar('origem_interacao_id', evento.target.value)
+                }
+              >
+                <option value="">Não veio de outra</option>
+                {/* A ORIGEM JÁ GRAVADA ENTRA SEMPRE, mesmo fora das 200.
+                    Sem isto, uma origem mais antiga que a janela carregada
+                    deixaria o campo em branco — e salvar a APAGARIA em
+                    silêncio, sem ninguém ter pedido. O rótulo diz que ela veio
+                    de fora da lista, para a ausência de contexto não parecer
+                    dado corrompido.
+
+                    A janela fixa de 200 é limitação conhecida: numa base
+                    grande, escolher uma agenda antiga vai exigir busca. Isso é
+                    uma tela a fazer; perder o que já está gravado, não. */}
+                {form.origem_interacao_id &&
+                !agendas.some((a) => a.id === form.origem_interacao_id) ? (
+                  <option value={form.origem_interacao_id}>
+                    Agenda anterior (fora das mais recentes)
+                  </option>
+                ) : null}
+                {agendas
+                  // A própria agenda fora da lista: o banco tem um `check` que
+                  // barra, mas oferecer a opção e recusar depois é convite para
+                  // um erro que a tela podia ter evitado. O ENCADEAMENTO longo
+                  // (A→B→A) é barrado no repositório, que consegue subir a
+                  // cadeia inteira — coisa que a tela não tem como saber.
+                  .filter((agenda) => agenda.id !== id)
+                  .map((agenda) => (
+                    <option key={agenda.id} value={agenda.id}>
+                      {agenda.data_interacao} · {agenda.pauta.slice(0, 60)}
+                    </option>
+                  ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Desdobra em outra agenda?">
+              <select
+                style={estiloDeEntrada}
+                value={form.preve_desdobramento}
+                onChange={(e) =>
+                  alterar('preve_desdobramento', e.target.value as Formulario['preve_desdobramento'])
+                }
+              >
+                {/* "Não informado" é o padrão, e não "não". A diferença entre
+                    não saber e saber que não é o que esta plataforma existe
+                    para reduzir. */}
+                <option value="">Não informado</option>
+                <option value="sim">Sim, prevê continuidade</option>
+                <option value="nao">Não</option>
+              </select>
+            </Campo>
+          </div>
+        </Cartao>
+      </Secao>
+
+      {/* QUEM PARTICIPA ---------------------------------------------------- */}
+      <Secao titulo="Quem participa">
+        <Cartao>
+          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+            As pessoas da outra parte. Marque quem representa a instituição e,
+            depois da reunião, quem de fato compareceu — inclusive quem faltou.
+          </p>
+          <ListaDeParticipantes
+            participantes={form.outraParte}
+            interlocutores={[...catalogo.interlocutores.values()]}
+            aoMudar={(outraParte) => alterar('outraParte', outraParte)}
+          />
+        </Cartao>
+      </Secao>
+
+      {/* MATERIAIS --------------------------------------------------------- */}
+      <Secao titulo="Materiais">
+        <Cartao>
+          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+            Links para SharePoint ou Drive. Material de <strong>apoio</strong> é
+            o que se leva; <strong>obtido</strong> e <strong>produzido</strong>
+            {' '}são o que sai de lá.
+          </p>
+          <ListaDeMateriais
+            materiais={form.materiais}
+            aoMudar={(materiais) => alterar('materiais', materiais)}
+          />
+        </Cartao>
+      </Secao>
+
+      {/* DECLINIO — so quando ha o que declinar -----------------------------
+          A secao inteira aparece com o status `declinado`. Mostra-la sempre
+          convidaria a preencher o motivo de uma recusa que nao houve, e a base
+          passaria a ter motivos de declinio em agendas realizadas. */}
+      {form.status === 'declinado' && (
+        <Secao titulo="Sobre o declínio">
+          <Cartao>
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+              Declinada <strong>pela Aegea</strong> é escolha; declinada pela
+              outra parte é porta que se fechou. Somar as duas num número só
+              apaga a diferença.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+              <Campo rotulo="Quem declinou">
+                <select
+                  style={estiloDeEntrada}
+                  value={form.declinado_por}
+                  onChange={(e) => alterar('declinado_por', e.target.value)}
+                >
+                  <option value="">Não informado</option>
+                  <option value="aegea">A Aegea</option>
+                  <option value="outra_parte">A outra parte</option>
+                </select>
+              </Campo>
+              <CampoDeTexto
+                rotulo="Motivo"
+                valor={form.motivo_declinio}
+                aoMudar={(v) => alterar('motivo_declinio', v)}
+                dica="O backend recusa motivo sem lado: sozinho, ele não diz de onde veio a recusa."
+              />
+            </div>
+          </Cartao>
+        </Secao>
+      )}
+
       <Secao titulo="Porta-vozes e temas">
         <Campo
           rotulo="Porta-vozes"
@@ -684,9 +986,51 @@ function CampoDeDicionario({
 
 /** Converte o formulário no corpo que a API espera: campo vazio vira ausência,
  *  não string vazia — o backend distingue "não informado" de "limpo". */
-function montarCorpo(form: Formulario) {
-  const opcional = (valor: string) => (valor.trim() ? valor.trim() : undefined);
-  const numeroOpcional = (valor: string) => (valor ? Number(valor) : undefined);
+/** O que impede este formulário de ser enviado, em português.
+ *
+ *  Existe para o que o SERVIDOR não tem como recusar de forma útil: material
+ *  sem link seria descartado em silêncio antes de sair da tela, e a pessoa
+ *  veria "registro salvo" com um material a menos.
+ *
+ *  Devolve `null` quando está tudo certo.
+ */
+function impedimentoNoFormulario(form: Formulario): string | null {
+  const incompleto = form.materiais.findIndex(
+    (m) => Boolean(m.titulo.trim()) !== Boolean(m.url.trim()),
+  );
+  if (incompleto >= 0) {
+    return (
+      `O material ${incompleto + 1} está pela metade: título e link são ` +
+      'necessários. Guardar arquivo no painel ainda não existe, então o link ' +
+      'é o que leva ao documento.'
+    );
+  }
+
+  const semPessoa = form.outraParte.findIndex((p) => !p.interlocutor_id);
+  if (semPessoa >= 0) {
+    return `Escolha a pessoa da linha ${semPessoa + 1} em "Quem participa", ou remova a linha.`;
+  }
+
+  return null;
+}
+
+
+function montarCorpo(form: Formulario, paraEdicao = false) {
+  // VAZIO VIRA `null` NA EDIÇÃO, e `undefined` na criação. A diferença decide
+  // se dá para APAGAR um campo.
+  //
+  // O `PATCH` do backend usa `exclude_unset`: campo ausente significa
+  // "preserve", e só `null` limpa. Como `JSON.stringify` remove as chaves
+  // `undefined`, apagar a expectativa na tela devolvia 200 e não apagava nada
+  // — o texto voltava no próximo carregamento, e a pessoa concluía que o
+  // sistema tinha ignorado o gesto.
+  //
+  // Na CRIAÇÃO `undefined` continua certo: não há o que preservar, e omitir
+  // deixa o corpo menor.
+  const vazio = paraEdicao ? null : undefined;
+  const opcional = (valor: string) => (valor.trim() ? valor.trim() : vazio);
+  const ehDeclinada = form.status === 'declinado';
+  const numeroOpcional = (valor: string) => (valor ? Number(valor) : vazio);
 
   const extensao: Record<string, unknown> = {};
   for (const [campo, valor] of Object.entries(form.extensao)) {
@@ -710,7 +1054,9 @@ function montarCorpo(form: Formulario) {
     uf: form.uf,
     status: form.status,
     pauta: form.pauta.trim(),
-    interlocutor_id: opcional(form.interlocutor_id),
+    // `interlocutor_id` NÃO É ENVIADO: o backend o deriva de quem está marcado
+    // como principal na lista. Mandar os dois abriria a porta para eles
+    // discordarem, e é isso que o servidor recusa com 422.
     unidade_negocio_id: numeroOpcional(form.unidade_negocio_id),
     esfera_id: numeroOpcional(form.esfera_id),
     tier: numeroOpcional(form.tier),
@@ -725,6 +1071,383 @@ function montarCorpo(form: Formulario) {
     registro_url: opcional(form.registro_url),
     temas: form.temas,
     participacoes: form.portaVozes.map((id) => ({ pessoa_aegea_id: id, papel: 'porta_voz' })),
-    extensao: Object.keys(extensao).length ? extensao : undefined,
+    extensao: Object.keys(extensao).length ? extensao : vazio,
+
+    // -- o ciclo -------------------------------------------------------------
+    expectativa: opcional(form.expectativa),
+    clima_esperado: opcional(form.clima_esperado),
+    // SÓ COM STATUS `declinado`. A seção some da tela quando o status muda,
+    // mas o que foi digitado continua no estado — e ia junto no corpo. Uma
+    // agenda REALIZADA saía gravada com "declinada pela outra parte", dado que
+    // ninguém vê na tela e que nenhum relatório espera encontrar.
+    //
+    // Não limpo o estado ao trocar o status de propósito: quem marcou
+    // `declinado` por engano e volta atrás perderia o motivo escrito. O texto
+    // fica na tela e só não é enviado.
+    // Fora do status `declinado` os dois vão a `null` na edição: se a pessoa
+    // corrigiu o status de "declinado" para "realizado", a recusa que ficou
+    // gravada antes precisa SAIR do registro.
+    declinado_por: ehDeclinada ? opcional(form.declinado_por) : vazio,
+    motivo_declinio: ehDeclinada ? opcional(form.motivo_declinio) : vazio,
+    origem_interacao_id: opcional(form.origem_interacao_id),
+    // '' vira `undefined` e NAO `false`: nao informado nao e uma resposta.
+    preve_desdobramento:
+      form.preve_desdobramento === '' ? vazio : form.preve_desdobramento === 'sim',
+
+    // O PRINCIPAL VAI NA LISTA, e a coluna e projecao dela — e o contrato que
+    // o backend passou a exigir depois de sete rodadas de revisao. Mandar so
+    // `interlocutor_id` continua funcionando, mas a tela edita a lista.
+    outra_parte: form.outraParte
+      .filter((p) => p.interlocutor_id)
+      .map((p) => ({
+        interlocutor_id: p.interlocutor_id,
+        presenca: p.presenca || undefined,
+        principal: p.principal,
+      })),
+
+    // Sem `filter`: o que impede material pela metade agora é
+    // `impedimentoNoFormulario`, ANTES do envio. Filtrar aqui fazia a linha
+    // sumir depois de um salvamento bem-sucedido — a pessoa preenchia, via
+    // "registro salvo", e o material não estava lá.
+    materiais: form.materiais
+      .filter((m) => m.titulo.trim() || m.url.trim())
+      .map((m) => ({
+        // `id` so quando existe: material novo nao tem, e mandar `undefined`
+        // e o que faz o backend criar em vez de procurar.
+        ...(m.id ? { id: m.id } : {}),
+        momento: m.momento,
+        titulo: m.titulo.trim(),
+        url: m.url.trim(),
+        observacao: opcional(m.observacao),
+      })),
+  };
+}
+
+/** Os participantes da outra parte, com presença e um principal.
+ *
+ *  UMA LISTA, e não um campo de interlocutor mais uma lista de "demais".
+ *  O backend guarda todos na mesma tabela justamente porque a versão anterior
+ *  deixava o principal sem lugar para ter presença — e era ele a pessoa mais
+ *  importante da reunião.
+ *
+ *  A marca de principal é um `radio`, e não um `checkbox`: só um representa a
+ *  outra parte, e o rádio diz isso pela forma. Com caixas de seleção alguém
+ *  marcaria duas e só descobriria no erro do servidor.
+ */
+function ListaDeParticipantes({
+  participantes,
+  interlocutores,
+  aoMudar,
+}: {
+  participantes: ParticipanteNoForm[];
+  interlocutores: { id: string; nome: string }[];
+  aoMudar: (lista: ParticipanteNoForm[]) => void;
+}) {
+  // `name` ÚNICO POR INSTÂNCIA. Fixo, duas listas na mesma página
+  // compartilhariam o grupo de rádio e marcar o principal numa desmarcaria o
+  // da outra. Hoje só existe uma lista; a Ficha vai reusar este componente.
+  const grupo = useId();
+
+  const trocar = (indice: number, mudanca: Partial<ParticipanteNoForm>) =>
+    aoMudar(participantes.map((p, i) => (i === indice ? { ...p, ...mudanca } : p)));
+
+  const marcarPrincipal = (indice: number) =>
+    // Desmarca os outros no mesmo gesto. Deixar isso para o servidor faria a
+    // tela mostrar dois principais até o próximo salvamento.
+    aoMudar(participantes.map((p, i) => ({ ...p, principal: i === indice })));
+
+  return (
+    <>
+      {participantes.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
+          Nenhuma pessoa registrada ainda.
+        </p>
+      )}
+
+      {participantes.map((participante, indice) => (
+        <div
+          key={indice}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 1fr auto auto',
+            gap: 10,
+            alignItems: 'end',
+            marginBottom: 12,
+            paddingBottom: 12,
+            borderBottom: '1px solid var(--borda)',
+          }}
+        >
+          {/* O RÓTULO VISÍVEL só na primeira linha — repeti-lo em todas
+              viraria ruído numa lista de seis pessoas. Mas `Campo` é um
+              `<label>`, e rótulo vazio deixa o controle SEM NOME ACESSÍVEL:
+              quem usa leitor de tela ouviria "caixa de combinação" seis vezes,
+              sem saber do quê. O `aria-label` dá o nome em todas as linhas. */}
+          <Campo rotulo={indice === 0 ? 'Pessoa' : ''}>
+            <select
+              aria-label={`Pessoa ${indice + 1}`}
+              style={estiloDeEntrada}
+              value={participante.interlocutor_id}
+              onChange={(evento) =>
+                trocar(indice, { interlocutor_id: evento.target.value })
+              }
+            >
+              <option value="">Selecione…</option>
+              {interlocutores.map((pessoa) => (
+                <option key={pessoa.id} value={pessoa.id}>
+                  {pessoa.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo rotulo={indice === 0 ? 'Presença' : ''}>
+            <select
+              aria-label={`Presença da pessoa ${indice + 1}`}
+              style={estiloDeEntrada}
+              value={participante.presenca}
+              onChange={(evento) => trocar(indice, { presenca: evento.target.value })}
+            >
+              {PRESENCAS.map((op) => (
+                <option key={op.valor} value={op.valor}>
+                  {op.rotulo}
+                </option>
+              ))}
+            </select>
+          </Campo>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13,
+              paddingBottom: 9,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <input
+              type="radio"
+              name={grupo}
+              // O TEXTO VISÍVEL "Principal" se repete em toda linha, e sozinho
+              // ele é o nome acessível de TODOS os rádios: a árvore de
+              // acessibilidade lia `radio "Principal"` seis vezes, sem dizer de
+              // quem. O `aria-label` traz a linha junto.
+              aria-label={`Pessoa ${indice + 1} representa a outra parte`}
+              checked={participante.principal}
+              onChange={() => marcarPrincipal(indice)}
+            />
+            Principal
+          </label>
+
+          <div style={{ paddingBottom: 4 }}>
+            <Botao
+              variante="secundario"
+              aoClicar={() => aoMudar(participantes.filter((_, i) => i !== indice))}
+              rotuloAcessivel={`Remover a pessoa ${indice + 1}`}
+            >
+              Remover
+            </Botao>
+          </div>
+        </div>
+      ))}
+
+      <Botao
+        aoClicar={() =>
+          aoMudar([
+            ...participantes,
+            { interlocutor_id: '', presenca: '', principal: false },
+          ])
+        }
+      >
+        Acrescentar pessoa
+      </Botao>
+    </>
+  );
+}
+
+/** Os materiais da agenda: apoio antes, obtido e produzido depois.
+ *
+ *  O `id` viaja escondido em cada linha e volta no salvamento. Sem ele o
+ *  backend recria o material e troca a identidade — e a tela perde a
+ *  referência do que estava editando.
+ */
+function ListaDeMateriais({
+  materiais,
+  aoMudar,
+}: {
+  materiais: MaterialNoForm[];
+  aoMudar: (lista: MaterialNoForm[]) => void;
+}) {
+  const trocar = (indice: number, mudanca: Partial<MaterialNoForm>) =>
+    aoMudar(materiais.map((m, i) => (i === indice ? { ...m, ...mudanca } : m)));
+
+  return (
+    <>
+      {materiais.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
+          Nenhum material registrado ainda.
+        </p>
+      )}
+
+      {materiais.map((material, indice) => (
+        <div
+          key={material.id ?? indice}
+          style={{
+            marginBottom: 14,
+            paddingBottom: 14,
+            borderBottom: '1px solid var(--borda)',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, alignItems: 'end' }}>
+            <Campo rotulo={indice === 0 ? 'Momento' : ''}>
+              <select
+                aria-label={`Momento do material ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={material.momento}
+                onChange={(evento) => trocar(indice, { momento: evento.target.value })}
+              >
+                {MOMENTOS.map((op) => (
+                  <option key={op.valor} value={op.valor}>
+                    {op.rotulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo={indice === 0 ? 'Título' : ''}>
+              <input
+                aria-label={`Título do material ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={material.titulo}
+                onChange={(evento) => trocar(indice, { titulo: evento.target.value })}
+                placeholder="Nota técnica do reajuste"
+              />
+            </Campo>
+
+            <div style={{ paddingBottom: 4 }}>
+              <Botao
+                variante="secundario"
+                aoClicar={() => aoMudar(materiais.filter((_, i) => i !== indice))}
+                rotuloAcessivel={`Remover o material ${indice + 1}`}
+              >
+                Remover
+              </Botao>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+            <Campo rotulo="Link">
+              <input
+                aria-label={`Link do material ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={material.url}
+                onChange={(evento) => trocar(indice, { url: evento.target.value })}
+                placeholder="https://sharepoint/… — guardar arquivo no painel ainda não existe"
+              />
+            </Campo>
+            {/* A observação já viajava no corpo e voltava do servidor, e não
+                tinha onde ser escrita: o campo existia e era inalcançável. */}
+            <Campo rotulo="Observação">
+              <input
+                aria-label={`Observação do material ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={material.observacao}
+                onChange={(evento) =>
+                  trocar(indice, { observacao: evento.target.value })
+                }
+                placeholder="Assinada pelas duas partes"
+              />
+            </Campo>
+          </div>
+        </div>
+      ))}
+
+      <Botao
+        aoClicar={() =>
+          aoMudar([
+            ...materiais,
+            { momento: 'apoio', titulo: '', url: '', observacao: '' },
+          ])
+        }
+      >
+        Acrescentar material
+      </Botao>
+    </>
+  );
+}
+
+/** Traduz o que o servidor devolve para o estado do formulário.
+ *
+ *  O caminho de volta de `montarCorpo`, e precisa ser fiel a ele: um campo que
+ *  saia daqui vazio some do registro no primeiro salvamento, sem erro nenhum.
+ *  É a mesma classe de perda silenciosa que a revisão pegou três vezes no
+ *  backend — o dado existe, e a camada do meio o descarta.
+ */
+function paraFormulario(interacao: Interacao): Formulario {
+  const texto = (valor: unknown) => (valor == null ? '' : String(valor));
+
+  const extensao: Record<string, string> = {};
+  for (const [campo, valor] of Object.entries(interacao.extensao ?? {})) {
+    // `mensagens_chave` viaja como lista e é editada como texto com ponto e
+    // vírgula — a mesma convenção que `montarCorpo` desfaz na ida.
+    extensao[campo] = Array.isArray(valor) ? valor.join('; ') : texto(valor);
+  }
+
+  return {
+    frente: interacao.frente,
+    data_interacao: interacao.data_interacao,
+    instituicao_id: texto(interacao.instituicao_id),
+    interlocutor_id: texto(interacao.interlocutor_id),
+    unidade_negocio_id: texto(interacao.unidade_negocio_id),
+    esfera_id: texto(interacao.esfera_id),
+    uf: texto(interacao.uf),
+    tier: texto(interacao.tier),
+    status: texto(interacao.status),
+    clima: texto(interacao.clima),
+    resultado: texto(interacao.resultado),
+    iniciativa: texto(interacao.iniciativa),
+    pauta: texto(interacao.pauta),
+    posicionamento: texto(interacao.posicionamento),
+    relato: texto(interacao.relato),
+    encaminhamentos: texto(interacao.encaminhamentos),
+    pendencias: texto(interacao.pendencias),
+    observacoes: texto(interacao.observacoes),
+    registro_url: texto(interacao.registro_url),
+    temas: interacao.temas ?? [],
+    portaVozes: (interacao.participacoes ?? [])
+      .filter((p) => p.papel === 'porta_voz')
+      .map((p) => p.pessoa_aegea_id),
+    extensao,
+
+    expectativa: texto(interacao.expectativa),
+    clima_esperado: texto(interacao.clima_esperado),
+    declinado_por: texto(interacao.declinado_por),
+    motivo_declinio: texto(interacao.motivo_declinio),
+    origem_interacao_id: texto(interacao.origem_interacao_id),
+    // Três estados na volta também: `null` do servidor é NÃO INFORMADO, e vira
+    // `''` — não `'nao'`. Traduzir nulo para "não" aqui faria toda agenda
+    // antiga passar a afirmar uma decisão que ninguém tomou, no primeiro
+    // salvamento de qualquer campo.
+    preve_desdobramento:
+      interacao.preve_desdobramento == null
+        ? ''
+        : interacao.preve_desdobramento
+          ? 'sim'
+          : 'nao',
+    outraParte: (interacao.outra_parte ?? []).map((p) => ({
+      interlocutor_id: p.interlocutor_id,
+      presenca: texto(p.presenca),
+      principal: Boolean(p.principal),
+    })),
+    materiais: (interacao.materiais ?? []).map((m) => ({
+      // `null` do servidor vira `undefined`: no formulário, "sem id" significa
+      // material NOVO, e é a ausência da chave que faz o backend criar em vez
+      // de procurar. Guardar `null` mandaria `"id": null` no corpo.
+      id: m.id ?? undefined,
+      momento: m.momento,
+      titulo: m.titulo,
+      url: texto(m.url),
+      observacao: texto(m.observacao),
+    })),
   };
 }

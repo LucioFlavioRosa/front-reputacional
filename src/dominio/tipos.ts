@@ -25,6 +25,30 @@ export interface Participacao {
   papel: Papel;
 }
 
+/** Alguém da outra parte numa agenda — o principal inclusive.
+ *
+ *  UMA lista, e não "o interlocutor" mais "os demais": na versão anterior o
+ *  principal ficava fora dela e era o único sem lugar para ter presença.
+ */
+export interface ParticipanteDaOutraParte {
+  interlocutor_id: string;
+  /** `previsto`, `presente`, `ausente` — ou `null`, não informado. */
+  presenca: string | null;
+  /** Quem representa a outra parte. No máximo um por agenda. */
+  principal: boolean;
+}
+
+/** Um documento da agenda. */
+export interface Material {
+  /** Volta no salvamento para o servidor NÃO recriar o material. */
+  id: string | null;
+  /** `apoio` (antes da reunião), `obtido` ou `produzido` (depois). */
+  momento: string;
+  titulo: string;
+  url: string | null;
+  observacao: string | null;
+}
+
 /** Campos específicos de frente. Só um conjunto vem preenchido por vez. */
 export interface Extensao {
   // imprensa
@@ -77,6 +101,29 @@ export interface Interacao {
   extensao: Extensao | null;
   temas: number[];
   participacoes: Participacao[];
+
+  // -- o ciclo da agenda ----------------------------------------------------
+  //
+  // A interação deixou de ser o registro de um fato consumado e passou a ser
+  // uma agenda: pedida, planejada, confirmada ou declinada, realizada, e
+  // desdobrada em outra.
+  //
+  // TODOS ANULÁVEIS, e `null` quer dizer NÃO INFORMADO — nunca "não". Os
+  // registros que vieram de planilha não responderam nada disto, e tratá-los
+  // como negativa inventaria decisões que ninguém tomou.
+  /** O que se esperava, escrito ANTES. Compare com `relato`. */
+  expectativa: string | null;
+  /** O clima previsto, na MESMA escala de `clima` (o real). */
+  clima_esperado: string | null;
+  /** `aegea` ou `outra_parte`. Declinar é escolha; ser declinado, porta fechada. */
+  declinado_por: string | null;
+  motivo_declinio: string | null;
+  /** A agenda que deu origem a esta. Encadeia a evolução da relação. */
+  origem_interacao_id: string | null;
+  /** Só a intenção de continuidade. `null` = não informado. */
+  preve_desdobramento: boolean | null;
+  outra_parte: ParticipanteDaOutraParte[];
+  materiais: Material[];
   fonte: string;
   visivel: boolean;
   criado_por: string | null;
