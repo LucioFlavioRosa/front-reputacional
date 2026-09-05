@@ -30,7 +30,8 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { extensaoAoTrocarDeFrente } from '@/dominio/frentes';
-import { hojeLocal } from '@/dominio/formato';
+import { hojeLocal, tituloDaAgenda } from '@/dominio/formato';
+import { nomesDosTemas } from '@/dominio/derivacoes';
 import { FRENTES } from '@/dominio/tipos';
 import type { ArquivoDoMaterial, Frente, Interacao } from '@/dominio/tipos';
 
@@ -57,7 +58,6 @@ interface Formulario {
   clima: string;
   resultado: string;
   iniciativa: string;
-  pauta: string;
   posicionamento: string;
   relato: string;
   encaminhamentos: string;
@@ -197,11 +197,14 @@ const VAZIO: Formulario = {
   esfera_id: '',
   uf: '',
   tier: '',
-  status: '',
+  //: SOLICITADO, e nao vazio nem `agendado`. Uma agenda recem-criada foi
+  //: PEDIDA; dizer "agendado" afirmaria que existe data marcada com a outra
+  //: parte, coisa que ninguem confirmou — e a distancia entre pedir e conseguir
+  //: marcar e metade do que este painel existe para medir.
+  status: 'solicitado',
   clima: '',
   resultado: '',
   iniciativa: '',
-  pauta: '',
   posicionamento: '',
   relato: '',
   encaminhamentos: '',
@@ -696,7 +699,10 @@ export function Cadastro({
                   .filter((agenda) => agenda.id !== id)
                   .map((agenda) => (
                     <option key={agenda.id} value={agenda.id}>
-                      {agenda.data_interacao} · {agenda.pauta.slice(0, 60)}
+                      {agenda.data_interacao} ·{' '}
+                      {tituloDaAgenda(agenda, (ids) =>
+                        nomesDosTemas(catalogo, ids),
+                      ).slice(0, 60)}
                     </option>
                   ))}
               </select>
@@ -816,17 +822,6 @@ export function Cadastro({
 
       <Secao titulo="Conteúdo">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Campo
-            rotulo="Pauta"
-            obrigatorio
-            dica="O assunto tratado, em palavras. É o que identifica o registro na base."
-          >
-            <textarea
-              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
-              value={form.pauta}
-              onChange={(evento) => alterar('pauta', evento.target.value)}
-            />
-          </Campo>
           {(
             [
               ['posicionamento', 'Posicionamento da companhia'],
@@ -1000,11 +995,18 @@ export function Cadastro({
           aoClicar={enviar}
           desabilitado={
             enviando ||
+            // SO O QUE IDENTIFICA A AGENDA.
+            //
+            // Exigia tambem `pauta` e `status`, que moram em secoes sobre o que
+            // ainda nao aconteceu — para criar uma agenda era preciso descer a
+            // tela inteira. Quem pede uma agenda de manha sabe com quem e
+            // quando; nao sabe ainda o que vai sair dela.
+            //
+            // O resto vira EDICAO de um registro que ja existe — e e so depois
+            // de existir que da para anexar arquivo, porque a pasta e dele.
             !form.data_interacao ||
-            !form.pauta.trim() ||
             !form.instituicao_id ||
-            !form.uf ||
-            !form.status
+            !form.uf
           }
         >
           {enviando ? 'Salvando…' : id ? 'Salvar alterações' : 'Salvar agenda'}
@@ -1180,7 +1182,16 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     instituicao_id: form.instituicao_id,
     uf: form.uf,
     status: form.status,
-    pauta: form.pauta.trim(),
+    // A PAUTA NAO VIAJA MAIS, e a ausencia e o ponto.
+    //
+    // O campo saiu da tela, e eu tinha escrito `pauta: vazio` seguindo a regra
+    // dos demais campos — que na EDICAO vale `null`, e `null` no PATCH quer
+    // dizer APAGUE. Salvar qualquer campo de uma das 60 agendas vindas da
+    // planilha teria destruido a pauta dela, que e a unica descricao em
+    // palavras que esses registros tem.
+    //
+    // Campo AUSENTE o backend le como "preserve" (`exclude_unset`). Uma tela
+    // que nao edita um campo nao deve ter opiniao sobre ele.
     // `interlocutor_id` NÃO É ENVIADO: o backend o deriva de quem está marcado
     // como principal na lista. Mandar os dois abriria a porta para eles
     // discordarem, e é isso que o servidor recusa com 422.
@@ -1845,7 +1856,6 @@ function paraFormulario(interacao: Interacao): Formulario {
     clima: texto(interacao.clima),
     resultado: texto(interacao.resultado),
     iniciativa: texto(interacao.iniciativa),
-    pauta: texto(interacao.pauta),
     posicionamento: texto(interacao.posicionamento),
     relato: texto(interacao.relato),
     encaminhamentos: texto(interacao.encaminhamentos),

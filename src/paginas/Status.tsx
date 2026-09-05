@@ -14,7 +14,13 @@ import {
   Selo,
   Vazio,
 } from '@/componentes/basicos';
-import { dataCompleta, numero, percentual, truncar } from '@/dominio/formato';
+import {
+  dataCompleta,
+  numero,
+  percentual,
+  tituloDaAgenda,
+  truncar,
+} from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
   CORES_DE_GRUPO,
@@ -30,6 +36,7 @@ import {
   resolutividade,
   rotuloDeCodigo,
   rotuloDeRelevancia,
+  nomesDosTemas,
 } from '@/dominio/derivacoes';
 
 export function Status({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
@@ -216,7 +223,11 @@ export function Status({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void })
                     {interacao.tier ? ` · ${rotuloDeRelevancia(catalogo, interacao.tier)}` : ''}
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.55 }}>
-                    {truncar(interacao.pendencias || interacao.pauta, 220)}
+                    {truncar(
+                      interacao.pendencias ||
+                        tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
+                      220,
+                    )}
                   </p>
                 </div>
               </div>

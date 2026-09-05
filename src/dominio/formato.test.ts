@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  tituloDaAgenda,
   chaveDoMes,
   dataCompleta,
   diasDesde,
@@ -100,5 +101,51 @@ describe('urlSegura', () => {
     expect(urlSegura(null)).toBeNull();
     expect(urlSegura(undefined)).toBeNull();
     expect(urlSegura('')).toBeNull();
+  });
+});
+
+describe('como a agenda se chama numa lista', () => {
+  // A pauta deixou de ser obrigatória, e ela aparece em SEIS telas. Resolver o
+  // fallback em cada uma faria as seis divergirem — já aconteceu três vezes
+  // neste projeto com outras duas verdades.
+  const temas = (ids: number[]) =>
+    ids.map((id) => ({ 1: 'Reajuste tarifário', 2: 'Outorga' })[id] ?? '');
+
+  it('usa a pauta quando ela existe', () => {
+    expect(
+      tituloDaAgenda(
+        { pauta: 'Reunião sobre o contrato', temas: [1], expectativa: 'x' },
+        temas,
+      ),
+    ).toBe('Reunião sobre o contrato');
+  });
+
+  it('cai nos temas quando não há pauta', () => {
+    expect(
+      tituloDaAgenda({ pauta: null, temas: [1, 2], expectativa: null }, temas),
+    ).toBe('Reajuste tarifário, Outorga');
+  });
+
+  it('cai na expectativa quando não há pauta nem temas', () => {
+    expect(
+      tituloDaAgenda(
+        { pauta: null, temas: [], expectativa: 'Sair com o cronograma' },
+        temas,
+      ),
+    ).toBe('Sair com o cronograma');
+  });
+
+  it('diz que falta preencher, e não finge que não há assunto', () => {
+    expect(
+      tituloDaAgenda({ pauta: null, temas: [], expectativa: null }, temas),
+    ).toBe('Sem assunto informado');
+  });
+
+  it('trata pauta só de espaços como ausente', () => {
+    // O banco aceita `'   '`, e uma linha da Base com três espaços de título é
+    // indistinguível de um defeito.
+    expect(
+      tituloDaAgenda({ pauta: '   ', temas: [1], expectativa: null }, temas),
+    ).toBe('Reajuste tarifário');
   });
 });

@@ -5,7 +5,7 @@ import { usePainel } from '@/estado/painel';
 import { registrarExportacao } from '@/api/cliente';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao, Carregando, ChipDeFrente, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
-import { dataCompleta, numero, truncar } from '@/dominio/formato';
+import { dataCompleta, numero, tituloDaAgenda, truncar } from '@/dominio/formato';
 import { rotuloDeAbrangencia } from '@/dominio/frentes';
 import type { Interacao } from '@/dominio/tipos';
 import {
@@ -155,7 +155,7 @@ function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
     entidade: nomeDaInstituicao(catalogo, interacao.instituicao_id),
     unidade: nomeDaUnidade(catalogo, interacao.unidade_negocio_id),
     interlocutor: nomeDoInterlocutor(catalogo, interacao.interlocutor_id),
-    pauta: interacao.pauta,
+    pauta: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
     uf: rotuloDeAbrangencia(interacao.uf),
     tier: rotuloDeRelevancia(catalogo, interacao.tier),
     status: rotuloDeCodigo(catalogo, 'status', interacao.status),

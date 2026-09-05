@@ -140,3 +140,31 @@ export function iniciais(nome: string): string {
   if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
+
+
+/** Como esta agenda se chama numa lista.
+ *
+ *  UM LUGAR SO, e nao um ternario em cada tela. A pauta deixou de ser
+ *  obrigatoria, e ela aparece na Base, na exportacao, em Frentes, no Relatorio,
+ *  em Status e na escolha de agenda de origem — seis lugares que, resolvendo
+ *  cada um por si, divergiriam. Ja aconteceu tres vezes neste projeto.
+ *
+ *  A ordem do fallback vai do mais especifico ao mais generico: a pauta, quando
+ *  existe, e o que alguem escreveu de proprio punho sobre aquela agenda; os
+ *  temas sao a mesma coisa classificada; e a expectativa diz o que se quer
+ *  dela. Restando nada, o rotulo diz que falta preencher — e nao finge que a
+ *  agenda nao tem assunto.
+ */
+export function tituloDaAgenda(
+  interacao: { pauta: string | null; temas: number[]; expectativa: string | null },
+  nomesDeTemas: (ids: number[]) => string[],
+): string {
+  if (interacao.pauta?.trim()) return interacao.pauta;
+
+  const temas = nomesDeTemas(interacao.temas ?? []);
+  if (temas.length) return temas.join(', ');
+
+  if (interacao.expectativa?.trim()) return interacao.expectativa;
+
+  return 'Sem assunto informado';
+}

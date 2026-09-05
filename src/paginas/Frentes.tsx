@@ -24,6 +24,7 @@ import {
   rotuloDoMes,
   truncar,
   variacao,
+  tituloDaAgenda,
 } from '@/dominio/formato';
 import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import { FRENTES } from '@/dominio/tipos';
@@ -35,6 +36,7 @@ import {
   ranking,
   serieMensal,
   temasMaisRecorrentes,
+  nomesDosTemas,
 } from '@/dominio/derivacoes';
 
 export function Frentes({
@@ -218,7 +220,7 @@ export function Frentes({
                     {truncar(nomeDaInstituicao(catalogo, interacao.instituicao_id), 28)}
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--cinza-3)', flex: 1 }}>
-                    {truncar(interacao.pauta, 90)}
+                    {truncar(tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)), 90)}
                   </span>
                 </button>
               ))}

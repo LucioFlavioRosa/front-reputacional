@@ -15,7 +15,7 @@ import { usePainel } from '@/estado/painel';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Ranking } from '@/graficos/Ranking';
 import { Botao, Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
-import { dataCompleta, numero, percentual } from '@/dominio/formato';
+import { dataCompleta, numero, percentual, tituloDaAgenda } from '@/dominio/formato';
 import { ROTULOS_DE_FRENTE, ROTULOS_DE_GRUPO } from '@/dominio/frentes';
 import {
   filaDePendencias,
@@ -24,6 +24,7 @@ import {
   ranking,
   resolutividade,
   resultados,
+  nomesDosTemas,
 } from '@/dominio/derivacoes';
 
 const SECOES = [
@@ -301,7 +302,7 @@ export function GerarRelatorio({ aoFechar }: { aoFechar: () => void }) {
                         {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                       </td>
                       <td style={{ padding: '7px 4px', color: 'var(--cinza-3)' }}>
-                        {interacao.pauta}
+                        {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
                       </td>
                     </tr>
                   ))}
@@ -327,7 +328,7 @@ export function GerarRelatorio({ aoFechar }: { aoFechar: () => void }) {
                       {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                     </td>
                     <td style={{ padding: '6px 4px', color: 'var(--cinza-3)' }}>
-                      {interacao.pauta}
+                      {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
                     </td>
                   </tr>
                 ))}

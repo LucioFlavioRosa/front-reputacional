@@ -113,7 +113,10 @@ export interface Interacao {
   clima: string | null;
   resultado: string | null;
   iniciativa: string | null;
-  pauta: string;
+  /** O assunto em palavras. NULO no que foi criado pela tela depois da 0013 —
+   *  ali quem diz o assunto sao `temas` e `expectativa`. Preenchida no que veio
+   *  da planilha. Para exibir, use `tituloDaAgenda`. */
+  pauta: string | null;
   posicionamento: string | null;
   relato: string | null;
   encaminhamentos: string | null;
