@@ -63,7 +63,7 @@ interface Formulario {
   observacoes: string;
   registro_url: string;
   temas: number[];
-  portaVozes: string[];
+  aegea: ParticipanteAegeaNoForm[];
   extensao: Record<string, string>;
 
   // -- o ciclo da agenda ---------------------------------------------------
@@ -83,6 +83,24 @@ interface Formulario {
   preve_desdobramento: '' | 'sim' | 'nao';
   outraParte: ParticipanteNoForm[];
   materiais: MaterialNoForm[];
+}
+
+/** Alguem da Aegea nesta agenda.
+ *
+ *  Era `string[]`, so os ids dos porta-vozes. O backend guarda PAPEL e
+ *  PRESENCA desde o comeco (`ParticipacaoAegea`), e a tela descartava os dois:
+ *  mandava toda participacao como `porta_voz` sem presenca. Ninguem perdeu
+ *  nada ainda — as 72 participacoes do banco sao todas assim — mas abrir os
+ *  campos na tela sem consertar a ida-e-volta faria o recurso apagar a si
+ *  mesmo no salvamento seguinte.
+ */
+interface ParticipanteAegeaNoForm {
+  pessoa_aegea_id: string;
+  //: 'porta_voz' fala pela companhia e conta no painel de exposicao; 'equipe'
+  //: esteve na sala e nao conta. Sao papeis diferentes, nao graus.
+  papel: string;
+  //: '' = nao informado. Ver `PRESENCAS` — as mesmas dos dois lados.
+  presenca: string;
 }
 
 /** Alguem da outra parte nesta agenda. */
@@ -116,6 +134,17 @@ const PRESENCAS: { valor: string; rotulo: string }[] = [
   { valor: 'ausente', rotulo: 'Faltou' },
 ];
 
+/** Os dois papeis de quem representa a Aegea.
+ *
+ *  So `porta_voz` conta no painel de exposicao (`interacao.py:326`). Marcar
+ *  alguem como `equipe` nao e rebaixa-lo: e dizer que ele esteve na sala sem
+ *  falar pela companhia, que e informacao diferente e igualmente util.
+ */
+const PAPEIS: { valor: string; rotulo: string }[] = [
+  { valor: 'porta_voz', rotulo: 'Porta-voz' },
+  { valor: 'equipe', rotulo: 'Equipe' },
+];
+
 /** Os tres momentos do material. Apoio e antes; os outros dois, depois. */
 const MOMENTOS: { valor: string; rotulo: string }[] = [
   { valor: 'apoio', rotulo: 'Apoio (antes da reuniao)' },
@@ -144,7 +173,7 @@ const VAZIO: Formulario = {
   observacoes: '',
   registro_url: '',
   temas: [],
-  portaVozes: [],
+  aegea: [],
   extensao: {},
   expectativa: '',
   clima_esperado: '',
@@ -469,31 +498,16 @@ export function Cadastro({
           </Campo>
         </div>
 
-        {/* O ASSUNTO IDENTIFICA A AGENDA, ENTAO MORA NA IDENTIFICACAO.
-            A pauta estava em "Conteúdo", entre relato e encaminhamentos — o
-            que se escreve DEPOIS da reunião. Mas ela é o que se sabe primeiro:
-            é por ela que se pede a agenda, e é ela que nomeia o registro na
-            base. Estava no lugar errado desde sempre.
-
-            Pauta e Temas são a mesma pergunta em duas precisões: o assunto em
-            palavras, e o assunto classificado — o segundo é o que o painel
-            consegue somar. Ficam juntos para não se contradizerem. */}
         <div style={{ marginTop: 16 }}>
-          <Campo
-            rotulo="Pauta"
-            obrigatorio
-            dica="O assunto a ser tratado. É o que identifica o registro na base."
-          >
-            <textarea
-              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
-              value={form.pauta}
-              onChange={(evento) => alterar('pauta', evento.target.value)}
-            />
-          </Campo>
-        </div>
+          {/* O ASSUNTO NA IDENTIFICACAO, EM UM CAMPO SO.
+              A pauta esteve aqui junto por uma passada, como "o assunto em
+              palavras" ao lado do "assunto classificado". Duas caixas pedindo
+              a mesma coisa em precisões diferentes, no mesmo lugar, convidam a
+              escrever duas versões do assunto — e a base passa a ter registros
+              cujo título e cujos temas discordam. A pauta voltou para
+              "Conteúdo".
 
-        <div style={{ marginTop: 16 }}>
-          {/* "Temas", e nao "Assuntos": a ficha, o painel de frentes e o
+              "Temas", e nao "Assuntos": a ficha, o painel de frentes e o
               relatório chamam assim. Um nome só aqui dividiria o vocabulário —
               a pessoa marcaria "assunto" e procuraria por "tema". */}
           <Campo rotulo="Temas" dica="O mesmo assunto, classificado — é assim que o painel soma.">
@@ -674,67 +688,52 @@ export function Cadastro({
           quem senta nesta reunião — e respondê-la em dois lugares distantes
           fazia a metade Aegea ser esquecida com frequência.
 
-          Os dois lados NÃO têm a mesma forma, e a tela não finge que têm: os
-          porta-vozes são um conjunto fechado da casa, escolhido por chip; a
-          outra parte é uma lista aberta, com presença e com quem representa a
-          instituição. Presença só existe de um lado porque só de um lado
-          alguém pode faltar sem que a reunião deixe de acontecer. */}
-      <Secao titulo="Quem participa">
-        <Cartao>
-          <div className="grade grade--mesa" style={{ gap: 24 }}>
-            <Campo
-              rotulo="Pela Aegea"
-              dica="Vários são permitidos: o registro conta para cada um no painel de exposição."
-            >
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                {[...catalogo.pessoas.values()]
-                  .filter((pessoa) => pessoa.eh_porta_voz)
-                  .map((pessoa) => {
-                    const ativo = form.portaVozes.includes(pessoa.id);
-                    return (
-                      <Chip
-                        key={pessoa.id}
-                        rotulo={pessoa.nome}
-                        ativo={ativo}
-                        fundo={ativo ? 'var(--azul-mar)' : 'var(--bg-trilho)'}
-                        texto={ativo ? 'var(--branco)' : 'var(--cinza-3)'}
-                        aoClicar={() =>
-                          alterar(
-                            'portaVozes',
-                            ativo
-                              ? form.portaVozes.filter((id) => id !== pessoa.id)
-                              : [...form.portaVozes, pessoa.id],
-                          )
-                        }
-                      />
-                    );
-                  })}
-              </div>
-            </Campo>
+          O MESMO GESTO NOS DOIS LADOS. A Aegea entrava por chips e a outra
+          parte por linhas — duas gramáticas para a mesma pergunta. Pior: a
+          metade que usava chips não tinha onde registrar presença, e o backend
+          guardava esse campo desde sempre. Quem representou a Aegea e faltou à
+          reunião era um fato que o banco aceitava e a tela não deixava contar.
 
-            <div>
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'var(--cinza-3)',
-                  margin: '0 0 5px',
-                }}
-              >
-                Pela outra parte
-              </p>
-              <p style={{ fontSize: 11, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
-                Marque quem representa a instituição e, depois da reunião, quem
-                compareceu — inclusive quem faltou.
-              </p>
-              <ListaDeParticipantes
-                participantes={form.outraParte}
-                interlocutores={[...catalogo.interlocutores.values()]}
-                aoMudar={(outraParte) => alterar('outraParte', outraParte)}
-              />
-            </div>
-          </div>
-        </Cartao>
+          O que difere é só a coluna do meio, porque as duas coisas são
+          diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
+          pessoa REPRESENTA a instituição. Por isso continuam dois componentes,
+          e não um com bandeirinha. */}
+      <Secao titulo="Quem participa">
+        {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
+            o que diz que são partes distintas da mesma mesa: num cartão só, as
+            duas listas leriam como uma lista longa com dois títulos, e é
+            exatamente a distinção que importa aqui. */}
+        <div className="grade grade--mesa" style={{ gap: 16 }}>
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela Aegea
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Quem fala pela companhia conta no painel de exposição; quem
+              acompanha, não.
+            </p>
+            <ListaDaAegea
+              participantes={form.aegea}
+              pessoas={[...catalogo.pessoas.values()]}
+              aoMudar={(aegea) => alterar('aegea', aegea)}
+            />
+          </Cartao>
+
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela outra parte
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Marque quem representa a instituição e, depois da reunião, quem
+              compareceu — inclusive quem faltou.
+            </p>
+            <ListaDeParticipantes
+              participantes={form.outraParte}
+              interlocutores={[...catalogo.interlocutores.values()]}
+              aoMudar={(outraParte) => alterar('outraParte', outraParte)}
+            />
+          </Cartao>
+        </div>
       </Secao>
 
       {/* MATERIAIS --------------------------------------------------------- */}
@@ -767,6 +766,17 @@ export function Cadastro({
 
       <Secao titulo="Conteúdo">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Campo
+            rotulo="Pauta"
+            obrigatorio
+            dica="O assunto tratado, em palavras. É o que identifica o registro na base."
+          >
+            <textarea
+              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
+              value={form.pauta}
+              onChange={(evento) => alterar('pauta', evento.target.value)}
+            />
+          </Campo>
           {(
             [
               ['posicionamento', 'Posicionamento da companhia'],
@@ -1011,7 +1021,37 @@ function impedimentoNoFormulario(form: Formulario): string | null {
 
   const semPessoa = form.outraParte.findIndex((p) => !p.interlocutor_id);
   if (semPessoa >= 0) {
-    return `Escolha a pessoa da linha ${semPessoa + 1} em "Quem participa", ou remova a linha.`;
+    return `Escolha a pessoa da linha ${semPessoa + 1} em "Pela outra parte", ou remova a linha.`;
+  }
+
+  // A MESMA GUARDA DO OUTRO LADO DA MESA.
+  //
+  // Ela existia só para a outra parte. Do lado da Aegea, `montarCorpo` filtra
+  // a linha sem pessoa escolhida — e filtrar em silêncio é pior que recusar:
+  // a tela diria "Alterações salvas" e a linha que a pessoa acabou de
+  // acrescentar teria sumido do registro, sem erro e sem pista.
+  const semPessoaAegea = form.aegea.findIndex((p) => !p.pessoa_aegea_id);
+  if (semPessoaAegea >= 0) {
+    return `Escolha a pessoa da linha ${semPessoaAegea + 1} em "Pela Aegea", ou remova a linha.`;
+  }
+
+  // O DOMÍNIO RECUSA A MESMA PESSOA NO MESMO PAPEL, e sem isto a tela deixava
+  // montar o estado e só descobria no 422 do servidor — mensagem de servidor
+  // para um erro que a tela via se formar.
+  //
+  // A pessoa DUAS VEZES EM PAPÉIS DIFERENTES continua permitida, e é o
+  // backend que decide isso: `(pessoa, papel)` é a chave. Barrar aqui o que lá
+  // é válido seria a tela inventando uma regra própria.
+  const vistos = new Set<string>();
+  for (const [indice, p] of form.aegea.entries()) {
+    const chave = `${p.pessoa_aegea_id}|${p.papel}`;
+    if (vistos.has(chave)) {
+      return (
+        `A pessoa da linha ${indice + 1} em "Pela Aegea" já está na lista com ` +
+        'o mesmo papel. Mude o papel de uma delas, ou remova a linha.'
+      );
+    }
+    vistos.add(chave);
   }
 
   return null;
@@ -1073,7 +1113,22 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     observacoes: opcional(form.observacoes),
     registro_url: opcional(form.registro_url),
     temas: form.temas,
-    participacoes: form.portaVozes.map((id) => ({ pessoa_aegea_id: id, papel: 'porta_voz' })),
+    // LINHA INCOMPLETA NAO VIAJA — mas quem AVISA e
+    // `impedimentoNoFormulario`, e nao este filtro.
+    //
+    // Sozinho, ele descartava a linha em silencio: a tela dizia "Alteracoes
+    // salvas" e a linha recem-acrescentada sumia do registro. O filtro fica
+    // como ultima barreira, para uma linha vazia nunca virar
+    // `pessoa_aegea_id: ''` num 422 do servidor.
+    participacoes: form.aegea
+      .filter((p) => p.pessoa_aegea_id)
+      .map((p) => ({
+        pessoa_aegea_id: p.pessoa_aegea_id,
+        papel: p.papel,
+        //: '' e NAO INFORMADO, e vira `null` — nunca 'previsto'. A diferenca
+        //: entre nao saber e saber e o que esta plataforma existe para reduzir.
+        presenca: p.presenca || null,
+      })),
     // EXTENSÃO VAZIA NÃO É EXTENSÃO AUSENTE, e a diferença apaga linha.
     //
     // `extensao` acima é remontada só com os valores preenchidos, então um
@@ -1152,6 +1207,128 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
  *  outra parte, e o rádio diz isso pela forma. Com caixas de seleção alguém
  *  marcaria duas e só descobriria no erro do servidor.
  */
+/** Quem da Aegea senta nesta agenda.
+ *
+ *  Espelha `ListaDeParticipantes` de propósito: acrescentar alguém é o mesmo
+ *  gesto dos dois lados da mesa. Antes, a Aegea entrava por chips e a outra
+ *  parte por linhas — duas gramáticas para a mesma pergunta, e a metade que
+ *  usava chips não tinha onde registrar presença.
+ *
+ *  A coluna do meio é o que difere: aqui é o PAPEL (fala pela companhia ou
+ *  acompanha), lá é qual pessoa REPRESENTA a instituição. Não são a mesma
+ *  ideia, e por isso os dois lados não viraram um componente só.
+ */
+function ListaDaAegea({
+  participantes,
+  pessoas,
+  aoMudar,
+}: {
+  participantes: ParticipanteAegeaNoForm[];
+  pessoas: { id: string; nome: string; eh_porta_voz: boolean }[];
+  aoMudar: (lista: ParticipanteAegeaNoForm[]) => void;
+}) {
+  const trocar = (indice: number, mudanca: Partial<ParticipanteAegeaNoForm>) =>
+    aoMudar(participantes.map((p, i) => (i === indice ? { ...p, ...mudanca } : p)));
+
+  return (
+    <>
+      {participantes.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
+          Ninguém da Aegea ainda. Acrescente quem representa a companhia nesta
+          agenda.
+        </p>
+      )}
+
+      {participantes.map((participante, indice) => (
+        <div key={indice} className="linha-participante">
+          {/* Rótulo visível só na primeira linha, `aria-label` em todas: sem
+              ele a árvore de acessibilidade lê "caixa de combinação" seis
+              vezes sem dizer de quê. Mesma razão da outra lista. */}
+          <Campo rotulo={indice === 0 ? 'Pessoa' : ''}>
+            <select
+              aria-label={`Pessoa da Aegea ${indice + 1}`}
+              style={estiloDeEntrada}
+              value={participante.pessoa_aegea_id}
+              onChange={(evento) => {
+                // O PAPEL SEGUE QUEM FOI ESCOLHIDO. `eh_porta_voz` já diz quem
+                // fala pela companhia; deixar o padrão em 'porta_voz' para
+                // todo mundo faria alguém da equipe entrar contando no painel
+                // de exposição sem ninguém ter decidido isso. Continua
+                // editável — é um padrão, não uma trava.
+                const pessoa = pessoas.find((p) => p.id === evento.target.value);
+                trocar(indice, {
+                  pessoa_aegea_id: evento.target.value,
+                  papel: pessoa?.eh_porta_voz ? 'porta_voz' : 'equipe',
+                });
+              }}
+            >
+              <option value="">Selecione…</option>
+              {pessoas.map((pessoa) => (
+                <option key={pessoa.id} value={pessoa.id}>
+                  {pessoa.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+
+          <div style={{ paddingBottom: 4 }}>
+            <Botao
+              variante="secundario"
+              aoClicar={() => aoMudar(participantes.filter((_, i) => i !== indice))}
+              rotuloAcessivel={`Remover a pessoa da Aegea ${indice + 1}`}
+            >
+              Remover
+            </Botao>
+          </div>
+
+          <div className="linha-participante__miudos">
+            <Campo rotulo={indice === 0 ? 'Papel' : ''}>
+              <select
+                aria-label={`Papel da pessoa da Aegea ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={participante.papel}
+                onChange={(evento) => trocar(indice, { papel: evento.target.value })}
+              >
+                {PAPEIS.map((op) => (
+                  <option key={op.valor} value={op.valor}>
+                    {op.rotulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo={indice === 0 ? 'Presença' : ''}>
+              <select
+                aria-label={`Presença da pessoa da Aegea ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={participante.presenca}
+                onChange={(evento) => trocar(indice, { presenca: evento.target.value })}
+              >
+                {PRESENCAS.map((op) => (
+                  <option key={op.valor} value={op.valor}>
+                    {op.rotulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
+        </div>
+      ))}
+
+      <Botao
+        aoClicar={() =>
+          aoMudar([
+            ...participantes,
+            { pessoa_aegea_id: '', papel: 'porta_voz', presenca: '' },
+          ])
+        }
+      >
+        Acrescentar pessoa
+      </Botao>
+    </>
+  );
+}
+
 function ListaDeParticipantes({
   participantes,
   interlocutores,
@@ -1184,18 +1361,7 @@ function ListaDeParticipantes({
       )}
 
       {participantes.map((participante, indice) => (
-        <div
-          key={indice}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr auto auto',
-            gap: 10,
-            alignItems: 'end',
-            marginBottom: 12,
-            paddingBottom: 12,
-            borderBottom: '1px solid var(--borda)',
-          }}
-        >
+        <div key={indice} className="linha-participante">
           {/* O RÓTULO VISÍVEL só na primeira linha — repeti-lo em todas
               viraria ruído numa lista de seis pessoas. Mas `Campo` é um
               `<label>`, e rótulo vazio deixa o controle SEM NOME ACESSÍVEL:
@@ -1219,45 +1385,6 @@ function ListaDeParticipantes({
             </select>
           </Campo>
 
-          <Campo rotulo={indice === 0 ? 'Presença' : ''}>
-            <select
-              aria-label={`Presença da pessoa ${indice + 1}`}
-              style={estiloDeEntrada}
-              value={participante.presenca}
-              onChange={(evento) => trocar(indice, { presenca: evento.target.value })}
-            >
-              {PRESENCAS.map((op) => (
-                <option key={op.valor} value={op.valor}>
-                  {op.rotulo}
-                </option>
-              ))}
-            </select>
-          </Campo>
-
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              paddingBottom: 9,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <input
-              type="radio"
-              name={grupo}
-              // O TEXTO VISÍVEL "Principal" se repete em toda linha, e sozinho
-              // ele é o nome acessível de TODOS os rádios: a árvore de
-              // acessibilidade lia `radio "Principal"` seis vezes, sem dizer de
-              // quem. O `aria-label` traz a linha junto.
-              aria-label={`Pessoa ${indice + 1} representa a outra parte`}
-              checked={participante.principal}
-              onChange={() => marcarPrincipal(indice)}
-            />
-            Principal
-          </label>
-
           <div style={{ paddingBottom: 4 }}>
             <Botao
               variante="secundario"
@@ -1266,6 +1393,47 @@ function ListaDeParticipantes({
             >
               Remover
             </Botao>
+          </div>
+
+          <div className="linha-participante__miudos">
+            <Campo rotulo={indice === 0 ? 'Presença' : ''}>
+              <select
+                aria-label={`Presença da pessoa ${indice + 1}`}
+                style={estiloDeEntrada}
+                value={participante.presenca}
+                onChange={(evento) => trocar(indice, { presenca: evento.target.value })}
+              >
+                {PRESENCAS.map((op) => (
+                  <option key={op.valor} value={op.valor}>
+                    {op.rotulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                paddingBottom: 9,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <input
+                type="radio"
+                name={grupo}
+                // O TEXTO VISÍVEL "Principal" se repete em toda linha, e sozinho
+                // ele é o nome acessível de TODOS os rádios: a árvore de
+                // acessibilidade lia `radio "Principal"` seis vezes, sem dizer de
+                // quem. O `aria-label` traz a linha junto.
+                aria-label={`Pessoa ${indice + 1} representa a outra parte`}
+                checked={participante.principal}
+                onChange={() => marcarPrincipal(indice)}
+              />
+              Principal
+            </label>
           </div>
         </div>
       ))}
@@ -1433,9 +1601,16 @@ function paraFormulario(interacao: Interacao): Formulario {
     observacoes: texto(interacao.observacoes),
     registro_url: texto(interacao.registro_url),
     temas: interacao.temas ?? [],
-    portaVozes: (interacao.participacoes ?? [])
-      .filter((p) => p.papel === 'porta_voz')
-      .map((p) => p.pessoa_aegea_id),
+    // SEM FILTRAR POR PAPEL. A versao anterior so trazia de volta os
+    // `porta_voz`, e `montarCorpo` remandava a lista inteira: salvar um
+    // registro que tivesse alguem como `equipe` o APAGARIA, sem aviso. Hoje
+    // nao ha nenhum assim no banco (72 participacoes, todas porta_voz), mas a
+    // tela passa a criar — seria um defeito nascendo junto com o recurso.
+    aegea: (interacao.participacoes ?? []).map((p) => ({
+      pessoa_aegea_id: p.pessoa_aegea_id,
+      papel: p.papel,
+      presenca: p.presenca ?? '',
+    })),
     extensao,
 
     expectativa: texto(interacao.expectativa),

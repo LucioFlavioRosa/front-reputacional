@@ -275,8 +275,8 @@ describe('ranking', () => {
     const dados = [
       interacao({
         participacoes: [
-          { pessoa_aegea_id: 'a1', papel: 'porta_voz' },
-          { pessoa_aegea_id: 'a2', papel: 'porta_voz' },
+          { pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null },
+          { pessoa_aegea_id: 'a2', papel: 'porta_voz', presenca: null },
         ],
       }),
     ];
@@ -289,8 +289,8 @@ describe('ranking', () => {
     const dados = [
       interacao({
         participacoes: [
-          { pessoa_aegea_id: 'a1', papel: 'porta_voz' },
-          { pessoa_aegea_id: 'a2', papel: 'equipe' },
+          { pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null },
+          { pessoa_aegea_id: 'a2', papel: 'equipe', presenca: null },
         ],
       }),
     ];
@@ -454,8 +454,8 @@ describe('exposicaoDePortaVozes', () => {
     const dados = [
       interacao({
         participacoes: [
-          { pessoa_aegea_id: 'a1', papel: 'porta_voz' },
-          { pessoa_aegea_id: 'a2', papel: 'porta_voz' },
+          { pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null },
+          { pessoa_aegea_id: 'a2', papel: 'porta_voz', presenca: null },
         ],
       }),
     ];
@@ -468,11 +468,11 @@ describe('exposicaoDePortaVozes', () => {
     const dados = [
       interacao({
         participacoes: [
-          { pessoa_aegea_id: 'a1', papel: 'porta_voz' },
-          { pessoa_aegea_id: 'a2', papel: 'porta_voz' },
+          { pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null },
+          { pessoa_aegea_id: 'a2', papel: 'porta_voz', presenca: null },
         ],
       }),
-      interacao({ participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz' }] }),
+      interacao({ participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null }] }),
     ];
     const exposicao = exposicaoDePortaVozes(dados, CATALOGO);
     // a1 tem 2 de 3 aparições — e não 2 de 2 registros, que daria 100%.
@@ -485,12 +485,12 @@ describe('exposicaoDePortaVozes', () => {
       interacao({
         data_interacao: '2026-01-10',
         temas: [10],
-        participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz' }],
+        participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null }],
       }),
       interacao({
         data_interacao: '2026-06-10',
         temas: [11],
-        participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz' }],
+        participacoes: [{ pessoa_aegea_id: 'a1', papel: 'porta_voz', presenca: null }],
       }),
     ];
     const pessoa = exposicaoDePortaVozes(dados, CATALOGO).pessoas[0];

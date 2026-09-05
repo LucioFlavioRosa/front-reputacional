@@ -23,6 +23,13 @@ export type Papel = 'porta_voz' | 'equipe';
 export interface Participacao {
   pessoa_aegea_id: string;
   papel: Papel;
+  //: Nulo = não informado. Os MESMOS valores da outra parte: quem representa a
+  //: Aegea também pode faltar a uma reunião que aconteceu.
+  //:
+  //: O campo existe no backend desde o começo e faltava aqui. Enquanto faltou,
+  //: o formulário mandava a participação sem ele — e teria apagado a presença
+  //: de quem a tivesse registrado por outro caminho.
+  presenca: string | null;
 }
 
 /** Alguém da outra parte numa agenda — o principal inclusive.

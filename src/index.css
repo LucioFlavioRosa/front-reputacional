@@ -154,11 +154,35 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .grade--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grade--destaque { grid-template-columns: 1.35fr 1fr 1fr; }
 .grade--mapa { grid-template-columns: 1.3fr 1fr; }
-/* Os dois lados da mesa. Colunas DESIGUAIS de proposito: a Aegea entra por
-   chips, que se acomodam em pouca largura, e a outra parte entra por linhas de
-   pessoa + presenca + principal + remover, que em metade da tela ficariam
-   espremidas a ponto de o nome nao caber. */
-.grade--mesa { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr); }
+/* Os dois lados da mesa, com a MESMA largura: sao partes equivalentes da mesma
+   reuniao, e coluna maior leria como lado mais importante.
+
+   Igualar tem um preco que a linha de participante paga abaixo: dentro dos
+   900px da pagina, metade da largura da uns 410px, e quatro controles em fila
+   nao cabem ai. Por isso `.linha-participante` quebra em duas alturas em vez
+   de espremer. */
+.grade--mesa { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Uma pessoa na mesa, em duas alturas.
+   Em cima o NOME, que e o que se procura ao bater o olho, com o remover ao
+   lado. Embaixo os dois campos miudos. Em fila unica o nome ficava com uns
+   130px — cabia "Secretario de Infr..." e mais nada. */
+.linha-participante {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--borda);
+}
+.linha-participante__miudos {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
 .grade--auto { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
 @media (max-width: 1040px) {
