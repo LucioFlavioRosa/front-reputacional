@@ -1,6 +1,7 @@
 /** Acesso ao backend. Um lugar só monta URL, envia credencial e traduz erro. */
 
 import { registrarErro } from '@/observabilidade/telemetria';
+import type { ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import { paraParametros } from '@/dominio/recorte';
 import type {
@@ -61,7 +62,16 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
       ...opcoes,
       credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
+        // JSON SÓ QUANDO O CORPO É JSON.
+        //
+        // Num upload o corpo é `FormData`, e quem precisa escrever o
+        // `Content-Type` é o NAVEGADOR: ele acrescenta o `boundary` que separa
+        // as partes. Escrevendo `application/json` aqui, o navegador não
+        // sobrescreve, o boundary não vai, e o servidor recebe um multipart que
+        // não consegue separar — 422 sobre um arquivo perfeitamente válido.
+        ...(opcoes.body instanceof FormData
+          ? {}
+          : { 'Content-Type': 'application/json' }),
         // Sem isto, toda escrita volta 403 depois que o SSO real entrar. O
         // cabeçalho precisa estar também na allowlist do CORS do backend —
         // faltar em qualquer um dos dois lados quebra tudo igual.
@@ -335,6 +345,39 @@ export function editarInteracao(id: string, alteracoes: unknown): Promise<Intera
     method: 'PATCH',
     body: JSON.stringify(alteracoes),
   });
+}
+
+/** Sobe o arquivo de um material e devolve o `arquivo_id` a citar no salvamento.
+ *
+ *  ANTES DO MATERIAL EXISTIR, de propósito: quem preenche acrescenta a linha,
+ *  escolhe o arquivo e só depois salva a agenda. Nesse instante o material
+ *  ainda não tem `id` no servidor.
+ *
+ *  Mas a AGENDA precisa existir — o arquivo mora na pasta dela. Numa agenda
+ *  nova, a tela pede para salvar primeiro.
+ */
+export function subirArquivoDeMaterial(
+  interacaoId: string,
+  momento: string,
+  arquivo: File,
+): Promise<ArquivoDoMaterial> {
+  const corpo = new FormData();
+  corpo.append('momento', momento);
+  corpo.append('arquivo', arquivo);
+  return requisitar<ArquivoDoMaterial>(
+    `/api/interacoes/${interacaoId}/materiais/arquivo`,
+    { method: 'POST', body: corpo },
+  );
+}
+
+/** O endereço de download. Passa pela API, e não direto pelo blob.
+ *
+ *  Um link direto continuaria valendo depois de a pessoa perder o acesso —
+ *  e material de agenda com governo e investidores é o conteúdo mais
+ *  sensível deste painel.
+ */
+export function urlDoArquivo(interacaoId: string, arquivoId: string): string {
+  return `${BASE}/api/interacoes/${interacaoId}/materiais/arquivo/${arquivoId}`;
 }
 
 export function arquivarInteracao(id: string): Promise<void> {

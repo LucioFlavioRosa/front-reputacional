@@ -14,6 +14,8 @@ import {
   editarInteracao,
   listarInteracoes,
   obterInteracao,
+  subirArquivoDeMaterial,
+  urlDoArquivo,
 } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
@@ -30,7 +32,7 @@ import {
 import { extensaoAoTrocarDeFrente } from '@/dominio/frentes';
 import { hojeLocal } from '@/dominio/formato';
 import { FRENTES } from '@/dominio/tipos';
-import type { Frente, Interacao } from '@/dominio/tipos';
+import type { ArquivoDoMaterial, Frente, Interacao } from '@/dominio/tipos';
 
 // As 27 UFs saíram daqui: vêm de `catalogo.dicionarios.ufs`, montado a
 // partir do domínio `abrangencia` do Postgres — o mesmo que recusa uma UF
@@ -120,6 +122,12 @@ interface MaterialNoForm {
   titulo: string;
   url: string;
   observacao: string;
+  //: O arquivo JA SUBIDO. O upload acontece antes de salvar a agenda, entao
+  //: quando esta linha chega ao `PATCH` o byte ja esta no blob e so falta
+  //: amarrar os dois.
+  arquivo_id: string | null;
+  //: Nome, tipo e tamanho, para a tela mostrar sem outra ida ao servidor.
+  arquivo: ArquivoDoMaterial | null;
 }
 
 /** As tres presencas, com o rotulo que a pessoa le.
@@ -145,12 +153,40 @@ const PAPEIS: { valor: string; rotulo: string }[] = [
   { valor: 'equipe', rotulo: 'Equipe' },
 ];
 
-/** Os tres momentos do material. Apoio e antes; os outros dois, depois. */
-const MOMENTOS: { valor: string; rotulo: string }[] = [
-  { valor: 'apoio', rotulo: 'Apoio (antes da reuniao)' },
+/** Os momentos do material, agora separados por SECAO da tela.
+ *
+ *  Eram uma lista so, com um seletor de momento em cada linha — e o seletor
+ *  era a unica coisa dizendo se aquele documento veio antes ou depois da
+ *  reuniao. Preencher a agenda em dois instantes diferentes obrigava a rolar
+ *  ate a mesma lista e escolher o momento certo, sem nada por perto para
+ *  lembrar qual era.
+ *
+ *  Sao os MESMOS tres valores do banco: a divisao e de tela, e nao inventa
+ *  vocabulario nenhum.
+ */
+const MOMENTOS_DE_PREPARACAO: { valor: string; rotulo: string }[] = [
+  { valor: 'apoio', rotulo: 'Apoio' },
+];
+
+const MOMENTOS_POS_REUNIAO: { valor: string; rotulo: string }[] = [
   { valor: 'obtido', rotulo: 'Obtido na reuniao' },
   { valor: 'produzido', rotulo: 'Produzido na reuniao' },
 ];
+
+
+/** Os materiais de um conjunto de momentos, PRESERVANDO a ordem original.
+ *
+ *  Cada secao edita a sua fatia, e o salvamento remonta a lista inteira. Sem
+ *  isto, salvar pela secao de preparacao mandaria uma lista sem os materiais
+ *  pos-reuniao — e o repositorio, que remonta tudo, os apagaria.
+ */
+function materiaisDe(
+  materiais: MaterialNoForm[],
+  momentos: { valor: string }[],
+): MaterialNoForm[] {
+  const conjunto = new Set(momentos.map((m) => m.valor));
+  return materiais.filter((m) => conjunto.has(m.momento));
+}
 
 const VAZIO: Formulario = {
   frente: 'imprensa',
@@ -737,15 +773,29 @@ export function Cadastro({
       </Secao>
 
       {/* MATERIAIS --------------------------------------------------------- */}
-      <Secao titulo="Materiais">
+      {/* DUAS SECOES, e nao uma com seletor de momento.
+          O momento e a unica coisa que distinguia "o que levo" de "o que
+          trouxe", e ele era um `select` no meio da linha. Quem preenche a
+          agenda faz as duas coisas em dias diferentes: separadas, cada
+          instante tem o seu lugar, e a lista de preparacao nao cresce com o
+          que so vai existir depois da reuniao. */}
+      <Secao titulo="Materiais de preparação">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            Links para SharePoint ou Drive. <strong>Apoio</strong> é o que se
-            leva; <strong>obtido</strong> e <strong>produzido</strong> saem de lá.
+            O que se leva para a reunião. Suba o arquivo, ou informe o link se
+            ele já mora no SharePoint.
           </p>
           <ListaDeMateriais
-            materiais={form.materiais}
-            aoMudar={(materiais) => alterar('materiais', materiais)}
+            materiais={materiaisDe(form.materiais, MOMENTOS_DE_PREPARACAO)}
+            momentos={MOMENTOS_DE_PREPARACAO}
+            interacaoId={id}
+            aoFalhar={definirErro}
+            aoMudar={(fatia) =>
+              alterar('materiais', [
+                ...fatia,
+                ...materiaisDe(form.materiais, MOMENTOS_POS_REUNIAO),
+              ])
+            }
           />
         </Cartao>
       </Secao>
@@ -871,6 +921,27 @@ export function Cadastro({
               </select>
             </Campo>
           </div>
+        </Cartao>
+      </Secao>
+
+      <Secao titulo="Materiais pós-reunião">
+        <Cartao>
+          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+            O que saiu da reunião. <strong>Obtido</strong> é o que a outra parte
+            entregou; <strong>produzido</strong> é o que a Aegea escreveu depois.
+          </p>
+          <ListaDeMateriais
+            materiais={materiaisDe(form.materiais, MOMENTOS_POS_REUNIAO)}
+            momentos={MOMENTOS_POS_REUNIAO}
+            interacaoId={id}
+            aoFalhar={definirErro}
+            aoMudar={(fatia) =>
+              alterar('materiais', [
+                ...materiaisDe(form.materiais, MOMENTOS_DE_PREPARACAO),
+                ...fatia,
+              ])
+            }
+          />
         </Cartao>
       </Secao>
 
@@ -1008,15 +1079,28 @@ function CampoDeDicionario({
  *  Devolve `null` quando está tudo certo.
  */
 function impedimentoNoFormulario(form: Formulario): string | null {
-  const incompleto = form.materiais.findIndex(
-    (m) => Boolean(m.titulo.trim()) !== Boolean(m.url.trim()),
+  // UM MATERIAL PRECISA DE TÍTULO E DE UM DESTINO — arquivo OU link.
+  //
+  // A regra dizia "título e link", e "guardar arquivo no painel ainda não
+  // existe". Isso deixou de ser verdade quando o upload entrou, e a tela passou
+  // a IMPEDIR o salvamento de todo material com arquivo: título preenchido,
+  // link vazio, e a comparação acusava "pela metade". O recurso novo era
+  // bloqueado pela validação do recurso antigo.
+  const semDestino = form.materiais.findIndex(
+    (m) => Boolean(m.titulo.trim()) && !m.url.trim() && !m.arquivo_id,
   );
-  if (incompleto >= 0) {
+  if (semDestino >= 0) {
     return (
-      `O material ${incompleto + 1} está pela metade: título e link são ` +
-      'necessários. Guardar arquivo no painel ainda não existe, então o link ' +
-      'é o que leva ao documento.'
+      `O material ${semDestino + 1} não leva a lugar nenhum: ` +
+      'suba um arquivo ou informe um link.'
     );
+  }
+
+  const semTitulo = form.materiais.findIndex(
+    (m) => !m.titulo.trim() && (Boolean(m.url.trim()) || Boolean(m.arquivo_id)),
+  );
+  if (semTitulo >= 0) {
+    return `Dê um título ao material ${semTitulo + 1}, ou remova a linha.`;
   }
 
   const semPessoa = form.outraParte.findIndex((p) => !p.interlocutor_id);
@@ -1183,11 +1267,16 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     // sumir depois de um salvamento bem-sucedido — a pessoa preenchia, via
     // "registro salvo", e o material não estava lá.
     materiais: form.materiais
-      .filter((m) => m.titulo.trim() || m.url.trim())
+      // O ARQUIVO CONTA COMO CONTEÚDO DA LINHA. Sem ele nesta condição, um
+      // material que só tem arquivo — título ainda em branco, link vazio —
+      // seria descartado aqui em silêncio, e o byte já subido ficaria órfão no
+      // blob sem nada que o alcançasse.
+      .filter((m) => m.titulo.trim() || m.url.trim() || m.arquivo_id)
       .map((m) => ({
         // `id` so quando existe: material novo nao tem, e mandar `undefined`
         // e o que faz o backend criar em vez de procurar.
         ...(m.id ? { id: m.id } : {}),
+        arquivo_id: m.arquivo_id,
         momento: m.momento,
         titulo: m.titulo.trim(),
         url: m.url.trim(),
@@ -1458,21 +1547,75 @@ function ListaDeParticipantes({
  *  backend recria o material e troca a identidade — e a tela perde a
  *  referência do que estava editando.
  */
+/** Legivel por gente, e nao em bytes. */
+function tamanhoLegivel(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+/** Os documentos de um MOMENTO da agenda.
+ *
+ *  Uma instância por seção: preparação (`apoio`) e pós-reunião (`obtido`,
+ *  `produzido`). `momentos` diz quais valores esta lista governa — com um só,
+ *  o seletor de momento some, porque não há escolha a fazer.
+ *
+ *  O UPLOAD EXIGE QUE A AGENDA JÁ EXISTA. O arquivo mora na pasta dela, e numa
+ *  agenda nova ainda não há pasta. Em vez de fingir que dá, a tela diz o que
+ *  falta — e o campo de link continua servindo, que é o caminho de sempre.
+ */
 function ListaDeMateriais({
   materiais,
+  momentos,
+  interacaoId,
   aoMudar,
+  aoFalhar,
 }: {
   materiais: MaterialNoForm[];
+  momentos: { valor: string; rotulo: string }[];
+  /** `undefined` numa agenda ainda não salva. */
+  interacaoId?: string;
   aoMudar: (lista: MaterialNoForm[]) => void;
+  aoFalhar: (mensagem: string) => void;
 }) {
+  //: Qual linha está subindo. Índice, e não booleano: subir dois arquivos ao
+  //: mesmo tempo mostraria "enviando" nas duas linhas.
+  const [subindo, definirSubindo] = useState<number | null>(null);
+
   const trocar = (indice: number, mudanca: Partial<MaterialNoForm>) =>
     aoMudar(materiais.map((m, i) => (i === indice ? { ...m, ...mudanca } : m)));
+
+  const subir = async (indice: number, arquivo: File) => {
+    if (!interacaoId) return;
+    definirSubindo(indice);
+    try {
+      const salvo = await subirArquivoDeMaterial(
+        interacaoId,
+        materiais[indice].momento,
+        arquivo,
+      );
+      // O TÍTULO VAZIO GANHA O NOME DO ARQUIVO. Quem sobe "Nota técnica
+      // ANA.pdf" já disse como o material se chama; pedir para digitar de novo
+      // é trabalho que a tela podia ter poupado. Título preenchido fica.
+      trocar(indice, {
+        arquivo_id: salvo.id,
+        arquivo: salvo,
+        titulo: materiais[indice].titulo.trim() || salvo.nome,
+      });
+    } catch (falha) {
+      // A mensagem do servidor diz o que houve — tipo recusado, tamanho acima
+      // do limite — e é ela que a pessoa precisa ler, não "falha no upload".
+      aoFalhar((falha as Error).message);
+    } finally {
+      definirSubindo(null);
+    }
+  };
 
   return (
     <>
       {materiais.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
-          Nenhum material ainda. Comece pelo que você leva para a reunião.
+          Nenhum material ainda.
         </p>
       )}
 
@@ -1485,21 +1628,30 @@ function ListaDeMateriais({
             borderBottom: '1px solid var(--borda)',
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, alignItems: 'end' }}>
-            <Campo rotulo={indice === 0 ? 'Momento' : ''}>
-              <select
-                aria-label={`Momento do material ${indice + 1}`}
-                style={estiloDeEntrada}
-                value={material.momento}
-                onChange={(evento) => trocar(indice, { momento: evento.target.value })}
-              >
-                {MOMENTOS.map((op) => (
-                  <option key={op.valor} value={op.valor}>
-                    {op.rotulo}
-                  </option>
-                ))}
-              </select>
-            </Campo>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: momentos.length > 1 ? '1fr 2fr auto' : '1fr auto',
+              gap: 10,
+              alignItems: 'end',
+            }}
+          >
+            {momentos.length > 1 && (
+              <Campo rotulo={indice === 0 ? 'Momento' : ''}>
+                <select
+                  aria-label={`Momento do material ${indice + 1}`}
+                  style={estiloDeEntrada}
+                  value={material.momento}
+                  onChange={(evento) => trocar(indice, { momento: evento.target.value })}
+                >
+                  {momentos.map((op) => (
+                    <option key={op.valor} value={op.valor}>
+                      {op.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
 
             <Campo rotulo={indice === 0 ? 'Título' : ''}>
               <input
@@ -1522,26 +1674,119 @@ function ListaDeMateriais({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-            <Campo rotulo="Link">
-              <input
-                aria-label={`Link do material ${indice + 1}`}
-                style={estiloDeEntrada}
-                value={material.url}
-                onChange={(evento) => trocar(indice, { url: evento.target.value })}
-                placeholder="https://sharepoint/… — guardar arquivo no painel ainda não existe"
-              />
-            </Campo>
-            {/* A observação já viajava no corpo e voltava do servidor, e não
-                tinha onde ser escrita: o campo existia e era inalcançável. */}
+          {/* O ARQUIVO, QUANDO HÁ UM. Substitui o campo de link: um material
+              aponta para UM lugar, e oferecer os dois ao mesmo tempo convida a
+              preencher os dois e deixar a dúvida sobre qual vale. */}
+          {material.arquivo ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginTop: 10,
+                padding: '8px 11px',
+                background: 'var(--bg-trilho)',
+                borderRadius: 'var(--r-card-int)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {material.arquivo.nome}
+              </span>
+              <span
+                style={{ fontSize: 12, color: 'var(--cinza-3)', whiteSpace: 'nowrap' }}
+              >
+                {tamanhoLegivel(material.arquivo.tamanho)}
+              </span>
+              {/* Baixar só faz sentido para o que JÁ FOI SALVO: o arquivo
+                  recém-subido ainda não tem material amarrado a ele, e a rota
+                  de download confere justamente esse vínculo. */}
+              {interacaoId && material.id ? (
+                <a
+                  href={urlDoArquivo(interacaoId, material.arquivo.id)}
+                  style={{ fontSize: 12, color: 'var(--azul-mar)' }}
+                >
+                  Baixar
+                </a>
+              ) : null}
+              <Botao
+                variante="fantasma"
+                rotuloAcessivel={`Tirar o arquivo do material ${indice + 1}`}
+                // TIRA A LIGAÇÃO, e o byte some no salvamento seguinte — não
+                // agora. Apagar na hora destruiria o arquivo de quem clicou
+                // sem querer e fechou a tela sem salvar; ligado ao salvamento,
+                // "Desfazer alterações" ainda traz o anexo de volta.
+                aoClicar={() => trocar(indice, { arquivo_id: null, arquivo: null })}
+              >
+                Trocar
+              </Botao>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr',
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
+              <Campo
+                rotulo="Arquivo"
+                dica={
+                  interacaoId
+                    ? 'PDF, Word, Excel, PowerPoint, imagem ou texto. Até 25 MB.'
+                    : 'Salve a agenda primeiro — o arquivo é guardado na pasta dela.'
+                }
+              >
+                <input
+                  type="file"
+                  aria-label={`Arquivo do material ${indice + 1}`}
+                  disabled={!interacaoId || subindo !== null}
+                  style={{ ...estiloDeEntrada, paddingTop: 7, height: 'auto' }}
+                  onChange={(evento) => {
+                    const escolhido = evento.target.files?.[0];
+                    // O `value` é limpo para que escolher O MESMO arquivo
+                    // depois de um erro dispare `change` de novo. Sem isso, a
+                    // segunda tentativa não acontece e a tela parece travada.
+                    evento.target.value = '';
+                    if (escolhido) void subir(indice, escolhido);
+                  }}
+                />
+              </Campo>
+
+              <Campo rotulo="Ou link">
+                <input
+                  aria-label={`Link do material ${indice + 1}`}
+                  style={estiloDeEntrada}
+                  value={material.url}
+                  onChange={(evento) => trocar(indice, { url: evento.target.value })}
+                  placeholder="https://sharepoint/…"
+                />
+              </Campo>
+            </div>
+          )}
+
+          {subindo === indice && (
+            <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: '8px 0 0' }}>
+              Enviando o arquivo…
+            </p>
+          )}
+
+          <div style={{ marginTop: 10 }}>
             <Campo rotulo="Observação">
               <input
                 aria-label={`Observação do material ${indice + 1}`}
                 style={estiloDeEntrada}
                 value={material.observacao}
-                onChange={(evento) =>
-                  trocar(indice, { observacao: evento.target.value })
-                }
+                onChange={(evento) => trocar(indice, { observacao: evento.target.value })}
                 placeholder="Assinada pelas duas partes"
               />
             </Campo>
@@ -1553,7 +1798,14 @@ function ListaDeMateriais({
         aoClicar={() =>
           aoMudar([
             ...materiais,
-            { momento: 'apoio', titulo: '', url: '', observacao: '' },
+            {
+              momento: momentos[0].valor,
+              titulo: '',
+              url: '',
+              observacao: '',
+              arquivo_id: null,
+              arquivo: null,
+            },
           ])
         }
       >
@@ -1638,6 +1890,8 @@ function paraFormulario(interacao: Interacao): Formulario {
       // material NOVO, e é a ausência da chave que faz o backend criar em vez
       // de procurar. Guardar `null` mandaria `"id": null` no corpo.
       id: m.id ?? undefined,
+      arquivo_id: m.arquivo?.id ?? null,
+      arquivo: m.arquivo ?? null,
       momento: m.momento,
       titulo: m.titulo,
       url: texto(m.url),

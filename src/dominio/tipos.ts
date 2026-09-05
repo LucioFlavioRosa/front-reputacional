@@ -45,7 +45,20 @@ export interface ParticipanteDaOutraParte {
   principal: boolean;
 }
 
-/** Um documento da agenda. */
+/** O arquivo de um material, guardado no Blob.
+ *
+ *  Sem o caminho no contêiner: quem monta a tela não tem o que fazer com ele,
+ *  e dizer onde o byte mora é contar como o armazenamento é organizado.
+ */
+export interface ArquivoDoMaterial {
+  id: string;
+  nome: string;
+  tipo_conteudo: string;
+  /** Em bytes. */
+  tamanho: number;
+}
+
+/** Um documento da agenda: um link, ou um arquivo guardado aqui. */
 export interface Material {
   /** Volta no salvamento para o servidor NÃO recriar o material. */
   id: string | null;
@@ -54,6 +67,8 @@ export interface Material {
   titulo: string;
   url: string | null;
   observacao: string | null;
+  /** Nulo quando o material é um LINK. Os dois caminhos convivem. */
+  arquivo: ArquivoDoMaterial | null;
 }
 
 /** Campos específicos de frente. Só um conjunto vem preenchido por vez. */
