@@ -8,7 +8,7 @@
  *  não faz mais blocos aparecerem e sumirem.
  */
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   criarInteracao,
   editarInteracao,
@@ -180,6 +180,13 @@ export function Cadastro({
   const [enviando, definirEnviando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
   const [sucesso, definirSucesso] = useState(false);
+  //: A faixa de erro/sucesso, para levar o foco até ela depois de salvar.
+  const aviso = useRef<HTMLDivElement>(null);
+  //: Conta as tentativas de salvar, e só isso. Sem ela, apertar salvar duas
+  //: vezes com o MESMO impedimento não mexeria a tela na segunda — a mensagem
+  //: seria idêntica, o efeito não rodaria, e voltaria o "cliquei e não
+  //: aconteceu nada" que este aviso existe para acabar.
+  const [tentativa, definirTentativa] = useState(0);
 
   // ANTES DO `return` CONDICIONAL, e nao depois.
   //
@@ -206,6 +213,29 @@ export function Cadastro({
       vivo = false;
     };
   }, []);
+
+  // Leva o desfecho do salvar até quem apertou o botão. Só depois da renderização
+  // da faixa — antes dela existir no DOM não há para onde ir.
+  useEffect(
+    function mostrarODesfecho() {
+      // SÓ DESFECHO DE SALVAR. O erro de CARREGAMENTO da edição também chega
+      // em `erro`, e ali não há gesto de ninguém para responder — a tela já
+      // abre mostrando a falha, no topo, com a página no topo. Hoje ele não
+      // rolava por acidente de ordem (`carregando` ainda true, `ref` nulo);
+      // depender disso é depender de coincidência.
+      if (tentativa === 0) return;
+      if (!erro && !sucesso) return;
+      const alvo = aviso.current;
+      if (!alvo) return;
+      // Quem pediu menos movimento recebe o salto direto, não a rolagem.
+      const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      alvo.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'center' });
+      // Só o erro rouba o foco: ele interrompe a tarefa e a pessoa precisa
+      // voltar para corrigir. O sucesso não interrompe nada.
+      if (erro) alvo.focus({ preventScroll: true });
+    },
+    [erro, sucesso, tentativa],
+  );
 
   useEffect(
     function carregarParaEditar() {
@@ -261,6 +291,7 @@ export function Cadastro({
   };
 
   const enviar = async () => {
+    definirTentativa((n) => n + 1);
     // O QUE O SERVIDOR NÃO TEM COMO RECUSAR DE FORMA ÚTIL.
     //
     // Material pela metade seria descartado antes de sair da tela, e a pessoa
@@ -274,6 +305,10 @@ export function Cadastro({
 
     definirEnviando(true);
     definirErro(null);
+    // O sucesso ANTERIOR sai junto. Sem isto, clicar salvar de novo depois de
+    // um salvamento bem-sucedido rolava a tela até a faixa velha antes de a
+    // requisição nova terminar — confirmação de um gesto que ainda não deu.
+    definirSucesso(false);
     try {
       if (id) {
         // `PATCH` com o corpo INTEIRO, e não só o que mudou.
@@ -313,20 +348,33 @@ export function Cadastro({
         </p>
       </div>
 
-      {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      {sucesso ? (
-        <div
-          style={{
-            background: 'var(--ok-bg)',
-            color: 'var(--ok-fg)',
-            padding: '11px 14px',
-            borderRadius: 'var(--r-card-int)',
-            fontSize: 13,
-          }}
-        >
-          Registro salvo. O formulário está pronto para o próximo.
-        </div>
-      ) : null}
+      {/* O DESFECHO DO SALVAR PRECISA ALCANÇAR QUEM APERTOU O BOTÃO.
+          Estas faixas moram no topo e o botão fica depois de sete seções: quem
+          rolava até o fim, clicava em salvar e caía numa validação não via
+          nada acontecer. `role="alert"` já anunciava para leitor de tela; para
+          quem enxerga, o aviso estava fora da tela. Por isso o foco vai até
+          ele — que também é o começo do caminho de volta pelo teclado. */}
+      {/* Sem `outline: none`. O foco chega aqui por programa, e o anel é
+          exatamente o que mostra a quem usa teclado onde ele parou — apagá-lo
+          devolveria, para essa pessoa, o mesmo "não aconteceu nada". */}
+      <div ref={aviso} tabIndex={-1} style={{ borderRadius: 'var(--r-card-int)' }}>
+        {erro ? <FaixaDeErro mensagem={erro} /> : null}
+        {sucesso ? (
+          <div
+            style={{
+              background: 'var(--ok-bg)',
+              color: 'var(--ok-fg)',
+              padding: '11px 14px',
+              borderRadius: 'var(--r-card-int)',
+              fontSize: 13,
+            }}
+          >
+            {id
+              ? 'Alterações salvas.'
+              : 'Agenda salva. O formulário está pronto para a próxima.'}
+          </div>
+        ) : null}
+      </div>
 
       <Secao titulo="Tipo de registro">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
