@@ -106,16 +106,21 @@ export const CAMPOS_DE_EXTENSAO: Record<
  *  aqui inventa valor: o que sai, sai porque a nova frente não tem onde
  *  guardá-lo.
  */
-export function extensaoAoTrocarDeFrente(
-  extensao: Extensao,
+export function extensaoAoTrocarDeFrente<T extends object>(
+  extensao: T,
   frente: Frente,
-): Extensao {
+): T {
+  // GENÉRICA porque as duas pontas guardam a extensão de formas diferentes: a
+  // ficha usa `Extensao` (com datas, números e listas), e o formulário guarda
+  // `Record<string, string>`, que é o que sai de um `<input>`. Fixar `Extensao`
+  // aqui compilava no `tsc --noEmit` da raiz — que não compila nada — e
+  // quebrava no `tsc -b` do build.
   const carrega = new Set<string>(
     CAMPOS_DE_EXTENSAO[frente].map((c) => c.campo),
   );
   return Object.fromEntries(
     Object.entries(extensao).filter(([campo]) => carrega.has(campo)),
-  ) as Extensao;
+  ) as T;
 }
 
 /** Frentes cujo chip precisa de texto escuro para o contraste fechar.
