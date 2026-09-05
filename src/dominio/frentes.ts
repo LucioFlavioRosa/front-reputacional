@@ -11,7 +11,7 @@
  *  branco — ficava em 2,20:1, menos da metade do exigido.
  */
 
-import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
+import type { Extensao, Frente, GrupoDeStatus } from '@/dominio/tipos';
 
 export const CORES_DE_FRENTE: Record<Frente, string> = {
   imprensa: '#0027BD',
@@ -39,6 +39,84 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   legislativo: 'Legislativo',
   interna: 'Interna',
 };
+
+/** Os campos de extensão que cada frente carrega — e os rótulos deles.
+ *
+ *  Vale para as duas pontas: a ficha lista aqui o "o que falta", e o cadastro
+ *  usa a mesma lista para decidir o que sobrevive a uma troca de frente.
+ *
+ *  É por frente, não por classe de extensão, e a diferença importa. No backend
+ *  Governo, Parceiros e Eventos compartilham `Institucional`, então trocar
+ *  entre as três não precisa descartar `natureza_orgao` nem
+ *  `cargo_interlocutor`. Mas `nome_evento` só faz sentido em Eventos: agrupar
+ *  pela classe o preservaria em Governo, escondido — a ficha não o mostra
+ *  fora de Eventos — e semanticamente errado.
+ *
+ *  Cada lista é um subconjunto do que o backend aceita para a frente. O
+ *  servidor recusa campo fora da união (`extra="forbid"`), mas um campo válido
+ *  na união e incoerente com a frente ele apenas ignora na conversão — some
+ *  sem erro. É a tela que decide certo, então; não há rede de proteção lá.
+ */
+export const CAMPOS_DE_EXTENSAO: Record<
+  Frente,
+  { campo: keyof Extensao; rotulo: string }[]
+> = {
+  imprensa: [
+    { campo: 'formato', rotulo: 'Formato' },
+    { campo: 'data_atendida', rotulo: 'Data atendida' },
+    { campo: 'data_publicacao', rotulo: 'Data de publicação' },
+    { campo: 'link_materia', rotulo: 'Link da matéria' },
+    { campo: 'mensagens_chave', rotulo: 'Mensagens-chave' },
+  ],
+  governo: [
+    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
+    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
+  ],
+  parceiros: [
+    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
+    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
+  ],
+  eventos: [
+    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
+    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
+    { campo: 'nome_evento', rotulo: 'Nome do evento' },
+  ],
+  legislativo: [
+    { campo: 'casa', rotulo: 'Casa' },
+    { campo: 'tramitacao', rotulo: 'Tramitação' },
+    { campo: 'prioridade', rotulo: 'Prioridade' },
+    { campo: 'ementa', rotulo: 'Ementa' },
+  ],
+  investidores: [
+    { campo: 'tipo_investidor', rotulo: 'Tipo de investidor' },
+    { campo: 'formato', rotulo: 'Formato' },
+  ],
+  interna: [
+    { campo: 'natureza', rotulo: 'Natureza' },
+    { campo: 'cumprimento', rotulo: 'Cumprimento' },
+    { campo: 'complexidade', rotulo: 'Complexidade' },
+    { campo: 'prazo_dias', rotulo: 'Prazo em dias' },
+    { campo: 'data_retorno', rotulo: 'Data de retorno' },
+  ],
+};
+
+/** O que resta da extensão quando a agenda muda de frente.
+ *
+ *  Guarda os campos que a nova frente também carrega, e descarta o resto. Nada
+ *  aqui inventa valor: o que sai, sai porque a nova frente não tem onde
+ *  guardá-lo.
+ */
+export function extensaoAoTrocarDeFrente(
+  extensao: Extensao,
+  frente: Frente,
+): Extensao {
+  const carrega = new Set<string>(
+    CAMPOS_DE_EXTENSAO[frente].map((c) => c.campo),
+  );
+  return Object.fromEntries(
+    Object.entries(extensao).filter(([campo]) => carrega.has(campo)),
+  ) as Extensao;
+}
 
 /** Frentes cujo chip precisa de texto escuro para o contraste fechar.
  *

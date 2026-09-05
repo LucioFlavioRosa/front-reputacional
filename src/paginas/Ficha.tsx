@@ -17,8 +17,12 @@ import {
   Modal,
 } from '@/componentes/basicos';
 import { dataCompleta, urlSegura } from '@/dominio/formato';
-import { ROTULOS_DE_FRENTE, rotuloDeAbrangencia } from '@/dominio/frentes';
-import type { Frente, Interacao } from '@/dominio/tipos';
+import {
+  CAMPOS_DE_EXTENSAO,
+  ROTULOS_DE_FRENTE,
+  rotuloDeAbrangencia,
+} from '@/dominio/frentes';
+import type { Interacao } from '@/dominio/tipos';
 import {
   nomeDaEsfera,
   nomeDaInstituicao,
@@ -41,46 +45,13 @@ const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
   { campo: 'observacoes', rotulo: 'Observações' },
 ];
 
-/** Campos de extensão aplicáveis a cada frente — a lista do "o que falta". */
-const EXTENSAO_POR_FRENTE: Record<Frente, { campo: string; rotulo: string }[]> = {
-  imprensa: [
-    { campo: 'formato', rotulo: 'Formato' },
-    { campo: 'data_atendida', rotulo: 'Data atendida' },
-    { campo: 'data_publicacao', rotulo: 'Data de publicação' },
-    { campo: 'link_materia', rotulo: 'Link da matéria' },
-    { campo: 'mensagens_chave', rotulo: 'Mensagens-chave' },
-  ],
-  governo: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
-    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
-  ],
-  parceiros: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
-    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
-  ],
-  eventos: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
-    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
-    { campo: 'nome_evento', rotulo: 'Nome do evento' },
-  ],
-  legislativo: [
-    { campo: 'casa', rotulo: 'Casa' },
-    { campo: 'tramitacao', rotulo: 'Tramitação' },
-    { campo: 'prioridade', rotulo: 'Prioridade' },
-    { campo: 'ementa', rotulo: 'Ementa' },
-  ],
-  investidores: [
-    { campo: 'tipo_investidor', rotulo: 'Tipo de investidor' },
-    { campo: 'formato', rotulo: 'Formato' },
-  ],
-  interna: [
-    { campo: 'natureza', rotulo: 'Natureza' },
-    { campo: 'cumprimento', rotulo: 'Cumprimento' },
-    { campo: 'complexidade', rotulo: 'Complexidade' },
-    { campo: 'prazo_dias', rotulo: 'Prazo em dias' },
-    { campo: 'data_retorno', rotulo: 'Data de retorno' },
-  ],
-};
+/** Campos de extensão aplicáveis a cada frente — a lista do "o que falta".
+ *
+ *  Mora em `@/dominio/frentes` porque o cadastro precisa da MESMA lista para
+ *  decidir o que sobrevive a uma troca de frente. Duas cópias divergiriam, e a
+ *  que divergisse apagaria dado sem ninguém ver.
+ */
+const EXTENSAO_POR_FRENTE = CAMPOS_DE_EXTENSAO;
 
 export function Ficha({
   id,

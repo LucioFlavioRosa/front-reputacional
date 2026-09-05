@@ -10,7 +10,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CORES_DE_FRENTE, textoSobreFrente } from '@/dominio/frentes';
+import {
+  CAMPOS_DE_EXTENSAO,
+  CORES_DE_FRENTE,
+  extensaoAoTrocarDeFrente,
+  textoSobreFrente,
+} from '@/dominio/frentes';
 import type { Frente } from '@/dominio/tipos';
 
 /** Luminância relativa, conforme a WCAG 2.1. */
@@ -69,5 +74,85 @@ describe('contraste do texto sobre a cor de cada frente', () => {
   it('reprovaria a combinação que existia antes', () => {
     // Eventos com texto branco: o defeito real que motivou o arquivo.
     expect(contraste('#FE952B', '#FFFFFF')).toBeLessThan(MINIMO_AA);
+  });
+});
+
+describe('o que sobra da extensão ao trocar de frente', () => {
+  // A tela zerava a extensão em toda troca. Governo, Parceiros e Eventos
+  // compartilham a mesma extensão no backend, então isso apagava dado que
+  // sobreviveria — e, desde que a seção desses campos saiu da tela, apagava
+  // sem ninguém ver e sem como redigitar.
+
+  it('guarda os campos que a nova frente também carrega', () => {
+    expect(
+      extensaoAoTrocarDeFrente(
+        { natureza_orgao: 'executivo', cargo_interlocutor: 'Secretário' },
+        'parceiros',
+      ),
+    ).toEqual({ natureza_orgao: 'executivo', cargo_interlocutor: 'Secretário' });
+  });
+
+  it('descarta o nome do evento ao sair de Eventos', () => {
+    // O outro extremo do mesmo erro: guardar tudo do grupo deixaria
+    // `nome_evento` num registro de Governo, onde a ficha não o mostra.
+    expect(
+      extensaoAoTrocarDeFrente(
+        {
+          natureza_orgao: 'executivo',
+          nome_evento: 'Fórum Mundial da Água',
+        },
+        'governo',
+      ),
+    ).toEqual({ natureza_orgao: 'executivo' });
+  });
+
+  it('esvazia quando nenhum campo é comum às duas frentes', () => {
+    expect(
+      extensaoAoTrocarDeFrente({ casa: 'senado_federal' }, 'interna'),
+    ).toEqual({});
+  });
+
+  it('guarda o formato, que Imprensa e Investidores dividem', () => {
+    // Frentes de classes DIFERENTES no backend, com um campo em comum: prova
+    // que a regra é por campo, e não por classe de extensão.
+    expect(
+      extensaoAoTrocarDeFrente(
+        { formato: 'entrevista', link_materia: 'https://exemplo' },
+        'investidores',
+      ),
+    ).toEqual({ formato: 'entrevista' });
+  });
+
+  it('cada lista é um subconjunto do que o backend aceita para a frente', () => {
+    // Se alguém acrescentar aqui um campo que a extensão daquela frente não
+    // tem, o campo é DESCARTADO em silêncio na conversão do servidor — ele só
+    // recusa o que está fora da união inteira. Quem digitou não vê erro; o
+    // dado simplesmente não chega. Por isso a lista é conferida aqui.
+    const DO_BACKEND: Record<Frente, string[]> = {
+      imprensa: [
+        'formato',
+        'data_atendida',
+        'data_publicacao',
+        'link_materia',
+        'mensagens_chave',
+      ],
+      governo: ['natureza_orgao', 'cargo_interlocutor', 'nome_evento'],
+      parceiros: ['natureza_orgao', 'cargo_interlocutor', 'nome_evento'],
+      eventos: ['natureza_orgao', 'cargo_interlocutor', 'nome_evento'],
+      legislativo: ['casa', 'tramitacao', 'prioridade', 'ementa'],
+      investidores: ['tipo_investidor', 'formato'],
+      interna: [
+        'natureza',
+        'cumprimento',
+        'complexidade',
+        'prazo_dias',
+        'data_retorno',
+      ],
+    };
+    for (const [frente, campos] of Object.entries(CAMPOS_DE_EXTENSAO)) {
+      for (const { campo } of campos) {
+        expect(DO_BACKEND[frente as Frente]).toContain(campo);
+      }
+    }
   });
 });

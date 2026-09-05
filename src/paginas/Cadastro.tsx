@@ -1,7 +1,11 @@
-/** Cadastro — o formulário único, com campos condicionais por frente.
+/** Cadastro — o formulário único da agenda, na ordem em que ela acontece:
+ *  o que é, em que pé está e o que se espera, quem participa, o que se leva e
+ *  o que se traz, e só então o relato.
  *
- *  O seletor de frente define quais blocos aparecem. Nenhum campo de outra
- *  frente fica escondido no formulário: o que não se aplica não é enviado.
+ *  Os campos extras por frente NÃO estão mais na tela. Eles continuam no
+ *  registro e são reenviados como vieram, para que salvar pela tela não apague
+ *  o que a planilha trouxe. Por isso a frente aqui classifica a agenda; ela
+ *  não faz mais blocos aparecerem e sumirem.
  */
 
 import { useEffect, useId, useState } from 'react';
@@ -23,8 +27,8 @@ import {
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { extensaoAoTrocarDeFrente } from '@/dominio/frentes';
 import { hojeLocal } from '@/dominio/formato';
-import { ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 
@@ -33,19 +37,10 @@ import type { Frente, Interacao } from '@/dominio/tipos';
 // inválida na escrita. O formulário passa a oferecer exatamente o que o
 // banco aceita, nem mais nem menos.
 
-/** Quais blocos de extensão cada frente mostra. Governo, Parceiros e Eventos
- *  usam o mesmo bloco — só Eventos acrescenta o nome do evento. */
-type BlocoDeExtensao = 'imprensa' | 'institucional' | 'legislativo' | 'investidores' | 'interna';
-
-const BLOCO_POR_FRENTE: Record<Frente, BlocoDeExtensao> = {
-  imprensa: 'imprensa',
-  governo: 'institucional',
-  parceiros: 'institucional',
-  eventos: 'institucional',
-  legislativo: 'legislativo',
-  investidores: 'investidores',
-  interna: 'interna',
-};
+/* O MAPA DE BLOCO POR FRENTE SAIU JUNTO com a seção que ele governava.
+   Ele existia para escolher qual conjunto de campos condicionais mostrar; sem
+   a seção, não resta escolha a fazer. `form.extensao` continua no estado e
+   viaja nos dois sentidos — o dado não depende deste mapa. */
 
 interface Formulario {
   frente: Frente;
@@ -180,6 +175,8 @@ export function Cadastro({
   const [carregando, definirCarregando] = useState(Boolean(id));
   //: As agendas que podem ter dado origem a esta. Carregadas uma vez.
   const [agendas, definirAgendas] = useState<Interacao[]>([]);
+  //: O formulário como veio do servidor. É o alvo de "Desfazer alterações".
+  const [carregado, definirCarregado] = useState<Formulario | null>(null);
   const [enviando, definirEnviando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
   const [sucesso, definirSucesso] = useState(false);
@@ -212,13 +209,21 @@ export function Cadastro({
 
   useEffect(
     function carregarParaEditar() {
+      // O alvo de "Desfazer alterações" pertence a UMA agenda. Sem zerar aqui,
+      // ao trocar de /cadastro/A para /cadastro/B ele continuava sendo o A
+      // durante o carregamento — e desfazer teria trazido o conteúdo de A para
+      // dentro do registro B. Zerar também ao sair para "Nova agenda" evita que
+      // o estado de uma edição sobreviva à criação seguinte.
+      definirCarregado(null);
       if (!id) return;
       let vivo = true;
       definirCarregando(true);
       obterInteracao(id)
         .then((interacao) => {
           if (!vivo) return;
-          definirForm(paraFormulario(interacao));
+          const carregado = paraFormulario(interacao);
+          definirForm(carregado);
+          definirCarregado(carregado);
         })
         .catch((falha: Error) => vivo && definirErro(falha.message))
         .finally(() => vivo && definirCarregando(false));
@@ -236,14 +241,22 @@ export function Cadastro({
     definirSucesso(false);
   };
 
-  const alterarExtensao = (campo: string, valor: string) => {
-    definirForm((atual) => ({ ...atual, extensao: { ...atual.extensao, [campo]: valor } }));
-  };
-
-  // Trocar de frente descarta a extensão anterior: são campos de outro
-  // conjunto, e mantê-los faria o backend recusar o registro.
+  // Trocar de frente guarda o que a NOVA frente também carrega, e só isso.
+  //
+  // Zerar tudo era perda de dado silenciosa: Governo, Parceiros e Eventos
+  // compartilham a mesma extensão no backend, então `natureza_orgao` e
+  // `cargo_interlocutor` sobreviveriam à troca — e, desde que a seção desses
+  // campos saiu da tela, ninguém veria sumir nem conseguiria redigitar.
+  //
+  // Guardar tudo do mesmo grupo também estaria errado, na outra direção:
+  // `nome_evento` só faz sentido em Eventos, e sair para Governo o deixaria no
+  // registro, invisível — a ficha não o mostra fora de Eventos.
   const trocarFrente = (frente: Frente) => {
-    definirForm((atual) => ({ ...atual, frente, extensao: {} }));
+    definirForm((atual) => ({
+      ...atual,
+      frente,
+      extensao: extensaoAoTrocarDeFrente(atual.extensao, frente),
+    }));
     definirSucesso(false);
   };
 
@@ -286,17 +299,17 @@ export function Cadastro({
 
   if (carregando) return <Carregando rotulo="Carregando o registro…" />;
 
-  const bloco = BLOCO_POR_FRENTE[form.frente];
-  const formatosDaFrente = catalogo.dicionarios.formatos.filter((formato) =>
-    bloco === 'investidores' ? formato.escopo === 'investidores' : formato.escopo === 'imprensa',
-  );
-
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: 26 }}>Novo registro</h1>
+        {/* O TITULO ACOMPANHA A ACAO. Dizia "Novo registro" tambem na
+            edicao: a pessoa abria uma agenda para alterar e a tela afirmava
+            que ela estava criando outra. E o nome bate com o botao da ficha
+            que trouxe ate aqui — uma acao mantem o mesmo nome ao longo do
+            caminho, senao a pessoa nao sabe se chegou onde queria. */}
+        <h1 style={{ fontSize: 26 }}>{id ? 'Editar agenda' : 'Nova agenda'}</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
-          O tipo de registro define quais campos aparecem.
+          Escolha a frente antes de preencher a identificação — ela define como a agenda é classificada.
         </p>
       </div>
 
@@ -409,302 +422,84 @@ export function Cadastro({
         </div>
       </Secao>
 
-      <Secao titulo="Classificação">
-        <div className="grade grade--3" style={{ gap: 16 }}>
-          <Campo rotulo="Status" obrigatorio>
-            <select
-              style={estiloDeEntrada}
-              value={form.status}
-              onChange={(evento) => alterar('status', evento.target.value)}
-            >
-              <option value="">Selecione…</option>
-              {catalogo.dicionarios.status.map((status) => (
-                <option key={status.codigo} value={status.codigo}>
-                  {status.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-
-          <Campo rotulo="Relevância">
-            <select
-              style={estiloDeEntrada}
-              value={form.tier}
-              onChange={(evento) => alterar('tier', evento.target.value)}
-            >
-              <option value="">Não classificada</option>
-              {/* Do banco, e nao escrito aqui — pelo mesmo motivo do filtro. Um
-                  nivel que o painel oferece para FILTRAR e nao oferece para
-                  CLASSIFICAR seria um filtro que nunca acha nada. */}
-              {catalogo?.dicionarios.relevancias.map((nivel) => (
-                <option key={nivel.id} value={nivel.id}>
-                  {nivel.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-
-          <Campo rotulo="Clima">
-            <select
-              style={estiloDeEntrada}
-              value={form.clima}
-              onChange={(evento) => alterar('clima', evento.target.value)}
-            >
-              <option value="">Não informado</option>
-              {catalogo.dicionarios.climas.map((clima) => (
-                <option key={clima.codigo} value={clima.codigo}>
-                  {clima.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-
-          <Campo rotulo="Resultado">
-            <select
-              style={estiloDeEntrada}
-              value={form.resultado}
-              onChange={(evento) => alterar('resultado', evento.target.value)}
-            >
-              <option value="">Sem definição</option>
-              {catalogo.dicionarios.resultados.map((resultado) => (
-                <option key={resultado.codigo} value={resultado.codigo}>
-                  {resultado.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-
-          <Campo rotulo="Iniciativa">
-            <select
-              style={estiloDeEntrada}
-              value={form.iniciativa}
-              onChange={(evento) => alterar('iniciativa', evento.target.value)}
-            >
-              <option value="">Não informada</option>
-              {catalogo.dicionarios.iniciativas.map((iniciativa) => (
-                <option key={iniciativa.codigo} value={iniciativa.codigo}>
-                  {iniciativa.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
-      </Secao>
-
-      <Secao titulo={`Campos de ${ROTULOS_DE_FRENTE[form.frente]}`}>
-        <div className="grade grade--2" style={{ gap: 16 }}>
-          {bloco === 'imprensa' ? (
-            <>
-              <CampoDeDicionario
-                rotulo="Formato"
-                itens={formatosDaFrente}
-                valor={form.extensao.formato}
-                aoMudar={(v) => alterarExtensao('formato', v)}
-              />
-              <CampoDeTexto
-                rotulo="Data atendida"
-                tipo="date"
-                valor={form.extensao.data_atendida}
-                aoMudar={(v) => alterarExtensao('data_atendida', v)}
-              />
-              <CampoDeTexto
-                rotulo="Data de publicação"
-                tipo="date"
-                valor={form.extensao.data_publicacao}
-                aoMudar={(v) => alterarExtensao('data_publicacao', v)}
-              />
-              <CampoDeTexto
-                rotulo="Link da matéria"
-                valor={form.extensao.link_materia}
-                aoMudar={(v) => alterarExtensao('link_materia', v)}
-              />
-              <CampoDeTexto
-                rotulo="Mensagens-chave"
-                dica="Separe por ponto e vírgula."
-                valor={form.extensao.mensagens_chave}
-                aoMudar={(v) => alterarExtensao('mensagens_chave', v)}
-              />
-            </>
-          ) : null}
-
-          {bloco === 'institucional' ? (
-            <>
-              <CampoDeDicionario
-                rotulo="Natureza do órgão"
-                itens={catalogo.dicionarios.naturezas_orgao}
-                valor={form.extensao.natureza_orgao}
-                aoMudar={(v) => alterarExtensao('natureza_orgao', v)}
-              />
-              <CampoDeTexto
-                rotulo="Cargo do interlocutor"
-                valor={form.extensao.cargo_interlocutor}
-                aoMudar={(v) => alterarExtensao('cargo_interlocutor', v)}
-              />
-              {form.frente === 'eventos' ? (
-                <CampoDeTexto
-                  rotulo="Nome do evento"
-                  dica="Não confundir com a entidade promotora nem com o interlocutor."
-                  valor={form.extensao.nome_evento}
-                  aoMudar={(v) => alterarExtensao('nome_evento', v)}
-                />
-              ) : null}
-            </>
-          ) : null}
-
-          {bloco === 'legislativo' ? (
-            <>
-              <CampoDeDicionario
-                rotulo="Casa"
-                itens={catalogo.dicionarios.casas}
-                valor={form.extensao.casa}
-                aoMudar={(v) => alterarExtensao('casa', v)}
-              />
-              <CampoDeDicionario
-                rotulo="Tramitação"
-                itens={catalogo.dicionarios.tramitacoes}
-                valor={form.extensao.tramitacao}
-                aoMudar={(v) => alterarExtensao('tramitacao', v)}
-              />
-              <Campo rotulo="Prioridade">
-                <select
-                  style={estiloDeEntrada}
-                  value={form.extensao.prioridade ?? ''}
-                  onChange={(evento) => alterarExtensao('prioridade', evento.target.value)}
-                >
-                  <option value="">Não classificada</option>
-                  <option value="alta">Alta</option>
-                  <option value="media">Média</option>
-                  <option value="baixa">Baixa</option>
-                  <option value="monitoramento">Monitoramento</option>
-                </select>
-              </Campo>
-              <CampoDeTexto
-                rotulo="Ementa"
-                valor={form.extensao.ementa}
-                aoMudar={(v) => alterarExtensao('ementa', v)}
-              />
-            </>
-          ) : null}
-
-          {bloco === 'investidores' ? (
-            <>
-              <CampoDeDicionario
-                rotulo="Tipo de investidor"
-                itens={catalogo.dicionarios.tipos_investidor}
-                valor={form.extensao.tipo_investidor}
-                aoMudar={(v) => alterarExtensao('tipo_investidor', v)}
-              />
-              <CampoDeDicionario
-                rotulo="Formato"
-                itens={formatosDaFrente}
-                valor={form.extensao.formato}
-                aoMudar={(v) => alterarExtensao('formato', v)}
-              />
-            </>
-          ) : null}
-
-          {bloco === 'interna' ? (
-            <>
-              <Campo rotulo="Natureza">
-                <select
-                  style={estiloDeEntrada}
-                  value={form.extensao.natureza ?? ''}
-                  onChange={(evento) => alterarExtensao('natureza', evento.target.value)}
-                >
-                  <option value="">Não informada</option>
-                  <option value="demanda">Demanda</option>
-                  <option value="entrega">Entrega</option>
-                </select>
-              </Campo>
-              <Campo rotulo="Cumprimento">
-                <select
-                  style={estiloDeEntrada}
-                  value={form.extensao.cumprimento ?? ''}
-                  onChange={(evento) => alterarExtensao('cumprimento', evento.target.value)}
-                >
-                  <option value="">Não informado</option>
-                  <option value="interno">Interno</option>
-                  <option value="externo">Externo</option>
-                  <option value="misto">Misto</option>
-                </select>
-              </Campo>
-              <Campo rotulo="Complexidade">
-                <select
-                  style={estiloDeEntrada}
-                  value={form.extensao.complexidade ?? ''}
-                  onChange={(evento) => alterarExtensao('complexidade', evento.target.value)}
-                >
-                  <option value="">Não informada</option>
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                </select>
-              </Campo>
-              <CampoDeTexto
-                rotulo="Prazo em dias"
-                tipo="number"
-                valor={form.extensao.prazo_dias}
-                aoMudar={(v) => alterarExtensao('prazo_dias', v)}
-              />
-              <CampoDeTexto
-                rotulo="Data de retorno"
-                tipo="date"
-                valor={form.extensao.data_retorno}
-                aoMudar={(v) => alterarExtensao('data_retorno', v)}
-              />
-            </>
-          ) : null}
-        </div>
-      </Secao>
-
-      <Secao titulo="Conteúdo">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Campo rotulo="Pauta" obrigatorio dica="É o que identifica o registro na base.">
-            <textarea
-              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
-              value={form.pauta}
-              onChange={(evento) => alterar('pauta', evento.target.value)}
-            />
-          </Campo>
-          {(
-            [
-              ['posicionamento', 'Posicionamento da companhia'],
-              ['relato', 'Relato'],
-              ['encaminhamentos', 'Repercussão e encaminhamentos'],
-              ['pendencias', 'Pendências'],
-              ['observacoes', 'Observações'],
-            ] as const
-          ).map(([campo, rotulo]) => (
-            <Campo key={campo} rotulo={rotulo}>
-              <textarea
-                style={{ ...estiloDeEntrada, height: 62, padding: 11, resize: 'vertical' }}
-                value={form[campo]}
-                onChange={(evento) => alterar(campo, evento.target.value)}
-              />
-            </Campo>
-          ))}
-          <Campo rotulo="Registro / documentação">
-            <input
-              style={estiloDeEntrada}
-              placeholder="Link do SharePoint, por exemplo"
-              value={form.registro_url}
-              onChange={(evento) => alterar('registro_url', evento.target.value)}
-            />
-          </Campo>
-        </div>
-      </Secao>
-
+{/* O CICLO VEM LOGO DEPOIS DA IDENTIFICACAO, e nao no fim.
+          Quem cadastra uma agenda pensa nela em ordem: quem e a outra parte,
+          o que se espera, quem vai, o que se leva. Classificacao e conteudo
+          sao o que se preenche DEPOIS da reuniao — deixa-los antes obrigava a
+          rolar a tela inteira para registrar o que ainda nem aconteceu. */}
       {/* ANTES DA REUNIAO ------------------------------------------------
           Separada do "Conteudo" de proposito: o que se ESPERA e escrito antes,
           e o relato depois. Lado a lado numa secao so, a pessoa preencheria os
           dois no mesmo momento — e a comparacao entre o previsto e o que houve,
           que e a razao de existir destes campos, deixaria de significar algo. */}
-      <Secao titulo="Antes da reunião">
+      {/* A AGENDA: O QUE É, EM QUE PÉ ESTÁ, E O QUE SE ESPERA DELA.
+
+          "Antes da reunião" e "Classificação" eram duas seções, e a divisão
+          não correspondia a nada: `clima esperado` ficava numa e o clima REAL
+          na outra, longe um do outro — justamente o par cuja comparação é a
+          razão de os dois existirem. Quem cadastrava preenchia o mesmo assunto
+          em dois lugares da tela.
+
+          A ordem conta a história da agenda: quem pediu, em que pé está, o
+          quanto importa, o que se espera, o que houve, e onde ela entra na
+          cadeia de conversas. */}
+      <Secao titulo="Situação e expectativa">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O que se espera desta agenda. Preencha antes; depois compare com o
-            relato — é essa distância que mostra se o que planejamos acontece.
+            Preencha a expectativa antes da reunião. Depois dela, o clima e o
+            resultado ficam ao lado — a distância entre os dois é o que a base
+            responde.
           </p>
+
+          <div className="grade grade--3" style={{ gap: 16 }}>
+            <Campo rotulo="Iniciativa">
+              <select
+                style={estiloDeEntrada}
+                value={form.iniciativa}
+                onChange={(evento) => alterar('iniciativa', evento.target.value)}
+              >
+                <option value="">Não informada</option>
+                {catalogo.dicionarios.iniciativas.map((iniciativa) => (
+                  <option key={iniciativa.codigo} value={iniciativa.codigo}>
+                    {iniciativa.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Status" obrigatorio>
+              <select
+                style={estiloDeEntrada}
+                value={form.status}
+                onChange={(evento) => alterar('status', evento.target.value)}
+              >
+                <option value="">Selecione…</option>
+                {catalogo.dicionarios.status.map((status) => (
+                  <option key={status.codigo} value={status.codigo}>
+                    {status.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Relevância">
+              <select
+                style={estiloDeEntrada}
+                value={form.tier}
+                onChange={(evento) => alterar('tier', evento.target.value)}
+              >
+                <option value="">Não classificada</option>
+                {/* Do banco, e não escrito aqui — pelo mesmo motivo do filtro.
+                    Um nível que o painel oferece para FILTRAR e não oferece
+                    para CLASSIFICAR seria um filtro que nunca acha nada. */}
+                {catalogo?.dicionarios.relevancias.map((nivel) => (
+                  <option key={nivel.id} value={nivel.id}>
+                    {nivel.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
 
           <Campo rotulo="Expectativa">
             <textarea
@@ -715,13 +510,55 @@ export function Cadastro({
             />
           </Campo>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+          {/* O ESPERADO E O REAL LADO A LADO. Separados, ninguém compara — e a
+              comparação é a medida de eficiência, não a contagem de reuniões. */}
+          <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}
               aoMudar={(v) => alterar('clima_esperado', v)}
             />
+
+            <Campo rotulo="Clima">
+              <select
+                style={estiloDeEntrada}
+                value={form.clima}
+                onChange={(evento) => alterar('clima', evento.target.value)}
+              >
+                <option value="">Não informado</option>
+                {catalogo.dicionarios.climas.map((clima) => (
+                  <option key={clima.codigo} value={clima.codigo}>
+                    {clima.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Resultado">
+              <select
+                style={estiloDeEntrada}
+                value={form.resultado}
+                onChange={(evento) => alterar('resultado', evento.target.value)}
+              >
+                <option value="">Sem definição</option>
+                {catalogo.dicionarios.resultados.map((resultado) => (
+                  <option key={resultado.codigo} value={resultado.codigo}>
+                    {resultado.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
+
+          {/* AS DUAS PONTAS DA MESMA RELAÇÃO, lado a lado: de onde a agenda
+              veio, e se ela continua.
+
+              Separadas — uma solta no meio da seção e a outra sozinha numa
+              grade de três, com duas colunas vazias — não se liam como par. E
+              a linhagem é justamente o que transforma reuniões soltas em
+              agenda com histórico. */}
+          <div className="grade grade--2" style={{ gap: 16 }}>
             <Campo
               rotulo="Veio de outra agenda?"
               dica="Encadear as conversas é o que transforma reuniões soltas em agenda com histórico."
@@ -769,8 +606,11 @@ export function Cadastro({
               <select
                 style={estiloDeEntrada}
                 value={form.preve_desdobramento}
-                onChange={(e) =>
-                  alterar('preve_desdobramento', e.target.value as Formulario['preve_desdobramento'])
+                onChange={(evento) =>
+                  alterar(
+                    'preve_desdobramento',
+                    evento.target.value as Formulario['preve_desdobramento'],
+                  )
                 }
               >
                 {/* "Não informado" é o padrão, e não "não". A diferença entre
@@ -785,12 +625,11 @@ export function Cadastro({
         </Cartao>
       </Secao>
 
-      {/* QUEM PARTICIPA ---------------------------------------------------- */}
       <Secao titulo="Quem participa">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            As pessoas da outra parte. Marque quem representa a instituição e,
-            depois da reunião, quem de fato compareceu — inclusive quem faltou.
+            Marque quem representa a instituição e, depois da reunião, quem
+            compareceu — inclusive quem faltou.
           </p>
           <ListaDeParticipantes
             participantes={form.outraParte}
@@ -804,15 +643,65 @@ export function Cadastro({
       <Secao titulo="Materiais">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            Links para SharePoint ou Drive. Material de <strong>apoio</strong> é
-            o que se leva; <strong>obtido</strong> e <strong>produzido</strong>
-            {' '}são o que sai de lá.
+            Links para SharePoint ou Drive. <strong>Apoio</strong> é o que se
+            leva; <strong>obtido</strong> e <strong>produzido</strong> saem de lá.
           </p>
           <ListaDeMateriais
             materiais={form.materiais}
             aoMudar={(materiais) => alterar('materiais', materiais)}
           />
         </Cartao>
+      </Secao>
+
+      {/* A SECAO "CAMPOS DE <FRENTE>" SAIU DA TELA — e so da tela.
+          Pedido do dono do produto. Eram cinco blocos condicionais: formato,
+          data de publicacao, link da materia e mensagens-chave na imprensa;
+          casa, tramitacao, prioridade e ementa no legislativo; e assim por
+          diante.
+
+          O DADO CONTINUA. `form.extensao` segue no estado, `paraFormulario` o
+          carrega do servidor e `montarCorpo` o devolve — sem isso, editar um
+          registro de imprensa apagaria o formato e o link que ja estavam
+          gravados, porque na edicao campo ausente vira `null`.
+
+          A ficha e os relatorios continuam exibindo tudo. O que mudou e que
+          esses campos deixaram de ser preenchiveis por aqui. */}
+
+      <Secao titulo="Conteúdo">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Campo rotulo="Pauta" obrigatorio dica="É o que identifica o registro na base.">
+            <textarea
+              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
+              value={form.pauta}
+              onChange={(evento) => alterar('pauta', evento.target.value)}
+            />
+          </Campo>
+          {(
+            [
+              ['posicionamento', 'Posicionamento da companhia'],
+              ['relato', 'Relato'],
+              ['encaminhamentos', 'Repercussão e encaminhamentos'],
+              ['pendencias', 'Pendências'],
+              ['observacoes', 'Observações'],
+            ] as const
+          ).map(([campo, rotulo]) => (
+            <Campo key={campo} rotulo={rotulo}>
+              <textarea
+                style={{ ...estiloDeEntrada, height: 62, padding: 11, resize: 'vertical' }}
+                value={form[campo]}
+                onChange={(evento) => alterar(campo, evento.target.value)}
+              />
+            </Campo>
+          ))}
+          <Campo rotulo="Registro / documentação">
+            <input
+              style={estiloDeEntrada}
+              placeholder="Link do SharePoint, por exemplo"
+              value={form.registro_url}
+              onChange={(evento) => alterar('registro_url', evento.target.value)}
+            />
+          </Campo>
+        </div>
       </Secao>
 
       {/* DECLINIO — so quando ha o que declinar -----------------------------
@@ -823,9 +712,8 @@ export function Cadastro({
         <Secao titulo="Sobre o declínio">
           <Cartao>
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-              Declinada <strong>pela Aegea</strong> é escolha; declinada pela
-              outra parte é porta que se fechou. Somar as duas num número só
-              apaga a diferença.
+              De qual lado veio a recusa muda a leitura, então o motivo sozinho
+              não basta.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
               <Campo rotulo="Quem declinou">
@@ -910,7 +798,21 @@ export function Cadastro({
       </Secao>
 
       <Cartao estilo={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-        <Botao aoClicar={() => definirForm(VAZIO)}>Limpar</Botao>
+        {/* NA EDICAO, ESVAZIAR NAO E UMA ACAO QUE ALGUEM QUEIRA.
+            O botao chamava `VAZIO` sempre: numa agenda existente, ele apagava
+            a tela inteira, e salvar em seguida levaria o apagamento ao
+            registro — agora que campo vazio significa `null`, e nao "nao
+            mexi". Editando, o gesto util e VOLTAR ao que estava. */}
+        <Botao
+          // Sem alvo carregado não há o que desfazer, e cair no `VAZIO` seria
+          // justamente o apagamento que este botão deixou de fazer.
+          desabilitado={Boolean(id) && !carregado}
+          aoClicar={() =>
+            definirForm(id ? (carregado ?? VAZIO) : { ...VAZIO, frente: form.frente })
+          }
+        >
+          {id ? 'Desfazer alterações' : 'Limpar'}
+        </Botao>
         <Botao
           variante="primario"
           aoClicar={enviar}
@@ -923,7 +825,7 @@ export function Cadastro({
             !form.status
           }
         >
-          {enviando ? 'Salvando…' : 'Salvar registro'}
+          {enviando ? 'Salvando…' : id ? 'Salvar alterações' : 'Salvar agenda'}
         </Botao>
       </Cartao>
     </div>
@@ -1071,7 +973,22 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     registro_url: opcional(form.registro_url),
     temas: form.temas,
     participacoes: form.portaVozes.map((id) => ({ pessoa_aegea_id: id, papel: 'porta_voz' })),
-    extensao: Object.keys(extensao).length ? extensao : vazio,
+    // EXTENSÃO VAZIA NÃO É EXTENSÃO AUSENTE, e a diferença apaga linha.
+    //
+    // `extensao` acima é remontada só com os valores preenchidos, então um
+    // registro cuja extensão existe mas está toda vazia produzia `{}` — e na
+    // edição `{}` virava `null`, que o backend lê como "apague a linha".
+    // Salvar sem mudar NADA removia a extensão de 19 registros institucionais
+    // e 9 de investidores, que estão nesse estado hoje.
+    //
+    // O que distingue os dois casos é o FORMULÁRIO, não o resultado: se
+    // `form.extensao` tem chaves, o registro tem extensão — ainda que vazia —
+    // e mandar `{}` a preserva. `null` fica só para quem nunca teve nenhuma.
+    extensao: Object.keys(extensao).length
+      ? extensao
+      : Object.keys(form.extensao).length
+        ? {}
+        : vazio,
 
     // -- o ciclo -------------------------------------------------------------
     expectativa: opcional(form.expectativa),
@@ -1160,7 +1077,8 @@ function ListaDeParticipantes({
     <>
       {participantes.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
-          Nenhuma pessoa registrada ainda.
+          Ninguém da outra parte ainda. Acrescente quem vai à reunião — e,
+          depois dela, marque quem foi.
         </p>
       )}
 
@@ -1285,7 +1203,7 @@ function ListaDeMateriais({
     <>
       {materiais.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
-          Nenhum material registrado ainda.
+          Nenhum material ainda. Comece pelo que você leva para a reunião.
         </p>
       )}
 
