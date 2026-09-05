@@ -468,29 +468,71 @@ export function Cadastro({
             </select>
           </Campo>
         </div>
+
+        {/* O ASSUNTO IDENTIFICA A AGENDA, ENTAO MORA NA IDENTIFICACAO.
+            A pauta estava em "Conteúdo", entre relato e encaminhamentos — o
+            que se escreve DEPOIS da reunião. Mas ela é o que se sabe primeiro:
+            é por ela que se pede a agenda, e é ela que nomeia o registro na
+            base. Estava no lugar errado desde sempre.
+
+            Pauta e Temas são a mesma pergunta em duas precisões: o assunto em
+            palavras, e o assunto classificado — o segundo é o que o painel
+            consegue somar. Ficam juntos para não se contradizerem. */}
+        <div style={{ marginTop: 16 }}>
+          <Campo
+            rotulo="Pauta"
+            obrigatorio
+            dica="O assunto a ser tratado. É o que identifica o registro na base."
+          >
+            <textarea
+              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
+              value={form.pauta}
+              onChange={(evento) => alterar('pauta', evento.target.value)}
+            />
+          </Campo>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          {/* "Temas", e nao "Assuntos": a ficha, o painel de frentes e o
+              relatório chamam assim. Um nome só aqui dividiria o vocabulário —
+              a pessoa marcaria "assunto" e procuraria por "tema". */}
+          <Campo rotulo="Temas" dica="O mesmo assunto, classificado — é assim que o painel soma.">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {catalogo.dicionarios.temas.map((tema) => {
+                const ativo = form.temas.includes(tema.id);
+                return (
+                  <Chip
+                    key={tema.id}
+                    rotulo={tema.nome}
+                    ativo={ativo}
+                    fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                    texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                    aoClicar={() =>
+                      alterar(
+                        'temas',
+                        ativo
+                          ? form.temas.filter((id) => id !== tema.id)
+                          : [...form.temas, tema.id],
+                      )
+                    }
+                  />
+                );
+              })}
+            </div>
+          </Campo>
+        </div>
       </Secao>
 
-{/* O CICLO VEM LOGO DEPOIS DA IDENTIFICACAO, e nao no fim.
-          Quem cadastra uma agenda pensa nela em ordem: quem e a outra parte,
-          o que se espera, quem vai, o que se leva. Classificacao e conteudo
-          sao o que se preenche DEPOIS da reuniao — deixa-los antes obrigava a
-          rolar a tela inteira para registrar o que ainda nem aconteceu. */}
-      {/* ANTES DA REUNIAO ------------------------------------------------
-          Separada do "Conteudo" de proposito: o que se ESPERA e escrito antes,
-          e o relato depois. Lado a lado numa secao so, a pessoa preencheria os
-          dois no mesmo momento — e a comparacao entre o previsto e o que houve,
-          que e a razao de existir destes campos, deixaria de significar algo. */}
-      {/* A AGENDA: O QUE É, EM QUE PÉ ESTÁ, E O QUE SE ESPERA DELA.
+      {/* O QUE SE SABE ANTES DE A AGENDA ACONTECER.
+          Vem logo depois da identificação porque é nesta ordem que se pensa
+          uma agenda: quem pediu, em que pé está, o quanto importa, e o que se
+          espera dela. O que houve fica em "Desfecho da agenda"; o relato, em
+          "Conteúdo" — ambos depois de "Quem participa" e "Materiais", que são
+          o que se resolve entre marcar e realizar.
 
-          "Antes da reunião" e "Classificação" eram duas seções, e a divisão
-          não correspondia a nada: `clima esperado` ficava numa e o clima REAL
-          na outra, longe um do outro — justamente o par cuja comparação é a
-          razão de os dois existirem. Quem cadastrava preenchia o mesmo assunto
-          em dois lugares da tela.
-
-          A ordem conta a história da agenda: quem pediu, em que pé está, o
-          quanto importa, o que se espera, o que houve, e onde ela entra na
-          cadeia de conversas. */}
+          Três comentários se acumularam aqui, de reorganizações sucessivas, e
+          dois falavam de campos que já tinham saído desta seção. Comentário
+          que descreve uma tela anterior é pior que comentário nenhum. */}
       <Secao titulo="Situação e expectativa">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
@@ -548,15 +590,6 @@ export function Cadastro({
               </select>
             </Campo>
           </div>
-
-          <Campo rotulo="Expectativa">
-            <textarea
-              style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
-              value={form.expectativa}
-              onChange={(evento) => alterar('expectativa', evento.target.value)}
-              placeholder="O que precisa sair desta reunião para ela ter valido a pena."
-            />
-          </Campo>
 
           {/* SÓ O QUE SE SABE ANTES DA AGENDA ACONTECER.
               Clima esperado é previsão; de onde a agenda veio é fato dado. O
@@ -619,20 +652,88 @@ export function Cadastro({
               </select>
             </Campo>
           </div>
+
+          {/* A EXPECTATIVA FECHA A SEÇÃO porque ela depende de tudo que veio
+              antes: quem pediu, em que pé está, o quanto importa, que clima se
+              projeta, de onde a agenda veio. Escrever o que se espera antes de
+              responder essas coisas é escrever no vazio. */}
+          <Campo rotulo="Expectativa">
+            <textarea
+              style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
+              value={form.expectativa}
+              onChange={(evento) => alterar('expectativa', evento.target.value)}
+              placeholder="O que precisa sair desta reunião para ela ter valido a pena."
+            />
+          </Campo>
         </Cartao>
       </Secao>
 
+      {/* OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
+          Os porta-vozes viviam no fim da tela, numa seção "Porta-vozes e
+          temas", longe das pessoas da outra parte. Mas a pergunta é uma só —
+          quem senta nesta reunião — e respondê-la em dois lugares distantes
+          fazia a metade Aegea ser esquecida com frequência.
+
+          Os dois lados NÃO têm a mesma forma, e a tela não finge que têm: os
+          porta-vozes são um conjunto fechado da casa, escolhido por chip; a
+          outra parte é uma lista aberta, com presença e com quem representa a
+          instituição. Presença só existe de um lado porque só de um lado
+          alguém pode faltar sem que a reunião deixe de acontecer. */}
       <Secao titulo="Quem participa">
         <Cartao>
-          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            Marque quem representa a instituição e, depois da reunião, quem
-            compareceu — inclusive quem faltou.
-          </p>
-          <ListaDeParticipantes
-            participantes={form.outraParte}
-            interlocutores={[...catalogo.interlocutores.values()]}
-            aoMudar={(outraParte) => alterar('outraParte', outraParte)}
-          />
+          <div className="grade grade--mesa" style={{ gap: 24 }}>
+            <Campo
+              rotulo="Pela Aegea"
+              dica="Vários são permitidos: o registro conta para cada um no painel de exposição."
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                {[...catalogo.pessoas.values()]
+                  .filter((pessoa) => pessoa.eh_porta_voz)
+                  .map((pessoa) => {
+                    const ativo = form.portaVozes.includes(pessoa.id);
+                    return (
+                      <Chip
+                        key={pessoa.id}
+                        rotulo={pessoa.nome}
+                        ativo={ativo}
+                        fundo={ativo ? 'var(--azul-mar)' : 'var(--bg-trilho)'}
+                        texto={ativo ? 'var(--branco)' : 'var(--cinza-3)'}
+                        aoClicar={() =>
+                          alterar(
+                            'portaVozes',
+                            ativo
+                              ? form.portaVozes.filter((id) => id !== pessoa.id)
+                              : [...form.portaVozes, pessoa.id],
+                          )
+                        }
+                      />
+                    );
+                  })}
+              </div>
+            </Campo>
+
+            <div>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--cinza-3)',
+                  margin: '0 0 5px',
+                }}
+              >
+                Pela outra parte
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
+                Marque quem representa a instituição e, depois da reunião, quem
+                compareceu — inclusive quem faltou.
+              </p>
+              <ListaDeParticipantes
+                participantes={form.outraParte}
+                interlocutores={[...catalogo.interlocutores.values()]}
+                aoMudar={(outraParte) => alterar('outraParte', outraParte)}
+              />
+            </div>
+          </div>
         </Cartao>
       </Secao>
 
@@ -666,13 +767,6 @@ export function Cadastro({
 
       <Secao titulo="Conteúdo">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Campo rotulo="Pauta" obrigatorio dica="É o que identifica o registro na base.">
-            <textarea
-              style={{ ...estiloDeEntrada, height: 68, padding: 11, resize: 'vertical' }}
-              value={form.pauta}
-              onChange={(evento) => alterar('pauta', evento.target.value)}
-            />
-          </Campo>
           {(
             [
               ['posicionamento', 'Posicionamento da companhia'],
@@ -803,65 +897,6 @@ export function Cadastro({
           </Cartao>
         </Secao>
       )}
-
-      <Secao titulo="Porta-vozes e temas">
-        <Campo
-          rotulo="Porta-vozes"
-          dica="Vários são permitidos: o registro conta para cada um no painel de exposição."
-        >
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            {[...catalogo.pessoas.values()]
-              .filter((pessoa) => pessoa.eh_porta_voz)
-              .map((pessoa) => {
-                const ativo = form.portaVozes.includes(pessoa.id);
-                return (
-                  <Chip
-                    key={pessoa.id}
-                    rotulo={pessoa.nome}
-                    ativo={ativo}
-                    fundo={ativo ? 'var(--azul-mar)' : 'var(--bg-trilho)'}
-                    texto={ativo ? 'var(--branco)' : 'var(--cinza-3)'}
-                    aoClicar={() =>
-                      alterar(
-                        'portaVozes',
-                        ativo
-                          ? form.portaVozes.filter((id) => id !== pessoa.id)
-                          : [...form.portaVozes, pessoa.id],
-                      )
-                    }
-                  />
-                );
-              })}
-          </div>
-        </Campo>
-
-        <div style={{ marginTop: 18 }}>
-          <Campo rotulo="Temas">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {catalogo.dicionarios.temas.map((tema) => {
-                const ativo = form.temas.includes(tema.id);
-                return (
-                  <Chip
-                    key={tema.id}
-                    rotulo={tema.nome}
-                    ativo={ativo}
-                    fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                    texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                    aoClicar={() =>
-                      alterar(
-                        'temas',
-                        ativo
-                          ? form.temas.filter((id) => id !== tema.id)
-                          : [...form.temas, tema.id],
-                      )
-                    }
-                  />
-                );
-              })}
-            </div>
-          </Campo>
-        </div>
-      </Secao>
 
       <Cartao estilo={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         {/* NA EDICAO, ESVAZIAR NAO E UMA ACAO QUE ALGUEM QUEIRA.

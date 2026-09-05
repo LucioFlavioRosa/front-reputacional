@@ -154,12 +154,23 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .grade--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grade--destaque { grid-template-columns: 1.35fr 1fr 1fr; }
 .grade--mapa { grid-template-columns: 1.3fr 1fr; }
+/* Os dois lados da mesa. Colunas DESIGUAIS de proposito: a Aegea entra por
+   chips, que se acomodam em pouca largura, e a outra parte entra por linhas de
+   pessoa + presenca + principal + remover, que em metade da tela ficariam
+   espremidas a ponto de o nome nao caber. */
+.grade--mesa { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr); }
 .grade--auto { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
 @media (max-width: 1040px) {
   .grade--4,
   .grade--destaque { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grade--mapa { grid-template-columns: 1fr; }
+  /* A mesa desmonta CEDO, em 1040 e nao junto das outras em 760. Entre as duas
+     larguras a coluna direita cai para uns 400px — descontados os recuos de
+     `Secao` e `Cartao` dentro dos 900px da pagina — e a linha `pessoa +
+     presenca + principal + remover` espreme o nome a ponto de nao caber. Duas
+     colunas so valem onde ha largura para as duas. */
+  .grade--mapa,
+  .grade--mesa { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
