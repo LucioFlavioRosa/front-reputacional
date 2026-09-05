@@ -494,9 +494,9 @@ export function Cadastro({
       <Secao titulo="Situação e expectativa">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            Preencha a expectativa antes da reunião. Depois dela, o clima e o
-            resultado ficam ao lado — a distância entre os dois é o que a base
-            responde.
+            O que se sabe antes da agenda acontecer: quem pediu, em que pé
+            está, e o que se espera dela. Como ela terminou fica em "Desfecho
+            da agenda".
           </p>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
@@ -558,9 +558,17 @@ export function Cadastro({
             />
           </Campo>
 
-          {/* O ESPERADO E O REAL LADO A LADO. Separados, ninguém compara — e a
-              comparação é a medida de eficiência, não a contagem de reuniões. */}
-          <div className="grade grade--3" style={{ gap: 16 }}>
+          {/* SÓ O QUE SE SABE ANTES DA AGENDA ACONTECER.
+              Clima esperado é previsão; de onde a agenda veio é fato dado. O
+              clima REAL, o resultado e o desdobramento saíram daqui para
+              "Desfecho da agenda" — quem abre o formulário para marcar uma
+              reunião não tem como responder nenhum dos três.
+
+              O par esperado × real, que motivou juntá-los aqui, continua
+              inteiro na ficha, onde ele é LIDO. É lá que a comparação serve
+              para alguma coisa; aqui ela só pedia um dado que ainda não
+              existe. */}
+          <div className="grade grade--2" style={{ gap: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
               itens={catalogo.dicionarios.climas}
@@ -568,45 +576,6 @@ export function Cadastro({
               aoMudar={(v) => alterar('clima_esperado', v)}
             />
 
-            <Campo rotulo="Clima">
-              <select
-                style={estiloDeEntrada}
-                value={form.clima}
-                onChange={(evento) => alterar('clima', evento.target.value)}
-              >
-                <option value="">Não informado</option>
-                {catalogo.dicionarios.climas.map((clima) => (
-                  <option key={clima.codigo} value={clima.codigo}>
-                    {clima.nome}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-
-            <Campo rotulo="Resultado">
-              <select
-                style={estiloDeEntrada}
-                value={form.resultado}
-                onChange={(evento) => alterar('resultado', evento.target.value)}
-              >
-                <option value="">Sem definição</option>
-                {catalogo.dicionarios.resultados.map((resultado) => (
-                  <option key={resultado.codigo} value={resultado.codigo}>
-                    {resultado.nome}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-          </div>
-
-          {/* AS DUAS PONTAS DA MESMA RELAÇÃO, lado a lado: de onde a agenda
-              veio, e se ela continua.
-
-              Separadas — uma solta no meio da seção e a outra sozinha numa
-              grade de três, com duas colunas vazias — não se liam como par. E
-              a linhagem é justamente o que transforma reuniões soltas em
-              agenda com histórico. */}
-          <div className="grade grade--2" style={{ gap: 16 }}>
             <Campo
               rotulo="Veio de outra agenda?"
               dica="Encadear as conversas é o que transforma reuniões soltas em agenda com histórico."
@@ -647,26 +616,6 @@ export function Cadastro({
                       {agenda.data_interacao} · {agenda.pauta.slice(0, 60)}
                     </option>
                   ))}
-              </select>
-            </Campo>
-
-            <Campo rotulo="Desdobra em outra agenda?">
-              <select
-                style={estiloDeEntrada}
-                value={form.preve_desdobramento}
-                onChange={(evento) =>
-                  alterar(
-                    'preve_desdobramento',
-                    evento.target.value as Formulario['preve_desdobramento'],
-                  )
-                }
-              >
-                {/* "Não informado" é o padrão, e não "não". A diferença entre
-                    não saber e saber que não é o que esta plataforma existe
-                    para reduzir. */}
-                <option value="">Não informado</option>
-                <option value="sim">Sim, prevê continuidade</option>
-                <option value="nao">Não</option>
               </select>
             </Campo>
           </div>
@@ -750,6 +699,75 @@ export function Cadastro({
             />
           </Campo>
         </div>
+      </Secao>
+
+      {/* O DESFECHO — o que só existe DEPOIS da agenda acontecer.
+          Estes três campos estavam em "Situação e expectativa", junto do que
+          se sabe antes. Quem abre o formulário para marcar uma reunião não tem
+          como responder nenhum deles, e o formulário pedia mesmo assim.
+
+          Fica logo depois de "Conteúdo" de propósito: o relato acabou de ser
+          escrito ali, e estes campos são a classificação daquele mesmo texto.
+          Separá-los faria voltar a rolar a tela para dizer duas vezes como a
+          reunião foi. */}
+      <Secao titulo="Desfecho da agenda">
+        <Cartao>
+          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+            Depois da reunião. O clima aqui é o que de fato houve — a ficha o
+            mostra ao lado do que se esperava.
+          </p>
+          <div className="grade grade--3" style={{ gap: 16 }}>
+            <Campo rotulo="Clima">
+              <select
+                style={estiloDeEntrada}
+                value={form.clima}
+                onChange={(evento) => alterar('clima', evento.target.value)}
+              >
+                <option value="">Não informado</option>
+                {catalogo.dicionarios.climas.map((clima) => (
+                  <option key={clima.codigo} value={clima.codigo}>
+                    {clima.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Resultado">
+              <select
+                style={estiloDeEntrada}
+                value={form.resultado}
+                onChange={(evento) => alterar('resultado', evento.target.value)}
+              >
+                <option value="">Sem definição</option>
+                {catalogo.dicionarios.resultados.map((resultado) => (
+                  <option key={resultado.codigo} value={resultado.codigo}>
+                    {resultado.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            <Campo rotulo="Desdobra em outra agenda?">
+              <select
+                style={estiloDeEntrada}
+                value={form.preve_desdobramento}
+                onChange={(evento) =>
+                  alterar(
+                    'preve_desdobramento',
+                    evento.target.value as Formulario['preve_desdobramento'],
+                  )
+                }
+              >
+                {/* "Não informado" é o padrão, e não "não". A diferença entre
+                    não saber e saber que não é o que esta plataforma existe
+                    para reduzir. */}
+                <option value="">Não informado</option>
+                <option value="sim">Sim, prevê continuidade</option>
+                <option value="nao">Não</option>
+              </select>
+            </Campo>
+          </div>
+        </Cartao>
       </Secao>
 
       {/* DECLINIO — so quando ha o que declinar -----------------------------
