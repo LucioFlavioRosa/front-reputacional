@@ -51,8 +51,15 @@ const NAVEGACAO: { view: View; rotulo: string }[] = [
  * com as abas de análise faria todo mundo passar por ela todo dia sem motivo.
  * Quem administra chega por `administra_acessos` no menu do usuário.
  */
+//: "Administração", e não "Acessos": a entrada leva a um portal com QUATRO
+//: abas — quem entra na plataforma, com quem a companhia conversa, quem fala
+//: por ela, e sobre o quê. O rótulo antigo prometia um quarto do que há atrás
+//: dele.
+//:
+//: A `view` continua `acessos` de propósito: é o que o histórico do navegador
+//: guarda, e trocá-la quebraria os links que alguém já tenha.
 export const NAVEGACAO_ADMINISTRATIVA: { view: View; rotulo: string }[] = [
-  { view: 'acessos', rotulo: 'Acessos' },
+  { view: 'acessos', rotulo: 'Administração' },
 ];
 
 export function Layout({

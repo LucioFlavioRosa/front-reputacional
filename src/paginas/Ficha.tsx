@@ -188,10 +188,34 @@ export function Ficha({
               rotulo="Unidade de negócio"
               valor={nomeDaUnidade(catalogo, interacao.unidade_negocio_id)}
             />
+            {/* "UF da agenda", como no formulario. O mesmo campo com dois
+                nomes faz a pessoa procurar "abrangencia" onde esta escrito
+                "UF" — e "Abrangencia" segue valendo no cadastro de
+                INSTITUICAO, onde descreve o alcance do orgao e nao a UF de uma
+                reuniao. */}
             <Metadado
-              rotulo="Abrangência"
+              rotulo="UF da agenda"
               valor={rotuloDeAbrangencia(interacao.uf)}
             />
+            {/* ONDE ACONTECEU. Sem isto, o campo entrava no formulario e
+                morria ali: quem le a ficha nao saberia se a reuniao foi na
+                sala ou por chamada — e essa diferenca muda a leitura da
+                presenca e do clima. */}
+            {interacao.modalidade || interacao.local ? (
+              <Metadado
+                rotulo="Onde"
+                valor={[
+                  interacao.modalidade
+                    ? { presencial: 'Presencial', online: 'Online', hibrida: 'Híbrida' }[
+                        interacao.modalidade
+                      ] ?? interacao.modalidade
+                    : null,
+                  interacao.local,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+            ) : null}
             <Metadado
               rotulo="Porta-vozes"
               valor={

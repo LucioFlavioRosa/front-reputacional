@@ -14,7 +14,7 @@ import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
-import { Acessos } from '@/paginas/Acessos';
+import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
 import { Login } from '@/paginas/Login';
 import { Frentes } from '@/paginas/Frentes';
 import { Painel } from '@/paginas/Painel';
@@ -284,7 +284,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {/* `euId` para a tela saber qual linha é a de quem está olhando:
               ninguém desativa a própria conta, e oferecer o botão seria
               convidar para uma porta que responde 403. */}
-          {view === 'acessos' ? <Acessos euId={eu?.id ?? null} /> : null}
+          {view === 'acessos' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
         </LimiteDeErro>
       </Layout>
 

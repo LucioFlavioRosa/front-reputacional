@@ -259,8 +259,9 @@ export function Interlocutores() {
       {aba === 'diretorio' ? (
         <Secao titulo="Diretório de interlocutores">
           <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginBottom: 16 }}>
-            Cargo, tipo e temas de interesse são somente leitura por enquanto — os endpoints de
-            escrita do cadastro entram junto com os de porta-vozes.
+            Esta tela é de análise: aqui o diretório é leitura. Para cadastrar,
+            editar ou desligar alguém, use <strong>Administração › Veículos e
+            órgãos</strong>.
           </p>
           <div className="rolagem-interna" style={{ maxHeight: 420 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

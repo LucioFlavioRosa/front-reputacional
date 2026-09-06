@@ -107,6 +107,10 @@ export interface Interacao {
   unidade_negocio_id: number | null;
   esfera_id: number | null;
   uf: string;
+  /** `presencial`, `online` ou `hibrida`. `null` = não informado. */
+  modalidade: string | null;
+  /** Onde a agenda acontece, em palavras: endereço, sala, ou o link. */
+  local: string | null;
   tier: number | null;
   stakeholder_id: number | null;
   status: string;
@@ -253,6 +257,8 @@ export interface Instituicao {
   id: string;
   nome: string;
   tipo: string;
+  /** O nome por extenso. `nome` guarda a forma curta, que é como se fala. */
+  nome_completo: string | null;
   uf: string | null;
 }
 
@@ -261,6 +267,8 @@ export interface Interlocutor {
   nome: string;
   instituicao_id: string | null;
   cargo: string | null;
+  /** Como se chega na pessoa para marcar a agenda. */
+  email: string | null;
   tipo: string | null;
   ativo: boolean;
 }
@@ -269,6 +277,8 @@ export interface PessoaAegea {
   id: string;
   nome: string;
   cargo: string | null;
+  /** Como se aciona a pessoa da casa para articular a agenda. */
+  email: string | null;
   eh_porta_voz: boolean;
   ativo: boolean;
 }

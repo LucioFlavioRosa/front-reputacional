@@ -228,8 +228,9 @@ export function PortaVozes() {
       {aba === 'diretorio' ? (
         <Secao titulo="Diretório de porta-vozes">
           <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginBottom: 16 }}>
-            Cargo, temas autorizados e o estado ativo/inativo ainda são somente leitura: o backend
-            expõe a listagem, e os endpoints de escrita do cadastro entram na próxima etapa.
+            Esta tela é de análise: aqui o diretório é leitura. Para cadastrar
+            alguém, mudar o cargo ou definir sobre o que a pessoa pode falar, use
+            <strong> Administração › Porta-vozes</strong>.
           </p>
           <Ranking
             itens={[...catalogo.pessoas.values()]

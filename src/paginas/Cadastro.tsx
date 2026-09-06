@@ -29,7 +29,12 @@ import {
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
-import { extensaoAoTrocarDeFrente } from '@/dominio/frentes';
+import {
+  TIPO_DE_INSTITUICAO,
+  extensaoAoTrocarDeFrente,
+  instituicoesDaFrente,
+  interlocutoresDaInstituicao,
+} from '@/dominio/frentes';
 import { hojeLocal, tituloDaAgenda } from '@/dominio/formato';
 import { nomesDosTemas } from '@/dominio/derivacoes';
 import { FRENTES } from '@/dominio/tipos';
@@ -53,17 +58,19 @@ interface Formulario {
   unidade_negocio_id: string;
   esfera_id: string;
   uf: string;
+  //: `presencial`, `online` ou `hibrida`. '' = nao informado, como nos demais.
+  modalidade: string;
+  //: Endereco, sala, ou o link da chamada. Texto livre.
+  local: string;
   tier: string;
   status: string;
   clima: string;
   resultado: string;
   iniciativa: string;
-  posicionamento: string;
   relato: string;
   encaminhamentos: string;
   pendencias: string;
   observacoes: string;
-  registro_url: string;
   temas: number[];
   aegea: ParticipanteAegeaNoForm[];
   extensao: Record<string, string>;
@@ -196,6 +203,8 @@ const VAZIO: Formulario = {
   unidade_negocio_id: '',
   esfera_id: '',
   uf: '',
+  modalidade: '',
+  local: '',
   tier: '',
   //: SOLICITADO, e nao vazio nem `agendado`. Uma agenda recem-criada foi
   //: PEDIDA; dizer "agendado" afirmaria que existe data marcada com a outra
@@ -205,12 +214,10 @@ const VAZIO: Formulario = {
   clima: '',
   resultado: '',
   iniciativa: '',
-  posicionamento: '',
   relato: '',
   encaminhamentos: '',
   pendencias: '',
   observacoes: '',
-  registro_url: '',
   temas: [],
   aegea: [],
   extensao: {},
@@ -334,6 +341,13 @@ export function Cadastro({
 
   if (!catalogo) return <Carregando />;
 
+  //: O campo muda de nome no Legislativo, e a mensagem da lista de
+  //: participantes fala DELE. Duas escritas do mesmo rotulo divergiriam — e ja
+  //: divergiam: a lista dizia "Escolha o veiculo / orgao" numa tela em que o
+  //: campo se chama "Proposicao".
+  const rotuloDaInstituicao =
+    form.frente === 'legislativo' ? 'Proposição' : 'Veículo / órgão';
+
   const alterar = <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => {
     definirForm((atual) => ({ ...atual, [campo]: valor }));
     definirSucesso(false);
@@ -364,7 +378,17 @@ export function Cadastro({
     //
     // Material pela metade seria descartado antes de sair da tela, e a pessoa
     // veria "registro salvo" com um material a menos — sem erro, sem pista.
-    const impedimento = impedimentoNoFormulario(form);
+    const impedimento = impedimentoNoFormulario(
+      form,
+      carregado,
+      new Set(
+        interlocutoresDaInstituicao(
+          [...catalogo.interlocutores.values()],
+          form.instituicao_id,
+          [],
+        ).map((p) => p.id),
+      ),
+    );
     if (impedimento) {
       definirErro(impedimento);
       definirSucesso(false);
@@ -468,16 +492,32 @@ export function Cadastro({
             />
           </Campo>
 
-          <Campo rotulo={form.frente === 'legislativo' ? 'Proposição' : 'Veículo / órgão'} obrigatorio>
+          <Campo rotulo={rotuloDaInstituicao} obrigatorio>
             <select
               style={estiloDeEntrada}
               value={form.instituicao_id}
               onChange={(evento) => alterar('instituicao_id', evento.target.value)}
             >
               <option value="">Selecione…</option>
-              {[...catalogo.instituicoes.values()].map((instituicao) => (
+              {/* SO AS DO TIPO QUE ESTA FRENTE CONVERSA. Uma agenda de imprensa
+                  fala com veiculo, uma de legislativo com proposicao — e a
+                  lista inteira obrigava a achar o certo entre 56.
+
+                  A ja gravada entra sempre, mesmo fora do tipo: DUAS agendas de
+                  imprensa apontam para `entidade`, medido no banco. Sem a
+                  ressalva, o campo delas abriria em branco ao editar, e campo
+                  obrigatorio vazio num registro que existe se le como dado
+                  corrompido — nao como filtro fazendo efeito. */}
+              {instituicoesDaFrente(
+                [...catalogo.instituicoes.values()],
+                form.frente,
+                form.instituicao_id,
+              ).map((instituicao) => (
                 <option key={instituicao.id} value={instituicao.id}>
                   {instituicao.nome}
+                  {instituicao.tipo !== TIPO_DE_INSTITUICAO[form.frente]
+                    ? ' (de outra frente)'
+                    : ''}
                 </option>
               ))}
             </select>
@@ -491,7 +531,7 @@ export function Cadastro({
               Mantê-lo aqui deixaria duas telas para o mesmo fato, capazes de
               discordar entre si. */}
 
-          <Campo rotulo="Abrangência" obrigatorio dica="O mapa do painel depende deste campo.">
+          <Campo rotulo="UF da agenda" obrigatorio dica="O mapa do painel depende deste campo.">
             <select
               style={estiloDeEntrada}
               value={form.uf}
@@ -574,6 +614,61 @@ export function Cadastro({
             </div>
           </Campo>
         </div>
+      </Secao>
+
+      {/* ONDE A AGENDA ACONTECE.
+          Entre a identificacao e a expectativa porque e nessa ordem que se
+          sabe: com quem e quando primeiro, onde em seguida, o que se espera
+          por ultimo.
+
+          A MODALIDADE E CAMPO PROPRIO, e nao deducao do endereco. Ela se agrega
+          — "quantas foram presenciais neste trimestre?" — e o endereco nao;
+          ler "Teams" e concluir online funcionaria ate alguem escrever "sala
+          4". */}
+      <Secao titulo="Onde acontece">
+        <Cartao>
+          <div className="grade grade--3" style={{ gap: 16 }}>
+            <Campo rotulo="Modalidade">
+              <select
+                style={estiloDeEntrada}
+                value={form.modalidade}
+                onChange={(evento) => alterar('modalidade', evento.target.value)}
+              >
+                {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
+                    responderam isto, e supor presencial inventaria historia. */}
+                <option value="">Não informado</option>
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+                {/* HIBRIDA EXISTE PORQUE ACONTECE: parte da mesa na sala e
+                    parte na chamada. Forcar a escolha entre os dois faria a
+                    base afirmar algo falso. */}
+                <option value="hibrida">Híbrida</option>
+              </select>
+            </Campo>
+
+            <div style={{ gridColumn: 'span 2' }}>
+              <Campo
+                rotulo="Local"
+                dica={
+                  form.modalidade === 'online'
+                    ? 'O link da chamada, ou a plataforma.'
+                    : 'Endereço e sala. Numa híbrida, vale o endereço de quem está presencialmente.'
+                }
+              >
+                <input
+                  style={estiloDeEntrada}
+                  value={form.local}
+                  onChange={(evento) => alterar('local', evento.target.value)}
+                  placeholder={
+                    form.modalidade === 'online'
+                      ? 'Teams'
+                      : 'Ministério das Cidades, bloco A, 5º andar'
+                  }
+                />
+              </Campo>
+            </div>
+          </div>
+        </Cartao>
       </Secao>
 
       {/* O QUE SE SABE ANTES DE A AGENDA ACONTECER.
@@ -769,9 +864,22 @@ export function Cadastro({
               Marque quem representa a instituição e, depois da reunião, quem
               compareceu — inclusive quem faltou.
             </p>
+            {/* QUEM PODE REPRESENTAR ESTA INSTITUICAO, e nao as 55 pessoas da
+                base. Escolher a instituicao ja disse com quem se conversa;
+                oferecer o resto convida a registrar alguem do orgao errado, e
+                esse erro nao tem como ser percebido depois — o nome fica la,
+                plausivel.
+
+                Sem instituicao escolhida a lista fica vazia de proposito: e a
+                ordem em que se preenche. */}
             <ListaDeParticipantes
               participantes={form.outraParte}
-              interlocutores={[...catalogo.interlocutores.values()]}
+              rotuloEsperado={rotuloDaInstituicao.toLowerCase()}
+              interlocutores={interlocutoresDaInstituicao(
+                [...catalogo.interlocutores.values()],
+                form.instituicao_id,
+                form.outraParte.map((p) => p.interlocutor_id),
+              )}
               aoMudar={(outraParte) => alterar('outraParte', outraParte)}
             />
           </Cartao>
@@ -796,11 +904,14 @@ export function Cadastro({
             momentos={MOMENTOS_DE_PREPARACAO}
             interacaoId={id}
             aoFalhar={definirErro}
-            aoMudar={(fatia) =>
-              alterar('materiais', [
-                ...fatia,
-                ...materiaisDe(form.materiais, MOMENTOS_POS_REUNIAO),
-              ])
+            aoMudar={(atualizar) =>
+              definirForm((atual) => ({
+                ...atual,
+                materiais: [
+                  ...atualizar(materiaisDe(atual.materiais, MOMENTOS_DE_PREPARACAO)),
+                  ...materiaisDe(atual.materiais, MOMENTOS_POS_REUNIAO),
+                ],
+              }))
             }
           />
         </Cartao>
@@ -824,7 +935,6 @@ export function Cadastro({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {(
             [
-              ['posicionamento', 'Posicionamento da companhia'],
               ['relato', 'Relato'],
               ['encaminhamentos', 'Repercussão e encaminhamentos'],
               ['pendencias', 'Pendências'],
@@ -839,14 +949,12 @@ export function Cadastro({
               />
             </Campo>
           ))}
-          <Campo rotulo="Registro / documentação">
-            <input
-              style={estiloDeEntrada}
-              placeholder="Link do SharePoint, por exemplo"
-              value={form.registro_url}
-              onChange={(evento) => alterar('registro_url', evento.target.value)}
-            />
-          </Campo>
+          {/* "POSICIONAMENTO DA COMPANHIA" E "REGISTRO / DOCUMENTACAO" SAIRAM.
+              O registro apontava para um link solto, e materiais agora tem
+              secao propria, com upload e momento — o campo virou a terceira
+              forma de guardar documento, sem dizer se e de antes ou de depois.
+              Os dois continuam no banco: o que ja foi preenchido segue la, e a
+              ficha continua mostrando. */}
         </div>
       </Secao>
 
@@ -930,11 +1038,14 @@ export function Cadastro({
             momentos={MOMENTOS_POS_REUNIAO}
             interacaoId={id}
             aoFalhar={definirErro}
-            aoMudar={(fatia) =>
-              alterar('materiais', [
-                ...materiaisDe(form.materiais, MOMENTOS_DE_PREPARACAO),
-                ...fatia,
-              ])
+            aoMudar={(atualizar) =>
+              definirForm((atual) => ({
+                ...atual,
+                materiais: [
+                  ...materiaisDe(atual.materiais, MOMENTOS_DE_PREPARACAO),
+                  ...atualizar(materiaisDe(atual.materiais, MOMENTOS_POS_REUNIAO)),
+                ],
+              }))
             }
           />
         </Cartao>
@@ -1080,7 +1191,16 @@ function CampoDeDicionario({
  *
  *  Devolve `null` quando está tudo certo.
  */
-function impedimentoNoFormulario(form: Formulario): string | null {
+function impedimentoNoFormulario(
+  form: Formulario,
+  //: Quem a agenda JA TINHA quando abriu. E o que separa o legado do erro
+  //: novo: uma pessoa que veio do servidor em instituicao diferente e um fato
+  //: consumado — bloquear a edicao dessa agenda por causa dela seria trancar
+  //: o registro sem que ninguem tenha feito nada errado agora.
+  carregado: Formulario | null,
+  //: Quem pode representar a instituicao ESCOLHIDA agora.
+  podemRepresentar: ReadonlySet<string>,
+): string | null {
   // UM MATERIAL PRECISA DE TÍTULO E DE UM DESTINO — arquivo OU link.
   //
   // A regra dizia "título e link", e "guardar arquivo no painel ainda não
@@ -1108,6 +1228,32 @@ function impedimentoNoFormulario(form: Formulario): string | null {
   const semPessoa = form.outraParte.findIndex((p) => !p.interlocutor_id);
   if (semPessoa >= 0) {
     return `Escolha a pessoa da linha ${semPessoa + 1} em "Pela outra parte", ou remova a linha.`;
+  }
+
+  // TROCAR A INSTITUICAO NAO PODE DEIXAR GENTE DA ANTERIOR PARA TRAS.
+  //
+  // A lista de participantes so oferece quem pertence a instituicao escolhida,
+  // mas quem JA ESTAVA na lista continua nela — e essa excecao existe para o
+  // legado. Sem esta guarda, ela virava porta para criar divergencia NOVA:
+  // escolher um orgao, acrescentar alguem dele, trocar o orgao e salvar.
+  //
+  // Quem veio do servidor e poupado; quem foi acrescentado agora, nao. A
+  // diferenca esta em `carregado`, e nao no agregado pronto — no registro
+  // salvo as duas situacoes sao identicas.
+  const jaVinha = new Set(
+    (carregado?.outraParte ?? []).map((p) => p.interlocutor_id),
+  );
+  const forasteiro = form.outraParte.findIndex(
+    (p) =>
+      p.interlocutor_id &&
+      !podemRepresentar.has(p.interlocutor_id) &&
+      !jaVinha.has(p.interlocutor_id),
+  );
+  if (forasteiro >= 0) {
+    return (
+      `A pessoa da linha ${forasteiro + 1} em "Pela outra parte" não pertence ` +
+      'à instituição escolhida. Remova a linha, ou volte a instituição anterior.'
+    );
   }
 
   // A MESMA GUARDA DO OUTRO LADO DA MESA.
@@ -1181,6 +1327,8 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     data_interacao: form.data_interacao,
     instituicao_id: form.instituicao_id,
     uf: form.uf,
+    modalidade: opcional(form.modalidade),
+    local: opcional(form.local),
     status: form.status,
     // A PAUTA NAO VIAJA MAIS, e a ausencia e o ponto.
     //
@@ -1201,12 +1349,19 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     clima: opcional(form.clima),
     resultado: opcional(form.resultado),
     iniciativa: opcional(form.iniciativa),
-    posicionamento: opcional(form.posicionamento),
     relato: opcional(form.relato),
     encaminhamentos: opcional(form.encaminhamentos),
     pendencias: opcional(form.pendencias),
     observacoes: opcional(form.observacoes),
-    registro_url: opcional(form.registro_url),
+    // `posicionamento` E `registro_url` NAO VIAJAM MAIS.
+    //
+    // Sairam da tela, e a tela nao deve ter opiniao sobre campo que nao edita.
+    // Hoje eles nao se perderiam — o formulario reenviava o valor carregado —
+    // mas e a mesma forma do defeito da pauta, que so nao custou caro porque
+    // foi pego a tempo: bastava alguem limpar o estado para o valor virar
+    // `null` no PATCH.
+    //
+    // Ausente, o backend preserva. Os dois continuam no banco e na ficha.
     temas: form.temas,
     // LINHA INCOMPLETA NAO VIAJA — mas quem AVISA e
     // `impedimentoNoFormulario`, e nao este filtro.
@@ -1432,10 +1587,14 @@ function ListaDaAegea({
 function ListaDeParticipantes({
   participantes,
   interlocutores,
+  rotuloEsperado,
   aoMudar,
 }: {
   participantes: ParticipanteNoForm[];
   interlocutores: { id: string; nome: string }[];
+  //: Como o campo de instituicao se chama NESTA frente. Vem de fora para a
+  //: mensagem nao contradizer o rotulo — no Legislativo ele e "Proposicao".
+  rotuloEsperado: string;
   aoMudar: (lista: ParticipanteNoForm[]) => void;
 }) {
   // `name` ÚNICO POR INSTÂNCIA. Fixo, duas listas na mesma página
@@ -1455,8 +1614,9 @@ function ListaDeParticipantes({
     <>
       {participantes.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
-          Ninguém da outra parte ainda. Acrescente quem vai à reunião — e,
-          depois dela, marque quem foi.
+          {interlocutores.length === 0
+            ? `Escolha o ${rotuloEsperado} em "Identificação" primeiro — é ele que diz quem pode representar a outra parte.`
+            : 'Ninguém da outra parte ainda. Acrescente quem vai à reunião — e, depois dela, marque quem foi.'}
         </p>
       )}
 
@@ -1586,7 +1746,14 @@ function ListaDeMateriais({
   momentos: { valor: string; rotulo: string }[];
   /** `undefined` numa agenda ainda não salva. */
   interacaoId?: string;
-  aoMudar: (lista: MaterialNoForm[]) => void;
+  /** Recebe uma FUNÇÃO, e não a lista pronta.
+   *
+   *  O upload é assíncrono: quando ele volta, a lista que a closure capturou
+   *  já pode estar velha — quem digitou o título enquanto o arquivo subia
+   *  perderia o que escreveu, porque a volta reescrevia tudo a partir do
+   *  retrato antigo. Com função, a atualização se aplica ao que existe AGORA.
+   */
+  aoMudar: (atualizar: (atual: MaterialNoForm[]) => MaterialNoForm[]) => void;
   aoFalhar: (mensagem: string) => void;
 }) {
   //: Qual linha está subindo. Índice, e não booleano: subir dois arquivos ao
@@ -1594,7 +1761,7 @@ function ListaDeMateriais({
   const [subindo, definirSubindo] = useState<number | null>(null);
 
   const trocar = (indice: number, mudanca: Partial<MaterialNoForm>) =>
-    aoMudar(materiais.map((m, i) => (i === indice ? { ...m, ...mudanca } : m)));
+    aoMudar((atual) => atual.map((m, i) => (i === indice ? { ...m, ...mudanca } : m)));
 
   const subir = async (indice: number, arquivo: File) => {
     if (!interacaoId) return;
@@ -1608,11 +1775,21 @@ function ListaDeMateriais({
       // O TÍTULO VAZIO GANHA O NOME DO ARQUIVO. Quem sobe "Nota técnica
       // ANA.pdf" já disse como o material se chama; pedir para digitar de novo
       // é trabalho que a tela podia ter poupado. Título preenchido fica.
-      trocar(indice, {
-        arquivo_id: salvo.id,
-        arquivo: salvo,
-        titulo: materiais[indice].titulo.trim() || salvo.nome,
-      });
+      // `atual`, e não `materiais`: entre o clique e a volta do upload a
+      // pessoa pode ter digitado o título, e a lista capturada pela closure
+      // não sabe disso. Reescrevê-la apagaria o que ela escreveu.
+      aoMudar((atual) =>
+        atual.map((m, i) =>
+          i === indice
+            ? {
+                ...m,
+                arquivo_id: salvo.id,
+                arquivo: salvo,
+                titulo: m.titulo.trim() || salvo.nome,
+              }
+            : m,
+        ),
+      );
     } catch (falha) {
       // A mensagem do servidor diz o que houve — tipo recusado, tamanho acima
       // do limite — e é ela que a pessoa precisa ler, não "falha no upload".
@@ -1677,7 +1854,7 @@ function ListaDeMateriais({
             <div style={{ paddingBottom: 4 }}>
               <Botao
                 variante="secundario"
-                aoClicar={() => aoMudar(materiais.filter((_, i) => i !== indice))}
+                aoClicar={() => aoMudar((atual) => atual.filter((_, i) => i !== indice))}
                 rotuloAcessivel={`Remover o material ${indice + 1}`}
               >
                 Remover
@@ -1807,8 +1984,8 @@ function ListaDeMateriais({
 
       <Botao
         aoClicar={() =>
-          aoMudar([
-            ...materiais,
+          aoMudar((atual) => [
+            ...atual,
             {
               momento: momentos[0].valor,
               titulo: '',
@@ -1851,17 +2028,17 @@ function paraFormulario(interacao: Interacao): Formulario {
     unidade_negocio_id: texto(interacao.unidade_negocio_id),
     esfera_id: texto(interacao.esfera_id),
     uf: texto(interacao.uf),
+    modalidade: texto(interacao.modalidade),
+    local: texto(interacao.local),
     tier: texto(interacao.tier),
     status: texto(interacao.status),
     clima: texto(interacao.clima),
     resultado: texto(interacao.resultado),
     iniciativa: texto(interacao.iniciativa),
-    posicionamento: texto(interacao.posicionamento),
     relato: texto(interacao.relato),
     encaminhamentos: texto(interacao.encaminhamentos),
     pendencias: texto(interacao.pendencias),
     observacoes: texto(interacao.observacoes),
-    registro_url: texto(interacao.registro_url),
     temas: interacao.temas ?? [],
     // SEM FILTRAR POR PAPEL. A versao anterior so trazia de volta os
     // `porta_voz`, e `montarCorpo` remandava a lista inteira: salvar um

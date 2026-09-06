@@ -14,6 +14,8 @@ import {
   CAMPOS_DE_EXTENSAO,
   CORES_DE_FRENTE,
   extensaoAoTrocarDeFrente,
+  instituicoesDaFrente,
+  interlocutoresDaInstituicao,
   textoSobreFrente,
 } from '@/dominio/frentes';
 import type { Frente } from '@/dominio/tipos';
@@ -154,5 +156,74 @@ describe('o que sobra da extensão ao trocar de frente', () => {
         expect(DO_BACKEND[frente as Frente]).toContain(campo);
       }
     }
+  });
+});
+
+describe('o que cada frente oferece no campo de instituição', () => {
+  const base = [
+    { id: 'v1', tipo: 'veiculo' },
+    { id: 'v2', tipo: 'veiculo' },
+    { id: 'e1', tipo: 'entidade' },
+    { id: 'p1', tipo: 'proposicao' },
+  ];
+
+  it('oferece só o tipo que a frente conversa', () => {
+    expect(instituicoesDaFrente(base, 'imprensa', '').map((i) => i.id)).toEqual([
+      'v1',
+      'v2',
+    ]);
+    expect(instituicoesDaFrente(base, 'legislativo', '').map((i) => i.id)).toEqual([
+      'p1',
+    ]);
+  });
+
+  it('mantém a já gravada mesmo fora do tipo', () => {
+    // MEDIDO NO BANCO: duas agendas de imprensa apontam para `entidade`. Sem
+    // esta linha, o campo obrigatório delas abriria em branco ao editar — e
+    // isso se lê como dado corrompido, não como filtro fazendo efeito.
+    expect(instituicoesDaFrente(base, 'imprensa', 'e1').map((i) => i.id)).toEqual([
+      'v1',
+      'v2',
+      'e1',
+    ]);
+  });
+
+  it('parceiros e eventos dividem o mesmo tipo', () => {
+    // Quem promove um evento é a mesma classe de instituição com quem se faz
+    // parceria. Separá-los exigiria um tipo que o banco não tem.
+    expect(instituicoesDaFrente(base, 'eventos', '').map((i) => i.id)).toEqual(['e1']);
+    expect(instituicoesDaFrente(base, 'parceiros', '').map((i) => i.id)).toEqual(['e1']);
+  });
+});
+
+describe('quem pode representar a instituição escolhida', () => {
+  const pessoas = [
+    { id: 'a', instituicao_id: 'i1' },
+    { id: 'b', instituicao_id: 'i1' },
+    { id: 'c', instituicao_id: 'i2' },
+    { id: 'd', instituicao_id: null },
+  ];
+
+  it('só as da instituição escolhida', () => {
+    expect(
+      interlocutoresDaInstituicao(pessoas, 'i1', []).map((p) => p.id),
+    ).toEqual(['a', 'b']);
+  });
+
+  it('sem instituição escolhida, não oferece ninguém', () => {
+    // Vazia de propósito: é a ordem em que se preenche. Uma lista de 55 nomes
+    // sem relação com nada seria pior que nenhuma.
+    expect(interlocutoresDaInstituicao(pessoas, '', []).map((p) => p.id)).toEqual([]);
+  });
+
+  it('quem já está na agenda continua na lista', () => {
+    // Uma agenda antiga pode ter pessoa de outra instituição. O campo abrindo
+    // em branco pareceria dado perdido.
+    expect(
+      interlocutoresDaInstituicao(pessoas, 'i1', ['c']).map((p) => p.id),
+    ).toEqual(['a', 'b', 'c']);
+    expect(
+      interlocutoresDaInstituicao(pessoas, '', ['c']).map((p) => p.id),
+    ).toEqual(['c']);
   });
 });

@@ -403,3 +403,173 @@ export function listarInterlocutores(): Promise<Interlocutor[]> {
 export function listarPessoasAegea(): Promise<PessoaAegea[]> {
   return requisitar<PessoaAegea[]>('/api/pessoas-aegea');
 }
+
+/* -- cadastros de stakeholders -------------------------------------------- */
+//
+// Escrever aqui exige `administra_dicionarios`, e não `escrita`. Quem cadastra
+// agenda LÊ estes nomes o tempo todo e não deve reescrevê-los: renomear uma
+// instituição muda o que aparece em toda agenda que aponta para ela.
+
+/** A primeira pessoa da instituição, cadastrada JUNTO com ela.
+ *
+ *  Vai no mesmo corpo, e não numa segunda chamada: as duas escritas caem ou
+ *  passam juntas. Separadas, uma falha na segunda deixaria a instituição criada
+ *  e sem representante — e uma instituição sem ninguém não serve para nada,
+ *  porque o formulário de agenda só oferece pessoas depois de escolhê-la.
+ */
+export interface RepresentanteInicial {
+  nome: string;
+  email?: string | null;
+  cargo?: string | null;
+}
+
+export interface InstituicaoEntrada {
+  nome: string;
+  /** O nome por extenso. `nome` é a forma curta, que é como se fala. */
+  nome_completo?: string | null;
+  /** `veiculo`, `orgao`, `entidade`, `investidor`, `proposicao`, `area_interna`.
+   *  É o que liga a instituição a uma frente. */
+  tipo: string;
+  esfera_id?: number | null;
+  uf?: string | null;
+  ativo?: boolean;
+  representante?: RepresentanteInicial | null;
+}
+
+export interface InterlocutorEntrada {
+  nome: string;
+  /** DE QUEM esta pessoa fala. É o que a faz aparecer — ou não — em
+   *  "Pela outra parte". */
+  instituicao_id?: string | null;
+  cargo?: string | null;
+  /** Como se chega na pessoa para marcar a agenda. */
+  email?: string | null;
+  tipo?: string | null;
+  ativo?: boolean;
+}
+
+export function criarInstituicao(entrada: InstituicaoEntrada): Promise<Instituicao> {
+  return requisitar<Instituicao>('/api/instituicoes', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function editarInstituicao(
+  id: string,
+  entrada: InstituicaoEntrada,
+): Promise<Instituicao> {
+  return requisitar<Instituicao>(`/api/instituicoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function criarInterlocutor(
+  entrada: InterlocutorEntrada,
+): Promise<Interlocutor> {
+  return requisitar<Interlocutor>('/api/interlocutores', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function editarInterlocutor(
+  id: string,
+  entrada: InterlocutorEntrada,
+): Promise<Interlocutor> {
+  return requisitar<Interlocutor>(`/api/interlocutores/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** Apaga a pessoa. O servidor recusa quem já esteve numa agenda.
+ *
+ *  Apagar e desligar são coisas diferentes, e a diferença é o histórico: quem
+ *  entrou por engano é lixo, e quem participou de uma reunião é um fato. A
+ *  recusa vem com a contagem de agendas e o gesto certo na mensagem.
+ */
+export function removerInterlocutor(id: string): Promise<void> {
+  return requisitar<void>(`/api/interlocutores/${id}`, { method: 'DELETE' });
+}
+
+export interface PessoaAegeaEntrada {
+  nome: string;
+  cargo?: string | null;
+  email?: string | null;
+  eh_porta_voz?: boolean;
+  ativo?: boolean;
+  /** Sobre o que esta pessoa pode falar. A lista inteira substitui a anterior. */
+  temas?: number[];
+}
+
+export function criarPessoaAegea(
+  entrada: PessoaAegeaEntrada,
+): Promise<PessoaAegea> {
+  return requisitar<PessoaAegea>('/api/pessoas-aegea', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function editarPessoaAegea(
+  id: string,
+  entrada: PessoaAegeaEntrada,
+): Promise<PessoaAegea> {
+  return requisitar<PessoaAegea>(`/api/pessoas-aegea/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** Os assuntos de UMA pessoa.
+ *
+ *  Rota separada de propósito: a listagem de pessoas alimenta o formulário de
+ *  agenda, que não usa os temas, e carregá-los ali seria uma consulta por
+ *  pessoa em toda abertura de tela.
+ */
+export function temasDoPortaVoz(id: string): Promise<number[]> {
+  return requisitar<number[]>(`/api/pessoas-aegea/${id}/temas`);
+}
+
+export interface TemaCadastrado {
+  id: number;
+  nome: string;
+  /** `estrategico` (agenda da companhia) ou `livre` (o que aparece). */
+  nivel: string;
+  ativo: boolean;
+}
+
+export interface TemaEntrada {
+  nome: string;
+  nivel?: string;
+  ativo?: boolean;
+}
+
+/** A lista COMPLETA, inclusive os inativos.
+ *
+ *  `/api/dicionarios` devolve só os ativos, porque alimenta filtro e
+ *  formulário. Quem administra precisa ver o que desativou — senão o assunto
+ *  some da tela e reaparece como "já existe" na próxima tentativa de criar.
+ */
+export function listarTemas(): Promise<TemaCadastrado[]> {
+  return requisitar<TemaCadastrado[]>('/api/temas');
+}
+
+export function criarTema(entrada: TemaEntrada): Promise<TemaCadastrado> {
+  return requisitar<TemaCadastrado>('/api/temas', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function editarTema(
+  id: number,
+  entrada: TemaEntrada,
+): Promise<TemaCadastrado> {
+  return requisitar<TemaCadastrado>(`/api/temas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}

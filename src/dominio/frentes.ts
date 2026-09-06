@@ -40,6 +40,42 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   interna: 'Interna',
 };
 
+/** Que TIPO de instituição cada frente conversa.
+ *
+ *  Espelha `TIPO_DE_INSTITUICAO` do backend. O mapa existia so dentro do
+ *  seeder — um script de desenvolvimento — e a regra e de dominio: uma agenda
+ *  de imprensa fala com veiculo, uma de legislativo com proposicao.
+ *
+ *  `eventos` e `parceiros` compartilham `entidade`: quem promove um evento e a
+ *  mesma classe de instituicao com quem se faz parceria.
+ */
+export const TIPO_DE_INSTITUICAO: Record<Frente, string> = {
+  imprensa: 'veiculo',
+  governo: 'orgao',
+  parceiros: 'entidade',
+  eventos: 'entidade',
+  investidores: 'investidor',
+  legislativo: 'proposicao',
+  interna: 'area_interna',
+};
+
+/** As instituições que a frente escolhida oferece — MAIS a já gravada.
+ *
+ *  O acréscimo não é gentileza: medido no banco, DUAS agendas de imprensa
+ *  apontam para instituição do tipo `entidade`, e não `veiculo`. Filtrando sem
+ *  ressalva, o campo dessas agendas abriria em branco ao editar — e campo
+ *  obrigatório em branco num registro que existe se lê como dado corrompido,
+ *  não como filtro fazendo efeito.
+ *
+ *  Mesma solução da lista de agenda de origem, pelo mesmo motivo.
+ */
+export function instituicoesDaFrente<
+  T extends { id: string; tipo: string },
+>(instituicoes: T[], frente: Frente, jaEscolhida: string): T[] {
+  const tipo = TIPO_DE_INSTITUICAO[frente];
+  return instituicoes.filter((i) => i.tipo === tipo || i.id === jaEscolhida);
+}
+
 /** Os campos de extensão que cada frente carrega — e os rótulos deles.
  *
  *  Vale para as duas pontas: a ficha lista aqui o "o que falta", e o cadastro
@@ -207,4 +243,29 @@ export function rotuloDeAbrangencia(uf: string): string {
   if (uf === 'NA') return 'Nacional';
   if (uf === 'IN') return 'Internacional';
   return uf;
+}
+
+/** Quem pode representar a instituição escolhida — MAIS quem já está na agenda.
+ *
+ *  Escolher a instituição já disse com quem se conversa; oferecer as 55 pessoas
+ *  da base convida a registrar alguém do órgão errado, e esse erro não tem como
+ *  ser percebido depois — o nome fica lá, plausível.
+ *
+ *  Quem já foi acrescentado entra sempre, pelo mesmo motivo da instituição: uma
+ *  agenda antiga pode ter pessoa de outra instituição, e o campo abrindo em
+ *  branco pareceria dado perdido.
+ *
+ *  Sem instituição escolhida devolve VAZIO, e não tudo. É a ordem em que se
+ *  preenche, e a lista vazia com sua mensagem diz isso melhor do que uma lista
+ *  de 55 nomes sem relação com nada.
+ */
+export function interlocutoresDaInstituicao<
+  T extends { id: string; instituicao_id: string | null },
+>(interlocutores: T[], instituicaoId: string, jaNaAgenda: string[]): T[] {
+  if (!instituicaoId) {
+    return interlocutores.filter((i) => jaNaAgenda.includes(i.id));
+  }
+  return interlocutores.filter(
+    (i) => i.instituicao_id === instituicaoId || jaNaAgenda.includes(i.id),
+  );
 }

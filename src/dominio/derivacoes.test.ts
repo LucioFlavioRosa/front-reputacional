@@ -65,18 +65,18 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const INSTITUICOES: Instituicao[] = [
-  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', uf: 'SP' },
-  { id: 'i2', nome: 'ANA', tipo: 'orgao', uf: 'DF' },
+  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP' },
+  { id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF' },
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [
-  { id: 'p1', nome: 'Taís Hirata', instituicao_id: 'i1', cargo: null, tipo: null, ativo: true },
-  { id: 'p2', nome: 'Ana Argolo', instituicao_id: 'i2', cargo: null, tipo: null, ativo: true },
+  { id: 'p1', nome: 'Taís Hirata', instituicao_id: 'i1', cargo: null, email: null, tipo: null, ativo: true },
+  { id: 'p2', nome: 'Ana Argolo', instituicao_id: 'i2', cargo: null, email: null, tipo: null, ativo: true },
 ];
 
 const PESSOAS: PessoaAegea[] = [
-  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', eh_porta_voz: true, ativo: true },
-  { id: 'a2', nome: 'André Pires', cargo: 'CFO', eh_porta_voz: true, ativo: true },
+  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', email: null, eh_porta_voz: true, ativo: true },
+  { id: 'a2', nome: 'André Pires', cargo: 'CFO', email: null, eh_porta_voz: true, ativo: true },
 ];
 
 const CATALOGO = montarCatalogo(DICIONARIOS, INSTITUICOES, INTERLOCUTORES, PESSOAS);
@@ -89,6 +89,8 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     frente: 'imprensa',
     data_interacao: '2026-05-07',
     instituicao_id: 'i1',
+    modalidade: null,
+    local: null,
     interlocutor_id: 'p1',
     unidade_negocio_id: 1,
     esfera_id: 1,
