@@ -40,6 +40,13 @@ const NAVEGACAO: { view: View; rotulo: string }[] = [
   { view: 'resultado', rotulo: 'Resultado' },
   { view: 'portavozes', rotulo: 'Porta-vozes' },
   { view: 'interlocutores', rotulo: 'Interlocutores' },
+  //: A CADEIA NAO E UMA ABA. Ela foi uma, por um dia.
+  //:
+  //: Como destino de navegacao, obrigava a saber QUAL cadeia se queria antes
+  //: de poder olhar — e a pergunta real nunca e "quais cadeias existem", e sim
+  //: "de onde veio ESTA reuniao para a qual vou". Essa pergunta nasce na Base,
+  //: olhando a linha da agenda, e e la que ela e respondida agora: uma coluna
+  //: diz se a agenda tem cadeia, e o clique abre o grafo dela.
   { view: 'base', rotulo: 'Base' },
 ];
 

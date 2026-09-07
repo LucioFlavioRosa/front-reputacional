@@ -147,8 +147,21 @@ export interface Interacao {
   /** `aegea` ou `outra_parte`. Declinar é escolha; ser declinado, porta fechada. */
   declinado_por: string | null;
   motivo_declinio: string | null;
-  /** A agenda que deu origem a esta. Encadeia a evolução da relação. */
-  origem_interacao_id: string | null;
+  /** DE QUAIS agendas esta decorre. Vazio = nasceu sozinha.
+   *
+   *  Plural: duas reuniões podem levar juntas a uma terceira, e uma reunião
+   *  pode abrir várias frentes. Era um campo só, e com um pai só o caso "a
+   *  agência e a bancada levaram a esta" perdia uma das duas.
+   */
+  origens: string[];
+  /** QUANTAS agendas decorrem desta. Só leitura — quem grava o elo é a que
+   *  descende.
+   *
+   *  Vem do servidor, e não contada na tela: a descendente pode estar fora do
+   *  recorte carregado, e contar só o que a tela vê diria "não faz parte de
+   *  cadeia" para uma agenda que faz.
+   */
+  derivadas: number;
   /** Só a intenção de continuidade. `null` = não informado. */
   preve_desdobramento: boolean | null;
   outra_parte: ParticipanteDaOutraParte[];

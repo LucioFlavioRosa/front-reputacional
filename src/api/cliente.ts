@@ -19,7 +19,16 @@ import type {
   TrilhaDeAcesso,
 } from '@/dominio/tipos';
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+//: 8001, e nao 8000.
+//:
+//: A pilha de teste move a API para 8001 porque a 8000 esta ocupada por OUTRO
+//: produto nesta maquina — e ele RESPONDE. `npm run dev` com o padrao antigo
+//: falava com o servico errado e mostrava "nao foi possivel entrar", que se le
+//: como backend fora do ar quando ele esta de pe respondendo tudo.
+//:
+//: A imagem do Docker passa `VITE_API_URL` no build e nao depende disto; quem
+//: depende e quem roda o servidor de desenvolvimento.
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8001';
 
 /** Erro com a mensagem que o backend escreveu — o domínio já explica o que
  *  houve em português, então não inventamos texto por cima. */

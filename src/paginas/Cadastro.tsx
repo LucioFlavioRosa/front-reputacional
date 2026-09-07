@@ -85,7 +85,7 @@ interface Formulario {
   clima_esperado: string;
   declinado_por: string;
   motivo_declinio: string;
-  origem_interacao_id: string;
+  origens: string[];
   //: Tres estados, e nao dois: '' e NAO INFORMADO, e some da tela como tal.
   //: Um `boolean` faria toda agenda antiga afirmar "nao preve desdobramento",
   //: que e uma decisao que ninguem tomou.
@@ -225,7 +225,7 @@ const VAZIO: Formulario = {
   clima_esperado: '',
   declinado_por: '',
   motivo_declinio: '',
-  origem_interacao_id: '',
+  origens: [],
   preve_desdobramento: '',
   outraParte: [],
   materiais: [],
@@ -757,41 +757,36 @@ export function Cadastro({
               aoMudar={(v) => alterar('clima_esperado', v)}
             />
 
+            {/* DE QUAIS AGENDAS ESTA DECORRE — plural, e nao uma so.
+                Era um `select` de uma origem, e com um pai so o caso "a agencia
+                e a bancada levaram juntas a esta reuniao" perdia uma das duas.
+                E esse caso e o que o grafo existe para mostrar. */}
             <Campo
-              rotulo="Veio de outra agenda?"
-              dica="Encadear as conversas é o que transforma reuniões soltas em agenda com histórico."
+              rotulo="Veio de outras agendas?"
+              dica="Encadear as conversas é o que transforma reuniões soltas em agenda com histórico. Dá para escolher mais de uma."
             >
               <select
                 style={estiloDeEntrada}
-                value={form.origem_interacao_id}
-                onChange={(evento) =>
-                  alterar('origem_interacao_id', evento.target.value)
-                }
+                value=""
+                onChange={(evento) => {
+                  const escolhida = evento.target.value;
+                  // Volta a "Acrescentar…" para dar para escolher a proxima
+                  // sem passar por outro campo.
+                  evento.target.value = '';
+                  if (escolhida && !form.origens.includes(escolhida)) {
+                    alterar('origens', [...form.origens, escolhida]);
+                  }
+                }}
               >
-                <option value="">Não veio de outra</option>
-                {/* A ORIGEM JÁ GRAVADA ENTRA SEMPRE, mesmo fora das 200.
-                    Sem isto, uma origem mais antiga que a janela carregada
-                    deixaria o campo em branco — e salvar a APAGARIA em
-                    silêncio, sem ninguém ter pedido. O rótulo diz que ela veio
-                    de fora da lista, para a ausência de contexto não parecer
-                    dado corrompido.
-
-                    A janela fixa de 200 é limitação conhecida: numa base
-                    grande, escolher uma agenda antiga vai exigir busca. Isso é
-                    uma tela a fazer; perder o que já está gravado, não. */}
-                {form.origem_interacao_id &&
-                !agendas.some((a) => a.id === form.origem_interacao_id) ? (
-                  <option value={form.origem_interacao_id}>
-                    Agenda anterior (fora das mais recentes)
-                  </option>
-                ) : null}
+                <option value="">Acrescentar uma origem…</option>
                 {agendas
-                  // A própria agenda fora da lista: o banco tem um `check` que
-                  // barra, mas oferecer a opção e recusar depois é convite para
-                  // um erro que a tela podia ter evitado. O ENCADEAMENTO longo
-                  // (A→B→A) é barrado no repositório, que consegue subir a
-                  // cadeia inteira — coisa que a tela não tem como saber.
+                  // A propria agenda fora da lista: o banco tem um `check` que
+                  // barra, mas oferecer a opcao e recusar depois e convite para
+                  // um erro que a tela podia ter evitado. O ciclo LONGO
+                  // (A→B→A) e barrado no repositorio, que sobe o grafo inteiro
+                  // — coisa que a tela nao tem como saber.
                   .filter((agenda) => agenda.id !== id)
+                  .filter((agenda) => !form.origens.includes(agenda.id))
                   .map((agenda) => (
                     <option key={agenda.id} value={agenda.id}>
                       {agenda.data_interacao} ·{' '}
@@ -801,6 +796,41 @@ export function Cadastro({
                     </option>
                   ))}
               </select>
+
+              {form.origens.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 6 }}>
+                  Nenhuma. Esta agenda começa uma conversa.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {form.origens.map((origemId) => {
+                    const agenda = agendas.find((a) => a.id === origemId);
+                    return (
+                      <Chip
+                        key={origemId}
+                        // A JA GRAVADA APARECE MESMO FORA DAS 200 carregadas.
+                        // Sem isto, uma origem mais antiga que a janela sumiria
+                        // do chip — e salvar a APAGARIA em silencio, sem
+                        // ninguem ter pedido.
+                        rotulo={
+                          agenda
+                            ? `${agenda.data_interacao} · ${tituloDaAgenda(agenda, (ids) => nomesDosTemas(catalogo, ids)).slice(0, 40)} ✕`
+                            : 'Agenda anterior (fora das mais recentes) ✕'
+                        }
+                        ativo
+                        fundo="var(--bg-trilho)"
+                        texto="var(--cinza-3)"
+                        aoClicar={() =>
+                          alterar(
+                            'origens',
+                            form.origens.filter((o) => o !== origemId),
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </Campo>
           </div>
 
@@ -1412,7 +1442,11 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     // gravada antes precisa SAIR do registro.
     declinado_por: ehDeclinada ? opcional(form.declinado_por) : vazio,
     motivo_declinio: ehDeclinada ? opcional(form.motivo_declinio) : vazio,
-    origem_interacao_id: opcional(form.origem_interacao_id),
+    // A LISTA INTEIRA, sempre — inclusive vazia. Aqui `[]` significa
+    // "nenhuma origem", e não "não mexi": o formulário SEMPRE sabe quais são,
+    // porque as carrega ao abrir. Omitir deixaria o backend preservar o que
+    // estava, e desmarcar todas nunca surtiria efeito.
+    origens: form.origens,
     // '' vira `undefined` e NAO `false`: nao informado nao e uma resposta.
     preve_desdobramento:
       form.preve_desdobramento === '' ? vazio : form.preve_desdobramento === 'sim',
@@ -2056,7 +2090,7 @@ function paraFormulario(interacao: Interacao): Formulario {
     clima_esperado: texto(interacao.clima_esperado),
     declinado_por: texto(interacao.declinado_por),
     motivo_declinio: texto(interacao.motivo_declinio),
-    origem_interacao_id: texto(interacao.origem_interacao_id),
+    origens: interacao.origens ?? [],
     // Três estados na volta também: `null` do servidor é NÃO INFORMADO, e vira
     // `''` — não `'nao'`. Traduzir nulo para "não" aqui faria toda agenda
     // antiga passar a afirmar uma decisão que ninguém tomou, no primeiro

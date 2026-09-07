@@ -1,7 +1,9 @@
 /** Base — a tabela completa do recorte, com cabeçalho fixo e exportação. */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { usePainel } from '@/estado/painel';
+import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
+import { temCadeia } from '@/dominio/grafo';
 import { registrarExportacao } from '@/api/cliente';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao, Carregando, ChipDeFrente, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
@@ -19,12 +21,25 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 
 const COLUNAS = [
-  'Data', 'Frente', 'Veículo/órgão', 'Unidade', 'Interlocutor',
+  'Cadeia', 'Data', 'Frente', 'Veículo/órgão', 'Unidade', 'Interlocutor',
   'Pauta', 'UF', 'Relevância', 'Status', 'Tags',
 ];
 
+/** A CADEIA VEM PRIMEIRO, como marca de calha.
+ *
+ *  É a única posição que não depende de rolagem horizontal — e uma marca que
+ *  só aparece depois de rolar não avisa ninguém de nada. A coluna fica VAZIA
+ *  na maioria das linhas, que é o correto: encadeamento é minoria, e uma marca
+ *  que aparece em toda linha deixa de ser marca.
+ *
+ *  Vazia mesmo, sem traço de preenchimento. Um travessão repetido em quatro de
+ *  cada cinco linhas pesa mais na leitura do que a célula em branco, e não
+ *  informa nada que a ausência do ícone já não diga.
+ */
+
 export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
   const { interacoes, catalogo, carregando, erro, recorte, total } = usePainel();
+  const [cadeiaAberta, definirCadeiaAberta] = useState<string | null>(null);
 
   const linhas = useMemo(() => {
     if (!catalogo) return [];
@@ -103,6 +118,12 @@ export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
                     evento.currentTarget.style.background = '';
                   }}
                 >
+                  <td style={{ ...celula, padding: '6px 10px' }}>
+                    <BotaoDaCadeia
+                      linha={linha}
+                      aoAbrir={() => definirCadeiaAberta(linha.id)}
+                    />
+                  </td>
                   <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
                     {dataCompleta(linha.data)}
                   </td>
@@ -123,8 +144,79 @@ export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
           </table>
         </div>
       )}
+      {/* O GRAFO ENTRA PELA LINHA, e não por uma aba própria. A pergunta que
+          ele responde — "de onde veio esta reunião" — nasce olhando a agenda,
+          e uma aba obrigaria a escolher a cadeia antes de poder olhar. */}
+      {cadeiaAberta ? (
+        <CadeiaDaAgenda
+          id={cadeiaAberta}
+          aoFechar={() => definirCadeiaAberta(null)}
+          aoAbrirFicha={aoAbrirFicha}
+        />
+      ) : null}
     </Secao>
   );
+}
+
+/** O acesso à cadeia, na linha da agenda.
+ *
+ *  Ícone e não texto: a coluna é uma calha estreita e "Ver cadeia" repetido em
+ *  duzentas linhas é ruído. Mas ícone sozinho não diz nada a quem não vê — daí
+ *  o `aria-label` que soletra o que a marca significa NAQUELA linha, com os
+ *  números, e não um "cadeia" genérico igual em todas.
+ *
+ *  `stopPropagation` porque a linha inteira abre a ficha: sem isso o clique
+ *  abriria as duas coisas, e a de cima ganharia.
+ */
+function BotaoDaCadeia({ linha, aoAbrir }: { linha: Linha; aoAbrir: () => void }) {
+  if (!linha.naCadeia) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={(evento) => {
+        evento.stopPropagation();
+        aoAbrir();
+      }}
+      title={descreverCadeia(linha)}
+      aria-label={`${descreverCadeia(linha)}. Ver a cadeia desta agenda.`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 30,
+        height: 30,
+        borderRadius: 'var(--r-btn)',
+        border: '1px solid var(--borda)',
+        background: 'var(--branco)',
+        color: 'var(--azul-mar)',
+        cursor: 'pointer',
+      }}
+    >
+      {/* Dois nós levando a um: a forma do que o clique abre. SVG, e não
+          emoji — emoji muda de desenho a cada sistema e não herda a cor. */}
+      <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden focusable="false">
+        <path
+          d="M4.4 3.6 L11.6 8 M4.4 12.4 L11.6 8"
+          stroke="currentColor"
+          strokeWidth={1.3}
+          fill="none"
+        />
+        <circle cx={3.4} cy={3.4} r={2.1} fill="currentColor" />
+        <circle cx={3.4} cy={12.6} r={2.1} fill="currentColor" />
+        <circle cx={12.6} cy={8} r={2.4} fill="currentColor" />
+      </svg>
+    </button>
+  );
+}
+
+/** "Decorre de 2 agendas, levou a 1" — o que a marca quer dizer, em palavras. */
+function descreverCadeia({ vemDe, levouA }: Linha): string {
+  const partes: string[] = [];
+  if (vemDe > 0) partes.push(`decorre de ${vemDe} ${vemDe === 1 ? 'agenda' : 'agendas'}`);
+  if (levouA > 0) partes.push(`levou a ${levouA} ${levouA === 1 ? 'agenda' : 'agendas'}`);
+  const frase = partes.join(', ');
+  return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
 
 const celula: React.CSSProperties = {
@@ -135,6 +227,13 @@ const celula: React.CSSProperties = {
 
 interface Linha {
   id: string;
+  /** Quantas agendas levaram a esta, e quantas saíram dela — os dois números
+   *  vindos do SERVIDOR. `naCadeia` é a decisão tomada UMA vez, em
+   *  `montarLinha`: o botão, o traço e o CSV leem o mesmo booleano, e três
+   *  cópias da mesma condição são três lugares para ela divergir. */
+  vemDe: number;
+  levouA: number;
+  naCadeia: boolean;
   data: string;
   frente: Interacao['frente'];
   entidade: string;
@@ -150,6 +249,9 @@ interface Linha {
 function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
   return {
     id: interacao.id,
+    vemDe: interacao.origens?.length ?? 0,
+    levouA: interacao.derivadas ?? 0,
+    naCadeia: temCadeia(interacao),
     data: interacao.data_interacao,
     frente: interacao.frente,
     entidade: nomeDaInstituicao(catalogo, interacao.instituicao_id),
@@ -172,6 +274,7 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
     COLUNAS.map(escapar).join(';'),
     ...linhas.map((linha) =>
       [
+        linha.naCadeia ? descreverCadeia(linha) : '',
         dataCompleta(linha.data),
         linha.frente,
         linha.entidade,

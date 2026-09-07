@@ -4,6 +4,7 @@
  *  escreve hex diretamente — cor nova entra no token, não na tela.
  */
 
+import { useId } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Frente } from '@/dominio/tipos';
 import {
@@ -443,10 +444,19 @@ export function Modal({
   rodape?: ReactNode;
   largura?: number;
 }) {
+  //: O NOME DO DIALOGO, para quem ouve a tela.
+  //:
+  //: `role="dialog"` sem `aria-labelledby` abre como "diálogo" e mais nada: o
+  //: titulo esta visivel no cabecalho e o leitor de tela nao o recebe como
+  //: nome. `useId` porque pode haver mais de um modal montado, e dois `id`
+  //: iguais fazem o segundo apontar para o cabecalho do primeiro.
+  const idDoTitulo = useId();
+
   return (
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby={idDoTitulo}
       onClick={aoFechar}
       style={{
         position: 'fixed',
@@ -485,7 +495,7 @@ export function Modal({
           }}
         >
           <div>
-            <h2 style={{ fontSize: 21 }}>{titulo}</h2>
+            <h2 id={idDoTitulo} style={{ fontSize: 21 }}>{titulo}</h2>
             {subtitulo ? (
               <div style={{ fontSize: 12, color: 'var(--turquesa-sombra)', marginTop: 4 }}>
                 {subtitulo}

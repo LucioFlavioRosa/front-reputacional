@@ -129,7 +129,8 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
 
     motivo_declinio: null,
 
-    origem_interacao_id: null,
+    origens: [],
+    derivadas: 0,
 
     preve_desdobramento: null,
 
