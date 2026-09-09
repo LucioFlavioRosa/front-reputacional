@@ -63,11 +63,16 @@ export function Secao({
   acao,
   children,
   estilo,
+  nivelDoTitulo = 2,
 }: {
   titulo: string;
   acao?: ReactNode;
   children: ReactNode;
   estilo?: CSSProperties;
+  /** `1` quando esta seção é o título DA TELA. Leitor de tela navega por
+   *  cabeçalho, e uma tela cujo maior título é `h2` parece um pedaço de outra
+   *  página. */
+  nivelDoTitulo?: 1 | 2;
 }) {
   return (
     <Cartao estilo={{ padding: 22, ...estilo }}>
@@ -80,7 +85,11 @@ export function Secao({
           marginBottom: 16,
         }}
       >
-        <h2 style={{ fontSize: 16 }}>{titulo}</h2>
+        {nivelDoTitulo === 1 ? (
+          <h1 style={{ fontSize: 16 }}>{titulo}</h1>
+        ) : (
+          <h2 style={{ fontSize: 16 }}>{titulo}</h2>
+        )}
         {acao}
       </div>
       {children}

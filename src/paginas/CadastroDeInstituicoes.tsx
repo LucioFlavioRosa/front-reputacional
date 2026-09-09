@@ -1,4 +1,4 @@
-/** Cadastro de veículos, órgãos e de quem fala por eles.
+/** Cadastro de instituições e de quem fala por elas.
  *
  *  POR QUE ESTA TELA EXISTE
  *  ------------------------
@@ -65,6 +65,13 @@ const VAZIA = {
   nome_completo: '',
   tipo: 'orgao',
   uf: '',
+  //: SEM PADRAO, e e por isso que e string vazia e nao 3.
+  //:
+  //: Um padrao aqui viraria o valor da maioria: quem cadastra com pressa
+  //: aceita o que ja esta na tela, e a base inteira acaba num tier so — o
+  //: campo passa a existir sem significar nada. Vazio obriga a escolher,
+  //: enquanto quem cadastra ainda sabe por que aquela instituicao importa.
+  tier: '',
   //: O primeiro representante, cadastrado JUNTO. Uma instituicao sem ninguem
   //: nao serve para nada: o formulario de agenda so oferece pessoas depois de
   //: escolhe-la, e a lista sairia vazia.
@@ -73,6 +80,24 @@ const VAZIA = {
   rep_cargo: '',
 };
 const SEM_PESSOA = { nome: '', email: '', cargo: '' };
+
+/** O que a edição de uma instituição mexe.
+ *
+ *  ESCRITO UMA VEZ. A forma estava em três lugares — o estado, a prop da linha
+ *  e a assinatura do callback — e ao acrescentar `tier` os três divergiram na
+ *  mesma hora, com o compilador apontando dois deles.
+ *
+ *  `tier` é string porque vem de um `<select>`, e vira número só na hora de
+ *  enviar: guardar número aqui obrigaria a representar "nada escolhido" como
+ *  0 ou NaN, que são valores e não ausências.
+ */
+interface RascunhoDaInstituicao {
+  nome: string;
+  nome_completo: string;
+  tipo: string;
+  uf: string;
+  tier: string;
+}
 
 export function CadastroDeInstituicoes() {
   const { catalogo, recarregar } = usePainel();
@@ -97,11 +122,12 @@ export function CadastroDeInstituicoes() {
   //: O rascunho da EDICAO nao carrega representante: editar a instituicao nao
   //: e o lugar de acrescentar gente — para isso existe "Quem representa". O
   //: backend ignora `representante` no PUT pelo mesmo motivo.
-  const [rascunho, definirRascunho] = useState({
+  const [rascunho, definirRascunho] = useState<RascunhoDaInstituicao>({
     nome: '',
     nome_completo: '',
     tipo: 'orgao',
     uf: '',
+    tier: '',
   });
   const [pessoaNova, definirPessoaNova] = useState(SEM_PESSOA);
   //: Qual PESSOA esta aberta para edicao, e o rascunho dela. Separado do
@@ -168,17 +194,16 @@ export function CadastroDeInstituicoes() {
         </div>
       ) : null}
 
-      <Secao titulo="Cadastrar veículo ou órgão">
+      <Secao titulo="Cadastrar instituição">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O tipo decide em qual frente a instituição aparece no formulário de
-            agenda. Cadastrada com o tipo errado, ela existe e nunca é oferecida.
+            O tipo decide em qual frente ela aparece no cadastro de agenda.
           </p>
           <div className="grade grade--3" style={{ gap: 16 }}>
             <Campo
               rotulo="Nome curto"
               obrigatorio
-              dica="Como se fala e como a lista fica legível: ANA, ABCON, CNI."
+              dica="Como se fala: ANA, ABCON, CNI."
             >
               <input
                 style={estiloDeEntrada}
@@ -223,6 +248,30 @@ export function CadastroDeInstituicoes() {
                 {catalogo.dicionarios.ufs.map((uf) => (
                   <option key={uf.codigo} value={uf.codigo}>
                     {uf.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            {/* A RELEVÂNCIA É DA INSTITUIÇÃO, e não do encontro.
+                A agenda tem o seu próprio tier, e são coisas diferentes: a
+                Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
+                ser Tier 3. Sem este campo, a pergunta era refeita a cada
+                reunião — e respondida diferente. */}
+            <Campo
+              rotulo="Relevância"
+              obrigatorio
+              dica="A da instituição. Cada agenda tem a sua."
+            >
+              <select
+                style={estiloDeEntrada}
+                value={nova.tier}
+                onChange={(e) => definirNova({ ...nova, tier: e.target.value })}
+              >
+                <option value="">Selecione…</option>
+                {catalogo.dicionarios.relevancias.map((nivel) => (
+                  <option key={nivel.id} value={nivel.id}>
+                    {nivel.nome}
                   </option>
                 ))}
               </select>
@@ -280,7 +329,7 @@ export function CadastroDeInstituicoes() {
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
-              desabilitado={salvando || !nova.nome.trim()}
+              desabilitado={salvando || !nova.nome.trim() || !nova.tier}
               aoClicar={() =>
                 void executar(
                   () =>
@@ -289,6 +338,7 @@ export function CadastroDeInstituicoes() {
                       nome_completo: nova.nome_completo || null,
                       tipo: nova.tipo,
                       uf: nova.uf || null,
+                      tier: Number(nova.tier),
                       // SO QUANDO HA NOME. Mandar `{nome: ''}` seria recusado
                       // pelo `min_length`, e a instituicao nao entraria por
                       // causa de um campo que a pessoa deixou em branco de
@@ -334,6 +384,7 @@ export function CadastroDeInstituicoes() {
               instituicao={instituicao}
               pessoas={pessoasDe(instituicao.id)}
               ufs={catalogo.dicionarios.ufs}
+              relevancias={catalogo.dicionarios.relevancias}
               emEdicao={emEdicao === instituicao.id}
               aberta={aberta === instituicao.id}
               salvando={salvando}
@@ -351,6 +402,7 @@ export function CadastroDeInstituicoes() {
                   nome_completo: instituicao.nome_completo ?? '',
                   tipo: instituicao.tipo,
                   uf: instituicao.uf ?? '',
+                  tier: instituicao.tier ? String(instituicao.tier) : '',
                 });
               }}
               aoCancelar={() => definirEmEdicao(null)}
@@ -362,6 +414,10 @@ export function CadastroDeInstituicoes() {
                       nome_completo: rascunho.nome_completo || null,
                       tipo: rascunho.tipo,
                       uf: rascunho.uf || null,
+                      // VAZIO VIRA `null`, e nao 0: as 98 instituicoes
+                      // anteriores a coluna nao tem tier, e corrigir o nome de
+                      // uma delas nao pode obrigar a classifica-la primeiro.
+                      tier: rascunho.tier ? Number(rascunho.tier) : null,
                     }),
                   () => definirEmEdicao(null),
                 )
@@ -451,6 +507,7 @@ function LinhaDeInstituicao({
   instituicao,
   pessoas,
   ufs,
+  relevancias,
   emEdicao,
   aberta,
   salvando,
@@ -478,17 +535,13 @@ function LinhaDeInstituicao({
   instituicao: Instituicao;
   pessoas: Interlocutor[];
   ufs: { codigo: string; nome: string }[];
+  relevancias: { id: number; nome: string }[];
   emEdicao: boolean;
   aberta: boolean;
   salvando: boolean;
-  rascunho: { nome: string; nome_completo: string; tipo: string; uf: string };
+  rascunho: RascunhoDaInstituicao;
   pessoaNova: { nome: string; email: string; cargo: string };
-  aoRascunhar: (r: {
-    nome: string;
-    nome_completo: string;
-    tipo: string;
-    uf: string;
-  }) => void;
+  aoRascunhar: (r: RascunhoDaInstituicao) => void;
   aoRascunharPessoa: (p: { nome: string; email: string; cargo: string }) => void;
   aoAbrir: () => void;
   aoEditar: () => void;
@@ -548,6 +601,24 @@ function LinhaDeInstituicao({
               {TIPOS.map(({ tipo, onde: aonde }) => (
                 <option key={tipo} value={tipo}>
                   {tipo} — {aonde}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Relevância">
+            <select
+              style={estiloDeEntrada}
+              value={rascunho.tier}
+              onChange={(e) => aoRascunhar({ ...rascunho, tier: e.target.value })}
+            >
+              {/* SEM ASTERISCO AQUI, e com asterisco no cadastro. As
+                  instituições anteriores à coluna não têm tier, e exigi-lo na
+                  edição trancaria a correção de um nome atrás de uma
+                  classificação que ninguém pediu naquele momento. */}
+              <option value="">Não informada</option>
+              {relevancias.map((nivel) => (
+                <option key={nivel.id} value={nivel.id}>
+                  {nivel.nome}
                 </option>
               ))}
             </select>

@@ -69,6 +69,12 @@ export interface Material {
   observacao: string | null;
   /** Nulo quando o material é um LINK. Os dois caminhos convivem. */
   arquivo: ArquivoDoMaterial | null;
+  /** De qual referência da biblioteca este material veio. Nulo no que a pessoa
+   *  escreveu à mão — que continua sendo a maioria. */
+  referencia_id: string | null;
+  /** De que assuntos o documento trata. É o que faz a busca por assunto ser a
+   *  mesma nas duas procedências — o oficial e o que saiu da reunião. */
+  temas: number[];
 }
 
 /** Campos específicos de frente. Só um conjunto vem preenchido por vez. */
@@ -147,6 +153,8 @@ export interface Interacao {
   /** `aegea` ou `outra_parte`. Declinar é escolha; ser declinado, porta fechada. */
   declinado_por: string | null;
   motivo_declinio: string | null;
+  /** Em que condições a agenda foi aceita. O outro lado é `motivo_declinio`. */
+  nota_situacao: string | null;
   /** DE QUAIS agendas esta decorre. Vazio = nasceu sozinha.
    *
    *  Plural: duas reuniões podem levar juntas a uma terceira, e uma reunião
@@ -206,7 +214,9 @@ export interface FormatoDoDicionario extends ItemDeDicionario {
 export interface Tema {
   id: number;
   nome: string;
-  nivel: 'estrategico' | 'livre';
+  /** Do mais restrito ao mais aberto. `gerais` se chamava `livre` até a
+   *  migração 0022 — o código mudou junto com o rótulo. */
+  nivel: 'sensivel' | 'estrategico' | 'gerais';
 }
 
 export interface UnidadeDeNegocio {
@@ -273,6 +283,9 @@ export interface Instituicao {
   /** O nome por extenso. `nome` guarda a forma curta, que é como se fala. */
   nome_completo: string | null;
   uf: string | null;
+  /** Tier 1 a 4 — a relevância da instituição, e não a de uma agenda dela.
+   *  `null` nas cadastradas antes de a coluna existir. */
+  tier: number | null;
 }
 
 export interface Interlocutor {
@@ -294,6 +307,13 @@ export interface PessoaAegea {
   email: string | null;
   eh_porta_voz: boolean;
   ativo: boolean;
+  /** SOBRE O QUE ESTA PESSOA RESPONDE.
+   *
+   *  Sustenta a regra de "fora do escopo": agenda conduzida por quem não
+   *  responde por aquele assunto. O vínculo existia no banco desde o começo e
+   *  nenhuma tela o cruzava — doze pessoas cadastradas, zero assuntos ligados.
+   */
+  temas: number[];
 }
 
 /* -- acesso --------------------------------------------------------------- */
@@ -384,13 +404,15 @@ export interface Usuario {
   acesso_expira_em: string | null;
 }
 
-/** O que o servidor devolve ao registrar uma geração de relatório. */
-export interface GeracaoDeRelatorio {
+/** O que o servidor devolve ao registrar uma exportação da Base.
+ *
+ *  `total_de_registros` é contado NO SERVIDOR: receber do cliente seria aceitar
+ *  que quem exporta declare quanto exportou.
+ */
+export interface Exportacao {
   id: string;
   criado_em: string;
   total_de_registros: number;
-  /** O relatório inclui a tabela completa — é uma exportação com capa. */
-  leva_registros: boolean;
 }
 
 /** Uma linha da tela de administração de acessos. */
@@ -461,4 +483,87 @@ export interface Eu extends Usuario {
    * token. Disparar a requisição ele consegue; ler esta resposta, não.
    */
   csrf_token: string;
+}
+
+/** Uma referência da biblioteca.
+ *
+ *  A Aegea mantém o acervo lá; aqui ficam o link e os metadados que permitem
+ *  encontrá-lo POR ASSUNTO — que é o gesto que quem marca uma reunião já faz.
+ *  O arquivo não é copiado: duplicar o byte criaria uma segunda verdade que
+ *  envelhece em silêncio.
+ */
+/** Uma versão de uma referência: o arquivo, a data dele e quem subiu. */
+export interface VersaoDaReferencia {
+  id: string;
+  /** 1, 2, 3… na ordem em que entraram. É o "v3" da tela. */
+  numero: number;
+  /** A data DO DOCUMENTO, e não a do upload. */
+  atualizado_em: string;
+  /** O que mudou nesta versão. */
+  nota: string | null;
+  arquivo_id: string;
+  arquivo_nome: string;
+  arquivo_tipo: string;
+  arquivo_tamanho: number;
+  criado_em: string;
+  criado_por: string | null;
+}
+
+/** Uma referência da biblioteca.
+ *
+ *  O ARQUIVO MORA NO BLOB, numa árvore por assunto e tipo, e a referência tem
+ *  VERSÕES: a tela mostra a mais recente, e o histórico responde o que
+ *  circulou numa reunião passada.
+ */
+export interface Referencia {
+  id: string;
+  titulo: string;
+  /** `posicionamento` | `qa` | `release` | `apresentacao` | `dados` | `nota_tecnica` */
+  tipo: string;
+  resumo: string | null;
+  /** O assunto que define a PASTA no blob. */
+  tema_principal_id: number | null;
+  /** Todos os assuntos, o principal incluído. É por eles que a agenda a acha. */
+  temas: number[];
+  ativo: boolean;
+  /** A versão que a tela mostra — a mais recente. */
+  versao: VersaoDaReferencia | null;
+  quantas_versoes: number;
+}
+
+/** Os METADADOS de uma referência. O arquivo entra pelas rotas de versão. */
+export interface ReferenciaEdicao {
+  titulo: string;
+  tipo: string;
+  resumo?: string | null;
+  tema_principal_id: number;
+  /** Os demais assuntos. O principal entra sozinho. */
+  temas: number[];
+  ativo?: boolean;
+}
+
+
+/** Um documento com arquivo, saído de uma reunião.
+ *
+ *  Mora em `interacoes/…` no blob, e não em `referencias/…`: a biblioteca é o
+ *  que se leva PARA a reunião; isto é o que volta dela — a ata que a outra
+ *  parte entregou, o material que a equipe produziu depois.
+ */
+export interface DocumentoDaReuniao {
+  id: string;
+  momento: string;
+  titulo: string;
+  resumo: string | null;
+  interacao_id: string;
+  data_interacao: string;
+  frente: string;
+  instituicao: string | null;
+  arquivo_id: string;
+  arquivo_nome: string;
+  arquivo_tipo: string;
+  arquivo_tamanho: number;
+  /** De que assuntos o documento trata. */
+  temas: number[];
+  criado_em: string;
+  criado_por: string | null;
 }

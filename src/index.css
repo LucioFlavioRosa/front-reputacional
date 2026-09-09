@@ -20,7 +20,13 @@
   /* Neutros */
   --branco: #FFFFFF;
   --cinza-1: #E2E5F0;
-  --cinza-2: #8C91A4;
+  /* ESCURECIDO. #8C91A4 dava 3,13:1 sobre branco — abaixo do mínimo 4,5:1 de
+     AA — e é a cor de texto em dezenas de lugares. #6B7186 dá 4,7:1 e continua
+     na família da marca.
+     Os tokens de GRÁFICO que valiam o mesmo cinza (--frente-interna,
+     --clima-neutro) ficaram como estavam: ali a cor não carrega texto, e o
+     critério de contraste de leitura não se aplica. */
+  --cinza-2: #6B7186;
   --cinza-3: #44495C;
   --cinza-4: #191B23;
 

@@ -25,6 +25,7 @@ import type { Catalogo } from '@/dominio/derivacoes';
 import { montarCatalogo } from '@/dominio/derivacoes';
 import type { Recorte } from '@/dominio/recorte';
 import { quantidadeDeFiltros } from '@/dominio/recorte';
+import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
 
 interface EstadoDoPainel {
@@ -70,7 +71,34 @@ export function ProvedorDoPainel({
    */
   alcancaOCrm: boolean;
 }) {
-  const [recorte, definirRecorte] = useState<Recorte>({});
+  //: O RECORTE MORA NA URL.
+  //:
+  //: Nasce do endereço e volta para ele a cada mudança — é o que faz "manda
+  //: este recorte para a liderança" ser um link em vez de uma captura de tela.
+  //:
+  //: `replaceState`, e não `pushState`: ajustar um filtro é refinar a mesma
+  //: leitura. Empilhar histórico a cada tecla digitada na busca faria o botão
+  //: de voltar percorrer letra por letra antes de sair da tela.
+  const [recorte, definirRecorteEstado] = useState<Recorte>(() =>
+    lerRecorte(window.location.search),
+  );
+
+  const definirRecorte = useCallback((novo: Recorte) => {
+    definirRecorteEstado(novo);
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + consultaDe(novo, lerEixo(window.location.search)),
+    );
+  }, []);
+
+  useEffect(function ouvirOBotaoDeVoltar() {
+    // O caminho é escrito pela navegação; a consulta, aqui. Mas o botão de
+    // voltar move os DOIS de uma vez — então este lado também precisa reler.
+    const aoVoltar = () => definirRecorteEstado(lerRecorte(window.location.search));
+    window.addEventListener('popstate', aoVoltar);
+    return () => window.removeEventListener('popstate', aoVoltar);
+  }, []);
   const [catalogo, definirCatalogo] = useState<Catalogo | null>(null);
   const [interacoes, definirInteracoes] = useState<Interacao[]>([]);
   const [total, definirTotal] = useState(0);
@@ -167,6 +195,11 @@ export function ProvedorDoPainel({
     [
       recorte, interacoes, total, truncado, catalogo,
       carregando, atualizando, erro, recarregar, drawerAberto,
+      // `definirRecorte` deixou de ser o `setState` cru — agora também escreve
+      // o endereço, e por isso é um `useCallback` que precisa entrar aqui.
+      // Fora da lista, um provedor remontado serviria a versão antiga da
+      // função, que escreveria numa URL que já não é a da tela.
+      definirRecorte,
     ],
   );
 

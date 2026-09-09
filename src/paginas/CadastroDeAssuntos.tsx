@@ -30,15 +30,26 @@ import {
 } from '@/componentes/basicos';
 import { usePainel } from '@/estado/painel';
 
-/** Os dois níveis, e o que cada um quer dizer.
+/** Os três níveis, do mais restrito ao mais aberto.
  *
- *  `estrategico` é agenda da companhia — o que se planeja levar. `livre` é o
- *  que aparece sem ter sido planejado. A distinção já existia no dicionário e
- *  nunca tinha sido explicada em tela.
+ *  ERAM DOIS, e faltava o que a área usa para decidir quem fala: o assunto
+ *  SENSÍVEL. Sem ele, "reajuste tarifário" e "patrocínio de corrida" moravam
+ *  na mesma gaveta.
+ *
+ *  A ORDEM É A DO CUIDADO, e não a alfabética: quem abre a lista lê primeiro o
+ *  que exige mais, e o que exige menos fica por último — que é também o padrão
+ *  de quem cadastra sem pensar no campo.
+ *
+ *  `gerais` se chamava `livre` até a migração 0022, no rótulo e no código.
  */
 const NIVEIS = [
+  {
+    valor: 'sensivel',
+    rotulo: 'Sensível',
+    ajuda: 'Exige alinhamento antes de alguém falar.',
+  },
   { valor: 'estrategico', rotulo: 'Estratégico', ajuda: 'Agenda da companhia.' },
-  { valor: 'livre', rotulo: 'Livre', ajuda: 'O que aparece sem ter sido planejado.' },
+  { valor: 'gerais', rotulo: 'Gerais', ajuda: 'O que aparece sem ter sido planejado.' },
 ];
 
 export function CadastroDeAssuntos() {
@@ -46,9 +57,9 @@ export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [novo, definirNovo] = useState({ nome: '', nivel: 'livre' });
+  const [novo, definirNovo] = useState({ nome: '', nivel: 'gerais' });
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
-  const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'livre' });
+  const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'gerais' });
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
   //: porque alimenta filtro e formulário; aqui é preciso ver o que foi
@@ -126,7 +137,7 @@ export function CadastroDeAssuntos() {
               aoClicar={() =>
                 void executar(
                   () => criarTema({ nome: novo.nome, nivel: novo.nivel }),
-                  () => definirNovo({ nome: '', nivel: 'livre' }),
+                  () => definirNovo({ nome: '', nivel: 'gerais' }),
                 )
               }
             >

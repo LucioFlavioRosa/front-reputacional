@@ -53,6 +53,20 @@ export function diasDesde(iso: string, hoje = new Date()): number {
   return Math.round((fim.getTime() - inicio.getTime()) / 86_400_000);
 }
 
+/** O tamanho de um arquivo, legível por gente e não em bytes.
+ *
+ *  ESTAVA ESCRITA DUAS VEZES — na lista de materiais do cadastro e na aba de
+ *  documentos da Base —, com o mesmo corpo e o mesmo comentário. Duas escritas
+ *  da mesma regra divergem no primeiro ajuste: bastaria alguém querer uma casa
+ *  decimal nos KB para as duas telas passarem a dizer coisas diferentes sobre
+ *  o mesmo arquivo.
+ */
+export function tamanhoLegivel(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function numero(valor: number): string {
   return valor.toLocaleString('pt-BR');
 }
@@ -145,7 +159,7 @@ export function iniciais(nome: string): string {
 /** Como esta agenda se chama numa lista.
  *
  *  UM LUGAR SO, e nao um ternario em cada tela. A pauta deixou de ser
- *  obrigatoria, e ela aparece na Base, na exportacao, em Frentes, no Relatorio,
+ *  obrigatoria, e ela aparece na Base, na exportacao, em Frentes
  *  em Status e na escolha de agenda de origem — seis lugares que, resolvendo
  *  cada um por si, divergiriam. Ja aconteceu tres vezes neste projeto.
  *

@@ -64,7 +64,7 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
         ),
       ),
       geo: distribuicaoPorUf(interacoes),
-      veiculos: ranking(interacoes, catalogo, 'entidade'),
+      instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
     };
@@ -117,7 +117,7 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
           aoClicar={() => aoAbrirFrente('legislativo')}
         />
         <Kpi
-          rotulo="Tier 1"
+          rotulo="Relevância Tier 1"
           valor={numero(kpis.tier1.total)}
           dica={`${percentual(kpis.tier1.total, interacoes.length)} da amostra`}
           cor="var(--azul-mar)"
@@ -158,7 +158,7 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
           />
         </Secao>
 
-        <Secao titulo="Temas no tempo">
+        <Secao titulo="Assuntos no tempo">
           <BarrasEmpilhadas colunas={derivado.porTema} altura={140} />
           <Legenda
             itens={derivado.temas}
@@ -166,7 +166,7 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
             aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
           />
           <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-            A unidade é a ocorrência de tag: uma interação com três temas conta nas três pilhas.
+            Uma agenda com três assuntos conta nos três.
           </p>
         </Secao>
       </div>
@@ -196,9 +196,9 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
       </Secao>
 
       <div className="grade grade--3" style={{ gap: 16 }}>
-        <Secao titulo="Veículos e órgãos">
+        <Secao titulo="Instituições">
           <Ranking
-            itens={derivado.veiculos}
+            itens={derivado.instituicoes}
             ativo={recorte.entidade}
             aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
           />

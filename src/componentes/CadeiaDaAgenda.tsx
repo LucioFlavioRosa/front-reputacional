@@ -164,7 +164,7 @@ export function CadeiaDaAgenda({
           }
           dica={
             origem && temCadeia(origem)
-              ? 'As agendas ligadas a esta existem, mas não vieram nos filtros atuais. Amplie o período ou limpe os filtros para desenhar a cadeia.'
+              ? 'Amplie o período ou limpe os filtros para ver a cadeia.'
               : undefined
           }
         />
@@ -187,9 +187,9 @@ export function CadeiaDaAgenda({
                   para a reunião leria menos do que existe, sem nada indicando
                   que falta. O ⋯ ao lado do nó diz QUAL, e de que lado. */}
               {incompletos === 1
-                ? 'Uma agenda deste desenho tem ligações fora do recorte atual — o ⋯ marca de que lado a história continua.'
+                ? 'Uma agenda desta cadeia tem ligações fora do recorte — o ⋯ marca de que lado.'
                 : `${incompletos} agendas deste desenho têm ligações fora do recorte atual — o ⋯ marca de que lado a história continua.`}{' '}
-              Amplie o período ou limpe os filtros para ver a cadeia inteira.
+              Amplie o período para ver a cadeia inteira.
             </p>
           ) : null}
 

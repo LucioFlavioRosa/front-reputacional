@@ -9,7 +9,11 @@ import type {
   Concessao,
   Dicionarios,
   Eu,
-  GeracaoDeRelatorio,
+  Exportacao,
+  DocumentoDaReuniao,
+  Referencia,
+  ReferenciaEdicao,
+  VersaoDaReferencia,
   Instituicao,
   Interacao,
   Interlocutor,
@@ -256,41 +260,23 @@ export function urlDeLogin(destino = '/painel'): string {
 }
 
 /**
- * Registra que um relatório foi gerado.
+ * Registra que a Base foi exportada.
  *
  * O recorte vai na QUERY STRING, e não no corpo: é a mesma dependência que a
  * listagem usa, e mandar os filtros no corpo abriria a porta para o registro
  * dizer um recorte e o servidor contar outro.
  *
- * É trilha, não permissão. Um cliente modificado simplesmente não chama, e nada
- * é registrado — serve para responsabilização entre pessoas da casa e como
- * insumo de alerta, não como barreira.
- */
-export function registrarRelatorio(
-  recorte: Recorte,
-  secoes: string[],
-): Promise<GeracaoDeRelatorio> {
-  const parametros = paraParametros(recorte).toString();
-  return requisitar<GeracaoDeRelatorio>(
-    `/api/relatorios${parametros ? `?${parametros}` : ''}`,
-    { method: 'POST', body: JSON.stringify({ secoes }) },
-  );
-}
-
-/**
- * Registra uma exportação CSV.
- *
- * Diferente do relatório impresso, o CSV NÃO corta: leva tudo que o recorte
- * alcança. É o caminho mais curto para tirar dados daqui, e ficava sem evento
- * nenhum — um botão, um arquivo, e nada no log.
+ * O CSV leva TUDO que o recorte alcança — é o caminho mais curto para tirar
+ * dados daqui, e ficava sem evento nenhum: um botão, um arquivo, e nada no log.
  *
  * Trilha, não barreira: um cliente modificado baixa a listagem e monta o
- * arquivo sem chamar isto.
+ * arquivo sem chamar isto. Serve para responsabilização entre pessoas da casa
+ * e como insumo de alerta.
  */
-export function registrarExportacao(recorte: Recorte): Promise<GeracaoDeRelatorio> {
+export function registrarExportacao(recorte: Recorte): Promise<Exportacao> {
   const parametros = paraParametros(recorte).toString();
-  return requisitar<GeracaoDeRelatorio>(
-    `/api/relatorios/exportacoes${parametros ? `?${parametros}` : ''}`,
+  return requisitar<Exportacao>(
+    `/api/exportacoes${parametros ? `?${parametros}` : ''}`,
     { method: 'POST' },
   );
 }
@@ -441,6 +427,10 @@ export interface InstituicaoEntrada {
   tipo: string;
   esfera_id?: number | null;
   uf?: string | null;
+  /** A relevância da INSTITUIÇÃO — Tier 1 a 4. Não confundir com o tier da
+   *  agenda: a Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
+   *  ser Tier 3. `null` nas cadastradas antes de a coluna existir. */
+  tier?: number | null;
   ativo?: boolean;
   representante?: RepresentanteInicial | null;
 }
@@ -545,7 +535,8 @@ export function temasDoPortaVoz(id: string): Promise<number[]> {
 export interface TemaCadastrado {
   id: number;
   nome: string;
-  /** `estrategico` (agenda da companhia) ou `livre` (o que aparece). */
+  /** `sensivel` (exige alinhamento antes de falar), `estrategico` (agenda
+   *  da companhia) ou `gerais` (o que aparece sem ter sido planejado). */
   nivel: string;
   ativo: boolean;
 }
@@ -581,4 +572,111 @@ export function editarTema(
     method: 'PUT',
     body: JSON.stringify(entrada),
   });
+}
+
+/* ------------------------------------------------ a biblioteca de referências */
+
+/**
+ * O acervo oficial, por assunto — com a versão mais recente de cada referência.
+ *
+ * Traz ATIVAS E INATIVAS, ao contrário do catálogo que alimenta o formulário:
+ * sem as inativas, a referência desativada some da tela de administração e
+ * reaparece como "já existe" na próxima tentativa de cadastrar o mesmo título.
+ */
+export function listarReferencias(): Promise<Referencia[]> {
+  return requisitar<Referencia[]>('/api/referencias');
+}
+
+/**
+ * Cadastra a referência COM a primeira versão, numa requisição só.
+ *
+ * Multipart, e não JSON: o arquivo é obrigatório. Uma referência sem ele é um
+ * título que não leva a lugar nenhum — e era o que sobrava quando o acervo
+ * morava no SharePoint e o painel guardava só o link.
+ */
+export function criarReferencia(
+  metadados: {
+    titulo: string;
+    tipo: string;
+    tema_principal_id: number;
+    /** Os demais assuntos. O principal entra sozinho. */
+    temas: number[];
+    resumo?: string | null;
+    atualizado_em: string;
+    nota?: string | null;
+  },
+  arquivo: File,
+): Promise<Referencia> {
+  const corpo = new FormData();
+  corpo.append('titulo', metadados.titulo);
+  corpo.append('tipo', metadados.tipo);
+  corpo.append('tema_principal_id', String(metadados.tema_principal_id));
+  corpo.append('atualizado_em', metadados.atualizado_em);
+  // Lista vira texto separado por vírgula: multipart não carrega array, e um
+  // campo repetido complicaria o cliente mais do que resolve.
+  corpo.append('temas', metadados.temas.join(','));
+  if (metadados.resumo) corpo.append('resumo', metadados.resumo);
+  if (metadados.nota) corpo.append('nota', metadados.nota);
+  corpo.append('arquivo', arquivo);
+  return requisitar<Referencia>('/api/referencias', { method: 'POST', body: corpo });
+}
+
+/** Só os metadados. Arquivo novo é VERSÃO nova, e entra pela outra rota. */
+export function editarReferencia(
+  id: string,
+  entrada: ReferenciaEdicao,
+): Promise<Referencia> {
+  return requisitar<Referencia>(`/api/referencias/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/**
+ * Acrescenta uma versão. A anterior CONTINUA — é o histórico.
+ *
+ * É ele que responde "qual Q&A a gente levou naquela reunião de março", e é
+ * por isso que subir a versão de agosto não apaga a de março.
+ */
+export function subirVersaoDaReferencia(
+  id: string,
+  arquivo: File,
+  atualizado_em: string,
+  nota?: string,
+): Promise<Referencia> {
+  const corpo = new FormData();
+  corpo.append('atualizado_em', atualizado_em);
+  if (nota) corpo.append('nota', nota);
+  corpo.append('arquivo', arquivo);
+  return requisitar<Referencia>(`/api/referencias/${id}/versoes`, {
+    method: 'POST',
+    body: corpo,
+  });
+}
+
+export function listarVersoesDaReferencia(id: string): Promise<VersaoDaReferencia[]> {
+  return requisitar<VersaoDaReferencia[]>(`/api/referencias/${id}/versoes`);
+}
+
+/** O endereço de download de uma versão. Passa pela API, e não pelo blob.
+ *
+ *  Um link direto continuaria valendo depois de a pessoa perder o acesso — e o
+ *  acervo diz o que a companhia fala publicamente.
+ */
+export function urlDaVersao(referenciaId: string, versaoId: string): string {
+  return `${BASE}/api/referencias/${referenciaId}/versoes/${versaoId}/arquivo`;
+}
+
+/**
+ * Os documentos com ARQUIVO das agendas alcançadas pelo recorte.
+ *
+ * O recorte vai junto porque esta lista mora dentro da Base, e o cabeçalho da
+ * Base diz o recorte em vigor: uma aba que ignorasse os filtros mostraria
+ * documentos de agendas que a tela ao lado não lista.
+ */
+export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDaReuniao[]> {
+  const parametros = paraParametros(recorte).toString();
+  return requisitar<DocumentoDaReuniao[]>(
+    `/api/materiais${parametros ? `?${parametros}` : ''}`,
+  );
 }

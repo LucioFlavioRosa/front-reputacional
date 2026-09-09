@@ -371,7 +371,7 @@ function FormularioDeConcessao({
       {externo && (
         <Campo
           rotulo="Vence em"
-          dica="Obrigatório para quem é de fora: contrato acaba, e ninguém lembra de revogar."
+          dica="Obrigatório para quem é de fora."
         >
           <input
             type="date"
@@ -396,7 +396,7 @@ function FormularioDeConcessao({
         <>
           <Campo
             rotulo="Frentes"
-            dica="Separadas por vírgula. Frentes e unidades vazias, sem alcance total, significam não ver nada."
+            dica="Separadas por vírgula. Vazias e sem alcance total: não vê nada."
           >
             <input
               value={frentes}

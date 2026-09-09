@@ -2,11 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { usePainel } from '@/estado/painel';
-import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
 import { temCadeia } from '@/dominio/grafo';
 import { registrarExportacao } from '@/api/cliente';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao, Carregando, ChipDeFrente, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
+import { celula } from '@/componentes/estilos';
+import { Abas } from '@/componentes/Abas';
+import { FiltrosDeAgendas } from '@/componentes/FiltrosDeAgendas';
+import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
+import { DocumentosDaReuniao } from '@/paginas/DocumentosDaReuniao';
+import { MateriaisOficiais } from '@/paginas/MateriaisOficiais';
 import { dataCompleta, numero, tituloDaAgenda, truncar } from '@/dominio/formato';
 import { rotuloDeAbrangencia } from '@/dominio/frentes';
 import type { Interacao } from '@/dominio/tipos';
@@ -20,9 +25,34 @@ import {
 } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 
+/** As tres abas da Base, e o que separa uma da outra.
+ *
+ *  AS AGENDAS sao os registros — o que a Base sempre foi.
+ *
+ *  OS MATERIAIS OFICIAIS sao o acervo oficial, o que se leva PARA a
+ *  reuniao. Ficam aqui, e nao so na Administracao, porque quem prepara uma
+ *  reuniao nao deveria entrar na tela de administracao para consultar — e quem
+ *  entra la para consultar acaba editando por engano.
+ *
+ *  OS DOCUMENTOS sao o que VOLTA da reuniao e mora no nosso armazenamento: a
+ *  ata que a outra parte entregou, o material produzido depois. Sem esta aba,
+ *  um arquivo so se acha abrindo a agenda que o gerou — e e preciso saber qual
+ *  foi.
+ *
+ *  A PROCEDENCIA E O QUE AS SEPARA, e nao o formato: as tres listam coisas
+ *  diferentes vindas de lugares diferentes, com governanca diferente.
+ */
+const ABAS = [
+  { id: 'agendas' as const, rotulo: 'Agendas' },
+  { id: 'oficiais' as const, rotulo: 'Materiais oficiais' },
+  { id: 'documentos' as const, rotulo: 'Documentos das reuniões' },
+];
+
+type AbaDaBase = (typeof ABAS)[number]['id'];
+
 const COLUNAS = [
-  'Cadeia', 'Data', 'Frente', 'Veículo/órgão', 'Unidade', 'Interlocutor',
-  'Pauta', 'UF', 'Relevância', 'Status', 'Tags',
+  'Cadeia', 'Data', 'Frente', 'Instituição', 'Unidade', 'Interlocutor',
+  'Pauta', 'UF', 'Relevância', 'Situação', 'Assuntos',
 ];
 
 /** A CADEIA VEM PRIMEIRO, como marca de calha.
@@ -37,9 +67,18 @@ const COLUNAS = [
  *  informa nada que a ausência do ícone já não diga.
  */
 
-export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
+export function Base({
+  aoAbrirFicha,
+  aoAbrirCadeia,
+}: {
+  aoAbrirFicha: (id: string) => void;
+  /** A cadeia tem ENDEREÇO PRÓPRIO (`/agenda/<id>/cadeia`), então quem a abre
+   *  navega em vez de guardar estado. Duas formas de abrir o mesmo modal — uma
+   *  por estado, outra por endereço — divergiriam no primeiro ajuste. */
+  aoAbrirCadeia: (id: string) => void;
+}) {
   const { interacoes, catalogo, carregando, erro, recorte, total } = usePainel();
-  const [cadeiaAberta, definirCadeiaAberta] = useState<string | null>(null);
+  const [aba, definirAba] = useState<AbaDaBase>('agendas');
 
   const linhas = useMemo(() => {
     if (!catalogo) return [];
@@ -50,7 +89,37 @@ export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
   if (carregando || !catalogo) return <Carregando />;
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Abas
+        abas={ABAS}
+        ativa={aba}
+        aoTrocar={definirAba}
+        rotulo="O que a Base mostra"
+        prefixo="base"
+      />
+
+      {aba === 'oficiais' ? (
+        <Secao nivelDoTitulo={1} titulo="Materiais oficiais" estilo={{ padding: 0 }}>
+          <MateriaisOficiais />
+        </Secao>
+      ) : null}
+
+      {aba === 'documentos' ? (
+        <Secao
+          nivelDoTitulo={1}
+          titulo="Documentos das reuniões"
+          estilo={{ padding: 0 }}
+        >
+          <DocumentosDaReuniao aoAbrirFicha={aoAbrirFicha} />
+        </Secao>
+      ) : null}
+
+      {aba !== 'agendas' ? null : (
     <Secao
+      // O TÍTULO DA TELA É `h1`, e não `h2`: cada destino tem um, e um só.
+      // Leitor de tela navega por cabeçalho, e uma tela que abre em `h2`
+      // parece um pedaço de outra página.
+      nivelDoTitulo={1}
       titulo={`Base de registros — ${numero(total)} ${total === 1 ? 'registro' : 'registros'}`}
       acao={
         <Botao
@@ -73,88 +142,54 @@ export function Base({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
       }
       estilo={{ padding: 0 }}
     >
+      <div style={{ padding: '16px 16px 0' }}>
+        <FiltrosDeAgendas />
+      </div>
+
       {!linhas.length ? (
-        <Vazio mensagem="Nenhum registro no recorte" dica="Ajuste os filtros para ver resultados." />
-      ) : (
-        <div className="rolagem-interna" style={{ maxHeight: 'calc(100vh - 340px)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr>
-                {COLUNAS.map((coluna) => (
-                  <th
-                    key={coluna}
-                    style={{
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 1,
-                      background: 'var(--bg-trilho)',
-                      textAlign: 'left',
-                      padding: '10px 14px',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      color: 'var(--cinza-2)',
-                      whiteSpace: 'nowrap',
-                      borderBottom: '1px solid var(--borda)',
-                    }}
-                  >
-                    {coluna}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((linha) => (
-                <tr
-                  key={linha.id}
-                  onClick={() => aoAbrirFicha(linha.id)}
-                  title="Abrir a ficha do registro"
-                  style={{ cursor: 'pointer', borderBottom: '1px solid var(--borda)' }}
-                  onMouseEnter={(evento) => {
-                    evento.currentTarget.style.background = 'var(--bg-hover)';
-                  }}
-                  onMouseLeave={(evento) => {
-                    evento.currentTarget.style.background = '';
-                  }}
-                >
-                  <td style={{ ...celula, padding: '6px 10px' }}>
-                    <BotaoDaCadeia
-                      linha={linha}
-                      aoAbrir={() => definirCadeiaAberta(linha.id)}
-                    />
-                  </td>
-                  <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                    {dataCompleta(linha.data)}
-                  </td>
-                  <td style={celula}>
-                    <ChipDeFrente frente={linha.frente} />
-                  </td>
-                  <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
-                  <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
-                  <td style={celula}>{linha.interlocutor}</td>
-                  <td style={{ ...celula, minWidth: 260 }}>{truncar(linha.pauta, 90)}</td>
-                  <td style={celula}>{linha.uf}</td>
-                  <td style={celula}>{linha.tier}</td>
-                  <td style={celula}>{linha.status}</td>
-                  <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ padding: 16 }}>
+          <Vazio
+            mensagem="Nenhum registro no recorte"
+            dica="Ajuste a busca ou os filtros para ver resultados."
+          />
         </div>
+      ) : (
+        <Tabela colunas={COLUNAS} altura="calc(100vh - 400px)">
+          {linhas.map((linha) => (
+            <LinhaDaTabela
+              key={linha.id}
+              aoClicar={() => aoAbrirFicha(linha.id)}
+              titulo="Abrir a ficha do registro"
+            >
+            <td style={{ ...celula, padding: '6px 10px' }}>
+              <BotaoDaCadeia
+                linha={linha}
+                aoAbrir={() => aoAbrirCadeia(linha.id)}
+              />
+            </td>
+            <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+              {dataCompleta(linha.data)}
+            </td>
+            <td style={celula}>
+              <ChipDeFrente frente={linha.frente} />
+            </td>
+            <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
+            <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
+            <td style={celula}>{linha.interlocutor}</td>
+            <td style={{ ...celula, minWidth: 260 }}>{truncar(linha.pauta, 90)}</td>
+            <td style={celula}>{linha.uf}</td>
+            <td style={celula}>{linha.tier}</td>
+            <td style={celula}>{linha.status}</td>
+              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
+            </LinhaDaTabela>
+          ))}
+        </Tabela>
       )}
-      {/* O GRAFO ENTRA PELA LINHA, e não por uma aba própria. A pergunta que
-          ele responde — "de onde veio esta reunião" — nasce olhando a agenda,
-          e uma aba obrigaria a escolher a cadeia antes de poder olhar. */}
-      {cadeiaAberta ? (
-        <CadeiaDaAgenda
-          id={cadeiaAberta}
-          aoFechar={() => definirCadeiaAberta(null)}
-          aoAbrirFicha={aoAbrirFicha}
-        />
-      ) : null}
+      {/* O GRAFO ENTRA PELA LINHA, e não por uma aba própria — e o modal é
+          montado pelo App, a partir do endereço. Ver `aoAbrirCadeia`. */}
     </Secao>
+      )}
+    </div>
   );
 }
 
@@ -218,12 +253,6 @@ function descreverCadeia({ vemDe, levouA }: Linha): string {
   const frase = partes.join(', ');
   return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
-
-const celula: React.CSSProperties = {
-  padding: '10px 14px',
-  verticalAlign: 'top',
-  color: 'var(--cinza-3)',
-};
 
 interface Linha {
   id: string;

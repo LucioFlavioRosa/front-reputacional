@@ -65,8 +65,8 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const INSTITUICOES: Instituicao[] = [
-  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP' },
-  { id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF' },
+  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1 },
+  { id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null },
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [
@@ -75,8 +75,8 @@ const INTERLOCUTORES: Interlocutor[] = [
 ];
 
 const PESSOAS: PessoaAegea[] = [
-  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', email: null, eh_porta_voz: true, ativo: true },
-  { id: 'a2', nome: 'André Pires', cargo: 'CFO', email: null, eh_porta_voz: true, ativo: true },
+  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', email: null, eh_porta_voz: true, ativo: true, temas: [] },
+  { id: 'a2', nome: 'André Pires', cargo: 'CFO', email: null, eh_porta_voz: true, ativo: true, temas: [] },
 ];
 
 const CATALOGO = montarCatalogo(DICIONARIOS, INSTITUICOES, INTERLOCUTORES, PESSOAS);
@@ -128,6 +128,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     declinado_por: null,
 
     motivo_declinio: null,
+    nota_situacao: null,
 
     origens: [],
     derivadas: 0,

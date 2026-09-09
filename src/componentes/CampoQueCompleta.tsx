@@ -1,0 +1,244 @@
+/** Um campo que se digita e se completa sozinho, no lugar de um `select`.
+ *
+ *  POR QUE TROCAR. Quem preenche este formulário vem da planilha, e na planilha
+ *  se digita: "fol" e o resto aparece. Um `select` com 99 instituições obriga a
+ *  abrir a lista e rolar — e o teclado do navegador só salta pela PRIMEIRA
+ *  letra, então achar "Folha de S.Paulo" entre trinta nomes com F é rolagem
+ *  mesmo.
+ *
+ *  MAS NÃO É TEXTO LIVRE. O valor gravado sai sempre da lista: digitar serve
+ *  para FILTRAR, não para inventar. Sair do campo com texto que não casa com
+ *  nada devolve o rótulo do que estava escolhido — nunca grava a metade que a
+ *  pessoa digitou. É o que separa "planilha com validação" de "planilha".
+ *
+ *  BUSCA SEM ACENTO E EM QUALQUER POSIÇÃO. "sao paulo" acha "São Paulo", e
+ *  "globo" acha "O Globo" — casar só pelo começo faria a busca falhar
+ *  justamente nos nomes que começam com artigo.
+ *
+ *  O TECLADO FAZ TUDO: setas navegam, Enter escolhe, Esc fecha e devolve o que
+ *  estava. Quem preenche cinquenta agendas por semana não tira a mão do
+ *  teclado, e um campo que exige o mouse para confirmar custa mais do que o
+ *  `select` que ele substituiu.
+ */
+
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+
+import { Campo, estiloDeEntrada } from '@/componentes/basicos';
+
+export interface Opcao {
+  valor: string;
+  rotulo: string;
+  /** Uma linha extra na sugestão — o nome por extenso, o cargo, a frente. */
+  detalhe?: string;
+}
+
+/** Sem acento, em minúsculas. A mesma normalização que o backend usa para
+ *  deduplicar nome: assim "Radames" encontra "Radamés".
+ *
+ *  A faixa é a dos sinais diacríticos que o `NFD` separa da letra, escrita em
+ *  escapes e não com os caracteres literais: eles são INVISÍVEIS no editor, e
+ *  um intervalo que ninguém enxerga é um intervalo que ninguém confere. */
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+export function CampoQueCompleta({
+  rotulo,
+  opcoes,
+  valor,
+  aoEscolher,
+  vazio = 'Não informado',
+  obrigatorio = false,
+  dica,
+  placeholder,
+  ariaLabel,
+}: {
+  rotulo?: string;
+  opcoes: Opcao[];
+  /** O valor escolhido, ou string vazia. */
+  valor: string;
+  aoEscolher: (valor: string) => void;
+  /** O rótulo da opção que limpa o campo. Some quando `obrigatorio`. */
+  vazio?: string;
+  obrigatorio?: boolean;
+  dica?: string;
+  placeholder?: string;
+  /** Quando o campo não tem rótulo visível — dentro de uma tabela, por exemplo. */
+  ariaLabel?: string;
+}) {
+  const id = useId();
+  const [aberto, definirAberto] = useState(false);
+  const [busca, definirBusca] = useState('');
+  const [emFoco, definirEmFoco] = useState(0);
+  const caixa = useRef<HTMLDivElement>(null);
+
+  const escolhida = opcoes.find((o) => o.valor === valor);
+  //: O QUE O CAMPO MOSTRA: o que se digita enquanto a lista está aberta; o
+  //: rótulo do escolhido quando está fechada. Guardar os dois no mesmo estado
+  //: faria o texto digitado sobreviver ao fechamento e mentir sobre o valor.
+  const texto = aberto ? busca : (escolhida?.rotulo ?? '');
+
+  const lista = useMemo(() => {
+    const semVazio = opcoes;
+    const comVazio = obrigatorio
+      ? semVazio
+      : [{ valor: '', rotulo: vazio } as Opcao, ...semVazio];
+    const termo = normalizar(busca);
+    if (!aberto || !termo) return comVazio;
+    return comVazio.filter(
+      (o) =>
+        normalizar(o.rotulo).includes(termo) ||
+        normalizar(o.detalhe ?? '').includes(termo),
+    );
+  }, [opcoes, busca, aberto, obrigatorio, vazio]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    // FECHA AO CLICAR FORA, e não só ao perder o foco: o clique numa sugestão
+    // acontece depois do `blur`, e fechar no `blur` mataria a lista antes de o
+    // clique chegar nela.
+    const aoClicarFora = (evento: MouseEvent) => {
+      if (!caixa.current?.contains(evento.target as Node)) definirAberto(false);
+    };
+    document.addEventListener('mousedown', aoClicarFora);
+    return () => document.removeEventListener('mousedown', aoClicarFora);
+  }, [aberto]);
+
+  const escolher = (opcao: Opcao) => {
+    aoEscolher(opcao.valor);
+    definirAberto(false);
+    definirBusca('');
+  };
+
+  const abrir = () => {
+    definirAberto(true);
+    definirBusca('');
+    definirEmFoco(Math.max(0, lista.findIndex((o) => o.valor === valor)));
+  };
+
+  const campo = (
+    <div ref={caixa} style={{ position: 'relative' }}>
+      <input
+        role="combobox"
+        aria-expanded={aberto}
+        aria-controls={`${id}-lista`}
+        aria-autocomplete="list"
+        aria-label={ariaLabel}
+        autoComplete="off"
+        style={estiloDeEntrada}
+        value={texto}
+        placeholder={placeholder ?? (obrigatorio ? 'Digite para buscar…' : vazio)}
+        onFocus={abrir}
+        onChange={(evento) => {
+          if (!aberto) definirAberto(true);
+          definirBusca(evento.target.value);
+          definirEmFoco(0);
+        }}
+        onKeyDown={(evento) => {
+          if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+            evento.preventDefault();
+            if (!aberto) return abrir();
+            const passo = evento.key === 'ArrowDown' ? 1 : -1;
+            definirEmFoco((i) => (i + passo + lista.length) % Math.max(1, lista.length));
+            return;
+          }
+          if (evento.key === 'Enter' && aberto) {
+            evento.preventDefault();
+            const alvo = lista[emFoco];
+            if (alvo) escolher(alvo);
+            return;
+          }
+          if (evento.key === 'Escape' && aberto) {
+            evento.preventDefault();
+            // DEVOLVE O QUE ESTAVA. Escape num campo de planilha desfaz a
+            // digitação; fechar mantendo o texto filtrado deixaria a tela
+            // mostrando uma coisa e guardando outra.
+            definirAberto(false);
+            definirBusca('');
+          }
+        }}
+      />
+
+      {aberto ? (
+        <ul
+          id={`${id}-lista`}
+          role="listbox"
+          style={{
+            position: 'absolute',
+            zIndex: 30,
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            margin: 0,
+            padding: 4,
+            listStyle: 'none',
+            maxHeight: 260,
+            overflowY: 'auto',
+            background: 'var(--branco)',
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-card-int)',
+            boxShadow: 'var(--sh-tooltip)',
+          }}
+        >
+          {!lista.length ? (
+            <li style={{ padding: '9px 10px', fontSize: 13, color: 'var(--cinza-2)' }}>
+              Nada com esse termo.
+            </li>
+          ) : (
+            lista.map((opcao, indice) => (
+              <li
+                key={opcao.valor || '(vazio)'}
+                role="option"
+                aria-selected={opcao.valor === valor}
+                // `onMouseDown`, e não `onClick`: o clique só chega depois do
+                // `blur` do input, e a lista já teria fechado.
+                onMouseDown={(evento) => {
+                  evento.preventDefault();
+                  escolher(opcao);
+                }}
+                onMouseEnter={() => definirEmFoco(indice)}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 'var(--r-btn)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  background: indice === emFoco ? 'var(--bg-hover)' : 'transparent',
+                  color: opcao.valor ? 'var(--cinza-4)' : 'var(--cinza-2)',
+                  fontWeight: opcao.valor === valor ? 600 : 400,
+                }}
+              >
+                {opcao.rotulo}
+                {/* O DETALHE SÓ APARECE SE ACRESCENTAR ALGO. No dicionário de
+                    UF o código e o nome são a mesma string, e a linha saía
+                    "SPSP" — a repetição parece defeito, e é. */}
+                {opcao.detalhe && opcao.detalhe !== opcao.rotulo ? (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 12,
+                      color: 'var(--cinza-2)',
+                      marginTop: 2,
+                    }}
+                  >
+                    {opcao.detalhe}
+                  </span>
+                ) : null}
+              </li>
+            ))
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+
+  if (!rotulo) return campo;
+  return (
+    <Campo rotulo={rotulo} obrigatorio={obrigatorio} dica={dica}>
+      {campo}
+    </Campo>
+  );
+}

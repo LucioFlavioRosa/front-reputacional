@@ -26,11 +26,19 @@ export function BarrasEmpilhadas({
   colunas,
   altura = 150,
   aoClicarSegmento,
+  aoClicarMes,
+  mesAtivo,
   detalheDoMes,
 }: {
   colunas: ColunaMensal[];
   altura?: number;
   aoClicarSegmento?: (chave: string) => void;
+  /** Clique na COLUNA inteira, e não num segmento dela. Quem usa os dois
+   *  escolhe o eixo pelo alvo: a faixa colorida filtra a categoria, o resto da
+   *  coluna filtra o mês. */
+  aoClicarMes?: (mes: string) => void;
+  /** O mês em destaque, quando a tela mantém um escolhido. */
+  mesAtivo?: string;
   /** Linhas extras no tooltip — Tier 1 e tema dominante, por exemplo. */
   detalheDoMes?: (coluna: ColunaMensal) => { rotulo: string; valor: string }[];
 }) {
@@ -80,12 +88,33 @@ export function BarrasEmpilhadas({
         return (
           <div
             key={coluna.mes}
-            style={{ flex: 1, minWidth: 0, position: 'relative' }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              position: 'relative',
+              cursor: aoClicarMes ? 'pointer' : undefined,
+              // O destaque vai no trilho inteiro, e não na barra: um mês sem
+              // registro também precisa poder aparecer como o escolhido.
+              background: mesAtivo === coluna.mes ? 'var(--bg-hover)' : undefined,
+              borderRadius: 7,
+            }}
+            onClick={aoClicarMes ? () => aoClicarMes(coluna.mes) : undefined}
+            onKeyDown={
+              aoClicarMes
+                ? (evento) => {
+                    if (evento.key !== 'Enter' && evento.key !== ' ') return;
+                    evento.preventDefault();
+                    aoClicarMes(coluna.mes);
+                  }
+                : undefined
+            }
             onMouseEnter={() => setEmFoco(indice)}
             onMouseLeave={() => setEmFoco(null)}
             onFocus={() => setEmFoco(indice)}
             onBlur={() => setEmFoco(null)}
             tabIndex={0}
+            role={aoClicarMes ? 'button' : undefined}
+            aria-pressed={aoClicarMes ? mesAtivo === coluna.mes : undefined}
             aria-label={`${rotuloDoMes(coluna.mes)}: ${coluna.total}`}
           >
             <div
@@ -123,7 +152,13 @@ export function BarrasEmpilhadas({
                 {coluna.segmentos.map((segmento, posicao) => (
                   <div
                     key={segmento.chave}
-                    onClick={() => aoClicarSegmento?.(segmento.chave)}
+                    onClick={(evento) => {
+                      if (!aoClicarSegmento) return;
+                      // Sem isto o clique no segmento também escolheria o mês,
+                      // e a tela aplicaria dois filtros de uma vez.
+                      evento.stopPropagation();
+                      aoClicarSegmento(segmento.chave);
+                    }}
                     title={`${segmento.rotulo}: ${segmento.total}`}
                     style={{
                       flex: segmento.total,

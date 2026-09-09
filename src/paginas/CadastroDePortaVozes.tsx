@@ -373,7 +373,7 @@ function LinhaDaPessoa({
 
       <p style={{ fontSize: 12, color: 'var(--cinza-3)', marginTop: 6 }}>
         {temas.length === 0
-          ? 'Nenhum assunto autorizado — toda agenda dela sai como fora do escopo.'
+          ? 'Nenhum assunto autorizado ainda.'
           : temas.map(nomeDoTema).filter(Boolean).join(' · ')}
       </p>
     </>

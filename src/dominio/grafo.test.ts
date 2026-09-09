@@ -59,6 +59,7 @@ function agenda(
     clima_esperado: null,
     declinado_por: null,
     motivo_declinio: null,
+    nota_situacao: null,
     preve_desdobramento: null,
     outra_parte: [],
     materiais: [],

@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { obterInteracao } from '@/api/cliente';
+import { arquivarInteracao, obterInteracao } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
   Botao,
@@ -63,7 +63,10 @@ export function Ficha({
   /** Ausente quando o perfil não edita — e aí o botão não aparece. */
   aoEditar?: (id: string) => void;
 }) {
-  const { catalogo } = usePainel();
+  //: `recarregar` para a Base e o painel voltarem sem o registro removido —
+  //: sem isso a linha continuaria na tela até alguém recarregar a página, e a
+  //: remoção pareceria não ter funcionado.
+  const { catalogo, recarregar } = usePainel();
   const [interacao, definirInteracao] = useState<Interacao | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
 
@@ -175,12 +178,12 @@ export function Ficha({
               valor={nomeDoInterlocutor(catalogo, interacao.interlocutor_id)}
             />
             <Metadado
-              rotulo="Status"
+              rotulo="Situação"
               valor={rotuloDeCodigo(catalogo, 'status', interacao.status)}
             />
             <Metadado rotulo="Clima" valor={rotuloDeCodigo(catalogo, 'climas', interacao.clima)} />
             <Metadado
-              rotulo="Resultado"
+              rotulo="Desfecho"
               valor={rotuloDeCodigo(catalogo, 'resultados', interacao.resultado)}
             />
             <Metadado rotulo="Esfera" valor={nomeDaEsfera(catalogo, interacao.esfera_id)} />
@@ -237,7 +240,7 @@ export function Ficha({
         {interacao.temas.length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>
-              Temas
+              Assuntos
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nomesDosTemas(catalogo, interacao.temas).map((tema) => (
@@ -254,7 +257,22 @@ export function Ficha({
         <CicloDaAgenda interacao={interacao} catalogo={catalogo} />
 
         {aoEditar ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Remover
+              id={interacao.id}
+              aoRemover={() => {
+                recarregar();
+                aoFechar();
+              }}
+            />
             <Botao variante="primario" aoClicar={() => aoEditar(interacao.id)}>
               Editar registro
             </Botao>
@@ -268,6 +286,87 @@ export function Ficha({
         ) : null}
       </div>
     </Modal>
+  );
+}
+
+/** Remover a agenda das telas.
+ *
+ *  O registro sai da Base, do painel e das cadeias, e a linha
+ *  permanece no banco com a trilha de quem mexeu no quê. Não é apagar: é tirar
+ *  de circulação mantendo rastro.
+ *
+ *  A TELA NÃO EXPLICA ISSO. Havia um aviso descrevendo o que acontece por
+ *  dentro, e ele saiu: quem quer tirar um registro da frente não precisa saber
+ *  onde a linha fica. A palavra do botão diz o que a pessoa FAZ.
+ *
+ *  DOIS PASSOS, e não um `confirm()` do navegador. Remoção é imediata e mexe no
+ *  que todo mundo vê, então o primeiro clique só arma. O diálogo nativo não
+ *  cabe dentro de um modal e não diz de qual registro se trata.
+ */
+function Remover({ id, aoRemover }: { id: string; aoRemover: () => void }) {
+  const [armado, definirArmado] = useState(false);
+  const [removendo, definirRemovendo] = useState(false);
+  const [falha, definirFalha] = useState<string | null>(null);
+
+  if (!armado) {
+    return (
+      <Botao
+        variante="fantasma"
+        aoClicar={() => {
+          definirArmado(true);
+          definirFalha(null);
+        }}
+      >
+        Remover
+      </Botao>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        marginRight: 'auto',
+      }}
+    >
+      {/* SEM EXPLICAÇÃO DO QUE O SISTEMA FAZ POR DENTRO.
+          Dizer "sai da Base, do painel e das cadeias; a linha e o histórico
+          ficam guardados" era descrever a implementação a quem só quer tirar
+          um registro da frente. A pergunta que o segundo passo responde é "tem
+          certeza?", e o botão já a responde. */}
+      <Botao aoClicar={() => definirArmado(false)} desabilitado={removendo}>
+        Cancelar
+      </Botao>
+      <Botao
+        variante="primario"
+        desabilitado={removendo}
+        aoClicar={async () => {
+          definirRemovendo(true);
+          definirFalha(null);
+          try {
+            await arquivarInteracao(id);
+            aoRemover();
+          } catch (erro) {
+            // A FALHA FICA NA TELA. Fechar a ficha aqui faria a pessoa
+            // acreditar que removeu — e o registro continuaria na Base.
+            definirFalha(
+              erro instanceof Error
+                ? erro.message
+                : 'Não foi possível remover o registro.',
+            );
+            definirRemovendo(false);
+          }
+        }}
+      >
+        {removendo ? 'Removendo…' : 'Confirmar remoção'}
+      </Botao>
+      {falha ? (
+        <span style={{ fontSize: 12.5, color: 'var(--erro-fg)' }}>{falha}</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -322,6 +421,7 @@ function CicloDaAgenda({
     interacao.expectativa ||
     interacao.clima_esperado ||
     interacao.declinado_por ||
+    interacao.nota_situacao ||
     interacao.preve_desdobramento != null ||
     participantes.length > 0 ||
     materiais.length > 0;
@@ -355,10 +455,23 @@ function CicloDaAgenda({
         </section>
       )}
 
+      {/* A CONDIÇÃO DO ACEITE. "Aceitaram, mas só para março" é o que decide
+          o preparo, e antes não tinha onde ser lido. */}
+      {interacao.nota_situacao ? (
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Sobre o aceite
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.6, margin: 0 }}>
+            {interacao.nota_situacao}
+          </p>
+        </section>
+      ) : null}
+
       {interacao.declinado_por ? (
         <section>
           <div className="kicker" style={{ marginBottom: 10 }}>
-            Declinada
+            Negada
           </div>
           <p style={{ fontSize: 13, color: 'var(--cinza-3)', lineHeight: 1.6, margin: 0 }}>
             {/* Quem declinou vem PRIMEIRO: declinar é escolha da Aegea, ser

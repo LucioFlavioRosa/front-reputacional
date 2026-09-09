@@ -2,7 +2,7 @@
 
 import { Cartao } from '@/componentes/basicos';
 import { OndaDoHero } from '@/componentes/Onda';
-import type { View } from '@/componentes/Layout';
+import type { Destino } from '@/navegacao/rota';
 import type { Portal } from '@/dominio/tipos';
 
 /** As três divisões da plataforma.
@@ -12,17 +12,18 @@ import type { Portal } from '@/dominio/tipos';
  */
 const ONDA_1: {
   portal: Portal;
-  view: View | null;
+  view: Destino | null;
   titulo: string;
   descricao: string;
   pronto: boolean;
 }[] = [
   {
     portal: 'crm',
-    view: 'painel',
+    // A porta do CRM é a Situação: o que precisa de você, e não o volume.
+    view: 'situacao',
     titulo: 'CRM dos Stakeholders',
     descricao:
-      'Cadastro único das interações institucionais e os painéis que leem essa base: volumetria, clima, temas, geografia, resolutividade e desfecho.',
+      'Cadastro das interações institucionais e os painéis que leem essa base.',
     pronto: true,
   },
   {
@@ -37,7 +38,7 @@ const ONDA_1: {
     view: null,
     titulo: 'Score Executivo',
     descricao:
-      'Índice único de reputação. Depende de definir pesos por tier, clima e alcance — pendência de produto.',
+      'Índice único de reputação.',
     pronto: false,
   },
 ];
@@ -65,7 +66,7 @@ export function Inicio({
   irPara,
   portais,
 }: {
-  irPara: (view: View) => void;
+  irPara: (view: Destino) => void;
   /** Os portais que o papel de quem está logado abre. */
   portais: Set<Portal>;
 }) {
@@ -248,7 +249,7 @@ export function Inicio({
             ['Classificação', 'frente, tier, clima, resultado e temas'],
             ['Derivação', 'os indicadores saem do recorte filtrado'],
             ['Leitura', 'painéis por frente, status e desfecho'],
-            ['Decisão', 'relatório com o recorte impresso'],
+            ['Decisão', 'o que precisa de resposta, e de quem'],
           ].map(([titulo, descricao]) => (
             <div key={titulo}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>{titulo}</div>

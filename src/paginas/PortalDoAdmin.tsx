@@ -4,7 +4,7 @@
  *  menu:
  *
  *    Acessos            quem entra na plataforma, e até quando
- *    Veículos e órgãos  com quem se conversa, e quem fala por eles
+ *    Instituições       com quem se conversa, e quem fala por elas
  *    Porta-vozes        quem fala pela Aegea, e sobre o quê
  *    Assuntos           o vocabulário que o painel consegue somar
  *
@@ -24,11 +24,18 @@
 import { useState } from 'react';
 import { Acessos } from '@/paginas/Acessos';
 import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
+import { Biblioteca } from '@/paginas/Biblioteca';
 import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
-type Aba = 'acessos' | 'cadastros' | 'porta_vozes' | 'assuntos';
+type Aba = 'acessos' | 'assuntos' | 'biblioteca' | 'cadastros' | 'porta_vozes';
 
+//: A ORDEM SEGUE A DEPENDÊNCIA, e não o tamanho da tela.
+//:
+//: Assunto vem antes de instituição e de porta-voz porque os dois APONTAM para
+//: ele: o porta-voz é autorizado por assunto, e a agenda é somada por assunto.
+//: Cadastrar na ordem inversa obriga a voltar — abrir Porta-vozes, descobrir
+//: que o assunto não existe, sair, criar, voltar.
 const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
   {
     id: 'acessos',
@@ -36,19 +43,25 @@ const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
     descricao: 'Quem entra na plataforma e até quando.',
   },
   {
+    id: 'assuntos',
+    rotulo: 'Assuntos',
+    descricao: 'O que o painel consegue somar — e o que cada porta-voz pode falar.',
+  },
+  {
+    id: 'biblioteca',
+    rotulo: 'Biblioteca',
+    descricao:
+      'O acervo oficial, por assunto — o que o porta-voz leva para a reunião.',
+  },
+  {
     id: 'cadastros',
-    rotulo: 'Veículos e órgãos',
+    rotulo: 'Instituições',
     descricao: 'Com quem a Aegea conversa, e quem fala por cada instituição.',
   },
   {
     id: 'porta_vozes',
     rotulo: 'Porta-vozes',
     descricao: 'Quem fala pela Aegea, e sobre quais assuntos.',
-  },
-  {
-    id: 'assuntos',
-    rotulo: 'Assuntos',
-    descricao: 'O que o painel consegue somar — e o que cada porta-voz pode falar.',
   },
 ];
 
@@ -130,6 +143,7 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
             acessos carrega a lista de pessoas ao montar; mantida viva atrás da
             outra aba, ela mostraria dados de quando foi aberta. */}
         {aba === 'acessos' ? <Acessos euId={euId} /> : null}
+        {aba === 'biblioteca' ? <Biblioteca /> : null}
         {aba === 'cadastros' ? <CadastroDeInstituicoes /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}

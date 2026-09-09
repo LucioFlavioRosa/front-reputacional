@@ -127,7 +127,7 @@ export function DrawerDeFiltros() {
             <input
               style={estiloDeEntrada}
               value={recorte.q ?? ''}
-              placeholder="pauta, veículo, pessoa…"
+              placeholder="pauta, instituição, pessoa…"
               onChange={(evento) => alterar('q', evento.target.value)}
             />
           </Campo>
@@ -194,7 +194,7 @@ export function DrawerDeFiltros() {
           />
 
           <SeletorDeDicionario
-            rotulo="Resultado"
+            rotulo="Desfecho"
             valor={recorte.resultado}
             itens={catalogo?.dicionarios.resultados ?? []}
             aoMudar={(valor) => alterar('resultado', valor)}
@@ -230,7 +230,7 @@ export function DrawerDeFiltros() {
             </select>
           </Campo>
 
-          <Campo rotulo="Veículo / órgão">
+          <Campo rotulo="Instituição">
             <select
               style={estiloDeEntrada}
               value={recorte.entidade ?? ''}
@@ -274,7 +274,7 @@ export function DrawerDeFiltros() {
               e perder isso tiraria do painel a pergunta "tarifa OU regulação".
               O dropdown acrescenta um por vez e volta para o vazio; os
               escolhidos ficam abaixo, como chips que se removem no clique. */}
-          <Campo rotulo="Temas" dica="Escolha quantos quiser. O filtro traz quem tiver qualquer um deles.">
+          <Campo rotulo="Assuntos" dica="Traz quem tiver qualquer um deles.">
             <select
               style={estiloDeEntrada}
               value=""

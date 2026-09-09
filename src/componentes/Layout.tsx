@@ -7,7 +7,7 @@
  *
  *  Regras de navegação que o handoff fixa:
  *   - a nav é o único caminho para cada view;
- *   - ações (novo registro, gerar relatório) são botões do header;
+ *   - ações (novo registro) são botões do header;
  *   - a marca volta para o Início;
  *   - clicar em "Painel" zera todos os filtros; as outras abas preservam.
  */
@@ -16,37 +16,40 @@ import type { ReactNode } from 'react';
 import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import type { Eu } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
-import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao } from '@/componentes/basicos';
-import { numero } from '@/dominio/formato';
+import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
+import type { Destino } from '@/navegacao/rota';
 
-export type View =
-  | 'inicio'
-  | 'painel'
-  | 'frentes'
-  | 'status'
-  | 'resultado'
-  | 'portavozes'
-  | 'interlocutores'
-  | 'base'
-  | 'cadastro'
-  | 'acessos';
-
-const NAVEGACAO: { view: View; rotulo: string }[] = [
-  { view: 'inicio', rotulo: 'Início' },
+//: CINCO DESTINOS, E NAO OITO.
+//:
+//: Eram oito, e cinco deliam a MESMA tabela com um pivo diferente — Painel,
+//: Frentes, Status, Resultado, Porta-vozes, Interlocutores. Nenhuma respondia
+//: nada de ponta a ponta: para saber se a agenda de imprensa Tier 1 de agosto
+//: acabou bem, era preciso passar por tres, e a memoria de quem lia virava
+//: parte da interface.
+//:
+//: O criterio mudou: sai "por qual eixo voce quer olhar" e entra "o que voce
+//: veio fazer". As cinco viraram o seletor de eixo de Explorar.
+//:
+//: O PAINEL VOLTOU, e a primeira versao desta reorganizacao errou ao tira-lo.
+//: Os quatro destinos respondiam "o que precisa de mim", "quero aprofundar",
+//: "quero o registro" e "quero contar a historia" — e nenhum respondia "com o
+//: que este recorte se parece". Panorama e aprofundamento sao perguntas
+//: diferentes: o primeiro se olha de uma vez, sem escolher eixo nenhum, e e
+//: onde moram o mapa e as series no tempo que Explorar nao repoe.
+//:
+//: O PAINEL E O PRIMEIRO. Ele responde "como estamos" — a pergunta que a
+//: lideranca faz ao abrir, e a que da contexto para todas as outras. A
+//: Situacao vem logo depois, e responde "o que precisa de mim hoje": e a tela
+//: de quem opera, e ela se le melhor depois de saber o tamanho do todo.
+//:
+//: A CADEIA nao esta aqui pelo mesmo motivo: ela foi uma aba por um dia, e
+//: como destino obrigava a escolher QUAL cadeia antes de poder olhar. Mora na
+//: linha da Base, que e onde a pergunta nasce.
+const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
-  { view: 'frentes', rotulo: 'Frentes' },
-  { view: 'status', rotulo: 'Status' },
-  { view: 'resultado', rotulo: 'Resultado' },
-  { view: 'portavozes', rotulo: 'Porta-vozes' },
-  { view: 'interlocutores', rotulo: 'Interlocutores' },
-  //: A CADEIA NAO E UMA ABA. Ela foi uma, por um dia.
-  //:
-  //: Como destino de navegacao, obrigava a saber QUAL cadeia se queria antes
-  //: de poder olhar — e a pergunta real nunca e "quais cadeias existem", e sim
-  //: "de onde veio ESTA reuniao para a qual vou". Essa pergunta nasce na Base,
-  //: olhando a linha da agenda, e e la que ela e respondida agora: uma coluna
-  //: diz se a agenda tem cadeia, e o clique abre o grafo dela.
+  { view: 'situacao', rotulo: 'Situação' },
+  { view: 'explorar', rotulo: 'Explorar' },
   { view: 'base', rotulo: 'Base' },
 ];
 
@@ -65,21 +68,20 @@ const NAVEGACAO: { view: View; rotulo: string }[] = [
 //:
 //: A `view` continua `acessos` de propósito: é o que o histórico do navegador
 //: guarda, e trocá-la quebraria os links que alguém já tenha.
-export const NAVEGACAO_ADMINISTRATIVA: { view: View; rotulo: string }[] = [
-  { view: 'acessos', rotulo: 'Administração' },
+export const NAVEGACAO_ADMINISTRATIVA: { view: Destino; rotulo: string }[] = [
+  { view: 'admin', rotulo: 'Administração' },
 ];
 
 export function Layout({
   view,
   irPara,
-  aoGerarRelatorio,
   eu,
   podeCriar,
   administraAcessos = false,
   children,
 }: {
-  view: View;
-  irPara: (view: View) => void;
+  view: Destino;
+  irPara: (view: Destino) => void;
   /**
    * Mostra a entrada de administração de acessos.
    *
@@ -98,11 +100,11 @@ export function Layout({
    */
   podeCriar: boolean;
   administraAcessos?: boolean;
-  aoGerarRelatorio: () => void;
   children: ReactNode;
 }) {
-  const { recorte, catalogo, filtrosAtivos, abrirDrawer, limparRecorte, total, atualizando } =
-    usePainel();
+  //: So o esmaecimento durante o refetch — o resto do recorte mora na
+  //: `BarraDeRecorte`.
+  const { atualizando } = usePainel();
 
   //: A capa não renderiza cabeçalho. Ver o comentário sobre o `<header>`.
   //
@@ -112,11 +114,13 @@ export function Layout({
   //  Aqui a pergunta "estou na capa?" tem uma resposta só.
   const naCapa = view === 'inicio';
 
-  const navegar = (destino: View) => {
-    // Painel é o ponto de partida limpo: entrar nele descarta o recorte.
-    if (destino === 'painel') limparRecorte();
-    irPara(destino);
-  };
+  //: O RECORTE SOBREVIVE A TROCA DE TELA, e agora de propósito.
+  //:
+  //: Antes, entrar no Painel limpava o recorte — o que fazia sentido quando
+  //: ele era "o ponto de partida". Com quatro destinos que respondem perguntas
+  //: diferentes sobre O MESMO recorte, limpar ao navegar seria perder o
+  //: contexto no meio da leitura. Quem quer limpar tem o botão na barra.
+  const navegar = irPara;
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -229,8 +233,6 @@ export function Layout({
             className="cabecalho__acoes"
             style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}
           >
-            <Botao aoClicar={aoGerarRelatorio}>Gerar relatório</Botao>
-
             {/* CRIAR É UMA FORMA DE EDITAR, e quem só lê não deve nem ver a
                 porta. Antes o botão aparecia para todo mundo: a pessoa abria o
                 formulário, preenchia os campos, e só descobria no salvar — com
@@ -261,69 +263,13 @@ export function Layout({
             `view` nunca é `'inicio'` neste ponto, e acusou a comparação
             impossível. Uma condição que não pode ser falsa é uma regra que
             parece existir e não existe. */}
+        {/* O RECORTE SAIU DA GAVETA. Ver `BarraDeRecorte`. */}
         {view !== 'cadastro' ? (
           <div
             className="cabecalho__recorte"
-            style={{
-              maxWidth: 1440,
-              margin: '0 auto',
-              padding: '0 32px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
+            style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
           >
-            <Botao aoClicar={abrirDrawer} estilo={{ height: 32 }}>
-              Filtros
-              {filtrosAtivos > 0 ? (
-                <span
-                  className="tabular"
-                  style={{
-                    marginLeft: 7,
-                    padding: '1px 6px',
-                    borderRadius: 20,
-                    background: 'var(--azul-mar)',
-                    color: 'var(--branco)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  {filtrosAtivos}
-                </span>
-              ) : null}
-            </Botao>
-
-            <span
-              className="cabecalho__resumo"
-              style={{
-                fontSize: 12,
-                color: 'var(--cinza-2)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                minWidth: 0,
-              }}
-            >
-              {resumirRecorte(recorte, catalogo)}
-            </span>
-
-            <span
-              className="tabular"
-              style={{
-                marginLeft: 'auto',
-                fontSize: 12,
-                color: 'var(--cinza-3)',
-                flexShrink: 0,
-              }}
-            >
-              {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'registro' : 'registros'}`}
-            </span>
-
-            {filtrosAtivos > 0 ? (
-              <Botao variante="fantasma" aoClicar={limparRecorte} estilo={{ height: 32 }}>
-                Limpar
-              </Botao>
-            ) : null}
+            <BarraDeRecorte />
           </div>
         ) : null}
       </header>

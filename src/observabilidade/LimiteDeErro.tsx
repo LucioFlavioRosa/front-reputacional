@@ -55,7 +55,10 @@ export class LimiteDeErro extends Component<Props, Estado> {
       // Diz em qual componente quebrou — é o que transforma "TypeError:
       // undefined" em algo localizável no código.
       pilhaDeComponentes: info.componentStack ?? '',
-      view: window.location.hash || 'painel',
+      // DO CAMINHO, e não do hash. Ninguém nunca escreveu hash nesta
+      // aplicação: TODO erro capturado aqui era reportado como se tivesse
+      // acontecido no Painel. Agora as telas têm endereço.
+      view: window.location.pathname || '/',
     });
   }
 
@@ -71,8 +74,7 @@ export class LimiteDeErro extends Component<Props, Estado> {
       return (
         <Modal titulo="Esta janela não conseguiu carregar" aoFechar={aoFechar} largura={560}>
           <p style={{ fontSize: 14, color: 'var(--cinza-3)', lineHeight: 1.6 }}>
-            A falha foi registrada com o horário e o ponto exato do código. Feche e
-            tente de novo; se voltar a acontecer no mesmo registro, avise a equipe —
+            Feche e tente de novo. Se voltar a acontecer, avise a equipe —
             o registro já está lá.
           </p>
           <details style={{ marginTop: 16 }}>
@@ -114,9 +116,8 @@ export class LimiteDeErro extends Component<Props, Estado> {
         </div>
         <h1 style={{ fontSize: 22, marginTop: 8 }}>Esta tela não conseguiu carregar</h1>
         <p style={{ fontSize: 14, color: 'var(--cinza-3)', marginTop: 10, lineHeight: 1.6 }}>
-          A falha foi registrada com o horário e o ponto exato do código. Recarregar
-          costuma resolver; se voltar a acontecer na mesma tela, avise a equipe —
-          o registro já está lá.
+          Recarregar costuma resolver. Se voltar a acontecer, avise a equipe
+          com o código abaixo.
         </p>
 
         <details style={{ marginTop: 16 }}>

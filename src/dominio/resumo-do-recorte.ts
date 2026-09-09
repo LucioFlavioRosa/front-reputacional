@@ -1,7 +1,7 @@
 /** Resumo textual do recorte, exibido ao lado do botão Filtros.
  *
  *  Serve para o usuário saber o que está olhando sem abrir o drawer — e para
- *  o cabeçalho do relatório, que precisa imprimir o recorte por escrito.
+ *  a exportação da Base, que registra o recorte por escrito na trilha.
  */
 
 import type { Catalogo } from '@/dominio/derivacoes';
@@ -45,4 +45,82 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
   if (recorte.q) partes.push(`“${recorte.q}”`);
 
   return partes.length ? partes.join(' · ') : 'Base completa, sem filtros';
+}
+
+/** O recorte como fichas removíveis, para a barra fixa.
+ *
+ *  A MESMA LEITURA DE `resumirRecorte`, quebrada por filtro. Antes o recorte
+ *  vivia numa gaveta: quem via uma queda não sabia se ela era do mês ou do
+ *  filtro que pôs dez minutos antes. Uma frase corrida não resolve — para
+ *  desfazer um filtro era preciso abrir a gaveta e procurá-lo.
+ *
+ *  `campo` é o que a ficha remove. Período é um caso especial: `de`/`ate` e o
+ *  atalho são o MESMO filtro para quem lê, e removê-lo tem de limpar os três.
+ */
+export interface FichaDeFiltro {
+  campo: keyof Recorte | 'periodo-inteiro';
+  rotulo: string;
+}
+
+export function fichasDoRecorte(
+  recorte: Recorte,
+  catalogo: Catalogo | null,
+): FichaDeFiltro[] {
+  const fichas: FichaDeFiltro[] = [];
+  const por = (campo: FichaDeFiltro['campo'], rotulo: string | undefined) => {
+    if (rotulo) fichas.push({ campo, rotulo });
+  };
+
+  if (recorte.de || recorte.ate) {
+    const de = recorte.de ? dataCompleta(recorte.de) : 'início';
+    const ate = recorte.ate ? dataCompleta(recorte.ate) : 'hoje';
+    por('periodo-inteiro', `${de} a ${ate}`);
+  } else if (recorte.periodo) {
+    por('periodo-inteiro', ATALHOS_DE_PERIODO[recorte.periodo]);
+  }
+
+  if (recorte.frente) por('frente', ROTULOS_DE_FRENTE[recorte.frente]);
+  if (recorte.uf) {
+    por(
+      'uf',
+      recorte.uf === 'NA' ? 'Nacional' : recorte.uf === 'IN' ? 'Internacional' : recorte.uf,
+    );
+  }
+  if (recorte.tier) por('tier', rotuloDeRelevancia(catalogo, recorte.tier));
+  if (recorte.grupo) por('grupo', ROTULOS_DE_GRUPO[recorte.grupo]);
+  if (recorte.unidade) por('unidade', recorte.unidade);
+  if (recorte.entidade) por('entidade', recorte.entidade);
+
+  if (catalogo) {
+    if (recorte.clima) por('clima', rotuloDeCodigo(catalogo, 'climas', recorte.clima));
+    if (recorte.resultado) {
+      por('resultado', rotuloDeCodigo(catalogo, 'resultados', recorte.resultado));
+    }
+    if (recorte.esfera) por('esfera', rotuloDeCodigo(catalogo, 'esferas', recorte.esfera));
+    if (recorte.status) por('status', rotuloDeCodigo(catalogo, 'status', recorte.status));
+    if (recorte.subtipo) {
+      por('subtipo', rotuloDeCodigo(catalogo, 'tipos_investidor', recorte.subtipo));
+    }
+  }
+
+  if (recorte.tags?.length) por('tags', recorte.tags.join(' ou '));
+  if (recorte.q) por('q', `“${recorte.q}”`);
+
+  return fichas;
+}
+
+/** O recorte sem um filtro. Devolve um NOVO recorte — nada aqui muta. */
+export function semOFiltro(
+  recorte: Recorte,
+  campo: FichaDeFiltro['campo'],
+): Recorte {
+  const novo = { ...recorte };
+  if (campo === 'periodo-inteiro') {
+    delete novo.periodo;
+    delete novo.de;
+    delete novo.ate;
+    return novo;
+  }
+  delete novo[campo];
+  return novo;
 }

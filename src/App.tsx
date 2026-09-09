@@ -1,8 +1,9 @@
 /** Composição do aplicativo: qual view está aberta e quais modais.
  *
- *  Não há roteador: a nav é o único caminho para cada view, exatamente como o
- *  protótipo define. O estado corresponde ao que o handoff lista em "Estado
- *  necessário".
+ *  HÁ ROTEADOR desde a reorganização da navegação: a tela vem do endereço, e
+ *  não de `useState`. Ver `@/navegacao/rota`. O protótipo previa navegação por
+ *  estado; ela impedia que qualquer coisa fosse enviada por link — inclusive o
+ *  leitura executiva.
  */
 
 import { useEffect, useState } from 'react';
@@ -13,23 +14,22 @@ import { portaisDe } from '@/dominio/tipos';
 import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
-import { ProvedorDoPainel } from '@/estado/painel';
+import { ProvedorDoPainel, usePainel } from '@/estado/painel';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
 import { Login } from '@/paginas/Login';
-import { Frentes } from '@/paginas/Frentes';
-import { Painel } from '@/paginas/Painel';
-import { Resultado } from '@/paginas/Resultado';
-import { Status } from '@/paginas/Status';
 import { Inicio } from '@/paginas/Inicio';
+import { Situacao } from '@/paginas/Situacao';
+import { Painel } from '@/paginas/Painel';
+import { Explorar } from '@/paginas/Explorar';
 import { Base } from '@/paginas/Base';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
-import { GerarRelatorio } from '@/paginas/GerarRelatorio';
-import { Interlocutores } from '@/paginas/Interlocutores';
-import { PortaVozes } from '@/paginas/PortaVozes';
+import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
 import type { Eu, Frente } from '@/dominio/tipos';
 import { Layout } from '@/componentes/Layout';
-import type { View } from '@/componentes/Layout';
+import { useNavegacao } from '@/navegacao/useNavegacao';
+import { nomeDaTela } from '@/navegacao/rota';
+import type { Destino } from '@/navegacao/rota';
 
 export function App() {
   const [autenticado, definirAutenticado] = useState(false);
@@ -138,46 +138,40 @@ export function App() {
 }
 
 function Aplicativo({ eu }: { eu: Eu | null }) {
-  // A capa, e não o painel. Quem abre o endereço vê primeiro o que o
-  // produto é; o CRM é uma escolha, e não o lugar onde se cai.
-  const [view, definirView] = useState<View>('inicio');
-  //: A capa não tem cabeçalho. Ver o `saida` do `LimiteDeErro` abaixo.
-  const naCapa = view === 'inicio';
-
-  const [frenteAberta, definirFrenteAberta] = useState<Frente>('imprensa');
-  const [fichaAberta, definirFichaAberta] = useState<string | null>(null);
-  //: A agenda que o formulário está editando. Nulo = está criando uma nova.
+  //: A TELA VEM DO ENDEREÇO, e não de `useState`.
   //:
-  //: Mora aqui, e não dentro do formulário, porque quem decide "editar isto" é
-  //: a ficha — e as duas telas não se conhecem.
-  const [emEdicao, definirEmEdicao] = useState<string | null>(null);
+  //: Antes a navegação era estado do React e a barra de endereço nunca mudava.
+  //: Nada podia ser enviado a ninguém, o botão de voltar saía da aplicação
+  //: levando o filtro junto, e a telemetria atribuía TODO erro ao Painel —
+  //: porque lia `window.location.hash`, que nada escrevia.
+  const { rota, eixo, irPara, trocarEixo } = useNavegacao();
+  const { recorte, definirRecorte } = usePainel();
+  const naCapa = rota.destino === 'inicio';
 
-  /** Navega, e ESQUECE o registro em edição.
+  const irParaDestino = (destino: Destino) => irPara({ destino });
+  const abrirAgenda = (id: string) =>
+    irPara({ destino: 'base', agenda: id, sobre: 'ficha' });
+
+  useEffect(function registrarTrocaDeTela() {
+    registrarView(nomeDaTela(rota));
+    // `nomeDaTela` é derivado: comparar a string evita reenviar o mesmo evento
+    // a cada renderização.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nomeDaTela(rota)]);
+
+  const fechandoParaBase = () => irPara({ destino: 'base' });
+
+  /** Do panorama para o aprofundamento, já filtrado.
    *
-   *  `emEdicao` sobrevivia à navegação: quem abrisse A para editar, saísse sem
-   *  salvar e clicasse em "Novo registro" caía num formulário em modo EDIÇÃO —
-   *  e o salvamento virava um `PATCH` que sobrescrevia A. A pessoa acreditava
-   *  estar criando; o sistema estava apagando.
-   *
-   *  Só a ficha entra em edição, e ela chama `definirEmEdicao` DEPOIS desta.
-   *  Todo o resto da navegação passa por aqui e sai do modo edição.
+   *  Clicar num indicador do Painel levava à tela daquela frente. Ela não
+   *  existe mais — e o que aquele clique realmente pedia era "me mostra esta
+   *  frente por dentro", que é Explorar com o recorte aplicado. O filtro entra
+   *  no recorte, e o recorte está na URL: o resultado é um endereço que se
+   *  manda a alguém.
    */
-  const navegar = (destino: View) => {
-    definirEmEdicao(null);
-    definirView(destino);
-  };
-  const [relatorioAberto, definirRelatorioAberto] = useState(false);
-
-  // A navegação é por estado, não por URL: o rastreio automático de rota do
-  // SDK depende do history API e nunca dispararia. Sem isto, todo erro seria
-  // atribuído à tela inicial e não à que o usuário estava vendo de fato.
-  useEffect(function registrarTrocaDeView() {
-    registrarView(view);
-  }, [view]);
-
-  const abrirFrente = (frente: Frente) => {
-    definirFrenteAberta(frente);
-    definirView('frentes');
+  const abrirFrenteEmExplorar = (frente: Frente) => {
+    definirRecorte({ ...recorte, frente });
+    irPara({ destino: 'explorar' });
   };
 
   return (
@@ -189,15 +183,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           É o MESMO menu da barra, e não um botão "Sair" solto: sair mora em um
           lugar só na aplicação inteira, e duas formas diferentes de fazer a
-          mesma coisa ensinam que há duas coisas.
-
-          `fixed`, e não `absolute`: com `absolute` ele rolava junto com a
-          página e sumia ao descer para os cartões — e a saída precisa estar
-          disponível o tempo todo. Posicionamento e recuo em `index.css`, sob
-          `.capa__conta`, porque a colisão com o texto do hero depende da
-          largura da tela. De quebra, quem está na capa
-          consegue conferir o próprio papel — que é justamente o que explica por
-          que ela vê um cartão e não três. */}
+          mesma coisa ensinam que há duas coisas. */}
       {naCapa ? (
         <div className="capa__conta">
           <MenuDoUsuario eu={eu} lugar="capa" />
@@ -205,122 +191,111 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
       ) : null}
 
       <Layout
-        view={view}
-        irPara={navegar}
+        view={rota.destino}
+        irPara={irParaDestino}
         eu={eu}
         podeCriar={eu?.papel?.pode_criar ?? false}
-        aoGerarRelatorio={() => definirRelatorioAberto(true)}
         // Esconder a entrada de quem não administra acessos é conveniência de
-        // tela, não controle: o backend recusa com 403 de qualquer forma. O que
-        // se ganha é não mostrar a todo mundo uma porta que só alguns abrem.
+        // tela, não controle: o backend recusa com 403 de qualquer forma.
         administraAcessos={eu?.papel?.administra_acessos ?? false}
       >
         {/* O limite fica AQUI, e não só na raiz, para a falha de uma tela não
-            levar o painel inteiro junto. Com ele na raiz apenas, um erro dentro
-            do mapa apagava a navegação também, e a única saída era recarregar.
-
-            `key={view}` é o que dá a saída: trocar de tela remonta o limite e
-            zera o erro, então a pessoa navega para outro lugar em vez de ficar
-            presa. Sem a chave, o limite guardaria o erro para sempre e toda
-            tela seguinte nasceria quebrada.
-
-            É também o que torna verdadeira a frase do fallback, "esta tela não
-            conseguiu carregar". Na raiz, ela era imprecisa: quem não carregava
-            era o painel. */}
+            levar o painel inteiro junto. `key` é o que dá a saída: trocar de
+            tela remonta o limite e zera o erro, então a pessoa navega para
+            outro lugar em vez de ficar presa. */}
         <LimiteDeErro
-          key={view}
-          // Só a capa recebe saída, e é onde ela é indispensável: sem
-          // cabeçalho, uma exceção ali deixa a pessoa sem navegação E sem o
-          // cartão de entrada, e recarregar devolve a mesma tela quebrada.
-          //
-          // Nas outras telas o cabeçalho fica FORA deste limite, então a
-          // navegação sobrevive à falha e a saída já existe.
+          key={rota.destino}
           saida={
             naCapa
-              ? { rotulo: 'Ir para o CRM', aoAcionar: () => definirView('painel') }
+              ? { rotulo: 'Ir para o CRM', aoAcionar: () => irPara({ destino: 'painel' }) }
               : undefined
           }
         >
-          {view === 'inicio' ? (
-              <Inicio irPara={definirView} portais={portaisDe(eu?.papel ?? null)} />
-            ) : null}
-          {view === 'painel' ? <Painel aoAbrirFrente={abrirFrente} /> : null}
-          {view === 'frentes' ? (
-            <Frentes
-              frente={frenteAberta}
-              aoTrocarFrente={definirFrenteAberta}
-              aoAbrirFicha={definirFichaAberta}
+          {rota.destino === 'inicio' ? (
+            <Inicio irPara={irParaDestino} portais={portaisDe(eu?.papel ?? null)} />
+          ) : null}
+
+          {/* A ÚNICA TELA QUE ALGUÉM PRECISA ABRIR TODO DIA. */}
+          {rota.destino === 'situacao' ? <Situacao aoAbrirAgenda={abrirAgenda} /> : null}
+
+          {/* O PANORAMA: o recorte visto de uma vez, sem escolher eixo. Clicar
+              num indicador FILTRA e leva ao aprofundamento — é o caminho
+              natural entre as duas telas. */}
+          {rota.destino === 'painel' ? (
+            <Painel aoAbrirFrente={abrirFrenteEmExplorar} />
+          ) : null}
+
+          {/* CINCO ABAS VIRARAM UM SELETOR. Ver `Explorar`. */}
+          {rota.destino === 'explorar' ? (
+            <Explorar eixo={eixo} aoTrocarEixo={trocarEixo} />
+          ) : null}
+
+          {rota.destino === 'base' ? (
+            <Base
+              aoAbrirFicha={abrirAgenda}
+              aoAbrirCadeia={(id) =>
+                irPara({ destino: 'base', agenda: id, sobre: 'cadeia' })
+              }
             />
           ) : null}
-          {view === 'status' ? <Status aoAbrirFicha={definirFichaAberta} /> : null}
-          {view === 'resultado' ? <Resultado /> : null}
-          {view === 'portavozes' ? <PortaVozes /> : null}
-          {view === 'interlocutores' ? <Interlocutores /> : null}
-          {view === 'base' ? <Base aoAbrirFicha={definirFichaAberta} /> : null}
+
+
           {/* A TELA também recusa, e não só o botão.
-              A navegação é por estado, então uma tela alcançável por um caminho
-              que ninguém previu continua alcançável. Guardar só o botão seria
-              proteger a porta e deixar a janela aberta — e o formulário
-              preenchido acabaria num 403 do backend. */}
-          {view === 'cadastro' ? (
+              O endereço é público: quem digitar `/agenda/nova` chega aqui
+              mesmo sem permissão, e o formulário preenchido acabaria num 403
+              do backend. */}
+          {rota.destino === 'cadastro' ? (
             eu?.papel?.pode_criar ? (
               <Cadastro
-                  // `key` força um formulário NOVO ao trocar de registro.
-                  // Sem ela, React reaproveita o estado: abrir a ficha de outra
-                  // agenda mostraria os campos da anterior até o carregamento
-                  // terminar, e um salvamento apressado gravaria o que estava
-                  // na tela.
-                  key={emEdicao ?? 'nova'}
-                  id={emEdicao ?? undefined}
-                  aoSalvar={() => {
-                    definirEmEdicao(null);
-                    definirView('base');
-                  }}
-                />
+                // `key` força um formulário NOVO ao trocar de registro. Sem
+                // ela, React reaproveita o estado: abrir outra agenda mostraria
+                // os campos da anterior até o carregamento terminar, e um
+                // salvamento apressado gravaria o que estava na tela.
+                key={rota.agenda ?? 'nova'}
+                id={rota.agenda}
+                aoSalvar={() => irPara({ destino: 'base' })}
+              />
             ) : (
-              <SemPermissaoParaCriar irPara={definirView} />
+              <SemPermissaoParaCriar irPara={irParaDestino} />
             )
           ) : null}
+
           {/* `euId` para a tela saber qual linha é a de quem está olhando:
-              ninguém desativa a própria conta, e oferecer o botão seria
-              convidar para uma porta que responde 403. */}
-          {view === 'acessos' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
+              ninguém desativa a própria conta. */}
+          {rota.destino === 'admin' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
         </LimiteDeErro>
       </Layout>
 
       <DrawerDeFiltros />
 
-      {/* Ficha e relatório abrem POR CIMA do painel, então merecem limite
-          próprio: um registro com dado estranho não pode derrubar a tela que
-          continua atrás dele. A chave é o id, para que abrir outra ficha depois
-          de uma quebrada comece limpa. */}
-      {fichaAberta ? (
-        <LimiteDeErro key={`ficha-${fichaAberta}`} aoFechar={() => definirFichaAberta(null)}>
+      {/* A ficha e a cadeia abrem POR CIMA da Base, e têm endereço próprio:
+          `/agenda/<id>` e `/agenda/<id>/cadeia`. Fechar volta para a Base — e
+          o botão de voltar do navegador faz a mesma coisa, que é o que a
+          pessoa espera.
+
+          Limite próprio: um registro com dado estranho não pode derrubar a
+          tela que continua atrás dele. */}
+      {rota.agenda && rota.sobre === 'ficha' ? (
+        <LimiteDeErro key={`ficha-${rota.agenda}`} aoFechar={fechandoParaBase}>
           <Ficha
-            id={fichaAberta}
-            aoFechar={() => definirFichaAberta(null)}
+            id={rota.agenda}
+            aoFechar={fechandoParaBase}
             aoEditar={
-              // Só oferece editar a quem edita. Esconder o botão é
-              // conveniência: o backend recusa de qualquer jeito, e a ficha
-              // continua abrindo para quem só lê.
               eu?.papel?.pode_criar
-                ? (id) => {
-                    definirFichaAberta(null);
-                    // `definirView` cru, e não `navegar`: este é o ÚNICO
-                    // caminho que entra em modo edição, e `navegar` limparia
-                    // o id que acabamos de definir.
-                    definirEmEdicao(id);
-                    definirView('cadastro');
-                  }
+                ? (id) => irPara({ destino: 'cadastro', agenda: id, sobre: 'editar' })
                 : undefined
             }
           />
         </LimiteDeErro>
       ) : null}
 
-      {relatorioAberto ? (
-        <LimiteDeErro aoFechar={() => definirRelatorioAberto(false)}>
-          <GerarRelatorio aoFechar={() => definirRelatorioAberto(false)} />
+      {rota.agenda && rota.sobre === 'cadeia' ? (
+        <LimiteDeErro key={`cadeia-${rota.agenda}`} aoFechar={fechandoParaBase}>
+          <CadeiaDaAgenda
+            id={rota.agenda}
+            aoFechar={fechandoParaBase}
+            aoAbrirFicha={abrirAgenda}
+          />
         </LimiteDeErro>
       ) : null}
     </>
@@ -333,7 +308,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
  *  recusaria no fim, fariam a pessoa concluir que o sistema está quebrado —
  *  quando a resposta é "seu perfil não faz isto", que é acionável.
  */
-function SemPermissaoParaCriar({ irPara }: { irPara: (view: View) => void }) {
+function SemPermissaoParaCriar({ irPara }: { irPara: (view: Destino) => void }) {
   return (
     <Cartao estilo={{ padding: 28, maxWidth: 520 }}>
       <div className="kicker" style={{ color: 'var(--cinza-3)' }}>
