@@ -103,10 +103,12 @@ string, o SDK do Application Insights sai inteiro do bundle.
 
 ## Testes
 
-Vitest, 72 testes em 4 arquivos, todos sobre `dominio/`. Moram ao lado do
-arquivo que testam (`formato.ts` e `formato.test.ts`), que é o costume do
-ecossistema — diferente do back, onde os testes ficam numa pasta `tests/`,
-porque lá o costume é outro.
+Vitest, 213 testes em 13 arquivos. A maior parte cobre `dominio/` — as regras
+puras, que é onde o teste rende —, e o resto cobre `navegacao/`,
+`observabilidade/` e o menu do usuário. Moram ao lado do arquivo que testam
+(`formato.ts` e `formato.test.ts`), que é o costume do ecossistema — diferente
+do back, onde os testes ficam numa pasta `tests/`, porque lá o costume é
+outro.
 
 **Não há teste de componente.** É lacuna conhecida, não decisão: as telas são
 verificadas contra o protótipo a olho. Quem for acrescentar, o caminho é

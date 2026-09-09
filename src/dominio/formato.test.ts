@@ -81,7 +81,7 @@ describe('variacao', () => {
 
 describe('urlSegura', () => {
   it('deixa passar http e https', () => {
-    expect(urlSegura('https://sharepoint.aegea.com.br/doc')).toContain('https://');
+    expect(urlSegura('https://acervo.aegea.com.br/doc')).toContain('https://');
     expect(urlSegura('http://exemplo.com')).toContain('http://');
   });
 
