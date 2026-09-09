@@ -32,9 +32,8 @@ import { usePainel } from '@/estado/painel';
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
- *  ERAM DOIS, e faltava o que a área usa para decidir quem fala: o assunto
- *  SENSÍVEL. Sem ele, "reajuste tarifário" e "patrocínio de corrida" moravam
- *  na mesma gaveta.
+ *  O SENSÍVEL É O QUE A ÁREA USA PARA DECIDIR QUEM FALA. Sem ele, "reajuste
+ *  tarifário" e "patrocínio de corrida" moram na mesma gaveta.
  *
  *  A ORDEM É A DO CUIDADO, e não a alfabética: quem abre a lista lê primeiro o
  *  que exige mais, e o que exige menos fica por último — que é também o padrão

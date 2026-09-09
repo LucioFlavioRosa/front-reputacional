@@ -1,21 +1,17 @@
 /** O que escapou do padrão, e por que isso importa.
  *
- *  POR QUE ISTO EXISTE
+ *  O QUE ISTO RESPONDE
  *  -------------------
- *  O painel respondia "quanto houve". Não respondia "o que precisa de mim" —
- *  e é essa a pergunta de quem abre o sistema todo dia. Cada regra aqui é uma
- *  conta que a base já permitia fazer e que nenhuma tela fazia.
+ *  "O que precisa de mim" — a pergunta de quem abre o sistema todo dia, e que
+ *  a contagem de volume não responde. Cada regra aqui é um cruzamento que a
+ *  base permite fazer: agenda sem material, porta-voz fora do escopo do
+ *  assunto, desdobramento previsto e não cobrado.
  *
- *  DUAS DELAS SÃO O ACHADO. "Fora do escopo" e "desdobramento não cobrado"
- *  tinham campo no formulário, coluna no banco e rota na API — e paravam no
- *  último metro: ninguém cruzava. O vínculo entre porta-voz e assunto existia
- *  com zero linhas preenchidas, porque nada o cobrava.
- *
- *  DOIS GRUPOS, E NÃO UMA FILA SÓ. Medido na base de demonstração, uma fila
- *  única apontava 163 de 293 agendas — 56%. Uma fila que sinaliza metade da
- *  base não é fila, é lista: o que precisa de decisão hoje se perde no meio do
- *  que é registro por preencher. São problemas de natureza diferente, com
- *  urgência diferente, e por isso se leem separados.
+ *  DOIS GRUPOS, E NÃO UMA FILA SÓ. Numa fila única, mais da metade da base
+ *  aparece sinalizada — e uma fila que aponta metade de tudo não é fila, é
+ *  lista: o que precisa de decisão hoje se perde no meio do que é registro por
+ *  preencher. São problemas de natureza diferente, com urgência diferente, e
+ *  por isso se leem separados.
  *
  *  NEM TODA EXCEÇÃO É UM ERRO. Uma agenda sem material pode ser uma conversa
  *  de corredor; um porta-voz fora do escopo pode ser uma decisão. A tela diz o
@@ -64,10 +60,10 @@ export function excecoes(
   limite.setDate(limite.getDate() - DIAS_PARA_PARADA);
   const corte = limite.toISOString().slice(0, 10);
 
-  // SOLICITADA E SEM RELATO. "Solicitada" sozinha não bastava: uma agenda
-  // cujo relato conta a reunião era cobrada como "sem resposta há 30 dias",
-  // com o texto do encontro logo ao lado. Ela tem problema, mas é outro — e
-  // está logo abaixo, em `situacaoDesatualizada`.
+  // SOLICITADA E SEM RELATO. "Solicitada" sozinha não basta: uma agenda cujo
+  // relato conta a reunião seria cobrada como "sem resposta há 30 dias", com o
+  // texto do encontro logo ao lado. Ela tem problema, mas é outro — e está
+  // logo abaixo, em `situacaoDesatualizada`.
   const semResposta = vivas.filter(
     (i) => i.status === 'solicitado' && !(i.relato ?? '').trim(),
   );

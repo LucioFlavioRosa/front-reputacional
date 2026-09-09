@@ -1,9 +1,9 @@
 /** Administração de acessos — quem entra, o que alcança, e até quando.
  *
- *  A tela existe por um motivo específico: enquanto ela não existia, conceder
- *  acesso era `UPDATE` manual no banco, e ninguém audita `UPDATE` manual.
- *  Conceder acesso a terceiro sem registrar quem concedeu é o tipo de coisa que
- *  só se descobre quando já não dá para reconstruir.
+ *  A tela existe por um motivo específico: sem ela, conceder acesso é `UPDATE`
+ *  manual no banco, e ninguém audita `UPDATE` manual. Acesso a terceiro sem
+ *  registro de quem concedeu é o tipo de coisa que só se descobre quando já
+ *  não dá para reconstruir.
  *
  *  O que ela mostra e o que ela esconde:
  *

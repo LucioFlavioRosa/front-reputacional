@@ -26,16 +26,15 @@ export interface Participacao {
   //: Nulo = não informado. Os MESMOS valores da outra parte: quem representa a
   //: Aegea também pode faltar a uma reunião que aconteceu.
   //:
-  //: O campo existe no backend desde o começo e faltava aqui. Enquanto faltou,
-  //: o formulário mandava a participação sem ele — e teria apagado a presença
-  //: de quem a tivesse registrado por outro caminho.
+  //: Viaja em toda gravação: mandar a participação sem ele apagaria a presença
+  //: já registrada.
   presenca: string | null;
 }
 
 /** Alguém da outra parte numa agenda — o principal inclusive.
  *
- *  UMA lista, e não "o interlocutor" mais "os demais": na versão anterior o
- *  principal ficava fora dela e era o único sem lugar para ter presença.
+ *  UMA lista, e não "o interlocutor" mais "os demais": fora dela, o principal
+ *  seria o único sem lugar para ter presença.
  */
 export interface ParticipanteDaOutraParte {
   interlocutor_id: string;
@@ -139,9 +138,9 @@ export interface Interacao {
 
   // -- o ciclo da agenda ----------------------------------------------------
   //
-  // A interação deixou de ser o registro de um fato consumado e passou a ser
-  // uma agenda: pedida, planejada, confirmada ou declinada, realizada, e
-  // desdobrada em outra.
+  // A interação é uma agenda inteira, e não o registro de um fato consumado:
+  // pedida, planejada, confirmada ou declinada, realizada, e desdobrada em
+  // outra.
   //
   // TODOS ANULÁVEIS, e `null` quer dizer NÃO INFORMADO — nunca "não". Os
   // registros que vieram de planilha não responderam nada disto, e tratá-los
@@ -158,8 +157,8 @@ export interface Interacao {
   /** DE QUAIS agendas esta decorre. Vazio = nasceu sozinha.
    *
    *  Plural: duas reuniões podem levar juntas a uma terceira, e uma reunião
-   *  pode abrir várias frentes. Era um campo só, e com um pai só o caso "a
-   *  agência e a bancada levaram a esta" perdia uma das duas.
+   *  pode abrir várias frentes. Com um pai só, o caso "a agência e a bancada
+   *  levaram a esta" perderia uma das duas.
    */
   origens: string[];
   /** QUANTAS agendas decorrem desta. Só leitura — quem grava o elo é a que

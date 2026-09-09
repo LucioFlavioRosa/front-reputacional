@@ -144,17 +144,14 @@ export function Cadastro({
     // Recorte VAZIO: a origem pode ser qualquer agenda, de qualquer frente —
     // um desdobramento cruza fronteiras por natureza (a conversa com o orgao
     // nasce da materia na imprensa). `tamanho` e o maximo que o backend aceita.
-    // `-data_interacao`, e NÃO `data_desc`.
-    //
-    // A API aceita o nome do campo com `-` para descendente, e respondia 422 a
-    // `data_desc` — que o `catch` engolia. O efeito, medido: a lista de origens
-    // ficava VAZIA para todo mundo, sempre, e o campo "Veio de outras agendas?"
-    // só oferecia o placeholder. O fallback silencioso, escrito para uma falha
-    // rara, era o estado permanente.
+    // `-data_interacao`, e NÃO `data_desc`: a API só entende o nome do campo
+    // com `-` na frente para descendente, e responde 422 a qualquer outra
+    // forma. Errar aqui esvazia a lista de origens para todo mundo, e o campo
+    // "Veio de outras agendas?" fica só com o placeholder.
     listarInteracoes({}, { tamanho: 200, ordenacao: '-data_interacao' })
       .then((pagina) => vivo && definirAgendas(pagina.itens ?? []))
       .catch((falha: Error) => {
-        // E a falha DEIXA DE SER SILENCIOSA. O resto do formulário continua
+        // A FALHA NÃO É SILENCIOSA. O resto do formulário continua
         // utilizável, mas quem procurar a lista precisa saber por que ela não
         // veio.
         if (vivo) definirFalhaDasOrigens(falha.message);
@@ -238,22 +235,20 @@ export function Cadastro({
   //: O campo muda de nome no Legislativo, e a mensagem da lista de
   //: participantes fala DELE. Duas escritas do mesmo rotulo divergiriam — e ja
   //: divergiram: a lista pedia um nome e o campo mostrava outro. Uma escrita
-  //: so, aqui, e as duas telas mudam juntas quando a palavra muda — como
-  //: mudou de "Veiculo / orgao" para "Instituicao".
+  //: so, aqui, e as duas telas mudam juntas quando a palavra muda.
   const rotuloDaInstituicao =
     form.frente === 'legislativo' ? 'Proposição' : 'Instituição';
 
   /** A relevância NÃO SE DIGITA AQUI: ela é da instituição.
    *
-   *  Era um `select` neste formulário, e a pergunta se repetia a cada reunião
-   *  com a mesma instituição — respondida conforme o dia. Medido antes da
-   *  troca: 54 das 98 instituições com histórico tinham sido classificadas de
-   *  formas DIFERENTES em agendas diferentes.
+   *  Perguntada aqui, ela se repetiria a cada reunião com a mesma instituição,
+   *  respondida conforme o dia — e a mesma instituição terminaria classificada
+   *  de formas diferentes em agendas diferentes.
    *
-   *  Agora a resposta mora num lugar só, o cadastro da instituição, e esta
-   *  tela a MOSTRA. Quem discorda muda lá, e a mudança vale para todas.
+   *  A resposta mora num lugar só, o cadastro da instituição, e esta tela a
+   *  MOSTRA. Quem discorda muda lá, e a mudança vale para todas.
    *
-   *  Continua sendo gravada em `interacao.tier`: as métricas, os filtros e a
+   *  É gravada em `interacao.tier`: as métricas, os filtros e a
    *  exportação leem dali, e fazer cada uma delas cruzar com a instituição
    *  seria pagar um `join` para não guardar um número.
    */
@@ -359,10 +354,10 @@ export function Cadastro({
 
   // Trocar de frente guarda o que a NOVA frente também carrega, e só isso.
   //
-  // Zerar tudo era perda de dado silenciosa: Governo, Parceiros e Eventos
+  // Zerar tudo seria perda de dado silenciosa: Governo, Parceiros e Eventos
   // compartilham a mesma extensão no backend, então `natureza_orgao` e
-  // `cargo_interlocutor` sobreviveriam à troca — e, desde que a seção desses
-  // campos saiu da tela, ninguém veria sumir nem conseguiria redigitar.
+  // `cargo_interlocutor` sobrevivem à troca — e, como a seção desses campos
+  // não está na tela, ninguém veria sumir nem conseguiria redigitar.
   //
   // Guardar tudo do mesmo grupo também estaria errado, na outra direção:
   // `nome_evento` só faz sentido em Eventos, e sair para Governo o deixaria no
@@ -463,10 +458,10 @@ export function Cadastro({
 
       {/* O DESFECHO DO SALVAR PRECISA ALCANÇAR QUEM APERTOU O BOTÃO.
           Estas faixas moram no topo e o botão fica depois de sete seções: quem
-          rolava até o fim, clicava em salvar e caía numa validação não via
-          nada acontecer. `role="alert"` já anunciava para leitor de tela; para
-          quem enxerga, o aviso estava fora da tela. Por isso o foco vai até
-          ele — que também é o começo do caminho de volta pelo teclado. */}
+          rola até o fim, clica em salvar e cai numa validação não veria nada
+          acontecer. `role="alert"` anuncia para leitor de tela; para quem
+          enxerga, o aviso fica fora da tela. Por isso o foco vai até ele — que
+          também é o começo do caminho de volta pelo teclado. */}
       {/* Sem `outline: none`. O foco chega aqui por programa, e o anel é
           exatamente o que mostra a quem usa teclado onde ele parou — apagá-lo
           devolveria, para essa pessoa, o mesmo "não aconteceu nada". */}
@@ -528,14 +523,14 @@ export function Cadastro({
           </Campo>
 
           {/* SO AS DO TIPO QUE ESTA FRENTE CONVERSA. Uma agenda de imprensa
-              fala com veiculo, uma de legislativo com proposicao — e a lista
-              inteira obrigava a achar o certo entre 56.
+              fala com veiculo, uma de legislativo com proposicao; a lista
+              inteira obrigaria a achar o certo entre dezenas.
 
-              A ja gravada entra sempre, mesmo fora do tipo: DUAS agendas de
-              imprensa apontam para `entidade`, medido no banco. Sem a
-              ressalva, o campo delas abriria em branco ao editar, e campo
-              obrigatorio vazio num registro que existe se le como dado
-              corrompido — nao como filtro fazendo efeito. */}
+              A JA GRAVADA ENTRA SEMPRE, mesmo fora do tipo — ha agendas de
+              imprensa apontando para `entidade`. Sem a ressalva, o campo delas
+              abriria em branco ao editar, e campo obrigatorio vazio num
+              registro que existe se le como dado corrompido, nao como filtro
+              fazendo efeito. */}
           <CampoQueCompleta
             rotulo={rotuloDaInstituicao}
             obrigatorio
@@ -605,18 +600,14 @@ export function Cadastro({
 
         <div style={{ marginTop: 16 }}>
           {/* O ASSUNTO NA IDENTIFICACAO, EM UM CAMPO SO.
-              A pauta esteve aqui junto por uma passada, como "o assunto em
-              palavras" ao lado do "assunto classificado". Duas caixas pedindo
-              a mesma coisa em precisões diferentes, no mesmo lugar, convidam a
+              A PAUTA NÃO FICA AQUI, e sim em "Conteúdo": duas caixas pedindo
+              a mesma coisa em precisões diferentes, lado a lado, convidam a
               escrever duas versões do assunto — e a base passa a ter registros
-              cujo título e cujos temas discordam. A pauta voltou para
-              "Conteúdo".
+              cujo título e cujos temas discordam.
 
-              "ASSUNTOS", e não "Temas" — a decisão virou, e o motivo é o
-              mesmo de antes: vocabulário único. O campo se chamava "Temas"
-              aqui e no filtro, "Tags" na Base e "Assuntos" no cadastro da
-              Administração: TRÊS nomes para um campo. "Assunto" venceu porque
-              é a palavra que a Administração já usa e a que o negócio fala. */}
+              "ASSUNTOS", e não "Temas" nem "Tags": é a palavra que o cadastro
+              da Administração usa e a que o negócio fala. Um campo, um nome,
+              em toda a plataforma. */}
           <Campo rotulo="Assuntos">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
@@ -716,12 +707,11 @@ export function Cadastro({
               }))}
             />
 
-{/* TRÊS OPÇÕES, E NÃO ONZE.
-                Neste momento só há três coisas a saber: o pedido foi feito,
-                foi aceito, ou foi negado. Os outros oito status descreviam o
-                que a agenda VIROU depois — e isso mora em "Desfecho da
-                agenda". Misturar as duas leituras no mesmo campo era o que
-                produzia a lista de onze.
+{/* TRÊS OPÇÕES, E SÓ TRÊS.
+                Aqui só há três coisas a saber: o pedido foi feito, foi aceito,
+                ou foi negado. O que a agenda VIROU depois é outra pergunta, e
+                mora em "Desfecho da agenda"; misturar as duas leituras no
+                mesmo campo devolveria uma lista de onze opções.
 
                 O status GRAVADO entra na lista mesmo fora das três. Sem isso,
                 abrir uma agenda "Realizada" mostraria o campo em branco, e
@@ -836,9 +826,9 @@ export function Cadastro({
             />
 
             {/* DE QUAIS AGENDAS ESTA DECORRE — plural, e nao uma so.
-                Era um `select` de uma origem, e com um pai so o caso "a agencia
-                e a bancada levaram juntas a esta reuniao" perdia uma das duas.
-                E esse caso e o que o grafo existe para mostrar. */}
+                Com um pai so, o caso "a agencia e a bancada levaram juntas a
+                esta reuniao" perderia uma das duas — e e esse caso que o grafo
+                existe para mostrar. */}
             <Campo
               rotulo="Veio de outras agendas?"
               dica="Dá para escolher mais de uma."
@@ -914,21 +904,17 @@ export function Cadastro({
       </Secao>
 
       {/* OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
-          Os porta-vozes viviam no fim da tela, numa seção "Porta-vozes e
-          temas", longe das pessoas da outra parte. Mas a pergunta é uma só —
-          quem senta nesta reunião — e respondê-la em dois lugares distantes
-          fazia a metade Aegea ser esquecida com frequência.
+          A pergunta é uma só — quem senta nesta reunião — e responder cada
+          metade num canto distante da tela faz a metade Aegea ser esquecida.
 
-          O MESMO GESTO NOS DOIS LADOS. A Aegea entrava por chips e a outra
-          parte por linhas — duas gramáticas para a mesma pergunta. Pior: a
-          metade que usava chips não tinha onde registrar presença, e o backend
-          guardava esse campo desde sempre. Quem representou a Aegea e faltou à
-          reunião era um fato que o banco aceitava e a tela não deixava contar.
+          O MESMO GESTO NOS DOIS LADOS: linha a linha, com presença nos dois.
+          Gramáticas diferentes para a mesma pergunta deixariam um dos lados
+          sem onde registrar quem faltou à reunião.
 
           O que difere é só a coluna do meio, porque as duas coisas são
           diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
-          pessoa REPRESENTA a instituição. Por isso continuam dois componentes,
-          e não um com bandeirinha. */}
+          pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
+          um com bandeirinha. */}
       <Secao titulo="Quem participa">
         {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
             o que diz que são partes distintas da mesma mesa: num cartão só, as
@@ -981,9 +967,8 @@ export function Cadastro({
 
       {/* MATERIAIS --------------------------------------------------------- */}
       {/* DUAS SECOES, e nao uma com seletor de momento.
-          O momento e a unica coisa que distinguia "o que levo" de "o que
-          trouxe", e ele era um `select` no meio da linha. Quem preenche a
-          agenda faz as duas coisas em dias diferentes: separadas, cada
+          Quem preenche a agenda faz as duas coisas em dias diferentes: o que
+          se leva se junta antes, o que se traz chega depois. Separadas, cada
           instante tem o seu lugar, e a lista de preparacao nao cresce com o
           que so vai existir depois da reuniao. */}
       <Secao titulo="Materiais de preparação">
@@ -1014,19 +999,15 @@ export function Cadastro({
         </Cartao>
       </Secao>
 
-      {/* A SECAO "CAMPOS DE <FRENTE>" SAIU DA TELA — e so da tela.
-          Pedido do dono do produto. Eram cinco blocos condicionais: formato,
-          data de publicacao, link da materia e mensagens-chave na imprensa;
-          casa, tramitacao, prioridade e ementa no legislativo; e assim por
-          diante.
+      {/* OS CAMPOS ESPECIFICOS DE CADA FRENTE NAO SE PREENCHEM AQUI.
+          Formato, data de publicacao e link da materia na imprensa; casa,
+          tramitacao, prioridade e ementa no legislativo; e assim por diante.
+          A ficha exibe todos eles; esta tela nao pede nenhum.
 
-          O DADO CONTINUA. `form.extensao` segue no estado, `paraFormulario` o
-          carrega do servidor e `montarCorpo` o devolve — sem isso, editar um
-          registro de imprensa apagaria o formato e o link que ja estavam
-          gravados, porque na edicao campo ausente vira `null`.
-
-          A ficha continua exibindo tudo. O que mudou e que
-          esses campos deixaram de ser preenchiveis por aqui. */}
+          O DADO VIAJA MESMO ASSIM: `form.extensao` fica no estado,
+          `paraFormulario` o carrega do servidor e `montarCorpo` o devolve. Sem
+          isso, editar um registro de imprensa apagaria o formato e o link ja
+          gravados, porque na edicao campo ausente vira `null`. */}
 
       </div>
 
@@ -1051,13 +1032,13 @@ export function Cadastro({
           guarda a sua metade. */}
       <Cartao estilo={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         {/* NA EDICAO, ESVAZIAR NAO E UMA ACAO QUE ALGUEM QUEIRA.
-            O botao chamava `VAZIO` sempre: numa agenda existente, ele apagava
-            a tela inteira, e salvar em seguida levaria o apagamento ao
-            registro — agora que campo vazio significa `null`, e nao "nao
-            mexi". Editando, o gesto util e VOLTAR ao que estava. */}
+            Cair no `VAZIO` numa agenda existente apagaria a tela inteira, e
+            salvar em seguida levaria o apagamento ao registro: campo vazio
+            significa `null`, e nao "nao mexi". Editando, o gesto util e VOLTAR
+            ao que estava. */}
         <Botao
           // Sem alvo carregado não há o que desfazer, e cair no `VAZIO` seria
-          // justamente o apagamento que este botão deixou de fazer.
+          // justamente o apagamento que este botão existe para evitar.
           desabilitado={Boolean(id) && !carregado}
           aoClicar={() =>
             definirForm(id ? (carregado ?? VAZIO) : { ...VAZIO, frente: form.frente })
@@ -1072,10 +1053,10 @@ export function Cadastro({
             enviando ||
             // SO O QUE IDENTIFICA A AGENDA.
             //
-            // Exigia tambem `pauta` e `status`, que moram em secoes sobre o que
-            // ainda nao aconteceu — para criar uma agenda era preciso descer a
-            // tela inteira. Quem pede uma agenda de manha sabe com quem e
-            // quando; nao sabe ainda o que vai sair dela.
+            // Nem `pauta` nem `status`: eles moram em secoes sobre o que ainda
+            // nao aconteceu, e exigi-los obrigaria a descer a tela inteira so
+            // para criar a agenda. Quem pede uma agenda de manha sabe com quem
+            // e quando; nao sabe ainda o que vai sair dela.
             //
             // O resto vira EDICAO de um registro que ja existe — e e so depois
             // de existir que da para anexar arquivo, porque a pasta e dele.
@@ -1141,11 +1122,9 @@ function impedimentoNoFormulario(
 ): { mensagem: string; etapa: Etapa } | null {
   // UM MATERIAL PRECISA DE TÍTULO E DE UM DESTINO — arquivo OU link.
   //
-  // A regra dizia "título e link", e "guardar arquivo no painel ainda não
-  // existe". Isso deixou de ser verdade quando o upload entrou, e a tela passou
-  // a IMPEDIR o salvamento de todo material com arquivo: título preenchido,
-  // link vazio, e a comparação acusava "pela metade". O recurso novo era
-  // bloqueado pela validação do recurso antigo.
+  // DESTINO É ARQUIVO **OU** LINK, e não link sempre. Exigir o link bloquearia
+  // todo material que veio por upload — título preenchido, link vazio — e a
+  // mensagem acusaria "pela metade" um material que está inteiro.
   const semDestino = form.materiais.findIndex(
     (m) => Boolean(m.titulo.trim()) && !m.url.trim() && !m.arquivo_id,
   );
@@ -1383,9 +1362,8 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     preve_desdobramento:
       form.preve_desdobramento === '' ? vazio : form.preve_desdobramento === 'sim',
 
-    // O PRINCIPAL VAI NA LISTA, e a coluna e projecao dela — e o contrato que
-    // o backend passou a exigir depois de sete rodadas de revisao. Mandar so
-    // `interlocutor_id` continua funcionando, mas a tela edita a lista.
+    // O PRINCIPAL VAI NA LISTA, e a coluna `interlocutor_id` e projecao dela.
+    // O backend aceita receber so a coluna, mas a tela edita a lista.
     outra_parte: form.outraParte
       .filter((p) => p.interlocutor_id)
       .map((p) => ({
@@ -1427,9 +1405,8 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
 /** Os participantes da outra parte, com presença e um principal.
  *
  *  UMA LISTA, e não um campo de interlocutor mais uma lista de "demais".
- *  O backend guarda todos na mesma tabela justamente porque a versão anterior
- *  deixava o principal sem lugar para ter presença — e era ele a pessoa mais
- *  importante da reunião.
+ *  Todos moram na mesma tabela do backend, e é isso que dá ao principal — a
+ *  pessoa mais importante da reunião — um lugar para ter presença.
  *
  *  A marca de principal é um `radio`, e não um `checkbox`: só um representa a
  *  outra parte, e o rádio diz isso pela forma. Com caixas de seleção alguém
@@ -1438,9 +1415,8 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
 /** Quem da Aegea senta nesta agenda.
  *
  *  Espelha `ListaDeParticipantes` de propósito: acrescentar alguém é o mesmo
- *  gesto dos dois lados da mesa. Antes, a Aegea entrava por chips e a outra
- *  parte por linhas — duas gramáticas para a mesma pergunta, e a metade que
- *  usava chips não tinha onde registrar presença.
+ *  gesto dos dois lados da mesa, e os dois lados registram presença. Duas
+ *  gramáticas para a mesma pergunta deixariam uma das metades sem isso.
  *
  *  A coluna do meio é o que difere: aqui é o PAPEL (fala pela companhia ou
  *  acompanha), lá é qual pessoa REPRESENTA a instituição. Não são a mesma
@@ -1476,11 +1452,9 @@ function paraFormulario(interacao: Interacao): Formulario {
     pendencias: texto(interacao.pendencias),
     observacoes: texto(interacao.observacoes),
     temas: interacao.temas ?? [],
-    // SEM FILTRAR POR PAPEL. A versao anterior so trazia de volta os
-    // `porta_voz`, e `montarCorpo` remandava a lista inteira: salvar um
-    // registro que tivesse alguem como `equipe` o APAGARIA, sem aviso. Hoje
-    // nao ha nenhum assim no banco (72 participacoes, todas porta_voz), mas a
-    // tela passa a criar — seria um defeito nascendo junto com o recurso.
+    // SEM FILTRAR POR PAPEL. Trazer de volta so os `porta_voz` apagaria, sem
+    // aviso, quem estivesse gravado como `equipe`: `montarCorpo` remanda a
+    // lista inteira, e o que nao voltou do servidor nao vai de volta para ele.
     aegea: (interacao.participacoes ?? []).map((p) => ({
       pessoa_aegea_id: p.pessoa_aegea_id,
       papel: p.papel,

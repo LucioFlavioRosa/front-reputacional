@@ -135,9 +135,9 @@ export function CadeiaDaAgenda({
       }
       aoFechar={aoFechar}
       // 1240, e nao 1180: o leque de onze — tres subcolunas mais a raiz —
-      // desenha 1176px de largura, e a area util do modal era 1132. Sobravam
-      // 44px de rolagem horizontal para ver a ultima coluna de um leque que a
-      // quebra em subcolunas existe justamente para mostrar inteiro.
+      // desenha 1176px, e com 1180 a area util do modal fica em 1132. Faltam
+      // 44px, e a ultima coluna de um leque que se quebra em subcolunas
+      // justamente para caber sairia para a rolagem horizontal.
       largura={1240}
       rodape={
         foco && aoAbrirFicha ? (

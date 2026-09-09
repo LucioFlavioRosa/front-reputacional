@@ -48,11 +48,11 @@ const PERMISSOES: { chave: keyof NonNullable<Eu['papel']>; rotulo: string }[] = 
  *  fundo é liso e o entorno já é cheio de controles — a pessoa lê aquele canto
  *  como "coisas da minha conta".
  *
- *  `capa` é a foto d'água da página inicial, e ali o mesmo círculo SUMIU. Não
- *  por falta de contraste medido — foram 9,17:1 — mas porque a medição foi
- *  feita contra o topo escuro do gradiente, e ele pousa no canto direito, que
- *  é quase branco. Pior: numa capa sem nenhum outro controle, um círculo com
- *  duas letras não se anuncia como botão; lê-se como enfeite da arte.
+ *  `capa` é a foto d'água da página inicial, e ali o mesmo círculo NÃO
+ *  aparece. Não é falta de contraste no papel — são 9,17:1 contra o topo
+ *  escuro do gradiente —, mas o controle pousa no canto direito, que é quase
+ *  branco. E numa capa sem nenhum outro controle, um círculo com duas letras
+ *  não se anuncia como botão: lê-se como enfeite da arte.
  *
  *  Por isso a capa ganha uma PASTILHA: fundo sólido, o primeiro nome escrito e
  *  uma seta. O que a torna um controle não é o contraste, é o rótulo.
@@ -109,9 +109,9 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
     } catch (falha) {
       // SÓ recarrega quando a sessão morreu de verdade.
       //
-      // Recarregar mesmo com a falha era o comportamento anterior, e escondia o
-      // problema: um logout com token anti-CSRF vencido devolve 403, a sessão
-      // sobrevive, e a pessoa voltava logada achando que tinha saído.
+      // Recarregar mesmo com a falha esconderia o problema: um logout com
+      // token anti-CSRF vencido devolve 403, a sessão sobrevive, e a pessoa
+      // voltaria logada achando que tinha saído.
       definirSaindo(false);
       definirFalhaAoSair(
         falha instanceof Error
@@ -139,11 +139,11 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
         // por `aria-expanded` e `aria-controls`.
         aria-expanded={aberto}
         aria-controls="menu-do-usuario"
-        // O BOTÃO FICAVA MUDO NO CELULAR, e isso não era rótulo pobre: era
-        // ausência de nome acessível. O avatar e a seta são `aria-hidden`, e
-        // abaixo de 520px o nome vai a `display: none` — que o remove da
-        // árvore de acessibilidade, não só da tela. Sobrava um botão sem nome
-        // algum, e quem navega por leitor de tela ouvia "botão".
+        // O NOME ACESSÍVEL VEM DAQUI, e não do conteúdo. O avatar e a seta
+        // são `aria-hidden`, e abaixo de 520px o nome vai a `display: none` —
+        // que o remove da árvore de acessibilidade, não só da tela. Sem este
+        // rótulo, no celular quem navega por leitor de tela ouviria só
+        // "botão".
         //
         // O rótulo diz o que há DENTRO, e não só de quem é a conta: "sair" é a
         // razão de a maioria das pessoas abrir isto, e é a palavra que elas
@@ -166,9 +166,9 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
                 background: 'var(--branco)',
                 // BORDA ESCURA, e não `--borda` (#E2E5F0, quase branco).
                 //
-                // O texto passava folgado — 10,37:1 contra o branco. O que não
-                // passava era a FORMA: medido sobre a foto, o branco da
-                // pastilha contra a água clara deu 1,08:1, e um componente
+                // O texto passa folgado — 10,37:1 contra o branco. O que
+                // não passa é a FORMA: sobre a foto, o branco da pastilha
+                // contra a água clara dá 1,08:1, e um componente
                 // precisa de 3:1 no próprio limite (WCAG 1.4.11). Uma placa
                 // branca sobre água quase branca não tem contorno, e um
                 // contorno quase branco não o devolve.
@@ -178,10 +178,10 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
                 // do topo é o branco interno. Sempre uma das duas fronteiras
                 // passa, e a pastilha nunca some.
                 //
-                // 2px, e não 1,5. Com 1,5 o Chrome arredondava para 1px CSS e o
-                // que sobrava do traço era antialiasing: medido no topo da
-                // pastilha, o pixel lia `rgb(131,150,223)` — azul diluído, não
-                // `#0027BD` — e o limite caía para 2,06:1 sobre a água clara.
+                // 2px, e não 1,5. Com 1,5 o Chrome arredonda para 1px CSS
+                // e o que sobra do traço é antialiasing: no topo da pastilha o
+                // pixel lê `rgb(131,150,223)` — azul diluído, não `#0027BD` —
+                // e o limite cai para 2,06:1 sobre a água clara.
                 // Uma borda fina demais para sobreviver ao próprio antialiasing
                 // não é uma borda; é uma intenção.
                 border: `2px solid var(${aberto ? '--azul-mar-sombra' : '--azul-mar'})`,

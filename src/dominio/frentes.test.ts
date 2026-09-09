@@ -4,7 +4,7 @@
  *  branco, ficava em 2,20:1 — menos da metade do exigido. Interna em 3,13 e
  *  Investidores em 4,45, esta última reprovando por 0,05.
  *
- *  Nenhuma delas era visível numa revisão a olho, e é por isso que o teste
+ *  Nenhuma delas é visível numa revisão a olho, e é por isso que o teste
  *  existe: a próxima pessoa que "restaurar a cor original da marca" precisa
  *  descobrir na hora, e não meses depois pela boca de quem não conseguiu ler.
  */

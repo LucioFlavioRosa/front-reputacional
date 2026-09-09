@@ -31,8 +31,9 @@ function daJanela(): Lugar {
 // portugues. Nao e concessao de estilo: o prefixo `use` e como o React
 // IDENTIFICA um hook. A regra `react-hooks/rules-of-hooks` — que este projeto
 // marca como `error` — e o React Compiler reconhecem hook pelo nome. Chamado
-// de `usarNavegacao`, este aqui nao era tratado como hook por nenhum dos dois:
-// cinco erros de lint, e uma chamada dentro de `if` passaria batida.
+// de `usarNavegacao`, este aqui nao seria tratado como hook por nenhum dos
+// dois: o lint pararia de conferir as regras, e uma chamada dentro de `if`
+// passaria batida.
 export function useNavegacao() {
   const [lugar, definirLugar] = useState<Lugar>(daJanela);
 
@@ -44,9 +45,8 @@ export function useNavegacao() {
 
   const irPara = useCallback((rota: Rota, opcoes?: { substituir?: boolean }) => {
     const caminho = caminhoDe(rota);
-    // A CONSULTA VIAJA JUNTO: trocar de tela não pode perder o recorte. Era o
-    // que acontecia antes de o endereço existir — quem abria uma ficha e
-    // voltava perdia o filtro.
+    // A CONSULTA VIAJA JUNTO: trocar de tela não pode perder o recorte. Sem
+    // isto, quem abre uma ficha e volta perde o filtro.
     const consulta = window.location.search;
     const destino = caminho + consulta;
 

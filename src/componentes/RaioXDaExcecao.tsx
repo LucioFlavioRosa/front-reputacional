@@ -1,9 +1,9 @@
 /** O que se vê ao abrir uma linha da Situação.
  *
- *  ERA UMA LISTA. Abrir "Solicitadas há mais de 30 dias" despejava 47 linhas
- *  de data, frente e título — verdadeiras e inúteis para decidir: para saber
- *  se o problema estava concentrado em imprensa ou espalhado, ou se eram
- *  pedidos de mês passado ou do ano passado, a pessoa tinha de ler as 47 e
+ *  NÃO É UMA LISTA. Abrir "Solicitadas há mais de 30 dias" e receber quarenta
+ *  linhas de data, frente e título é receber algo verdadeiro e inútil para
+ *  decidir: saber se o problema está concentrado em imprensa ou espalhado, ou
+ *  se são pedidos do mês passado ou do ano passado, exigiria ler as quarenta e
  *  contar de cabeça.
  *
  *  O RAIO-X RESPONDE ANTES DE ABRIR: onde está concentrado, e quando. Dois

@@ -1,17 +1,13 @@
 /** O endereço como estado da aplicação.
  *
- *  POR QUE ISTO PASSOU A EXISTIR
- *  -----------------------------
- *  A navegação era estado do React e a barra de endereço nunca mudava. Três
- *  consequências, todas medidas:
- *
- *    - Nada podia ser enviado a ninguém. "Olha esta cadeia antes da reunião de
- *      quinta" virava captura de tela, e uma leitura executiva sem link é um
- *      anexo que envelhece no e-mail.
- *    - O botão de voltar saía da aplicação, levando o filtro junto.
- *    - `LimiteDeErro` registrava a tela do erro lendo `window.location.hash`,
- *      que ninguém nunca escrevia: TODO erro era reportado como se tivesse
- *      acontecido no Painel.
+ *  O QUE ISTO GARANTE
+ *  ------------------
+ *    - Toda leitura tem link. "Olha esta cadeia antes da reunião de quinta" é
+ *      um endereço que se manda, e não uma captura de tela que envelhece no
+ *      e-mail.
+ *    - O botão de voltar anda dentro da aplicação, e leva o recorte junto.
+ *    - `LimiteDeErro` lê o endereço para saber em que tela o erro aconteceu, e
+ *      o endereço está escrito — então o relatório aponta a tela certa.
  *
  *  DUAS METADES, DOIS DONOS
  *  ------------------------
@@ -196,8 +192,8 @@ export function enderecoDe(rota: Rota, recorte: Recorte, eixo?: Eixo): string {
 
 /** O nome da tela, para a telemetria.
  *
- *  Era `window.location.hash`, que ninguém escrevia — e por isso todo erro do
- *  sistema era atribuído ao Painel.
+ *  DO CAMINHO, e não do hash: o hash não é escrito por ninguém nesta
+ *  aplicação, e leria a mesma tela para todo erro.
  */
 export function nomeDaTela(rota: Rota): string {
   if (rota.sobre) return `${rota.destino}:${rota.sobre}`;

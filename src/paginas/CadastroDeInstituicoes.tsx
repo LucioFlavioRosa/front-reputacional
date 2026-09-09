@@ -102,9 +102,9 @@ interface RascunhoDaInstituicao {
 export function CadastroDeInstituicoes() {
   const { catalogo, recarregar } = usePainel();
   const [erro, definirErro] = useState<string | null>(null);
-  //: O que acabou de dar certo. Sem isto, salvar era SILENCIOSO: o formulário
-  //: limpava e nada dizia que a gravação aconteceu — e quem não confia fica
-  //: cadastrando duas vezes.
+  //: O que acabou de dar certo. Sem isto, salvar é SILENCIOSO: o formulário
+  //: limpa e nada diz que a gravação foi feita — e quem não confia cadastra
+  //: duas vezes.
   const [feito, definirFeito] = useState<string | null>(null);
   //: Qual pessoa está com a remoção pendente de confirmação. Duas etapas na
   //: própria linha, e não um modal: o modal tira o contexto de QUAL linha, que
@@ -256,8 +256,8 @@ export function CadastroDeInstituicoes() {
             {/* A RELEVÂNCIA É DA INSTITUIÇÃO, e não do encontro.
                 A agenda tem o seu próprio tier, e são coisas diferentes: a
                 Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
-                ser Tier 3. Sem este campo, a pergunta era refeita a cada
-                reunião — e respondida diferente. */}
+                ser Tier 3. Sem este campo, a pergunta se refaz a cada reunião
+                — e é respondida diferente. */}
             <Campo
               rotulo="Relevância"
               obrigatorio

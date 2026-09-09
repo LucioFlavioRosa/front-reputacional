@@ -333,9 +333,9 @@ function Remover({ id, aoRemover }: { id: string; aoRemover: () => void }) {
       }}
     >
       {/* SEM EXPLICAÇÃO DO QUE O SISTEMA FAZ POR DENTRO.
-          Dizer "sai da Base, do painel e das cadeias; a linha e o histórico
-          ficam guardados" era descrever a implementação a quem só quer tirar
-          um registro da frente. A pergunta que o segundo passo responde é "tem
+          "Sai da Base, do painel e das cadeias; a linha e o histórico ficam
+          guardados" é descrever a implementação a quem só quer tirar um
+          registro da frente. A pergunta que o segundo passo faz é "tem
           certeza?", e o botão já a responde. */}
       <Botao aoClicar={() => definirArmado(false)} desabilitado={removendo}>
         Cancelar

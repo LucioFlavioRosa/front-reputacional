@@ -42,8 +42,8 @@ const COLUNAS = ['Título', 'Tipo', 'Assuntos', 'Versão', 'Atualizado', 'Arquiv
 
 /** O tipo MIME em palavra de gente.
  *
- *  ERA DEDUZIDO DA EXTENSÃO DO LINK, quando o arquivo morava no SharePoint e o
- *  painel só tinha o endereço. Agora o arquivo é nosso, e o tipo veio com ele.
+ *  DO TIPO DECLARADO NO ARQUIVO, e não da extensão do nome: o arquivo é
+ *  guardado por nós, e o tipo chega junto com ele.
  */
 function formatoLegivel(tipo: string): string {
   if (tipo.includes('pdf')) return 'PDF';

@@ -7,7 +7,7 @@
  *
  *  Este arquivo existe porque essa fila já perdeu erro de duas maneiras
  *  diferentes durante a revisão: quando o SDK falhava ao carregar, e quando uma
- *  ação enfileirada levantava exceção. Nenhuma das duas era visível lendo o
+ *  ação enfileirada levanta exceção. Nenhuma das duas é visível lendo o
  *  código.
  */
 

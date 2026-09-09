@@ -140,10 +140,9 @@ export function App() {
 function Aplicativo({ eu }: { eu: Eu | null }) {
   //: A TELA VEM DO ENDEREÇO, e não de `useState`.
   //:
-  //: Antes a navegação era estado do React e a barra de endereço nunca mudava.
-  //: Nada podia ser enviado a ninguém, o botão de voltar saía da aplicação
-  //: levando o filtro junto, e a telemetria atribuía TODO erro ao Painel —
-  //: porque lia `window.location.hash`, que nada escrevia.
+  //: É o que dá link a toda leitura, faz o botão de voltar andar dentro da
+  //: aplicação sem perder o recorte, e deixa a telemetria dizer em que tela o
+  //: erro aconteceu. Navegação em `useState` não faz nenhuma das três.
   const { rota, eixo, irPara, trocarEixo } = useNavegacao();
   const { recorte, definirRecorte } = usePainel();
   const naCapa = rota.destino === 'inicio';
@@ -163,11 +162,10 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
   /** Do panorama para o aprofundamento, já filtrado.
    *
-   *  Clicar num indicador do Painel levava à tela daquela frente. Ela não
-   *  existe mais — e o que aquele clique realmente pedia era "me mostra esta
-   *  frente por dentro", que é Explorar com o recorte aplicado. O filtro entra
-   *  no recorte, e o recorte está na URL: o resultado é um endereço que se
-   *  manda a alguém.
+   *  Clicar num indicador do Painel pede "me mostra esta frente por dentro",
+   *  e a resposta é Explorar com o recorte aplicado. O filtro entra no
+   *  recorte, e o recorte está na URL: o resultado é um endereço que se manda
+   *  a alguém.
    */
   const abrirFrenteEmExplorar = (frente: Frente) => {
     definirRecorte({ ...recorte, frente });
@@ -225,7 +223,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             <Painel aoAbrirFrente={abrirFrenteEmExplorar} />
           ) : null}
 
-          {/* CINCO ABAS VIRARAM UM SELETOR. Ver `Explorar`. */}
+          {/* OS CINCO EIXOS MORAM NUM SELETOR. Ver `Explorar`. */}
           {rota.destino === 'explorar' ? (
             <Explorar eixo={eixo} aoTrocarEixo={trocarEixo} />
           ) : null}

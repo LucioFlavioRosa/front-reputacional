@@ -1,9 +1,7 @@
 /** Os materiais da agenda: apoio antes, obtido e produzido depois.
  *
- *  SAIU DE `Cadastro.tsx`, que tinha 2.572 linhas e um componente de 921 — o
- *  arquivo em que eu mais errei nesta base, e por um motivo: nada cabia na
- *  cabeça de uma vez. Este pedaço já era auto-contido; só não tinha porta
- *  própria.
+ *  Fica FORA de `Cadastro.tsx`: a lista é auto-contida, e a tela do
+ *  formulário já é longa o bastante sem ela.
  */
 
 import { useState } from 'react';
@@ -293,12 +291,12 @@ export function ListaDeMateriais({
 
           <div style={{ marginTop: 10 }}>
             {/* RESUMO, e nao "Observacao".
-                A palavra antiga pedia um comentario sobre o documento e quase
-                nunca era preenchida — nao ha o que observar sobre um arquivo
-                que ainda nao se leu. "Resumo" pede o que a biblioteca ja tem
-                escrito, e por isso a linha vinda de la ja chega preenchida: uma
-                linha do que o documento diz vale mais que o titulo, e e o que
-                evita abrir cinco para achar um. */}
+                "Observacao" pede um comentario sobre o documento, e nao ha o
+                que observar sobre um arquivo que ainda nao se leu — o campo
+                fica vazio. "Resumo" pede o que a biblioteca ja tem escrito, e
+                por isso a linha vinda de la chega preenchida: uma linha do que
+                o documento diz vale mais que o titulo, e e o que evita abrir
+                cinco para achar um. */}
             <Campo rotulo="Resumo">
               <input
                 aria-label={`Resumo do material ${indice + 1}`}

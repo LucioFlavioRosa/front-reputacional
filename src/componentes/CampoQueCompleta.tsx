@@ -56,6 +56,10 @@ export function CampoQueCompleta({
   const [aberto, definirAberto] = useState(false);
   const [busca, definirBusca] = useState('');
   const [emFoco, definirEmFoco] = useState(0);
+  //: A PESSOA MEXEU NO TEXTO desde que a lista abriu? É o que separa "apaguei
+  //: o campo" de "abri e saí sem tocar em nada" — dois gestos que deixam a
+  //: busca vazia e pedem coisas opostas.
+  const [digitou, definirDigitou] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
   const escolhida = opcoes.find((o) => o.valor === valor);
@@ -75,19 +79,21 @@ export function CampoQueCompleta({
     aoEscolher(opcao.valor);
     definirAberto(false);
     definirBusca('');
+    definirDigitou(false);
   };
 
   /** Fecha a lista commitando o que a pessoa digitou, quando é inequívoco, e
    *  descartando o texto quando não é. A regra e o porquê estão em
    *  `escolhaAoFechar`. */
   const fechar = () => {
-    const inequivoca = escolhaAoFechar(opcoes, busca);
-    if (inequivoca) {
-      escolher(inequivoca);
+    const escolha = escolhaAoFechar(opcoes, busca, { digitou, obrigatorio });
+    if (escolha) {
+      escolher(escolha);
       return;
     }
     definirAberto(false);
     definirBusca('');
+    definirDigitou(false);
   };
 
   // O OUVINTE PRECISA DO `fechar` MAIS NOVO — o que enxerga o texto já digitado
@@ -114,6 +120,7 @@ export function CampoQueCompleta({
   const abrir = () => {
     definirAberto(true);
     definirBusca('');
+    definirDigitou(false);
     definirEmFoco(Math.max(0, lista.findIndex((o) => o.valor === valor)));
   };
 
@@ -133,6 +140,7 @@ export function CampoQueCompleta({
         onChange={(evento) => {
           if (!aberto) definirAberto(true);
           definirBusca(evento.target.value);
+          definirDigitou(true);
           definirEmFoco(0);
         }}
         onKeyDown={(evento) => {
@@ -156,6 +164,7 @@ export function CampoQueCompleta({
             // começou a digitar e mudou de ideia.
             definirAberto(false);
             definirBusca('');
+            definirDigitou(false);
           }
           if (evento.key === 'Tab' && aberto) {
             // TAB CONFIRMA, como na planilha. Sem isto, quem digita o nome

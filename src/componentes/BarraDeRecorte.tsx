@@ -1,18 +1,17 @@
 /** O recorte, sempre à vista.
  *
- *  POR QUE SAIU DA GAVETA
+ *  POR QUE FORA DA GAVETA
  *  ----------------------
- *  Os filtros moravam num drawer. Num sistema em que várias telas compartilham
- *  o mesmo recorte, quem via uma queda não sabia se ela era do mês ou do filtro
- *  que pôs dez minutos antes. O contexto de tudo o que está na tela precisa
- *  estar NA tela.
+ *  Várias telas compartilham o mesmo recorte. Com os filtros num drawer, quem
+ *  vê uma queda não sabe se ela é do mês ou do filtro que pôs dez minutos
+ *  antes — o contexto de tudo o que está na tela precisa estar NA tela.
  *
- *  Fichas removíveis, e não uma frase corrida: para desfazer um filtro era
- *  preciso abrir a gaveta e procurá-lo lá dentro.
+ *  Fichas removíveis, e não uma frase corrida: desfazer um filtro é um clique
+ *  na ficha, e não uma busca dentro de uma gaveta.
  *
  *  E COPIAR O LINK MORA AQUI, ao lado do recorte, porque é o recorte que o
- *  link carrega: "manda esta leitura para a liderança" passou a ser um
- *  endereço, e não uma captura de tela.
+ *  link carrega: "manda esta leitura para a liderança" é um endereço, e não
+ *  uma captura de tela.
  */
 
 import { useState } from 'react';

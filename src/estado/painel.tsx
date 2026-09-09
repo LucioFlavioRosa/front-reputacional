@@ -195,10 +195,10 @@ export function ProvedorDoPainel({
     [
       recorte, interacoes, total, truncado, catalogo,
       carregando, atualizando, erro, recarregar, drawerAberto,
-      // `definirRecorte` deixou de ser o `setState` cru — agora também escreve
-      // o endereço, e por isso é um `useCallback` que precisa entrar aqui.
-      // Fora da lista, um provedor remontado serviria a versão antiga da
-      // função, que escreveria numa URL que já não é a da tela.
+      // `definirRecorte` não é o `setState` cru: também escreve o endereço, e
+      // por isso é um `useCallback` que precisa entrar aqui. Fora da lista, um
+      // provedor remontado serviria a função antiga, que escreveria numa URL
+      // que já não é a da tela.
       definirRecorte,
     ],
   );
@@ -211,9 +211,9 @@ export function ProvedorDoPainel({
 // Não é concessão de estilo: o prefixo `use` é como o React IDENTIFICA um hook.
 // A regra `react/rules-of-hooks` — que este projeto marca como `error` no
 // `.oxlintrc.json` — e o React Compiler, que está ligado, reconhecem hook pelo
-// nome. Chamado de `usarPainel`, este aqui não era tratado como hook por
+// nome. Chamado de `usarPainel`, este aqui não seria tratado como hook por
 // nenhum dos dois: uma chamada dentro de `if` passaria batida, e o compilador
-// não o otimizava.
+// não o otimizaria.
 export function usePainel(): EstadoDoPainel {
   const contexto = useContext(Contexto);
   if (!contexto) {

@@ -2,11 +2,11 @@
  *
  *  POR QUE UM MODAL COM A TABELA, E NÃO UMA LISTA NO FORMULÁRIO
  *  -----------------------------------------------------------
- *  A versão anterior era uma lista estreita dentro do campo, com data, título e
- *  instituição. Três campos bastam para confirmar uma agenda que já se tem em
- *  mente; não bastam para RECONHECER a certa entre duzentas. Quem procura a
- *  reunião do mês passado se lembra da frente, do órgão e do quanto ela
- *  importava — e é a linha inteira da Base que carrega isso.
+ *  Uma lista estreita dentro do campo — data, título e instituição — basta
+ *  para confirmar uma agenda que já se tem em mente, e não basta para
+ *  RECONHECER a certa entre duzentas. Quem procura a reunião do mês passado se
+ *  lembra da frente, do órgão e do quanto ela importava, e é a linha inteira
+ *  da Base que carrega isso.
  *
  *  E MARCAR VÁRIAS DE UMA VEZ é o caso que motivou a linhagem plural: "a
  *  agência e a bancada levaram juntas a esta reunião". Escolher uma, fechar,

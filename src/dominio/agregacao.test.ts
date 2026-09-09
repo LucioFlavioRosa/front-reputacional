@@ -86,7 +86,7 @@ describe('um eixo por vez, as mesmas medidas', () => {
     // As quatro medidas na mesma linha são o que substitui quatro telas.
     const grupos = agrupar(
       [
-        // SEM RELATO e o que conta como "em aberto": a situacao passou a ter
+        // SEM RELATO e o que conta como "em aberto": a situacao tem
         // tres valores e nenhum deles diz se a reuniao houve.
         agenda({ tier: 1, relato: null }),
         agenda({ resultado: 'avancou', relato: 'Houve.' }),

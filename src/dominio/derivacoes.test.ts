@@ -573,8 +573,8 @@ describe('temasMaisRecorrentes', () => {
   });
 
   it('devolve a contagem junto com a cor', () => {
-    // Regressão: a contagem era descartada, e o ranking de temas por frente
-    // desenhava tudo com total 0 e barra vazia.
+    // A contagem não pode ser descartada: sem ela, o ranking de temas por
+    // frente desenha tudo com total 0 e barra vazia.
     const dados = [
       interacao({ temas: [10, 11] }),
       interacao({ temas: [10] }),

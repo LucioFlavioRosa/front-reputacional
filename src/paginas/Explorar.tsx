@@ -1,17 +1,17 @@
 /** Explorar — o mesmo recorte, o eixo à escolha.
  *
- *  CINCO ABAS VIRARAM UM SELETOR.
+ *  CINCO EIXOS, UM SELETOR.
  *
- *  Frentes, Status, Resultado, Porta-vozes e Interlocutores liam o MESMO
- *  recorte e o giravam num eixo diferente. Trocar de aba trocava a pergunta e
- *  mantinha o recorte — e quem estava lendo perdia o fio.
+ *  Frente, situação, resultado, porta-voz e interlocutor são o MESMO recorte
+ *  girado. Uma aba por eixo faria trocar de tela para trocar de pergunta, e
+ *  quem lê perde o fio no caminho.
  *
  *  Aqui o recorte fica, a tela fica, e só o agrupamento muda. É o que a leitura
  *  de painel analítico pede: aprofundar e comparar, não navegar entre irmãos.
  *
  *  AS MESMAS QUATRO MEDIDAS EM TODO EIXO — volume, Tier 1, em aberto e taxa de
- *  avanço. Cada uma das cinco telas mostrava um subconjunto disto; juntas numa
- *  linha, respondem "quanto", "quão importante", "quanto ficou pelo caminho" e
+ *  avanço. Juntas numa linha, respondem "quanto", "quão importante", "quanto
+ *  ficou pelo caminho" e
  *  "deu em quê".
  */
 

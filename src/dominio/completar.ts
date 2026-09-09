@@ -42,22 +42,45 @@ export function filtrar(opcoes: Opcao[], busca: string): Opcao[] {
   );
 }
 
-/** O que fazer com o texto digitado quando a lista fecha sem clique numa
- *  sugestão — clique fora, Tab, foco no campo seguinte.
+/** A opção que LIMPA o campo. `valor` vazio é o "não informado" do formulário. */
+const LIMPAR: Opcao = { valor: '', rotulo: '' };
+
+/** O que gravar quando a lista fecha sem clique numa sugestão — clique fora,
+ *  Tab, foco no campo seguinte.
  *
  *  `null` quer dizer: descarte o texto e volte a mostrar o que já estava
- *  escolhido. Uma opção quer dizer: essa é a escolha, grave.
+ *  escolhido. Uma opção quer dizer: essa é a escolha, grave. A opção de valor
+ *  vazio quer dizer: limpe o campo.
  *
  *  A REGRA É "INEQUÍVOCO". Digitar o nome inteiro e sair vale como escolha —
- *  é o comportamento de planilha que motivou trocar os `select`. Duas
- *  candidatas ainda exigem escolher; nenhuma volta ao que estava. O que não
+ *  é o comportamento de planilha que motivou trocar os `select`. O que não
  *  pode acontecer, nunca, é a tela mostrar um rótulo e o formulário guardar
- *  outro valor. */
-export function escolhaAoFechar(opcoes: Opcao[], busca: string): Opcao | null {
-  if (!busca.trim()) return null;
+ *  outro valor.
+ *
+ *  O EXATO GANHA DO PARCIAL. "Bloomberg" filtra duas opções, porque "Bloomberg
+ *  Línea" também contém o termo — e ainda assim quem digitou o nome inteiro de
+ *  uma delas escolheu ela. Sem esta regra, o nome mais curto de uma família de
+ *  nomes seria justamente o que não dá para digitar.
+ *
+ *  APAGAR O TEXTO E SAIR LIMPA o campo opcional. Só quando a pessoa APAGOU:
+ *  abrir a lista e sair sem tocar em nada não é gesto de limpeza, e campo
+ *  obrigatório não se limpa por descuido.
+ */
+export function escolhaAoFechar(
+  opcoes: Opcao[],
+  busca: string,
+  situacao: { digitou?: boolean; obrigatorio?: boolean } = {},
+): Opcao | null {
+  const texto = busca.trim();
+  if (!texto) {
+    return situacao.digitou && !situacao.obrigatorio ? LIMPAR : null;
+  }
   // A OPÇÃO VAZIA NÃO CONTA como candidata: ela é o "Não informado" do topo da
   // lista, que existe para limpar o campo com um clique, e casaria com quase
   // qualquer coisa que se digitasse.
   const candidatas = filtrar(opcoes, busca).filter((o) => o.valor);
+  const alvo = normalizar(texto);
+  const exatas = candidatas.filter((o) => normalizar(o.rotulo) === alvo);
+  if (exatas.length === 1) return exatas[0];
   return candidatas.length === 1 ? candidatas[0] : null;
 }

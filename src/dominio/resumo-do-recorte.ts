@@ -49,10 +49,10 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
 
 /** O recorte como fichas removíveis, para a barra fixa.
  *
- *  A MESMA LEITURA DE `resumirRecorte`, quebrada por filtro. Antes o recorte
- *  vivia numa gaveta: quem via uma queda não sabia se ela era do mês ou do
- *  filtro que pôs dez minutos antes. Uma frase corrida não resolve — para
- *  desfazer um filtro era preciso abrir a gaveta e procurá-lo.
+ *  A MESMA LEITURA DE `resumirRecorte`, quebrada por filtro. O recorte fica à
+ *  vista porque quem vê uma queda precisa saber se ela é do mês ou do filtro
+ *  que pôs dez minutos antes — e quebrado em fichas porque desfazer um filtro
+ *  tem de ser um clique nele, e não uma busca dentro de uma gaveta.
  *
  *  `campo` é o que a ficha remove. Período é um caso especial: `de`/`ate` e o
  *  atalho são o MESMO filtro para quem lê, e removê-lo tem de limpar os três.

@@ -1,9 +1,8 @@
 /** As formas e as constantes do formulário de agenda.
  *
- *  SAIU DE `Cadastro.tsx`, que tinha 2.572 linhas e um componente de 921 — o
- *  arquivo em que eu mais errei nesta base, e por um motivo: nada cabia na
- *  cabeça de uma vez. Este pedaço já era auto-contido; só não tinha porta
- *  própria.
+ *  SÓ AS FORMAS E OS VALORES INICIAIS. O que a tela mostra está em
+ *  `Cadastro.tsx`; o que ela envia, em `montarCorpo`. Aqui é o que se consulta
+ *  o tempo todo enquanto se lê os dois.
  */
 
 import { hojeLocal } from '@/dominio/formato';
@@ -46,10 +45,10 @@ export interface Formulario {
 
   // -- o ciclo da agenda ---------------------------------------------------
   //
-  // O formulario deixou de descrever um fato consumado e passou a acompanhar
-  // uma agenda: pedida, planejada, confirmada ou declinada, realizada, e
-  // desdobrada em outra. Os campos abaixo sao a metade PREVISTA — e e a
-  // distancia entre ela e o relato que mede se o que se promete acontece.
+  // O formulario acompanha a agenda inteira, e nao um fato consumado: pedida,
+  // planejada, confirmada ou declinada, realizada, e desdobrada em outra. Os
+  // campos abaixo sao a metade PREVISTA — e e a distancia entre ela e o relato
+  // que mede se o que se promete acontece.
   expectativa: string;
   clima_esperado: string;
   declinado_por: string;
@@ -66,12 +65,10 @@ export interface Formulario {
 
 /** Alguem da Aegea nesta agenda.
  *
- *  Era `string[]`, so os ids dos porta-vozes. O backend guarda PAPEL e
- *  PRESENCA desde o comeco (`ParticipacaoAegea`), e a tela descartava os dois:
- *  mandava toda participacao como `porta_voz` sem presenca. Ninguem perdeu
- *  nada ainda — as 72 participacoes do banco sao todas assim — mas abrir os
- *  campos na tela sem consertar a ida-e-volta faria o recurso apagar a si
- *  mesmo no salvamento seguinte.
+ *  PAPEL E PRESENCA VIAJAM JUNTOS com a pessoa. O backend guarda os tres em
+ *  `ParticipacaoAegea`; mandar so o id faria toda participacao chegar como
+ *  `porta_voz` sem presenca, e o salvamento seguinte apagaria o que a tela
+ *  mostra.
  */
 export interface ParticipanteAegeaNoForm {
   pessoa_aegea_id: string;
@@ -143,13 +140,11 @@ export const PAPEIS: { valor: string; rotulo: string }[] = [
   { valor: 'equipe', rotulo: 'Equipe' },
 ];
 
-/** Os momentos do material, agora separados por SECAO da tela.
+/** Os momentos do material, separados por SECAO da tela.
  *
- *  Eram uma lista so, com um seletor de momento em cada linha — e o seletor
- *  era a unica coisa dizendo se aquele documento veio antes ou depois da
- *  reuniao. Preencher a agenda em dois instantes diferentes obrigava a rolar
- *  ate a mesma lista e escolher o momento certo, sem nada por perto para
- *  lembrar qual era.
+ *  Uma lista so, com um seletor de momento em cada linha, poria numa caixa
+ *  unica o que se leva e o que se traz — e quem preenche a agenda em dois
+ *  instantes diferentes ficaria sem nada por perto que lembrasse qual e qual.
  *
  *  Sao os MESMOS tres valores do banco: a divisao e de tela, e nao inventa
  *  vocabulario nenhum.

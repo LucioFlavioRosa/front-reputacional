@@ -1,10 +1,8 @@
 /** A aba "Depois da reunião": o que só existe quando o encontro já houve.
  *
- *  SAIU DO COMPONENTE DE 921 LINHAS. A aba já era uma fronteira de verdade —
- *  quem preenche isto está num dia diferente de quem marcou a agenda —, e o que
- *  ela precisa saber cabe em cinco entradas. Enquanto morava dentro do
- *  formulário, essa fronteira existia só na tela: no código, os campos de antes
- *  e os de depois eram vizinhos de linha.
+ *  UMA FRONTEIRA DE VERDADE, e não só uma aba: quem preenche isto está num
+ *  dia diferente de quem marcou a agenda. Por isso mora em arquivo próprio, e
+ *  não misturada de linha com os campos de antes.
  *
  *  RECEBE `form` E `definirForm`, e não um punhado de campos soltos. Passar
  *  relato, encaminhamentos, pendências, observações, clima, resultado e
@@ -55,12 +53,11 @@ export function DepoisDaReuniao({
               />
             </Campo>
           ))}
-          {/* "POSICIONAMENTO DA COMPANHIA" E "REGISTRO / DOCUMENTACAO" SAIRAM.
-              O registro apontava para um link solto, e materiais agora tem
-              secao propria, com upload e momento — o campo virou a terceira
-              forma de guardar documento, sem dizer se e de antes ou de depois.
-              Os dois continuam no banco: o que ja foi preenchido segue la, e a
-              ficha continua mostrando. */}
+          {/* "POSICIONAMENTO DA COMPANHIA" E "REGISTRO / DOCUMENTACAO" NAO
+              SE PREENCHEM AQUI. Documento tem secao propria, com upload e
+              momento; um link solto neste bloco seria uma terceira forma de
+              guardar arquivo, sem dizer se e de antes ou de depois. As duas
+              colunas continuam no banco, e a ficha mostra o que ja tem. */}
         </div>
       </Secao>
 
@@ -75,8 +72,6 @@ export function DepoisDaReuniao({
           reunião foi. */}
       <Secao titulo="Desfecho da agenda">
         <Cartao>
-          {/* "Depois da reunião." saiu daqui: a aba acima passou a dizer isso,
-              e o cartão repetia a mesma frase a dois centímetros dela. */}
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Clima"

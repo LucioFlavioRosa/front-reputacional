@@ -11,12 +11,10 @@
  *  dicionário do banco aparece aqui na próxima carga da tela, sem build e sem
  *  deploy.
  *
- *  Isso já foi diferente, e o preço apareceu: as opções de relevância estavam
- *  escritas aqui como Tier 1, 2 e 3; o schema tinha `check between 1 and 3`; e
- *  o domínio Python tinha `not in (1, 2, 3)` em DOIS módulos. Quatro cópias da
- *  mesma lista. Registrar um Tier 4 era impossível, e nenhuma das quatro dizia
- *  por quê — a quarta só apareceu quando as outras três já tinham sido
- *  corrigidas e o erro continuou saindo igual.
+ *  O preço de copiar a lista é alto: escrever as relevâncias aqui como Tier 1,
+ *  2 e 3, com `check between 1 and 3` no schema e `not in (1, 2, 3)` em dois
+ *  módulos Python, faz de um Tier novo uma caça a quatro cópias — e nenhuma
+ *  delas diz por que o valor foi recusado.
  *
  *  As duas exceções são deliberadas, e nenhuma é vocabulário: a BUSCA LIVRE, que
  *  é texto digitado, e o PERÍODO, que são atalhos de intervalo de datas

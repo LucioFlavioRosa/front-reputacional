@@ -1,14 +1,12 @@
 /** O recorte agrupado por qualquer eixo.
  *
- *  POR QUE ISTO EXISTE
- *  -------------------
- *  Havia cinco telas — Frentes, Status, Resultado, Porta-vozes, Interlocutores
- *  — lendo o MESMO recorte e girando-o num eixo diferente. Cada uma repetia a
- *  contagem à mão, e nenhuma respondia nada de ponta a ponta: para saber se a
- *  agenda de imprensa Tier 1 de agosto acabou bem, era preciso passar por três.
- *
- *  Aqui a contagem é uma só e o eixo é parâmetro. As cinco telas viram um
- *  seletor.
+ *  UMA CONTAGEM SÓ, E O EIXO É PARÂMETRO
+ *  -------------------------------------
+ *  Frente, situação, resultado, porta-voz e interlocutor são cinco leituras do
+ *  MESMO recorte. Uma tela por eixo repetiria a soma cinco vezes e ainda assim
+ *  não responderia nada de ponta a ponta: saber se a agenda de imprensa Tier 1
+ *  de agosto acabou bem exigiria passar por três delas. Aqui a conta é uma, e
+ *  o eixo é um seletor.
  *
  *  AS MESMAS QUATRO MEDIDAS EM TODO EIXO. Volume, Tier 1, em aberto e taxa de
  *  avanço respondem, juntas, "quanto", "quão importante", "quanto ficou pelo
@@ -66,9 +64,9 @@ export function agrupar(
 
     atual.total += 1;
     if (i.tier === 1) atual.tier1 += 1;
-    // EM ABERTO É O QUE NÃO ACONTECEU E NÃO FOI NEGADO. Antes era o grupo
-    // `aberto` do status; com três situações, "aceito" também é `aberto`, e a
-    // conta passaria a incluir toda agenda que já houve.
+    // EM ABERTO É O QUE NÃO ACONTECEU E NÃO FOI NEGADO — e não o grupo
+    // `aberto` do status: "aceito" também é `aberto`, e contar por ali
+    // incluiria toda agenda que já houve.
     if (!jaAconteceu(i) && i.status !== 'declinado') atual.emAberto += 1;
     if (i.clima === 'tenso') atual.tenso += 1;
     if (i.resultado && i.resultado !== 'sem_definicao') {
@@ -171,25 +169,19 @@ function corDoResultado(codigo: string): string | undefined {
 
 /** A agenda já aconteceu?
  *
- *  VEM DO RELATO, e não do status. A situação passou a ter três valores —
- *  Solicitado, Aceito, Negado — e nenhum deles diz se a reunião houve: "aceito"
- *  é a resposta ao pedido, não o fato.
+ *  VEM DO RELATO, e não da situação. As três situações — Solicitado, Aceito,
+ *  Negado — respondem ao PEDIDO, e nenhuma delas diz se a reunião houve:
+ *  "aceito" é a resposta, não o fato.
  *
- *  MEDIDO na base ao fazer a troca: as 208 agendas que estavam como atendida,
- *  realizada ou elaborada tinham relato, todas as 208; e nenhuma solicitada ou
- *  aceita tinha. Não é coincidência — só se escreve o relato de uma reunião que
- *  houve.
- *
- *  É um marcador melhor do que o status era, porque não depende de alguém
- *  lembrar de mudar um campo depois da reunião: ele aparece quando a pessoa
- *  escreve o que aconteceu, que é o gesto que ela já faz.
+ *  O relato é o marcador certo porque não depende de alguém lembrar de mudar
+ *  um campo depois da reunião: ele aparece quando a pessoa escreve o que
+ *  aconteceu, que é o gesto que ela já faz. Só se escreve o relato de uma
+ *  reunião que houve.
  *
  *  EXIGE AS DUAS COISAS: relato escrito E situação `Aceito`. A negada fica de
  *  fora mesmo tendo relato — o texto ali conta a recusa, e recusa não é
  *  reunião. A solicitada também: um pedido sem resposta não produziu reunião,
  *  e se tem relato é inconsistência do registro, não um fato a propagar.
- *
- *  Medido: 9 registros da amostra de handoff estão exatamente assim.
  */
 export function jaAconteceu(interacao: Interacao): boolean {
   return interacao.status === 'confirmada' && Boolean((interacao.relato ?? '').trim());
@@ -285,13 +277,14 @@ export function porMes(interacoes: Interacao[]): Mes[] {
 
 /** Onde começa o trecho mais recente da série.
  *
- *  MEDIDO: a base tem uma agenda de janeiro de 2025, de propósito, e todo o
- *  resto em 2026. A série ia de 01/25 a 09/26 com doze colunas vazias no meio
- *  — metade do gráfico gasta com nada, e o mês cheio espremido no canto.
+ *  UMA AGENDA ANTIGA E SOLTA NÃO PODE ESTICAR O GRÁFICO. Com um registro em
+ *  janeiro de 2025 e o resto em 2026, a série iria de 01/25 a 09/26 com doze
+ *  colunas vazias no meio — metade do gráfico gasta com nada, e o mês cheio
+ *  espremido no canto.
  *
- *  Cortar por quantidade não resolvia: o buraco é no MEIO, e qualquer teto de
- *  meses ainda deixava parte dele. O que resolve é reconhecer que a série
- *  recomeçou depois do último intervalo longo.
+ *  Cortar por quantidade não resolve: o buraco é no MEIO, e qualquer teto de
+ *  meses ainda deixa parte dele. O que resolve é reconhecer que a série
+ *  recomeça depois do último intervalo longo.
  */
 function inicioDoTrechoCorrente(meses: Mes[]): number {
   let vazios = 0;

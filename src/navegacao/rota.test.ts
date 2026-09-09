@@ -118,7 +118,7 @@ describe('o eixo de Explorar', () => {
 
 describe('o nome da tela para a telemetria', () => {
   it('distingue o que está aberto por cima', () => {
-    // Antes, TODO erro era reportado como se fosse no Painel, porque o nome
+    // Pelo hash, TODO erro seria reportado como se fosse no Painel, porque o nome
     // vinha de `window.location.hash` — que nada escrevia.
     expect(nomeDaTela({ destino: 'base' })).toBe('base');
     expect(nomeDaTela({ destino: 'base', agenda: 'x', sobre: 'cadeia' })).toBe(

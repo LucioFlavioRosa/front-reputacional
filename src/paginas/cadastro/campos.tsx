@@ -1,9 +1,7 @@
 /** Dois campos que o formulário repete dezenas de vezes.
  *
- *  SAIU DE `Cadastro.tsx`, que tinha 2.572 linhas e um componente de 921 — o
- *  arquivo em que eu mais errei nesta base, e por um motivo: nada cabia na
- *  cabeça de uma vez. Este pedaço já era auto-contido; só não tinha porta
- *  própria.
+ *  Ficam FORA de `Cadastro.tsx`: são auto-contidos, e a tela do formulário
+ *  já é longa o bastante sem eles.
  */
 
 import { Campo, estiloDeEntrada } from '@/componentes/basicos';

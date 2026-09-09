@@ -96,13 +96,13 @@ export function derivadasForaDaJanela(no: NoDoGrafo, arestas: ArestaDoGrafo[]): 
  *  real — ficam de fora, e a tela diz quantas são: sem esse número, o grafo
  *  pareceria representar tudo o que existe.
  *
- *  ANTES ELA OLHAVA SÓ A JANELA, e o efeito medido era este: uma agenda cuja
- *  única descendente ficou fora do recorte não entrava, e o modal aberto pela
- *  marca da Base respondia "a cadeia desta agenda está fora do recorte" — para
- *  uma agenda que a mesma tela acabara de marcar como parte de uma cadeia.
- *  Duas telas dizendo coisas opostas sobre o mesmo registro.
+ *  E OLHA ALÉM DA JANELA. Uma agenda cuja única descendente ficou fora do
+ *  recorte precisa entrar assim mesmo: olhando só a janela, o modal aberto
+ *  pela marca da Base responderia "a cadeia desta agenda está fora do recorte"
+ *  para uma agenda que a mesma tela acabou de marcar como parte de uma cadeia
+ *  — duas telas dizendo coisas opostas sobre o mesmo registro.
  *
- *  Agora ela entra sozinha, e o `⋯` ao lado do nó diz de que lado a história
+ *  Ela entra sozinha, e o `⋯` ao lado do nó diz de que lado a história
  *  continua. Um nó só é mais honesto do que nenhum.
  */
 function comLinhagem(interacoes: Interacao[]): Interacao[] {

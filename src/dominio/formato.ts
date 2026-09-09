@@ -108,9 +108,9 @@ export function urlSegura(valor: string | null | undefined): string | null {
   if (!valor) return null;
   try {
     // Sem URL de base de propósito: `registro_url` é sempre um endereço
-    // absoluto (SharePoint, em geral). Passar `window.location.origin` como
-    // base amarrava a função ao navegador — fora dele ela recusava tudo,
-    // inclusive endereços legítimos.
+    // absoluto. Passar `window.location.origin` como base amarraria a função
+    // ao navegador — fora dele ela recusaria tudo, inclusive endereços
+    // legítimos.
     const url = new URL(valor.trim());
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
   } catch {
@@ -133,13 +133,10 @@ export function urlSegura(valor: string | null | undefined): string | null {
  *  Só normaliza o espaço. A largura é problema do CSS, e é lá que ele está
  *  resolvido — `max-width` mais reticência no `span` da pastilha.
  *
- *  ESTA FUNÇÃO JÁ CORTOU, e cortar era pior. A primeira versão devolvia o
- *  primeiro nome, e "CRM · leitura" e "CRM · edição" viravam ambos "CRM" — o
- *  controle que existe para dizer quem está logado escondia exatamente isso.
- *  A segunda cortava acima de 20 caracteres, número escolhido porque
- *  "Plataforma · edição" tem 19: era ajustar a regra ao dado que eu tinha na
- *  mão. Com nomes reais do Entra ID ela reaparece pelo avesso — "Ana Paula
- *  Rodrigues Lima" viraria "Ana", enquanto "Ana Paula Rodrig…" cabe e
+ *  E O CORTE NÃO É NO CÓDIGO. Devolver só o primeiro nome faria "CRM ·
+ *  leitura" e "CRM · edição" virarem ambos "CRM" — o controle que existe para
+ *  dizer quem está logado esconderia exatamente isso —, e "Ana Paula Rodrigues
+ *  Lima" viraria "Ana". O CSS resolve melhor: "Ana Paula Rodrig…" cabe e ainda
  *  distingue Ana Paula de Ana Carolina.
  *
  *  Reticência informa mais que amputação, e não precisa de um limite mágico.
@@ -158,10 +155,10 @@ export function iniciais(nome: string): string {
 
 /** Como esta agenda se chama numa lista.
  *
- *  UM LUGAR SO, e nao um ternario em cada tela. A pauta deixou de ser
- *  obrigatoria, e ela aparece na Base, na exportacao, em Frentes
- *  em Status e na escolha de agenda de origem — seis lugares que, resolvendo
- *  cada um por si, divergiriam. Ja aconteceu tres vezes neste projeto.
+ *  UM LUGAR SO, e nao um ternario em cada tela. A pauta e opcional, e o nome
+ *  da agenda aparece na Base, na exportacao, em Frentes, em Status e na
+ *  escolha de agenda de origem — cinco lugares que, resolvidos cada um por si,
+ *  divergem.
  *
  *  A ordem do fallback vai do mais especifico ao mais generico: a pauta, quando
  *  existe, e o que alguem escreveu de proprio punho sobre aquela agenda; os

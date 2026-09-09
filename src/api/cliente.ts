@@ -242,11 +242,11 @@ export function entrarPorSenha(email: string, senha: string): Promise<void> {
  * o servidor, no `Set-Cookie` da resposta. Por isso sair é uma CHAMADA, e não
  * uma linha de `document.cookie`.
  *
- * LEVANTA se falhar, e a primeira versão não levantava — engolia a exceção e
- * recarregava a página de qualquer jeito. Parecia defensivo e era o contrário:
- * medido, um logout com token anti-CSRF vencido devolve 403 e a SESSÃO
- * SOBREVIVE. A pessoa clicava em Sair, a página recarregava, e ela voltava
- * logada sem nenhum sinal de que não tinha saído.
+ * LEVANTA se falhar, em vez de recarregar a página de qualquer jeito. Engolir
+ * a exceção pareceria defensivo e seria o contrário: um logout com token
+ * anti-CSRF vencido devolve 403 e a SESSÃO SOBREVIVE. A pessoa clicaria em
+ * Sair, a página recarregaria, e ela voltaria logada sem nenhum sinal de que
+ * não tinha saído.
  *
  * Achar que saiu e não ter saído é pior do que ver um erro — especialmente num
  * computador compartilhado, que é justamente quando alguém clica em Sair.
@@ -591,8 +591,7 @@ export function listarReferencias(): Promise<Referencia[]> {
  * Cadastra a referência COM a primeira versão, numa requisição só.
  *
  * Multipart, e não JSON: o arquivo é obrigatório. Uma referência sem ele é um
- * título que não leva a lugar nenhum — e era o que sobrava quando o acervo
- * morava no SharePoint e o painel guardava só o link.
+ * título que não leva a lugar nenhum.
  */
 export function criarReferencia(
   metadados: {

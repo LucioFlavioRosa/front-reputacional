@@ -20,32 +20,25 @@ import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import type { Destino } from '@/navegacao/rota';
 
-//: CINCO DESTINOS, E NAO OITO.
+//: CINCO DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
 //:
-//: Eram oito, e cinco deliam a MESMA tabela com um pivo diferente — Painel,
-//: Frentes, Status, Resultado, Porta-vozes, Interlocutores. Nenhuma respondia
-//: nada de ponta a ponta: para saber se a agenda de imprensa Tier 1 de agosto
-//: acabou bem, era preciso passar por tres, e a memoria de quem lia virava
-//: parte da interface.
-//:
-//: O criterio mudou: sai "por qual eixo voce quer olhar" e entra "o que voce
-//: veio fazer". As cinco viraram o seletor de eixo de Explorar.
-//:
-//: O PAINEL VOLTOU, e a primeira versao desta reorganizacao errou ao tira-lo.
-//: Os quatro destinos respondiam "o que precisa de mim", "quero aprofundar",
-//: "quero o registro" e "quero contar a historia" — e nenhum respondia "com o
-//: que este recorte se parece". Panorama e aprofundamento sao perguntas
-//: diferentes: o primeiro se olha de uma vez, sem escolher eixo nenhum, e e
-//: onde moram o mapa e as series no tempo que Explorar nao repoe.
+//: O criterio nao e "por qual eixo voce quer olhar", e sim "o que voce veio
+//: fazer". Frente, situacao, resultado, porta-voz e interlocutor sao eixos da
+//: MESMA tabela: moram no seletor de Explorar, e nao em cinco destinos que
+//: obrigariam a passar por tres telas para saber se a agenda de imprensa
+//: Tier 1 de agosto acabou bem.
 //:
 //: O PAINEL E O PRIMEIRO. Ele responde "como estamos" — a pergunta que a
-//: lideranca faz ao abrir, e a que da contexto para todas as outras. A
-//: Situacao vem logo depois, e responde "o que precisa de mim hoje": e a tela
-//: de quem opera, e ela se le melhor depois de saber o tamanho do todo.
+//: lideranca faz ao abrir, e a que da contexto para todas as outras. Panorama
+//: e aprofundamento sao perguntas diferentes: o painel se olha de uma vez, sem
+//: escolher eixo nenhum, e e onde moram o mapa e as series no tempo que
+//: Explorar nao repoe.
 //:
-//: A CADEIA nao esta aqui pelo mesmo motivo: ela foi uma aba por um dia, e
-//: como destino obrigava a escolher QUAL cadeia antes de poder olhar. Mora na
-//: linha da Base, que e onde a pergunta nasce.
+//: A SITUACAO VEM LOGO DEPOIS, e responde "o que precisa de mim hoje": e a
+//: tela de quem opera, e ela se le melhor depois de saber o tamanho do todo.
+//:
+//: A CADEIA NAO E UM DESTINO: como aba, obrigaria a escolher QUAL cadeia antes
+//: de poder olhar. Mora na linha da Base, que e onde a pergunta nasce.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'situacao', rotulo: 'Situação' },
@@ -114,12 +107,11 @@ export function Layout({
   //  Aqui a pergunta "estou na capa?" tem uma resposta só.
   const naCapa = view === 'inicio';
 
-  //: O RECORTE SOBREVIVE A TROCA DE TELA, e agora de propósito.
+  //: O RECORTE SOBREVIVE A TROCA DE TELA, e de propósito.
   //:
-  //: Antes, entrar no Painel limpava o recorte — o que fazia sentido quando
-  //: ele era "o ponto de partida". Com quatro destinos que respondem perguntas
-  //: diferentes sobre O MESMO recorte, limpar ao navegar seria perder o
-  //: contexto no meio da leitura. Quem quer limpar tem o botão na barra.
+  //: Os destinos respondem perguntas diferentes sobre O MESMO recorte: limpar
+  //: ao navegar seria perder o contexto no meio da leitura. Quem quer limpar
+  //: tem o botão na barra.
   const navegar = irPara;
 
   return (
@@ -258,11 +250,10 @@ export function Layout({
           </div>
         </div>
 
-        {/* `view !== 'inicio'` saiu daqui, e não por estilo: com o
-            cabeçalho inteiro fora da capa, o TypeScript passou a provar que
-            `view` nunca é `'inicio'` neste ponto, e acusou a comparação
-            impossível. Uma condição que não pode ser falsa é uma regra que
-            parece existir e não existe. */}
+        {/* SEM `view !== 'inicio'` AQUI: fora da capa o cabeçalho é
+            inteiro, e o TypeScript prova que `view` nunca é `'inicio'` neste
+            ponto. Uma condição que não pode ser falsa é uma regra que parece
+            existir e não existe. */}
         {/* O RECORTE SAIU DA GAVETA. Ver `BarraDeRecorte`. */}
         {view !== 'cadastro' ? (
           <div

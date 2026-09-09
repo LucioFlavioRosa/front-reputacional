@@ -26,8 +26,8 @@ interface Props {
    *  volta a mesma tela quebrada. Fica-se preso num laço.
    *
    *  Nas telas internas isso não acontece, porque o cabeçalho fica FORA do
-   *  limite e a navegação sobrevive à falha. É o que este limite promete, e
-   *  a capa era o único lugar onde a promessa não se cumpria.
+   *  limite e a navegação sobrevive à falha. Na capa não há cabeçalho, e por
+   *  isso a saída precisa vir daqui.
    */
   saida?: { rotulo: string; aoAcionar: () => void };
 
@@ -55,9 +55,9 @@ export class LimiteDeErro extends Component<Props, Estado> {
       // Diz em qual componente quebrou — é o que transforma "TypeError:
       // undefined" em algo localizável no código.
       pilhaDeComponentes: info.componentStack ?? '',
-      // DO CAMINHO, e não do hash. Ninguém nunca escreveu hash nesta
-      // aplicação: TODO erro capturado aqui era reportado como se tivesse
-      // acontecido no Painel. Agora as telas têm endereço.
+      // DO CAMINHO, e não do hash. Ninguém escreve hash nesta aplicação, e
+      // por ele todo erro seria reportado como se tivesse acontecido no
+      // Painel.
       view: window.location.pathname || '/',
     });
   }

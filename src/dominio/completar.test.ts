@@ -52,4 +52,43 @@ describe('escolhaAoFechar', () => {
     const comVazio = [{ valor: '', rotulo: 'Não informado' }, ...OPCOES];
     expect(escolhaAoFechar(comVazio, 'bloomberg')?.valor).toBe('a');
   });
+
+  // O NOME CURTO DE UMA FAMÍLIA DE NOMES. "Bloomberg" filtra duas opções
+  // porque "Bloomberg Línea" também contém o termo — e ainda assim quem
+  // digitou o nome inteiro escolheu aquele. Sem esta regra, a tela mostra
+  // "Bloomberg" e o formulário grava o que estava antes.
+  it('o nome exato ganha de quem só o contém', () => {
+    const familia = [
+      { valor: 'a', rotulo: 'Bloomberg' },
+      { valor: 'b', rotulo: 'Bloomberg Línea' },
+    ];
+    expect(escolhaAoFechar(familia, 'bloomberg')?.valor).toBe('a');
+    expect(escolhaAoFechar(familia, 'Bloomberg Linea')?.valor).toBe('b');
+  });
+
+  it('parcial ambíguo continua sem escolher', () => {
+    const familia = [
+      { valor: 'a', rotulo: 'Bloomberg' },
+      { valor: 'b', rotulo: 'Bloomberg Línea' },
+    ];
+    expect(escolhaAoFechar(familia, 'bloom')).toBeNull();
+  });
+});
+
+describe('apagar o texto e sair', () => {
+  it('limpa o campo opcional quando a pessoa apagou', () => {
+    const escolha = escolhaAoFechar(OPCOES, '', { digitou: true });
+    expect(escolha).not.toBeNull();
+    expect(escolha?.valor).toBe('');
+  });
+
+  it('não limpa quando ninguém tocou no texto', () => {
+    expect(escolhaAoFechar(OPCOES, '', { digitou: false })).toBeNull();
+  });
+
+  it('não limpa campo obrigatório', () => {
+    expect(
+      escolhaAoFechar(OPCOES, '', { digitou: true, obrigatorio: true }),
+    ).toBeNull();
+  });
 });

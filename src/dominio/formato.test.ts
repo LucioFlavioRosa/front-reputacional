@@ -105,9 +105,9 @@ describe('urlSegura', () => {
 });
 
 describe('como a agenda se chama numa lista', () => {
-  // A pauta deixou de ser obrigatória, e ela aparece em SEIS telas. Resolver o
-  // fallback em cada uma faria as seis divergirem — já aconteceu três vezes
-  // neste projeto com outras duas verdades.
+  // A pauta é opcional, e o nome da agenda aparece em CINCO telas. Resolver o
+  // fallback em cada uma faz as cinco divergirem — por isso a regra é uma só,
+  // e é aqui que ela se prova.
   const temas = (ids: number[]) =>
     ids.map((id) => ({ 1: 'Reajuste tarifário', 2: 'Outorga' })[id] ?? '');
 
