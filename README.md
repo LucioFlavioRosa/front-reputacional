@@ -5,7 +5,18 @@ compilado num pacote estático que o nginx entrega. Não há Node em produção.
 
 A API é o [`back-reputacional`](https://github.com/LucioFlavioRosa/back-reputacional).
 
-## Subindo em 3 passos
+## Só quero VER o produto rodando
+
+Não é aqui. A pilha inteira — este front, a API, o Postgres e o emulador de
+Blob — sobe com um `docker compose` do lado da API, sem instalar Node nem
+Python. As instruções, as contas de acesso e o porquê de não existir dump do
+banco estão no README do
+[`back-reputacional`](https://github.com/LucioFlavioRosa/back-reputacional#rodando-a-pilha-inteira-com-docker).
+
+Clone os dois repositórios **lado a lado**: o build do front é acionado de lá,
+por caminho relativo.
+
+## Desenvolvendo o front, em 3 passos
 
 ```bash
 npm install
