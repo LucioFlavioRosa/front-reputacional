@@ -24,27 +24,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { Campo, estiloDeEntrada } from '@/componentes/basicos';
+import { escolhaAoFechar, filtrar, type Opcao } from '@/dominio/completar';
 
-export interface Opcao {
-  valor: string;
-  rotulo: string;
-  /** Uma linha extra na sugestão — o nome por extenso, o cargo, a frente. */
-  detalhe?: string;
-}
-
-/** Sem acento, em minúsculas. A mesma normalização que o backend usa para
- *  deduplicar nome: assim "Radames" encontra "Radamés".
- *
- *  A faixa é a dos sinais diacríticos que o `NFD` separa da letra, escrita em
- *  escapes e não com os caracteres literais: eles são INVISÍVEIS no editor, e
- *  um intervalo que ninguém enxerga é um intervalo que ninguém confere. */
-function normalizar(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
+export type { Opcao };
 
 export function CampoQueCompleta({
   rotulo,
@@ -83,18 +65,39 @@ export function CampoQueCompleta({
   const texto = aberto ? busca : (escolhida?.rotulo ?? '');
 
   const lista = useMemo(() => {
-    const semVazio = opcoes;
     const comVazio = obrigatorio
-      ? semVazio
-      : [{ valor: '', rotulo: vazio } as Opcao, ...semVazio];
-    const termo = normalizar(busca);
-    if (!aberto || !termo) return comVazio;
-    return comVazio.filter(
-      (o) =>
-        normalizar(o.rotulo).includes(termo) ||
-        normalizar(o.detalhe ?? '').includes(termo),
-    );
+      ? opcoes
+      : [{ valor: '', rotulo: vazio } as Opcao, ...opcoes];
+    return aberto ? filtrar(comVazio, busca) : comVazio;
   }, [opcoes, busca, aberto, obrigatorio, vazio]);
+
+  const escolher = (opcao: Opcao) => {
+    aoEscolher(opcao.valor);
+    definirAberto(false);
+    definirBusca('');
+  };
+
+  /** Fecha a lista commitando o que a pessoa digitou, quando é inequívoco, e
+   *  descartando o texto quando não é. A regra e o porquê estão em
+   *  `escolhaAoFechar`. */
+  const fechar = () => {
+    const inequivoca = escolhaAoFechar(opcoes, busca);
+    if (inequivoca) {
+      escolher(inequivoca);
+      return;
+    }
+    definirAberto(false);
+    definirBusca('');
+  };
+
+  // O OUVINTE PRECISA DO `fechar` MAIS NOVO — o que enxerga o texto já digitado
+  // —, mas `fechar` nasce a cada render. Guardá-lo numa ref deixa o ouvinte ser
+  // assinado UMA VEZ, enquanto a lista está aberta, e ainda assim rodar sempre
+  // a versão atual.
+  const fecharAtual = useRef(fechar);
+  useEffect(() => {
+    fecharAtual.current = fechar;
+  });
 
   useEffect(() => {
     if (!aberto) return;
@@ -102,17 +105,11 @@ export function CampoQueCompleta({
     // acontece depois do `blur`, e fechar no `blur` mataria a lista antes de o
     // clique chegar nela.
     const aoClicarFora = (evento: MouseEvent) => {
-      if (!caixa.current?.contains(evento.target as Node)) definirAberto(false);
+      if (!caixa.current?.contains(evento.target as Node)) fecharAtual.current();
     };
     document.addEventListener('mousedown', aoClicarFora);
     return () => document.removeEventListener('mousedown', aoClicarFora);
   }, [aberto]);
-
-  const escolher = (opcao: Opcao) => {
-    aoEscolher(opcao.valor);
-    definirAberto(false);
-    definirBusca('');
-  };
 
   const abrir = () => {
     definirAberto(true);
@@ -154,11 +151,17 @@ export function CampoQueCompleta({
           }
           if (evento.key === 'Escape' && aberto) {
             evento.preventDefault();
-            // DEVOLVE O QUE ESTAVA. Escape num campo de planilha desfaz a
-            // digitação; fechar mantendo o texto filtrado deixaria a tela
-            // mostrando uma coisa e guardando outra.
+            // DEVOLVE O QUE ESTAVA, e não commita como o `fechar` faz: Escape
+            // num campo de planilha DESFAZ a digitação. É a saída de quem
+            // começou a digitar e mudou de ideia.
             definirAberto(false);
             definirBusca('');
+          }
+          if (evento.key === 'Tab' && aberto) {
+            // TAB CONFIRMA, como na planilha. Sem isto, quem digita o nome
+            // inteiro e tabula para o campo seguinte deixa para trás o valor
+            // anterior — com a tela tendo mostrado o novo.
+            fechar();
           }
         }}
       />
