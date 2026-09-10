@@ -1,3 +1,14 @@
+# O QUE NÃO É A APLICAÇÃO.
+#
+# Fora do que a imagem precisa, cada arquivo aqui é contexto transferido à toa
+# — e `.claude/skills/` são junções do Windows, que o tar do Docker não sabe
+# representar: o build falha em "unknown file mode" antes de rodar um passo.
+.git/
+.github/
+.claude/
+.agents/
+test-results/
+Claude outputs/
 node_modules/
 dist/
 .env

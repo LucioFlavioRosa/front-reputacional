@@ -43,7 +43,33 @@ RUN npm run build
 FROM nginx:1.27-alpine AS servidor
 
 COPY --from=construcao /construcao/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# EM `templates/`, E NÃO EM `conf.d/`: a imagem oficial do nginx roda o
+# `envsubst` sobre tudo o que estiver aqui na hora de subir, e é assim que
+# `${API_UPSTREAM}` — o endereço interno do back, que só existe em tempo de
+# execução — entra na configuração.
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# SÓ `API_UPSTREAM` É SUBSTITUÍDO. Sem o filtro, o `envsubst` trocaria também
+# `$host`, `$uri` e `$proxy_add_x_forwarded_for` por vazio caso existisse
+# variável de ambiente com esse nome — e a configuração encaminharia para lugar
+# nenhum, sem erro no build.
+ENV NGINX_ENVSUBST_FILTER=^API_UPSTREAM$
+
+# O PADRÃO É O DA PILHA LOCAL, onde a API é o serviço `api` do compose. Sem um
+# valor, o `envsubst` deixaria `${API_UPSTREAM}` literal e o nginx recusaria
+# subir — a imagem tem de funcionar fora do Azure também.
+ENV API_UPSTREAM=http://api:8000
+
+# VARIÁVEL VAZIA NÃO É VARIÁVEL AUSENTE, e o `ENV` acima só cobre a segunda.
+# Com `API_UPSTREAM=` explícito — um valor que o Terraform pode injetar por
+# engano — o `envsubst` produz `proxy_pass ;` e o nginx morre no arranque com
+# "invalid number of arguments", que não diz nada sobre a causa.
+#
+# Recusar é certo; recusar DIZENDO O QUE FALTA é o que separa dez minutos de
+# investigação de dez segundos. O script roda antes do `20-envsubst-…` da
+# imagem oficial, e o entrypoint dela aborta quando um deles falha.
+RUN printf '#!/bin/sh\nif [ -z "$API_UPSTREAM" ]; then\n  echo "API_UPSTREAM esta vazio: o nginx nao tem para onde encaminhar /api." >&2\n  echo "Defina o endereco interno do back, como http://ca-back-xxx.internal.<regiao>.azurecontainerapps.io" >&2\n  exit 1\nfi\n' > /docker-entrypoint.d/15-conferir-api-upstream.sh \
+ && chmod +x /docker-entrypoint.d/15-conferir-api-upstream.sh
 
 # A CSP tem de permitir EXATAMENTE o endereço para o qual o bundle foi
 # compilado. `ARG` não atravessa estágio, então ele é redeclarado aqui.
@@ -98,7 +124,7 @@ RUN TELEMETRIA=""; \
         echo "CSP: connection string sem IngestionEndpoint/LiveEndpoint"; exit 1; \
     fi; \
     echo "connect-src extra: '$TELEMETRIA'" \
- && sed -i "s|__CONNECT_SRC__|'self' ${VITE_API_URL}${TELEMETRIA}|g" /etc/nginx/conf.d/default.conf \
+ && sed -i "s|__CONNECT_SRC__|'self' ${VITE_API_URL}${TELEMETRIA}|g" /etc/nginx/templates/default.conf.template \
  && case "$HSTS" in \
         on)          IDADE=31536000 ;; \
         ""|off)      IDADE= ;; \
@@ -106,14 +132,18 @@ RUN TELEMETRIA=""; \
         *)           IDADE="$HSTS" ;; \
     esac; \
     if [ -n "$IDADE" ]; then \
-        sed -i "s|__HSTS__|add_header Strict-Transport-Security \"max-age=${IDADE}; includeSubDomains\" always;|g" /etc/nginx/conf.d/default.conf; \
+        sed -i "s|__HSTS__|add_header Strict-Transport-Security \"max-age=${IDADE}; includeSubDomains\" always;|g" /etc/nginx/templates/default.conf.template; \
     else \
-        sed -i '/__HSTS__/d' /etc/nginx/conf.d/default.conf; \
+        sed -i '/__HSTS__/d' /etc/nginx/templates/default.conf.template; \
     fi \
- && if grep -qE "__CONNECT_SRC__|__HSTS__" /etc/nginx/conf.d/default.conf; then \
+ && if grep -qE "__CONNECT_SRC__|__HSTS__" /etc/nginx/templates/default.conf.template; then \
         echo "nginx.conf: marcador nao substituido"; exit 1; \
     fi \
- && nginx -t
+ && API_UPSTREAM=http://127.0.0.1:8000 \
+    envsubst '${API_UPSTREAM}' < /etc/nginx/templates/default.conf.template \
+    > /etc/nginx/conf.d/default.conf \
+ && nginx -t \
+ && rm /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
