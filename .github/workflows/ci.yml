@@ -124,7 +124,11 @@ jobs:
       - name: A imagem sobe e serve a página
         run: |
           set -euo pipefail
-          docker run -d --name web -p 8080:80 front-reputacional:ci >/dev/null
+          # `API_UPSTREAM` PRECISA RESOLVER: o nginx resolve o nome do upstream
+          # no arranque, e um nome que não resolve mata o contêiner antes de a
+          # primeira requisição chegar. `127.0.0.1` resolve em qualquer lugar e
+          # não tem ninguém escutando — que é o que o passo `/api` abaixo usa.
+          docker run -d --name web -p 8080:80             -e API_UPSTREAM=http://127.0.0.1:8000 front-reputacional:ci >/dev/null
 
           for _ in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8080/ >/dev/null 2>&1 && break
@@ -161,6 +165,33 @@ jobs:
             echo "::error::HSTS presente sem ninguem ter pedido"
             exit 1
           fi
+
+          # `/api` PRECISA SAIR DA APLICACAO. Sem o `location`, o caminho cai no
+          # `try_files` e devolve o `index.html` com 200 — o painel receberia
+          # HTML onde espera JSON, e o erro apareceria como "resposta invalida"
+          # no navegador, longe daqui. Com o upstream morto, 502 e a prova de
+          # que o encaminhamento existe.
+          echo "- /api encaminha, e nao cai no index.html"
+          codigo=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/api/saude)
+          echo "  /api/saude -> $codigo"
+          case "$codigo" in
+            502|504) ;;
+            200) echo "::error::/api devolveu 200: o proxy nao existe e o SPA respondeu"; exit 1 ;;
+            *)   echo "::error::/api devolveu $codigo, e nao o erro de upstream morto"; exit 1 ;;
+          esac
+
+      # A guarda existe para o erro ser legivel. Se ela parar de barrar, o
+      # sintoma volta a ser o "invalid number of arguments" do nginx, que nao
+      # menciona a variavel.
+      - name: A imagem recusa subir sem upstream, dizendo o que falta
+        run: |
+          set -euo pipefail
+          saida=$(docker run --rm -e API_UPSTREAM= front-reputacional:ci 2>&1 || true)
+          echo "$saida" | tail -3
+          case "$saida" in
+            *API_UPSTREAM*) ;;
+            *) echo "::error::a recusa nao menciona API_UPSTREAM"; exit 1 ;;
+          esac
 
       - name: Log do nginx em caso de falha
         if: failure()

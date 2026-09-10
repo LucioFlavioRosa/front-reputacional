@@ -68,7 +68,7 @@ ENV API_UPSTREAM=http://api:8000
 # Recusar é certo; recusar DIZENDO O QUE FALTA é o que separa dez minutos de
 # investigação de dez segundos. O script roda antes do `20-envsubst-…` da
 # imagem oficial, e o entrypoint dela aborta quando um deles falha.
-RUN printf '#!/bin/sh\nif [ -z "$API_UPSTREAM" ]; then\n  echo "API_UPSTREAM esta vazio: o nginx nao tem para onde encaminhar /api." >&2\n  echo "Defina o endereco interno do back, como http://ca-back-xxx.internal.<regiao>.azurecontainerapps.io" >&2\n  exit 1\nfi\n' > /docker-entrypoint.d/15-conferir-api-upstream.sh \
+RUN printf '#!/bin/sh\nif [ -z "$API_UPSTREAM" ]; then\n  echo "API_UPSTREAM esta vazio: o nginx nao tem para onde encaminhar /api." >&2\n  echo "Defina o endereco interno do back, como http://ca-back-xxx.internal.<regiao>.azurecontainerapps.io" >&2\n  exit 1\nfi\n# O nginx resolve o nome do upstream NO ARRANQUE. Nome que nao resolve mata\n# o conteiner com "host not found in upstream", que nao diz onde procurar.\nalvo=$(echo "$API_UPSTREAM" | sed -e "s|^[a-z]*://||" -e "s|[:/].*$||")\nif ! getent hosts "$alvo" >/dev/null 2>&1; then\n  echo "API_UPSTREAM aponta para \"$alvo\", que nao resolve deste conteiner." >&2\n  echo "Confira o nome, e se o front esta na mesma rede do back." >&2\n  exit 1\nfi\n' > /docker-entrypoint.d/15-conferir-api-upstream.sh \
  && chmod +x /docker-entrypoint.d/15-conferir-api-upstream.sh
 
 # A CSP tem de permitir EXATAMENTE o endereço para o qual o bundle foi
