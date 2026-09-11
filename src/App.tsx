@@ -220,7 +220,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               num indicador FILTRA e leva ao aprofundamento — é o caminho
               natural entre as duas telas. */}
           {rota.destino === 'painel' ? (
-            <Painel aoAbrirFrente={abrirFrenteEmExplorar} />
+            <Painel aoAbrirFrente={abrirFrenteEmExplorar} aoAbrirAgenda={abrirAgenda} />
           ) : null}
 
           {/* OS CINCO EIXOS MORAM NUM SELETOR. Ver `Explorar`. */}

@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Botao,
   Campo,
+  CampoDeArquivo,
   Cartao,
   FaixaDeErro,
   Secao,
@@ -173,11 +174,10 @@ export function Biblioteca() {
               obrigatorio
               dica="É ele que vira a versão 1 da referência."
             >
-              <input
-                ref={campoDeArquivo}
-                type="file"
-                style={estiloDeEntrada}
-                onChange={(e) => definirArquivoNovo(e.target.files?.[0] ?? null)}
+              <CampoDeArquivo
+                entradaRef={campoDeArquivo}
+                valor={arquivoNovo}
+                aoEscolher={definirArquivoNovo}
               />
             </Campo>
           </div>
@@ -216,7 +216,7 @@ export function Biblioteca() {
         </Cartao>
       </Secao>
 
-      <Secao titulo={`Na biblioteca (${referencias?.length ?? 0})`}>
+      <Secao titulo={`Cadastradas (${referencias?.length ?? 0})`}>
         <Cartao>
           <input
             style={{ ...estiloDeEntrada, marginBottom: 14 }}
@@ -585,12 +585,13 @@ function Linha({
           flexWrap: 'wrap',
         }}
       >
-        <input
-          type="file"
-          aria-label={`Arquivo da nova versão de ${referencia.titulo}`}
-          style={{ ...estiloDeEntrada, width: 260 }}
-          onChange={(e) => definirArquivo(e.target.files?.[0] ?? null)}
-        />
+        <div style={{ width: 260 }}>
+          <CampoDeArquivo
+            valor={arquivo}
+            aoEscolher={definirArquivo}
+            ariaLabel={`Arquivo da nova versão de ${referencia.titulo}`}
+          />
+        </div>
         <input
           type="date"
           aria-label={`Data do documento da nova versão de ${referencia.titulo}`}

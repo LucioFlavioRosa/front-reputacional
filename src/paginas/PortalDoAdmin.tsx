@@ -44,12 +44,12 @@ const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
   },
   {
     id: 'assuntos',
-    rotulo: 'Assuntos',
+    rotulo: 'Temas',
     descricao: 'O que o painel consegue somar — e o que cada porta-voz pode falar.',
   },
   {
     id: 'biblioteca',
-    rotulo: 'Biblioteca',
+    rotulo: 'Posicionamento',
     descricao:
       'O acervo oficial, por assunto — o que o porta-voz leva para a reunião.',
   },

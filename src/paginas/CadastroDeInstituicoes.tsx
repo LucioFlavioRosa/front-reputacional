@@ -34,9 +34,49 @@ import {
   Vazio,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { Abas } from '@/componentes/Abas';
+import type { Aba } from '@/componentes/Abas';
+import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { usePainel } from '@/estado/painel';
 import { ROTULOS_DE_FRENTE, TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type { Frente, Instituicao, Interlocutor } from '@/dominio/tipos';
+
+/** O que este gesto de cadastro cria.
+ *
+ *  As três opções já existiam como CAMINHOS separados — instituição sozinha
+ *  (deixando "quem representa" em branco), os dois juntos, e pessoa avulsa
+ *  (o "Acrescentar pessoa" de dentro de cada linha da lista). O que faltava
+ *  era dizer isso na tela: a terceira opção só aparecia depois de abrir uma
+ *  instituição específica, então quem queria só cadastrar uma pessoa nova
+ *  tinha de saber, de antemão, que precisava ir procurar a instituição dela
+ *  lá embaixo. Nomear as três aqui em cima não cria capacidade nova — só
+ *  para de escondê-la.
+ */
+//: Rótulos curtos e simétricos — "Instituição" fala do que se cria, não de
+//: quanto se cria, então "Instituição e pessoa" ficava desalinhado ao lado de
+//: "Só a instituição"/"Só a pessoa". Os três agora respondem a mesma pergunta
+//: implícita ("o que esta ação cadastra?") do mesmo jeito. A ORDEM continua
+//: com "Instituição e pessoa" primeiro — é o comportamento que a tela sempre
+//: teve, então é o que aparece selecionado ao abrir a página.
+const MODOS_DE_CADASTRO: readonly Aba<'ambos' | 'instituicao' | 'pessoa'>[] = [
+  { id: 'ambos', rotulo: 'Instituição e Stakeholders' },
+  { id: 'instituicao', rotulo: 'Instituição' },
+  { id: 'pessoa', rotulo: 'Stakeholders' },
+];
+
+const PESSOA_AVULSA_VAZIA = { instituicao_id: '', nome: '', email: '', cargo: '' };
+
+//: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
+//: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
+//: mesmo jeito que o dicionário de UF já tem código E nome escritos à parte.
+const ROTULO_DO_TIPO: Record<string, string> = {
+  orgao: 'Órgão',
+  veiculo: 'Veículo',
+  entidade: 'Entidade',
+  investidor: 'Investidor',
+  proposicao: 'Proposição',
+  area_interna: 'Área interna',
+};
 
 /** Cada tipo, e em que frentes ele aparece.
  *
@@ -47,13 +87,14 @@ import type { Frente, Instituicao, Interlocutor } from '@/dominio/tipos';
  *  `entidade` sai com duas frentes — Parceiros e Eventos dividem o tipo —, e é
  *  exatamente o que a pessoa precisa saber antes de escolher.
  */
-function tiposComSuasFrentes(): { tipo: string; onde: string }[] {
+function tiposComSuasFrentes(): { tipo: string; rotulo: string; onde: string }[] {
   const porTipo = new Map<string, Frente[]>();
   for (const [frente, tipo] of Object.entries(TIPO_DE_INSTITUICAO)) {
     porTipo.set(tipo, [...(porTipo.get(tipo) ?? []), frente as Frente]);
   }
   return [...porTipo.entries()].map(([tipo, frentes]) => ({
     tipo,
+    rotulo: ROTULO_DO_TIPO[tipo] ?? tipo,
     onde: frentes.map((f) => ROTULOS_DE_FRENTE[f]).join(' e '),
   }));
 }
@@ -118,7 +159,13 @@ export function CadastroDeInstituicoes() {
   //: instituição sem entrar no modo de edição dela.
   const [emEdicao, definirEmEdicao] = useState<string | null>(null);
   const [aberta, definirAberta] = useState<string | null>(null);
+  //: Qual das três formas o gesto de cadastro do topo está fazendo agora.
+  const [modo, definirModo] = useState<'ambos' | 'instituicao' | 'pessoa'>('ambos');
   const [nova, definirNova] = useState(VAZIA);
+  //: O rascunho do modo "Só a pessoa" — vive separado de `nova` porque os
+  //: dois modos podem ser preenchidos e abandonados de forma independente:
+  //: trocar de aba não deveria apagar o que já foi digitado no outro modo.
+  const [pessoaAvulsa, definirPessoaAvulsa] = useState(PESSOA_AVULSA_VAZIA);
   //: O rascunho da EDICAO nao carrega representante: editar a instituicao nao
   //: e o lugar de acrescentar gente — para isso existe "Quem representa". O
   //: backend ignora `representante` no PUT pelo mesmo motivo.
@@ -143,6 +190,21 @@ export function CadastroDeInstituicoes() {
       .filter((i) => !termo || i.nome.toLowerCase().includes(termo))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [catalogo, busca]);
+
+  //: Todas, sem o filtro de busca da lista "Cadastrados" — o rótulo de opção
+  //: leva o nome completo na busca pelo mesmo motivo do formulário de agenda:
+  //: quem digita "agencia nacional" precisa achar "ANA".
+  const opcoesDeInstituicao = useMemo(
+    () =>
+      [...(catalogo?.instituicoes.values() ?? [])]
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map((instituicao) => ({
+          valor: instituicao.id,
+          rotulo: instituicao.nome,
+          detalhe: instituicao.nome_completo ?? undefined,
+        })),
+    [catalogo],
+  );
 
   const pessoasDe = (instituicaoId: string): Interlocutor[] =>
     [...(catalogo?.interlocutores.values() ?? [])]
@@ -194,11 +256,32 @@ export function CadastroDeInstituicoes() {
         </div>
       ) : null}
 
-      <Secao titulo="Cadastrar instituição">
+      <Secao titulo="Cadastrar">
         <Cartao>
-          <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O tipo decide em qual frente ela aparece no cadastro de agenda.
-          </p>
+          <div style={{ marginBottom: 18 }}>
+            <Abas
+              abas={MODOS_DE_CADASTRO}
+              ativa={modo}
+              aoTrocar={definirModo}
+              rotulo="O que cadastrar"
+              prefixo="cadastro-tipo"
+            />
+          </div>
+
+          {modo === 'pessoa' ? (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+              A instituição já está cadastrada — aqui você escolhe qual, e
+              cadastra só a pessoa nova que passou a representá-la.
+            </p>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
+              O tipo escolhido é o que faz esta instituição aparecer nas
+              agendas certas — um órgão em Governo, um veículo em Imprensa, e
+              assim por diante.
+            </p>
+          )}
+
+          {modo === 'pessoa' ? null : (
           <div className="grade grade--3" style={{ gap: 16 }}>
             <Campo
               rotulo="Nome curto"
@@ -230,9 +313,9 @@ export function CadastroDeInstituicoes() {
                 value={nova.tipo}
                 onChange={(e) => definirNova({ ...nova, tipo: e.target.value })}
               >
-                {TIPOS.map(({ tipo, onde }) => (
+                {TIPOS.map(({ tipo, rotulo, onde }) => (
                   <option key={tipo} value={tipo}>
-                    {tipo} — aparece em {onde}
+                    {rotulo} — aparece em {onde}
                   </option>
                 ))}
               </select>
@@ -261,7 +344,7 @@ export function CadastroDeInstituicoes() {
             <Campo
               rotulo="Relevância"
               obrigatorio
-              dica="A da instituição. Cada agenda tem a sua."
+              dica="O quanto esta instituição importa em geral — cada agenda pode ter uma relevância diferente da dela."
             >
               <select
                 style={estiloDeEntrada}
@@ -277,6 +360,7 @@ export function CadastroDeInstituicoes() {
               </select>
             </Campo>
           </div>
+          )}
 
           {/* O REPRESENTANTE ENTRA NO MESMO GESTO. Cadastrar a instituicao e
               depois abrir a edicao para dizer quem fala por ela sao dois passos
@@ -284,75 +368,156 @@ export function CadastroDeInstituicoes() {
 
               Opcional: nem toda instituicao tem contato conhecido no dia em que
               entra na base. Preenchido, vai na MESMA requisicao, e as duas
-              escritas caem ou passam juntas. */}
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              margin: '18px 0 4px',
-            }}
-          >
-            Quem representa
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
-            É esta pessoa que o formulário de agenda vai oferecer em "Pela outra
-            parte". Dá para deixar em branco e cadastrar depois.
-          </p>
-          <div className="grade grade--3" style={{ gap: 16 }}>
-            <Campo rotulo="Nome">
-              <input
-                style={estiloDeEntrada}
-                value={nova.rep_nome}
-                onChange={(e) => definirNova({ ...nova, rep_nome: e.target.value })}
-                placeholder="Maria Souza"
+              escritas caem ou passam juntas.
+
+              SÓ NO MODO "AMBOS": nos outros dois modos a pessoa e a instituição
+              não nascem juntas, então este bloco não se aplica — no modo "Só a
+              instituição" porque ainda não há ninguém para representar, no
+              modo "Só a pessoa" porque a instituição já existe e quem
+              representa é o próprio campo abaixo. */}
+          {modo === 'ambos' ? (
+            <>
+              <p
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  margin: '18px 0 4px',
+                }}
+              >
+                Stakeholders
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
+                É esta pessoa que o formulário de agenda vai oferecer em "Pela
+                outra parte". Dá para deixar em branco e cadastrar depois.
+              </p>
+              <div className="grade grade--3" style={{ gap: 16 }}>
+                <Campo rotulo="Nome">
+                  <input
+                    style={estiloDeEntrada}
+                    value={nova.rep_nome}
+                    onChange={(e) => definirNova({ ...nova, rep_nome: e.target.value })}
+                    placeholder="Maria Souza"
+                  />
+                </Campo>
+                <Campo rotulo="E-mail">
+                  <input
+                    type="email"
+                    style={estiloDeEntrada}
+                    value={nova.rep_email}
+                    onChange={(e) => definirNova({ ...nova, rep_email: e.target.value })}
+                    placeholder="maria.souza@ana.gov.br"
+                  />
+                </Campo>
+                <Campo rotulo="Cargo">
+                  <input
+                    style={estiloDeEntrada}
+                    value={nova.rep_cargo}
+                    onChange={(e) => definirNova({ ...nova, rep_cargo: e.target.value })}
+                    placeholder="Diretora de Regulação"
+                  />
+                </Campo>
+              </div>
+            </>
+          ) : null}
+
+          {/* MODO "SÓ A PESSOA": a mesma escrita que já existia dentro de cada
+              linha de "Cadastrados" (`criarInterlocutor` com `instituicao_id`
+              de uma instituição JÁ existente) — só que aqui em cima, como
+              primeira opção, em vez de exigir abrir a instituição certa lá
+              embaixo primeiro. */}
+          {modo === 'pessoa' ? (
+            <div className="grade grade--3" style={{ gap: 16 }}>
+              <CampoQueCompleta
+                rotulo="Instituição"
+                obrigatorio
+                valor={pessoaAvulsa.instituicao_id}
+                aoEscolher={(v) =>
+                  definirPessoaAvulsa({ ...pessoaAvulsa, instituicao_id: v })
+                }
+                opcoes={opcoesDeInstituicao}
+                placeholder="Digite para buscar…"
               />
-            </Campo>
-            <Campo rotulo="E-mail">
-              <input
-                type="email"
-                style={estiloDeEntrada}
-                value={nova.rep_email}
-                onChange={(e) => definirNova({ ...nova, rep_email: e.target.value })}
-                placeholder="maria.souza@ana.gov.br"
-              />
-            </Campo>
-            <Campo rotulo="Cargo">
-              <input
-                style={estiloDeEntrada}
-                value={nova.rep_cargo}
-                onChange={(e) => definirNova({ ...nova, rep_cargo: e.target.value })}
-                placeholder="Diretora de Regulação"
-              />
-            </Campo>
-          </div>
+              <Campo rotulo="Nome" obrigatorio>
+                <input
+                  style={estiloDeEntrada}
+                  value={pessoaAvulsa.nome}
+                  onChange={(e) =>
+                    definirPessoaAvulsa({ ...pessoaAvulsa, nome: e.target.value })
+                  }
+                  placeholder="Maria Souza"
+                />
+              </Campo>
+              <Campo rotulo="Cargo">
+                <input
+                  style={estiloDeEntrada}
+                  value={pessoaAvulsa.cargo}
+                  onChange={(e) =>
+                    definirPessoaAvulsa({ ...pessoaAvulsa, cargo: e.target.value })
+                  }
+                  placeholder="Diretora de Regulação"
+                />
+              </Campo>
+              <Campo rotulo="E-mail">
+                <input
+                  type="email"
+                  style={estiloDeEntrada}
+                  value={pessoaAvulsa.email}
+                  onChange={(e) =>
+                    definirPessoaAvulsa({ ...pessoaAvulsa, email: e.target.value })
+                  }
+                  placeholder="maria.souza@ana.gov.br"
+                />
+              </Campo>
+            </div>
+          ) : null}
 
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
-              desabilitado={salvando || !nova.nome.trim() || !nova.tier}
+              desabilitado={
+                salvando ||
+                (modo === 'pessoa'
+                  ? !pessoaAvulsa.instituicao_id || !pessoaAvulsa.nome.trim()
+                  : !nova.nome.trim() || !nova.tier)
+              }
               aoClicar={() =>
-                void executar(
-                  () =>
-                    criarInstituicao({
-                      nome: nova.nome,
-                      nome_completo: nova.nome_completo || null,
-                      tipo: nova.tipo,
-                      uf: nova.uf || null,
-                      tier: Number(nova.tier),
-                      // SO QUANDO HA NOME. Mandar `{nome: ''}` seria recusado
-                      // pelo `min_length`, e a instituicao nao entraria por
-                      // causa de um campo que a pessoa deixou em branco de
-                      // proposito.
-                      representante: nova.rep_nome.trim()
-                        ? {
-                            nome: nova.rep_nome,
-                            email: nova.rep_email || null,
-                            cargo: nova.rep_cargo || null,
-                          }
-                        : null,
-                    }),
-                  () => definirNova(VAZIA),
-                )
+                modo === 'pessoa'
+                  ? void executar(
+                      () =>
+                        criarInterlocutor({
+                          nome: pessoaAvulsa.nome,
+                          instituicao_id: pessoaAvulsa.instituicao_id,
+                          email: pessoaAvulsa.email || null,
+                          cargo: pessoaAvulsa.cargo || null,
+                        }),
+                      () => definirPessoaAvulsa(PESSOA_AVULSA_VAZIA),
+                      `${pessoaAvulsa.nome} cadastrada.`,
+                    )
+                  : void executar(
+                      () =>
+                        criarInstituicao({
+                          nome: nova.nome,
+                          nome_completo: nova.nome_completo || null,
+                          tipo: nova.tipo,
+                          uf: nova.uf || null,
+                          tier: Number(nova.tier),
+                          // SO QUANDO HA NOME E O MODO PERMITE. Mandar
+                          // `{nome: ''}` seria recusado pelo `min_length`, e o
+                          // modo "Só a instituição" nunca tem representante —
+                          // mandar os campos de `nova.rep_*` (deixados de um
+                          // rascunho anterior no modo "Ambos") criaria uma
+                          // pessoa que ninguém pediu neste modo.
+                          representante:
+                            modo === 'ambos' && nova.rep_nome.trim()
+                              ? {
+                                  nome: nova.rep_nome,
+                                  email: nova.rep_email || null,
+                                  cargo: nova.rep_cargo || null,
+                                }
+                              : null,
+                        }),
+                      () => definirNova(VAZIA),
+                    )
               }
             >
               {salvando ? 'Salvando…' : 'Cadastrar'}
@@ -565,6 +730,7 @@ function LinhaDeInstituicao({
   aoDesligarPessoa: (pessoa: Interlocutor) => void;
 }) {
   const onde = TIPOS.find((t) => t.tipo === instituicao.tipo)?.onde ?? '—';
+  const rotuloDoTipo = ROTULO_DO_TIPO[instituicao.tipo] ?? instituicao.tipo;
 
   return (
     <div
@@ -598,9 +764,9 @@ function LinhaDeInstituicao({
               value={rascunho.tipo}
               onChange={(e) => aoRascunhar({ ...rascunho, tipo: e.target.value })}
             >
-              {TIPOS.map(({ tipo, onde: aonde }) => (
+              {TIPOS.map(({ tipo, rotulo, onde: aonde }) => (
                 <option key={tipo} value={tipo}>
-                  {tipo} — {aonde}
+                  {rotulo} — {aonde}
                 </option>
               ))}
             </select>
@@ -651,7 +817,7 @@ function LinhaDeInstituicao({
               ) : null}
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-              {instituicao.tipo} · aparece em {onde}
+              {rotuloDoTipo} · aparece em {onde}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
                 ? 'ninguém cadastrado'

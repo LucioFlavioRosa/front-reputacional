@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import { usePainel } from '@/estado/painel';
+import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
-import { Carregando, FaixaDeErro, Kpi, Secao, Vazio } from '@/componentes/basicos';
+import { Carregando, FaixaDeErro, Kpi, KpiHero, Secao, Vazio } from '@/componentes/basicos';
 import { numero, percentual } from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
@@ -21,11 +22,20 @@ import {
   kpis as calcularKpis,
   nomesDosTemas,
   ranking,
+  scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
 
-export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => void }) {
+export function Painel({
+  aoAbrirFrente,
+  aoAbrirAgenda,
+}: {
+  aoAbrirFrente: (frente: Frente) => void;
+  /** Abre a Ficha de uma agenda específica — usado pela lista que se abre ao
+   *  clicar num tema na barra divergente. */
+  aoAbrirAgenda: (id: string) => void;
+}) {
   const { interacoes, recorte, definirRecorte, catalogo, carregando, erro } = usePainel();
 
   const derivado = useMemo(() => {
@@ -63,6 +73,7 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
           ),
         ),
       ),
+      scorePorTema: scorePorTema(interacoes, catalogo),
       geo: distribuicaoPorUf(interacoes),
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
@@ -84,37 +95,62 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
   const { kpis } = derivado;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="grade grade--3" style={{ gap: 14 }}>
-        <Kpi
-          rotulo="Agendas institucionais"
-          valor={numero(kpis.institucionais)}
-          dica="Governo e parceiros"
-          aoClicar={() => aoAbrirFrente('governo')}
-        />
-        <Kpi
+    // 20px entre blocos principais, em vez do 16 que dividia espaço com o gap
+    // interno das grades: um único degrau de respiro separa "isto é uma nova
+    // pergunta" (entre cartões) de "isto é o mesmo cartão" (dentro dele).
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* UM herói, cinco quietos — de propósito.
+          Imprensa é a frente mais lida como "reputação" no dia a dia, e é a
+          única com uma meta de qualidade (aproveitamento) e não só volume: as
+          duas coisas juntas a tornam a manchete natural da tela. Um segundo
+          card do mesmo tamanho disputaria a mesma atenção e anularia a
+          hierarquia que o destaque existe para criar.
+
+          Os secundários usam a cor REAL da frente (`CORES_DE_FRENTE`) — a
+          mesma da legenda de "Volumetria mensal por frente" logo abaixo — em
+          vez de uma cor default sem relação com o número. "Institucionais"
+          soma governo + parceiros e por isso não leva a cor de nenhum dos
+          dois sozinho: dois pontos dizem que é uma soma. "Tier 1" é sinal de
+          qualidade, não uma frente, e por isso fica no azul-mar da marca em
+          vez de competir pela paleta das frentes. */}
+      <div className="grade--kpis-painel">
+        <KpiHero
           rotulo="Demandas de imprensa"
           valor={numero(kpis.imprensa.total)}
-          dica={`${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`}
+          selo="Frente · Imprensa"
+          progresso={{
+            fracao: kpis.imprensa.taxa,
+            rotulo: `${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`,
+          }}
           aoClicar={() => aoAbrirFrente('imprensa')}
         />
         <Kpi
           rotulo="Eventos e participações"
           valor={numero(kpis.eventos)}
           dica="Presença institucional"
+          cor={CORES_DE_FRENTE.eventos}
           aoClicar={() => aoAbrirFrente('eventos')}
         />
         <Kpi
           rotulo="Agendas de investidores"
           valor={numero(kpis.investidores.total)}
           dica={`${kpis.investidores.internacionais} internacionais`}
+          cor={CORES_DE_FRENTE.investidores}
           aoClicar={() => aoAbrirFrente('investidores')}
         />
         <Kpi
           rotulo="Proposições legislativas"
           valor={numero(kpis.legislativo)}
           dica="Acompanhamento"
+          cor={CORES_DE_FRENTE.legislativo}
           aoClicar={() => aoAbrirFrente('legislativo')}
+        />
+        <Kpi
+          rotulo="Agendas institucionais"
+          valor={numero(kpis.institucionais)}
+          dica="Governo e parceiros"
+          coresCompostas={[CORES_DE_FRENTE.governo, CORES_DE_FRENTE.parceiros]}
+          aoClicar={() => aoAbrirFrente('governo')}
         />
         <Kpi
           rotulo="Relevância Tier 1"
@@ -126,8 +162,12 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
       </div>
 
       <Secao titulo="Volumetria mensal por frente">
+        {/* Mais alta que o padrão: é a única das três com até sete frentes
+            empilhadas ao mesmo tempo, e cada segmento precisa de espaço para
+            não virar uma linha fina demais para o olho separar. */}
         <BarrasEmpilhadas
           colunas={derivado.volumetria}
+          altura={220}
           aoClicarSegmento={(chave) =>
             definirRecorte(alternar(recorte, 'frente', chave as Frente))
           }
@@ -171,7 +211,32 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
         </Secao>
       </div>
 
-      <Secao titulo="Distribuição geográfica">
+      {/* O SUBTÍTULO PRECISA DIZER QUE É UM RECORTE quando for — sem isto, a
+          pessoa lê "Barra divergente por tema" e assume que são TODOS os
+          temas, quando na verdade só os mais discutidos entram (ver
+          `scorePorTema`). `totalDeTemas > itens.length` é a própria pergunta
+          "ficou alguém de fora?" respondida pelo dado, não por uma contagem
+          feita à parte que pudesse divergir dela. */}
+      <Secao titulo="Barra divergente por tema" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 16px' }}>
+          {derivado.scorePorTema.totalDeTemas > derivado.scorePorTema.itens.length
+            ? `Os ${derivado.scorePorTema.itens.length} temas mais discutidos, de ${derivado.scorePorTema.totalDeTemas} com clima registrado neste recorte — do pior para o melhor.`
+            : `Os ${derivado.scorePorTema.itens.length} temas com clima registrado neste recorte — do pior para o melhor.`}
+        </p>
+        <BarraDivergente itens={derivado.scorePorTema.itens} aoAbrirAgenda={aoAbrirAgenda} />
+      </Secao>
+
+      {/* O LAVADO DE FUNDO SAIU. Fazia sentido quando esta era a única seção
+          sem cor por perto — hoje a cor da marca mora no cabeçalho, e um
+          cartão com fundo diferente dos vizinhos (Tier 1, os gráficos,
+          Instituições/Esfera/Unidades logo abaixo) lia como inconsistência,
+          não como destaque. Uma borda de topo — a mesma ideia dos KPIs
+          coloridos lá em cima — dá identidade sem quebrar o branco que todo
+          cartão da tela agora compartilha. */}
+      <Secao
+        titulo="Distribuição geográfica"
+        estilo={{ borderTop: '3px solid var(--azul-mar)' }}
+      >
         <div className="grade grade--mapa" style={{ gap: 24 }}>
           <MapaUf
             pontos={derivado.geo}
@@ -195,8 +260,11 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
         </div>
       </Secao>
 
+      {/* Uma borda de 4px na cor de cada ranking — não um fundo inteiro, que
+          brigaria com o azul do mapa logo acima — dá a cada coluna uma
+          identidade que combina com a cor das próprias barras dentro dela. */}
       <div className="grade grade--3" style={{ gap: 16 }}>
-        <Secao titulo="Instituições">
+        <Secao titulo="Instituições" estilo={{ borderLeft: '4px solid var(--azul-mar)' }}>
           <Ranking
             itens={derivado.instituicoes}
             ativo={recorte.entidade}
@@ -204,11 +272,11 @@ export function Painel({ aoAbrirFrente }: { aoAbrirFrente: (frente: Frente) => v
           />
         </Secao>
 
-        <Secao titulo="Esfera e abrangência">
+        <Secao titulo="Esfera e abrangência" estilo={{ borderLeft: '4px solid var(--turquesa-rio)' }}>
           <Ranking itens={derivado.esferas} cor="var(--turquesa-rio)" />
         </Secao>
 
-        <Secao titulo="Unidades de negócio">
+        <Secao titulo="Unidades de negócio" estilo={{ borderLeft: '4px solid var(--roxo-acai)' }}>
           <Ranking
             itens={derivado.unidades}
             ativo={recorte.unidade}

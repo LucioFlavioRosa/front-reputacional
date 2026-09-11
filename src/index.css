@@ -94,10 +94,23 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
+  /* O FUNDO DA PÁGINA VOLTOU A SER LISO, de propósito — depois de cinco
+     rodadas tentando um brilho aqui (fraco demais, forte demais, puxando para
+     roxo…) a causa de fundo não era a intensidade: é que o fundo da página
+     fica ATRÁS dos cartões de dado, e cor ali sempre compete com legibilidade.
+     O guia da marca pede as cores principais em FAIXAS e CAIXAS de grande
+     área — e a tela já tem uma faixa dessas, sempre visível, que não carrega
+     dado nenhum: o cabeçalho. É lá que o gradiente mora agora (`Layout.tsx`),
+     do mesmo jeito que o hero do login já fazia. */
   background: var(--bg-app);
   color: var(--cinza-4);
   font-family: var(--font-sans);
-  font-size: 14px;
+  /* ERA 14px. A maior parte da plataforma escreve `fontSize` em pixel fixo
+     tela por tela — mudar cada uma seria a única forma de ganhar um passo de
+     leitura por toda a parte, e é grosseiro demais para o que foi pedido.
+     Isto sobe o piso: tudo que herda do body (parágrafo corrido, texto sem
+     tamanho próprio) ganha 1px sem que nenhum layout precise ser refeito. */
+  font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -108,14 +121,28 @@ body {
   font-style: italic;
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+/* O guia oficial da Aegea assina praticamente todo título em Azul Mar, nunca
+   preto — conferido nas 111 páginas do manual. Vale só para TÍTULO: texto de
+   corpo, rótulo de campo e dado de tabela continuam em tinta neutra, porque é
+   isso que deixa "isto é um título" distinto de "isto é conteúdo" numa tela
+   com muito texto e número.
+
+   Três títulos que vivem sobre fundo colorido (o hero do login, o hero da
+   capa, o cabeçalho do modal) têm de reafirmar `--branco` no próprio elemento
+   — cor explícita sempre vence herança, então sem isso esta regra os
+   pintaria de azul sobre azul. */
+h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; color: var(--azul-mar); }
 p { margin: 0; }
 button { font-family: inherit; }
-input, select, textarea { font-family: inherit; font-size: 14px; }
+/* Campo de formulário não herda tamanho do body em nenhum navegador — por
+   isso o valor precisa ser escrito aqui de novo, e não só uma vez no body. */
+input, select, textarea { font-family: inherit; font-size: 15px; }
 
-/* Kicker: rótulo de seção em caixa alta. */
+/* Kicker: rótulo de seção em caixa alta. ERA 11px — o menor texto do
+   sistema, e o mais repetido (título de card, rótulo de KPI, "RANKING POR
+   UF"...). Um passo também aqui, pela mesma razão do body. */
 .kicker {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -125,10 +152,34 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 /* Números grandes e colunas de dígitos alinham melhor com tabular. */
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* O cartão tinha só uma borda de 1px quase da cor do próprio fundo da página
+   (`--borda` e `--bg-app` são tons muito próximos) — nada o separava
+   visualmente do que está atrás dele. Uma sombra baixa e discreta é o que
+   avisa "isto está em cima", sem competir com o conteúdo. `:hover` só entra
+   nos clicáveis, e usa `--sh-card-hover` — que já existia como token, sem
+   nunca ter sido aplicado em lugar nenhum. */
+.cartao {
+  box-shadow: 0 1px 2px rgba(17, 23, 60, 0.04), 0 2px 8px rgba(17, 23, 60, 0.05);
+}
+.cartao--clicavel:hover {
+  box-shadow: var(--sh-card-hover);
+}
+
 :focus-visible {
   outline: 2px solid var(--azul-mar);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* O input real de `CampoDeArquivo` fica visualmente do tamanho de 1px — o
+   anel de foco nele seria invisível. `:has()` empresta o anel para o rótulo
+   que SE VÊ, sem precisar de estado do React só para acompanhar o foco. */
+.campo-arquivo:has(input:focus-visible) {
+  outline: 2px solid var(--azul-mar);
+  outline-offset: 2px;
+}
+.campo-arquivo:hover {
+  border-color: var(--cinza-2);
 }
 
 /* Rolagem interna dos blocos densos (base, filas, tabelas). */
@@ -191,6 +242,17 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .grade--auto { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
+/* A linha de KPIs do Painel: um herói ocupando as duas linhas da primeira
+   coluna, cinco secundários preenchendo o resto. Ver a nota de design em
+   `Painel.tsx` — só há UM herói de propósito. */
+.grade--kpis-painel {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+}
+.grade--kpis-painel > :first-child { grid-row: 1 / 3; }
+
 @media (max-width: 1040px) {
   .grade--4,
   .grade--destaque { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -207,7 +269,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   .grade--2,
   .grade--3,
   .grade--4,
-  .grade--destaque { grid-template-columns: 1fr; }
+  .grade--destaque,
+  .grade--kpis-painel { grid-template-columns: 1fr; }
+  .grade--kpis-painel > :first-child { grid-row: auto; }
   .area-principal { padding: 20px 16px 48px !important; }
 }
 

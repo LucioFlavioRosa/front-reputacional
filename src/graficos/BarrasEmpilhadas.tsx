@@ -20,6 +20,11 @@ import { rotuloDoMes } from '@/dominio/formato';
 const ALTURA_DO_ROTULO = 16;
 const ALTURA_DO_MES = 14;
 const ESPESSURA_MAXIMA = 24;
+//: 2px é a especificação: o vão que separa é sempre a cor da superfície, nunca
+//: um contorno. O problema do print não era a largura do vão — era a barra
+//: baixa demais para um vão de QUALQUER largura não comer uma fatia grande
+//: dela. A correção certa é dar mais altura à pilha (ver `altura` em
+//: `Painel.tsx`), não encolher o espaçador até ele deixar de separar.
 const VAO_ENTRE_SEGMENTOS = 2;
 
 export function BarrasEmpilhadas({
@@ -136,6 +141,11 @@ export function BarrasEmpilhadas({
                 flexDirection: 'column',
                 justifyContent: 'flex-end',
                 alignItems: 'center',
+                // A régua que faltava: sem ela, as colunas flutuavam soltas no
+                // cartão branco, sem uma base comum para o olho comparar altura
+                // contra ela. Hairline recessiva, um tom fora da superfície —
+                // nunca tracejada, que leria como projeção.
+                borderBottom: '1px solid var(--borda)',
               }}
             >
               <div
@@ -166,6 +176,13 @@ export function BarrasEmpilhadas({
                       background: segmento.cor,
                       // Ponta arredondada no topo da pilha; reta na base.
                       borderRadius: posicao === 0 ? '4px 4px 0 0' : 0,
+                      // Anel interno sutil, não um contorno: o validador de
+                      // paleta aponta turquesa/laranja/amarelo abaixo de 3:1
+                      // contra o branco do cartão — sem isto, o segmento pálido
+                      // se dissolve na superfície em vez de ler como forma
+                      // preenchida. O vão entre segmentos continua sendo o
+                      // separador; isto só ancora CADA segmento contra o fundo.
+                      boxShadow: 'inset 0 0 0 1px rgba(17,23,35,0.08)',
                       cursor: aoClicarSegmento ? 'pointer' : undefined,
                     }}
                   />

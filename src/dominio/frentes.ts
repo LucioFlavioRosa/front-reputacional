@@ -40,6 +40,19 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   interna: 'Interna',
 };
 
+/** O que cada frente cobre — vira o `title` do chip, para quem esquece a
+ *  diferença entre "Governo" e "Parceiros", ou não sabe o que "Interna"
+ *  guarda, não precisar abrir o registro pra descobrir. */
+export const DESCRICAO_DE_FRENTE: Record<Frente, string> = {
+  imprensa: 'Jornalistas e veículos de imprensa — entrevista, matéria, resposta a pauta.',
+  governo: 'Órgãos públicos e representantes do governo.',
+  parceiros: 'Entidades parceiras da Aegea — associações, ONGs, institutos.',
+  eventos: 'Participação ou promoção de eventos institucionais.',
+  investidores: 'Investidores e o mercado financeiro.',
+  legislativo: 'Proposições em tramitação no Legislativo.',
+  interna: 'Demanda interna da Aegea, sem interlocutor de fora.',
+};
+
 /** Que TIPO de instituição cada frente conversa.
  *
  *  Espelha `TIPO_DE_INSTITUICAO` do backend. O mapa existia so dentro do

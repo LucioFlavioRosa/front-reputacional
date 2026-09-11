@@ -106,6 +106,9 @@ export function Inicio({
               marginTop: 10,
               maxWidth: '20ch',
               textShadow: '0 2px 18px rgba(0,25,120,0.4)',
+              // O h1 global agora nasce azul-mar — este vive dentro do hero
+              // com foto e gradiente, então precisa do branco de volta.
+              color: 'var(--branco)',
             }}
           >
             O relacionamento institucional{' '}

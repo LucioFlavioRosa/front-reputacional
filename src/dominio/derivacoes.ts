@@ -15,7 +15,7 @@
  *  números vêm.
  */
 
-import { chaveDoMes, diasDesde } from '@/dominio/formato';
+import { chaveDoMes, diasDesde, tituloDaAgenda } from '@/dominio/formato';
 import { faixaDeRisco } from '@/dominio/frentes';
 import type { FaixaDeRisco } from '@/dominio/frentes';
 import type {
@@ -275,6 +275,108 @@ export function temasMaisRecorrentes(
       total: item.total,
       cor: paleta[indice % paleta.length],
     }));
+}
+
+/** Uma linha da lista que abre ao clicar num tema — só o que basta para
+ *  reconhecer a agenda e navegar até ela; o resto mora na própria Ficha. */
+export interface AgendaDoTema {
+  id: string;
+  titulo: string;
+  data: string;
+  clima: string;
+}
+
+export interface ScoreDeTema {
+  chave: string;
+  rotulo: string;
+  /** Só conta quem tem `clima` registrado — é o denominador do score, e
+   *  "8 agendas" ao lado de um score calculado sobre 8 é o que faz o número
+   *  fazer sentido. Uma agenda sem clima registrado não entra em lugar
+   *  nenhum desta conta, nem no total. */
+  total: number;
+  positivas: number;
+  negativas: number;
+  /** (positivas − negativas) ÷ total, em pontos de −100 a 100. POR
+   *  OCORRÊNCIA: cada agenda vale um voto, nunca um peso — é a versão mais
+   *  barata de calcular (só precisa do clima já registrado) e a mais fácil
+   *  de explicar em uma reunião. Uma versão ponderada por tier ou por
+   *  recência é conversa para depois que isto provar que serve. */
+  score: number;
+  /** AS MESMAS agendas que compõem `total` — nunca um recálculo à parte, ou
+   *  as duas listas divergem no primeiro filtro novo que uma delas esquecer. */
+  agendas: AgendaDoTema[];
+}
+
+export interface ScorePorTema {
+  itens: ScoreDeTema[];
+  /** Quantos temas TINHAM clima suficiente para entrar na conta, antes do
+   *  corte de `quantos` — sem isto, a tela não tem como dizer "isto é um
+   *  recorte" quando de fato é um. `itens.length < totalDeTemas` é
+   *  exatamente a pergunta "sobrou alguém de fora?". */
+  totalDeTemas: number;
+}
+
+/** O tema em palavras já existe (`temasMaisRecorrentes`); o que faltava era
+ *  a MESMA contagem separada por clima, para responder "este tema está indo
+ *  bem ou mal", não só "quanto se fala dele".
+ *
+ *  Os `quantos` mais discutidos entram primeiro — um tema com uma agenda só
+ *  não deveria disputar o topo do "pior" com um que tem quinze —, e SÓ DEPOIS
+ *  a ordenação vira a do score: pior primeiro, porque é a leitura de uma
+ *  reunião de diretoria, e quem abre a tela quer ver onde dói antes de ver
+ *  onde vai bem. */
+export function scorePorTema(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 8,
+): ScorePorTema {
+  const contagem = new Map<
+    string,
+    { total: number; positivas: number; negativas: number; agendas: AgendaDoTema[] }
+  >();
+
+  for (const interacao of interacoes) {
+    // SEM CLIMA REGISTRADO NÃO CONTA. Contar como neutro inventaria uma
+    // opinião que ninguém registrou — e infla o total sem mexer no score,
+    // fazendo um tema parecer mais "morno" do que os dados de verdade dizem.
+    if (!interacao.clima) continue;
+
+    for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
+      const atual = contagem.get(nome) ?? {
+        total: 0,
+        positivas: 0,
+        negativas: 0,
+        agendas: [],
+      };
+      atual.total += 1;
+      if (interacao.clima === 'propositivo') atual.positivas += 1;
+      if (interacao.clima === 'tenso') atual.negativas += 1;
+      atual.agendas.push({
+        id: interacao.id,
+        titulo: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
+        data: interacao.data_interacao,
+        clima: interacao.clima,
+      });
+      contagem.set(nome, atual);
+    }
+  }
+
+  const todos: ScoreDeTema[] = [...contagem.entries()].map(([nome, c]) => ({
+    chave: nome,
+    rotulo: nome,
+    total: c.total,
+    positivas: c.positivas,
+    negativas: c.negativas,
+    score: Math.round(((c.positivas - c.negativas) / c.total) * 100),
+    agendas: c.agendas,
+  }));
+
+  const itens = [...todos]
+    .sort((a, b) => b.total - a.total)
+    .slice(0, quantos)
+    .sort((a, b) => a.score - b.score);
+
+  return { itens, totalDeTemas: todos.length };
 }
 
 /* -- geografia ------------------------------------------------------------ */
