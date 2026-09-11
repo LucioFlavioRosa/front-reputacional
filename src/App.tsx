@@ -8,7 +8,6 @@
 
 import { useEffect, useState } from 'react';
 import { obterEu } from '@/api/cliente';
-import { DrawerDeFiltros } from '@/componentes/FiltrosDrawer';
 import { Botao, Carregando, Cartao } from '@/componentes/basicos';
 import { portaisDe } from '@/dominio/tipos';
 import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
@@ -263,8 +262,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {rota.destino === 'admin' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
         </LimiteDeErro>
       </Layout>
-
-      <DrawerDeFiltros />
 
       {/* A ficha e a cadeia abrem POR CIMA da Base, e têm endereço próprio:
           `/agenda/<id>` e `/agenda/<id>/cadeia`. Fechar volta para a Base — e

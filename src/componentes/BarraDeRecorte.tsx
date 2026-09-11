@@ -14,18 +14,27 @@
  *  uma captura de tela.
  */
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { usePainel } from '@/estado/painel';
 import { Botao, Chip } from '@/componentes/basicos';
+import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import { fichasDoRecorte, semOFiltro } from '@/dominio/resumo-do-recorte';
 import { numero } from '@/dominio/formato';
 
 export function BarraDeRecorte() {
-  const { recorte, definirRecorte, limparRecorte, catalogo, total, abrirDrawer, atualizando } =
-    usePainel();
+  const { recorte, definirRecorte, limparRecorte, catalogo, total, atualizando } = usePainel();
   const [copiado, definirCopiado] = useState(false);
 
-  const fichas = fichasDoRecorte(recorte, catalogo);
+  // `q` já tem campo próprio, sempre visível, logo abaixo — virar também uma
+  // ficha aqui duplicaria o mesmo valor em dois lugares da barra.
+  const fichas = fichasDoRecorte(recorte, catalogo).filter((ficha) => ficha.campo !== 'q');
+
+  const alterarBusca = (valor: string) => {
+    const proximo = { ...recorte };
+    if (valor) proximo.q = valor;
+    else delete proximo.q;
+    definirRecorte(proximo);
+  };
 
   const copiar = async () => {
     try {
@@ -46,6 +55,7 @@ export function BarraDeRecorte() {
   };
 
   return (
+    <Fragment>
     <div
       className="sem-impressao"
       style={{
@@ -57,7 +67,7 @@ export function BarraDeRecorte() {
         background: 'var(--bg-trilho)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card-int)',
-        marginBottom: 18,
+        marginBottom: 10,
       }}
     >
       <span
@@ -72,23 +82,37 @@ export function BarraDeRecorte() {
         Recorte
       </span>
 
-      {fichas.length ? (
-        fichas.map((ficha) => (
-          <Chip
-            key={`${ficha.campo}:${ficha.rotulo}`}
-            rotulo={ficha.rotulo}
-            ativo
-            fundo="var(--branco)"
-            texto="var(--cinza-3)"
-            titulo={`Remover o filtro ${ficha.rotulo}`}
-            aoClicar={() => definirRecorte(semOFiltro(recorte, ficha.campo))}
-          />
-        ))
-      ) : (
-        <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-          Base completa, sem filtros
-        </span>
-      )}
+      <input
+        value={recorte.q ?? ''}
+        placeholder="Buscar pauta, instituição, pessoa…"
+        onChange={(evento) => alterarBusca(evento.target.value)}
+        style={{
+          height: 28,
+          width: 190,
+          padding: '0 10px',
+          border: '1px solid var(--borda-input)',
+          borderRadius: 'var(--r-btn)',
+          background: 'var(--branco)',
+          color: 'var(--cinza-4)',
+          fontSize: 12.5,
+        }}
+      />
+
+      {fichas.map((ficha) => (
+        <Chip
+          key={`${ficha.campo}:${ficha.rotulo}`}
+          rotulo={ficha.rotulo}
+          ativo
+          fundo="var(--branco)"
+          texto="var(--cinza-3)"
+          titulo={`Remover o filtro ${ficha.rotulo}`}
+          aoClicar={() => definirRecorte(semOFiltro(recorte, ficha.campo))}
+        />
+      ))}
+
+      {!fichas.length && !recorte.q ? (
+        <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>Base completa, sem filtros</span>
+      ) : null}
 
       <span
         className="tabular"
@@ -98,7 +122,7 @@ export function BarraDeRecorte() {
       </span>
 
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-        {fichas.length ? (
+        {fichas.length || recorte.q ? (
           <Botao variante="fantasma" aoClicar={limparRecorte}>
             Limpar
           </Botao>
@@ -110,8 +134,10 @@ export function BarraDeRecorte() {
         >
           {copiado ? 'Link copiado' : 'Copiar link'}
         </Botao>
-        <Botao aoClicar={abrirDrawer}>Filtros</Botao>
       </span>
     </div>
+
+    <PainelDeFiltros />
+    </Fragment>
   );
 }
