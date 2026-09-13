@@ -158,7 +158,7 @@ export function Biblioteca() {
       <Secao titulo="Cadastrar referência">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O arquivo fica no armazenamento do painel, numa pasta por assunto e
+            O arquivo fica no armazenamento do painel, numa pasta por tema e
             tipo. Depois é só subir versões novas — as anteriores continuam.
           </p>
 
@@ -365,7 +365,7 @@ function FormularioDeReferencia({
 
       <div className="grade grade--2" style={{ gap: 16 }}>
         <CampoQueCompleta
-          rotulo="Assunto principal"
+          rotulo="Tema principal"
           obrigatorio
           dica="É ele que define a pasta do arquivo."
           valor={valor.tema_principal}
@@ -397,7 +397,7 @@ function FormularioDeReferencia({
       </Campo>
 
       <Campo
-        rotulo="Outros assuntos"
+        rotulo="Outros temas"
         dica="Além do principal. É por eles que a referência aparece no preparo de uma agenda."
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>

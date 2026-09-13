@@ -45,12 +45,13 @@ const ONDA_1: {
 
 const FRENTES_DE_ANALISE = [
   { titulo: 'Imprensa', descricao: 'demandas, aproveitamento e porta-vozes' },
-  { titulo: 'Governo', descricao: 'agendas com o poder público' },
+  { titulo: 'Entidades', descricao: 'agendas com o poder público' },
   { titulo: 'Parceiros', descricao: 'entidades, associações e escritórios' },
   { titulo: 'Eventos', descricao: 'presença institucional' },
   { titulo: 'Investidores', descricao: 'relacionamento com o mercado' },
-  { titulo: 'Legislativo', descricao: 'proposições e tramitação' },
+  { titulo: 'Agentes Públicos', descricao: 'proposições e tramitação' },
   { titulo: 'Interna', descricao: 'demandas e entregas entre áreas' },
+  { titulo: 'Bancos/Credores', descricao: 'relação de crédito e dívida' },
 ];
 
 const ONDAS = [
@@ -183,7 +184,7 @@ export function Inicio({
           className="grade grade--auto" style={{ gap: 14 }}
         >
           {/* Estes cartões NÃO navegam, e é decisão.
-              Descrevem as sete frentes que o CRM cobre — são conteúdo da capa,
+              Descrevem as oito frentes que o CRM cobre — são conteúdo da capa,
               não atalho. A porta de entrada é uma só, o cartão "CRM dos
               Stakeholders": foi o que o pedido definiu, e uma segunda entrada
               faria a barra superior aparecer sem ninguém ter escolhido entrar. */}

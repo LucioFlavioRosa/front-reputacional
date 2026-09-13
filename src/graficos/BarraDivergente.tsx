@@ -22,13 +22,19 @@ import { dataCompleta } from '@/dominio/formato';
 
 const ALTURA_DA_FAIXA = 10;
 
-/** "4 negativas, 2 neutras" — só o que não for zero, na ordem que mais
+/** "4 reativas, 2 neutras" — só o que não for zero, na ordem que mais
  *  importa para quem lê o score.
  *
- *  SEM ISTO, o score sozinho engana: -67 sai tanto de 4 negativas em 6
- *  quanto de 2 negativas em 3 com o resto neutro — a neutra nunca aparece na
+ *  SEM ISTO, o score sozinho engana: -67 sai tanto de 4 reativas em 6
+ *  quanto de 2 reativas em 3 com o resto neutro — a neutra nunca aparece na
  *  barra, só dilui o placar. Escrever a composição por extenso é o que
- *  fecha essa lacuna sem precisar desenhar um segundo gráfico. */
+ *  fecha essa lacuna sem precisar desenhar um segundo gráfico.
+ *
+ *  "Reativa"/"proativa", e não "negativa"/"positiva" — o mesmo par que
+ *  `clima` usa agora (`Proativo`/`Reativo`/`Neutro`, ver a migração
+ *  `0030_clima_proativo_reativo.sql`). `item.positivas`/`item.negativas`
+ *  continuam com esses nomes: são o mesmo campo que soma `clima ===
+ *  'propositivo'`/`'tenso'`, e o código desses climas não mudou. */
 function pluralizar(quantidade: number, singular: string): string {
   return `${quantidade} ${singular}${quantidade === 1 ? '' : 's'}`;
 }
@@ -36,9 +42,9 @@ function pluralizar(quantidade: number, singular: string): string {
 function composicao(item: ScoreDeTema): string {
   const neutras = item.total - item.positivas - item.negativas;
   const partes: string[] = [];
-  if (item.negativas > 0) partes.push(pluralizar(item.negativas, 'negativa'));
+  if (item.negativas > 0) partes.push(pluralizar(item.negativas, 'reativa'));
   if (neutras > 0) partes.push(pluralizar(neutras, 'neutra'));
-  if (item.positivas > 0) partes.push(pluralizar(item.positivas, 'positiva'));
+  if (item.positivas > 0) partes.push(pluralizar(item.positivas, 'proativa'));
   return partes.join(', ');
 }
 

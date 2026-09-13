@@ -104,7 +104,7 @@ export function CadastroDeAssuntos() {
     }
   };
 
-  if (!temas) return <Carregando rotulo="Carregando os assuntos…" />;
+  if (!temas) return <Carregando rotulo="Carregando os temas…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -113,7 +113,7 @@ export function CadastroDeAssuntos() {
       <Secao titulo="Cadastrar tema">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O assunto é o que o painel soma. É por ele que se responde "quantas
+            O tema é o que o painel soma. É por ele que se responde "quantas
             agendas sobre reajuste tarifário", e é ele que define o que cada
             porta-voz pode falar.
           </p>

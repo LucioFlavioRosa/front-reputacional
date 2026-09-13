@@ -144,7 +144,7 @@ export function Explorar({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  {[rotuloDoEixo, 'Agendas', 'Tier 1', 'Em aberto', 'Clima tenso', 'Avanço'].map(
+                  {[rotuloDoEixo, 'Agendas', 'Tier 1', 'Em aberto', 'Clima reativo', 'Avanço'].map(
                     (coluna, indice) => (
                       <th
                         key={coluna}

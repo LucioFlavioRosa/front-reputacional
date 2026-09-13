@@ -312,7 +312,7 @@ export function ListaDeMateriais({
                 que alguem vai procurar esse trecho seis meses depois. */}
             <div style={{ marginTop: 10 }}>
               <Campo
-                rotulo="Assuntos do documento"
+                rotulo="Temas do documento"
                 dica="É por eles que ele aparece na busca da Base."
               >
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

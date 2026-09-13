@@ -2,12 +2,16 @@
  *
  *  Especificações de marca seguidas aqui:
  *   - coluna com no máximo 24px de espessura — a sobra do slot vira ar, não barra;
- *   - ponta arredondada em 4px no topo e reta na linha de base, porque a barra
- *     cresce de uma base só;
+ *   - ponta arredondada em 3px no topo e reta na linha de base, porque a barra
+ *     cresce de uma base só (o guia pedia 4px; um pouco menos a pedido do
+ *     usuário);
  *   - 2px de vão na cor da superfície entre segmentos empilhados: quem separa é
  *     o branco, nunca um contorno desenhado em volta da marca;
- *   - rótulo **seletivo**: só o pico e o mês mais recente. Número em cima de toda
- *     coluna vira ruído e ninguém lê — o resto vive no tooltip e na Base.
+ *   - o TOTAL vai em cima de TODA coluna, não só do pico e da mais recente —
+ *     era assim antes, e uma leitura pediu para ver o valor de cada uma sem
+ *     precisar passar o mouse por elas. O EIXO DE BAIXO (a data) continua
+ *     seletivo: é texto mais largo, e junto de dezenas de colunas (semana) um
+ *     rótulo por coluna colide com o vizinho — ver `LIMITE_DE_ROTULOS_NO_EIXO`.
  *
  *  O total vai numa faixa de altura fixa ACIMA do trilho e o mês ABAIXO, nunca
  *  dentro da barra: um mês zerado não teria onde escrever e desalinharia a régua.
@@ -34,6 +38,7 @@ export function BarrasEmpilhadas({
   aoClicarMes,
   mesAtivo,
   detalheDoMes,
+  formatarRotulo = rotuloDoMes,
 }: {
   colunas: ColunaMensal[];
   altura?: number;
@@ -46,6 +51,11 @@ export function BarrasEmpilhadas({
   mesAtivo?: string;
   /** Linhas extras no tooltip — Tier 1 e tema dominante, por exemplo. */
   detalheDoMes?: (coluna: ColunaMensal) => { rotulo: string; valor: string }[];
+  /** Como ler `coluna.mes` em texto. Default `rotuloDoMes`, que é a única
+   *  leitura que `RaioXDaExcecao` precisa; o Painel passa outra quando a
+   *  coluna é semana ou semestre — o gráfico em si não sabe nem precisa saber
+   *  qual granularidade gerou a chave, só que existe um jeito de mostrá-la. */
+  formatarRotulo?: (chave: string) => string;
 }) {
   const [emFoco, setEmFoco] = useState<number | null>(null);
 
@@ -60,12 +70,17 @@ export function BarrasEmpilhadas({
   const maximo = Math.max(1, ...colunas.map((c) => c.total));
   const alturaDoTrilho = altura - ALTURA_DO_ROTULO - ALTURA_DO_MES;
 
-  // Rotula só o que a leitura precisa: o pico do período e o mês mais recente.
-  const indiceDoPico = colunas.reduce(
-    (melhor, coluna, indice) => (coluna.total > colunas[melhor].total ? indice : melhor),
-    0,
-  );
   const indiceDoUltimo = colunas.length - 1;
+
+  // O EIXO DE BAIXO (a data por extenso) não tinha a mesma seleção: toda
+  // coluna escrevia a sua, e em semana — dezenas de colunas estreitas no
+  // mesmo cartão — o texto de uma invadia a coluna vizinha e virava uma
+  // sequência ilegível de números colados. `LIMITE_DE_ROTULOS_NO_EIXO` limita
+  // quantos rótulos aparecem soltos no eixo, espaçados por um passo fixo; o
+  // hover continua revelando a data exata de QUALQUER coluna (`emFoco`), e a
+  // mais recente sempre aparece, do mesmo jeito que o total já fazia acima.
+  const LIMITE_DE_ROTULOS_NO_EIXO = 12;
+  const passoDoRotulo = Math.max(1, Math.ceil(colunas.length / LIMITE_DE_ROTULOS_NO_EIXO));
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
@@ -81,9 +96,6 @@ export function BarrasEmpilhadas({
         const alturaNecessaria =
           quantidade * 2 + Math.max(0, quantidade - 1) * VAO_ENTRE_SEGMENTOS;
         const apertada = alturaDaBarra < alturaNecessaria;
-
-        const rotulado =
-          coluna.total > 0 && (indice === indiceDoPico || indice === indiceDoUltimo);
 
         // Colunas das pontas alinham o tooltip pela borda, senão ele vazaria
         // para fora do card.
@@ -120,7 +132,7 @@ export function BarrasEmpilhadas({
             tabIndex={0}
             role={aoClicarMes ? 'button' : undefined}
             aria-pressed={aoClicarMes ? mesAtivo === coluna.mes : undefined}
-            aria-label={`${rotuloDoMes(coluna.mes)}: ${coluna.total}`}
+            aria-label={`${formatarRotulo(coluna.mes)}: ${coluna.total}`}
           >
             <div
               style={{
@@ -129,9 +141,11 @@ export function BarrasEmpilhadas({
                 fontWeight: 700,
                 textAlign: 'center',
                 color: 'var(--cinza-4)',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
               }}
             >
-              {rotulado || emFoco === indice ? coluna.total : ''}
+              {coluna.total > 0 ? coluna.total : ''}
             </div>
 
             <div
@@ -175,7 +189,7 @@ export function BarrasEmpilhadas({
                       minHeight: apertada ? 0 : 2,
                       background: segmento.cor,
                       // Ponta arredondada no topo da pilha; reta na base.
-                      borderRadius: posicao === 0 ? '4px 4px 0 0' : 0,
+                      borderRadius: posicao === 0 ? '3px 3px 0 0' : 0,
                       // Anel interno sutil, não um contorno: o validador de
                       // paleta aponta turquesa/laranja/amarelo abaixo de 3:1
                       // contra o branco do cartão — sem isto, o segmento pálido
@@ -197,9 +211,14 @@ export function BarrasEmpilhadas({
                 textAlign: 'center',
                 color: 'var(--cinza-2)',
                 marginTop: 4,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                textOverflow: 'clip',
               }}
             >
-              {rotuloDoMes(coluna.mes)}
+              {indice % passoDoRotulo === 0 || indice === indiceDoUltimo || emFoco === indice
+                ? formatarRotulo(coluna.mes)
+                : ''}
             </div>
 
             {emFoco === indice && coluna.total > 0 ? (
@@ -207,6 +226,7 @@ export function BarrasEmpilhadas({
                 coluna={coluna}
                 alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
                 detalhe={detalheDoMes?.(coluna)}
+                formatarRotulo={formatarRotulo}
               />
             ) : null}
           </div>
@@ -220,10 +240,12 @@ function Tooltip({
   coluna,
   alinhamento,
   detalhe,
+  formatarRotulo,
 }: {
   coluna: ColunaMensal;
   alinhamento: 'esquerda' | 'centro' | 'direita';
   detalhe?: { rotulo: string; valor: string }[];
+  formatarRotulo: (chave: string) => string;
 }) {
   const posicao =
     alinhamento === 'esquerda'
@@ -260,7 +282,7 @@ function Tooltip({
           marginBottom: 7,
         }}
       >
-        <span style={{ textTransform: 'capitalize' }}>{rotuloDoMes(coluna.mes)}</span>
+        <span style={{ textTransform: 'capitalize' }}>{formatarRotulo(coluna.mes)}</span>
         <span className="tabular">{coluna.total}</span>
       </div>
 

@@ -94,15 +94,22 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  /* O FUNDO DA PÁGINA VOLTOU A SER LISO, de propósito — depois de cinco
-     rodadas tentando um brilho aqui (fraco demais, forte demais, puxando para
-     roxo…) a causa de fundo não era a intensidade: é que o fundo da página
-     fica ATRÁS dos cartões de dado, e cor ali sempre compete com legibilidade.
-     O guia da marca pede as cores principais em FAIXAS e CAIXAS de grande
-     área — e a tela já tem uma faixa dessas, sempre visível, que não carrega
-     dado nenhum: o cabeçalho. É lá que o gradiente mora agora (`Layout.tsx`),
-     do mesmo jeito que o hero do login já fazia. */
-  background: var(--bg-app);
+  /* UM BRILHO DE FUNDO, DE VOLTA — mas não a versão saturada das cinco
+     rodadas anteriores (fraca demais, forte demais, puxando para roxo). A
+     referência trazida pelo usuário é bem mais diluída que aquelas tentativas:
+     quase branca, só com um toque de turquesa à esquerda e azul-lavanda à
+     direita. Nessa intensidade a cor não compete com os cartões de dado por
+     cima — é ambiente, não uma faixa de marca (essa continua no cabeçalho,
+     em `Layout.tsx`). `--bg-app` seguiu sólido de propósito: outros lugares
+     (`Onda`, `Ficha`, `Login`, `LimiteDeErro`) o usam como cor lisa, e um
+     gradiente ali quebraria esses usos — por isso o brilho é só desta regra,
+     com `--bg-app` como base/fallback por baixo dele. */
+  background:
+    radial-gradient(52% 46% at 10% 55%, rgba(23, 227, 203, 0.16) 0%, transparent 70%),
+    radial-gradient(58% 52% at 92% 8%, rgba(0, 39, 189, 0.13) 0%, transparent 70%),
+    radial-gradient(52% 48% at 88% 90%, rgba(0, 39, 189, 0.10) 0%, transparent 70%),
+    var(--bg-app);
+  background-attachment: fixed;
   color: var(--cinza-4);
   font-family: var(--font-sans);
   /* ERA 14px. A maior parte da plataforma escreve `fontSize` em pixel fixo

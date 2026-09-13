@@ -76,6 +76,7 @@ const ROTULO_DO_TIPO: Record<string, string> = {
   investidor: 'Investidor',
   proposicao: 'Proposição',
   area_interna: 'Área interna',
+  credor: 'Banco/credor',
 };
 
 /** Cada tipo, e em que frentes ele aparece.

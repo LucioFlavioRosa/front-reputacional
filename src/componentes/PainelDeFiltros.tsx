@@ -74,7 +74,7 @@ export function PainelDeFiltros() {
       rotulo: 'Período',
       valorAtual: recorte.periodo,
       itens: Object.entries(ATALHOS_DE_PERIODO).map(([chave, rotulo]) => ({ valor: chave, rotulo })),
-      aoEscolher: (valor) =>
+      aoEscolher: (valor: string) =>
         definirOuAlternar('periodo', recorte.periodo, valor, (v) => v as AtalhoDePeriodo),
     },
     {
@@ -82,14 +82,14 @@ export function PainelDeFiltros() {
       rotulo: 'Frente',
       valorAtual: recorte.frente,
       itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
-      aoEscolher: (valor) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
+      aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
     },
     {
       chave: 'esfera',
       rotulo: 'Esfera',
       valorAtual: recorte.esfera,
       itens: (catalogo?.dicionarios.esferas ?? []).map((e) => ({ valor: e.codigo, rotulo: e.nome })),
-      aoEscolher: (valor) => definirOuAlternar('esfera', recorte.esfera, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('esfera', recorte.esfera, valor, (v) => v),
     },
     {
       chave: 'tier',
@@ -99,7 +99,7 @@ export function PainelDeFiltros() {
         valor: String(n.id),
         rotulo: n.nome,
       })),
-      aoEscolher: (valor) =>
+      aoEscolher: (valor: string) =>
         definirOuAlternar(
           'tier',
           recorte.tier != null ? String(recorte.tier) : undefined,
@@ -112,14 +112,14 @@ export function PainelDeFiltros() {
       rotulo: 'Clima',
       valorAtual: recorte.clima,
       itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
-      aoEscolher: (valor) => definirOuAlternar('clima', recorte.clima, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('clima', recorte.clima, valor, (v) => v),
     },
     {
       chave: 'resultado',
       rotulo: 'Desfecho',
       valorAtual: recorte.resultado,
       itens: (catalogo?.dicionarios.resultados ?? []).map((r) => ({ valor: r.codigo, rotulo: r.nome })),
-      aoEscolher: (valor) => definirOuAlternar('resultado', recorte.resultado, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('resultado', recorte.resultado, valor, (v) => v),
     },
     {
       chave: 'grupo',
@@ -129,7 +129,7 @@ export function PainelDeFiltros() {
         valor: g.codigo,
         rotulo: g.nome,
       })),
-      aoEscolher: (valor) => definirOuAlternar('grupo', recorte.grupo, valor, (v) => v as GrupoDeStatus),
+      aoEscolher: (valor: string) => definirOuAlternar('grupo', recorte.grupo, valor, (v) => v as GrupoDeStatus),
     },
     {
       chave: 'unidade',
@@ -139,7 +139,7 @@ export function PainelDeFiltros() {
         valor: u.nome,
         rotulo: u.nome,
       })),
-      aoEscolher: (valor) => definirOuAlternar('unidade', recorte.unidade, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('unidade', recorte.unidade, valor, (v) => v),
     },
     {
       chave: 'entidade',
@@ -149,7 +149,7 @@ export function PainelDeFiltros() {
         valor: i.nome,
         rotulo: i.nome,
       })),
-      aoEscolher: (valor) => definirOuAlternar('entidade', recorte.entidade, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('entidade', recorte.entidade, valor, (v) => v),
     },
     {
       chave: 'subtipo',
@@ -159,18 +159,18 @@ export function PainelDeFiltros() {
         valor: t.codigo,
         rotulo: t.nome,
       })),
-      aoEscolher: (valor) => definirOuAlternar('subtipo', recorte.subtipo, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('subtipo', recorte.subtipo, valor, (v) => v),
     },
     {
       chave: 'uf',
       rotulo: 'UF',
       valorAtual: recorte.uf,
       itens: (catalogo?.dicionarios.ufs ?? []).map((u) => ({ valor: u.codigo, rotulo: u.nome })),
-      aoEscolher: (valor) => definirOuAlternar('uf', recorte.uf, valor, (v) => v),
+      aoEscolher: (valor: string) => definirOuAlternar('uf', recorte.uf, valor, (v) => v),
     },
     {
       chave: 'tags',
-      rotulo: 'Assuntos',
+      rotulo: 'Temas',
       multiplo: true,
       selecionados: recorte.tags ?? [],
       itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),

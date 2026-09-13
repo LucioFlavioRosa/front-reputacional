@@ -18,6 +18,7 @@ import type { Eu } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
+import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
 
 //: CINCO DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
@@ -281,6 +282,24 @@ export function Layout({
         ) : null}
       </header>
       )}
+
+      {/* FORA do `<header>` `position: sticky` de propósito: abrir esta
+          seção muda de altura a cada clique, e um painel que expande DENTRO
+          de um elemento fixo no topo infla o cabeçalho inteiro — empurrando
+          ou cobrindo a tela abaixo dele. Aqui, no fluxo normal da página, ele
+          só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
+      {!naCapa && view !== 'cadastro' ? (
+        // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
+        // do `<div>` `flexDirection: column` do topo, e margem `auto` num
+        // item flex SEM largura explícita suprime o `stretch` — o bloco
+        // encolhe para o tamanho do conteúdo (aqui, só o botão "Filtros") e
+        // fica centralizado sozinho no meio da tela, em vez de ocupar a
+        // largura da coluna. Com `width: 100%`, ele estica primeiro e só
+        // depois o `maxWidth` limita — o mesmo par que `<main>` já usa.
+        <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '12px 32px 0' }}>
+          <PainelDeFiltros />
+        </div>
+      ) : null}
 
       {/* Durante o refetch o conteúdo anterior fica em tela, apenas mais
           apagado: sem salto de altura e sem piscar a cada filtro. */}

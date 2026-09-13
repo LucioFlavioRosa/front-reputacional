@@ -12,12 +12,19 @@
  *  E COPIAR O LINK MORA AQUI, ao lado do recorte, porque é o recorte que o
  *  link carrega: "manda esta leitura para a liderança" é um endereço, e não
  *  uma captura de tela.
+ *
+ *  `PainelDeFiltros` (a seção "Filtros" com as pílulas) NÃO mora aqui dentro,
+ *  de propósito: esta barra vive num `<header>` `position: sticky` em
+ *  `Layout`, e um painel que expande e recolhe DENTRO de um elemento fixo no
+ *  topo infla o próprio cabeçalho a cada clique — na tela toda, empurrando ou
+ *  cobrindo o conteúdo abaixo. `Layout` monta os dois lado a lado, mas só a
+ *  barra compacta entra no `<header>`; o painel expansível fica no fluxo
+ *  normal da página, logo abaixo dele.
  */
 
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { usePainel } from '@/estado/painel';
 import { Botao, Chip } from '@/componentes/basicos';
-import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import { fichasDoRecorte, semOFiltro } from '@/dominio/resumo-do-recorte';
 import { numero } from '@/dominio/formato';
 
@@ -55,7 +62,6 @@ export function BarraDeRecorte() {
   };
 
   return (
-    <Fragment>
     <div
       className="sem-impressao"
       style={{
@@ -67,7 +73,7 @@ export function BarraDeRecorte() {
         background: 'var(--bg-trilho)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card-int)',
-        marginBottom: 10,
+        marginBottom: 0,
       }}
     >
       <span
@@ -136,8 +142,5 @@ export function BarraDeRecorte() {
         </Botao>
       </span>
     </div>
-
-    <PainelDeFiltros />
-    </Fragment>
   );
 }

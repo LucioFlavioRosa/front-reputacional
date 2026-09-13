@@ -240,7 +240,7 @@ export function Ficha({
         {interacao.temas.length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>
-              Assuntos
+              Temas
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nomesDosTemas(catalogo, interacao.temas).map((tema) => (

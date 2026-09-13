@@ -108,7 +108,7 @@ export function EscolherAgendas({
         <input
           type="search"
           style={estiloDeEntrada}
-          placeholder="Buscar por assunto, instituição, UF ou data…"
+          placeholder="Buscar por tema, instituição, UF ou data…"
           value={busca}
           onChange={(evento) => definirBusca(evento.target.value)}
           aria-label="Buscar agenda anterior"
@@ -124,7 +124,7 @@ export function EscolherAgendas({
             }
             dica={
               candidatas.length
-                ? 'Tente parte do assunto ou o nome do órgão.'
+                ? 'Tente parte do tema ou o nome do órgão.'
                 : 'Só entram aqui as reuniões que já aconteceram.'
             }
           />

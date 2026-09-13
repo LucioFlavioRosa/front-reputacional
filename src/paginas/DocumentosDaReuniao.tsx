@@ -49,7 +49,7 @@ const COLUNAS = [
   'Frente',
   'Documento',
   'Momento',
-  'Assuntos',
+  'Temas',
   'Arquivo',
   'Formato',
   'Tamanho',
@@ -168,9 +168,9 @@ export function DocumentosDaReuniao({
           style={{ ...estiloDeEntrada, width: 200 }}
           value={tema}
           onChange={(e) => definirTema(e.target.value)}
-          aria-label="Filtrar por assunto"
+          aria-label="Filtrar por tema"
         >
-          <option value="">Todos os assuntos</option>
+          <option value="">Todos os temas</option>
           {catalogo.dicionarios.temas.map((t) => (
             <option key={t.id} value={t.id}>
               {t.nome}

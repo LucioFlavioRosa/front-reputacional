@@ -599,16 +599,16 @@ export function Cadastro({
         </div>
 
         <div style={{ marginTop: 16 }}>
-          {/* O ASSUNTO NA IDENTIFICACAO, EM UM CAMPO SO.
+          {/* O TEMA NA IDENTIFICACAO, EM UM CAMPO SO.
               A PAUTA NÃO FICA AQUI, e sim em "Conteúdo": duas caixas pedindo
               a mesma coisa em precisões diferentes, lado a lado, convidam a
-              escrever duas versões do assunto — e a base passa a ter registros
+              escrever duas versões do tema — e a base passa a ter registros
               cujo título e cujos temas discordam.
 
-              "ASSUNTOS", e não "Temas" nem "Tags": é a palavra que o cadastro
-              da Administração usa e a que o negócio fala. Um campo, um nome,
-              em toda a plataforma. */}
-          <Campo rotulo="Assuntos">
+              "TEMAS", e não "Assuntos" nem "Tags": a Administração usa esse
+              nome desde que a aba de cadastro foi renomeada, e a leitura
+              vale para toda a plataforma — um campo, um nome. */}
+          <Campo rotulo="Temas">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
                 const ativo = form.temas.includes(tema.id);

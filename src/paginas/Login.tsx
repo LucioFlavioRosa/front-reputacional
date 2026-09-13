@@ -25,7 +25,7 @@ import { entrarPorSenha } from '@/api/cliente';
 import { entrarNoPainel } from '@/dominio/entrada';
 
 /** O SSO volta trocando isto para `true`. Nada mais precisa mudar aqui. */
-const SSO_LIGADO = false;
+const SSO_LIGADO = true;
 
 /** Os três módulos da plataforma, na ordem em que a capa os apresenta. */
 const MODULOS = [
