@@ -10,10 +10,13 @@ import { celula } from '@/componentes/estilos';
 import { Abas } from '@/componentes/Abas';
 import { FiltrosDeAgendas } from '@/componentes/FiltrosDeAgendas';
 import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
+import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { DocumentosDaReuniao } from '@/paginas/DocumentosDaReuniao';
 import { MateriaisOficiais } from '@/paginas/MateriaisOficiais';
 import { dataCompleta, numero, tituloDaAgenda, truncar } from '@/dominio/formato';
 import { rotuloDeAbrangencia } from '@/dominio/frentes';
+import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
+import type { Ordenacao } from '@/dominio/ordenacao';
 import type { Interacao } from '@/dominio/tipos';
 import {
   nomeDaInstituicao,
@@ -43,8 +46,8 @@ import type { Catalogo } from '@/dominio/derivacoes';
  *  diferentes vindas de lugares diferentes, com governanca diferente.
  */
 const ABAS = [
-  { id: 'agendas' as const, rotulo: 'Agendas' },
-  { id: 'oficiais' as const, rotulo: 'Materiais oficiais' },
+  { id: 'agendas' as const, rotulo: 'Interações' },
+  { id: 'oficiais' as const, rotulo: 'Posicionamentos e Papers' },
   { id: 'documentos' as const, rotulo: 'Documentos das reuniões' },
 ];
 
@@ -54,6 +57,23 @@ const COLUNAS = [
   'Cadeia', 'Data', 'Frente', 'Instituição', 'Unidade', 'Interlocutor',
   'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
 ];
+
+//: TODAS MENOS "CADEIA": ela é só o ícone de encadeamento, sem texto para
+//: comparar entre linhas — ordenar por ela não diria nada.
+const COLUNAS_ORDENAVEIS = COLUNAS.filter((coluna) => coluna !== 'Cadeia');
+
+const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number> = {
+  Data: (linha) => linha.data,
+  Frente: (linha) => linha.frente,
+  Instituição: (linha) => linha.entidade,
+  Unidade: (linha) => linha.unidade,
+  Interlocutor: (linha) => linha.interlocutor,
+  Pauta: (linha) => linha.pauta,
+  UF: (linha) => linha.uf,
+  Relevância: (linha) => linha.tier,
+  Situação: (linha) => linha.status,
+  Temas: (linha) => linha.tags,
+};
 
 /** A CADEIA VEM PRIMEIRO, como marca de calha.
  *
@@ -79,11 +99,18 @@ export function Base({
 }) {
   const { interacoes, catalogo, carregando, erro, recorte, total } = usePainel();
   const [aba, definirAba] = useState<AbaDaBase>('agendas');
+  const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
+  const { ocultas, visiveis, alternar } = useColunasVisiveis('base-interacoes', COLUNAS);
 
   const linhas = useMemo(() => {
     if (!catalogo) return [];
     return interacoes.map((interacao) => montarLinha(interacao, catalogo));
   }, [interacoes, catalogo]);
+
+  const linhasOrdenadas = useMemo(
+    () => ordenarPor(linhas, ordenacao, EXTRATORES_DE_ORDENACAO),
+    [linhas, ordenacao],
+  );
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (carregando || !catalogo) return <Carregando />;
@@ -99,17 +126,13 @@ export function Base({
       />
 
       {aba === 'oficiais' ? (
-        <Secao nivelDoTitulo={1} titulo="Materiais oficiais" estilo={{ padding: 0 }}>
+        <Secao nivelDoTitulo={1} titulo="Posicionamentos e Papers" estilo={{ padding: 0 }}>
           <MateriaisOficiais />
         </Secao>
       ) : null}
 
       {aba === 'documentos' ? (
-        <Secao
-          nivelDoTitulo={1}
-          titulo="Documentos das reuniões"
-          estilo={{ padding: 0 }}
-        >
+        <Secao nivelDoTitulo={1} titulo="Documentos das reuniões" estilo={{ padding: 0 }}>
           <DocumentosDaReuniao aoAbrirFicha={aoAbrirFicha} />
         </Secao>
       ) : null}
@@ -121,8 +144,24 @@ export function Base({
       // parece um pedaço de outra página.
       nivelDoTitulo={1}
       titulo={`Base de registros — ${numero(total)} ${total === 1 ? 'registro' : 'registros'}`}
-      acao={
+      estilo={{ padding: 0 }}
+    >
+      <div style={{ padding: '16px 16px 12px' }}>
+        <FiltrosDeAgendas />
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 16px 16px',
+        }}
+      >
+        <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
         <Botao
+          variante="primario"
           aoClicar={async () => {
             // Registra ANTES de montar o arquivo. Falhar aqui não impede a
             // exportação — o CSV é trabalho legítimo, e bloqueá-lo por causa da
@@ -133,17 +172,12 @@ export function Base({
             } catch {
               /* registrado em `cliente.ts` */
             }
-            exportarCsv(linhas, resumirRecorte(recorte, catalogo));
+            exportarCsv(linhasOrdenadas, resumirRecorte(recorte, catalogo));
           }}
           desabilitado={!linhas.length}
         >
           Exportar CSV
         </Botao>
-      }
-      estilo={{ padding: 0 }}
-    >
-      <div style={{ padding: '16px 16px 0' }}>
-        <FiltrosDeAgendas />
       </div>
 
       {!linhas.length ? (
@@ -154,33 +188,56 @@ export function Base({
           />
         </div>
       ) : (
-        <Tabela colunas={COLUNAS} altura="calc(100vh - 400px)">
-          {linhas.map((linha) => (
+        <Tabela
+          colunas={visiveis}
+          altura="calc(100vh - 400px)"
+          colunasOrdenaveis={COLUNAS_ORDENAVEIS.filter((coluna) => visiveis.includes(coluna))}
+          ordenacao={ordenacao}
+          aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
+          chaveDeArmazenamento="base-interacoes"
+        >
+          {linhasOrdenadas.map((linha) => (
             <LinhaDaTabela
               key={linha.id}
               aoClicar={() => aoAbrirFicha(linha.id)}
               titulo="Abrir a ficha do registro"
             >
-            <td style={{ ...celula, padding: '6px 10px' }}>
-              <BotaoDaCadeia
-                linha={linha}
-                aoAbrir={() => aoAbrirCadeia(linha.id)}
-              />
-            </td>
-            <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-              {dataCompleta(linha.data)}
-            </td>
-            <td style={celula}>
-              <ChipDeFrente frente={linha.frente} />
-            </td>
-            <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
-            <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
-            <td style={celula}>{linha.interlocutor}</td>
-            <td style={{ ...celula, minWidth: 260 }}>{truncar(linha.pauta, 90)}</td>
-            <td style={celula}>{linha.uf}</td>
-            <td style={celula}>{linha.tier}</td>
-            <td style={celula}>{linha.status}</td>
+            {!visiveis.includes('Cadeia') ? null : (
+              <td style={{ ...celula, padding: '6px 10px' }}>
+                <BotaoDaCadeia
+                  linha={linha}
+                  aoAbrir={() => aoAbrirCadeia(linha.id)}
+                />
+              </td>
+            )}
+            {!visiveis.includes('Data') ? null : (
+              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                {dataCompleta(linha.data)}
+              </td>
+            )}
+            {!visiveis.includes('Frente') ? null : (
+              <td style={celula}>
+                <ChipDeFrente frente={linha.frente} />
+              </td>
+            )}
+            {!visiveis.includes('Instituição') ? null : (
+              <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
+            )}
+            {!visiveis.includes('Unidade') ? null : (
+              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
+            )}
+            {!visiveis.includes('Interlocutor') ? null : (
+              <td style={celula}>{linha.interlocutor}</td>
+            )}
+            {!visiveis.includes('Pauta') ? null : (
+              <td style={{ ...celula, minWidth: 260 }}>{truncar(linha.pauta, 90)}</td>
+            )}
+            {!visiveis.includes('UF') ? null : <td style={celula}>{linha.uf}</td>}
+            {!visiveis.includes('Relevância') ? null : <td style={celula}>{linha.tier}</td>}
+            {!visiveis.includes('Situação') ? null : <td style={celula}>{linha.status}</td>}
+            {!visiveis.includes('Temas') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
+            )}
             </LinhaDaTabela>
           ))}
         </Tabela>

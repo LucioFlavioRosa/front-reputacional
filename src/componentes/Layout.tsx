@@ -168,30 +168,18 @@ export function Layout({
               cursor: 'pointer',
             }}
           >
-            <span
-              aria-hidden
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: '50%',
-                background: 'var(--turquesa-rio)',
-                display: 'block',
-              }}
+            {/* O ARQUIVO É AZUL-MAR sólido (a mesma cor do fundo do cabeçalho):
+                sem o filtro ele desapareceria contra o próprio gradiente. O
+                filtro converte o traço para branco preservando a
+                transparência — mesma leitura do texto branco ao lado. */}
+            <img
+              src="/imagens/logo-aegea.png"
+              alt="Aegea"
+              style={{ height: 26, width: 'auto', filter: 'brightness(0) invert(1)' }}
             />
             <span style={{ textAlign: 'left', lineHeight: 1.2 }}>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  color: 'rgba(255,255,255,0.72)',
-                }}
-              >
-                AEGEA
-              </span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--branco)' }}>
-                Painel Reputacional
+              <span style={{ display: 'block', fontSize: 18, fontWeight: 700, color: 'var(--branco)' }}>
+                CRM dos Stakeholders
               </span>
             </span>
           </button>
@@ -222,7 +210,7 @@ export function Layout({
                     // trocaram de lugar.
                     background: ativo ? 'var(--branco)' : 'transparent',
                     color: ativo ? 'var(--azul-mar)' : 'rgba(255,255,255,0.78)',
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: ativo ? 700 : 400,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',

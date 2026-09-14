@@ -171,7 +171,7 @@ export function Login({
           <div className="kicker" style={{ color: 'var(--cinza-2)' }}>
             Entrar
           </div>
-          <h2 style={{ fontSize: 24, marginTop: 8 }}>Painel Reputacional</h2>
+          <h2 style={{ fontSize: 24, marginTop: 8 }}>CRM dos Stakeholders</h2>
           <p
             style={{
               fontSize: 13,
