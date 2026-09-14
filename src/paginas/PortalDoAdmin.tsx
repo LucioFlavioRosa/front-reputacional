@@ -5,7 +5,7 @@
  *
  *    Acessos            quem entra na plataforma, e até quando
  *    Instituições       com quem se conversa, e quem fala por elas
- *    Porta-vozes        quem fala pela Aegea, e sobre o quê
+ *    Representantes Aegea  quem fala pela Aegea, e sobre o quê
  *    Assuntos           o vocabulário que o painel consegue somar
  *
  *  As três últimas se encadeiam: o assunto define o que um porta-voz pode
@@ -44,14 +44,14 @@ const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
   },
   {
     id: 'assuntos',
-    rotulo: 'Assuntos',
+    rotulo: 'Temas',
     descricao: 'O que o painel consegue somar — e o que cada porta-voz pode falar.',
   },
   {
     id: 'biblioteca',
-    rotulo: 'Biblioteca',
+    rotulo: 'Posicionamento',
     descricao:
-      'O acervo oficial, por assunto — o que o porta-voz leva para a reunião.',
+      'O acervo oficial, por tema — o que o porta-voz leva para a reunião.',
   },
   {
     id: 'cadastros',
@@ -60,8 +60,8 @@ const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
   },
   {
     id: 'porta_vozes',
-    rotulo: 'Porta-vozes',
-    descricao: 'Quem fala pela Aegea, e sobre quais assuntos.',
+    rotulo: 'Representantes Aegea',
+    descricao: 'Quem fala pela Aegea, e sobre quais temas.',
   },
 ];
 

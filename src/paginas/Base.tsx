@@ -55,7 +55,7 @@ type AbaDaBase = (typeof ABAS)[number]['id'];
 
 const COLUNAS = [
   'Cadeia', 'Data', 'Frente', 'Instituição', 'Unidade', 'Interlocutor',
-  'Pauta', 'UF', 'Relevância', 'Situação', 'Assuntos',
+  'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
 ];
 
 //: TODAS MENOS "CADEIA": ela é só o ícone de encadeamento, sem texto para

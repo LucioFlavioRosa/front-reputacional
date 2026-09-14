@@ -26,8 +26,8 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const PESSOAS: PessoaAegea[] = [
-  { id: 'p1', nome: 'Letícia', cargo: null, email: null, eh_porta_voz: true, ativo: true, temas: [] },
-  { id: 'p2', nome: 'Joseane', cargo: null, email: null, eh_porta_voz: true, ativo: true, temas: [] },
+  { id: 'p1', nome: 'Letícia', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
+  { id: 'p2', nome: 'Joseane', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
 ];
 
 const CATALOGO: Catalogo = montarCatalogo(DICIONARIOS, [], [], PESSOAS);
@@ -115,7 +115,7 @@ describe('um eixo por vez, as mesmas medidas', () => {
       CATALOGO,
     );
 
-    expect(grupos.map((g) => g.rotulo)).toEqual(['Imprensa', 'Governo']);
+    expect(grupos.map((g) => g.rotulo)).toEqual(['Imprensa', 'Entidades']);
   });
 });
 
@@ -164,7 +164,7 @@ describe('a ausência também é um grupo', () => {
   it('agenda sem assunto classificado aparece nomeada', () => {
     const grupos = agrupar([agenda({ temas: [] })], 'assunto', CATALOGO);
 
-    expect(grupos[0].rotulo).toBe('Sem assunto classificado');
+    expect(grupos[0].rotulo).toBe('Sem tema classificado');
   });
 });
 

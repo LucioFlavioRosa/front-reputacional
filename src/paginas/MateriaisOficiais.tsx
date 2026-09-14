@@ -41,7 +41,7 @@ const ROTULO_DO_TIPO: Record<string, string> = {
 //: documento que manda em todos os outros.
 const TIPOS = ['posicionamento', 'qa', 'release', 'nota_tecnica', 'dados', 'apresentacao'];
 
-const COLUNAS = ['Título', 'Tipo', 'Assuntos', 'Versão', 'Atualizado', 'Arquivo', 'Tamanho'];
+const COLUNAS = ['Título', 'Tipo', 'Temas', 'Versão', 'Atualizado', 'Arquivo', 'Tamanho'];
 
 const COLUNAS_ORDENAVEIS = ['Título', 'Tipo', 'Atualizado', 'Tamanho'];
 
@@ -146,9 +146,9 @@ export function MateriaisOficiais() {
           style={{ ...estiloDeEntrada, width: 200 }}
           value={tema}
           onChange={(e) => definirTema(e.target.value)}
-          aria-label="Filtrar por assunto"
+          aria-label="Filtrar por tema"
         >
-          <option value="">Todos os assuntos</option>
+          <option value="">Todos os temas</option>
           {catalogo.dicionarios.temas.map((t) => (
             <option key={t.id} value={t.id}>
               {t.nome}

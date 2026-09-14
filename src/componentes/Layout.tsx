@@ -18,6 +18,7 @@ import type { Eu } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
+import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
 
 //: CINCO DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
@@ -126,8 +127,16 @@ export function Layout({
       <header
         className="sem-impressao"
         style={{
-          background: 'var(--branco)',
-          borderBottom: '1px solid var(--borda)',
+          // A FAIXA DE GRANDE ÁREA que o guia da marca pede: gradiente
+          // azul-mar → azul-mar-sombra, com um brilho de turquesa-rio no
+          // canto — a MESMA dupla que o hero do login usa, só que aqui é
+          // permanente, em toda tela, em vez de aparecer só na entrada.
+          // Sólida, e não translúcida: ela não precisa deixar nada passar por
+          // baixo, porque agora ELA é a cor, não uma janela para o fundo.
+          background:
+            'radial-gradient(120% 220% at 100% 0%, rgba(23,227,203,0.32) 0%, transparent 48%),' +
+            'linear-gradient(120deg, var(--azul-mar) 0%, var(--azul-mar-sombra) 100%)',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.14) inset, 0 4px 16px rgba(0,25,120,0.16)',
           position: 'sticky',
           top: 0,
           zIndex: 30,
@@ -176,12 +185,12 @@ export function Layout({
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: '0.1em',
-                  color: 'var(--cinza-2)',
+                  color: 'rgba(255,255,255,0.72)',
                 }}
               >
                 AEGEA
               </span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--branco)' }}>
                 Painel Reputacional
               </span>
             </span>
@@ -207,8 +216,12 @@ export function Layout({
                     padding: '7px 12px',
                     borderRadius: 'var(--r-btn)',
                     border: 'none',
-                    background: ativo ? 'var(--bg-trilho)' : 'transparent',
-                    color: ativo ? 'var(--azul-mar)' : 'var(--cinza-3)',
+                    // INVERTIDO contra o fundo escuro: a aba ativa agora é a
+                    // pastilha CLARA (era `--bg-trilho` sobre header branco) —
+                    // a mesma lógica de contraste, só que os dois extremos
+                    // trocaram de lugar.
+                    background: ativo ? 'var(--branco)' : 'transparent',
+                    color: ativo ? 'var(--azul-mar)' : 'rgba(255,255,255,0.78)',
                     fontSize: 13,
                     fontWeight: ativo ? 700 : 400,
                     cursor: 'pointer',
@@ -238,7 +251,11 @@ export function Layout({
               <Botao
                 variante="primario"
                 aoClicar={() => irPara('cadastro')}
-                estilo={{ height: 36 }}
+                // INVERTIDO: o azul do botão primário sumiria contra o azul
+                // do cabeçalho — os dois eram quase a mesma cor. Branco com
+                // texto azul-mar é o mesmo contraste do botão de sempre, só
+                // que virado do avesso para o fundo também estar virado.
+                estilo={{ height: 36, background: 'var(--branco)', color: 'var(--azul-mar)' }}
               >
                 Novo registro
               </Botao>
@@ -265,6 +282,24 @@ export function Layout({
         ) : null}
       </header>
       )}
+
+      {/* FORA do `<header>` `position: sticky` de propósito: abrir esta
+          seção muda de altura a cada clique, e um painel que expande DENTRO
+          de um elemento fixo no topo infla o cabeçalho inteiro — empurrando
+          ou cobrindo a tela abaixo dele. Aqui, no fluxo normal da página, ele
+          só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
+      {!naCapa && view !== 'cadastro' ? (
+        // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
+        // do `<div>` `flexDirection: column` do topo, e margem `auto` num
+        // item flex SEM largura explícita suprime o `stretch` — o bloco
+        // encolhe para o tamanho do conteúdo (aqui, só o botão "Filtros") e
+        // fica centralizado sozinho no meio da tela, em vez de ocupar a
+        // largura da coluna. Com `width: 100%`, ele estica primeiro e só
+        // depois o `maxWidth` limita — o mesmo par que `<main>` já usa.
+        <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '12px 32px 0' }}>
+          <PainelDeFiltros />
+        </div>
+      ) : null}
 
       {/* Durante o refetch o conteúdo anterior fica em tela, apenas mais
           apagado: sem salto de altura e sem piscar a cada filtro. */}

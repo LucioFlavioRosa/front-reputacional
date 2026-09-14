@@ -28,16 +28,39 @@ export const CORES_DE_FRENTE: Record<Frente, string> = {
   investidores: '#DF2378',
   legislativo: '#F8DC00',
   interna: '#8C91A4',
+  // Rosa Goiaba do guia — a única das oito cores de frente que ainda não
+  // estava em uso em lugar nenhum (clima, resultado, tier). Com texto escuro
+  // dá 6,96:1; com branco, só 2,05 — por isso entra em `FUNDO_CLARO`.
+  bancos_credores: '#FF8FE1',
 };
 
 export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   imprensa: 'Imprensa',
-  governo: 'Governo',
+  // O CÓDIGO CONTINUA 'governo' — só o rótulo mudou (ver
+  // `0031_frente_bancos_credores.sql`). Renomear o código quebraria toda
+  // comparação `frente === 'governo'` no código, sem ganho nenhum: quem lê a
+  // tela só vê "Entidades".
+  governo: 'Entidades',
   parceiros: 'Parceiros',
   eventos: 'Eventos',
   investidores: 'Investidores',
-  legislativo: 'Legislativo',
+  legislativo: 'Agentes Públicos',
   interna: 'Interna',
+  bancos_credores: 'Bancos/Credores',
+};
+
+/** O que cada frente cobre — vira o `title` do chip, para quem esquece a
+ *  diferença entre "Entidades" e "Parceiros", ou não sabe o que "Interna"
+ *  guarda, não precisar abrir o registro pra descobrir. */
+export const DESCRICAO_DE_FRENTE: Record<Frente, string> = {
+  imprensa: 'Jornalistas e veículos de imprensa — entrevista, matéria, resposta a pauta.',
+  governo: 'Órgãos públicos e representantes do governo.',
+  parceiros: 'Entidades parceiras da Aegea — associações, ONGs, institutos.',
+  eventos: 'Participação ou promoção de eventos institucionais.',
+  investidores: 'Investidores e o mercado financeiro.',
+  legislativo: 'Proposições em tramitação no Legislativo.',
+  interna: 'Demanda interna da Aegea, sem interlocutor de fora.',
+  bancos_credores: 'Bancos e credores — relação de crédito e dívida, não de mercado de capitais.',
 };
 
 /** Que TIPO de instituição cada frente conversa.
@@ -57,6 +80,10 @@ export const TIPO_DE_INSTITUICAO: Record<Frente, string> = {
   investidores: 'investidor',
   legislativo: 'proposicao',
   interna: 'area_interna',
+  // NÃO é 'investidor': a relação com um banco credor é de dívida, não de
+  // mercado de capitais — misturar as duas ofereceria bancos de crédito no
+  // filtro de instituições de Investidores, e vice-versa.
+  bancos_credores: 'credor',
 };
 
 /** As instituições que a frente escolhida oferece — MAIS a já gravada.
@@ -127,6 +154,13 @@ export const CAMPOS_DE_EXTENSAO: Record<
     { campo: 'tipo_investidor', rotulo: 'Tipo de investidor' },
     { campo: 'formato', rotulo: 'Formato' },
   ],
+  // MESMOS CAMPOS DE GOVERNO/PARCEIROS/EVENTOS: reaproveita `Institucional`
+  // no backend em vez de ganhar extensão própria (ver `app/dominio/
+  // frentes.py`). `nome_evento` fica de fora — só faz sentido em Eventos.
+  bancos_credores: [
+    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
+    { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
+  ],
   interna: [
     { campo: 'natureza', rotulo: 'Natureza' },
     { campo: 'cumprimento', rotulo: 'Cumprimento' },
@@ -163,12 +197,13 @@ export function extensaoAoTrocarDeFrente<T extends object>(
  *
  *  Medido contra `#00312C` (o escuro) e `#FFFFFF`, em razão WCAG:
  *
- *    governo      #17E3CB   escuro 8,73   branco 1,63
- *    legislativo  #F8DC00   escuro 10,32  branco 1,38
- *    eventos      #FE952B   escuro 6,47   branco 2,20
- *    interna      #8C91A4   escuro 4,54   branco 3,13
+ *    governo           #17E3CB   escuro 8,73   branco 1,63
+ *    legislativo       #F8DC00   escuro 10,32  branco 1,38
+ *    eventos           #FE952B   escuro 6,47   branco 2,20
+ *    interna           #8C91A4   escuro 4,54   branco 3,13
+ *    bancos_credores   #FF8FE1   escuro 6,96   branco 2,05
  *
- *  As quatro só passam com texto escuro. As outras três — Imprensa (10,37),
+ *  As cinco só passam com texto escuro. As outras três — Imprensa (10,37),
  *  Parceiros (5,05) e Investidores (4,52 depois do ajuste acima) — passam com
  *  branco, e só com branco.
  */
@@ -177,6 +212,7 @@ const FUNDO_CLARO: ReadonlySet<Frente> = new Set<Frente>([
   'legislativo',
   'eventos',
   'interna',
+  'bancos_credores',
 ]);
 
 export function textoSobreFrente(frente: Frente): string {

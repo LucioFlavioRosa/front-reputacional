@@ -84,7 +84,7 @@ export function lerRecorteEmPalavras(
   const maisTensa = [...porFrente].sort((a, b) => b.tenso - a.tenso)[0];
   if (maisTensa?.tenso) {
     complicacoes.push(
-      `O clima tenso concentra-se em ${maisTensa.rotulo}: ` +
+      `O clima reativo concentra-se em ${maisTensa.rotulo}: ` +
         `${numero(maisTensa.tenso)} de ${numero(maisTensa.total)} agendas.`,
     );
   }
@@ -93,7 +93,7 @@ export function lerRecorteEmPalavras(
   if (foraDoEscopo?.agendas.length) {
     complicacoes.push(
       `${numero(foraDoEscopo.agendas.length)} ${foraDoEscopo.agendas.length === 1 ? 'agenda foi conduzida' : 'agendas foram conduzidas'} ` +
-        'por quem não responde pelo assunto tratado.',
+        'por quem não responde pelo tema tratado.',
     );
   }
 

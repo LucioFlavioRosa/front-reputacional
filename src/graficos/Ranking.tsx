@@ -75,7 +75,10 @@ export function Ranking({
               >
                 {item.rotulo}
               </span>
-              <span className="tabular" style={{ fontWeight: 700, flexShrink: 0 }}>
+              <span
+                className="tabular"
+                style={{ fontWeight: 700, fontSize: 14, color: 'var(--cinza-4)', flexShrink: 0 }}
+              >
                 {item.total}
               </span>
             </div>

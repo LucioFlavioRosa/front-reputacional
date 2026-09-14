@@ -12,6 +12,14 @@
  *  E COPIAR O LINK MORA AQUI, ao lado do recorte, porque é o recorte que o
  *  link carrega: "manda esta leitura para a liderança" é um endereço, e não
  *  uma captura de tela.
+ *
+ *  `PainelDeFiltros` (a seção "Filtros" com as pílulas) NÃO mora aqui dentro,
+ *  de propósito: esta barra vive num `<header>` `position: sticky` em
+ *  `Layout`, e um painel que expande e recolhe DENTRO de um elemento fixo no
+ *  topo infla o próprio cabeçalho a cada clique — na tela toda, empurrando ou
+ *  cobrindo o conteúdo abaixo. `Layout` monta os dois lado a lado, mas só a
+ *  barra compacta entra no `<header>`; o painel expansível fica no fluxo
+ *  normal da página, logo abaixo dele.
  */
 
 import { useState } from 'react';
@@ -21,11 +29,19 @@ import { fichasDoRecorte, semOFiltro } from '@/dominio/resumo-do-recorte';
 import { numero } from '@/dominio/formato';
 
 export function BarraDeRecorte() {
-  const { recorte, definirRecorte, limparRecorte, catalogo, total, abrirDrawer, atualizando } =
-    usePainel();
+  const { recorte, definirRecorte, limparRecorte, catalogo, total, atualizando } = usePainel();
   const [copiado, definirCopiado] = useState(false);
 
-  const fichas = fichasDoRecorte(recorte, catalogo);
+  // `q` já tem campo próprio, sempre visível, logo abaixo — virar também uma
+  // ficha aqui duplicaria o mesmo valor em dois lugares da barra.
+  const fichas = fichasDoRecorte(recorte, catalogo).filter((ficha) => ficha.campo !== 'q');
+
+  const alterarBusca = (valor: string) => {
+    const proximo = { ...recorte };
+    if (valor) proximo.q = valor;
+    else delete proximo.q;
+    definirRecorte(proximo);
+  };
 
   const copiar = async () => {
     try {
@@ -57,7 +73,7 @@ export function BarraDeRecorte() {
         background: 'var(--bg-trilho)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card-int)',
-        marginBottom: 18,
+        marginBottom: 0,
       }}
     >
       <span
@@ -72,23 +88,37 @@ export function BarraDeRecorte() {
         Recorte
       </span>
 
-      {fichas.length ? (
-        fichas.map((ficha) => (
-          <Chip
-            key={`${ficha.campo}:${ficha.rotulo}`}
-            rotulo={ficha.rotulo}
-            ativo
-            fundo="var(--branco)"
-            texto="var(--cinza-3)"
-            titulo={`Remover o filtro ${ficha.rotulo}`}
-            aoClicar={() => definirRecorte(semOFiltro(recorte, ficha.campo))}
-          />
-        ))
-      ) : (
-        <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-          Base completa, sem filtros
-        </span>
-      )}
+      <input
+        value={recorte.q ?? ''}
+        placeholder="Buscar pauta, instituição, pessoa…"
+        onChange={(evento) => alterarBusca(evento.target.value)}
+        style={{
+          height: 28,
+          width: 190,
+          padding: '0 10px',
+          border: '1px solid var(--borda-input)',
+          borderRadius: 'var(--r-btn)',
+          background: 'var(--branco)',
+          color: 'var(--cinza-4)',
+          fontSize: 12.5,
+        }}
+      />
+
+      {fichas.map((ficha) => (
+        <Chip
+          key={`${ficha.campo}:${ficha.rotulo}`}
+          rotulo={ficha.rotulo}
+          ativo
+          fundo="var(--branco)"
+          texto="var(--cinza-3)"
+          titulo={`Remover o filtro ${ficha.rotulo}`}
+          aoClicar={() => definirRecorte(semOFiltro(recorte, ficha.campo))}
+        />
+      ))}
+
+      {!fichas.length && !recorte.q ? (
+        <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>Base completa, sem filtros</span>
+      ) : null}
 
       <span
         className="tabular"
@@ -98,7 +128,7 @@ export function BarraDeRecorte() {
       </span>
 
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-        {fichas.length ? (
+        {fichas.length || recorte.q ? (
           <Botao variante="fantasma" aoClicar={limparRecorte}>
             Limpar
           </Botao>
@@ -110,7 +140,6 @@ export function BarraDeRecorte() {
         >
           {copiado ? 'Link copiado' : 'Copiar link'}
         </Botao>
-        <Botao aoClicar={abrirDrawer}>Filtros</Botao>
       </span>
     </div>
   );

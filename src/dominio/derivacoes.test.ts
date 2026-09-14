@@ -27,6 +27,7 @@ import {
   ranking,
   resolutividade,
   resultados,
+  resumoDeClimaPorFrente,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
@@ -75,8 +76,8 @@ const INTERLOCUTORES: Interlocutor[] = [
 ];
 
 const PESSOAS: PessoaAegea[] = [
-  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', email: null, eh_porta_voz: true, ativo: true, temas: [] },
-  { id: 'a2', nome: 'André Pires', cargo: 'CFO', email: null, eh_porta_voz: true, ativo: true, temas: [] },
+  { id: 'a1', nome: 'Radamés Casseb', cargo: 'CEO', email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
+  { id: 'a2', nome: 'André Pires', cargo: 'CFO', email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
 ];
 
 const CATALOGO = montarCatalogo(DICIONARIOS, INSTITUICOES, INTERLOCUTORES, PESSOAS);
@@ -110,6 +111,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     registro_url: null,
     extensao: null,
     temas: [],
+    areas: [],
     participacoes: [],
     fonte: 'cadastro_manual',
     visivel: true,
@@ -177,6 +179,36 @@ describe('kpis', () => {
     const vazio = kpis([], CATALOGO);
     expect(vazio.imprensa.taxa).toBe(0);
     expect(vazio.tier1.percentual).toBe(0);
+  });
+});
+
+describe('resumoDeClimaPorFrente', () => {
+  it('conta positivas e negativas de uma frente, ignorando neutro e sem clima', () => {
+    const dados = [
+      interacao({ frente: 'eventos', clima: 'propositivo' }),
+      interacao({ frente: 'eventos', clima: 'propositivo' }),
+      interacao({ frente: 'eventos', clima: 'tenso' }),
+      interacao({ frente: 'eventos', clima: 'neutro' }),
+      interacao({ frente: 'eventos', clima: null }),
+      interacao({ frente: 'imprensa', clima: 'propositivo' }), // outra frente, não conta
+    ];
+    const resumo = resumoDeClimaPorFrente(dados, ['eventos']);
+    expect(resumo).toEqual({ total: 5, positivas: 2, negativas: 1 });
+  });
+
+  it('soma mais de uma frente quando pedido (caso institucionais)', () => {
+    const dados = [
+      interacao({ frente: 'governo', clima: 'propositivo' }),
+      interacao({ frente: 'parceiros', clima: 'tenso' }),
+      interacao({ frente: 'legislativo', clima: 'propositivo' }), // fora do grupo, não conta
+    ];
+    const resumo = resumoDeClimaPorFrente(dados, ['governo', 'parceiros']);
+    expect(resumo).toEqual({ total: 2, positivas: 1, negativas: 1 });
+  });
+
+  it('devolve zeros quando não há registro da frente', () => {
+    const resumo = resumoDeClimaPorFrente([], ['bancos_credores']);
+    expect(resumo).toEqual({ total: 0, positivas: 0, negativas: 0 });
   });
 });
 
@@ -248,6 +280,45 @@ describe('completarMeses', () => {
       ]),
     );
     expect(serie.map((c) => c.mes)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
+  });
+
+  it('descarta uma coluna isolada bem distante do início, sem preencher o vão até ela', () => {
+    // Uma interação de 2025-01 e o resto a partir de 2026-02: o vão até a
+    // próxima coluna com dado (13 meses) passa do limite de 3, e sem o corte
+    // a série encheria o eixo com um ano inteiro de meses vazios antes do
+    // bloco de verdade — exatamente o efeito visual reportado no painel.
+    const dados = [
+      interacao({ data_interacao: '2025-01-08' }),
+      interacao({ data_interacao: '2026-02-10' }),
+      interacao({ data_interacao: '2026-03-15' }),
+    ];
+    const serie = completarMeses(
+      serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
+        'imprensa',
+      ]),
+    );
+
+    expect(serie.map((c) => c.mes)).toEqual(['2026-02', '2026-03']);
+  });
+
+  it('preenche um vão grande normalmente quando ele NÃO é o início da série', () => {
+    // O vão de 6 meses aqui fica entre a segunda e a terceira coluna, não
+    // entre a primeira e a segunda — o corte só olha o início, então este
+    // vão continua preenchido como antes de existir o corte.
+    const dados = [
+      interacao({ data_interacao: '2026-01-10' }),
+      interacao({ data_interacao: '2026-02-10' }),
+      interacao({ data_interacao: '2026-08-10' }),
+    ];
+    const serie = completarMeses(
+      serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
+        'imprensa',
+      ]),
+    );
+
+    expect(serie.map((c) => c.mes)).toEqual([
+      '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08',
+    ]);
   });
 });
 

@@ -36,6 +36,34 @@ export function rotuloDoMes(chave: string): string {
   return MESES_CURTOS[mes - 1];
 }
 
+/** Segunda-feira da semana de `iso`, em "YYYY-MM-DD" — mesma ideia de
+ *  `chaveDoMes`: uma string que ORDENA na ordem certa por `localeCompare`,
+ *  sem precisar guardar a data como `Date`. */
+export function chaveDaSemana(iso: string): string {
+  const d = paraData(iso);
+  const diaDaSemana = d.getDay(); // 0 = domingo
+  d.setDate(d.getDate() + (diaDaSemana === 0 ? -6 : 1 - diaDaSemana));
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+export function rotuloDaSemana(chave: string): string {
+  const [, mes, dia] = chave.split('-');
+  return `${dia}/${mes}`;
+}
+
+/** "2026-S1" / "2026-S2" — primeiro ou segundo semestre do ano de `iso`. */
+export function chaveDoSemestre(iso: string): string {
+  const d = paraData(iso);
+  return `${d.getFullYear()}-S${d.getMonth() < 6 ? 1 : 2}`;
+}
+
+export function rotuloDoSemestre(chave: string): string {
+  const [ano, semestre] = chave.split('-S');
+  return `${semestre}º sem/${ano.slice(2)}`;
+}
+
 /** Hoje no fuso do usuário, em ISO.
  *
  *  `new Date().toISOString()` devolve UTC: no Brasil, depois das 21h, ele já
@@ -164,7 +192,7 @@ export function iniciais(nome: string): string {
  *  existe, e o que alguem escreveu de proprio punho sobre aquela agenda; os
  *  temas sao a mesma coisa classificada; e a expectativa diz o que se quer
  *  dela. Restando nada, o rotulo diz que falta preencher — e nao finge que a
- *  agenda nao tem assunto.
+ *  agenda nao tem tema.
  */
 export function tituloDaAgenda(
   interacao: { pauta: string | null; temas: number[]; expectativa: string | null },
@@ -177,5 +205,5 @@ export function tituloDaAgenda(
 
   if (interacao.expectativa?.trim()) return interacao.expectativa;
 
-  return 'Sem assunto informado';
+  return 'Sem tema informado';
 }

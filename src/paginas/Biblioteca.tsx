@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Botao,
   Campo,
+  CampoDeArquivo,
   Cartao,
   FaixaDeErro,
   Secao,
@@ -157,7 +158,7 @@ export function Biblioteca() {
       <Secao titulo="Cadastrar referência">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O arquivo fica no armazenamento do painel, numa pasta por assunto e
+            O arquivo fica no armazenamento do painel, numa pasta por tema e
             tipo. Depois é só subir versões novas — as anteriores continuam.
           </p>
 
@@ -173,11 +174,10 @@ export function Biblioteca() {
               obrigatorio
               dica="É ele que vira a versão 1 da referência."
             >
-              <input
-                ref={campoDeArquivo}
-                type="file"
-                style={estiloDeEntrada}
-                onChange={(e) => definirArquivoNovo(e.target.files?.[0] ?? null)}
+              <CampoDeArquivo
+                entradaRef={campoDeArquivo}
+                valor={arquivoNovo}
+                aoEscolher={definirArquivoNovo}
               />
             </Campo>
           </div>
@@ -216,7 +216,7 @@ export function Biblioteca() {
         </Cartao>
       </Secao>
 
-      <Secao titulo={`Na biblioteca (${referencias?.length ?? 0})`}>
+      <Secao titulo={`Cadastradas (${referencias?.length ?? 0})`}>
         <Cartao>
           <input
             style={{ ...estiloDeEntrada, marginBottom: 14 }}
@@ -365,7 +365,7 @@ function FormularioDeReferencia({
 
       <div className="grade grade--2" style={{ gap: 16 }}>
         <CampoQueCompleta
-          rotulo="Assunto principal"
+          rotulo="Tema principal"
           obrigatorio
           dica="É ele que define a pasta do arquivo."
           valor={valor.tema_principal}
@@ -397,7 +397,7 @@ function FormularioDeReferencia({
       </Campo>
 
       <Campo
-        rotulo="Outros assuntos"
+        rotulo="Outros temas"
         dica="Além do principal. É por eles que a referência aparece no preparo de uma agenda."
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
@@ -585,12 +585,13 @@ function Linha({
           flexWrap: 'wrap',
         }}
       >
-        <input
-          type="file"
-          aria-label={`Arquivo da nova versão de ${referencia.titulo}`}
-          style={{ ...estiloDeEntrada, width: 260 }}
-          onChange={(e) => definirArquivo(e.target.files?.[0] ?? null)}
-        />
+        <div style={{ width: 260 }}>
+          <CampoDeArquivo
+            valor={arquivo}
+            aoEscolher={definirArquivo}
+            ariaLabel={`Arquivo da nova versão de ${referencia.titulo}`}
+          />
+        </div>
         <input
           type="date"
           aria-label={`Data do documento da nova versão de ${referencia.titulo}`}

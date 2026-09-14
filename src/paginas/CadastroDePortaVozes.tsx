@@ -37,6 +37,7 @@ const VAZIA = {
   cargo: '',
   email: '',
   eh_porta_voz: true,
+  area_id: null as number | null,
   temas: [] as number[],
 };
 
@@ -120,6 +121,23 @@ export function CadastroDePortaVozes() {
         : [...atual.temas, id],
     } as never);
 
+  //: TROCAR PARA EQUIPE LIMPA OS ASSUNTOS.
+  //:
+  //: "Sobre o que pode falar" sustenta a regra de "fora do escopo" para quem
+  //: FALA pela companhia — quem acompanha não conduz agenda sozinho, então a
+  //: lista não tem o que autorizar. Deixar assuntos escolhidos numa pessoa que
+  //: virou equipe guardaria uma autorização que a tela nem mostra mais.
+  const escolherPapel = (
+    atual: { eh_porta_voz: boolean; temas: number[] },
+    definir: (v: never) => void,
+    ehPortaVoz: boolean,
+  ) =>
+    definir({
+      ...atual,
+      eh_porta_voz: ehPortaVoz,
+      temas: ehPortaVoz ? atual.temas : [],
+    } as never);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
@@ -127,7 +145,7 @@ export function CadastroDePortaVozes() {
       <Secao titulo="Cadastrar pessoa da Aegea">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            Os assuntos marcados são sobre o que esta pessoa pode falar. É o que
+            Os temas marcados são sobre o que esta pessoa pode falar. É o que
             sustenta a leitura de "fora do escopo": agenda cujo tema não está na
             lista de quem a conduziu.
           </p>
@@ -160,25 +178,45 @@ export function CadastroDePortaVozes() {
             </Campo>
           </div>
 
-          <div style={{ marginTop: 14 }}>
-            {/* PORTA-VOZ E EQUIPE SÃO PAPÉIS, e não graus. Quem fala pela
-                companhia conta no painel de exposição; quem acompanha, não. */}
-            <label
-              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-            >
-              <input
-                type="checkbox"
-                checked={nova.eh_porta_voz}
-                onChange={(e) =>
-                  definirNova({ ...nova, eh_porta_voz: e.target.checked })
-                }
+          <div className="grade grade--3" style={{ gap: 16, marginTop: 14 }}>
+            <Campo rotulo="Tipo">
+              {/* PORTA-VOZ E EQUIPE SÃO PAPÉIS, e não graus. Quem fala pela
+                  companhia conta no painel de exposição; quem acompanha, não. */}
+              <SeletorDePapel
+                ehPortaVoz={nova.eh_porta_voz}
+                aoEscolher={(v) => escolherPapel(nova, definirNova as never, v)}
               />
-              Fala pela companhia (conta no painel de exposição)
-            </label>
+            </Campo>
+            <Campo rotulo="Área">
+              <select
+                style={estiloDeEntrada}
+                value={nova.area_id ?? ''}
+                onChange={(e) =>
+                  definirNova({
+                    ...nova,
+                    area_id: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              >
+                <option value="">Sem área definida</option>
+                {catalogo.dicionarios.areas_pessoa.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
           </div>
 
-          <div style={{ marginTop: 14 }}>
-            <Campo rotulo="Sobre o que pode falar">
+          <div style={{ marginTop: 14, opacity: nova.eh_porta_voz ? 1 : 0.5 }}>
+            <Campo
+              rotulo="Sobre o que pode falar"
+              dica={
+                nova.eh_porta_voz
+                  ? undefined
+                  : 'Só quem é porta-voz tem temas autorizados.'
+              }
+            >
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                 {assuntos.map((tema) => {
                   const ativo = nova.temas.includes(tema.id);
@@ -189,7 +227,11 @@ export function CadastroDePortaVozes() {
                       ativo={ativo}
                       fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
                       texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                      aoClicar={() => alternar(nova, definirNova as never, tema.id)}
+                      aoClicar={
+                        nova.eh_porta_voz
+                          ? () => alternar(nova, definirNova as never, tema.id)
+                          : undefined
+                      }
                     />
                   );
                 })}
@@ -209,6 +251,7 @@ export function CadastroDePortaVozes() {
                       cargo: nova.cargo || null,
                       email: nova.email || null,
                       eh_porta_voz: nova.eh_porta_voz,
+                      area_id: nova.area_id,
                       temas: nova.temas,
                     }),
                   () => definirNova(VAZIA),
@@ -238,10 +281,14 @@ export function CadastroDePortaVozes() {
                 <EdicaoDaPessoa
                   rascunho={rascunho}
                   assuntos={assuntos}
+                  areas={catalogo.dicionarios.areas_pessoa}
                   salvando={salvando}
                   aoRascunhar={definirRascunho}
                   aoAlternarTema={(id) =>
                     alternar(rascunho, definirRascunho as never, id)
+                  }
+                  aoEscolherPapel={(v) =>
+                    escolherPapel(rascunho, definirRascunho as never, v)
                   }
                   aoCancelar={() => definirEmEdicao(null)}
                   aoSalvar={() =>
@@ -252,6 +299,7 @@ export function CadastroDePortaVozes() {
                           cargo: rascunho.cargo || null,
                           email: rascunho.email || null,
                           eh_porta_voz: rascunho.eh_porta_voz,
+                          area_id: rascunho.area_id,
                           ativo: pessoa.ativo,
                           temas: rascunho.temas,
                         }).then((salva) => {
@@ -272,6 +320,9 @@ export function CadastroDePortaVozes() {
                   pessoa={pessoa}
                   temas={temasPorPessoa[pessoa.id] ?? []}
                   nomeDoTema={(id) => assuntos.find((t) => t.id === id)?.nome ?? ''}
+                  nomeDaArea={(id) =>
+                    catalogo.dicionarios.areas_pessoa.find((a) => a.id === id)?.nome ?? ''
+                  }
                   salvando={salvando}
                   aoEditar={() => {
                     definirEmEdicao(pessoa.id);
@@ -280,6 +331,7 @@ export function CadastroDePortaVozes() {
                       cargo: pessoa.cargo ?? '',
                       email: pessoa.email ?? '',
                       eh_porta_voz: pessoa.eh_porta_voz,
+                      area_id: pessoa.area_id,
                       temas: temasPorPessoa[pessoa.id] ?? [],
                     });
                   }}
@@ -291,6 +343,7 @@ export function CadastroDePortaVozes() {
                           cargo: pessoa.cargo,
                           email: pessoa.email,
                           eh_porta_voz: pessoa.eh_porta_voz,
+                          area_id: pessoa.area_id,
                           ativo: !pessoa.ativo,
                           // A LISTA DE TEMAS VAI JUNTO, e não vazia: o `PUT`
                           // substitui a lista inteira, e mandar `[]` num
@@ -316,6 +369,7 @@ function LinhaDaPessoa({
   pessoa,
   temas,
   nomeDoTema,
+  nomeDaArea,
   salvando,
   aoEditar,
   aoAlternarAtivo,
@@ -323,10 +377,12 @@ function LinhaDaPessoa({
   pessoa: PessoaAegea;
   temas: number[];
   nomeDoTema: (id: number) => string;
+  nomeDaArea: (id: number) => string;
   salvando: boolean;
   aoEditar: () => void;
   aoAlternarAtivo: () => void;
 }) {
+  const area = pessoa.area_id != null ? nomeDaArea(pessoa.area_id) : '';
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -340,6 +396,9 @@ function LinhaDaPessoa({
             }}
           >
             {pessoa.nome}
+            {area ? (
+              <span style={{ fontWeight: 400, color: 'var(--cinza-2)' }}>{` · ${area}`}</span>
+            ) : null}
             {pessoa.eh_porta_voz ? null : (
               <span style={{ fontWeight: 400, color: 'var(--cinza-2)' }}>
                 {' · equipe'}
@@ -373,7 +432,7 @@ function LinhaDaPessoa({
 
       <p style={{ fontSize: 12, color: 'var(--cinza-3)', marginTop: 6 }}>
         {temas.length === 0
-          ? 'Nenhum assunto autorizado ainda.'
+          ? 'Nenhum tema autorizado ainda.'
           : temas.map(nomeDoTema).filter(Boolean).join(' · ')}
       </p>
     </>
@@ -383,17 +442,21 @@ function LinhaDaPessoa({
 function EdicaoDaPessoa({
   rascunho,
   assuntos,
+  areas,
   salvando,
   aoRascunhar,
   aoAlternarTema,
+  aoEscolherPapel,
   aoCancelar,
   aoSalvar,
 }: {
   rascunho: typeof VAZIA;
   assuntos: { id: number; nome: string }[];
+  areas: { id: number; nome: string }[];
   salvando: boolean;
   aoRascunhar: (r: typeof VAZIA) => void;
   aoAlternarTema: (id: number) => void;
+  aoEscolherPapel: (ehPortaVoz: boolean) => void;
   aoCancelar: () => void;
   aoSalvar: () => void;
 }) {
@@ -424,32 +487,57 @@ function EdicaoDaPessoa({
         </Campo>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-        <input
-          type="checkbox"
-          checked={rascunho.eh_porta_voz}
-          onChange={(e) => aoRascunhar({ ...rascunho, eh_porta_voz: e.target.checked })}
-        />
-        Fala pela companhia
-      </label>
+      <div className="grade grade--3" style={{ gap: 12 }}>
+        <Campo rotulo="Tipo">
+          <SeletorDePapel ehPortaVoz={rascunho.eh_porta_voz} aoEscolher={aoEscolherPapel} />
+        </Campo>
+        <Campo rotulo="Área">
+          <select
+            style={estiloDeEntrada}
+            value={rascunho.area_id ?? ''}
+            onChange={(e) =>
+              aoRascunhar({
+                ...rascunho,
+                area_id: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          >
+            <option value="">Sem área definida</option>
+            {areas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.nome}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      </div>
 
-      <Campo rotulo="Sobre o que pode falar">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-          {assuntos.map((tema) => {
-            const ativo = rascunho.temas.includes(tema.id);
-            return (
-              <Chip
-                key={tema.id}
-                rotulo={tema.nome}
-                ativo={ativo}
-                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                aoClicar={() => aoAlternarTema(tema.id)}
-              />
-            );
-          })}
-        </div>
-      </Campo>
+      <div style={{ opacity: rascunho.eh_porta_voz ? 1 : 0.5 }}>
+        <Campo
+          rotulo="Sobre o que pode falar"
+          dica={
+            rascunho.eh_porta_voz
+              ? undefined
+              : 'Só quem é porta-voz tem temas autorizados.'
+          }
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {assuntos.map((tema) => {
+              const ativo = rascunho.temas.includes(tema.id);
+              return (
+                <Chip
+                  key={tema.id}
+                  rotulo={tema.nome}
+                  ativo={ativo}
+                  fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                  texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                  aoClicar={rascunho.eh_porta_voz ? () => aoAlternarTema(tema.id) : undefined}
+                />
+              );
+            })}
+          </div>
+        </Campo>
+      </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
@@ -457,6 +545,51 @@ function EdicaoDaPessoa({
         </Botao>
         <Botao aoClicar={aoCancelar}>Cancelar</Botao>
       </div>
+    </div>
+  );
+}
+
+/** Porta-voz ou equipe — a escolha por trás de `eh_porta_voz`, dita como
+ *  pergunta em vez de caixa marcada. Duas pílulas, e não um `<select>`: são só
+ *  duas opções, sempre as mesmas, e qual está ativa precisa estar visível sem
+ *  abrir nada — o mesmo raciocínio do seletor de granularidade do Painel. */
+function SeletorDePapel({
+  ehPortaVoz,
+  aoEscolher,
+}: {
+  ehPortaVoz: boolean;
+  aoEscolher: (ehPortaVoz: boolean) => void;
+}) {
+  const opcoes: { valor: boolean; rotulo: string }[] = [
+    { valor: true, rotulo: 'Porta-voz' },
+    { valor: false, rotulo: 'Equipe' },
+  ];
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      {opcoes.map((opcao) => {
+        const ativo = ehPortaVoz === opcao.valor;
+        return (
+          <button
+            key={String(opcao.valor)}
+            type="button"
+            onClick={() => aoEscolher(opcao.valor)}
+            aria-pressed={ativo}
+            style={{
+              flex: 1,
+              height: 38,
+              borderRadius: 'var(--r-btn)',
+              border: ativo ? '1px solid var(--azul-mar)' : '1px solid var(--borda-input)',
+              background: ativo ? 'var(--azul-mar)' : 'var(--branco)',
+              color: ativo ? 'var(--branco)' : 'var(--cinza-3)',
+              fontSize: 13,
+              fontWeight: ativo ? 700 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            {opcao.rotulo}
+          </button>
+        );
+      })}
     </div>
   );
 }

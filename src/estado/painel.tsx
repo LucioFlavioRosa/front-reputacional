@@ -24,7 +24,6 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import { montarCatalogo } from '@/dominio/derivacoes';
 import type { Recorte } from '@/dominio/recorte';
-import { quantidadeDeFiltros } from '@/dominio/recorte';
 import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
 
@@ -32,7 +31,6 @@ interface EstadoDoPainel {
   recorte: Recorte;
   definirRecorte: (recorte: Recorte) => void;
   limparRecorte: () => void;
-  filtrosAtivos: number;
 
   interacoes: Interacao[];
   total: number;
@@ -45,10 +43,6 @@ interface EstadoDoPainel {
   atualizando: boolean;
   erro: string | null;
   recarregar: () => void;
-
-  drawerAberto: boolean;
-  abrirDrawer: () => void;
-  fecharDrawer: () => void;
 }
 
 const Contexto = createContext<EstadoDoPainel | null>(null);
@@ -106,7 +100,6 @@ export function ProvedorDoPainel({
   const [carregando, definirCarregando] = useState(true);
   const [atualizando, definirAtualizando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
-  const [drawerAberto, definirDrawerAberto] = useState(false);
   const [versao, definirVersao] = useState(0);
 
   const recarregar = useCallback(() => definirVersao((v) => v + 1), []);
@@ -179,7 +172,6 @@ export function ProvedorDoPainel({
       recorte,
       definirRecorte,
       limparRecorte: () => definirRecorte({}),
-      filtrosAtivos: quantidadeDeFiltros(recorte),
       interacoes,
       total,
       truncado,
@@ -188,13 +180,10 @@ export function ProvedorDoPainel({
       atualizando,
       erro,
       recarregar,
-      drawerAberto,
-      abrirDrawer: () => definirDrawerAberto(true),
-      fecharDrawer: () => definirDrawerAberto(false),
     }),
     [
       recorte, interacoes, total, truncado, catalogo,
-      carregando, atualizando, erro, recarregar, drawerAberto,
+      carregando, atualizando, erro, recarregar,
       // `definirRecorte` não é o `setState` cru: também escreve o endereço, e
       // por isso é um `useCallback` que precisa entrar aqui. Fora da lista, um
       // provedor remontado serviria a função antiga, que escreveria numa URL

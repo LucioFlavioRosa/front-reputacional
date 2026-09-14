@@ -195,7 +195,15 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                border: aberto ? '2px solid var(--azul-mar)' : '1px solid var(--borda-input)',
+                // `--azul-mar` sumiria: `barra` hoje é o cabeçalho em
+                // gradiente azul-mar → azul-mar-sombra, e uma borda da MESMA
+                // cor do fundo não é borda nenhuma. `--turquesa-rio` marca o
+                // aberto contra as duas cores do gradiente; o branco
+                // translúcido faz o mesmo pelo fechado, sem depender de qual
+                // trecho do degradê está atrás dele.
+                border: aberto
+                  ? '2px solid var(--turquesa-rio)'
+                  : '1px solid rgba(255,255,255,0.5)',
                 background: 'var(--bg-trilho)',
                 color: 'var(--azul-mar)',
                 fontSize: 12,

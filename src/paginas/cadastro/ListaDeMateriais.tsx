@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 
-import { Botao, Campo, estiloDeEntrada } from '@/componentes/basicos';
+import { Botao, Campo, CampoDeArquivo, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { subirArquivoDeMaterial, urlDoArquivo } from '@/api/cliente';
 import { tamanhoLegivel } from '@/dominio/formato';
@@ -255,17 +255,15 @@ export function ListaDeMateriais({
                     : 'Salve a agenda antes de anexar arquivos.'
                 }
               >
-                <input
-                  type="file"
-                  aria-label={`Arquivo do material ${indice + 1}`}
-                  disabled={!interacaoId || subindo !== null}
-                  style={{ ...estiloDeEntrada, paddingTop: 7, height: 'auto' }}
-                  onChange={(evento) => {
-                    const escolhido = evento.target.files?.[0];
-                    // O `value` é limpo para que escolher O MESMO arquivo
-                    // depois de um erro dispare `change` de novo. Sem isso, a
-                    // segunda tentativa não acontece e a tela parece travada.
-                    evento.target.value = '';
+                <CampoDeArquivo
+                  // SEMPRE `null`: esta escolha é consumida na hora — o
+                  // `onChange` já dispara o upload, não guarda um rascunho
+                  // para revisar depois. Não há "arquivo selecionado" para
+                  // mostrar entre um clique e o outro.
+                  valor={null}
+                  ariaLabel={`Arquivo do material ${indice + 1}`}
+                  desabilitado={!interacaoId || subindo !== null}
+                  aoEscolher={(escolhido) => {
                     if (escolhido) void subir(indice, escolhido);
                   }}
                 />
@@ -314,7 +312,7 @@ export function ListaDeMateriais({
                 que alguem vai procurar esse trecho seis meses depois. */}
             <div style={{ marginTop: 10 }}>
               <Campo
-                rotulo="Assuntos do documento"
+                rotulo="Temas do documento"
                 dica="É por eles que ele aparece na busca da Base."
               >
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

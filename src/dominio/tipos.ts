@@ -12,6 +12,7 @@ export const FRENTES = [
   'investidores',
   'legislativo',
   'interna',
+  'bancos_credores',
 ] as const;
 
 export type Frente = (typeof FRENTES)[number];
@@ -134,6 +135,9 @@ export interface Interacao {
   registro_url: string | null;
   extensao: Extensao | null;
   temas: number[];
+  /** Áreas internas da Aegea que participaram da interação. Mesmo dicionário
+   *  de `PessoaAegea.area_id` (`catalogo.dicionarios.areas_pessoa`). */
+  areas: number[];
   participacoes: Participacao[];
 
   // -- o ciclo da agenda ----------------------------------------------------
@@ -269,6 +273,9 @@ export interface Dicionarios {
   tramitacoes: ItemDeDicionario[];
   tipos_investidor: ItemDeDicionario[];
   stakeholders: ItemDeDicionario[];
+  /** De onde quem representa a Aegea fala — Comunicação, Relações
+   *  Institucionais etc. Ver `PessoaAegea.area_id`. */
+  areas_pessoa: ItemDeDicionario[];
   unidades_negocio: UnidadeDeNegocio[];
   temas: Tema[];
 }
@@ -305,6 +312,9 @@ export interface PessoaAegea {
   /** Como se aciona a pessoa da casa para articular a agenda. */
   email: string | null;
   eh_porta_voz: boolean;
+  /** De onde esta pessoa fala. `null` em quem foi cadastrado antes de o campo
+   *  existir, ou em quem é equipe (o campo só faz sentido para porta-voz). */
+  area_id: number | null;
   ativo: boolean;
   /** SOBRE O QUE ESTA PESSOA RESPONDE.
    *
