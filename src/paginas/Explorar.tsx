@@ -74,7 +74,7 @@ export function Explorar({
           empilhavam em coluna, ocupando meia tela cada um. Estilo que não
           existe falha em silêncio. */}
       <div className="grade grade--4" style={{ gap: 14 }}>
-        <Kpi rotulo="Agendas no recorte" valor={numero(medidas.total)} />
+        <Kpi rotulo="Interações no recorte" valor={numero(medidas.total)} />
         <Kpi
           rotulo="Relevância Tier 1"
           valor={numero(medidas.tier1)}
@@ -144,7 +144,7 @@ export function Explorar({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  {[rotuloDoEixo, 'Agendas', 'Tier 1', 'Em aberto', 'Clima reativo', 'Avanço'].map(
+                  {[rotuloDoEixo, 'Interações', 'Tier 1', 'Em aberto', 'Clima reativo', 'Avanço'].map(
                     (coluna, indice) => (
                       <th
                         key={coluna}
@@ -228,11 +228,11 @@ export function Explorar({
       </Secao>
 
       {EIXOS_DE_MUITOS_VALORES.has(eixo) ? (
-        // A SOMA NÃO BATE COM O TOTAL, e é preciso dizer: uma agenda com dois
+        // A SOMA NÃO BATE COM O TOTAL, e é preciso dizer: uma interação com dois
         // porta-vozes conta nos dois grupos. Quem soma a coluna e não bate
         // desconfia do número certo.
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-          Uma agenda pode entrar em mais de um grupo: a soma passa do total.
+          Uma interação pode entrar em mais de um grupo: a soma passa do total.
         </p>
       ) : null}
 
@@ -297,7 +297,7 @@ function SerieMensal({ meses }: { meses: { mes: string; total: number; tier1: nu
       {meses.map((m) => (
         <div
           key={m.mes}
-          title={`${m.mes}: ${m.total} agendas, ${m.tier1} Tier 1`}
+          title={`${m.mes}: ${m.total} interações, ${m.tier1} Tier 1`}
           style={{
             flex: '1 0 34px',
             display: 'flex',

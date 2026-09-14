@@ -213,7 +213,7 @@ export function DocumentosDaReuniao({
       >
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
           {filtrados.length} {filtrados.length === 1 ? 'documento' : 'documentos'} no
-          recorte. Clique na linha para abrir a agenda de onde ele saiu.
+          recorte. Clique na linha para abrir a interação de onde ele saiu.
         </p>
         <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
       </div>
@@ -237,7 +237,7 @@ export function DocumentosDaReuniao({
           {ordenados.map((documento) => (
             <Linha
               key={documento.id}
-              titulo="Abrir a agenda de onde o documento saiu"
+              titulo="Abrir a interação de onde o documento saiu"
               // LEVA À AGENDA, e não ao arquivo. O download exige a rota
               // autenticada de cada agenda, e a ficha já a oferece com o
               // contexto do que foi aquela reunião — que é o que dá sentido ao

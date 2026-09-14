@@ -230,7 +230,7 @@ export function Base({
             <LinhaDaTabela
               key={linha.id}
               aoClicar={() => aoAbrirFicha(linha.id)}
-              titulo="Abrir a ficha do registro"
+              titulo="Abrir a ficha da interação"
             >
             {!visiveis.includes('Cadeia') ? null : (
               <td style={{ ...celula, padding: '6px 10px' }}>
@@ -310,7 +310,7 @@ function BotaoDaCadeia({ linha, aoAbrir }: { linha: Linha; aoAbrir: () => void }
         aoAbrir();
       }}
       title={descreverCadeia(linha)}
-      aria-label={`${descreverCadeia(linha)}. Ver a cadeia desta agenda.`}
+      aria-label={`${descreverCadeia(linha)}. Ver a cadeia desta interação.`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -344,8 +344,8 @@ function BotaoDaCadeia({ linha, aoAbrir }: { linha: Linha; aoAbrir: () => void }
 /** "Decorre de 2 agendas, levou a 1" — o que a marca quer dizer, em palavras. */
 function descreverCadeia({ vemDe, levouA }: Linha): string {
   const partes: string[] = [];
-  if (vemDe > 0) partes.push(`decorre de ${vemDe} ${vemDe === 1 ? 'agenda' : 'agendas'}`);
-  if (levouA > 0) partes.push(`levou a ${levouA} ${levouA === 1 ? 'agenda' : 'agendas'}`);
+  if (vemDe > 0) partes.push(`decorre de ${vemDe} ${vemDe === 1 ? 'interação' : 'interações'}`);
+  if (levouA > 0) partes.push(`levou a ${levouA} ${levouA === 1 ? 'interação' : 'interações'}`);
   const frase = partes.join(', ');
   return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
@@ -451,5 +451,5 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
 
   // O recorte exportado fica registrado no console para quem precisar
   // reconstituir de onde veio o arquivo.
-  console.info('[Painel Reputacional] CSV exportado do recorte:', resumoDoRecorte);
+  console.info('[CRM dos Stakeholders] CSV exportado do recorte:', resumoDoRecorte);
 }

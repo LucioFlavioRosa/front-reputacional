@@ -47,7 +47,7 @@ const NIVEIS = [
     rotulo: 'Sensível',
     ajuda: 'Exige alinhamento antes de alguém falar.',
   },
-  { valor: 'estrategico', rotulo: 'Estratégico', ajuda: 'Agenda da companhia.' },
+  { valor: 'estrategico', rotulo: 'Estratégico', ajuda: 'Prioridade estratégica da companhia.' },
   { valor: 'gerais', rotulo: 'Gerais', ajuda: 'O que aparece sem ter sido planejado.' },
 ];
 

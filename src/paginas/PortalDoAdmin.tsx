@@ -54,7 +54,7 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
           Central de cadastro das informações utilizadas no painel — quem acessa,
           quem fala pela Aegea e pela outra parte, os temas e o acervo por trás
-          de cada agenda.
+          de cada interação.
         </p>
       </div>
 

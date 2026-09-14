@@ -125,7 +125,7 @@ export function BarraDeRecorte() {
         className="tabular"
         style={{ fontSize: 12, color: 'var(--cinza-2)', marginLeft: 4 }}
       >
-        {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'agenda' : 'agendas'}`}
+        {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'interação' : 'interações'}`}
       </span>
 
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>

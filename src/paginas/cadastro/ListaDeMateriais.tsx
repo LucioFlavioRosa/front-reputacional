@@ -252,7 +252,7 @@ export function ListaDeMateriais({
                 dica={
                   interacaoId
                     ? 'PDF, Word, Excel, PowerPoint, imagem ou texto. Até 25 MB.'
-                    : 'Salve a agenda antes de anexar arquivos.'
+                    : 'Salve a interação antes de anexar arquivos.'
                 }
               >
                 <CampoDeArquivo

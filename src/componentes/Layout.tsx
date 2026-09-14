@@ -245,7 +245,7 @@ export function Layout({
                 // que virado do avesso para o fundo também estar virado.
                 estilo={{ height: 36, background: 'var(--branco)', color: 'var(--azul-mar)' }}
               >
-                Novo registro
+                Nova interação
               </Botao>
             ) : null}
 

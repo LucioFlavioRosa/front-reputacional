@@ -483,7 +483,7 @@ export function Botao({
       height: 40,
       // O gradiente turquesa → azul-mar da marca, e não a cor chapada de
       // antes — mesmo par de cores em todo botão primário do produto, do
-      // "Novo registro" no cabeçalho ao "Exportar CSV" da Base.
+      // "Nova interação" no cabeçalho ao "Exportar CSV" da Base.
       background: 'linear-gradient(135deg, var(--turquesa-rio) 0%, var(--azul-mar) 100%)',
       color: 'var(--branco)',
       border: 'none',

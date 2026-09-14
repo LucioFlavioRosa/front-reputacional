@@ -161,7 +161,7 @@ export function CadastroDePortaVozes() {
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Os temas marcados são sobre o que esta pessoa pode falar. É o que
-            sustenta a leitura de "fora do escopo": agenda cujo tema não está na
+            sustenta a leitura de "fora do escopo": interação cujo tema não está na
             lista de quem a conduziu.
           </p>
 

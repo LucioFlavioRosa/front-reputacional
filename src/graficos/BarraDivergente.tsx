@@ -88,7 +88,7 @@ export function BarraDivergente({
                 evento.preventDefault();
                 definirAberto(expandido ? null : item.chave);
               }}
-              title={`${composicao(item)} — clique para ver as agendas`}
+              title={`${composicao(item)} — clique para ver as interações`}
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
@@ -115,7 +115,7 @@ export function BarraDivergente({
                   {item.rotulo}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 1 }}>
-                  {item.total} {item.total === 1 ? 'agenda' : 'agendas'} — {composicao(item)}
+                  {item.total} {item.total === 1 ? 'interação' : 'interações'} — {composicao(item)}
                 </div>
               </div>
 

@@ -204,7 +204,7 @@ export function DepoisDaReuniao({
           escrito ali, e estes campos são a classificação daquele mesmo texto.
           Separá-los faria voltar a rolar a tela para dizer duas vezes como a
           reunião foi. */}
-      <Secao titulo="9. Desfecho da agenda" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao titulo="9. Desfecho da interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
@@ -219,7 +219,7 @@ export function DepoisDaReuniao({
 
             <CampoQueCompleta
               rotulo="Desfecho"
-              dica="Em relação ao objetivo da agenda."
+              dica="Em relação ao objetivo da interação."
               vazio="Sem definição"
               valor={form.resultado}
               aoEscolher={(v) => alterar('resultado', v)}
@@ -233,7 +233,7 @@ export function DepoisDaReuniao({
                 não saber e saber que não é o que esta plataforma existe para
                 reduzir. */}
             <CampoQueCompleta
-              rotulo="Desdobra em outra agenda?"
+              rotulo="Desdobra em outra interação?"
               valor={form.preve_desdobramento}
               aoEscolher={(v) =>
                 alterar('preve_desdobramento', v as Formulario['preve_desdobramento'])

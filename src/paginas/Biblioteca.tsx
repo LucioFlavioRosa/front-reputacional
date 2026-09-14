@@ -172,7 +172,7 @@ export function Biblioteca() {
             <Campo
               rotulo="Arquivo"
               obrigatorio
-              dica="É ele que vira a versão 1 da referência."
+              dica="É ele que vira a versão 1 do posicionamento."
             >
               <CampoDeArquivo
                 entradaRef={campoDeArquivo}
@@ -398,7 +398,7 @@ function FormularioDeReferencia({
 
       <Campo
         rotulo="Outros temas"
-        dica="Além do principal. É por eles que a referência aparece no preparo de uma agenda."
+        dica="Além do principal. É por eles que o posicionamento aparece no preparo de uma interação."
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {temas

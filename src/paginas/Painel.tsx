@@ -192,7 +192,7 @@ export function Painel({
             aoClicar={() => aoAbrirFrente('eventos')}
           />
           <Kpi
-            rotulo="Agendas de investidores"
+            rotulo="Interações com investidores"
             valor={numero(kpis.investidores.total)}
             dica={`${kpis.investidores.internacionais} internacionais`}
             cor={CORES_DE_FRENTE.investidores}
@@ -206,7 +206,7 @@ export function Painel({
             aoClicar={() => aoAbrirFrente('legislativo')}
           />
           <Kpi
-            rotulo="Agendas institucionais"
+            rotulo="Interações institucionais"
             valor={numero(kpis.institucionais)}
             dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
             coresCompostas={[CORES_DE_FRENTE.governo, CORES_DE_FRENTE.parceiros]}
@@ -298,7 +298,7 @@ export function Painel({
             aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
           />
           <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-            Uma agenda com três temas conta nos três.
+            Uma interação com três temas conta nos três.
           </p>
         </Secao>
       </div>
@@ -320,7 +320,7 @@ export function Painel({
             se é nota, percentual ou contagem. Por extenso, uma vez só aqui (a
             composição por tema já mora em cada linha, via `BarraDivergente`). */}
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-          O número é o placar de clima do tema: (proativas − reativas) ÷ total de agendas × 100.
+          O número é o placar de clima do tema: (proativas − reativas) ÷ total de interações × 100.
           Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, ou maioria neutra.
         </p>
 
