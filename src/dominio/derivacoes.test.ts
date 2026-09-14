@@ -111,6 +111,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     registro_url: null,
     extensao: null,
     temas: [],
+    areas: [],
     participacoes: [],
     fonte: 'cadastro_manual',
     visivel: true,

@@ -135,6 +135,9 @@ export interface Interacao {
   registro_url: string | null;
   extensao: Extensao | null;
   temas: number[];
+  /** Áreas internas da Aegea que participaram da interação. Mesmo dicionário
+   *  de `PessoaAegea.area_id` (`catalogo.dicionarios.areas_pessoa`). */
+  areas: number[];
   participacoes: Participacao[];
 
   // -- o ciclo da agenda ----------------------------------------------------

@@ -352,6 +352,19 @@ export function Cadastro({
     definirSucesso(false);
   };
 
+  /** Quais áreas internas participaram da agenda — sem os efeitos colaterais
+   *  de `alternarAssunto` (que também busca material da biblioteca): área não
+   *  liga a nenhum acervo, é só o vínculo. */
+  const alternarArea = (areaId: number) => {
+    definirForm((atual) => ({
+      ...atual,
+      areas: atual.areas.includes(areaId)
+        ? atual.areas.filter((id) => id !== areaId)
+        : [...atual.areas, areaId],
+    }));
+    definirSucesso(false);
+  };
+
   // Trocar de frente guarda o que a NOVA frente também carrega, e só isso.
   //
   // Zerar tudo seria perda de dado silenciosa: Governo, Parceiros e Eventos
@@ -508,6 +521,24 @@ export function Cadastro({
               aoClicar={() => trocarFrente(frente)}
             />
           ))}
+        </div>
+      </Secao>
+
+      <Secao titulo="Área(s)">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {catalogo.dicionarios.areas_pessoa.map((area) => {
+            const ativo = form.areas.includes(area.id);
+            return (
+              <Chip
+                key={area.id}
+                rotulo={area.nome}
+                ativo={ativo}
+                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                aoClicar={() => alternarArea(area.id)}
+              />
+            );
+          })}
         </div>
       </Secao>
 
@@ -1299,6 +1330,7 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     //
     // Ausente, o backend preserva. Os dois continuam no banco e na ficha.
     temas: form.temas,
+    areas: form.areas,
     // LINHA INCOMPLETA NAO VIAJA — mas quem AVISA e
     // `impedimentoNoFormulario`, e nao este filtro.
     //
@@ -1452,6 +1484,7 @@ function paraFormulario(interacao: Interacao): Formulario {
     pendencias: texto(interacao.pendencias),
     observacoes: texto(interacao.observacoes),
     temas: interacao.temas ?? [],
+    areas: interacao.areas ?? [],
     // SEM FILTRAR POR PAPEL. Trazer de volta so os `porta_voz` apagaria, sem
     // aviso, quem estivesse gravado como `equipe`: `montarCorpo` remanda a
     // lista inteira, e o que nao voltou do servidor nao vai de volta para ele.
