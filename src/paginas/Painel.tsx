@@ -24,6 +24,7 @@ import {
   nomesDosTemas,
   ranking,
   resumoDeClimaPorFrente,
+  scorePorArea,
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
@@ -34,7 +35,7 @@ import type { Granularidade } from '@/dominio/derivacoes';
 //: enquanto o conteúdo de cada card era repensado (termômetro por área,
 //: destaque pro Tier 1). Continua uma constante, e não inline no JSX: tirar
 //: de novo é só trocar `true` por `false`, sem mexer no bloco.
-const EXIBIR_KPIS = true;
+const EXIBIR_KPIS = false;
 
 const ROTULOS_DE_GRANULARIDADE: Record<Granularidade, string> = {
   semana: 'Semana',
@@ -125,6 +126,7 @@ export function Painel({
         granularidade,
       ),
       scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
+      scorePorArea: scorePorArea(interacoes, catalogo),
       geo: distribuicaoPorUf(interacoes),
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
@@ -228,6 +230,24 @@ export function Painel({
           />
         </div>
       ) : null}
+
+      {/* NO LUGAR DOS KPIS, enquanto EXIBIR_KPIS estiver false — é o
+          conteúdo que o comentário de `EXIBIR_KPIS` já previa para esse
+          espaço. Sempre as 5 áreas (mesmo sem nenhuma agenda ainda), porque é
+          um termômetro para comparar todas de uma vez, não um ranking
+          recortado como a barra por tema logo abaixo. */}
+      <Secao titulo="Termômetro por área" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
+          As 5 áreas internas, com o clima das agendas em que participaram — do pior para o
+          melhor.
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+          O número é o placar de clima da área: (proativas − reativas) ÷ total de agendas ×
+          100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, maioria
+          neutra, ou nenhuma agenda com clima ainda.
+        </p>
+        <BarraDivergente itens={derivado.scorePorArea} aoAbrirAgenda={aoAbrirAgenda} />
+      </Secao>
 
       <Secao
         titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}
