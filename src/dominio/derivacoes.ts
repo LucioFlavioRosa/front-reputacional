@@ -184,6 +184,31 @@ export function kpis(interacoes: Interacao[], catalogo: Catalogo): Kpis {
   };
 }
 
+export interface ResumoDeClima {
+  total: number;
+  positivas: number;
+  negativas: number;
+}
+
+/** Total e a quebra positivas/negativas por clima, para uma ou mais frentes
+ *  somadas — sobre o recorte inteiro, a mesma base que os outros KPIs do
+ *  cabeçalho usam (sem janela de data própria).
+ *
+ *  Positiva = clima `propositivo`; negativa = `tenso`. Sem clima registrado
+ *  ou `neutro` não entram em nenhuma das duas — mesmo critério de
+ *  `scorePorTema` e `BarraDivergente`.
+ *
+ *  Aceita mais de uma frente para o caso de soma (`institucionais` = governo
+ *  + parceiros), sem duplicar o filtro em cada card. */
+export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[]): ResumoDeClima {
+  const doGrupo = interacoes.filter((i) => frentes.includes(i.frente));
+  return {
+    total: doGrupo.length,
+    positivas: doGrupo.filter((i) => i.clima === 'propositivo').length,
+    negativas: doGrupo.filter((i) => i.clima === 'tenso').length,
+  };
+}
+
 /* -- séries mensais ------------------------------------------------------- */
 
 export interface Segmento {

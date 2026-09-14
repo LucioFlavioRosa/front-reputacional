@@ -23,6 +23,7 @@ import {
   kpis as calcularKpis,
   nomesDosTemas,
   ranking,
+  resumoDeClimaPorFrente,
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
@@ -97,6 +98,12 @@ export function Painel({
 
     return {
       kpis: calcularKpis(interacoes, catalogo),
+      resumoDeClima: {
+        eventos: resumoDeClimaPorFrente(interacoes, ['eventos']),
+        legislativo: resumoDeClimaPorFrente(interacoes, ['legislativo']),
+        institucionais: resumoDeClimaPorFrente(interacoes, ['governo', 'parceiros']),
+        bancosCredores: resumoDeClimaPorFrente(interacoes, ['bancos_credores']),
+      },
       categoriasDeFrente,
       categoriasDeClima,
       temas,
@@ -151,7 +158,7 @@ export function Painel({
     // interno das grades: um único degrau de respiro separa "isto é uma nova
     // pergunta" (entre cartões) de "isto é o mesmo cartão" (dentro dele).
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* UM herói, cinco quietos — de propósito.
+      {/* UM herói, seis quietos — de propósito.
           Imprensa é a frente mais lida como "reputação" no dia a dia, e é a
           única com uma meta de qualidade (aproveitamento) e não só volume: as
           duas coisas juntas a tornam a manchete natural da tela. Um segundo
@@ -180,7 +187,7 @@ export function Painel({
           <Kpi
             rotulo="Eventos e participações"
             valor={numero(kpis.eventos)}
-            dica="Presença institucional"
+            dica={`${derivado.resumoDeClima.eventos.positivas} pos, ${derivado.resumoDeClima.eventos.negativas} neg`}
             cor={CORES_DE_FRENTE.eventos}
             aoClicar={() => aoAbrirFrente('eventos')}
           />
@@ -194,16 +201,23 @@ export function Painel({
           <Kpi
             rotulo="Proposições legislativas"
             valor={numero(kpis.legislativo)}
-            dica="Acompanhamento"
+            dica={`${derivado.resumoDeClima.legislativo.positivas} pos, ${derivado.resumoDeClima.legislativo.negativas} neg`}
             cor={CORES_DE_FRENTE.legislativo}
             aoClicar={() => aoAbrirFrente('legislativo')}
           />
           <Kpi
             rotulo="Agendas institucionais"
             valor={numero(kpis.institucionais)}
-            dica="Governo e parceiros"
+            dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
             coresCompostas={[CORES_DE_FRENTE.governo, CORES_DE_FRENTE.parceiros]}
             aoClicar={() => aoAbrirFrente('governo')}
+          />
+          <Kpi
+            rotulo={ROTULOS_DE_FRENTE.bancos_credores}
+            valor={numero(derivado.resumoDeClima.bancosCredores.total)}
+            dica={`${derivado.resumoDeClima.bancosCredores.positivas} pos, ${derivado.resumoDeClima.bancosCredores.negativas} neg`}
+            cor={CORES_DE_FRENTE.bancos_credores}
+            aoClicar={() => aoAbrirFrente('bancos_credores')}
           />
           <Kpi
             rotulo="Relevância Tier 1"

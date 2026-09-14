@@ -27,6 +27,7 @@ import {
   ranking,
   resolutividade,
   resultados,
+  resumoDeClimaPorFrente,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
@@ -177,6 +178,36 @@ describe('kpis', () => {
     const vazio = kpis([], CATALOGO);
     expect(vazio.imprensa.taxa).toBe(0);
     expect(vazio.tier1.percentual).toBe(0);
+  });
+});
+
+describe('resumoDeClimaPorFrente', () => {
+  it('conta positivas e negativas de uma frente, ignorando neutro e sem clima', () => {
+    const dados = [
+      interacao({ frente: 'eventos', clima: 'propositivo' }),
+      interacao({ frente: 'eventos', clima: 'propositivo' }),
+      interacao({ frente: 'eventos', clima: 'tenso' }),
+      interacao({ frente: 'eventos', clima: 'neutro' }),
+      interacao({ frente: 'eventos', clima: null }),
+      interacao({ frente: 'imprensa', clima: 'propositivo' }), // outra frente, não conta
+    ];
+    const resumo = resumoDeClimaPorFrente(dados, ['eventos']);
+    expect(resumo).toEqual({ total: 5, positivas: 2, negativas: 1 });
+  });
+
+  it('soma mais de uma frente quando pedido (caso institucionais)', () => {
+    const dados = [
+      interacao({ frente: 'governo', clima: 'propositivo' }),
+      interacao({ frente: 'parceiros', clima: 'tenso' }),
+      interacao({ frente: 'legislativo', clima: 'propositivo' }), // fora do grupo, não conta
+    ];
+    const resumo = resumoDeClimaPorFrente(dados, ['governo', 'parceiros']);
+    expect(resumo).toEqual({ total: 2, positivas: 1, negativas: 1 });
+  });
+
+  it('devolve zeros quando não há registro da frente', () => {
+    const resumo = resumoDeClimaPorFrente([], ['bancos_credores']);
+    expect(resumo).toEqual({ total: 0, positivas: 0, negativas: 0 });
   });
 });
 
