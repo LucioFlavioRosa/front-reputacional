@@ -233,13 +233,18 @@ export function Painel({
 
       {/* NO LUGAR DOS KPIS, enquanto EXIBIR_KPIS estiver false — é o
           conteúdo que o comentário de `EXIBIR_KPIS` já previa para esse
-          espaço. Sempre as 5 áreas (mesmo sem nenhuma agenda ainda), porque é
-          um termômetro para comparar todas de uma vez, não um ranking
-          recortado como a barra por tema logo abaixo. */}
+          espaço. Sempre TODAS as áreas ativas do dicionário (mesmo sem
+          nenhuma agenda ainda), porque é um termômetro para comparar todas de
+          uma vez, não um ranking recortado como a barra por tema logo abaixo.
+          A contagem não é fixa em código — `area_pessoa` pode aposentar ou
+          ganhar linha (ver 0033_area_performance_e_dados_desativada.sql), e o
+          texto abaixo lê o tamanho de verdade em vez de repetir um número. */}
       <Secao titulo="Termômetro por área" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
-          As 5 áreas internas, com o clima das agendas em que participaram — do pior para o
-          melhor.
+          {derivado.scorePorArea.length === 1
+            ? 'A única área interna ativa'
+            : `As ${derivado.scorePorArea.length} áreas internas ativas`}
+          , com o clima das agendas em que participaram — do pior para o melhor.
         </p>
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
           O número é o placar de clima da área: (proativas − reativas) ÷ total de agendas ×
