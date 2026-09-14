@@ -49,9 +49,9 @@ export function Ranking({
             }
             style={{
               cursor: aoClicar ? 'pointer' : undefined,
-              padding: '2px 6px',
+              padding: '3px 6px',
               margin: '0 -6px',
-              borderRadius: 7,
+              borderRadius: 'var(--r-chip)',
               background: selecionado ? 'var(--bg-hover)' : undefined,
             }}
           >
@@ -110,10 +110,8 @@ export function BarraDeComposicao({
       style={{
         display: 'flex',
         height: altura,
-        borderRadius: 4,
+        borderRadius: 2,
         background: 'var(--bg-trilho)',
-        // Quem separa os segmentos é o vão na cor da superfície, nunca um
-        // contorno desenhado em volta da marca.
         gap: 2,
       }}
     >
@@ -127,7 +125,7 @@ export function BarraDeComposicao({
             style={{
               width: `${(segmento.total / total) * 100}%`,
               background: segmento.cor,
-              borderRadius: 3,
+              borderRadius: 2,
               cursor: aoClicar ? 'pointer' : undefined,
             }}
           />

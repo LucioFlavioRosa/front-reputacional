@@ -18,20 +18,10 @@ export const CORES_DE_FRENTE: Record<Frente, string> = {
   governo: '#17E3CB',
   parceiros: '#A11FFF',
   eventos: '#FE952B',
-  // Magenta Pitaia do guia é `#E12379`, e com texto branco dá 4,45:1 — reprova
-  // por 0,05. É o único caso em que trocar a cor do TEXTO não resolve: escuro
-  // sobre ele dá 3,20, pior ainda.
-  //
-  // `#DF2378` é 1% mais escuro e fecha em 4,52:1. A diferença é indistinguível
-  // a olho e mantém a leitura da marca; a alternativa seria deixar o rótulo
-  // ilegível para quem enxerga menos.
   investidores: '#DF2378',
   legislativo: '#F8DC00',
-  interna: '#8C91A4',
-  // Rosa Goiaba do guia — a única das oito cores de frente que ainda não
-  // estava em uso em lugar nenhum (clima, resultado, tier). Com texto escuro
-  // dá 6,96:1; com branco, só 2,05 — por isso entra em `FUNDO_CLARO`.
-  bancos_credores: '#FF8FE1',
+  interna: '#B0B9C8',
+  bancos_credores: '#A85E40',
 };
 
 export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
@@ -212,7 +202,6 @@ const FUNDO_CLARO: ReadonlySet<Frente> = new Set<Frente>([
   'legislativo',
   'eventos',
   'interna',
-  'bancos_credores',
 ]);
 
 export function textoSobreFrente(frente: Frente): string {
@@ -221,7 +210,7 @@ export function textoSobreFrente(frente: Frente): string {
 
 export const CORES_DE_CLIMA: Record<string, string> = {
   propositivo: '#17E3CB',
-  neutro: '#8C91A4',
+  neutro: '#B0B9C8',
   tenso: '#FF5C60',
 };
 

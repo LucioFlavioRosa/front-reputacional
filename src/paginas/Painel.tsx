@@ -82,22 +82,63 @@ export function Painel({
   const derivado = useMemo(() => {
     if (!catalogo) return null;
 
-    const categoriasDeFrente = FRENTES.map((frente) => ({
-      chave: frente,
-      rotulo: ROTULOS_DE_FRENTE[frente],
-      cor: CORES_DE_FRENTE[frente],
-    }));
+    const totalInteracoes = interacoes.length || 1;
 
-    const categoriasDeClima = catalogo.dicionarios.climas.map((clima) => ({
-      chave: clima.codigo,
-      rotulo: clima.nome,
-      cor: clima.cor_hex,
-    }));
+    const contagemFrentes = interacoes.reduce((acc, i) => {
+      acc[i.frente] = (acc[i.frente] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const categoriasDeFrente = FRENTES.map((frente) => {
+      const tot = contagemFrentes[frente] || 0;
+      const pct = Math.round((tot / totalInteracoes) * 100);
+      return {
+        chave: frente,
+        rotulo: ROTULOS_DE_FRENTE[frente],
+        cor: CORES_DE_FRENTE[frente],
+        detalhe: `${pct}% · ${tot}`,
+        total: tot,
+        pct,
+      };
+    });
+
+    const interacoesComClima = interacoes.filter((i) => i.clima);
+    const totalClima = interacoesComClima.length || 1;
+    const contagemClimas = interacoesComClima.reduce((acc, i) => {
+      if (i.clima) acc[i.clima] = (acc[i.clima] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const categoriasDeClima = catalogo.dicionarios.climas.map((clima) => {
+      const tot = contagemClimas[clima.codigo] || 0;
+      const pct = Math.round((tot / totalClima) * 100);
+      return {
+        chave: clima.codigo,
+        rotulo: clima.nome,
+        cor: clima.cor_hex,
+        detalhe: `${pct}% · ${tot}`,
+        total: tot,
+        pct,
+      };
+    });
 
     const temas = temasMaisRecorrentes(interacoes, catalogo, 5);
 
+    const geo = distribuicaoPorUf(interacoes);
+
+    // Destaques para o banner analítico executivo
+    const frenteLider = [...categoriasDeFrente].sort((a, b) => b.total - a.total)[0];
+    const climaLider = [...categoriasDeClima].sort((a, b) => b.total - a.total)[0];
+    const topUfPonto = geo[0];
+
     return {
       kpis: calcularKpis(interacoes, catalogo),
+      resumoExecutivo: {
+        total: interacoes.length,
+        frentePrincipal: frenteLider?.total ? { rotulo: frenteLider.rotulo, pct: frenteLider.pct } : undefined,
+        climaPrincipal: climaLider?.total ? { rotulo: climaLider.rotulo, pct: climaLider.pct } : undefined,
+        topUf: topUfPonto ? { rotulo: rotuloDeAbrangencia(topUfPonto.uf), total: topUfPonto.total } : undefined,
+      },
       resumoDeClima: {
         eventos: resumoDeClimaPorFrente(interacoes, ['eventos']),
         legislativo: resumoDeClimaPorFrente(interacoes, ['legislativo']),
@@ -125,7 +166,7 @@ export function Painel({
         granularidade,
       ),
       scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
-      geo: distribuicaoPorUf(interacoes),
+      geo,
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
@@ -154,10 +195,9 @@ export function Painel({
   );
 
   return (
-    // 20px entre blocos principais, em vez do 16 que dividia espaço com o gap
-    // interno das grades: um único degrau de respiro separa "isto é uma nova
-    // pergunta" (entre cartões) de "isto é o mesmo cartão" (dentro dele).
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // 24px entre blocos principais — degrau único de respiro entre seções distintas.
+    // Blocos relacionados (clima + temas) usam gap menor internamente (12px).
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* UM herói, seis quietos — de propósito.
           Imprensa é a frente mais lida como "reputação" no dia a dia, e é a
           única com uma meta de qualidade (aproveitamento) e não só volume: as
@@ -209,7 +249,7 @@ export function Painel({
             rotulo="Agendas institucionais"
             valor={numero(kpis.institucionais)}
             dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
-            coresCompostas={[CORES_DE_FRENTE.governo, CORES_DE_FRENTE.parceiros]}
+            cor={CORES_DE_FRENTE.governo}
             aoClicar={() => aoAbrirFrente('governo')}
           />
           <Kpi
@@ -229,51 +269,62 @@ export function Painel({
         </div>
       ) : null}
 
-      <Secao
-        titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}
-        acao={
-          <SeletorDeGranularidade
-            valor={granularidade}
-            aoEscolher={definirGranularidade}
-          />
-        }
-      >
-        {/* Mais alta que o padrão: é a única das três com até sete frentes
-            empilhadas ao mesmo tempo, e cada segmento precisa de espaço para
-            não virar uma linha fina demais para o olho separar. */}
-        <BarrasEmpilhadas
-          colunas={derivado.volumetria}
-          altura={220}
-          formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
-          aoClicarSegmento={(chave) =>
-            definirRecorte(alternar(recorte, 'frente', chave as Frente))
-          }
-          detalheDoMes={(coluna) => {
-            const registrosDoPeriodo = interacoes.filter(
-              (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
-            );
-            const tier1 = registrosDoPeriodo.filter((i) => i.tier === 1).length;
-            const temas = catalogo ? temasMaisRecorrentes(registrosDoPeriodo, catalogo, 1) : [];
-            return [
-              { rotulo: 'Tier 1', valor: String(tier1) },
-              { rotulo: 'Tema principal', valor: temas[0]?.rotulo ?? '—' },
-            ];
-          }}
-        />
-        <Legenda
-          itens={derivado.categoriasDeFrente}
-          ativo={recorte.frente}
-          aoClicar={(chave) => definirRecorte(alternar(recorte, 'frente', chave as Frente))}
-        />
-      </Secao>
+      {/* BANNER DE SÍNTESE EXECUTIVA — Fatos relevantes do recorte em destaque */}
+      <ResumoExecutivoDoRecorte
+        total={derivado.resumoExecutivo.total}
+        frentePrincipal={derivado.resumoExecutivo.frentePrincipal}
+        climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
+        topUf={derivado.resumoExecutivo.topUf}
+      />
 
-      {/* UM ABAIXO DO OUTRO, não lado a lado — em `grade--2` cada gráfico
-          ficava com metade da largura, e em granularidade semana (dezenas de
-          colunas) as datas do eixo não cabiam: o rótulo de uma coluna invadia
-          a vizinha e virava uma sequência de números colados. Cheio de
-          largura, cada um tem o dobro do espaço para as mesmas colunas. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Secao titulo="Clima da interação no tempo">
+      {/* BLOCO: SÉRIES TEMPORAIS — volumetria, clima e temas compartilham o
+          mesmo seletor de granularidade e respondem juntos "o que aconteceu
+          no tempo". Gap interno menor (12px) mostra que são do mesmo grupo. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="kicker" style={{ color: 'var(--cinza-2)', paddingLeft: 2 }}>
+          Séries temporais
+        </div>
+
+        <Secao
+          titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}
+          subtitulo="Distribuição temporal das agendas acumuladas pelas 7 frentes institucionais"
+          acao={
+            <SeletorDeGranularidade
+              valor={granularidade}
+              aoEscolher={definirGranularidade}
+            />
+          }
+        >
+          <BarrasEmpilhadas
+            colunas={derivado.volumetria}
+            altura={220}
+            formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+            aoClicarSegmento={(chave) =>
+              definirRecorte(alternar(recorte, 'frente', chave as Frente))
+            }
+            detalheDoMes={(coluna) => {
+              const registrosDoPeriodo = interacoes.filter(
+                (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
+              );
+              const tier1 = registrosDoPeriodo.filter((i) => i.tier === 1).length;
+              const temas = catalogo ? temasMaisRecorrentes(registrosDoPeriodo, catalogo, 1) : [];
+              return [
+                { rotulo: 'Tier 1', valor: String(tier1) },
+                { rotulo: 'Tema principal', valor: temas[0]?.rotulo ?? '—' },
+              ];
+            }}
+          />
+          <Legenda
+            itens={derivado.categoriasDeFrente}
+            ativo={recorte.frente}
+            aoClicar={(chave) => definirRecorte(alternar(recorte, 'frente', chave as Frente))}
+          />
+        </Secao>
+
+        <Secao
+          titulo="Clima da interação no tempo"
+          subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
+        >
           <BarrasEmpilhadas
             colunas={derivado.clima}
             altura={140}
@@ -286,7 +337,10 @@ export function Painel({
           />
         </Secao>
 
-        <Secao titulo="Temas no tempo">
+        <Secao
+          titulo="Temas no tempo"
+          subtitulo="Recorrência das pautas institucionais mais debatidas ao longo do tempo"
+        >
           <BarrasEmpilhadas
             colunas={derivado.porTema}
             altura={140}
@@ -303,29 +357,29 @@ export function Painel({
         </Secao>
       </div>
 
-      {/* O SUBTÍTULO PRECISA DIZER QUE É UM RECORTE quando for — sem isto, a
-          pessoa lê "Barra divergente por tema" e assume que são TODOS os
-          temas, quando na verdade só os mais discutidos (mais os que a
-          própria pessoa pediu para ver, via `temasExtras`) entram. Comparar
-          `itens.length` com `totalDeTemas` é a pergunta "ficou alguém de
-          fora?" respondida pelo dado, não por uma contagem à parte que
-          pudesse divergir dela. */}
-      <Secao titulo="Barra divergente por tema" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
-          {derivado.scorePorTema.totalDeTemas > derivado.scorePorTema.itens.length
-            ? `Os ${derivado.scorePorTema.itens.length} temas mais discutidos, de ${derivado.scorePorTema.totalDeTemas} com clima registrado neste recorte — do pior para o melhor.`
-            : `Os ${derivado.scorePorTema.itens.length} temas com clima registrado neste recorte — do pior para o melhor.`}
-        </p>
-        {/* O NÚMERO SOZINHO NÃO SE EXPLICA — "-67" ao lado de "Tarifas" não diz
-            se é nota, percentual ou contagem. Por extenso, uma vez só aqui (a
-            composição por tema já mora em cada linha, via `BarraDivergente`). */}
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-          O número é o placar de clima do tema: (proativas − reativas) ÷ total de agendas × 100.
-          Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, ou maioria neutra.
-        </p>
+      <Secao
+        titulo="Barra divergente por tema"
+        subtitulo="Desempenho comparativo de clima por pauta (do pior ao melhor placar)"
+      >
+        <div
+          style={{
+            marginBottom: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: 0 }}>
+            {derivado.scorePorTema.totalDeTemas > derivado.scorePorTema.itens.length
+              ? `Os ${derivado.scorePorTema.itens.length} temas mais discutidos, de ${derivado.scorePorTema.totalDeTemas} com clima registrado neste recorte — do pior para o melhor.`
+              : `Os ${derivado.scorePorTema.itens.length} temas com clima registrado neste recorte — do pior para o melhor.`}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
+            Placar de clima: (proativas − reativas) ÷ total × 100.
+            Varia de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio.
+          </p>
+        </div>
 
-        {/* O FILTRO É DESTE GRÁFICO, não do Recorte da tela inteira — por isso
-            some do resto do painel e não persiste na URL. */}
         {temasExtras.length || temasDisponiveis.length ? (
           <div
             style={{
@@ -333,7 +387,7 @@ export function Painel({
               flexWrap: 'wrap',
               alignItems: 'center',
               gap: 6,
-              margin: '-2px 0 16px',
+              marginBottom: 16,
             }}
           >
             {temasExtras.map((nome) => (
@@ -356,7 +410,7 @@ export function Painel({
                   }
                 }}
                 style={{
-                  height: 27,
+                  height: 26,
                   padding: '0 8px',
                   border: '1px dashed var(--borda-input)',
                   borderRadius: 'var(--r-chip)',
@@ -380,64 +434,62 @@ export function Painel({
         <BarraDivergente itens={derivado.scorePorTema.itens} aoAbrirAgenda={aoAbrirAgenda} />
       </Secao>
 
-      {/* O LAVADO DE FUNDO SAIU. Fazia sentido quando esta era a única seção
-          sem cor por perto — hoje a cor da marca mora no cabeçalho, e um
-          cartão com fundo diferente dos vizinhos (Tier 1, os gráficos,
-          Instituições/Esfera/Unidades logo abaixo) lia como inconsistência,
-          não como destaque. Uma borda de topo — a mesma ideia dos KPIs
-          coloridos lá em cima — dá identidade sem quebrar o branco que todo
-          cartão da tela agora compartilha. */}
-      <Secao
-        titulo="Distribuição geográfica"
-        estilo={{ borderTop: '3px solid var(--azul-mar)' }}
-      >
-        <div className="grade grade--mapa" style={{ gap: 24 }}>
-          <MapaUf
-            pontos={derivado.geo}
-            selecionada={recorte.uf}
-            aoClicarUf={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
-          />
-          <div>
-            <div className="kicker" style={{ marginBottom: 12 }}>
-              Ranking por UF
-            </div>
-            <Ranking
-              itens={derivado.geo.map((ponto) => ({
-                chave: ponto.uf,
-                rotulo: rotuloDeAbrangencia(ponto.uf),
-                total: ponto.total,
-              }))}
-              ativo={recorte.uf}
-              aoClicar={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
-            />
-          </div>
+      {/* BLOCO: DISTRIBUIÇÃO E RANKINGS — mapa + três rankings respondem juntos
+          "onde está e com quem". Gap interno de 12px mostra que são do mesmo grupo. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="kicker" style={{ color: 'var(--cinza-2)', paddingLeft: 2 }}>
+          Distribuição e rankings
         </div>
-      </Secao>
 
-      {/* Uma borda de 4px na cor de cada ranking — não um fundo inteiro, que
-          brigaria com o azul do mapa logo acima — dá a cada coluna uma
-          identidade que combina com a cor das próprias barras dentro dela. */}
-      <div className="grade grade--3" style={{ gap: 16 }}>
-        <Secao titulo="Instituições" estilo={{ borderLeft: '4px solid var(--azul-mar)' }}>
-          <Ranking
-            itens={derivado.instituicoes}
-            ativo={recorte.entidade}
-            aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
-          />
+        <Secao
+          titulo="Distribuição geográfica"
+          subtitulo="Concentração de presença física e impacto institucional por Estado (UF)"
+        >
+          <div className="grade grade--mapa" style={{ gap: 24 }}>
+            <MapaUf
+              pontos={derivado.geo}
+              selecionada={recorte.uf}
+              aoClicarUf={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+            />
+            <div>
+              <div className="kicker" style={{ marginBottom: 12 }}>
+                Ranking por UF
+              </div>
+              <Ranking
+                itens={derivado.geo.map((ponto) => ({
+                  chave: ponto.uf,
+                  rotulo: rotuloDeAbrangencia(ponto.uf),
+                  total: ponto.total,
+                }))}
+                ativo={recorte.uf}
+                aoClicar={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+              />
+            </div>
+          </div>
         </Secao>
 
-        <Secao titulo="Esfera e abrangência" estilo={{ borderLeft: '4px solid var(--turquesa-rio)' }}>
-          <Ranking itens={derivado.esferas} cor="var(--turquesa-rio)" />
-        </Secao>
+        <div className="grade grade--3" style={{ gap: 12 }}>
+          <Secao titulo="Instituições" subtitulo="Principais entidades e parceiras">
+            <Ranking
+              itens={derivado.instituicoes}
+              ativo={recorte.entidade}
+              aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
+            />
+          </Secao>
 
-        <Secao titulo="Unidades de negócio" estilo={{ borderLeft: '4px solid var(--roxo-acai)' }}>
-          <Ranking
-            itens={derivado.unidades}
-            ativo={recorte.unidade}
-            aoClicar={(nome) => definirRecorte(alternar(recorte, 'unidade', nome))}
-            cor="var(--roxo-acai)"
-          />
-        </Secao>
+          <Secao titulo="Esfera e abrangência" subtitulo="Divisão por nível de governo">
+            <Ranking itens={derivado.esferas} cor="var(--turquesa-rio)" />
+          </Secao>
+
+          <Secao titulo="Unidades de negócio" subtitulo="Volume por unidade operacional Aegea">
+            <Ranking
+              itens={derivado.unidades}
+              ativo={recorte.unidade}
+              aoClicar={(nome) => definirRecorte(alternar(recorte, 'unidade', nome))}
+              cor="var(--roxo-acai)"
+            />
+          </Secao>
+        </div>
       </div>
     </div>
   );
@@ -481,6 +533,72 @@ function SeletorDeGranularidade({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function ResumoExecutivoDoRecorte({
+  total,
+  frentePrincipal,
+  climaPrincipal,
+  topUf,
+}: {
+  total: number;
+  frentePrincipal?: { rotulo: string; pct: number };
+  climaPrincipal?: { rotulo: string; pct: number };
+  topUf?: { rotulo: string; total: number };
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '12px 18px',
+        background: 'var(--branco)',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-card)',
+        fontSize: 12.5,
+        color: 'var(--cinza-3)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="kicker" style={{ color: 'var(--azul-mar)' }}>
+          Síntese Executiva
+        </span>
+        <span style={{ color: 'var(--borda-input)' }}>|</span>
+        <span>
+          Amostra: <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong> agendas no recorte
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
+        {frentePrincipal ? (
+          <div>
+            <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
+            <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
+            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
+          </div>
+        ) : null}
+
+        {climaPrincipal ? (
+          <div>
+            <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
+            <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
+            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
+          </div>
+        ) : null}
+
+        {topUf ? (
+          <div>
+            <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
+            <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
+            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
