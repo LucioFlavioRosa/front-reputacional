@@ -283,7 +283,7 @@ export function DocumentosDaReuniao({
                   {ROTULO_DO_MOMENTO[documento.momento] ?? documento.momento}
                 </td>
               )}
-              {!visiveis.includes('Assuntos') ? null : (
+              {!visiveis.includes('Temas') ? null : (
                 <td style={{ ...celula, color: 'var(--cinza-2)' }}>
                   {documento.temas.map(nomeDoTema).join(', ') || '—'}
                 </td>

@@ -226,7 +226,7 @@ export function MateriaisOficiais() {
                   {ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo}
                 </td>
               )}
-              {!visiveis.includes('Assuntos') ? null : (
+              {!visiveis.includes('Temas') ? null : (
                 <td style={{ ...celula, color: 'var(--cinza-2)' }}>
                   {referencia.temas.map(nomeDoTema).join(', ')}
                 </td>

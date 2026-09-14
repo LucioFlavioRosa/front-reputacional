@@ -72,7 +72,7 @@ const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number>
   UF: (linha) => linha.uf,
   Relevância: (linha) => linha.tier,
   Situação: (linha) => linha.status,
-  Assuntos: (linha) => linha.tags,
+  Temas: (linha) => linha.tags,
 };
 
 /** A CADEIA VEM PRIMEIRO, como marca de calha.
@@ -235,7 +235,7 @@ export function Base({
             {!visiveis.includes('UF') ? null : <td style={celula}>{linha.uf}</td>}
             {!visiveis.includes('Relevância') ? null : <td style={celula}>{linha.tier}</td>}
             {!visiveis.includes('Situação') ? null : <td style={celula}>{linha.status}</td>}
-            {!visiveis.includes('Assuntos') ? null : (
+            {!visiveis.includes('Temas') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
             )}
             </LinhaDaTabela>
