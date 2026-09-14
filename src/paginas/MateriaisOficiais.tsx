@@ -19,8 +19,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Carregando, FaixaDeErro, Vazio, estiloDeEntrada } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
+import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { listarReferencias, urlDaVersao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
+import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
+import type { Ordenacao } from '@/dominio/ordenacao';
 import type { Referencia } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
@@ -39,6 +42,15 @@ const ROTULO_DO_TIPO: Record<string, string> = {
 const TIPOS = ['posicionamento', 'qa', 'release', 'nota_tecnica', 'dados', 'apresentacao'];
 
 const COLUNAS = ['Título', 'Tipo', 'Assuntos', 'Versão', 'Atualizado', 'Arquivo', 'Tamanho'];
+
+const COLUNAS_ORDENAVEIS = ['Título', 'Tipo', 'Atualizado', 'Tamanho'];
+
+const EXTRATORES_DE_ORDENACAO: Record<string, (referencia: Referencia) => string | number> = {
+  Título: (referencia) => referencia.titulo,
+  Tipo: (referencia) => ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo,
+  Atualizado: (referencia) => referencia.versao?.atualizado_em ?? '',
+  Tamanho: (referencia) => referencia.versao?.arquivo_tamanho ?? 0,
+};
 
 /** O tipo MIME em palavra de gente.
  *
@@ -62,6 +74,11 @@ export function MateriaisOficiais() {
   const [busca, definirBusca] = useState('');
   const [tipo, definirTipo] = useState('');
   const [tema, definirTema] = useState('');
+  const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
+  const { ocultas, visiveis, alternar } = useColunasVisiveis(
+    'base-posicionamentos-e-papers',
+    COLUNAS,
+  );
 
   useEffect(() => {
     let vivo = true;
@@ -91,6 +108,11 @@ export function MateriaisOficiais() {
     });
   }, [referencias, busca, tipo, tema]);
 
+  const ordenadas = useMemo(
+    () => ordenarPor(filtradas, ordenacao, EXTRATORES_DE_ORDENACAO),
+    [filtradas, ordenacao],
+  );
+
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (referencias === null || !catalogo) return <Carregando />;
 
@@ -99,7 +121,7 @@ export function MateriaisOficiais() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '16px 16px 0' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '16px 16px 12px' }}>
         <input
           style={{ ...estiloDeEntrada, flex: 1, minWidth: 220 }}
           value={busca}
@@ -135,10 +157,21 @@ export function MateriaisOficiais() {
         </select>
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0, padding: '0 16px' }}>
-        {filtradas.length} de {referencias.length} no acervo. Clique na linha para
-        abrir a versão mais recente.
-      </p>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          padding: '0 16px',
+        }}
+      >
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+          {filtradas.length} de {referencias.length} no acervo. Clique na linha para
+          abrir a versão mais recente.
+        </p>
+        <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
+      </div>
 
       {!filtradas.length ? (
         <div style={{ padding: 16 }}>
@@ -148,8 +181,15 @@ export function MateriaisOficiais() {
           />
         </div>
       ) : (
-        <Tabela colunas={COLUNAS} altura="calc(100vh - 420px)">
-          {filtradas.map((referencia) => (
+        <Tabela
+          colunas={visiveis}
+          altura="calc(100vh - 420px)"
+          colunasOrdenaveis={COLUNAS_ORDENAVEIS.filter((coluna) => visiveis.includes(coluna))}
+          ordenacao={ordenacao}
+          aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
+          chaveDeArmazenamento="base-posicionamentos-e-papers"
+        >
+          {ordenadas.map((referencia) => (
             <Linha
               key={referencia.id}
               titulo="Abrir a versão mais recente"
@@ -162,54 +202,68 @@ export function MateriaisOficiais() {
                   );
               }}
             >
-              <td style={{ ...celula, minWidth: 260 }}>
-                <span style={{ fontWeight: 500, color: 'var(--cinza-4)' }}>
-                  {referencia.titulo}
-                </span>
-                {referencia.resumo ? (
-                  <span
-                    style={{
-                      display: 'block',
-                      color: 'var(--cinza-2)',
-                      marginTop: 3,
-                      maxWidth: '62ch',
-                    }}
-                  >
-                    {referencia.resumo}
+              {!visiveis.includes('Título') ? null : (
+                <td style={{ ...celula, minWidth: 260 }}>
+                  <span style={{ fontWeight: 500, color: 'var(--cinza-4)' }}>
+                    {referencia.titulo}
                   </span>
-                ) : null}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                {ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo}
-              </td>
-              <td style={{ ...celula, color: 'var(--cinza-2)' }}>
-                {referencia.temas.map(nomeDoTema).join(', ')}
-              </td>
+                  {referencia.resumo ? (
+                    <span
+                      style={{
+                        display: 'block',
+                        color: 'var(--cinza-2)',
+                        marginTop: 3,
+                        maxWidth: '62ch',
+                      }}
+                    >
+                      {referencia.resumo}
+                    </span>
+                  ) : null}
+                </td>
+              )}
+              {!visiveis.includes('Tipo') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo}
+                </td>
+              )}
+              {!visiveis.includes('Assuntos') ? null : (
+                <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                  {referencia.temas.map(nomeDoTema).join(', ')}
+                </td>
+              )}
               {/* A VERSÃO ANTES DA DATA. Quem lê a biblioteca procura saber
                   se o que está na tela é o atual, e "v3" responde isso antes
                   de qualquer data. */}
-              <td
-                style={{ ...celula, whiteSpace: 'nowrap' }}
-                className="tabular"
-                title={
-                  referencia.quantas_versoes > 1
-                    ? `${referencia.quantas_versoes} versões; a tela mostra a mais recente`
-                    : 'versão única'
-                }
-              >
-                {referencia.versao ? `v${referencia.versao.numero}` : '—'}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                {referencia.versao ? dataCompleta(referencia.versao.atualizado_em) : '—'}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                {referencia.versao ? formatoLegivel(referencia.versao.arquivo_tipo) : '—'}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                {referencia.versao
-                  ? tamanhoLegivel(referencia.versao.arquivo_tamanho)
-                  : '—'}
-              </td>
+              {!visiveis.includes('Versão') ? null : (
+                <td
+                  style={{ ...celula, whiteSpace: 'nowrap' }}
+                  className="tabular"
+                  title={
+                    referencia.quantas_versoes > 1
+                      ? `${referencia.quantas_versoes} versões; a tela mostra a mais recente`
+                      : 'versão única'
+                  }
+                >
+                  {referencia.versao ? `v${referencia.versao.numero}` : '—'}
+                </td>
+              )}
+              {!visiveis.includes('Atualizado') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                  {referencia.versao ? dataCompleta(referencia.versao.atualizado_em) : '—'}
+                </td>
+              )}
+              {!visiveis.includes('Arquivo') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {referencia.versao ? formatoLegivel(referencia.versao.arquivo_tipo) : '—'}
+                </td>
+              )}
+              {!visiveis.includes('Tamanho') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                  {referencia.versao
+                    ? tamanhoLegivel(referencia.versao.arquivo_tamanho)
+                    : '—'}
+                </td>
+              )}
             </Linha>
           ))}
         </Tabela>

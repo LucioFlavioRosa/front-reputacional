@@ -33,8 +33,11 @@ import {
 } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
+import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { listarDocumentosDaReuniao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
+import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
+import type { Ordenacao } from '@/dominio/ordenacao';
 import type { DocumentoDaReuniao, Frente } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
@@ -55,6 +58,16 @@ const COLUNAS = [
   'Tamanho',
   'Anexado por',
 ];
+
+const COLUNAS_ORDENAVEIS = ['Data', 'Documento', 'Momento', 'Tamanho', 'Anexado por'];
+
+const EXTRATORES_DE_ORDENACAO: Record<string, (documento: DocumentoDaReuniao) => string | number> = {
+  Data: (documento) => documento.data_interacao,
+  Documento: (documento) => documento.titulo,
+  Momento: (documento) => ROTULO_DO_MOMENTO[documento.momento] ?? documento.momento,
+  Tamanho: (documento) => documento.arquivo_tamanho,
+  'Anexado por': (documento) => documento.criado_por ?? '',
+};
 
 /** O tipo MIME em palavra de gente.
  *
@@ -98,6 +111,11 @@ export function DocumentosDaReuniao({
   //: documento. Fica aqui porque é o que distingue o que a outra parte entregou
   //: do que a Aegea produziu depois, e essa é a pergunta desta aba.
   const [momento, definirMomento] = useState('');
+  const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
+  const { ocultas, visiveis, alternar } = useColunasVisiveis(
+    'base-documentos-da-reuniao',
+    COLUNAS,
+  );
 
   const documentos = dados?.recorte === recorte ? dados.lista : null;
 
@@ -133,6 +151,11 @@ export function DocumentosDaReuniao({
     });
   }, [documentos, busca, tema, momento]);
 
+  const ordenados = useMemo(
+    () => ordenarPor(filtrados, ordenacao, EXTRATORES_DE_ORDENACAO),
+    [filtrados, ordenacao],
+  );
+
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (documentos === null || !catalogo) return <Carregando />;
 
@@ -142,7 +165,7 @@ export function DocumentosDaReuniao({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div
-        style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '16px 16px 0' }}
+        style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '16px 16px 12px' }}
       >
         <input
           style={{ ...estiloDeEntrada, flex: 1, minWidth: 220 }}
@@ -179,10 +202,21 @@ export function DocumentosDaReuniao({
         </select>
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0, padding: '0 16px' }}>
-        {filtrados.length} {filtrados.length === 1 ? 'documento' : 'documentos'} no
-        recorte. Clique na linha para abrir a agenda de onde ele saiu.
-      </p>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          padding: '0 16px',
+        }}
+      >
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+          {filtrados.length} {filtrados.length === 1 ? 'documento' : 'documentos'} no
+          recorte. Clique na linha para abrir a agenda de onde ele saiu.
+        </p>
+        <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
+      </div>
 
       {!filtrados.length ? (
         <div style={{ padding: 16 }}>
@@ -192,8 +226,15 @@ export function DocumentosDaReuniao({
           />
         </div>
       ) : (
-        <Tabela colunas={COLUNAS} altura="calc(100vh - 420px)">
-          {filtrados.map((documento) => (
+        <Tabela
+          colunas={visiveis}
+          altura="calc(100vh - 420px)"
+          colunasOrdenaveis={COLUNAS_ORDENAVEIS.filter((coluna) => visiveis.includes(coluna))}
+          ordenacao={ordenacao}
+          aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
+          chaveDeArmazenamento="base-documentos-da-reuniao"
+        >
+          {ordenados.map((documento) => (
             <Linha
               key={documento.id}
               titulo="Abrir a agenda de onde o documento saiu"
@@ -203,58 +244,76 @@ export function DocumentosDaReuniao({
               // documento.
               aoClicar={() => aoAbrirFicha(documento.interacao_id)}
             >
-              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                {dataCompleta(documento.data_interacao)}
-              </td>
-              <td style={celula}>
-                <ChipDeFrente frente={documento.frente as Frente} />
-              </td>
-              <td style={{ ...celula, minWidth: 240 }}>
-                <span style={{ fontWeight: 500, color: 'var(--cinza-4)' }}>
-                  {documento.titulo}
-                </span>
-                <span
-                  style={{ display: 'block', color: 'var(--cinza-2)', marginTop: 2 }}
-                >
-                  {documento.instituicao ?? '—'}
-                </span>
-                {documento.resumo ? (
-                  <span
-                    style={{
-                      display: 'block',
-                      color: 'var(--cinza-2)',
-                      marginTop: 2,
-                      maxWidth: '56ch',
-                    }}
-                  >
-                    {documento.resumo}
+              {!visiveis.includes('Data') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                  {dataCompleta(documento.data_interacao)}
+                </td>
+              )}
+              {!visiveis.includes('Frente') ? null : (
+                <td style={celula}>
+                  <ChipDeFrente frente={documento.frente as Frente} />
+                </td>
+              )}
+              {!visiveis.includes('Documento') ? null : (
+                <td style={{ ...celula, minWidth: 240 }}>
+                  <span style={{ fontWeight: 500, color: 'var(--cinza-4)' }}>
+                    {documento.titulo}
                   </span>
-                ) : null}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                {ROTULO_DO_MOMENTO[documento.momento] ?? documento.momento}
-              </td>
-              <td style={{ ...celula, color: 'var(--cinza-2)' }}>
-                {documento.temas.map(nomeDoTema).join(', ') || '—'}
-              </td>
-              <td style={{ ...celula, wordBreak: 'break-all', minWidth: 150 }}>
-                {documento.arquivo_nome}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                {formatoLegivel(documento.arquivo_tipo)}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                {tamanhoLegivel(documento.arquivo_tamanho)}
-              </td>
-              <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                {documento.criado_por ?? '—'}
-                <span
-                  className="tabular"
-                  style={{ display: 'block', color: 'var(--cinza-2)', marginTop: 2 }}
-                >
-                  {dataCompleta(documento.criado_em.slice(0, 10))}
-                </span>
-              </td>
+                  <span
+                    style={{ display: 'block', color: 'var(--cinza-2)', marginTop: 2 }}
+                  >
+                    {documento.instituicao ?? '—'}
+                  </span>
+                  {documento.resumo ? (
+                    <span
+                      style={{
+                        display: 'block',
+                        color: 'var(--cinza-2)',
+                        marginTop: 2,
+                        maxWidth: '56ch',
+                      }}
+                    >
+                      {documento.resumo}
+                    </span>
+                  ) : null}
+                </td>
+              )}
+              {!visiveis.includes('Momento') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {ROTULO_DO_MOMENTO[documento.momento] ?? documento.momento}
+                </td>
+              )}
+              {!visiveis.includes('Assuntos') ? null : (
+                <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                  {documento.temas.map(nomeDoTema).join(', ') || '—'}
+                </td>
+              )}
+              {!visiveis.includes('Arquivo') ? null : (
+                <td style={{ ...celula, wordBreak: 'break-all', minWidth: 150 }}>
+                  {documento.arquivo_nome}
+                </td>
+              )}
+              {!visiveis.includes('Formato') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {formatoLegivel(documento.arquivo_tipo)}
+                </td>
+              )}
+              {!visiveis.includes('Tamanho') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                  {tamanhoLegivel(documento.arquivo_tamanho)}
+                </td>
+              )}
+              {!visiveis.includes('Anexado por') ? null : (
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {documento.criado_por ?? '—'}
+                  <span
+                    className="tabular"
+                    style={{ display: 'block', color: 'var(--cinza-2)', marginTop: 2 }}
+                  >
+                    {dataCompleta(documento.criado_em.slice(0, 10))}
+                  </span>
+                </td>
+              )}
             </Linha>
           ))}
         </Tabela>

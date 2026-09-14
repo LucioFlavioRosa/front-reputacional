@@ -63,17 +63,33 @@ export function Secao({
   acao,
   children,
   estilo,
+  estiloDoTitulo,
   nivelDoTitulo = 2,
 }: {
   titulo: string;
   acao?: ReactNode;
   children: ReactNode;
   estilo?: CSSProperties;
+  /** Ajuste pontual do título, por cima do padrão da marca abaixo — para o
+   *  raro caso em que uma tela precisa de algo diferente do resto do produto. */
+  estiloDoTitulo?: CSSProperties;
   /** `1` quando esta seção é o título DA TELA. Leitor de tela navega por
    *  cabeçalho, e uma tela cujo maior título é `h2` parece um pedaço de outra
    *  página. */
   nivelDoTitulo?: 1 | 2;
 }) {
+  // O PADRÃO DE TÍTULO DA MARCA: azul-mar, maior que o corpo do texto, e um
+  // pouco afastado do canto — é a mesma régua para toda `Secao` do produto,
+  // de propósito. Um título por tela com um valor diferente faria a mesma
+  // etiqueta ("título da seção") significar coisas visualmente diferentes de
+  // uma tela para outra.
+  const estiloDaMarca: CSSProperties = {
+    fontSize: nivelDoTitulo === 1 ? 22 : 18,
+    color: 'var(--azul-mar)',
+    marginTop: 6,
+    marginLeft: 6,
+  };
+
   return (
     <Cartao estilo={{ padding: 22, ...estilo }}>
       <div
@@ -86,9 +102,9 @@ export function Secao({
         }}
       >
         {nivelDoTitulo === 1 ? (
-          <h1 style={{ fontSize: 16 }}>{titulo}</h1>
+          <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
         ) : (
-          <h2 style={{ fontSize: 16 }}>{titulo}</h2>
+          <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
         )}
         {acao}
       </div>
@@ -289,10 +305,16 @@ export function Botao({
   const variantes: Record<string, CSSProperties> = {
     primario: {
       height: 40,
-      background: 'var(--azul-mar)',
+      // O gradiente turquesa → azul-mar da marca, e não a cor chapada de
+      // antes — mesmo par de cores em todo botão primário do produto, do
+      // "Novo registro" no cabeçalho ao "Exportar CSV" da Base.
+      background: 'linear-gradient(135deg, var(--turquesa-rio) 0%, var(--azul-mar) 100%)',
       color: 'var(--branco)',
       border: 'none',
       fontWeight: 700,
+      // Leve de propósito: a versão anterior (0 6px 16px) pesava demais para
+      // um botão de 40px de altura.
+      boxShadow: '0 2px 6px rgba(0, 39, 189, 0.18)',
     },
     secundario: {
       height: 36,

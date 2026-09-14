@@ -39,11 +39,9 @@ export function Abas<T extends string>({
       aria-label={rotulo}
       style={{
         display: 'flex',
-        gap: 6,
+        flexWrap: 'wrap',
+        gap: 8,
         borderBottom: '1px solid var(--borda)',
-        // Abas demais não cabem em telefone: rolam em vez de quebrar em duas
-        // linhas, que faria a segunda parecer outro grupo.
-        overflowX: 'auto',
       }}
     >
       {abas.map((opcao) => {
@@ -69,7 +67,7 @@ export function Abas<T extends string>({
             style={{
               border: 'none',
               background: 'transparent',
-              padding: '10px 14px',
+              padding: '12px 18px',
               fontSize: 14,
               fontWeight: selecionada ? 700 : 500,
               color: selecionada ? 'var(--azul-mar)' : 'var(--cinza-3)',

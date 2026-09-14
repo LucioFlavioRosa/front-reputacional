@@ -8,47 +8,215 @@
  *
  *  O CABEÇALHO GRUDA porque a lista rola dentro de si mesma: sem isso, quem
  *  chega à trigésima linha não sabe mais o que cada coluna quer dizer.
+ *
+ *  ORDENAR E REDIMENSIONAR MORAM AQUI, e não em cada página: é a mesma moldura
+ *  que já sabe desenhar o cabeçalho. Quem chama só diz QUAIS colunas aceitam
+ *  clique (`colunasOrdenaveis`) e ordena a própria lista de linhas — a tabela
+ *  não conhece o formato de nenhuma delas, só desenha o `<th>` e avisa do
+ *  clique. Redimensionar não precisa de aviso a quem chama: a largura vive
+ *  aqui, num `<colgroup>`, e por isso funciona com `<td>` que a página já
+ *  escreve do jeito que sempre escreveu.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { Ordenacao } from '@/dominio/ordenacao';
+
+const LARGURA_MINIMA = 60;
 
 export function Tabela({
   colunas,
+  colunasOrdenaveis = [],
+  ordenacao = null,
+  aoOrdenar,
+  chaveDeArmazenamento,
   altura = 'calc(100vh - 340px)',
   children,
 }: {
   colunas: string[];
+  /** Rótulos (de `colunas`) que aceitam clique para ordenar. As demais
+   *  continuam como cabeçalho simples, sem botão nem seta. */
+  colunasOrdenaveis?: string[];
+  ordenacao?: Ordenacao | null;
+  aoOrdenar?: (coluna: string) => void;
+  /** Chave própria desta tabela: guarda a largura das colunas redimensionadas
+   *  no localStorage, para o ajuste sobreviver ao F5. Sem ela, a largura vale
+   *  só para esta sessão de navegação. */
+  chaveDeArmazenamento?: string;
   /** Até onde a lista cresce antes de rolar por dentro. */
   altura?: string;
   children: ReactNode;
 }) {
+  const chaveLocal = chaveDeArmazenamento
+    ? `painel-reputacional:largura-de-coluna:${chaveDeArmazenamento}`
+    : null;
+
+  const [larguras, definirLarguras] = useState<Record<string, number>>(() => {
+    if (!chaveLocal) return {};
+    try {
+      const salvo = window.localStorage.getItem(chaveLocal);
+      return salvo ? (JSON.parse(salvo) as Record<string, number>) : {};
+    } catch {
+      // Modo privado, quota cheia ou JSON corrompido: começa do zero em vez
+      // de quebrar a tabela por causa de uma preferência de layout.
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    if (!chaveLocal) return;
+    try {
+      window.localStorage.setItem(chaveLocal, JSON.stringify(larguras));
+    } catch {
+      /* a largura só não sobrevive ao F5; a tabela continua funcionando */
+    }
+  }, [larguras, chaveLocal]);
+
+  //: O ARRASTE EM ANDAMENTO, fora do estado do React.
+  //:
+  //: Cada `mousemove` do arraste não precisa provocar nova renderização de
+  //: tudo — só a largura da coluna que está mudando. `ref` guarda o ponto de
+  //: partida sem re-render a cada pixel.
+  const redimensionando = useRef<{
+    coluna: string;
+    inicioX: number;
+    larguraInicial: number;
+  } | null>(null);
+
+  useEffect(() => {
+    function mover(evento: MouseEvent) {
+      const estado = redimensionando.current;
+      if (!estado) return;
+      const largura = Math.max(
+        LARGURA_MINIMA,
+        estado.larguraInicial + (evento.clientX - estado.inicioX),
+      );
+      definirLarguras((atuais) => ({ ...atuais, [estado.coluna]: largura }));
+    }
+    function soltar() {
+      redimensionando.current = null;
+    }
+    window.addEventListener('mousemove', mover);
+    window.addEventListener('mouseup', soltar);
+    return () => {
+      window.removeEventListener('mousemove', mover);
+      window.removeEventListener('mouseup', soltar);
+    };
+  }, []);
+
+  function iniciarRedimensionamento(
+    evento: React.MouseEvent<HTMLSpanElement>,
+    coluna: string,
+  ) {
+    // NÃO é clique de ordenar: sem isto, arrastar a borda também dispararia
+    // o `aoOrdenar` do cabeçalho por baixo.
+    evento.preventDefault();
+    evento.stopPropagation();
+    const th = evento.currentTarget.closest('th');
+    const larguraAtual = larguras[coluna] ?? th?.getBoundingClientRect().width ?? 120;
+    redimensionando.current = { coluna, inicioX: evento.clientX, larguraInicial: larguraAtual };
+  }
+
+  // `table-layout: fixed` só entra depois que alguém redimensiona algo.
+  // Antes disso a tabela continua com o comportamento de sempre — largura
+  // pelo conteúdo —, que é o que as três páginas já contam com (`minWidth`
+  // por célula, texto que quebra, etc.).
+  const temLarguraCustomizada = Object.keys(larguras).length > 0;
+
   return (
     <div className="rolagem-interna" style={{ maxHeight: altura }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: 13,
+          tableLayout: temLarguraCustomizada ? 'fixed' : 'auto',
+        }}
+      >
+        <colgroup>
+          {colunas.map((coluna) => (
+            <col key={coluna} style={larguras[coluna] ? { width: larguras[coluna] } : undefined} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
-            {colunas.map((coluna) => (
-              <th
-                key={coluna}
-                style={{
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 1,
-                  background: 'var(--bg-trilho)',
-                  textAlign: 'left',
-                  padding: '10px 14px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  color: 'var(--cinza-2)',
-                  whiteSpace: 'nowrap',
-                  borderBottom: '1px solid var(--borda)',
-                }}
-              >
-                {coluna}
-              </th>
-            ))}
+            {colunas.map((coluna, indice) => {
+              const ordenavel = colunasOrdenaveis.includes(coluna);
+              const ativa = ordenacao?.coluna === coluna;
+              return (
+                <th
+                  key={coluna}
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    background: 'var(--bg-trilho)',
+                    textAlign: 'left',
+                    padding: 0,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    // Azul da marca, e não o cinza neutro de antes: é o que
+                    // distingue o cabeçalho do resto da tabela à primeira
+                    // vista, sem depender só do fundo (`--bg-trilho`).
+                    color: 'var(--azul-mar-sombra)',
+                    whiteSpace: 'nowrap',
+                    borderBottom: '1px solid var(--borda)',
+                  }}
+                >
+                  {ordenavel ? (
+                    <button
+                      type="button"
+                      onClick={() => aoOrdenar?.(coluna)}
+                      title={`Ordenar por ${coluna}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: 'none',
+                        background: 'transparent',
+                        font: 'inherit',
+                        fontWeight: 700,
+                        letterSpacing: 'inherit',
+                        textTransform: 'inherit',
+                        color: ativa ? 'var(--azul-mar)' : 'inherit',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {coluna}
+                      <span aria-hidden style={{ fontSize: 9, opacity: ativa ? 1 : 0.4 }}>
+                        {ativa ? (ordenacao!.direcao === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </button>
+                  ) : (
+                    <div style={{ padding: '10px 14px' }}>{coluna}</div>
+                  )}
+
+                  {/* A ÚLTIMA COLUNA NÃO GANHA ALÇA: não há o que redimensionar
+                      à direita dela — só a rolagem interna da tabela. */}
+                  {indice < colunas.length - 1 ? (
+                    <span
+                      onMouseDown={(evento) => iniciarRedimensionamento(evento, coluna)}
+                      title="Arrastar para redimensionar a coluna"
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: -3,
+                        bottom: 0,
+                        width: 7,
+                        cursor: 'col-resize',
+                        userSelect: 'none',
+                        touchAction: 'none',
+                      }}
+                    />
+                  ) : null}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>{children}</tbody>
