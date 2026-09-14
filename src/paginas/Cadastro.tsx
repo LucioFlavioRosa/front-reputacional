@@ -67,9 +67,9 @@ const ESTILO_DO_TITULO_DO_CADASTRO: CSSProperties = { fontSize: 24 };
 //: feitas uma vez por agenda, então merecem um alvo de clique maior que o
 //: chip de 24px usado nos filtros da Base.
 const ESTILO_DO_CHIP_MAIOR: CSSProperties = {
-  height: 38,
-  padding: '0 16px',
-  fontSize: 13,
+  height: 32,
+  padding: '0 13px',
+  fontSize: 12,
 };
 
 export function Cadastro({
@@ -473,7 +473,7 @@ export function Cadastro({
             que ela estava criando outra. E o nome bate com o botao da ficha
             que trouxe ate aqui — uma acao mantem o mesmo nome ao longo do
             caminho, senao a pessoa nao sabe se chegou onde queria. */}
-        <h1 style={{ fontSize: 26 }}>{id ? 'Editar agenda' : 'Nova agenda'}</h1>
+        <h1 style={{ fontSize: 26 }}>{id ? 'Editar agenda' : 'Cadastrar nova Interação'}</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
           {/* CADA ABA TEM O SEU CONSELHO. "Escolha a frente" é a primeira coisa
               a fazer na aba de antes e não quer dizer nada na de depois, onde
@@ -482,6 +482,17 @@ export function Cadastro({
             ? 'Escolha a frente antes de preencher o resto.'
             : 'O que ficou da reunião. Nada aqui é obrigatório para salvar.'}
         </p>
+        {/* O PORQUÊ DO CADASTRO, uma vez só, no topo — e não repetido em cada
+            seção. Quem preenche precisa saber que o valor do registro está na
+            padronização: o mesmo campo, preenchido do mesmo jeito, em toda
+            interação, é o que permite somar e comparar depois. */}
+        {!id ? (
+          <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 6, maxWidth: 640 }}>
+            Este cadastro padroniza como cada interação com stakeholders é
+            registrada, para que o painel some e compare agendas de frentes e
+            áreas diferentes da mesma forma.
+          </p>
+        ) : null}
       </div>
 
       {/* O DESFECHO DO SALVAR PRECISA ALCANÇAR QUEM APERTOU O BOTÃO.
