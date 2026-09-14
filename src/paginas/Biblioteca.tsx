@@ -155,7 +155,7 @@ export function Biblioteca() {
         </div>
       ) : null}
 
-      <Secao titulo="Cadastrar referência">
+      <Secao titulo="Cadastrar Posicionamento e Papers Aegea">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             O arquivo fica no armazenamento do painel, numa pasta por tema e
