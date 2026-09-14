@@ -53,6 +53,7 @@ export function Acessos({ euId }: { euId: string | null }) {
   const [emEdicao, definirEmEdicao] = useState<Acesso | null>(null);
   const [emHistorico, definirEmHistorico] = useState<Acesso | null>(null);
   const [aDesativar, definirADesativar] = useState<Acesso | null>(null);
+  const [busca, definirBusca] = useState('');
 
   const carregar = async () => {
     definirErro(null);
@@ -86,17 +87,27 @@ export function Acessos({ euId }: { euId: string | null }) {
     }
   };
 
+  //: BUSCA POR NOME (E E-MAIL), em memória — a lista inteira já chegou do
+  //: servidor numa chamada só (`listarAcessos()`, sem paginação), então
+  //: filtrar aqui é o mesmo padrão já usado na Biblioteca de referências.
+  const filtradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return pessoas ?? [];
+    return (pessoas ?? []).filter(
+      (p) => p.nome.toLowerCase().includes(termo) || p.email.toLowerCase().includes(termo),
+    );
+  }, [pessoas, busca]);
+
   const { internos, externos, semAcesso } = useMemo(() => {
-    const todas = pessoas ?? [];
     return {
       // Quem não tem papel encabeça a lista: é o convidado que entrou pelo SSO
       // e está esperando alguém liberar. Deixá-lo no fim da tabela é deixá-lo
       // esperando mais.
-      semAcesso: todas.filter((p) => !p.papel),
-      externos: todas.filter((p) => p.papel && p.externo),
-      internos: todas.filter((p) => p.papel && !p.externo),
+      semAcesso: filtradas.filter((p) => !p.papel),
+      externos: filtradas.filter((p) => p.papel && p.externo),
+      internos: filtradas.filter((p) => p.papel && !p.externo),
     };
-  }, [pessoas]);
+  }, [filtradas]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (!pessoas) return <Carregando rotulo="Carregando acessos…" />;
@@ -107,6 +118,15 @@ export function Acessos({ euId }: { euId: string | null }) {
         <p style={{ color: 'var(--cinza-2)', fontSize: 13, margin: '0 0 16px' }}>
           Quem entra no painel, o que cada um alcança e até quando.
         </p>
+
+        <input
+          style={{ ...estiloDeEntrada, marginBottom: 16 }}
+          value={busca}
+          onChange={(evento) => definirBusca(evento.target.value)}
+          placeholder="Buscar por nome ou e-mail…"
+          aria-label="Buscar nos acessos"
+        />
+
         {semAcesso.length > 0 && (
           <Cartao titulo={`Aguardando liberação (${semAcesso.length})`}>
             <p style={{ color: 'var(--cinza-2)', fontSize: 13, margin: '0 0 12px' }}>

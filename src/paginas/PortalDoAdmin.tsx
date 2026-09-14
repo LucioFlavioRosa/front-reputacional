@@ -86,11 +86,9 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         aria-label="Seções da administração"
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           gap: 6,
           borderBottom: '1px solid var(--borda)',
-          // Quatro abas nao cabem em telefone: rolam em vez de quebrar em duas
-          // linhas, que faria a segunda parecer outro grupo.
-          overflowX: 'auto',
         }}
       >
         {ABAS.map((opcao) => {
