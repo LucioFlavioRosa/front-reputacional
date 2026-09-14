@@ -16,6 +16,6 @@ import type { CSSProperties } from 'react';
  */
 export const celula: CSSProperties = {
   padding: '10px 14px',
-  verticalAlign: 'top',
+  verticalAlign: 'middle',
   color: 'var(--cinza-3)',
 };

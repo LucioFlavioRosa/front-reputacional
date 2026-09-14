@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   criarInteracao,
   editarInteracao,
@@ -56,6 +57,20 @@ import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
 import { ListaDaAegea, ListaDeParticipantes } from '@/paginas/cadastro/participantes';
+
+//: TÍTULO MAIOR NESTA TELA, de propósito — "Antes"/"Depois" são as únicas
+//: onde alguém passa vários minutos preenchendo, e não só lendo; o padrão de
+//: `Secao` (21px) continua valendo no resto do produto.
+const ESTILO_DO_TITULO_DO_CADASTRO: CSSProperties = { fontSize: 24 };
+
+//: O CHIP DE SEMPRE, só maior — "Tipo de registro" e "Área(s)" são escolhas
+//: feitas uma vez por agenda, então merecem um alvo de clique maior que o
+//: chip de 24px usado nos filtros da Base.
+const ESTILO_DO_CHIP_MAIOR: CSSProperties = {
+  height: 38,
+  padding: '0 16px',
+  fontSize: 13,
+};
 
 export function Cadastro({
   aoSalvar,
@@ -511,21 +526,22 @@ export function Cadastro({
         aria-labelledby="etapa-antes"
         style={COLUNA_DA_ETAPA(etapa === 'antes')}
       >
-      <Secao titulo="Tipo de registro">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      <Secao titulo="1. Tipo de registro" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {FRENTES.map((frente) => (
             <ChipDeFrente
               key={frente}
               frente={frente}
               ativo={form.frente === frente}
               aoClicar={() => trocarFrente(frente)}
+              estilo={ESTILO_DO_CHIP_MAIOR}
             />
           ))}
         </div>
       </Secao>
 
-      <Secao titulo="Área(s)">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <Secao titulo="2. Área(s)" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.areas_pessoa.map((area) => {
             const ativo = form.areas.includes(area.id);
             return (
@@ -536,13 +552,14 @@ export function Cadastro({
                 fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
                 texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
                 aoClicar={() => alternarArea(area.id)}
+                estilo={ESTILO_DO_CHIP_MAIOR}
               />
             );
           })}
         </div>
       </Secao>
 
-      <Secao titulo="Identificação">
+      <Secao titulo="3. Identificação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div className="grade grade--2" style={{ gap: 16 }}>
           <Campo rotulo="Data da interação" obrigatorio>
             <input
@@ -668,7 +685,7 @@ export function Cadastro({
           — "quantas foram presenciais neste trimestre?" — e o endereco nao;
           ler "Teams" e concluir online funcionaria ate alguem escrever "sala
           4". */}
-      <Secao titulo="Onde acontece">
+      <Secao titulo="4. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
@@ -723,7 +740,7 @@ export function Cadastro({
           Três comentários se acumularam aqui, de reorganizações sucessivas, e
           dois falavam de campos que já tinham saído desta seção. Comentário
           que descreve uma tela anterior é pior que comentário nenhum. */}
-      <Secao titulo="Situação e expectativa">
+      <Secao titulo="5. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
@@ -946,7 +963,7 @@ export function Cadastro({
           diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
           pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
           um com bandeirinha. */}
-      <Secao titulo="Quem participa">
+      <Secao titulo="6. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
             o que diz que são partes distintas da mesma mesa: num cartão só, as
             duas listas leriam como uma lista longa com dois títulos, e é
@@ -1002,7 +1019,7 @@ export function Cadastro({
           se leva se junta antes, o que se traz chega depois. Separadas, cada
           instante tem o seu lugar, e a lista de preparacao nao cresce com o
           que so vai existir depois da reuniao. */}
-      <Secao titulo="Materiais de preparação">
+      <Secao titulo="7. Materiais de preparação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Suba o arquivo, ou informe o link se ele já mora em outro lugar.

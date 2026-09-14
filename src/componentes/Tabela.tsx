@@ -153,7 +153,7 @@ export function Tabela({
                     background: 'var(--bg-trilho)',
                     textAlign: 'left',
                     padding: 0,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase',
@@ -187,7 +187,7 @@ export function Tabela({
                       }}
                     >
                       {coluna}
-                      <span aria-hidden style={{ fontSize: 9, opacity: ativa ? 1 : 0.4 }}>
+                      <span aria-hidden style={{ fontSize: 10, opacity: ativa ? 1 : 0.4 }}>
                         {ativa ? (ordenacao!.direcao === 'asc' ? '▲' : '▼') : '↕'}
                       </span>
                     </button>

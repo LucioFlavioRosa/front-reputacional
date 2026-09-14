@@ -175,7 +175,7 @@ export function Layout({
             <img
               src="/imagens/logo-aegea.png"
               alt="Aegea"
-              style={{ height: 26, width: 'auto', filter: 'brightness(0) invert(1)' }}
+              style={{ height: 40, width: 'auto', filter: 'brightness(0) invert(1)' }}
             />
             <span style={{ textAlign: 'left', lineHeight: 1.2 }}>
               <span style={{ display: 'block', fontSize: 18, fontWeight: 700, color: 'var(--branco)' }}>
@@ -276,7 +276,9 @@ export function Layout({
           de um elemento fixo no topo infla o cabeçalho inteiro — empurrando
           ou cobrindo a tela abaixo dele. Aqui, no fluxo normal da página, ele
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
-      {!naCapa && view !== 'cadastro' ? (
+      {/* FORA da Administração também: a tela lista contas e permissões, não
+          agendas — o Recorte não tem nada ali para filtrar. */}
+      {!naCapa && view !== 'cadastro' && view !== 'admin' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco

@@ -1,5 +1,7 @@
-/** A seção "Filtros" — um campo por linha, com todos os valores já em
- *  pílulas clicáveis. Sem menu escondido: escolher é UM clique, não dois.
+/** A seção de filtros: um bloco "Filtros Rápidos" sempre à vista, e um botão
+ *  "Filtros Avançados" que expande o resto — um campo por linha, com todos os
+ *  valores já em pílulas clicáveis. Sem menu escondido: escolher é UM clique,
+ *  não dois.
  *
  *  Referência trazida pelo usuário: uma tela de controle de projeto onde
  *  cada campo (Aplicação, Fase, Status...) aparece como rótulo + pílulas
@@ -8,13 +10,18 @@
  *
  *  Clicar numa pílula já marcada REMOVE o filtro — a mesma regra de
  *  `alternar()` usada em toda a tela (chip de frente, bolha do mapa, item de
- *  ranking). "Assuntos" é a exceção: aceita vários ao mesmo tempo.
+ *  ranking). "Temas" e "Área(s)" são exceção: aceitam vários ao mesmo tempo.
  *
- *  LISTAS GRANDES (Instituição, Assuntos, UF) começam recolhidas em
+ *  A DIVISÃO RÁPIDOS/AVANÇADOS é curatorial, e não um cálculo (ex.: "os 5 mais
+ *  usados"): Frente, Área(s), Período, Relevância e Temas são os que quem pediu
+ *  esta tela disse abrir toda vez; o resto — Esfera, Clima, Desfecho, Situação,
+ *  Unidade, Instituição, Tipo de investidor, UF — é consultado com menos
+ *  frequência e fica atrás do clique em "Filtros avançados".
+ *
+ *  LISTAS GRANDES (Instituição, Temas, UF) começam recolhidas em
  *  `LIMITE_PADRAO` itens, com uma pílula "+N" para abrir o resto. Sem isso, um
  *  cadastro com trinta assuntos empurraria os campos seguintes para fora da
- *  tela assim que a seção abrisse — o mesmo problema que a gaveta antiga já
- *  tinha resolvido de outro jeito, e que continua valendo aqui.
+ *  tela assim que a seção abrisse.
  *
  *  NÃO INCLUI "Busca livre": esse campo é texto digitado, não uma lista de
  *  valores — por isso mora fixo em `BarraDeRecorte`, e nunca aqui.
@@ -23,7 +30,7 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
-import { ATALHOS_DE_PERIODO } from '@/dominio/recorte';
+import { alternarArea, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
 import type { AtalhoDePeriodo, Recorte } from '@/dominio/recorte';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 
@@ -44,9 +51,49 @@ interface CampoDeFiltro {
   aoEscolher: (valor: string) => void;
 }
 
+/** Hoje, sem hora — é o que faz "há 10 dias" bater no dia seguinte também,
+ *  em vez de variar com o minuto em que alguém abriu a tela. */
+function meiaNoiteDeHoje(): Date {
+  const agora = new Date();
+  return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+}
+
+/** `de` (AAAA-MM-DD) → quantos dias atrás disso é, a partir de hoje. */
+function diasDesde(iso: string): number {
+  const inicio = new Date(`${iso}T00:00:00`);
+  return Math.round((meiaNoiteDeHoje().getTime() - inicio.getTime()) / 86_400_000);
+}
+
+/** `ate` (AAAA-MM-DD) → daqui a quantos dias é, a partir de hoje. Espelha
+ *  `diasDesde`, para o lado de "próximos". */
+function diasAte(iso: string): number {
+  const fim = new Date(`${iso}T00:00:00`);
+  return Math.round((fim.getTime() - meiaNoiteDeHoje().getTime()) / 86_400_000);
+}
+
+/** Quantos dias atrás → `de` (AAAA-MM-DD), para gravar no recorte. */
+function deHaDias(dias: number): string {
+  const data = meiaNoiteDeHoje();
+  data.setDate(data.getDate() - dias);
+  return data.toISOString().slice(0, 10);
+}
+
+/** Daqui a quantos dias → `ate` (AAAA-MM-DD). Espelha `deHaDias`. */
+function ateEmDias(dias: number): string {
+  const data = meiaNoiteDeHoje();
+  data.setDate(data.getDate() + dias);
+  return data.toISOString().slice(0, 10);
+}
+
 export function PainelDeFiltros() {
   const { recorte, definirRecorte, catalogo } = usePainel();
-  const [aberto, definirAberto] = useState(false);
+  const [abertoAvancados, definirAbertoAvancados] = useState(false);
+  //: RÁPIDOS NASCE ABERTO, e não fechado como os avançados: são os cinco
+  //: campos que a tela inteira deveria abrir com — o próprio nome diz que são
+  //: para uso constante, e chegar escondido no primeiro acesso contrariaria
+  //: isso. Mas continua retrátil: quem já escolheu o que precisa pode recolher
+  //: para sobrar tela para a tabela.
+  const [abertoRapidos, definirAbertoRapidos] = useState(true);
 
   const definirOuAlternar = <C extends keyof Recorte>(
     campo: C,
@@ -68,15 +115,7 @@ export function PainelDeFiltros() {
     definirRecorte(tags.length ? { ...recorte, tags } : { ...recorte, tags: undefined });
   };
 
-  const campos: CampoDeFiltro[] = [
-    {
-      chave: 'periodo',
-      rotulo: 'Período',
-      valorAtual: recorte.periodo,
-      itens: Object.entries(ATALHOS_DE_PERIODO).map(([chave, rotulo]) => ({ valor: chave, rotulo })),
-      aoEscolher: (valor: string) =>
-        definirOuAlternar('periodo', recorte.periodo, valor, (v) => v as AtalhoDePeriodo),
-    },
+  const CAMPOS_RAPIDOS: CampoDeFiltro[] = [
     {
       chave: 'frente',
       rotulo: 'Frente',
@@ -85,11 +124,15 @@ export function PainelDeFiltros() {
       aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
     },
     {
-      chave: 'esfera',
-      rotulo: 'Esfera',
-      valorAtual: recorte.esfera,
-      itens: (catalogo?.dicionarios.esferas ?? []).map((e) => ({ valor: e.codigo, rotulo: e.nome })),
-      aoEscolher: (valor: string) => definirOuAlternar('esfera', recorte.esfera, valor, (v) => v),
+      chave: 'areas',
+      rotulo: 'Área(s)',
+      multiplo: true,
+      selecionados: (recorte.areas ?? []).map(String),
+      itens: (catalogo?.dicionarios.areas_pessoa ?? []).map((a) => ({
+        valor: String(a.id),
+        rotulo: a.nome,
+      })),
+      aoEscolher: (valor: string) => definirRecorte(alternarArea(recorte, Number(valor))),
     },
     {
       chave: 'tier',
@@ -106,6 +149,24 @@ export function PainelDeFiltros() {
           valor,
           (v) => Number(v),
         ),
+    },
+    {
+      chave: 'tags',
+      rotulo: 'Temas',
+      multiplo: true,
+      selecionados: recorte.tags ?? [],
+      itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
+      aoEscolher: alternarTema,
+    },
+  ].filter((campo) => campo.itens.length > 0);
+
+  const CAMPOS_AVANCADOS: CampoDeFiltro[] = [
+    {
+      chave: 'esfera',
+      rotulo: 'Esfera',
+      valorAtual: recorte.esfera,
+      itens: (catalogo?.dicionarios.esferas ?? []).map((e) => ({ valor: e.codigo, rotulo: e.nome })),
+      aoEscolher: (valor: string) => definirOuAlternar('esfera', recorte.esfera, valor, (v) => v),
     },
     {
       chave: 'clima',
@@ -168,78 +229,316 @@ export function PainelDeFiltros() {
       itens: (catalogo?.dicionarios.ufs ?? []).map((u) => ({ valor: u.codigo, rotulo: u.nome })),
       aoEscolher: (valor: string) => definirOuAlternar('uf', recorte.uf, valor, (v) => v),
     },
-    {
-      chave: 'tags',
-      rotulo: 'Temas',
-      multiplo: true,
-      selecionados: recorte.tags ?? [],
-      itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
-      aoEscolher: alternarTema,
-    },
   ].filter((campo) => campo.itens.length > 0);
 
-  const ativos = campos.filter((c) =>
-    c.multiplo ? (c.selecionados?.length ?? 0) > 0 : c.valorAtual != null,
-  ).length;
+  const ativosContando = (campos: CampoDeFiltro[]) =>
+    campos.filter((c) => (c.multiplo ? (c.selecionados?.length ?? 0) > 0 : c.valorAtual != null)).length;
+
+  const ativosAvancados = ativosContando(CAMPOS_AVANCADOS);
+  const ativosRapidos =
+    ativosContando(CAMPOS_RAPIDOS) + (recorte.periodo || recorte.de || recorte.ate ? 1 : 0);
 
   return (
-    <div
-      className="sem-impressao"
-      style={{
-        border: '1px solid var(--borda)',
-        borderRadius: 'var(--r-card-int)',
-        background: 'var(--branco)',
-        marginBottom: 18,
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => definirAberto((v) => !v)}
-        aria-expanded={aberto}
+    <div className="sem-impressao" style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* -- Filtros Rápidos: retrátil como os avançados, mas nasce aberto --- */}
+      <div
         style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '11px 14px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          fontWeight: 700,
-          color: 'var(--cinza-3)',
+          border: '1px solid var(--borda)',
+          borderRadius: 'var(--r-card-int)',
+          background: 'var(--branco)',
         }}
       >
-        <span>Filtros{ativos ? ` · ${ativos}` : ''}</span>
-        <span
-          aria-hidden
+        <button
+          type="button"
+          onClick={() => definirAbertoRapidos((v) => !v)}
+          aria-expanded={abertoRapidos}
           style={{
-            color: 'var(--cinza-2)',
-            display: 'inline-block',
-            transform: aberto ? 'rotate(180deg)' : 'none',
-            transition: 'transform .15s',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '11px 14px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--azul-mar)',
+            letterSpacing: '0.02em',
           }}
         >
-          ▾
-        </span>
-      </button>
+          <span>Filtros rápidos{ativosRapidos ? ` · ${ativosRapidos}` : ''}</span>
+          <SetaDaAegea aberto={abertoRapidos} />
+        </button>
 
-      {aberto ? (
+        {abertoRapidos ? (
+          <div
+            style={{
+              padding: '4px 14px 16px',
+              borderTop: '1px solid var(--borda)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <CampoDePeriodo recorte={recorte} definirRecorte={definirRecorte} />
+            {CAMPOS_RAPIDOS.map((campo) => (
+              <GrupoDeCampo key={campo.chave} campo={campo} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* -- Filtros Avançados: atrás do clique, para não poluir a tela ----- */}
+      {CAMPOS_AVANCADOS.length > 0 ? (
         <div
           style={{
-            padding: '4px 14px 16px',
-            borderTop: '1px solid var(--borda)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-card-int)',
+            background: 'var(--branco)',
           }}
         >
-          {campos.map((campo) => (
-            <GrupoDeCampo key={campo.chave} campo={campo} />
-          ))}
+          <button
+            type="button"
+            onClick={() => definirAbertoAvancados((v) => !v)}
+            aria-expanded={abertoAvancados}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '11px 14px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--cinza-3)',
+            }}
+          >
+            <span>Filtros avançados{ativosAvancados ? ` · ${ativosAvancados}` : ''}</span>
+            <SetaDaAegea aberto={abertoAvancados} />
+          </button>
+
+          {abertoAvancados ? (
+            <div
+              style={{
+                padding: '4px 14px 16px',
+                borderTop: '1px solid var(--borda)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+              }}
+            >
+              {CAMPOS_AVANCADOS.map((campo) => (
+                <GrupoDeCampo key={campo.chave} campo={campo} />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** O período — atalhos de sempre, mais um "Últimos N dias" de preenchimento
+ *  livre. Cobre o caso que os quatro atalhos fixos não previam ("os últimos
+ *  45 dias", "os últimos 200") sem multiplicar pílula por número.
+ *
+ *  Fica FORA de `CampoDeFiltro`/`GrupoDeCampo`: as pílulas ali são todas do
+ *  tipo "escolher um valor de uma lista fechada", e o campo de dias é o
+ *  oposto disso — um número que a pessoa digita. */
+function CampoDePeriodo({
+  recorte,
+  definirRecorte,
+}: {
+  recorte: Recorte;
+  definirRecorte: (recorte: Recorte) => void;
+}) {
+  //: O texto do campo "Últimos ___ dias" nasce do que o recorte já diz — e só
+  //: quando o período ATUAL é mesmo um `de`+`ate` sem atalho, com `ate` igual
+  //: a hoje (a marca de que foi ESTE campo que escreveu, e não "Próximos").
+  //: Assim, reabrir um link com `?de=...&ate=...` mostra o número certo, e
+  //: clicar num atalho fixo ou no campo "Próximos" esvazia este sozinho.
+  const hojeIso = meiaNoiteDeHoje().toISOString().slice(0, 10);
+  const derivadoPassado =
+    recorte.de && !recorte.periodo && recorte.ate === hojeIso ? String(diasDesde(recorte.de)) : '';
+  const [anteriorPassado, definirAnteriorPassado] = useState(derivadoPassado);
+  const [diasNoPassado, definirDiasNoPassado] = useState(derivadoPassado);
+  if (derivadoPassado !== anteriorPassado) {
+    definirAnteriorPassado(derivadoPassado);
+    definirDiasNoPassado(derivadoPassado);
+  }
+
+  //: MESMA LÓGICA, para o lado de "Próximos": `de` igual a hoje é a marca de
+  //: que foi este campo (e não "Últimos") que escreveu o período.
+  const derivadoFuturo =
+    recorte.ate && !recorte.periodo && recorte.de === hojeIso ? String(diasAte(recorte.ate)) : '';
+  const [anteriorFuturo, definirAnteriorFuturo] = useState(derivadoFuturo);
+  const [diasNoFuturo, definirDiasNoFuturo] = useState(derivadoFuturo);
+  if (derivadoFuturo !== anteriorFuturo) {
+    definirAnteriorFuturo(derivadoFuturo);
+    definirDiasNoFuturo(derivadoFuturo);
+  }
+
+  function aplicarPassado() {
+    const numero = Number(diasNoPassado);
+    if (!diasNoPassado.trim() || !Number.isFinite(numero) || numero <= 0) return;
+    const proximo = { ...recorte, de: deHaDias(numero), ate: hojeIso };
+    delete proximo.periodo;
+    definirRecorte(proximo);
+  }
+
+  function aplicarFuturo() {
+    const numero = Number(diasNoFuturo);
+    if (!diasNoFuturo.trim() || !Number.isFinite(numero) || numero <= 0) return;
+    const proximo = { ...recorte, de: hojeIso, ate: ateEmDias(numero) };
+    delete proximo.periodo;
+    definirRecorte(proximo);
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          color: 'var(--cinza-2)',
+          marginBottom: 8,
+        }}
+      >
+        Período
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {Object.entries(ATALHOS_DE_PERIODO).map(([chave, rotulo]) => (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => {
+              const proximo = { ...recorte };
+              if (recorte.periodo === chave) delete proximo.periodo;
+              else proximo.periodo = chave as AtalhoDePeriodo;
+              delete proximo.de;
+              delete proximo.ate;
+              definirRecorte(proximo);
+            }}
+            style={pilulaEstilo(recorte.periodo === chave)}
+          >
+            {rotulo}
+          </button>
+        ))}
+
+        <CaixaDeDias
+          rotulo="Últimos"
+          valor={diasNoPassado}
+          aoAlterar={definirDiasNoPassado}
+          aoAplicar={aplicarPassado}
+          rotuloAcessivel="Quantidade de dias atrás, até hoje"
+        />
+        <CaixaDeDias
+          rotulo="Próximos"
+          valor={diasNoFuturo}
+          aoAlterar={definirDiasNoFuturo}
+          aoAplicar={aplicarFuturo}
+          rotuloAcessivel="Quantidade de dias à frente, a partir de hoje"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A caixinha "Últimos ___ dias" / "Próximos ___ dias" — mesmo desenho pros
+ *  dois lados do calendário, só o rótulo e o sentido da conta mudam. */
+function CaixaDeDias({
+  rotulo,
+  valor,
+  aoAlterar,
+  aoAplicar,
+  rotuloAcessivel,
+}: {
+  rotulo: string;
+  valor: string;
+  aoAlterar: (valor: string) => void;
+  aoAplicar: () => void;
+  rotuloAcessivel: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        height: 27,
+        padding: '0 4px 0 12px',
+        borderRadius: 'var(--r-chip)',
+        border: `1px solid ${valor ? 'var(--azul-mar)' : 'var(--borda-input)'}`,
+        background: valor ? 'var(--bg-hover)' : 'var(--branco)',
+      }}
+    >
+      <span style={{ fontSize: 12, color: 'var(--cinza-3)' }}>{rotulo}</span>
+      <input
+        type="number"
+        min={1}
+        inputMode="numeric"
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
+        onBlur={aoAplicar}
+        onKeyDown={(evento) => {
+          if (evento.key === 'Enter') {
+            evento.preventDefault();
+            aoAplicar();
+          }
+        }}
+        placeholder="N"
+        aria-label={rotuloAcessivel}
+        style={{
+          width: 44,
+          height: 21,
+          padding: '0 4px',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--cinza-4)',
+          fontSize: 12.5,
+          textAlign: 'center',
+        }}
+      />
+      <span style={{ fontSize: 12, color: 'var(--cinza-3)' }}>dias</span>
+    </div>
+  );
+}
+
+/** A seta que abre/fecha "Filtros avançados" — maior e na cor da marca, e não
+ *  o `▾` pequeno e cinza de antes. O selo circular é o que dá peso ao gesto de
+ *  clicar; a rotação de 180° continua sendo o que diz "já está aberto". */
+function SetaDaAegea({ aberto }: { aberto: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        background: 'var(--bg-trilho)',
+        flexShrink: 0,
+        transform: aberto ? 'rotate(180deg)' : 'none',
+        transition: 'transform .18s',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M3.2 6 8 10.4 12.8 6"
+          stroke="var(--azul-mar)"
+          strokeWidth="2.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
   );
 }
 
@@ -249,7 +548,7 @@ function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
   const escondidos = campo.itens.length - visiveis.length;
 
   return (
-    <div style={{ paddingTop: 10 }}>
+    <div>
       <div
         style={{
           fontSize: 11,

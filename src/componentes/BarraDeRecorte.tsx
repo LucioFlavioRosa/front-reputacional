@@ -94,7 +94,8 @@ export function BarraDeRecorte() {
         onChange={(evento) => alterarBusca(evento.target.value)}
         style={{
           height: 28,
-          width: 190,
+          flex: '1 1 260px',
+          minWidth: 200,
           padding: '0 10px',
           border: '1px solid var(--borda-input)',
           borderRadius: 'var(--r-btn)',

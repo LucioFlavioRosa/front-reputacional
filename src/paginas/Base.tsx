@@ -19,6 +19,7 @@ import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
 import type { Interacao } from '@/dominio/tipos';
 import {
+  nomeDaEsfera,
   nomeDaInstituicao,
   nomeDaUnidade,
   nomeDoInterlocutor,
@@ -56,11 +57,29 @@ type AbaDaBase = (typeof ABAS)[number]['id'];
 const COLUNAS = [
   'Cadeia', 'Data', 'Frente', 'Instituição', 'Unidade', 'Interlocutor',
   'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
+  // -- o resto do que o cadastro pergunta, escondido por padrão -------------
+  //
+  // Nasce OCULTO (ver `NOVAS_COLUNAS_OCULTAS_POR_PADRAO` logo abaixo): são
+  // campos reais do formulário de cadastro, mas menos lidos no dia a dia do
+  // que os de cima. Quem quiser, liga em "Colunas".
+  'Área(s)', 'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
+];
+
+//: Some destas colunas de propósito na primeira visita — ver o comentário de
+//: `useColunasVisiveis` em `SeletorDeColunas.tsx`.
+const NOVAS_COLUNAS_OCULTAS_POR_PADRAO = [
+  'Área(s)', 'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
 ];
 
 //: TODAS MENOS "CADEIA": ela é só o ícone de encadeamento, sem texto para
 //: comparar entre linhas — ordenar por ela não diria nada.
 const COLUNAS_ORDENAVEIS = COLUNAS.filter((coluna) => coluna !== 'Cadeia');
+
+const ROTULO_DA_MODALIDADE: Record<string, string> = {
+  presencial: 'Presencial',
+  online: 'Online',
+  hibrida: 'Híbrida',
+};
 
 const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number> = {
   Data: (linha) => linha.data,
@@ -73,6 +92,13 @@ const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number>
   Relevância: (linha) => linha.tier,
   Situação: (linha) => linha.status,
   Temas: (linha) => linha.tags,
+  'Área(s)': (linha) => linha.areas,
+  Modalidade: (linha) => linha.modalidade,
+  Local: (linha) => linha.local,
+  Esfera: (linha) => linha.esfera,
+  Clima: (linha) => linha.clima,
+  Desfecho: (linha) => linha.resultado,
+  Iniciativa: (linha) => linha.iniciativa,
 };
 
 /** A CADEIA VEM PRIMEIRO, como marca de calha.
@@ -100,7 +126,11 @@ export function Base({
   const { interacoes, catalogo, carregando, erro, recorte, total } = usePainel();
   const [aba, definirAba] = useState<AbaDaBase>('agendas');
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
-  const { ocultas, visiveis, alternar } = useColunasVisiveis('base-interacoes', COLUNAS);
+  const { ocultas, visiveis, alternar } = useColunasVisiveis(
+    'base-interacoes',
+    COLUNAS,
+    NOVAS_COLUNAS_OCULTAS_POR_PADRAO,
+  );
 
   const linhas = useMemo(() => {
     if (!catalogo) return [];
@@ -238,6 +268,15 @@ export function Base({
             {!visiveis.includes('Temas') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
             )}
+            {!visiveis.includes('Área(s)') ? null : (
+              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
+            )}
+            {!visiveis.includes('Modalidade') ? null : <td style={celula}>{linha.modalidade}</td>}
+            {!visiveis.includes('Local') ? null : <td style={celula}>{linha.local}</td>}
+            {!visiveis.includes('Esfera') ? null : <td style={celula}>{linha.esfera}</td>}
+            {!visiveis.includes('Clima') ? null : <td style={celula}>{linha.clima}</td>}
+            {!visiveis.includes('Desfecho') ? null : <td style={celula}>{linha.resultado}</td>}
+            {!visiveis.includes('Iniciativa') ? null : <td style={celula}>{linha.iniciativa}</td>}
             </LinhaDaTabela>
           ))}
         </Tabela>
@@ -330,6 +369,13 @@ interface Linha {
   tier: string;
   status: string;
   tags: string;
+  areas: string;
+  modalidade: string;
+  local: string;
+  esfera: string;
+  clima: string;
+  resultado: string;
+  iniciativa: string;
 }
 
 function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
@@ -348,6 +394,15 @@ function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
     tier: rotuloDeRelevancia(catalogo, interacao.tier),
     status: rotuloDeCodigo(catalogo, 'status', interacao.status),
     tags: nomesDosTemas(catalogo, interacao.temas).join(', '),
+    areas: (interacao.areas ?? [])
+      .map((id) => catalogo.dicionarios.areas_pessoa.find((a) => a.id === id)?.nome ?? String(id))
+      .join(', '),
+    modalidade: interacao.modalidade ? ROTULO_DA_MODALIDADE[interacao.modalidade] ?? interacao.modalidade : '',
+    local: interacao.local ?? '',
+    esfera: nomeDaEsfera(catalogo, interacao.esfera_id),
+    clima: rotuloDeCodigo(catalogo, 'climas', interacao.clima),
+    resultado: rotuloDeCodigo(catalogo, 'resultados', interacao.resultado),
+    iniciativa: rotuloDeCodigo(catalogo, 'iniciativas', interacao.iniciativa),
   };
 }
 
@@ -371,6 +426,13 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
         linha.tier,
         linha.status,
         linha.tags,
+        linha.areas,
+        linha.modalidade,
+        linha.local,
+        linha.esfera,
+        linha.clima,
+        linha.resultado,
+        linha.iniciativa,
       ]
         .map(escapar)
         .join(';'),
