@@ -85,10 +85,10 @@ export function Secao({
   // etiqueta ("título da seção") significar coisas visualmente diferentes de
   // uma tela para outra.
   const estiloDaMarca: CSSProperties = {
-    fontSize: nivelDoTitulo === 1 ? 22 : 18,
+    fontSize: nivelDoTitulo === 1 ? 26 : 21,
     color: 'var(--azul-mar)',
-    marginTop: 6,
-    marginLeft: 6,
+    marginTop: 12,
+    marginLeft: 12,
   };
 
   return (

@@ -171,8 +171,8 @@ export function Layout({
             <span
               aria-hidden
               style={{
-                width: 26,
-                height: 26,
+                width: 32,
+                height: 32,
                 borderRadius: '50%',
                 background: 'var(--turquesa-rio)',
                 display: 'block',
@@ -182,7 +182,7 @@ export function Layout({
               <span
                 style={{
                   display: 'block',
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: '0.1em',
                   color: 'rgba(255,255,255,0.72)',
@@ -190,7 +190,7 @@ export function Layout({
               >
                 AEGEA
               </span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--branco)' }}>
+              <span style={{ display: 'block', fontSize: 18, fontWeight: 700, color: 'var(--branco)' }}>
                 Painel Reputacional
               </span>
             </span>
@@ -222,7 +222,7 @@ export function Layout({
                     // trocaram de lugar.
                     background: ativo ? 'var(--branco)' : 'transparent',
                     color: ativo ? 'var(--azul-mar)' : 'rgba(255,255,255,0.78)',
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: ativo ? 700 : 400,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',

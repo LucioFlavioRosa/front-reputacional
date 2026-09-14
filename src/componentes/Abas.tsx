@@ -68,7 +68,7 @@ export function Abas<T extends string>({
               border: 'none',
               background: 'transparent',
               padding: '12px 18px',
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: selecionada ? 700 : 500,
               color: selecionada ? 'var(--azul-mar)' : 'var(--cinza-3)',
               borderBottom: `2px solid ${selecionada ? 'var(--azul-mar)' : 'transparent'}`,
