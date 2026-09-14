@@ -352,6 +352,19 @@ export function Cadastro({
     definirSucesso(false);
   };
 
+  /** Quais áreas internas participaram da agenda — sem os efeitos colaterais
+   *  de `alternarAssunto` (que também busca material da biblioteca): área não
+   *  liga a nenhum acervo, é só o vínculo. */
+  const alternarArea = (areaId: number) => {
+    definirForm((atual) => ({
+      ...atual,
+      areas: atual.areas.includes(areaId)
+        ? atual.areas.filter((id) => id !== areaId)
+        : [...atual.areas, areaId],
+    }));
+    definirSucesso(false);
+  };
+
   // Trocar de frente guarda o que a NOVA frente também carrega, e só isso.
   //
   // Zerar tudo seria perda de dado silenciosa: Governo, Parceiros e Eventos
@@ -511,6 +524,24 @@ export function Cadastro({
         </div>
       </Secao>
 
+      <Secao titulo="Área(s)">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {catalogo.dicionarios.areas_pessoa.map((area) => {
+            const ativo = form.areas.includes(area.id);
+            return (
+              <Chip
+                key={area.id}
+                rotulo={area.nome}
+                ativo={ativo}
+                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                aoClicar={() => alternarArea(area.id)}
+              />
+            );
+          })}
+        </div>
+      </Secao>
+
       <Secao titulo="Identificação">
         <div className="grade grade--2" style={{ gap: 16 }}>
           <Campo rotulo="Data da interação" obrigatorio>
@@ -599,16 +630,16 @@ export function Cadastro({
         </div>
 
         <div style={{ marginTop: 16 }}>
-          {/* O ASSUNTO NA IDENTIFICACAO, EM UM CAMPO SO.
+          {/* O TEMA NA IDENTIFICACAO, EM UM CAMPO SO.
               A PAUTA NÃO FICA AQUI, e sim em "Conteúdo": duas caixas pedindo
               a mesma coisa em precisões diferentes, lado a lado, convidam a
-              escrever duas versões do assunto — e a base passa a ter registros
+              escrever duas versões do tema — e a base passa a ter registros
               cujo título e cujos temas discordam.
 
-              "ASSUNTOS", e não "Temas" nem "Tags": é a palavra que o cadastro
-              da Administração usa e a que o negócio fala. Um campo, um nome,
-              em toda a plataforma. */}
-          <Campo rotulo="Assuntos">
+              "TEMAS", e não "Assuntos" nem "Tags": a Administração usa esse
+              nome desde que a aba de cadastro foi renomeada, e a leitura
+              vale para toda a plataforma — um campo, um nome. */}
+          <Campo rotulo="Temas">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
                 const ativo = form.temas.includes(tema.id);
@@ -1299,6 +1330,7 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     //
     // Ausente, o backend preserva. Os dois continuam no banco e na ficha.
     temas: form.temas,
+    areas: form.areas,
     // LINHA INCOMPLETA NAO VIAJA — mas quem AVISA e
     // `impedimentoNoFormulario`, e nao este filtro.
     //
@@ -1452,6 +1484,7 @@ function paraFormulario(interacao: Interacao): Formulario {
     pendencias: texto(interacao.pendencias),
     observacoes: texto(interacao.observacoes),
     temas: interacao.temas ?? [],
+    areas: interacao.areas ?? [],
     // SEM FILTRAR POR PAPEL. Trazer de volta so os `porta_voz` apagaria, sem
     // aviso, quem estivesse gravado como `equipe`: `montarCorpo` remanda a
     // lista inteira, e o que nao voltou do servidor nao vai de volta para ele.

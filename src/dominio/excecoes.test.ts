@@ -25,9 +25,9 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const PESSOAS: PessoaAegea[] = [
-  { id: 'p1', nome: 'Letícia', cargo: null, email: null, eh_porta_voz: true, ativo: true, temas: [1] },
-  { id: 'p2', nome: 'Joseane', cargo: null, email: null, eh_porta_voz: true, ativo: true, temas: [2] },
-  { id: 'p3', nome: 'Sem assunto', cargo: null, email: null, eh_porta_voz: true, ativo: true, temas: [] },
+  { id: 'p1', nome: 'Letícia', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [1] },
+  { id: 'p2', nome: 'Joseane', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [2] },
+  { id: 'p3', nome: 'Sem assunto', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
 ];
 
 const CATALOGO: Catalogo = montarCatalogo(DICIONARIOS, [], [], PESSOAS);

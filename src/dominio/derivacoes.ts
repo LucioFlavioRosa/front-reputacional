@@ -15,7 +15,13 @@
  *  números vêm.
  */
 
-import { chaveDoMes, diasDesde } from '@/dominio/formato';
+import {
+  chaveDaSemana,
+  chaveDoMes,
+  chaveDoSemestre,
+  diasDesde,
+  tituloDaAgenda,
+} from '@/dominio/formato';
 import { faixaDeRisco } from '@/dominio/frentes';
 import type { FaixaDeRisco } from '@/dominio/frentes';
 import type {
@@ -178,6 +184,31 @@ export function kpis(interacoes: Interacao[], catalogo: Catalogo): Kpis {
   };
 }
 
+export interface ResumoDeClima {
+  total: number;
+  positivas: number;
+  negativas: number;
+}
+
+/** Total e a quebra positivas/negativas por clima, para uma ou mais frentes
+ *  somadas — sobre o recorte inteiro, a mesma base que os outros KPIs do
+ *  cabeçalho usam (sem janela de data própria).
+ *
+ *  Positiva = clima `propositivo`; negativa = `tenso`. Sem clima registrado
+ *  ou `neutro` não entram em nenhuma das duas — mesmo critério de
+ *  `scorePorTema` e `BarraDivergente`.
+ *
+ *  Aceita mais de uma frente para o caso de soma (`institucionais` = governo
+ *  + parceiros), sem duplicar o filtro em cada card. */
+export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[]): ResumoDeClima {
+  const doGrupo = interacoes.filter((i) => frentes.includes(i.frente));
+  return {
+    total: doGrupo.length,
+    positivas: doGrupo.filter((i) => i.clima === 'propositivo').length,
+    negativas: doGrupo.filter((i) => i.clima === 'tenso').length,
+  };
+}
+
 /* -- séries mensais ------------------------------------------------------- */
 
 export interface Segmento {
@@ -188,31 +219,56 @@ export interface Segmento {
 }
 
 export interface ColunaMensal {
+  /** A chave do período agrupado — "2026-05" quando `granularidade` é `mes`
+   *  (o caso original, e o único que `RaioXDaExcecao` usa), mas também
+   *  "2026-05-04" (segunda-feira da semana) ou "2026-S1" quando é `semana` ou
+   *  `semestre`. O campo continua `mes` de propósito: renomeá-lo obrigaria a
+   *  mudar `BarrasEmpilhadas` e `RaioXDaExcecao` também, e nenhum dos dois
+   *  precisa saber COMO a chave foi montada — só que ela ordena por
+   *  `localeCompare` e que existe um rótulo pronto para exibir por cima dela. */
   mes: string;
   total: number;
   segmentos: Segmento[];
 }
 
-/** Série empilhada por mês. `categorias` define a ordem e as cores da pilha;
- *  `categoriasDe` diz a que categorias cada interação pertence — uma só, no
- *  caso de frente e clima, várias no caso de tema. */
+export type Granularidade = 'semana' | 'mes' | 'semestre';
+
+/** Exportada para quem precisa saber a QUE período uma data pertence depois
+ *  que a coluna já existe — ex.: `Painel` filtrando as interações de uma
+ *  coluna do gráfico para o tooltip. Reusar esta função em vez de comparar
+ *  `data_interacao.startsWith(coluna.mes)` é o que faz o filtro funcionar
+ *  também em semana e semestre, onde a chave não é um prefixo da data. */
+export function chaveDoPeriodo(iso: string, granularidade: Granularidade): string {
+  if (granularidade === 'semana') return chaveDaSemana(iso);
+  if (granularidade === 'semestre') return chaveDoSemestre(iso);
+  return chaveDoMes(iso);
+}
+
+/** Série empilhada por período. `categorias` define a ordem e as cores da
+ *  pilha; `categoriasDe` diz a que categorias cada interação pertence — uma
+ *  só, no caso de frente e clima, várias no caso de tema.
+ *
+ *  `granularidade` default `'mes'` DE PROPÓSITO: é o único valor que
+ *  `RaioXDaExcecao` conhece, e assim a chamada de três argumentos que ele já
+ *  faz continua se comportando exatamente como antes. */
 export function serieMensal(
   interacoes: Interacao[],
   categorias: { chave: string; rotulo: string; cor: string }[],
   categoriasDe: (interacao: Interacao) => string[],
+  granularidade: Granularidade = 'mes',
 ): ColunaMensal[] {
-  const meses = new Map<string, Map<string, number>>();
+  const periodos = new Map<string, Map<string, number>>();
 
   for (const interacao of interacoes) {
-    const mes = chaveDoMes(interacao.data_interacao);
-    if (!meses.has(mes)) meses.set(mes, new Map());
-    const contagem = meses.get(mes)!;
+    const periodo = chaveDoPeriodo(interacao.data_interacao, granularidade);
+    if (!periodos.has(periodo)) periodos.set(periodo, new Map());
+    const contagem = periodos.get(periodo)!;
     for (const categoria of categoriasDe(interacao)) {
       contagem.set(categoria, (contagem.get(categoria) ?? 0) + 1);
     }
   }
 
-  return [...meses.entries()]
+  return [...periodos.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([mes, contagem]) => {
       const segmentos = categorias
@@ -228,24 +284,121 @@ export function serieMensal(
     });
 }
 
-/** Preenche meses sem registro, para o eixo não pular buracos. */
-export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
+/** Quantos passos de `granularidade` separam duas chaves — "2" entre dois
+ *  meses vizinhos, "0" para a mesma chave. Mesma conta de passo que os três
+ *  laços de `completarPeriodos` já fazem; existe em separado só para medir a
+ *  distância sem precisar percorrê-la. */
+function distanciaEntrePeriodos(a: string, b: string, granularidade: Granularidade): number {
+  if (granularidade === 'semana') {
+    const milissegundosPorSemana = 7 * 24 * 60 * 60 * 1000;
+    return Math.round(
+      (new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) /
+        milissegundosPorSemana,
+    );
+  }
+  if (granularidade === 'semestre') {
+    const [anoA, semestreA] = a.split('-S').map(Number);
+    const [anoB, semestreB] = b.split('-S').map(Number);
+    return (anoB - anoA) * 2 + (semestreB - semestreA);
+  }
+  const [anoA, mesA] = a.split('-').map(Number);
+  const [anoB, mesB] = b.split('-').map(Number);
+  return (anoB - anoA) * 12 + (mesB - mesA);
+}
+
+//: Em períodos (meses, semanas ou semestres — o que a granularidade atual
+//: usa), não em tempo absoluto. Três parece pouco para "isto é um outlier",
+//: mas o objetivo não é detectar outlier em geral — é impedir que um vão maior
+//: que isto force o eixo inteiro a se esticar para trás. Ajustar aqui é ajustar
+//: só o quão longe um buraco pode ir antes de a coluna do outro lado dele
+//: deixar de entrar no preenchimento.
+const LIMITE_DE_VAO_ANTES_DE_CORTAR = 3;
+
+/** Descarta colunas isoladas do INÍCIO da série quando o vão até a próxima
+ *  coluna com dado é maior que `LIMITE_DE_VAO_ANTES_DE_CORTAR` períodos.
+ *
+ *  SEM ISTO, um único registro muito antigo — um lançamento retroativo, um
+ *  dado de teste fora da janela normal — vira o primeiro ponto da série, e
+ *  `completarPeriodos` preenche cada período vazio entre ele e o resto: dezenas
+ *  de colunas zeradas empurrando os dados de verdade para uma faixa estreita à
+ *  direita. O registro em si não é descartado — ele continua contando nos
+ *  KPIs e em qualquer tela que não seja este gráfico; só não força o eixo
+ *  deste componente a se esticar até ele.
+ *
+ *  Só corta do INÍCIO, e um de cada vez: um vão grande no MEIO ou no FIM da
+ *  série continua sendo preenchido normalmente — é o comportamento que já
+ *  existia, e que faz sentido para atividade que para e recomeça dentro do
+ *  período em curso. */
+function cortarVaoInicial(
+  colunas: ColunaMensal[],
+  granularidade: Granularidade,
+): ColunaMensal[] {
+  let inicio = 0;
+  while (
+    inicio < colunas.length - 1 &&
+    distanciaEntrePeriodos(colunas[inicio].mes, colunas[inicio + 1].mes, granularidade) >
+      LIMITE_DE_VAO_ANTES_DE_CORTAR
+  ) {
+    inicio += 1;
+  }
+  return colunas.slice(inicio);
+}
+
+/** Preenche períodos sem registro, para o eixo não pular buracos — em
+ *  qualquer granularidade, cada uma com sua própria forma de "andar um passo"
+ *  entre a primeira e a última chave. */
+export function completarPeriodos(
+  colunas: ColunaMensal[],
+  granularidade: Granularidade = 'mes',
+): ColunaMensal[] {
   if (colunas.length < 2) return colunas;
 
-  const porMes = new Map(colunas.map((c) => [c.mes, c]));
-  const [primeiro] = colunas;
-  const ultimo = colunas[colunas.length - 1];
-
+  const porChave = new Map(colunas.map((c) => [c.mes, c]));
+  const [primeira] = cortarVaoInicial(colunas, granularidade);
+  const ultima = colunas[colunas.length - 1];
+  const vazia = (chave: string): ColunaMensal => ({ mes: chave, total: 0, segmentos: [] });
   const completas: ColunaMensal[] = [];
-  const cursor = new Date(`${primeiro.mes}-01T00:00:00`);
-  const fim = new Date(`${ultimo.mes}-01T00:00:00`);
 
+  if (granularidade === 'semana') {
+    const cursor = new Date(`${primeira.mes}T00:00:00`);
+    const fim = new Date(`${ultima.mes}T00:00:00`);
+    while (cursor <= fim) {
+      const chave = cursor.toISOString().slice(0, 10);
+      completas.push(porChave.get(chave) ?? vazia(chave));
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return completas;
+  }
+
+  if (granularidade === 'semestre') {
+    let [ano, semestre] = primeira.mes.split('-S').map(Number);
+    const [anoFim, semestreFim] = ultima.mes.split('-S').map(Number);
+    while (ano < anoFim || (ano === anoFim && semestre <= semestreFim)) {
+      const chave = `${ano}-S${semestre}`;
+      completas.push(porChave.get(chave) ?? vazia(chave));
+      semestre += 1;
+      if (semestre > 2) {
+        semestre = 1;
+        ano += 1;
+      }
+    }
+    return completas;
+  }
+
+  const cursor = new Date(`${primeira.mes}-01T00:00:00`);
+  const fim = new Date(`${ultima.mes}-01T00:00:00`);
   while (cursor <= fim) {
     const chave = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-    completas.push(porMes.get(chave) ?? { mes: chave, total: 0, segmentos: [] });
+    completas.push(porChave.get(chave) ?? vazia(chave));
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return completas;
+}
+
+/** Nome antigo, só para `mes` — `RaioXDaExcecao` chama assim, e não precisa
+ *  saber que a função por baixo hoje aceita outras granularidades. */
+export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
+  return completarPeriodos(colunas, 'mes');
 }
 
 /** Os temas mais recorrentes do recorte, já com a contagem.
@@ -275,6 +428,123 @@ export function temasMaisRecorrentes(
       total: item.total,
       cor: paleta[indice % paleta.length],
     }));
+}
+
+/** Uma linha da lista que abre ao clicar num tema — só o que basta para
+ *  reconhecer a agenda e navegar até ela; o resto mora na própria Ficha. */
+export interface AgendaDoTema {
+  id: string;
+  titulo: string;
+  data: string;
+  clima: string;
+}
+
+export interface ScoreDeTema {
+  chave: string;
+  rotulo: string;
+  /** Só conta quem tem `clima` registrado — é o denominador do score, e
+   *  "8 agendas" ao lado de um score calculado sobre 8 é o que faz o número
+   *  fazer sentido. Uma agenda sem clima registrado não entra em lugar
+   *  nenhum desta conta, nem no total. */
+  total: number;
+  positivas: number;
+  negativas: number;
+  /** (positivas − negativas) ÷ total, em pontos de −100 a 100. POR
+   *  OCORRÊNCIA: cada agenda vale um voto, nunca um peso — é a versão mais
+   *  barata de calcular (só precisa do clima já registrado) e a mais fácil
+   *  de explicar em uma reunião. Uma versão ponderada por tier ou por
+   *  recência é conversa para depois que isto provar que serve. */
+  score: number;
+  /** AS MESMAS agendas que compõem `total` — nunca um recálculo à parte, ou
+   *  as duas listas divergem no primeiro filtro novo que uma delas esquecer. */
+  agendas: AgendaDoTema[];
+}
+
+export interface ScorePorTema {
+  itens: ScoreDeTema[];
+  /** Quantos temas TINHAM clima suficiente para entrar na conta, antes do
+   *  corte de `quantos` — sem isto, a tela não tem como dizer "isto é um
+   *  recorte" quando de fato é um. `itens.length < totalDeTemas` é
+   *  exatamente a pergunta "sobrou alguém de fora?". */
+  totalDeTemas: number;
+  /** TODOS os temas com clima registrado, do mais discutido ao menos — não só
+   *  os que entraram em `itens`. É desta lista que a tela monta "adicionar
+   *  outro tema": sem ela, não haveria como oferecer um tema que ficou de
+   *  fora do corte por `quantos` sem recalcular tudo de novo na tela. */
+  todos: ScoreDeTema[];
+}
+
+/** O tema em palavras já existe (`temasMaisRecorrentes`); o que faltava era
+ *  a MESMA contagem separada por clima, para responder "este tema está indo
+ *  bem ou mal", não só "quanto se fala dele".
+ *
+ *  Os `quantos` mais discutidos entram primeiro — um tema com uma agenda só
+ *  não deveria disputar o topo do "pior" com um que tem quinze —, e SÓ DEPOIS
+ *  a ordenação vira a do score: pior primeiro, porque é a leitura de uma
+ *  reunião de diretoria, e quem abre a tela quer ver onde dói antes de ver
+ *  onde vai bem.
+ *
+ *  `temasForcados` ACRESCENTA à lista de `quantos`, e não substitui um deles —
+ *  é o que faz o botão "adicionar outro tema" da tela mostrar de fato mais um
+ *  tema, em vez de trocar um dos mais discutidos pelo escolhido. Um tema
+ *  forçado que já estaria entre os `quantos` por volume não duplica: some da
+ *  lista por volume e sobra uma vaga para o próximo. */
+export function scorePorTema(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 8,
+  temasForcados: string[] = [],
+): ScorePorTema {
+  const contagem = new Map<
+    string,
+    { total: number; positivas: number; negativas: number; agendas: AgendaDoTema[] }
+  >();
+
+  for (const interacao of interacoes) {
+    // SEM CLIMA REGISTRADO NÃO CONTA. Contar como neutro inventaria uma
+    // opinião que ninguém registrou — e infla o total sem mexer no score,
+    // fazendo um tema parecer mais "morno" do que os dados de verdade dizem.
+    if (!interacao.clima) continue;
+
+    for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
+      const atual = contagem.get(nome) ?? {
+        total: 0,
+        positivas: 0,
+        negativas: 0,
+        agendas: [],
+      };
+      atual.total += 1;
+      if (interacao.clima === 'propositivo') atual.positivas += 1;
+      if (interacao.clima === 'tenso') atual.negativas += 1;
+      atual.agendas.push({
+        id: interacao.id,
+        titulo: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
+        data: interacao.data_interacao,
+        clima: interacao.clima,
+      });
+      contagem.set(nome, atual);
+    }
+  }
+
+  const todos: ScoreDeTema[] = [...contagem.entries()].map(([nome, c]) => ({
+    chave: nome,
+    rotulo: nome,
+    total: c.total,
+    positivas: c.positivas,
+    negativas: c.negativas,
+    score: Math.round(((c.positivas - c.negativas) / c.total) * 100),
+    agendas: c.agendas,
+  }));
+
+  const porVolume = [...todos].sort((a, b) => b.total - a.total);
+
+  const forcadosSet = new Set(temasForcados);
+  const forcados = porVolume.filter((tema) => forcadosSet.has(tema.chave));
+  const resto = porVolume.filter((tema) => !forcadosSet.has(tema.chave));
+
+  const itens = [...forcados, ...resto.slice(0, quantos)].sort((a, b) => a.score - b.score);
+
+  return { itens, totalDeTemas: todos.length, todos: porVolume };
 }
 
 /* -- geografia ------------------------------------------------------------ */

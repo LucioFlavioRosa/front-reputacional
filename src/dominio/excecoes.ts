@@ -148,9 +148,9 @@ export function excecoes(
     {
       chave: 'fora-do-escopo',
       natureza: 'decisao',
-      titulo: 'Conduzidas por quem não responde pelo assunto',
+      titulo: 'Conduzidas por quem não responde pelo tema',
       porque:
-        'O porta-voz da agenda não tem, no cadastro, nenhum dos assuntos ' +
+        'O porta-voz da agenda não tem, no cadastro, nenhum dos temas ' +
         'tratados. Pode ser decisão consciente — mas precisa ser vista.',
       agendas: vivas.filter((i) => foraDoEscopo(i, catalogo)),
       peso: 4,
@@ -172,7 +172,7 @@ export function excecoes(
     {
       chave: 'assunto-sem-agenda',
       natureza: 'decisao',
-      titulo: 'Assuntos estratégicos sem nenhuma agenda',
+      titulo: 'Temas estratégicos sem nenhuma agenda',
       porque:
         'Estão no cadastro como pauta da companhia e não apareceram em ' +
         'conversa nenhuma neste recorte.',

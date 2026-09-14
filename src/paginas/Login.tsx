@@ -25,7 +25,7 @@ import { entrarPorSenha } from '@/api/cliente';
 import { entrarNoPainel } from '@/dominio/entrada';
 
 /** O SSO volta trocando isto para `true`. Nada mais precisa mudar aqui. */
-const SSO_LIGADO = false;
+const SSO_LIGADO = true;
 
 /** Os três módulos da plataforma, na ordem em que a capa os apresenta. */
 const MODULOS = [
@@ -115,6 +115,9 @@ export function Login({
               marginTop: 14,
               maxWidth: '16ch',
               textShadow: '0 2px 18px rgba(0,25,120,0.45)',
+              // O h1 global agora nasce azul-mar — aqui ele está DENTRO do
+              // hero azul, então precisa reafirmar o branco por conta própria.
+              color: 'var(--branco)',
             }}
           >
             O relacionamento institucional{' '}

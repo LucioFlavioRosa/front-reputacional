@@ -51,6 +51,20 @@ const NIVEIS = [
   { valor: 'gerais', rotulo: 'Gerais', ajuda: 'O que aparece sem ter sido planejado.' },
 ];
 
+//: Selo de cada nível, com cor PRÓPRIA — antes só "estratégico" tinha cor de
+//: marca, e os outros dois dividiam o mesmo cinza claro, ficando idênticos
+//: entre si e "menores" ao lado do turquesa sólido (mesmo tamanho de caixa,
+//: mas o contraste fraco lia como menor). As três cores e seus textos vêm de
+//: `frentes.ts`/`index.css` já com a razão de contraste WCAG conferida:
+//: Amarelo Pequi e Turquesa Rio só passam com texto escuro (`--sobre-turquesa`,
+//: medido para o turquesa e igualmente válido para o amarelo — os dois
+//: exigem o mesmo tom); Roxo Açaí só passa com branco.
+const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
+  sensivel: { fundo: 'var(--amarelo-pequi)', texto: 'var(--sobre-turquesa)' },
+  estrategico: { fundo: 'var(--turquesa-rio)', texto: 'var(--sobre-turquesa)' },
+  gerais: { fundo: 'var(--roxo-acai)', texto: 'var(--branco)' },
+};
+
 export function CadastroDeAssuntos() {
   const { recarregar } = usePainel();
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
@@ -90,16 +104,16 @@ export function CadastroDeAssuntos() {
     }
   };
 
-  if (!temas) return <Carregando rotulo="Carregando os assuntos…" />;
+  if (!temas) return <Carregando rotulo="Carregando os temas…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-      <Secao titulo="Cadastrar assunto">
+      <Secao titulo="Cadastrar tema">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-            O assunto é o que o painel soma. É por ele que se responde "quantas
+            O tema é o que o painel soma. É por ele que se responde "quantas
             agendas sobre reajuste tarifário", e é ele que define o que cada
             porta-voz pode falar.
           </p>
@@ -217,23 +231,17 @@ export function CadastroDeAssuntos() {
                   >
                     {tema.nome}
                   </span>
-                  {/* Estratégico ganha a cor da marca; livre fica neutro. A
-                      diferença entre "agenda da companhia" e "o que apareceu"
-                      é a leitura mais útil desta lista. */}
+                  {/* Cada nível com a própria cor — ver `SELO_DO_NIVEL`. A
+                      diferença entre "exige alinhamento", "agenda da
+                      companhia" e "o que apareceu" é a leitura mais útil
+                      desta lista, e as três precisam se distinguir à
+                      primeira vista, não só no hover. */}
                   <Selo
                     rotulo={
                       NIVEIS.find((n) => n.valor === tema.nivel)?.rotulo ?? tema.nivel
                     }
-                    fundo={
-                      tema.nivel === 'estrategico'
-                        ? 'var(--turquesa-rio)'
-                        : 'var(--bg-trilho)'
-                    }
-                    texto={
-                      tema.nivel === 'estrategico'
-                        ? 'var(--sobre-turquesa)'
-                        : 'var(--cinza-3)'
-                    }
+                    fundo={SELO_DO_NIVEL[tema.nivel]?.fundo ?? 'var(--bg-trilho)'}
+                    texto={SELO_DO_NIVEL[tema.nivel]?.texto ?? 'var(--cinza-3)'}
                   />
                   <Botao
                     variante="fantasma"

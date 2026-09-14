@@ -5,10 +5,11 @@
  */
 
 import { useId } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import type { Frente } from '@/dominio/tipos';
 import {
   CORES_DE_FRENTE,
+  DESCRICAO_DE_FRENTE,
   ROTULOS_DE_FRENTE,
   textoSobreFrente,
 } from '@/dominio/frentes';
@@ -115,6 +116,7 @@ export function ChipDeFrente({
       texto={textoSobreFrente(frente)}
       ativo={ativo}
       aoClicar={aoClicar}
+      titulo={DESCRICAO_DE_FRENTE[frente]}
     />
   );
 }
@@ -203,17 +205,37 @@ export function Kpi({
   dica,
   aoClicar,
   cor = 'var(--turquesa-rio)',
+  coresCompostas,
 }: {
   rotulo: string;
   valor: ReactNode;
   dica?: ReactNode;
   aoClicar?: () => void;
   cor?: string;
+  /**
+   * Para um KPI que SOMA mais de uma frente (ex.: "institucionais" = governo +
+   * parceiros). Duas cores pequenas ao lado do rótulo dizem "isto é uma soma",
+   * em vez de pintar a barra de topo com a cor de uma das duas — o que
+   * mentiria sobre qual frente o número representa.
+   */
+  coresCompostas?: readonly [string, string];
 }) {
+  // Secundário não é sinônimo de branco e plano — só de mais quieto que o
+  // herói. Um lavado de 6% da própria cor no corpo do cartão (via
+  // `color-mix`, que aceita tanto hex quanto `var(--token)`) dá identidade sem
+  // brigar com o número, que continua em tinta neutra por cima dele.
+  const fundo = coresCompostas
+    ? 'color-mix(in srgb, var(--cinza-1) 45%, var(--branco))'
+    : `color-mix(in srgb, ${cor} 6%, var(--branco))`;
+
   return (
-    <Cartao estilo={{ padding: 0, overflow: 'hidden' }} aoClicar={aoClicar}>
-      <div style={{ height: 3, background: cor }} />
+    <Cartao estilo={{ padding: 0, overflow: 'hidden', background: fundo }} aoClicar={aoClicar}>
+      <div style={{ height: 3, background: coresCompostas ? 'var(--borda-input)' : cor }} />
       <div style={{ padding: '16px 18px 18px' }}>
+        {/* Os dois pontinhos que indicavam "isto soma duas frentes" saíram:
+            sem legenda nenhuma na tela, liam como decoração sem propósito. A
+            dica abaixo ("Governo e parceiros") já conta a mesma história em
+            palavras — não precisa de dois canais dizendo a mesma coisa. */}
         <div className="kicker">{rotulo}</div>
         {/* Figuras proporcionais: `tabular-nums` num número grande isolado
             deixa "121" frouxo. Tabular só onde dígitos alinham em coluna. */}
@@ -231,6 +253,137 @@ export function Kpi({
   );
 }
 
+/**
+ * O KPI-manchete do Painel: um destaque só, com o gradiente do hero de login
+ * (`--azul-mar` → `--azul-mar-sombra`) e uma barra de progresso de verdade em
+ * vez de uma dica de texto pequena.
+ *
+ * Existe UM herói porque a ousadia gasta em um lugar só é o que faz o resto da
+ * grade parecer disciplinado, e não apagado — dois ou mais competiriam entre
+ * si pela mesma atenção. Ver a nota de design em `Painel.tsx`.
+ */
+export function KpiHero({
+  rotulo,
+  valor,
+  selo,
+  progresso,
+  aoClicar,
+}: {
+  rotulo: string;
+  valor: ReactNode;
+  /** Rótulo curto no canto — hoje sempre a frente que o número representa. */
+  selo?: string;
+  progresso?: { fracao: number; rotulo: string };
+  aoClicar?: () => void;
+}) {
+  const clicavel = Boolean(aoClicar);
+  return (
+    <div
+      role={clicavel ? 'button' : undefined}
+      tabIndex={clicavel ? 0 : undefined}
+      onClick={aoClicar}
+      onKeyDown={(evento) => {
+        if (!aoClicar) return;
+        if (evento.key === 'Enter' || evento.key === ' ') {
+          evento.preventDefault();
+          aoClicar();
+        }
+      }}
+      className={clicavel ? 'kpi-hero kpi-hero--clicavel' : 'kpi-hero'}
+      style={{
+        borderRadius: 'var(--r-card)',
+        padding: '22px 24px 24px',
+        background:
+          'radial-gradient(120% 140% at 100% 0%, rgba(23,227,203,0.55) 0%, rgba(23,227,203,0) 46%),' +
+          'linear-gradient(155deg, var(--azul-mar) 0%, var(--azul-mar-sombra) 100%)',
+        color: 'var(--branco)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: clicavel ? 'pointer' : undefined,
+        minHeight: '100%',
+        // Uma sombra na COR do próprio gradiente, não um cinza genérico — o
+        // card já se separa do fundo pela cor; a sombra só aprofunda esse
+        // relevo em vez de competir com ele.
+        boxShadow: '0 8px 24px rgba(0, 39, 189, 0.22)',
+      }}
+    >
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <span
+            className="kicker"
+            style={{ color: 'rgba(255,255,255,0.78)' }}
+          >
+            {rotulo}
+          </span>
+          {selo ? (
+            <span
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                padding: '3px 9px',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.16)',
+                color: '#EFFFFC',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {selo}
+            </span>
+          ) : null}
+        </div>
+        <div
+          className="tabular"
+          style={{ fontSize: 56, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, marginTop: 14 }}
+        >
+          {valor}
+        </div>
+      </div>
+
+      {progresso ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                flex: 1,
+                height: 6,
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.22)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.round(Math.min(1, Math.max(0, progresso.fracao)) * 100)}%`,
+                  height: '100%',
+                  background: 'var(--turquesa-rio)',
+                  borderRadius: 3,
+                }}
+              />
+            </div>
+            <span
+              style={{
+                fontFamily: 'var(--font-destaque)',
+                fontStyle: 'italic',
+                fontSize: 17,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {Math.round(progresso.fracao * 100)}%
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 6 }}>
+            {progresso.rotulo}
+            {aoClicar ? <span aria-hidden style={{ marginLeft: 5 }}>→</span> : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Barra de proporção usada em todos os rankings. */
 export function Barra({
   valor,
@@ -245,15 +398,28 @@ export function Barra({
 }) {
   const largura = maximo > 0 ? Math.max(2, (valor / maximo) * 100) : 0;
   return (
-    <div style={{ height: altura, background: 'var(--bg-trilho)', borderRadius: 4 }}>
+    // O trilho era sempre o mesmo cinza `--bg-trilho`, não importa a cor do
+    // dado — dez rankings de cores diferentes liam como o mesmo cinza com
+    // pontas trocadas. Um trilho na PRÓPRIA cor, bem clara, é o que o guia da
+    // skill de dataviz chama de "mesma rampa, um degrau mais claro": o estado
+    // (preenchido vs. vazio) continua lendo na barra inteira, não só na ponta.
+    <div
+      style={{
+        height: altura,
+        background: `color-mix(in srgb, ${cor} 12%, var(--branco))`,
+        borderRadius: 4,
+      }}
+    >
       {/* Ponta arredondada no fim do dado, reta na linha de base: a barra
-          cresce de uma base só e o arredondamento marca onde ela termina. */}
+          cresce de uma base só e o arredondamento marca onde ela termina. O
+          gradiente é a MESMA cor em dois tons — nunca uma segunda cor —, só
+          para dar um relevo sutil em vez de uma chapa lisa. */}
       <div
         style={{
           width: `${largura}%`,
           height: '100%',
-          background: cor,
-          borderRadius: '4px 4px 4px 4px',
+          background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 78%, var(--branco)), ${cor})`,
+          borderRadius: 4,
         }}
       />
     </div>
@@ -376,6 +542,188 @@ export const estiloDeEntrada: CSSProperties = {
   background: 'var(--branco)',
   color: 'var(--cinza-4)',
 };
+
+/**
+ * O seletor de arquivo do sistema — nunca o `<input type="file">` cru.
+ *
+ * O CONTROLE NATIVO NÃO SE ESTILIZA. O botão e o texto "Nenhum arquivo
+ * escolhido" são desenhados pelo sistema operacional; aplicar `estiloDeEntrada`
+ * nele só bordava uma caixa ao redor de um controle que continuava com a cara
+ * do Windows por dentro — nem o botão nem a fonte respondiam.
+ *
+ * O `<input>` de verdade continua no DOM, focável e funcional — só fica
+ * visualmente do tamanho de 1px (a técnica padrão de "visualmente oculto"),
+ * dentro de um `<label>` que É o botão que se vê. Clicar no rótulo abre o
+ * seletor nativo, porque é para isso que a associação label→input serve.
+ *
+ * O anel de foco vai no `<label>`, via `:has(:focus-visible)` no CSS — o
+ * input escondido não pode receber o anel diretamente, porque ele é
+ * invisível. `:has()` é o que faz a tela navegada por teclado saber onde o
+ * foco está sem precisar de estado do React só para isso.
+ */
+export function CampoDeArquivo({
+  valor,
+  aoEscolher,
+  desabilitado,
+  ariaLabel,
+  rotuloDoBotao = 'Escolher arquivo',
+  textoVazio = 'Nenhum arquivo selecionado',
+  aceitar,
+  entradaRef,
+}: {
+  valor: File | null;
+  aoEscolher: (arquivo: File | null) => void;
+  desabilitado?: boolean;
+  ariaLabel?: string;
+  rotuloDoBotao?: string;
+  textoVazio?: string;
+  aceitar?: string;
+  /** Para quem precisa limpar o valor do `<input>` nativo depois de salvar —
+   *  ele é não controlado, então `aoEscolher(null)` sozinho não apaga a
+   *  seleção que o navegador mostraria ao reabrir o seletor. */
+  entradaRef?: RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <label
+      className="campo-arquivo"
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        height: 38,
+        padding: '0 6px',
+        border: '1px solid var(--borda-input)',
+        borderRadius: 'var(--r-btn)',
+        background: desabilitado ? 'var(--bg-trilho)' : 'var(--branco)',
+        cursor: desabilitado ? 'not-allowed' : 'pointer',
+        opacity: desabilitado ? 0.6 : 1,
+        transition: 'border-color .12s',
+      }}
+    >
+      <input
+        ref={entradaRef}
+        type="file"
+        accept={aceitar}
+        disabled={desabilitado}
+        aria-label={ariaLabel ?? rotuloDoBotao}
+        onChange={(evento) => {
+          const escolhido = evento.target.files?.[0] ?? null;
+          // LIMPO NA HORA, sempre — o que se vê vem de `valor`, nunca do
+          // valor nativo do `<input>` (que fica invisível de qualquer jeito).
+          // Sem isto, escolher O MESMO arquivo duas vezes seguidas — para
+          // tentar de novo depois de um erro, por exemplo — não dispara
+          // `change` na segunda vez, e a tela parece travada.
+          evento.target.value = '';
+          aoEscolher(escolhido);
+        }}
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      />
+
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          height: 26,
+          padding: '0 10px',
+          borderRadius: 'calc(var(--r-btn) - 2px)',
+          background: 'var(--bg-trilho)',
+          color: 'var(--cinza-3)',
+          fontSize: 12.5,
+          fontWeight: 700,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <IconeDeAnexo />
+        {rotuloDoBotao}
+      </span>
+
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontSize: 13,
+          color: valor ? 'var(--cinza-4)' : 'var(--texto-placeholder)',
+        }}
+      >
+        {valor ? valor.name : textoVazio}
+      </span>
+
+      {valor && !desabilitado ? (
+        <button
+          type="button"
+          onClick={(evento) => {
+            // NÃO DEIXA O CLIQUE CHEGAR NO `<label>`: sem isto, remover o
+            // arquivo reabriria o seletor no mesmo gesto, e a pessoa veria a
+            // janela do sistema operacional abrir sozinha depois de "limpar".
+            evento.preventDefault();
+            evento.stopPropagation();
+            aoEscolher(null);
+            if (entradaRef?.current) entradaRef.current.value = '';
+          }}
+          aria-label="Remover arquivo escolhido"
+          style={{
+            flexShrink: 0,
+            width: 22,
+            height: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            borderRadius: '50%',
+            background: 'transparent',
+            color: 'var(--cinza-2)',
+            fontSize: 15,
+            lineHeight: 1,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      ) : null}
+    </label>
+  );
+}
+
+/** Seta subindo para uma bandeja — o glifo universal de upload. Três formas
+ *  simples, e não um ícone de biblioteca: a única cor que ele veste é
+ *  `currentColor`, herdada do texto do botão ao redor. */
+function IconeDeAnexo() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden focusable="false">
+      <path d="M8 2.2v7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M4.6 5.6 8 2.2l3.4 3.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.5 10.6v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 /* -- estados -------------------------------------------------------------- */
 
@@ -504,7 +852,9 @@ export function Modal({
           }}
         >
           <div>
-            <h2 id={idDoTitulo} style={{ fontSize: 21 }}>{titulo}</h2>
+            {/* O h2 global nasce azul-mar — este cabeçalho JÁ é azul-mar,
+                então o título precisa do branco de volta. */}
+            <h2 id={idDoTitulo} style={{ fontSize: 21, color: 'var(--branco)' }}>{titulo}</h2>
             {subtitulo ? (
               <div style={{ fontSize: 12, color: 'var(--turquesa-sombra)', marginTop: 4 }}>
                 {subtitulo}

@@ -240,7 +240,7 @@ export function Ficha({
         {interacao.temas.length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>
-              Assuntos
+              Temas
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nomesDosTemas(catalogo, interacao.temas).map((tema) => (
@@ -280,7 +280,11 @@ export function Ficha({
         ) : null}
 
         {faltando.length ? (
-          <p style={{ fontSize: 11, color: 'var(--texto-placeholder)' }}>
+          // `--texto-placeholder` é para texto de espera dentro de um campo
+          // vazio — não para uma frase real que alguém precisa ler. Usado
+          // aqui, a informação em si ficava no contraste de "isto não é
+          // conteúdo", que é o oposto do que a frase é.
+          <p style={{ fontSize: 12, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
             Sem preenchimento nesta frente: {faltando.join(', ')}.
           </p>
         ) : null}

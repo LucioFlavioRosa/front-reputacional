@@ -68,9 +68,12 @@ export function MapaUf({
   // 'NA' e 'IN' não têm capital: aparecem no ranking ao lado, não no mapa.
   const comCapital = pontos.filter((p) => CAPITAIS[p.uf] && p.total > 0);
   const maximo = Math.max(1, ...comCapital.map((p) => p.total));
-  const raio = scaleSqrt()
-    .domain([0, maximo])
-    .range([0, Math.min(26, Math.max(10, largura * 0.055))]);
+  const raioMaximo = Math.min(26, Math.max(10, largura * 0.055));
+  // O PISO importa tanto quanto o teto. Com `range([0, ...])`, uma UF com uma
+  // única interação encolhia para ~4px de raio — abaixo dos 8px mínimos que a
+  // própria marca exige para continuar sendo um alvo, visível e clicável, e
+  // não um pixel perdido no mapa.
+  const raio = scaleSqrt().domain([0, maximo]).range([6, raioMaximo]);
 
   return (
     <div ref={container} style={{ width: '100%' }}>
@@ -81,7 +84,11 @@ export function MapaUf({
         role="img"
         aria-label="Distribuição geográfica das interações por unidade da federação"
       >
-        <path d={contorno} fill="var(--bg-trilho)" stroke="var(--borda-input)" strokeWidth={1} />
+        {/* `--bg-trilho` sobre cartão branco é quase o mesmo tom — o contorno
+            sumia. Um lavado do PRÓPRIO acento (a cor das bolhas), não um cinza
+            qualquer: o mapa lê como o "chão" das marcas, e acompanha `acento`
+            se algum dia outra tela passar uma cor diferente. */}
+        <path d={contorno} fill={acento} fillOpacity={0.07} stroke={acento} strokeOpacity={0.32} strokeWidth={1} />
 
         {/* Maiores primeiro para que as menores fiquem por cima e clicáveis. */}
         {[...comCapital]
@@ -106,6 +113,13 @@ export function MapaUf({
                   {ponto.total === 1 ? 'interação' : 'interações'}
                   {aoClicarUf ? ' — clique para filtrar o painel' : ''}
                 </title>
+                {aoClicarUf && r < 12 ? (
+                  // Alvo de clique maior que a marca visível: um raio de 6px
+                  // desenha um alvo de 12px, abaixo do mínimo de ~24px que um
+                  // toque em tela pequena precisa. Invisível, só amplia a área
+                  // que responde — o círculo pintado continua do tamanho certo.
+                  <circle r={12} fill="transparent" />
+                ) : null}
                 <circle
                   r={r}
                   fill={acento}
@@ -131,6 +145,60 @@ export function MapaUf({
             );
           })}
       </svg>
+
+      {/* A legenda de escala que faltava: sem ela, o tamanho da bolha só
+          significa algo enquanto o mouse está em cima lendo o `title`. Duas
+          referências — a menor e a maior UF do recorte — bastam para o olho
+          calibrar todas as outras por interpolação. Some sozinha quando o
+          recorte não tem variação para calibrar (uma UF só, ou todas iguais).
+
+          O RÓTULO PRECISA DIZER A RELAÇÃO, não só nomear a unidade: "Interações"
+          sozinho ao lado de duas bolhas não conta que o TAMANHO é o que varia —
+          lia como duas UFs soltas, não como uma régua. E cada bolha agora leva
+          a palavra "interação(ões)" junto do número, então nenhuma delas
+          depende de ler o rótulo do grupo pra fazer sentido sozinha. */}
+      {maximo > 1 ? (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: 'var(--cinza-2)', marginBottom: 6 }}>
+            O tamanho da bolha mostra o número de interações
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            {[1, maximo].map((valor) => {
+              const r = raio(valor);
+              return (
+                <span
+                  key={valor}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 11,
+                    color: 'var(--cinza-2)',
+                  }}
+                >
+                  <svg
+                    width={raioMaximo * 2}
+                    height={raioMaximo * 2}
+                    style={{ display: 'block', flexShrink: 0 }}
+                    aria-hidden
+                  >
+                    <circle
+                      cx={raioMaximo}
+                      cy={raioMaximo}
+                      r={r}
+                      fill={acento}
+                      fillOpacity={0.22}
+                      stroke={acento}
+                      strokeWidth={1.5}
+                    />
+                  </svg>
+                  {valor} {valor === 1 ? 'interação' : 'interações'}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

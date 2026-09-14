@@ -45,7 +45,7 @@ describe('contraste do texto sobre a cor de cada frente', () => {
   const frentes = Object.keys(CORES_DE_FRENTE) as Frente[];
 
   it('cobre todas as frentes, para nenhuma nova escapar', () => {
-    expect(frentes).toHaveLength(7);
+    expect(frentes).toHaveLength(8);
   });
 
   it.each(frentes)('%s alcança AA', (frente) => {
@@ -143,6 +143,7 @@ describe('o que sobra da extensão ao trocar de frente', () => {
       eventos: ['natureza_orgao', 'cargo_interlocutor', 'nome_evento'],
       legislativo: ['casa', 'tramitacao', 'prioridade', 'ementa'],
       investidores: ['tipo_investidor', 'formato'],
+      bancos_credores: ['natureza_orgao', 'cargo_interlocutor', 'nome_evento'],
       interna: [
         'natureza',
         'cumprimento',

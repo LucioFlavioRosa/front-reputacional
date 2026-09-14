@@ -498,6 +498,7 @@ export interface PessoaAegeaEntrada {
   cargo?: string | null;
   email?: string | null;
   eh_porta_voz?: boolean;
+  area_id?: number | null;
   ativo?: boolean;
   /** Sobre o que esta pessoa pode falar. A lista inteira substitui a anterior. */
   temas?: number[];

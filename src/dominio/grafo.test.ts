@@ -54,6 +54,7 @@ function agenda(
     registro_url: null,
     extensao: null,
     temas: [],
+    areas: [],
     participacoes: [],
     expectativa: null,
     clima_esperado: null,

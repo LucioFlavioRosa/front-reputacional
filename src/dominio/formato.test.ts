@@ -138,7 +138,7 @@ describe('como a agenda se chama numa lista', () => {
   it('diz que falta preencher, e não finge que não há assunto', () => {
     expect(
       tituloDaAgenda({ pauta: null, temas: [], expectativa: null }, temas),
-    ).toBe('Sem assunto informado');
+    ).toBe('Sem tema informado');
   });
 
   it('trata pauta só de espaços como ausente', () => {

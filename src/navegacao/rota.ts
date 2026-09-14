@@ -49,7 +49,7 @@ export const EIXOS: { eixo: Eixo; rotulo: string }[] = [
   { eixo: 'desfecho', rotulo: 'Desfecho' },
   { eixo: 'porta-voz', rotulo: 'Porta-voz' },
   { eixo: 'interlocutor', rotulo: 'Interlocutor' },
-  { eixo: 'assunto', rotulo: 'Assunto' },
+  { eixo: 'assunto', rotulo: 'Tema' },
   { eixo: 'uf', rotulo: 'UF' },
 ];
 

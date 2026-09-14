@@ -140,10 +140,10 @@ function chavesDe(
 
     case 'assunto': {
       const temas = i.temas ?? [];
-      if (!temas.length) return [{ chave: 'sem-assunto', rotulo: 'Sem assunto classificado' }];
+      if (!temas.length) return [{ chave: 'sem-assunto', rotulo: 'Sem tema classificado' }];
       return temas.map((tema) => ({
         chave: String(tema),
-        rotulo: nomesDosTemas(catalogo, [tema])[0] ?? `Assunto ${tema}`,
+        rotulo: nomesDosTemas(catalogo, [tema])[0] ?? `Tema ${tema}`,
       }));
     }
 

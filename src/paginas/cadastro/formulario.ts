@@ -40,6 +40,7 @@ export interface Formulario {
   pendencias: string;
   observacoes: string;
   temas: number[];
+  areas: number[];
   aegea: ParticipanteAegeaNoForm[];
   extensao: Record<string, string>;
 
@@ -231,6 +232,7 @@ export const VAZIO: Formulario = {
   pendencias: '',
   observacoes: '',
   temas: [],
+  areas: [],
   aegea: [],
   extensao: {},
   expectativa: '',
