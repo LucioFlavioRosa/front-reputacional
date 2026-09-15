@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Ordenacao } from '@/dominio/ordenacao';
 
 const LARGURA_MINIMA = 60;
@@ -31,6 +31,7 @@ export function Tabela({
   aoOrdenar,
   chaveDeArmazenamento,
   altura = 'calc(100vh - 340px)',
+  compacta = false,
   children,
 }: {
   colunas: string[];
@@ -45,6 +46,11 @@ export function Tabela({
   chaveDeArmazenamento?: string;
   /** Até onde a lista cresce antes de rolar por dentro. */
   altura?: string;
+  /** Cabeçalho mais baixo e fonte um pouco menor — para tabelas que dividem
+   *  a largura do cartão com outras, lado a lado (as três tabelas de área
+   *  fixa do Painel). As células continuam com o padrão de sempre; quem
+   *  chama ajusta o próprio `<td>` se precisar do mesmo aperto. */
+  compacta?: boolean;
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -129,7 +135,7 @@ export function Tabela({
         style={{
           width: '100%',
           borderCollapse: 'collapse',
-          fontSize: 13,
+          fontSize: compacta ? 12 : 13,
           tableLayout: temLarguraCustomizada ? 'fixed' : 'auto',
         }}
       >
@@ -153,9 +159,9 @@ export function Tabela({
                     background: 'var(--bg-trilho)',
                     textAlign: 'left',
                     padding: 0,
-                    fontSize: 13,
+                    fontSize: compacta ? 11 : 13,
                     fontWeight: 700,
-                    letterSpacing: '0.05em',
+                    letterSpacing: compacta ? '0.02em' : '0.05em',
                     textTransform: 'uppercase',
                     // Azul da marca, e não o cinza neutro de antes: é o que
                     // distingue o cabeçalho do resto da tabela à primeira
@@ -175,7 +181,7 @@ export function Tabela({
                         alignItems: 'center',
                         gap: 5,
                         width: '100%',
-                        padding: '10px 14px',
+                        padding: compacta ? '6px 8px' : '10px 14px',
                         border: 'none',
                         background: 'transparent',
                         font: 'inherit',
@@ -192,7 +198,7 @@ export function Tabela({
                       </span>
                     </button>
                   ) : (
-                    <div style={{ padding: '10px 14px' }}>{coluna}</div>
+                    <div style={{ padding: compacta ? '6px 8px' : '10px 14px' }}>{coluna}</div>
                   )}
 
                   {/* A ÚLTIMA COLUNA NÃO GANHA ALÇA: não há o que redimensionar
@@ -230,10 +236,15 @@ export function Tabela({
 export function Linha({
   aoClicar,
   titulo,
+  estilo,
   children,
 }: {
   aoClicar?: () => void;
   titulo?: string;
+  /** Fundo próprio da linha — as três tabelas de área fixa do Painel pintam
+   *  a linha inteira pelo clima. O hover continua por cima (`bg-hover`);
+   *  tirar o mouse RESTAURA este fundo, e não o branco de sempre. */
+  estilo?: CSSProperties;
   children: ReactNode;
 }) {
   return (
@@ -243,12 +254,13 @@ export function Linha({
       style={{
         cursor: aoClicar ? 'pointer' : undefined,
         borderBottom: '1px solid var(--borda)',
+        ...estilo,
       }}
       onMouseEnter={(evento) => {
         if (aoClicar) evento.currentTarget.style.background = 'var(--bg-hover)';
       }}
       onMouseLeave={(evento) => {
-        evento.currentTarget.style.background = '';
+        evento.currentTarget.style.background = (estilo?.background as string) ?? '';
       }}
     >
       {children}

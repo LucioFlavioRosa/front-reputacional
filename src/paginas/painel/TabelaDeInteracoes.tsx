@@ -66,6 +66,21 @@ const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
   tenso: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
 };
 
+//: A LINHA INTEIRA das três tabelas de área fixa pinta pelo clima — mesma
+//: técnica de `Barra` (`color-mix` com o branco, a uma fração baixa): a cor
+//: crua do selo (feita para contraste de texto em cima dela) é forte demais
+//: pra virar fundo de linha inteira; diluída, dá para ler o texto normal por
+//: cima sem competir com o selo da própria linha.
+const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
+  propositivo: 'color-mix(in srgb, var(--turquesa-rio) 10%, var(--branco))',
+  neutro: 'color-mix(in srgb, var(--cinza-2) 7%, var(--branco))',
+  tenso: 'color-mix(in srgb, var(--vermelho-pitanga) 10%, var(--branco))',
+};
+
+//: CÉLULA MAIS APERTADA, só para a versão reduzida (as três tabelas lado a
+//: lado) — a completa continua com o espaçamento de sempre.
+const CELULA_COMPACTA = { padding: '6px 8px' };
+
 function SeloDeClima({ codigo, catalogo }: { codigo: string | null; catalogo: Catalogo }) {
   if (!codigo) return <span style={{ color: 'var(--cinza-2)', fontSize: 13 }}>—</span>;
   const cores = SELO_DO_CLIMA[codigo];
@@ -149,54 +164,63 @@ export function TabelaDeInteracoes({
             altura="none"
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
+            compacta={reduzida}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
             }}
           >
-            {daPagina.map((interacao) => (
-              <LinhaDaTabela
-                key={interacao.id}
-                aoClicar={() => definirAberta(interacao)}
-                titulo="Ver a ficha e a linha do tempo desta instituição"
-              >
-                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                  {dataCompleta(interacao.data_interacao)}
-                </td>
-                <td style={{ ...celula, minWidth: 160 }}>
-                  {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
-                </td>
-                {reduzida ? null : (
-                  <td style={{ ...celula, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
-                    {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
-                  </td>
-                )}
-                <td
-                  style={{
-                    ...celula,
-                    maxWidth: 280,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+            {daPagina.map((interacao) => {
+              const celulaAtual = reduzida ? { ...celula, ...CELULA_COMPACTA } : celula;
+              return (
+                <LinhaDaTabela
+                  key={interacao.id}
+                  aoClicar={() => definirAberta(interacao)}
+                  titulo="Ver a ficha e a linha do tempo desta instituição"
+                  estilo={
+                    reduzida && interacao.clima
+                      ? { background: FUNDO_DA_LINHA_POR_CLIMA[interacao.clima] }
+                      : undefined
+                  }
                 >
-                  {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
-                </td>
-                {reduzida ? null : (
-                  <td style={{ ...celula, color: 'var(--cinza-2)' }}>
-                    {nomesDasAreas(interacao, catalogo)}
+                  <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }} className="tabular">
+                    {dataCompleta(interacao.data_interacao)}
                   </td>
-                )}
-                {reduzida ? null : (
-                  <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                    {rotuloDeRelevancia(catalogo, interacao.tier)}
+                  <td style={{ ...celulaAtual, minWidth: reduzida ? 90 : 160 }}>
+                    {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                   </td>
-                )}
-                <td style={celula}>
-                  <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
-                </td>
-              </LinhaDaTabela>
-            ))}
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                      {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
+                    </td>
+                  )}
+                  <td
+                    style={{
+                      ...celulaAtual,
+                      maxWidth: reduzida ? 130 : 280,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
+                  </td>
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, color: 'var(--cinza-2)' }}>
+                      {nomesDasAreas(interacao, catalogo)}
+                    </td>
+                  )}
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }}>
+                      {rotuloDeRelevancia(catalogo, interacao.tier)}
+                    </td>
+                  )}
+                  <td style={celulaAtual}>
+                    <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
+                  </td>
+                </LinhaDaTabela>
+              );
+            })}
           </Tabela>
 
           <RodapeDePaginacao
