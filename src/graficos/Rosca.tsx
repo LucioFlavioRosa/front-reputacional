@@ -66,7 +66,20 @@ export function Rosca({
   }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+    // LARGURA TRAVADA NO TAMANHO DO CÍRCULO: sem isto, uma legenda com um
+    // rótulo longo (uma área como "RI + Oper. Financeiras", por exemplo)
+    // esticaria a coluna inteira em vez de truncar em reticências — e num
+    // cartão com a rosca lado a lado de outra coisa (ver "Interações por
+    // áreas" no Painel), isso empurra o vizinho para a linha de baixo.
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 18,
+        width: TAMANHO,
+      }}
+    >
       <div style={{ position: 'relative', width: TAMANHO, height: TAMANHO, flexShrink: 0 }}>
         <svg
           width={TAMANHO}
