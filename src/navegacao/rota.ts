@@ -140,7 +140,7 @@ export function lerEixo(consulta: string): Eixo {
 //: Os campos do Recorte que viajam como texto simples. `tags` e `tier` saem
 //: daqui porque um é lista e o outro é número — ver abaixo.
 const CAMPOS_DE_TEXTO = [
-  'periodo', 'de', 'ate', 'frente', 'unidade', 'uf', 'esfera',
+  'periodoPassado', 'periodoFuturo', 'de', 'ate', 'frente', 'unidade', 'uf', 'esfera',
   'clima', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
   'portaVoz', 'pessoa', 'q',
 ] as const;
