@@ -38,7 +38,6 @@ import {
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
-  temasPorArea,
   topInstituicoesPorTier,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
@@ -222,7 +221,6 @@ export function Painel({
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
       climaPorArea: climaPorArea(interacoes, catalogo),
-      temasPorArea: temasPorArea(interacoes, catalogo, temas),
       // UMA LISTA DE INTERAÇÕES POR ÁREA FIXA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
       // aparecer em mais de uma das três tabelas, exatamente como o filtro
@@ -440,34 +438,40 @@ export function Painel({
           titulo="Interações por áreas"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
         >
-          {/* BARRA, E NÃO ROSCA: as áreas têm tamanhos parecidos entre si, e
-              ângulo não se compara tão bem quanto comprimento — a mesma razão
-              pela qual `Ranking` (comprimento de barra) já é usado para
-              Instituições, Esfera e Unidades, nunca uma rosca. */}
-          <Ranking
-            itens={derivado.porArea}
-            ativo={recorte.areas?.length === 1 ? String(recorte.areas[0]) : undefined}
-            aoClicar={(chave) => definirRecorte(alternarArea(recorte, Number(chave)))}
-            vazio="Nenhuma área registrada neste recorte."
-            detalheAoPassarMouse={(chave) => {
-              const clima = derivado.climaPorArea[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
-              return [
-                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
-                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
-                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
-              ];
-            }}
-            segmentosDoItem={(chave) => derivado.temasPorArea[chave] ?? []}
-          />
-          {/* A MESMA cor por tema da barra segmentada acima — decodifica as
-              fatias sem precisar passar o mouse em cada uma, e o clique
-              filtra pelo tema, igual à legenda de "Temas no tempo". */}
-          <Legenda
-            itens={derivado.temas}
-            ativo={recorte.tags?.[0]}
-            aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
-            centralizada
-          />
+          {/* MESMO LAYOUT de "Interações por tier" ao lado: a rosca (com sua
+              própria legenda, colorida por área) e um top 5 de outra
+              dimensão preenchendo o vão ao lado — lá são instituições, aqui
+              são os temas mais falados neste recorte inteiro. */}
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 0 auto' }}>
+              <Rosca
+                itens={derivado.porArea}
+                ativo={recorte.areas?.length === 1 ? String(recorte.areas[0]) : undefined}
+                aoClicar={(chave) => definirRecorte(alternarArea(recorte, Number(chave)))}
+                rotuloCentral="interações"
+                vazio="Nenhuma área registrada neste recorte."
+                detalheAoPassarMouse={(chave) => {
+                  const clima = derivado.climaPorArea[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+                  return [
+                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
+                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
+                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
+                  ];
+                }}
+              />
+            </div>
+            <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+              <div className="kicker" style={{ marginBottom: 12 }}>
+                Top 5 temas
+              </div>
+              <Ranking
+                itens={derivado.temas}
+                ativo={recorte.tags?.[0]}
+                aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+                vazio="Nenhum tema neste recorte."
+              />
+            </div>
+          </div>
         </Secao>
 
         <Secao
