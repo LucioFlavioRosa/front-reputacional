@@ -20,6 +20,7 @@ export const ATALHOS_DE_PERIODO = {
   'proximos-30': 'Próximos 30 dias',
   'proximos-90': 'Próximos 90 dias',
   'proximos-180': 'Próximos 180 dias',
+  'proximos-365': 'Próximos 12 meses',
 } as const;
 
 export type AtalhoDePeriodo = keyof typeof ATALHOS_DE_PERIODO;
@@ -145,7 +146,12 @@ export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate
     return { de: inicio, ate: hoje };
   }
 
-  const diasNoFuturo = { 'proximos-30': 30, 'proximos-90': 90, 'proximos-180': 180 } as const;
+  const diasNoFuturo = {
+    'proximos-30': 30,
+    'proximos-90': 90,
+    'proximos-180': 180,
+    'proximos-365': 365,
+  } as const;
   const fim = new Date(hoje);
   fim.setDate(fim.getDate() + diasNoFuturo[recorte.periodo as keyof typeof diasNoFuturo]);
   return { de: hoje, ate: fim };
