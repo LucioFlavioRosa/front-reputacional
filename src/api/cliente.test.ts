@@ -7,9 +7,11 @@
  *  por um dublê, para provar que o aviso sai.
  *
  *  E O QUE ELE IMPEDE NO FUTURO: a lista de funções exercitadas é conferida
- *  contra o PRÓPRIO CÓDIGO-FONTE do cliente. Quem acrescentar `desativarTema`
- *  amanhã e não a puser aqui vê o teste falhar — antes de alguém descobrir
- *  na tela que o tema desativado continua sendo oferecido.
+ *  contra o PRÓPRIO CÓDIGO-FONTE do cliente (`cliente.varredura.ts`). Quem
+ *  acrescentar `desativarTema` amanhã e não a puser aqui vê o teste falhar —
+ *  antes de alguém descobrir na tela que o tema desativado continua sendo
+ *  oferecido. E quem escrever a chamada numa forma que a varredura não lê vê
+ *  o teste falhar do mesmo jeito: o que ela não entende é falha, não silêncio.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +21,7 @@ import * as cliente from './cliente';
 // que permite varrer o código sem `node:fs` — que o `tsc` do build não conhece,
 // porque o app é feito para o navegador e não deve enxergar o Node.
 import fonte from './cliente.ts?raw';
+import { varrerChamadas } from './cliente.varredura';
 import { ROTAS_DO_CATALOGO, catalogoMudou } from '@/dominio/sincronizacao';
 
 /* -- o dublê do servidor ---------------------------------------------------- */
@@ -135,21 +138,108 @@ describe('o código-fonte do cliente não tem escrita de catálogo fora desta li
     expect(fonte.match(/\bfetch\(/g)).toHaveLength(1);
   });
 
-  it('cada função exportada que escreve numa rota de catálogo está exercitada acima', () => {
-    // Varre o fonte: para cada `export function NOME(`, olha o corpo até a
-    // próxima exportação e pergunta se ele chama `requisitar` numa rota de
-    // catálogo com verbo de escrita.
-    const blocos = fonte.split(/^export (?:async )?function /m).slice(1);
-    const rotas = ROTAS_DO_CATALOGO.map((r) => r.replace('/api/', '')).join('|');
-    const escreveNoCatalogo = new RegExp(
-      `requisitar<[^>]*>\\(\\s*\`?'?/api/(?:${rotas})[^,]*,\\s*\\{[^}]*method:\\s*'(?:POST|PUT|PATCH|DELETE)'`,
-      's',
-    );
-    const encontradas = blocos
-      .filter((bloco: string) => escreveNoCatalogo.test(bloco))
-      .map((bloco: string) => bloco.split('(')[0].trim());
+  it('toda chamada a `requisitar` está na forma canônica — a varredura não deixa passar o que não entende', () => {
+    const { problemas } = varrerChamadas(fonte);
+    expect(problemas).toEqual([]);
+  });
 
-    expect(encontradas.length, 'a varredura precisa achar as escritas').toBeGreaterThanOrEqual(10);
-    expect(new Set(encontradas)).toEqual(new Set(Object.keys(ESCRITAS_DE_CATALOGO)));
+  it('cada função que escreve numa rota de catálogo está exercitada acima', () => {
+    const { chamadas } = varrerChamadas(fonte);
+    const escrevem = chamadas.filter((c) => c.escreveNoCatalogo).map((c) => c.funcao);
+
+    expect(escrevem.length, 'a varredura precisa achar as escritas').toBeGreaterThanOrEqual(10);
+    expect(new Set(escrevem)).toEqual(new Set(Object.keys(ESCRITAS_DE_CATALOGO)));
+  });
+});
+
+/* -- a rede, provada com furos plantados ----------------------------------- */
+
+describe('a varredura recusa o que não sabe classificar', () => {
+  const definicao =
+    'async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {}\n';
+
+  it('lê a forma canônica: caminho literal, template com id, sem opções, com opções', () => {
+    const { chamadas, problemas } = varrerChamadas(
+      definicao +
+        "export function a() { return requisitar<X>('/api/temas'); }\n" +
+        'export function a2(p: string) {\n  return requisitar<X>(\n    `/api/temas/${p}`,\n  );\n}\n' +
+        'export function b(id: number) { return requisitar<X>(`/api/temas/${id}`, { method: \'PUT\', body: JSON.stringify({ a: { b: 1 } }) }); }\n' +
+        'export function c(p: string) { return requisitar<X>(`/api/exportacoes?${p}`, { method: \'POST\' }); }\n',
+    );
+    expect(problemas).toEqual([]);
+    expect(chamadas).toEqual([
+      { funcao: 'a', metodo: 'GET', caminho: '/api/temas', escreveNoCatalogo: false },
+      { funcao: 'a2', metodo: 'GET', caminho: '/api/temas/X', escreveNoCatalogo: false },
+      { funcao: 'b', metodo: 'PUT', caminho: '/api/temas/X', escreveNoCatalogo: true },
+      { funcao: 'c', metodo: 'POST', caminho: '/api/exportacoes?X', escreveNoCatalogo: false },
+    ]);
+  });
+
+  it.each([
+    [
+      'verbo numa variável',
+      "export function f() { const m = 'POST'; return requisitar<X>('/api/temas', { method: m }); }",
+    ],
+    [
+      'alias de requisitar',
+      "const r = requisitar;\nexport function f() { return r<X>('/api/temas', { method: 'POST' }); }",
+    ],
+    [
+      'rota numa constante',
+      "const ROTA = '/api/temas';\nexport function f() { return requisitar<X>(ROTA, { method: 'POST' }); }",
+    ],
+    [
+      'caminho montado por concatenação',
+      "export function f() { return requisitar<X>('/api/' + 'temas', { method: 'POST' }); }",
+    ],
+    [
+      'opções vindas de fora',
+      "const o = { method: 'POST' };\nexport function f() { return requisitar<X>('/api/temas', o); }",
+    ],
+    [
+      'tipo omitido',
+      "export function f() { return requisitar('/api/temas', { method: 'POST' }); }",
+    ],
+    [
+      'rota interpolada — chama /api/temas de verdade e a varredura veria /api/X',
+      "export function f() { return requisitar<X>(`/api/${'temas'}`, { method: 'POST' }); }",
+    ],
+    [
+      'rota interpolada pela metade',
+      "export function f() { return requisitar<X>(`/api/tem${'as'}`, { method: 'POST' }); }",
+    ],
+    [
+      'query grudada na rota sem o `?` literal',
+      "export function f(p: string) { return requisitar<X>(`/api/temas${p}`, { method: 'POST' }); }",
+    ],
+  ])('%s é problema, e não silêncio', (_nome, corpo) => {
+    const { problemas } = varrerChamadas(definicao + corpo);
+    expect(problemas.length).toBeGreaterThanOrEqual(1);
+    // O alias nasce fora de `f`, e é ali que a varredura o aponta.
+    expect(problemas[0]).toMatch(/^(?:f|\(fora de função exportada\)): /);
+  });
+
+  it('a função nova que escreve em rota de catálogo aparece — sem ninguém lembrar de acrescentá-la', () => {
+    const { chamadas } = varrerChamadas(
+      definicao +
+        "export function desativarTema(id: number) { return requisitar<void>(`/api/temas/${id}`, { method: 'DELETE' }); }",
+    );
+    expect(chamadas.map((c) => c.funcao)).toEqual(['desativarTema']);
+    expect(chamadas[0].escreveNoCatalogo).toBe(true);
+  });
+
+  it('menção a requisitar num comentário não conta', () => {
+    const { chamadas, problemas } = varrerChamadas(
+      definicao + '// fica separada de `requisitar` porque\n/* e requisitar aqui também */\n',
+    );
+    expect(chamadas).toEqual([]);
+    expect(problemas).toEqual([]);
+  });
+
+  it('sem a definição — ou com duas — é problema', () => {
+    expect(varrerChamadas('').problemas).toEqual([
+      'esperava uma definição de requisitar, achei 0',
+    ]);
+    expect(varrerChamadas(definicao + definicao).problemas).toHaveLength(1);
   });
 });

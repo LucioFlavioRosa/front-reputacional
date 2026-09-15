@@ -295,10 +295,7 @@ export function urlDeLogin(destino = '/painel'): string {
  */
 export function registrarExportacao(recorte: Recorte): Promise<Exportacao> {
   const parametros = paraParametros(recorte).toString();
-  return requisitar<Exportacao>(
-    `/api/exportacoes${parametros ? `?${parametros}` : ''}`,
-    { method: 'POST' },
-  );
+  return requisitar<Exportacao>(`/api/exportacoes?${parametros}`, { method: 'POST' });
 }
 
 export function listarAcessos(): Promise<Acesso[]> {
@@ -696,7 +693,5 @@ export function urlDaVersao(referenciaId: string, versaoId: string): string {
  */
 export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDaReuniao[]> {
   const parametros = paraParametros(recorte).toString();
-  return requisitar<DocumentoDaReuniao[]>(
-    `/api/materiais${parametros ? `?${parametros}` : ''}`,
-  );
+  return requisitar<DocumentoDaReuniao[]>(`/api/materiais?${parametros}`);
 }

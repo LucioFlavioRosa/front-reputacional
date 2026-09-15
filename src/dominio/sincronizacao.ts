@@ -12,8 +12,14 @@
  *  bem-sucedida numa rota de catálogo avisa — e vale para função de escrita
  *  que ainda não existe.
  *
+ *  E A GARANTIA ATRAVESSA ABAS. O aviso é memória deste bundle — só a aba que
+ *  escreveu o ouviria. Uma agenda aberta numa aba enquanto a Administração
+ *  cadastra noutra é o uso mais comum de quem cadastra, e é por isso que o
+ *  sincronizador repassa cada aviso por um `BroadcastChannel`, e trata o que
+ *  chega de outra aba como aviso próprio.
+ *
  *  Sem React e sem `fetch`: é o que permite testar a regra e o aviso sem
- *  montar tela nenhuma.
+ *  montar tela nenhuma. O canal entra por parâmetro, pelo mesmo motivo.
  */
 
 /** As rotas cujas escritas mudam o catálogo. Prefixo de CAMINHO, com barra ou
@@ -40,9 +46,32 @@ export function escreveNoCatalogo(metodo: string, caminho: string): boolean {
 
 type Ouvinte = () => void;
 
-/** Um aviso de "o catálogo mudou", para quem quiser escutar. */
+/** O que este módulo usa de um `BroadcastChannel` — e o que um dublê precisa
+ *  oferecer. */
+export interface CanalEntreAbas {
+  postMessage(mensagem: unknown): void;
+  onmessage: ((evento: MessageEvent) => void) | null;
+}
+
+/** A única mensagem que atravessa o canal. */
+export const MENSAGEM_DO_CATALOGO = 'catalogo-mudou';
+
+/** Um aviso de "o catálogo mudou", para quem quiser escutar — nesta aba e,
+ *  havendo canal, nas outras. */
 export class Sincronizador {
   private readonly ouvintes = new Set<Ouvinte>();
+  private readonly canal: CanalEntreAbas | null;
+
+  constructor(canal: CanalEntreAbas | null = null) {
+    this.canal = canal;
+    if (canal) {
+      // O que vem de outra aba é aviso, e não é repassado: repassar faria as
+      // abas trocarem o mesmo aviso para sempre.
+      canal.onmessage = (evento) => {
+        if (evento.data === MENSAGEM_DO_CATALOGO) this.espalhar();
+      };
+    }
+  }
 
   /** Assina. Devolve o gesto que cancela — pensado para o `useEffect`. */
   assinar(ouvinte: Ouvinte): () => void {
@@ -52,11 +81,24 @@ export class Sincronizador {
     };
   }
 
+  /** O catálogo mudou aqui: avisa esta aba e as outras. */
   avisar(): void {
+    this.espalhar();
+    this.canal?.postMessage(MENSAGEM_DO_CATALOGO);
+  }
+
+  private espalhar(): void {
     for (const ouvinte of this.ouvintes) ouvinte();
   }
 }
 
+/** O canal do navegador, quando existe. Fora dele (testes, SSR) não há outra
+ *  aba para avisar. */
+function canalDoNavegador(): CanalEntreAbas | null {
+  if (typeof window === 'undefined' || typeof window.BroadcastChannel !== 'function') return null;
+  return new window.BroadcastChannel('painel-reputacional:catalogo');
+}
+
 /** O único sincronizador da aplicação: o cliente da API avisa aqui, e o
  *  estado do painel escuta aqui. */
-export const catalogoMudou = new Sincronizador();
+export const catalogoMudou = new Sincronizador(canalDoNavegador());

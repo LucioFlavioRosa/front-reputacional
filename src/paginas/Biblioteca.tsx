@@ -18,7 +18,7 @@
  *  de março que circulou naquela reunião.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
   Botao,
@@ -33,7 +33,6 @@ import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import {
   criarReferencia,
   editarReferencia,
-  listarReferencias,
   listarVersoesDaReferencia,
   subirVersaoDaReferencia,
   urlDaVersao,
@@ -67,7 +66,10 @@ type Rascunho = typeof VAZIA;
 
 export function Biblioteca() {
   const { catalogo } = usePainel();
-  const [referencias, definirReferencias] = useState<Referencia[] | null>(null);
+  //: A lista vem do catálogo, e não de uma busca própria: é o catálogo que
+  //: recarrega a cada gravação — desta aba ou de outra (`dominio/sincronizacao.ts`).
+  //: Uma cópia local aqui seria a única tela a mostrar a biblioteca velha.
+  const referencias = catalogo?.referencias ?? null;
   const [erro, definirErro] = useState<string | null>(null);
   const [feito, definirFeito] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
@@ -81,25 +83,15 @@ export function Biblioteca() {
   const [versoes, definirVersoes] = useState<VersaoDaReferencia[]>([]);
   const campoDeArquivo = useRef<HTMLInputElement>(null);
 
-  const carregar = () =>
-    listarReferencias()
-      .then(definirReferencias)
-      .catch((e: Error) => definirErro(e.message));
-
-  useEffect(() => {
-    void carregar();
-    // Uma vez, ao montar: a lista é pequena e recarrega a cada gravação.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const executar = async (acao: () => Promise<unknown>, depois: () => void) => {
     definirSalvando(true);
     definirErro(null);
     try {
       await acao();
       depois();
-      await carregar();
-      definirFeito('Biblioteca atualizada.');
+      // O que se sabe neste instante é que gravou; a lista chega logo atrás,
+      // quando o catálogo recarregar — e a mensagem não promete mais do que isso.
+      definirFeito('Gravado.');
     } catch (e) {
       definirErro((e as Error).message);
       definirFeito(null);
