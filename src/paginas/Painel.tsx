@@ -3,32 +3,56 @@
 import { useMemo, useState } from 'react';
 import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
+import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
-import { Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Secao, Vazio } from '@/componentes/basicos';
+import { Rosca } from '@/graficos/Rosca';
+import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
   ROTULOS_DE_FRENTE,
   rotuloDeAbrangencia,
 } from '@/dominio/frentes';
-import { alternar, alternarTag } from '@/dominio/recorte';
+import { alternar, alternarArea, alternarTag } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
-import type { Frente } from '@/dominio/tipos';
+import type { Frente, Interacao } from '@/dominio/tipos';
 import {
   chaveDoPeriodo,
   completarPeriodos,
   distribuicaoPorUf,
   kpis as calcularKpis,
+  nomeDaInstituicao,
   nomesDosTemas,
+  porArea,
+  porTier,
   ranking,
   resumoDeClimaPorFrente,
+  scorePorInstituicao,
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
-import type { Granularidade } from '@/dominio/derivacoes';
+import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
+
+//: A MESMA PALETA usada em `temasMaisRecorrentes` — reaproveitada aqui para
+//: colorir as categorias do popup de histórico de área/público, que não têm
+//: cor própria (Ranking e a barra divergente por item não precisam de uma
+//: cor por categoria, só o gráfico empilhado no tempo precisa).
+const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
+
+/** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
+ *  sem disputar clique com as fatias/barras de dentro dele — a área
+ *  clicável do gráfico filtra o recorte; este botão é o único jeito de abrir
+ *  o avanço no tempo. */
+function BotaoDeHistorico({ aoClicar }: { aoClicar: () => void }) {
+  return (
+    <Botao variante="fantasma" aoClicar={aoClicar}>
+      Ver histórico
+    </Botao>
+  );
+}
 
 //: DE VOLTA À TELA — saíram por um tempo ("tirar por enquanto, não apagar")
 //: enquanto o conteúdo de cada card era repensado (termômetro por área,
@@ -78,6 +102,11 @@ export function Painel({
   //: gráficos de série temporal compartilham a mesma escolha: lê-los em
   //: granularidades diferentes ao mesmo tempo confundiria mais do que ajudaria.
   const [granularidade, definirGranularidade] = useState<Granularidade>('mes');
+
+  //: QUAL DOS TRÊS CARDS DO BLOCO 1 tem o popup de histórico aberto. Um só
+  //: por vez, como o tema expandido de `BarraDivergente` — dois popups juntos
+  //: disputariam a mesma atenção.
+  const [historico, definirHistorico] = useState<'tier' | 'area' | 'publico' | null>(null);
 
   const derivado = useMemo(() => {
     if (!catalogo) return null;
@@ -129,11 +158,18 @@ export function Painel({
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
+      porTier: porTier(interacoes, catalogo),
+      porArea: porArea(interacoes, catalogo, 5),
+      climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
     };
   }, [interacoes, catalogo, temasExtras, granularidade]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
-  if (carregando || !derivado) return <Carregando rotulo="Carregando o recorte…" />;
+  // `!catalogo` nunca é `true` aqui na prática — `derivado` só existe quando
+  // `catalogo` existe —, mas o TypeScript não enxerga essa relação entre as
+  // duas variáveis. O guarda serve só para destravar o tipo do resto da
+  // função, que agora passa `catalogo` adiante para `HistoricoDoBloco`.
+  if (carregando || !derivado || !catalogo) return <Carregando rotulo="Carregando o recorte…" />;
   if (!interacoes.length) {
     return (
       <Vazio
@@ -228,6 +264,51 @@ export function Painel({
           />
         </div>
       ) : null}
+
+      {/* BLOCO 1 — com quem estamos falando e como está a relação.
+          Três cartões, um clique por dentro (a fatia/barra filtra o recorte)
+          e um clique por fora (o botão "Ver histórico" abre o avanço no
+          tempo) — os dois convivem porque nunca disputam a mesma área. */}
+      <div className="grade grade--3" style={{ gap: 16 }}>
+        <Secao
+          titulo="Interações por tier"
+          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
+        >
+          <Rosca
+            itens={derivado.porTier}
+            ativo={recorte.tier != null ? String(recorte.tier) : undefined}
+            aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
+            rotuloCentral="interações"
+          />
+        </Secao>
+
+        <Secao
+          titulo="Volume por área"
+          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
+        >
+          {/* BARRA, E NÃO ROSCA: as áreas têm tamanhos parecidos entre si, e
+              ângulo não se compara tão bem quanto comprimento — a mesma razão
+              pela qual `Ranking` (comprimento de barra) já é usado para
+              Instituições, Esfera e Unidades, nunca uma rosca. */}
+          <Ranking
+            itens={derivado.porArea}
+            ativo={recorte.areas?.length === 1 ? String(recorte.areas[0]) : undefined}
+            aoClicar={(chave) => definirRecorte(alternarArea(recorte, Number(chave)))}
+            vazio="Nenhuma área registrada neste recorte."
+          />
+        </Secao>
+
+        <Secao
+          titulo="Clima por público"
+          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
+        >
+          <BarraDivergentePorItem
+            itens={derivado.climaPorPublico}
+            ativo={recorte.entidade}
+            aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
+          />
+        </Secao>
+      </div>
 
       <Secao
         titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}
@@ -439,7 +520,114 @@ export function Painel({
           />
         </Secao>
       </div>
+
+      {historico ? (
+        <HistoricoDoBloco
+          chave={historico}
+          interacoes={interacoes}
+          catalogo={catalogo}
+          porTier={derivado.porTier}
+          porArea={derivado.porArea}
+          climaPorPublico={derivado.climaPorPublico}
+          aoFechar={() => definirHistorico(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/** O TÍTULO E AS CATEGORIAS DE CADA POPUP, uma função por chave — o card em
+ *  si (Rosca/Ranking/BarraDivergentePorItem) já resume o recorte inteiro; o
+ *  popup soma essa MESMA base ao longo do tempo, mês a mês, com a mesma
+ *  pilha empilhada que "Volumetria por frente" já usa. Tier reaproveita a
+ *  cor que `porTier` já calculou; área e público ganham uma cor própria
+ *  aqui, só para este gráfico — os outros dois (Ranking, barra divergente)
+ *  não precisam de uma cor por item. */
+function HistoricoDoBloco({
+  chave,
+  interacoes,
+  catalogo,
+  porTier: itensDeTier,
+  porArea: itensDeArea,
+  climaPorPublico,
+  aoFechar,
+}: {
+  chave: 'tier' | 'area' | 'publico';
+  interacoes: Interacao[];
+  catalogo: Catalogo;
+  porTier: ReturnType<typeof porTier>;
+  porArea: ReturnType<typeof porArea>;
+  climaPorPublico: ReturnType<typeof scorePorInstituicao>;
+  aoFechar: () => void;
+}) {
+  const [granularidade, definirGranularidade] = useState<Granularidade>('mes');
+
+  const { titulo, categorias, categoriasDe } = useMemo(() => {
+    if (chave === 'tier') {
+      return {
+        titulo: 'Interações por tier ao longo do tempo',
+        // `cor` sempre vem preenchida de `porTier`, mas o tipo de
+        // `ItemContado` a declara opcional (serve a rankings sem cor por
+        // item) — o mapeamento reafirma o tipo para bater com as outras
+        // duas chaves, que já nascem com `cor: string`.
+        categorias: itensDeTier.map((item) => ({
+          chave: item.chave,
+          rotulo: item.rotulo,
+          cor: item.cor ?? 'var(--azul-mar)',
+        })),
+        categoriasDe: (i: Interacao) => (i.tier != null ? [String(i.tier)] : []),
+      };
+    }
+    if (chave === 'area') {
+      const categoriasDeArea = itensDeArea.map((item, indice) => ({
+        chave: item.chave,
+        rotulo: item.rotulo,
+        cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
+      }));
+      return {
+        titulo: 'Volume por área ao longo do tempo',
+        categorias: categoriasDeArea,
+        categoriasDe: (i: Interacao) =>
+          i.areas.map(String).filter((id) => categoriasDeArea.some((c) => c.chave === id)),
+      };
+    }
+    const categoriasDePublico = climaPorPublico.map((item, indice) => ({
+      chave: item.chave,
+      rotulo: item.rotulo,
+      cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
+    }));
+    return {
+      titulo: 'Volume por público ao longo do tempo',
+      categorias: categoriasDePublico,
+      categoriasDe: (i: Interacao) => {
+        const nome = nomeDaInstituicao(catalogo, i.instituicao_id);
+        return categoriasDePublico.some((c) => c.chave === nome) ? [nome] : [];
+      },
+    };
+  }, [chave, itensDeTier, itensDeArea, climaPorPublico, catalogo]);
+
+  const colunas = useMemo(
+    () => completarPeriodos(serieMensal(interacoes, categorias, categoriasDe, granularidade), granularidade),
+    [interacoes, categorias, categoriasDe, granularidade],
+  );
+
+  return (
+    <Modal
+      titulo={titulo}
+      subtitulo="Consolidado no tempo, com o recorte atual"
+      aoFechar={aoFechar}
+      largura={860}
+    >
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <SeletorDeGranularidade valor={granularidade} aoEscolher={definirGranularidade} />
+      </div>
+      <BarrasEmpilhadas
+        colunas={colunas}
+        altura={220}
+        formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+      />
+      <Legenda itens={categorias} />
+    </Modal>
   );
 }
 
