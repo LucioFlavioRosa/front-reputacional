@@ -378,6 +378,7 @@ export function Painel({
           itens={derivado.categoriasDeFrente}
           ativo={recorte.frente}
           aoClicar={(chave) => definirRecorte(alternar(recorte, 'frente', chave as Frente))}
+          centralizada
         />
       </Secao>
 
@@ -397,6 +398,7 @@ export function Painel({
             itens={derivado.categoriasDeClima}
             ativo={recorte.clima}
             aoClicar={(chave) => definirRecorte(alternar(recorte, 'clima', chave))}
+            centralizada
           />
         </Secao>
 
@@ -410,6 +412,7 @@ export function Painel({
             itens={derivado.temas}
             ativo={recorte.tags?.[0]}
             aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+            centralizada
           />
           <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
             Uma interação com três temas conta nos três.
