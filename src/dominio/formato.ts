@@ -64,15 +64,22 @@ export function rotuloDoSemestre(chave: string): string {
   return `${semestre}º sem/${ano.slice(2)}`;
 }
 
-/** Hoje no fuso do usuário, em ISO.
+/** Uma data no fuso do usuário, em ISO (AAAA-MM-DD).
  *
- *  `new Date().toISOString()` devolve UTC: no Brasil, depois das 21h, ele já
- *  aponta para o dia seguinte — e o formulário abriria com a data errada.
- */
+ *  `data.toISOString()` devolve UTC: no Brasil, depois das 21h, ele já
+ *  aponta para o dia seguinte — e um formulário ou filtro leria a data
+ *  errada. Sempre monta a partir dos componentes locais (`getFullYear`,
+ *  `getMonth`, `getDate`), nunca do UTC. */
+export function paraIso(data: Date): string {
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
+/** Hoje no fuso do usuário, em ISO. Ver `paraIso` — este é só o caso de uso
+ *  mais comum, com o padrão de argumento que ele já tinha. */
 export function hojeLocal(agora = new Date()): string {
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  const dia = String(agora.getDate()).padStart(2, '0');
-  return `${agora.getFullYear()}-${mes}-${dia}`;
+  return paraIso(agora);
 }
 
 export function diasDesde(iso: string, hoje = new Date()): number {

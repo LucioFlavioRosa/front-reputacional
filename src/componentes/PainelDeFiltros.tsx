@@ -31,7 +31,7 @@ import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
 import { alternarArea, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
-import type { AtalhoDePeriodo, Recorte } from '@/dominio/recorte';
+import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 
 const LIMITE_PADRAO = 10;
@@ -236,7 +236,8 @@ export function PainelDeFiltros() {
 
   const ativosAvancados = ativosContando(CAMPOS_AVANCADOS);
   const ativosRapidos =
-    ativosContando(CAMPOS_RAPIDOS) + (recorte.periodo || recorte.de || recorte.ate ? 1 : 0);
+    ativosContando(CAMPOS_RAPIDOS) +
+    (recorte.periodoPassado || recorte.periodoFuturo || recorte.de || recorte.ate ? 1 : 0);
 
   return (
     <div className="sem-impressao" style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -355,14 +356,14 @@ function CampoDePeriodo({
   recorte: Recorte;
   definirRecorte: (recorte: Recorte) => void;
 }) {
-  //: O texto do campo "Últimos ___ dias" nasce do que o recorte já diz — e só
-  //: quando o período ATUAL é mesmo um `de`+`ate` sem atalho, com `ate` igual
-  //: a hoje (a marca de que foi ESTE campo que escreveu, e não "Próximos").
-  //: Assim, reabrir um link com `?de=...&ate=...` mostra o número certo, e
-  //: clicar num atalho fixo ou no campo "Próximos" esvazia este sozinho.
-  const hojeIso = meiaNoiteDeHoje().toISOString().slice(0, 10);
+  //: O texto do campo "Últimos ___ dias" nasce do que o recorte já diz —
+  //: `de` agora pertence só a este lado (Passado), então basta checar se ele
+  //: veio de texto livre (sem `periodoPassado` junto) e não mais comparar
+  //: com hoje: antes da divisão de `de`/`ate` por lado, os dois eram
+  //: escritos juntos e só dava para saber quem escreveu comparando `ate`
+  //: com hoje — essa ambiguidade não existe mais.
   const derivadoPassado =
-    recorte.de && !recorte.periodo && recorte.ate === hojeIso ? String(diasDesde(recorte.de)) : '';
+    recorte.de && !recorte.periodoPassado ? String(diasDesde(recorte.de)) : '';
   const [anteriorPassado, definirAnteriorPassado] = useState(derivadoPassado);
   const [diasNoPassado, definirDiasNoPassado] = useState(derivadoPassado);
   if (derivadoPassado !== anteriorPassado) {
@@ -370,10 +371,9 @@ function CampoDePeriodo({
     definirDiasNoPassado(derivadoPassado);
   }
 
-  //: MESMA LÓGICA, para o lado de "Próximos": `de` igual a hoje é a marca de
-  //: que foi este campo (e não "Últimos") que escreveu o período.
+  //: MESMA LÓGICA, para o lado de "Próximos".
   const derivadoFuturo =
-    recorte.ate && !recorte.periodo && recorte.de === hojeIso ? String(diasAte(recorte.ate)) : '';
+    recorte.ate && !recorte.periodoFuturo ? String(diasAte(recorte.ate)) : '';
   const [anteriorFuturo, definirAnteriorFuturo] = useState(derivadoFuturo);
   const [diasNoFuturo, definirDiasNoFuturo] = useState(derivadoFuturo);
   if (derivadoFuturo !== anteriorFuturo) {
@@ -384,16 +384,18 @@ function CampoDePeriodo({
   function aplicarPassado() {
     const numero = Number(diasNoPassado);
     if (!diasNoPassado.trim() || !Number.isFinite(numero) || numero <= 0) return;
-    const proximo = { ...recorte, de: deHaDias(numero), ate: hojeIso };
-    delete proximo.periodo;
+    // Só mexe no lado Passado — `ate`/`periodoFuturo` ficam como estavam,
+    // para não apagar uma seleção de Futuro que já exista.
+    const proximo = { ...recorte, de: deHaDias(numero) };
+    delete proximo.periodoPassado;
     definirRecorte(proximo);
   }
 
   function aplicarFuturo() {
     const numero = Number(diasNoFuturo);
     if (!diasNoFuturo.trim() || !Number.isFinite(numero) || numero <= 0) return;
-    const proximo = { ...recorte, de: hojeIso, ate: ateEmDias(numero) };
-    delete proximo.periodo;
+    const proximo = { ...recorte, ate: ateEmDias(numero) };
+    delete proximo.periodoFuturo;
     definirRecorte(proximo);
   }
 
@@ -408,12 +410,22 @@ function CampoDePeriodo({
     chave.startsWith('proximos-'),
   );
 
-  const escolherAtalho = (chave: string) => {
+  //: PASSADO E FUTURO SÃO CAMPOS DIFERENTES DO RECORTE agora
+  //: (`periodoPassado`/`periodoFuturo`) — por isso a função recebe de qual
+  //: lado veio o clique, e só mexe nesse lado. Antes da divisão, os dois
+  //: escreviam o mesmo campo `periodo`, e escolher um sempre substituía o
+  //: outro; combinar os dois exige justamente que isso pare de acontecer.
+  const escolherAtalho = (lado: 'passado' | 'futuro', chave: string) => {
     const proximo = { ...recorte };
-    if (recorte.periodo === chave) delete proximo.periodo;
-    else proximo.periodo = chave as AtalhoDePeriodo;
-    delete proximo.de;
-    delete proximo.ate;
+    if (lado === 'passado') {
+      if (recorte.periodoPassado === chave) delete proximo.periodoPassado;
+      else proximo.periodoPassado = chave as AtalhoDoPassado;
+      delete proximo.de;
+    } else {
+      if (recorte.periodoFuturo === chave) delete proximo.periodoFuturo;
+      else proximo.periodoFuturo = chave as AtalhoDoFuturo;
+      delete proximo.ate;
+    }
     definirRecorte(proximo);
   };
 
@@ -432,8 +444,8 @@ function CampoDePeriodo({
               <button
                 key={chave}
                 type="button"
-                onClick={() => escolherAtalho(chave)}
-                style={pilulaEstilo(recorte.periodo === chave)}
+                onClick={() => escolherAtalho('passado', chave)}
+                style={pilulaEstilo(recorte.periodoPassado === chave)}
               >
                 {rotulo}
               </button>
@@ -455,8 +467,8 @@ function CampoDePeriodo({
               <button
                 key={chave}
                 type="button"
-                onClick={() => escolherAtalho(chave)}
-                style={pilulaEstilo(recorte.periodo === chave)}
+                onClick={() => escolherAtalho('futuro', chave)}
+                style={pilulaEstilo(recorte.periodoFuturo === chave)}
               >
                 {rotulo}
               </button>
