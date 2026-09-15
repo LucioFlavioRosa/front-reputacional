@@ -608,8 +608,8 @@ export function listarReferencias(): Promise<Referencia[]> {
 /**
  * Cadastra a referência COM a primeira versão, numa requisição só.
  *
- * Multipart, e não JSON: o arquivo é obrigatório. Uma referência sem ele é um
- * título que não leva a lugar nenhum.
+ * Multipart, e não JSON: tem arquivo. Mas ele é OPCIONAL agora — a versão
+ * pode viver só do Conteúdo, que por sua vez é obrigatório.
  */
 export function criarReferencia(
   metadados: {
@@ -618,11 +618,12 @@ export function criarReferencia(
     tema_principal_id: number;
     /** Os demais assuntos. O principal entra sozinho. */
     temas: number[];
-    resumo?: string | null;
+    resumo: string;
+    conteudo: string;
     atualizado_em: string;
     nota?: string | null;
   },
-  arquivo: File,
+  arquivo: File | null,
 ): Promise<Referencia> {
   const corpo = new FormData();
   corpo.append('titulo', metadados.titulo);
@@ -632,9 +633,10 @@ export function criarReferencia(
   // Lista vira texto separado por vírgula: multipart não carrega array, e um
   // campo repetido complicaria o cliente mais do que resolve.
   corpo.append('temas', metadados.temas.join(','));
-  if (metadados.resumo) corpo.append('resumo', metadados.resumo);
+  corpo.append('resumo', metadados.resumo);
+  corpo.append('conteudo', metadados.conteudo);
   if (metadados.nota) corpo.append('nota', metadados.nota);
-  corpo.append('arquivo', arquivo);
+  if (arquivo) corpo.append('arquivo', arquivo);
   return requisitar<Referencia>('/api/referencias', { method: 'POST', body: corpo });
 }
 
@@ -653,18 +655,21 @@ export function editarReferencia(
  * Acrescenta uma versão. A anterior CONTINUA — é o histórico.
  *
  * É ele que responde "qual Q&A a gente levou naquela reunião de março", e é
- * por isso que subir a versão de agosto não apaga a de março.
+ * por isso que subir a versão de agosto não apaga a de março. O arquivo é
+ * opcional, igual na criação; o conteúdo, obrigatório.
  */
 export function subirVersaoDaReferencia(
   id: string,
-  arquivo: File,
+  arquivo: File | null,
+  conteudo: string,
   atualizado_em: string,
   nota?: string,
 ): Promise<Referencia> {
   const corpo = new FormData();
   corpo.append('atualizado_em', atualizado_em);
+  corpo.append('conteudo', conteudo);
   if (nota) corpo.append('nota', nota);
-  corpo.append('arquivo', arquivo);
+  if (arquivo) corpo.append('arquivo', arquivo);
   return requisitar<Referencia>(`/api/referencias/${id}/versoes`, {
     method: 'POST',
     body: corpo,

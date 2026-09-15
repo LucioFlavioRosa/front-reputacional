@@ -510,10 +510,14 @@ export interface VersaoDaReferencia {
   atualizado_em: string;
   /** O que mudou nesta versão. */
   nota: string | null;
-  arquivo_id: string;
-  arquivo_nome: string;
-  arquivo_tipo: string;
-  arquivo_tamanho: number;
+  /** O texto desta versão. Nulo nas versões de antes deste campo existir. */
+  conteudo: string | null;
+  //: O arquivo é opcional desde que o Conteúdo passou a poder segurar a
+  //: versão sozinho — os quatro nulos juntos, nunca separados.
+  arquivo_id: string | null;
+  arquivo_nome: string | null;
+  arquivo_tipo: string | null;
+  arquivo_tamanho: number | null;
   criado_em: string;
   criado_por: string | null;
 }
@@ -544,7 +548,11 @@ export interface Referencia {
 export interface ReferenciaEdicao {
   titulo: string;
   tipo: string;
-  resumo?: string | null;
+  //: Continua aceitando `null` aqui — não trava a ação de Desativar/Reativar
+  //: numa referência antiga sem resumo, que reenvia os metadados como estão.
+  //: A obrigatoriedade do Resumo é imposta na TELA (o botão Salvar do
+  //: formulário de edição), não no tipo desta chamada.
+  resumo: string | null;
   tema_principal_id: number;
   /** Os demais assuntos. O principal entra sozinho. */
   temas: number[];

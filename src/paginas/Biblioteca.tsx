@@ -62,6 +62,74 @@ const VAZIA = {
   temas: [] as number[],
 };
 
+/** Um campo de texto grande, recolhível — para o Conteúdo da versão.
+ *
+ *  ABERTO POR PADRÃO: é um campo OBRIGATÓRIO, e um obrigatório não pode
+ *  nascer escondido, senão ninguém o preenche. Recolher serve para depois de
+ *  já ter texto, quando o espaço da tela importa mais do que a lembrança.
+ */
+function CampoDeConteudo({
+  valor,
+  aoMudar,
+  ariaLabel,
+}: {
+  valor: string;
+  aoMudar: (v: string) => void;
+  ariaLabel?: string;
+}) {
+  const [aberto, definirAberto] = useState(true);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => definirAberto((v) => !v)}
+        aria-expanded={aberto}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          font: 'inherit',
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--cinza-3)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-block',
+            transform: aberto ? 'rotate(90deg)' : 'none',
+            transition: 'transform 0.15s',
+          }}
+        >
+          ▸
+        </span>
+        Conteúdo <span style={{ color: 'var(--erro-fg)' }}>*</span>
+      </button>
+      {aberto ? (
+        <textarea
+          aria-label={ariaLabel ?? 'Conteúdo'}
+          style={{
+            ...estiloDeEntrada,
+            height: 140,
+            padding: 11,
+            resize: 'vertical',
+            marginTop: 6,
+          }}
+          value={valor}
+          onChange={(e) => aoMudar(e.target.value)}
+          placeholder="O texto desta versão — o que o documento diz, por extenso."
+        />
+      ) : null}
+    </div>
+  );
+}
+
 type Rascunho = typeof VAZIA;
 
 export function Biblioteca() {
@@ -76,6 +144,7 @@ export function Biblioteca() {
   const [busca, definirBusca] = useState('');
   const [nova, definirNova] = useState<Rascunho>(VAZIA);
   const [arquivoNovo, definirArquivoNovo] = useState<File | null>(null);
+  const [conteudoNovo, definirConteudoNovo] = useState('');
   const [emEdicao, definirEmEdicao] = useState<string | null>(null);
   const [rascunho, definirRascunho] = useState<Rascunho>(VAZIA);
   //: Qual referência está com o histórico aberto, e as versões dela.
@@ -116,13 +185,14 @@ export function Biblioteca() {
   const nomeDoTema = (id: number) =>
     catalogo.dicionarios.temas.find((t) => t.id === id)?.nome ?? String(id);
 
-  //: O QUE FALTA PARA PODER GRAVAR. O arquivo entra na conta porque a rota o
-  //: exige: sem ele, a referência não nasce.
+  //: O QUE FALTA PARA PODER GRAVAR. O Conteúdo entra na conta porque a rota o
+  //: exige agora; o Arquivo saiu de cá — a versão pode nascer só do texto.
   const podeCadastrar =
     Boolean(nova.titulo.trim()) &&
     Boolean(nova.tema_principal) &&
     Boolean(nova.atualizado_em) &&
-    Boolean(arquivoNovo);
+    Boolean(nova.resumo.trim()) &&
+    Boolean(conteudoNovo.trim());
 
   const abrirHistorico = async (referencia: Referencia) => {
     if (aberta === referencia.id) return definirAberta(null);
@@ -161,10 +231,13 @@ export function Biblioteca() {
           />
 
           <div style={{ marginTop: 16 }}>
+            <CampoDeConteudo valor={conteudoNovo} aoMudar={definirConteudoNovo} />
+          </div>
+
+          <div style={{ marginTop: 16 }}>
             <Campo
               rotulo="Arquivo"
-              obrigatorio
-              dica="É ele que vira a versão 1 do posicionamento."
+              dica="Opcional — o Conteúdo acima já é o texto desta versão."
             >
               <CampoDeArquivo
                 entradaRef={campoDeArquivo}
@@ -187,14 +260,16 @@ export function Biblioteca() {
                         tipo: nova.tipo,
                         tema_principal_id: Number(nova.tema_principal),
                         temas: nova.temas,
-                        resumo: nova.resumo || null,
+                        resumo: nova.resumo,
+                        conteudo: conteudoNovo,
                         atualizado_em: nova.atualizado_em,
                       },
-                      arquivoNovo as File,
+                      arquivoNovo,
                     ),
                   () => {
                     definirNova(VAZIA);
                     definirArquivoNovo(null);
+                    definirConteudoNovo('');
                     // O `<input type=file>` guarda o arquivo por conta própria:
                     // zerar o estado não limpa o nome que ele mostra.
                     if (campoDeArquivo.current) campoDeArquivo.current.value = '';
@@ -247,7 +322,8 @@ export function Biblioteca() {
                         desabilitado={
                           salvando ||
                           !rascunho.titulo.trim() ||
-                          !rascunho.tema_principal
+                          !rascunho.tema_principal ||
+                          !rascunho.resumo.trim()
                         }
                         aoClicar={() =>
                           void executar(
@@ -255,7 +331,7 @@ export function Biblioteca() {
                               editarReferencia(referencia.id, {
                                 titulo: rascunho.titulo,
                                 tipo: rascunho.tipo,
-                                resumo: rascunho.resumo || null,
+                                resumo: rascunho.resumo,
                                 tema_principal_id: Number(rascunho.tema_principal),
                                 temas: rascunho.temas,
                                 ativo: referencia.ativo,
@@ -278,9 +354,16 @@ export function Biblioteca() {
                     aberta={aberta === referencia.id}
                     versoes={aberta === referencia.id ? versoes : []}
                     aoAbrirHistorico={() => void abrirHistorico(referencia)}
-                    aoSubirVersao={(arquivo, data, nota) =>
+                    aoSubirVersao={(arquivo, conteudo, data, nota) =>
                       void executar(
-                        () => subirVersaoDaReferencia(referencia.id, arquivo, data, nota),
+                        () =>
+                          subirVersaoDaReferencia(
+                            referencia.id,
+                            arquivo,
+                            conteudo,
+                            data,
+                            nota,
+                          ),
                         () => {
                           definirAberta(null);
                           definirVersoes([]);
@@ -380,7 +463,11 @@ function FormularioDeReferencia({
         )}
       </div>
 
-      <Campo rotulo="Resumo" dica="Uma linha do que o documento diz.">
+      <Campo
+        rotulo="Resumo"
+        obrigatorio
+        dica="O que o documento diz — e o que muda quando uma versão nova trouxer um número importante."
+      >
         <textarea
           style={{ ...estiloDeEntrada, height: 58, padding: 11, resize: 'vertical' }}
           value={valor.resumo}
@@ -449,11 +536,12 @@ function Linha({
   aberta: boolean;
   versoes: VersaoDaReferencia[];
   aoAbrirHistorico: () => void;
-  aoSubirVersao: (arquivo: File, data: string, nota?: string) => void;
+  aoSubirVersao: (arquivo: File | null, conteudo: string, data: string, nota?: string) => void;
   aoEditar: () => void;
   aoAlternarAtivo: () => void;
 }) {
   const [arquivo, definirArquivo] = useState<File | null>(null);
+  const [conteudo, definirConteudo] = useState('');
   const [data, definirData] = useState('');
   const [nota, definirNota] = useState('');
   const atual = referencia.versao;
@@ -499,17 +587,23 @@ function Linha({
             {atual ? (
               <>
                 <span className="tabular">
-                  v{atual.numero} · {dataCompleta(atual.atualizado_em)} ·{' '}
-                  {tamanhoLegivel(atual.arquivo_tamanho)}
+                  v{atual.numero} · {dataCompleta(atual.atualizado_em)}
+                  {atual.arquivo_tamanho != null
+                    ? ` · ${tamanhoLegivel(atual.arquivo_tamanho)}`
+                    : ' · sem arquivo'}
                 </span>
-                {' · '}
-                <a
-                  href={urlDaVersao(referencia.id, atual.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  abrir
-                </a>
+                {atual.arquivo_nome ? (
+                  <>
+                    {' · '}
+                    <a
+                      href={urlDaVersao(referencia.id, atual.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      abrir
+                    </a>
+                  </>
+                ) : null}
               </>
             ) : (
               'sem versão'
@@ -551,13 +645,17 @@ function Linha({
                   v{versao.numero} · {dataCompleta(versao.atualizado_em)}
                 </span>
                 {' · '}
-                <a
-                  href={urlDaVersao(referencia.id, versao.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {versao.arquivo_nome}
-                </a>
+                {versao.arquivo_nome ? (
+                  <a
+                    href={urlDaVersao(referencia.id, versao.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {versao.arquivo_nome}
+                  </a>
+                ) : (
+                  'sem arquivo'
+                )}
                 {versao.criado_por ? ` · ${versao.criado_por}` : ''}
                 {versao.nota ? ` · ${versao.nota}` : ''}
               </p>
@@ -568,12 +666,19 @@ function Linha({
 
       {/* SUBIR VERSÃO FICA NA LINHA, e não numa tela à parte: quem chega com o
           arquivo novo já está olhando a referência que ele substitui. */}
+      <div style={{ marginTop: 10 }}>
+        <CampoDeConteudo
+          valor={conteudo}
+          aoMudar={definirConteudo}
+          ariaLabel={`Conteúdo da nova versão de ${referencia.titulo}`}
+        />
+      </div>
       <div
         style={{
           display: 'flex',
           gap: 8,
           alignItems: 'flex-end',
-          marginTop: 10,
+          marginTop: 8,
           flexWrap: 'wrap',
         }}
       >
@@ -581,7 +686,7 @@ function Linha({
           <CampoDeArquivo
             valor={arquivo}
             aoEscolher={definirArquivo}
-            ariaLabel={`Arquivo da nova versão de ${referencia.titulo}`}
+            ariaLabel={`Arquivo da nova versão de ${referencia.titulo} (opcional)`}
           />
         </div>
         <input
@@ -599,9 +704,11 @@ function Linha({
           placeholder="O que mudou (opcional)"
         />
         <Botao
-          desabilitado={salvando || !arquivo || !data}
+          desabilitado={salvando || !conteudo.trim() || !data}
           aoClicar={() => {
-            if (arquivo && data) aoSubirVersao(arquivo, data, nota || undefined);
+            if (conteudo.trim() && data) {
+              aoSubirVersao(arquivo, conteudo, data, nota || undefined);
+            }
           }}
         >
           Nova versão

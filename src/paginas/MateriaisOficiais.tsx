@@ -238,12 +238,14 @@ export function MateriaisOficiais() {
               )}
               {!visiveis.includes('Arquivo') ? null : (
                 <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                  {referencia.versao ? formatoLegivel(referencia.versao.arquivo_tipo) : '—'}
+                  {referencia.versao?.arquivo_tipo
+                    ? formatoLegivel(referencia.versao.arquivo_tipo)
+                    : '—'}
                 </td>
               )}
               {!visiveis.includes('Tamanho') ? null : (
                 <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                  {referencia.versao
+                  {referencia.versao?.arquivo_tamanho != null
                     ? tamanhoLegivel(referencia.versao.arquivo_tamanho)
                     : '—'}
                 </td>
@@ -294,7 +296,7 @@ function DetalhesDoPosicionamento({
       }
       aoFechar={aoFechar}
       rodape={
-        versao ? (
+        versao?.arquivo_nome ? (
           <Botao
             variante="primario"
             aoClicar={() =>
@@ -331,7 +333,7 @@ function DetalhesDoPosicionamento({
           <div className="kicker" style={{ marginBottom: 6 }}>
             Arquivo anexado
           </div>
-          {versao ? (
+          {versao?.arquivo_nome ? (
             <div
               style={{
                 background: 'var(--bg-app)',
@@ -343,7 +345,8 @@ function DetalhesDoPosicionamento({
                 {versao.arquivo_nome}
               </p>
               <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }} className="tabular">
-                {formatoLegivel(versao.arquivo_tipo)} · {tamanhoLegivel(versao.arquivo_tamanho)}
+                {versao.arquivo_tipo ? formatoLegivel(versao.arquivo_tipo) : '—'}
+                {versao.arquivo_tamanho != null ? ` · ${tamanhoLegivel(versao.arquivo_tamanho)}` : ''}
                 {versao.criado_por ? ` · anexado por ${versao.criado_por}` : ''}
               </p>
               {versao.nota ? (
@@ -364,6 +367,25 @@ function DetalhesDoPosicionamento({
             </p>
           )}
         </div>
+
+        {versao?.conteudo ? (
+          <div>
+            <div className="kicker" style={{ marginBottom: 6 }}>
+              Conteúdo
+            </div>
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--cinza-3)',
+                margin: 0,
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {versao.conteudo}
+            </p>
+          </div>
+        ) : null}
       </div>
     </Modal>
   );
