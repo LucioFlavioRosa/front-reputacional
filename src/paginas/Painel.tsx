@@ -480,10 +480,8 @@ export function Painel({
             aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
           />
           <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-            As instituições com mais interações neste recorte, da maior para a menor
-            quantidade. O Sentimento ao lado é o placar de clima: (proativas − reativas) ÷
-            total × 100 — de −100 (só reativas) a +100 (só proativas), 0 é equilíbrio ou
-            maioria neutra.
+            [Proativas − Reativas] ÷ Total × 100 — de −100 (só reativas) a +100 (só
+            proativas), 0 é equilíbrio ou maioria neutra.
           </p>
         </Secao>
       </div>
