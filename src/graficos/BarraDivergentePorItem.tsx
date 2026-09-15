@@ -89,8 +89,8 @@ export function BarraDivergentePorItem({
               >
                 {item.rotulo}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 1 }}>
-                {item.total} {item.total === 1 ? 'interação' : 'interações'} com clima registrado
+              <div className="tabular" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--cinza-3)', marginTop: 1 }}>
+                {item.total} {item.total === 1 ? 'interação' : 'interações'}
               </div>
             </div>
 
