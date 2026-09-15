@@ -32,6 +32,7 @@ export function Tabela({
   chaveDeArmazenamento,
   altura = 'calc(100vh - 340px)',
   compacta = false,
+  permiteRedimensionar = true,
   children,
 }: {
   colunas: string[];
@@ -51,6 +52,12 @@ export function Tabela({
    *  fixa do Painel). As células continuam com o padrão de sempre; quem
    *  chama ajusta o próprio `<td>` se precisar do mesmo aperto. */
   compacta?: boolean;
+  /** `false` tira a alça de arrastar de todo cabeçalho — as três tabelas de
+   *  área fixa do Painel já dividem a largura do cartão em Data/Instituição/
+   *  Pauta a dedo (ver `TabelaDeInteracoes`); arrastar uma coluna ali vira o
+   *  layout inteiro pra `table-layout: fixed` e some com esse ajuste, numa
+   *  tabela estreita demais para sobrar espaço de qualquer jeito. */
+  permiteRedimensionar?: boolean;
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -203,7 +210,7 @@ export function Tabela({
 
                   {/* A ÚLTIMA COLUNA NÃO GANHA ALÇA: não há o que redimensionar
                       à direita dela — só a rolagem interna da tabela. */}
-                  {indice < colunas.length - 1 ? (
+                  {permiteRedimensionar && indice < colunas.length - 1 ? (
                     <span
                       onMouseDown={(evento) => iniciarRedimensionamento(evento, coluna)}
                       title="Arrastar para redimensionar a coluna"

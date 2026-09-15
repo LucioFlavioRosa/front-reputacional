@@ -184,6 +184,12 @@ export function TabelaDeInteracoes({
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
             compacta={reduzida}
+            // AS TRÊS TABELAS DE ÁREA FIXA (`reduzida`) já têm a largura de
+            // cada coluna ajustada a dedo para caberem lado a lado — deixar
+            // arrastar aqui trocava o layout pra `table-layout: fixed` e
+            // perdia esse ajuste. A tabela geral (colunas completas) continua
+            // redimensionável, como sempre foi.
+            permiteRedimensionar={!reduzida}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
