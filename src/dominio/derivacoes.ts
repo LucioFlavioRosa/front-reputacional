@@ -32,6 +32,7 @@ import type {
   Interacao,
   Interlocutor,
   PessoaAegea,
+  Referencia,
 } from '@/dominio/tipos';
 
 /** Os diretórios que resolvem chave estrangeira em nome legível. */
@@ -40,6 +41,11 @@ export interface Catalogo {
   instituicoes: Map<string, Instituicao>;
   interlocutores: Map<string, Interlocutor>;
   pessoas: Map<string, PessoaAegea>;
+  /** A biblioteca inteira, ATIVAS E INATIVAS: a Administração precisa das
+   *  duas; quem oferece referência a uma agenda filtra as ativas. Mora no
+   *  catálogo pelo mesmo motivo dos outros: é opção de formulário, e opção
+   *  cadastrada precisa aparecer em toda tela sem ninguém apertar F5. */
+  referencias: Referencia[];
 }
 
 export function montarCatalogo(
@@ -47,12 +53,14 @@ export function montarCatalogo(
   instituicoes: Instituicao[],
   interlocutores: Interlocutor[],
   pessoas: PessoaAegea[],
+  referencias: Referencia[] = [],
 ): Catalogo {
   return {
     dicionarios,
     instituicoes: new Map(instituicoes.map((i) => [i.id, i])),
     interlocutores: new Map(interlocutores.map((i) => [i.id, i])),
     pessoas: new Map(pessoas.map((p) => [p.id, p])),
+    referencias,
   };
 }
 
@@ -561,7 +569,11 @@ export interface AgendaDoTema {
   clima: string;
 }
 
-export interface ScoreDeTema {
+/** Uma linha de placar de clima — por tema, por área, por qualquer dimensão
+ *  que se queira somar positivas/negativas e mostrar numa `BarraDivergente`.
+ *  Nasceu como "ScoreDeTema"; o nome mudou quando área passou a usar o mesmo
+ *  formato, mas o cálculo é o mesmo de sempre. */
+export interface ScoreDivergente {
   chave: string;
   rotulo: string;
   /** Só conta quem tem `clima` registrado — é o denominador do score, e
@@ -583,7 +595,7 @@ export interface ScoreDeTema {
 }
 
 export interface ScorePorTema {
-  itens: ScoreDeTema[];
+  itens: ScoreDivergente[];
   /** Quantos temas TINHAM clima suficiente para entrar na conta, antes do
    *  corte de `quantos` — sem isto, a tela não tem como dizer "isto é um
    *  recorte" quando de fato é um. `itens.length < totalDeTemas` é
@@ -593,7 +605,7 @@ export interface ScorePorTema {
    *  os que entraram em `itens`. É desta lista que a tela monta "adicionar
    *  outro tema": sem ela, não haveria como oferecer um tema que ficou de
    *  fora do corte por `quantos` sem recalcular tudo de novo na tela. */
-  todos: ScoreDeTema[];
+  todos: ScoreDivergente[];
 }
 
 /** O tema em palavras já existe (`temasMaisRecorrentes`); o que faltava era
@@ -648,7 +660,7 @@ export function scorePorTema(
     }
   }
 
-  const todos: ScoreDeTema[] = [...contagem.entries()].map(([nome, c]) => ({
+  const todos: ScoreDivergente[] = [...contagem.entries()].map(([nome, c]) => ({
     chave: nome,
     rotulo: nome,
     total: c.total,
@@ -667,6 +679,66 @@ export function scorePorTema(
   const itens = [...forcados, ...resto.slice(0, quantos)].sort((a, b) => a.score - b.score);
 
   return { itens, totalDeTemas: todos.length, todos: porVolume };
+}
+
+/** O placar de clima de cada área interna — SEMPRE as 5 de
+ *  `catalogo.dicionarios.areas_pessoa`, mesmo a que ainda não tem nenhuma
+ *  agenda vinculada. Diferente de `scorePorTema`: área é um dicionário
+ *  fixo e pequeno (5 hoje), então não há corte por volume nem "forçar mais
+ *  uma" — é um termômetro das 5, não um ranking recortado.
+ *
+ *  `interacao.areas ?? []`: durante a transição para este vínculo (backend
+ *  sem a feature publicada, ou dado anterior à migration que criou
+ *  `interacao_area`), o campo pode nem vir no payload. Uma interação sem
+ *  área (ou com `areas` ausente) simplesmente não entra em nenhum balde —
+ *  não conta a mais em área nenhuma, e não quebra a conta. */
+export function scorePorArea(interacoes: Interacao[], catalogo: Catalogo): ScoreDivergente[] {
+  const contagem = new Map<
+    number,
+    { total: number; positivas: number; negativas: number; agendas: AgendaDoTema[] }
+  >();
+
+  for (const interacao of interacoes) {
+    // Mesmo critério de scorePorTema: sem clima registrado não entra em
+    // lugar nenhum desta conta, nem no total.
+    if (!interacao.clima) continue;
+
+    for (const areaId of interacao.areas ?? []) {
+      const atual = contagem.get(areaId) ?? {
+        total: 0,
+        positivas: 0,
+        negativas: 0,
+        agendas: [],
+      };
+      atual.total += 1;
+      if (interacao.clima === 'propositivo') atual.positivas += 1;
+      if (interacao.clima === 'tenso') atual.negativas += 1;
+      atual.agendas.push({
+        id: interacao.id,
+        titulo: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
+        data: interacao.data_interacao,
+        clima: interacao.clima,
+      });
+      contagem.set(areaId, atual);
+    }
+  }
+
+  return catalogo.dicionarios.areas_pessoa
+    .map((area) => {
+      const c = contagem.get(area.id) ?? { total: 0, positivas: 0, negativas: 0, agendas: [] };
+      return {
+        chave: String(area.id),
+        rotulo: area.nome,
+        total: c.total,
+        positivas: c.positivas,
+        negativas: c.negativas,
+        // Guarda contra divisão por zero: área sem nenhuma agenda com clima
+        // fica em 0 (o centro do trilho), não em erro nem em NaN.
+        score: c.total ? Math.round(((c.positivas - c.negativas) / c.total) * 100) : 0,
+        agendas: c.agendas,
+      };
+    })
+    .sort((a, b) => a.score - b.score);
 }
 
 /* -- geografia ------------------------------------------------------------ */

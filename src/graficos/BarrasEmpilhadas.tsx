@@ -346,7 +346,7 @@ export function Legenda({
   aoClicar,
   centralizada = false,
 }: {
-  itens: { chave: string; rotulo: string; cor: string }[];
+  itens: { chave: string; rotulo: string; cor: string; detalhe?: string }[];
   ativo?: string;
   aoClicar?: (chave: string) => void;
   /** Centraliza a legenda na caixa, em vez de colada à borda esquerda —
@@ -361,7 +361,7 @@ export function Legenda({
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: centralizada ? 'center' : 'flex-start',
-        gap: '6px 14px',
+        gap: '6px 16px',
         marginTop: 14,
       }}
     >
@@ -386,8 +386,6 @@ export function Legenda({
               background: 'none',
               border: 'none',
               padding: 0,
-              // O texto usa token de tinta, nunca a cor da série: a identidade
-              // vem do quadrado colorido ao lado.
               fontSize: 12,
               color: selecionado ? 'var(--cinza-4)' : 'var(--cinza-3)',
               fontWeight: selecionado ? 700 : 400,
@@ -398,7 +396,12 @@ export function Legenda({
               aria-hidden
               style={{ width: 9, height: 9, borderRadius: 2, background: item.cor }}
             />
-            {item.rotulo}
+            <span>{item.rotulo}</span>
+            {item.detalhe ? (
+              <span className="tabular" style={{ color: 'var(--cinza-2)', fontWeight: 500, opacity: 0.9 }}>
+                ({item.detalhe})
+              </span>
+            ) : null}
           </button>
         );
       })}

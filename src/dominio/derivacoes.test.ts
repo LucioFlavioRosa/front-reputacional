@@ -28,6 +28,7 @@ import {
   resolutividade,
   resultados,
   resumoDeClimaPorFrente,
+  scorePorArea,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
@@ -57,6 +58,13 @@ const DICIONARIOS = {
   tramitacoes: [],
   tipos_investidor: [],
   stakeholders: [],
+  areas_pessoa: [
+    { id: 1, codigo: 'comunicacao', nome: 'Comunicação', ordem: 1 },
+    { id: 2, codigo: 'relacoes_institucionais', nome: 'Relações Institucionais', ordem: 2 },
+    { id: 3, codigo: 'operacoes_financeiras', nome: 'Operações Financeiras', ordem: 3 },
+    { id: 4, codigo: 'performance_e_dados', nome: 'Performance e Dados', ordem: 4 },
+    { id: 5, codigo: 'relacoes_investidores', nome: 'Relações com Investidores', ordem: 5 },
+  ],
   unidades_negocio: [{ id: 1, nome: 'Corsan', ordem: 1 }],
   temas: [
     { id: 10, nome: 'Tarifa', nivel: 'estrategico' },
@@ -209,6 +217,59 @@ describe('resumoDeClimaPorFrente', () => {
   it('devolve zeros quando não há registro da frente', () => {
     const resumo = resumoDeClimaPorFrente([], ['bancos_credores']);
     expect(resumo).toEqual({ total: 0, positivas: 0, negativas: 0 });
+  });
+});
+
+describe('scorePorArea', () => {
+  it('conta positivas e negativas por área; neutro entra no total, sem clima não', () => {
+    const dados = [
+      interacao({ areas: [1], clima: 'propositivo' }),
+      interacao({ areas: [1], clima: 'propositivo' }),
+      interacao({ areas: [1], clima: 'tenso' }),
+      interacao({ areas: [1], clima: 'neutro' }), // conta no total, não em pos/neg
+      interacao({ areas: [1], clima: null }), // sem clima: fora do total inteiro
+    ];
+    const comunicacao = scorePorArea(dados, CATALOGO).find((a) => a.chave === '1')!;
+    expect(comunicacao.total).toBe(4);
+    expect(comunicacao.positivas).toBe(2);
+    expect(comunicacao.negativas).toBe(1);
+    expect(comunicacao.score).toBe(Math.round(((2 - 1) / 4) * 100));
+  });
+
+  it('devolve sempre as 5 áreas do dicionário, mesmo sem nenhuma agenda', () => {
+    const resultado = scorePorArea([], CATALOGO);
+    expect(resultado).toHaveLength(5);
+    expect(resultado.every((a) => a.total === 0 && a.score === 0)).toBe(true);
+  });
+
+  it('uma interação sem área não conta em nenhuma', () => {
+    const dados = [interacao({ areas: [], clima: 'propositivo' })];
+    const resultado = scorePorArea(dados, CATALOGO);
+    expect(resultado.every((a) => a.total === 0)).toBe(true);
+  });
+
+  it('areas ausente (payload de transição) não quebra e não conta em nenhuma', () => {
+    const dados = [interacao({ areas: undefined, clima: 'propositivo' })];
+    expect(() => scorePorArea(dados, CATALOGO)).not.toThrow();
+    const resultado = scorePorArea(dados, CATALOGO);
+    expect(resultado.every((a) => a.total === 0)).toBe(true);
+  });
+
+  it('uma interação com mais de uma área conta nas duas', () => {
+    const dados = [interacao({ areas: [1, 2], clima: 'propositivo' })];
+    const resultado = scorePorArea(dados, CATALOGO);
+    expect(resultado.find((a) => a.chave === '1')!.total).toBe(1);
+    expect(resultado.find((a) => a.chave === '2')!.total).toBe(1);
+  });
+
+  it('ordena do pior score para o melhor', () => {
+    const dados = [
+      interacao({ areas: [1], clima: 'tenso' }),
+      interacao({ areas: [2], clima: 'propositivo' }),
+    ];
+    const resultado = scorePorArea(dados, CATALOGO);
+    expect(resultado[0].chave).toBe('1');
+    expect(resultado[resultado.length - 1].chave).toBe('2');
   });
 });
 

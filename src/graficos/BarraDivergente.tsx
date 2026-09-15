@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import type { ScoreDeTema } from '@/dominio/derivacoes';
+import type { ScoreDivergente } from '@/dominio/derivacoes';
 import { CORES_DE_CLIMA } from '@/dominio/frentes';
 import { dataCompleta } from '@/dominio/formato';
 
@@ -39,7 +39,7 @@ function pluralizar(quantidade: number, singular: string): string {
   return `${quantidade} ${singular}${quantidade === 1 ? '' : 's'}`;
 }
 
-function composicao(item: ScoreDeTema): string {
+function composicao(item: ScoreDivergente): string {
   const neutras = item.total - item.positivas - item.negativas;
   const partes: string[] = [];
   if (item.negativas > 0) partes.push(pluralizar(item.negativas, 'reativa'));
@@ -48,11 +48,22 @@ function composicao(item: ScoreDeTema): string {
   return partes.join(', ');
 }
 
+//: SEM AGENDA NENHUMA é um caso que `scorePorTema` nunca produz — só entra no
+//: `todos`/`itens` quem já tem pelo menos uma. `scorePorArea` é diferente: ele
+//: devolve as 5 áreas sempre, para o termômetro comparar todas de uma vez, e
+//: uma área recém-criada (ou ainda sem agenda vinculada) chega aqui com
+//: `total === 0`. Sem esta guarda, `composicao()` devolve string vazia e a
+//: linha lê "0 agendas — ", com um traço solto sem nada depois.
+function descricaoDaLinha(item: ScoreDivergente): string {
+  if (item.total === 0) return 'Nenhuma interação com clima registrado ainda';
+  return `${item.total} ${item.total === 1 ? 'interação' : 'interações'} — ${composicao(item)}`;
+}
+
 export function BarraDivergente({
   itens,
   aoAbrirAgenda,
 }: {
-  itens: ScoreDeTema[];
+  itens: ScoreDivergente[];
   /** Navega até a Ficha da agenda. Sem isto, a linha ainda abre a lista —
    *  só não dá para ir além dela. */
   aoAbrirAgenda?: (id: string) => void;
@@ -88,7 +99,11 @@ export function BarraDivergente({
                 evento.preventDefault();
                 definirAberto(expandido ? null : item.chave);
               }}
-              title={`${composicao(item)} — clique para ver as interações`}
+              title={
+                item.total === 0
+                  ? descricaoDaLinha(item)
+                  : `${composicao(item)} — clique para ver as interações`
+              }
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
@@ -115,7 +130,7 @@ export function BarraDivergente({
                   {item.rotulo}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 1 }}>
-                  {item.total} {item.total === 1 ? 'interação' : 'interações'} — {composicao(item)}
+                  {descricaoDaLinha(item)}
                 </div>
               </div>
 

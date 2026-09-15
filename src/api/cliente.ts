@@ -1,6 +1,7 @@
 /** Acesso ao backend. Um lugar só monta URL, envia credencial e traduz erro. */
 
 import { registrarErro } from '@/observabilidade/telemetria';
+import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import { paraParametros } from '@/dominio/recorte';
@@ -109,7 +110,10 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
     throw erro;
   }
 
-  if (resposta.status === 204) return undefined as T;
+  if (resposta.status === 204) {
+    avisarSeMudouOCatalogo(metodo, caminho);
+    return undefined as T;
+  }
 
   const corpo = await resposta.text();
   const dados = corpo ? JSON.parse(corpo) : null;
@@ -128,7 +132,23 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
     }
     throw erro;
   }
+  avisarSeMudouOCatalogo(metodo, caminho);
   return dados as T;
+}
+
+/** A GARANTIA DE SINCRONIZAÇÃO, num lugar só.
+ *
+ *  Toda escrita que deu certo numa rota de catálogo avisa `catalogoMudou`, e o
+ *  estado do painel — que escuta — recarrega dicionários, instituições,
+ *  interlocutores, pessoas e referências. É por isso que uma tela de cadastro
+ *  NÃO precisa lembrar de recarregar nada depois de salvar, e uma função de
+ *  escrita nova entra na garantia sem que quem a escreveu saiba dela: a regra
+ *  é a rota, não a função.
+ *
+ *  SÓ DEPOIS DO SUCESSO. Um 4xx não mudou nada, e avisar faria a tela piscar
+ *  por um cadastro que não aconteceu. */
+function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
+  if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */
@@ -164,23 +184,25 @@ export interface RecorteCompleto {
   filtrosAtivos: number;
 }
 
-/** Busca o recorte inteiro, página a página.
+/** Busca o recorte inteiro: a primeira página diz quantas há, e as outras
+ *  vêm TODAS DE UMA VEZ.
  *
  *  As telas de análise derivam os agregados do conjunto completo, então
- *  precisam dele inteiro — não da primeira página. */
+ *  precisam dele inteiro — não da primeira página. Uma página atrás da outra
+ *  somava as latências; em paralelo, o recorte chega no tempo da mais lenta. */
 export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCompleto> {
   const primeira = await listarInteracoes(recorte, { pagina: 1, tamanho: TAMANHO_MAXIMO });
-  const itens = [...primeira.itens];
 
   const paginasNecessarias = Math.min(
     primeira.paginas,
     Math.ceil(TETO_DE_DERIVACAO / TAMANHO_MAXIMO),
   );
-
-  for (let pagina = 2; pagina <= paginasNecessarias; pagina += 1) {
-    const proxima = await listarInteracoes(recorte, { pagina, tamanho: TAMANHO_MAXIMO });
-    itens.push(...proxima.itens);
-  }
+  const restantes = await Promise.all(
+    Array.from({ length: Math.max(0, paginasNecessarias - 1) }, (_, i) =>
+      listarInteracoes(recorte, { pagina: i + 2, tamanho: TAMANHO_MAXIMO }),
+    ),
+  );
+  const itens = [primeira, ...restantes].flatMap((pagina) => pagina.itens);
 
   return {
     itens,
@@ -275,10 +297,7 @@ export function urlDeLogin(destino = '/painel'): string {
  */
 export function registrarExportacao(recorte: Recorte): Promise<Exportacao> {
   const parametros = paraParametros(recorte).toString();
-  return requisitar<Exportacao>(
-    `/api/exportacoes${parametros ? `?${parametros}` : ''}`,
-    { method: 'POST' },
-  );
+  return requisitar<Exportacao>(`/api/exportacoes?${parametros}`, { method: 'POST' });
 }
 
 export function listarAcessos(): Promise<Acesso[]> {
@@ -676,7 +695,5 @@ export function urlDaVersao(referenciaId: string, versaoId: string): string {
  */
 export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDaReuniao[]> {
   const parametros = paraParametros(recorte).toString();
-  return requisitar<DocumentoDaReuniao[]>(
-    `/api/materiais${parametros ? `?${parametros}` : ''}`,
-  );
+  return requisitar<DocumentoDaReuniao[]>(`/api/materiais?${parametros}`);
 }
