@@ -38,6 +38,7 @@ import {
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
+  temasPorArea,
   topInstituicoesPorTier,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
@@ -221,6 +222,7 @@ export function Painel({
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
       climaPorArea: climaPorArea(interacoes, catalogo),
+      temasPorArea: temasPorArea(interacoes, catalogo, temas),
       // UMA LISTA DE INTERAÇÕES POR ÁREA FIXA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
       // aparecer em mais de uma das três tabelas, exatamente como o filtro
@@ -455,6 +457,16 @@ export function Painel({
                 { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
               ];
             }}
+            segmentosDoItem={(chave) => derivado.temasPorArea[chave] ?? []}
+          />
+          {/* A MESMA cor por tema da barra segmentada acima — decodifica as
+              fatias sem precisar passar o mouse em cada uma, e o clique
+              filtra pelo tema, igual à legenda de "Temas no tempo". */}
+          <Legenda
+            itens={derivado.temas}
+            ativo={recorte.tags?.[0]}
+            aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+            centralizada
           />
         </Secao>
 

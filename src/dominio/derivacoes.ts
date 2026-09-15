@@ -331,6 +331,60 @@ export function climaPorArea(
   return contagem;
 }
 
+/** A composição por tema de cada área — os MESMOS temas top do recorte
+ *  inteiro (`temasMaisRecorrentes`), e não um top por área à parte: é o que
+ *  faz a cor de um tema ser sempre a mesma em qualquer gráfico da tela (esta
+ *  barra segmentada, "Temas no tempo", "Barra divergente por tema"). Quem
+ *  não é um dos temas principais entra somado num segmento "Outros temas",
+ *  cinza — a barra some do "quais temas" pontual sem esconder o volume.
+ *
+ *  MULTIVALORADO nos dois eixos, como `porArea`: uma interação com duas
+ *  áreas e três temas soma em cada combinação área×tema — por isso a soma
+ *  dos segmentos de uma área pode passar do total de interações dela
+ *  (`porArea`), que conta a interação uma vez só. */
+export function temasPorArea(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  temasPrincipais: { chave: string; rotulo: string; cor: string }[],
+): Record<string, Segmento[]> {
+  const chavesPrincipais = new Set(temasPrincipais.map((t) => t.chave));
+  const contagemPorArea = new Map<string, Map<string, number>>();
+
+  for (const interacao of interacoes) {
+    const nomes = nomesDosTemas(catalogo, interacao.temas);
+    if (!nomes.length) continue;
+    for (const areaId of interacao.areas) {
+      const chaveArea = String(areaId);
+      const contagem = contagemPorArea.get(chaveArea) ?? new Map<string, number>();
+      for (const nome of nomes) {
+        contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
+      }
+      contagemPorArea.set(chaveArea, contagem);
+    }
+  }
+
+  const resultado: Record<string, Segmento[]> = {};
+  for (const area of catalogo.dicionarios.areas_pessoa) {
+    const chaveArea = String(area.id);
+    const contagem = contagemPorArea.get(chaveArea) ?? new Map<string, number>();
+
+    const principais = temasPrincipais.map((tema) => ({
+      ...tema,
+      total: contagem.get(tema.chave) ?? 0,
+    }));
+
+    const outros = [...contagem.entries()]
+      .filter(([nome]) => !chavesPrincipais.has(nome))
+      .reduce((soma, [, total]) => soma + total, 0);
+
+    resultado[chaveArea] = outros > 0
+      ? [...principais, { chave: '__outros__', rotulo: 'Outros temas', cor: 'var(--cinza-2)', total: outros }]
+      : principais;
+  }
+
+  return resultado;
+}
+
 export interface ScoreDeInstituicao {
   chave: string;
   rotulo: string;

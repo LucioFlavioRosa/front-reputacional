@@ -2,7 +2,7 @@
  *  filtro correspondente — clicar de novo no mesmo item remove. */
 
 import { useState } from 'react';
-import type { ItemContado } from '@/dominio/derivacoes';
+import type { ItemContado, Segmento } from '@/dominio/derivacoes';
 import { Barra } from '@/componentes/basicos';
 
 export function Ranking({
@@ -12,6 +12,7 @@ export function Ranking({
   cor = 'var(--azul-mar)',
   vazio = 'Sem dados no recorte.',
   detalheAoPassarMouse,
+  segmentosDoItem,
 }: {
   itens: ItemContado[];
   ativo?: string;
@@ -23,6 +24,11 @@ export function Ranking({
    *  Quando presente, substitui o `title` nativo de "clique para filtrar":
    *  os dois ao mesmo tempo duplicariam a mesma dica em dois lugares. */
   detalheAoPassarMouse?: (chave: string) => { rotulo: string; valor: string }[];
+  /** Quando presente, a barra de proporção do item deixa de ser uma cor só e
+   *  vira uma composição colorida por segmento (ex.: os temas mais falados
+   *  daquela área) — mesmo comprimento total de `Barra` (proporcional a
+   *  `maximo`), só que dividido por dentro. */
+  segmentosDoItem?: (chave: string) => Segmento[];
 }) {
   //: Um item em foco por vez — mouse ou teclado, o que vier primeiro.
   const [emFoco, definirEmFoco] = useState<string | null>(null);
@@ -99,7 +105,15 @@ export function Ranking({
                 {item.total}
               </span>
             </div>
-            <Barra valor={item.total} maximo={maximo} cor={item.cor ?? cor} />
+            {segmentosDoItem ? (
+              <BarraSegmentada
+                totalDoItem={item.total}
+                maximo={maximo}
+                segmentos={segmentosDoItem(item.chave)}
+              />
+            ) : (
+              <Barra valor={item.total} maximo={maximo} cor={item.cor ?? cor} />
+            )}
 
             {emFoco === item.chave && detalheAoPassarMouse ? (
               <TooltipDoItem detalhe={detalheAoPassarMouse(item.chave)} />
@@ -144,6 +158,53 @@ function TooltipDoItem({ detalhe }: { detalhe: { rotulo: string; valor: string }
           <span className="tabular">{linha.valor}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** A mesma proporção de `Barra` (comprimento total relativo a `maximo`), só
+ *  que o preenchimento é dividido por segmento em vez de uma cor só — cada
+ *  segmento renormalizado dentro do próprio total do item, e não do total
+ *  bruto: um tema multivalorado pode somar mais do que o total de interações
+ *  do item (ver o comentário de `temasPorArea`), e normalizar pela soma dos
+ *  segmentos é o que mantém a barra sempre cheia até `largura`, nunca
+ *  vazando nem sobrando. */
+function BarraSegmentada({
+  totalDoItem,
+  maximo,
+  segmentos,
+  altura = 7,
+}: {
+  totalDoItem: number;
+  maximo: number;
+  segmentos: Segmento[];
+  altura?: number;
+}) {
+  const largura = maximo > 0 ? Math.max(2, (totalDoItem / maximo) * 100) : 0;
+  const visiveis = segmentos.filter((segmento) => segmento.total > 0);
+
+  return (
+    <div style={{ height: altura, background: 'var(--bg-trilho)', borderRadius: 2 }}>
+      {visiveis.length ? (
+        <div
+          style={{
+            width: `${largura}%`,
+            height: '100%',
+            display: 'flex',
+            gap: 1,
+            borderRadius: 2,
+            overflow: 'hidden',
+          }}
+        >
+          {visiveis.map((segmento) => (
+            <div
+              key={segmento.chave}
+              title={`${segmento.rotulo}: ${segmento.total}`}
+              style={{ flex: segmento.total, background: segmento.cor, minWidth: 2 }}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
