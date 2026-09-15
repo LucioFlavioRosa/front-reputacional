@@ -292,6 +292,45 @@ export function porArea(
     .slice(0, quantos);
 }
 
+export interface ClimaDaArea {
+  propositivo: number;
+  neutro: number;
+  tenso: number;
+}
+
+/** A quebra de clima de cada área — o que o tooltip de "Volume por área"
+ *  mostra ao passar o mouse. MULTIVALORADO como `porArea`: uma interação com
+ *  duas áreas soma clima nas duas. Sem clima registrado não entra em
+ *  nenhuma das três contagens, mesmo critério de `scorePorTema`. */
+export function climaPorArea(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+): Record<string, ClimaDaArea> {
+  const contagem: Record<string, ClimaDaArea> = {};
+
+  for (const interacao of interacoes) {
+    if (!interacao.clima) continue;
+    for (const areaId of interacao.areas) {
+      const chave = String(areaId);
+      const atual = contagem[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+      if (interacao.clima === 'propositivo') atual.propositivo += 1;
+      else if (interacao.clima === 'neutro') atual.neutro += 1;
+      else if (interacao.clima === 'tenso') atual.tenso += 1;
+      contagem[chave] = atual;
+    }
+  }
+
+  // Mantém as áreas sem clima nenhum no mapa, com zeros — evita `undefined`
+  // em quem consulta uma área que existe em `porArea` mas ainda não tem
+  // nenhuma interação com clima registrado.
+  for (const area of catalogo.dicionarios.areas_pessoa) {
+    const chave = String(area.id);
+    if (!contagem[chave]) contagem[chave] = { propositivo: 0, neutro: 0, tenso: 0 };
+  }
+
+  return contagem;
+}
+
 export interface ScoreDeInstituicao {
   chave: string;
   rotulo: string;

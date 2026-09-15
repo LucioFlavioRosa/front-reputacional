@@ -21,6 +21,7 @@ import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 import {
   chaveDoPeriodo,
+  climaPorArea,
   completarPeriodos,
   distribuicaoPorUf,
   kpis as calcularKpis,
@@ -30,6 +31,7 @@ import {
   porTier,
   ranking,
   resumoDeClimaPorFrente,
+  rotuloDeCodigo,
   scorePorArea,
   scorePorInstituicao,
   scorePorTema,
@@ -205,6 +207,7 @@ export function Painel({
       unidades: ranking(interacoes, catalogo, 'unidade'),
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
+      climaPorArea: climaPorArea(interacoes, catalogo),
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
       topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
@@ -379,6 +382,14 @@ export function Painel({
             ativo={recorte.areas?.length === 1 ? String(recorte.areas[0]) : undefined}
             aoClicar={(chave) => definirRecorte(alternarArea(recorte, Number(chave)))}
             vazio="Nenhuma área registrada neste recorte."
+            detalheAoPassarMouse={(chave) => {
+              const clima = derivado.climaPorArea[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+              return [
+                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
+                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
+                { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
+              ];
+            }}
           />
         </Secao>
 
@@ -742,7 +753,7 @@ function HistoricoDoBloco({
         altura={220}
         formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
       />
-      <Legenda itens={categorias} />
+      <Legenda itens={categorias} centralizada />
     </Modal>
   );
 }
