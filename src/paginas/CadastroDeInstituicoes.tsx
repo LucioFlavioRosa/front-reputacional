@@ -142,7 +142,7 @@ interface RascunhoDaInstituicao {
 }
 
 export function CadastroDeInstituicoes() {
-  const { catalogo, recarregar } = usePainel();
+  const { catalogo } = usePainel();
   const [erro, definirErro] = useState<string | null>(null);
   //: O que acabou de dar certo. Sem isto, salvar é SILENCIOSO: o formulário
   //: limpa e nada diz que a gravação foi feita — e quem não confia cadastra
@@ -212,11 +212,12 @@ export function CadastroDeInstituicoes() {
       .filter((p) => p.instituicao_id === instituicaoId)
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
-  /** Toda escrita passa por aqui, e recarrega o catálogo.
+  /** Toda escrita passa por aqui.
    *
-   *  O catálogo é o que alimenta o formulário de agenda. Sem recarregar, a
-   *  instituição recém-cadastrada só apareceria lá depois de um F5 — e quem
-   *  acabou de cadastrar concluiria que não funcionou.
+   *  O catálogo — que alimenta o formulário de agenda, os filtros e a ficha —
+   *  recarrega sozinho: o cliente da API avisa a cada escrita bem-sucedida
+   *  numa rota de catálogo, e o estado do painel escuta. Ver
+   *  `dominio/sincronizacao.ts`. Esta tela não precisa lembrar de nada.
    */
   const executar = async (
     acao: () => Promise<unknown>,
@@ -228,7 +229,6 @@ export function CadastroDeInstituicoes() {
     definirFeito(null);
     try {
       await acao();
-      await recarregar();
       aoTerminar();
       definirFeito(aviso);
     } catch (falha) {

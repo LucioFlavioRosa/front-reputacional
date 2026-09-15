@@ -32,6 +32,7 @@ import type {
   Interacao,
   Interlocutor,
   PessoaAegea,
+  Referencia,
 } from '@/dominio/tipos';
 
 /** Os diretórios que resolvem chave estrangeira em nome legível. */
@@ -40,6 +41,11 @@ export interface Catalogo {
   instituicoes: Map<string, Instituicao>;
   interlocutores: Map<string, Interlocutor>;
   pessoas: Map<string, PessoaAegea>;
+  /** A biblioteca inteira, ATIVAS E INATIVAS: a Administração precisa das
+   *  duas; quem oferece referência a uma agenda filtra as ativas. Mora no
+   *  catálogo pelo mesmo motivo dos outros: é opção de formulário, e opção
+   *  cadastrada precisa aparecer em toda tela sem ninguém apertar F5. */
+  referencias: Referencia[];
 }
 
 export function montarCatalogo(
@@ -47,12 +53,14 @@ export function montarCatalogo(
   instituicoes: Instituicao[],
   interlocutores: Interlocutor[],
   pessoas: PessoaAegea[],
+  referencias: Referencia[] = [],
 ): Catalogo {
   return {
     dicionarios,
     instituicoes: new Map(instituicoes.map((i) => [i.id, i])),
     interlocutores: new Map(interlocutores.map((i) => [i.id, i])),
     pessoas: new Map(pessoas.map((p) => [p.id, p])),
+    referencias,
   };
 }
 

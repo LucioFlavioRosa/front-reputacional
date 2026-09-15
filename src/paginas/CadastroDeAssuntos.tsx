@@ -28,7 +28,6 @@ import {
   Selo,
   estiloDeEntrada,
 } from '@/componentes/basicos';
-import { usePainel } from '@/estado/painel';
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
@@ -66,7 +65,6 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
 };
 
 export function CadastroDeAssuntos() {
-  const { recarregar } = usePainel();
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
@@ -94,9 +92,10 @@ export function CadastroDeAssuntos() {
     try {
       await acao();
       await carregar();
-      // O catálogo alimenta o formulário de agenda: sem recarregar, o assunto
-      // novo só apareceria lá depois de um F5.
-      await recarregar();
+      // O CATÁLOGO RECARREGA SOZINHO: o cliente da API avisa a cada escrita
+      // bem-sucedida numa rota de catálogo, e o estado do painel escuta. Ver
+      // `dominio/sincronizacao.ts` — é o que faz o cadastro aparecer no
+      // formulário de agenda, nos filtros e na ficha sem esta tela lembrar.
       aoTerminar();
     } catch (falha) {
       definirErro((falha as Error).message);

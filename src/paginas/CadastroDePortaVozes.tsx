@@ -42,7 +42,7 @@ const VAZIA = {
 };
 
 export function CadastroDePortaVozes() {
-  const { catalogo, recarregar } = usePainel();
+  const { catalogo } = usePainel();
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [nova, definirNova] = useState(VAZIA);
@@ -111,7 +111,10 @@ export function CadastroDePortaVozes() {
     definirErro(null);
     try {
       await acao();
-      await recarregar();
+      // O CATÁLOGO RECARREGA SOZINHO: o cliente da API avisa a cada escrita
+      // bem-sucedida numa rota de catálogo, e o estado do painel escuta. Ver
+      // `dominio/sincronizacao.ts` — é o que faz o cadastro aparecer no
+      // formulário de agenda, nos filtros e na ficha sem esta tela lembrar.
       aoTerminar();
     } catch (falha) {
       definirErro((falha as Error).message);

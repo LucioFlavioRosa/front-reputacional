@@ -1,6 +1,7 @@
 /** Acesso ao backend. Um lugar só monta URL, envia credencial e traduz erro. */
 
 import { registrarErro } from '@/observabilidade/telemetria';
+import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import { paraParametros } from '@/dominio/recorte';
@@ -109,7 +110,10 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
     throw erro;
   }
 
-  if (resposta.status === 204) return undefined as T;
+  if (resposta.status === 204) {
+    avisarSeMudouOCatalogo(metodo, caminho);
+    return undefined as T;
+  }
 
   const corpo = await resposta.text();
   const dados = corpo ? JSON.parse(corpo) : null;
@@ -128,7 +132,23 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
     }
     throw erro;
   }
+  avisarSeMudouOCatalogo(metodo, caminho);
   return dados as T;
+}
+
+/** A GARANTIA DE SINCRONIZAÇÃO, num lugar só.
+ *
+ *  Toda escrita que deu certo numa rota de catálogo avisa `catalogoMudou`, e o
+ *  estado do painel — que escuta — recarrega dicionários, instituições,
+ *  interlocutores, pessoas e referências. É por isso que uma tela de cadastro
+ *  NÃO precisa lembrar de recarregar nada depois de salvar, e uma função de
+ *  escrita nova entra na garantia sem que quem a escreveu saiba dela: a regra
+ *  é a rota, não a função.
+ *
+ *  SÓ DEPOIS DO SUCESSO. Um 4xx não mudou nada, e avisar faria a tela piscar
+ *  por um cadastro que não aconteceu. */
+function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
+  if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */

@@ -39,7 +39,7 @@ import { nomesDosTemas } from '@/dominio/derivacoes';
 import { jaAconteceu } from '@/dominio/agregacao';
 import { Abas } from '@/componentes/Abas';
 import { EscolherAgendas } from '@/componentes/EscolherAgendas';
-import { listarReferencias, urlDaVersao } from '@/api/cliente';
+import { urlDaVersao } from '@/api/cliente';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao, Referencia } from '@/dominio/tipos';
 import {
@@ -100,7 +100,14 @@ export function Cadastro({
   //: A biblioteca inteira, carregada uma vez. E pequena — dezenas de linhas —
   //: e consultada a cada assunto marcado; buscar por assunto no servidor seria
   //: uma ida por clique, num gesto que a pessoa repete cinco vezes seguidas.
-  const [referencias, definirReferencias] = useState<Referencia[]>([]);
+  // DO CATÁLOGO, e não de uma busca ao montar: é o que faz uma referência
+  // cadastrada na Administração aparecer aqui sem F5. SÓ AS ATIVAS — a lista
+  // traz as desativadas para a Administração poder reativá-las, e trazer uma
+  // delas para uma agenda nova seria pôr em circulação o que alguém tirou.
+  const referencias = useMemo<Referencia[]>(
+    () => (catalogo?.referencias ?? []).filter((r) => r.ativo),
+    [catalogo],
+  );
   //: As referencias que a pessoa REMOVEU a mao nesta sessao.
   //:
   //: Sem isto, remover uma linha da biblioteca e mexer em qualquer outro
@@ -198,25 +205,6 @@ export function Cadastro({
     },
     [erro, sucesso, tentativa],
   );
-
-  useEffect(function carregarABiblioteca() {
-    let vivo = true;
-    listarReferencias()
-      .then((lista) => {
-        if (!vivo) return;
-        // SO AS ATIVAS. A lista traz as desativadas para a tela de
-        // administracao poder reativa-las; trazer uma delas para uma agenda
-        // nova seria pôr em circulacao o que alguem tirou de circulacao.
-        definirReferencias(lista.filter((r) => r.ativo));
-      })
-      // EM SILENCIO, e de proposito: a biblioteca é uma comodidade. Uma faixa
-      // vermelha no topo do cadastro por causa dela assustaria sobre algo que
-      // nao impede ninguem de registrar a agenda.
-      .catch(() => undefined);
-    return () => {
-      vivo = false;
-    };
-  }, []);
 
   useEffect(
     function carregarParaEditar() {

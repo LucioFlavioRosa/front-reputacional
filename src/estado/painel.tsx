@@ -19,8 +19,10 @@ import {
   listarInterlocutores,
   listarPessoasAegea,
   listarRecorteCompleto,
+  listarReferencias,
   obterDicionarios,
 } from '@/api/cliente';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
 import { montarCatalogo } from '@/dominio/derivacoes';
 import type { Recorte } from '@/dominio/recorte';
@@ -104,6 +106,13 @@ export function ProvedorDoPainel({
 
   const recarregar = useCallback(() => definirVersao((v) => v + 1), []);
 
+  // A SINCRONIZAÇÃO TOTAL COMEÇA AQUI. O cliente da API avisa a cada escrita
+  // bem-sucedida numa rota de catálogo — tema, instituição, interlocutor,
+  // pessoa da Aegea, referência — e este é o único ouvinte: recarrega o
+  // catálogo inteiro, e com ele todo formulário, filtro e ficha que o lê.
+  // Nenhuma tela de cadastro precisa lembrar de fazer isso.
+  useEffect(() => catalogoMudou.assinar(recarregar), [recarregar]);
+
   // Os diretórios mudam raramente: carregam uma vez e servem todas as telas.
   useEffect(function carregarCatalogo() {
     if (!alcancaOCrm) {
@@ -118,10 +127,13 @@ export function ProvedorDoPainel({
       listarInstituicoes(),
       listarInterlocutores(),
       listarPessoasAegea(),
+      listarReferencias(),
     ])
-      .then(([dicionarios, instituicoes, interlocutores, pessoas]) => {
+      .then(([dicionarios, instituicoes, interlocutores, pessoas, referencias]) => {
         if (!ativo) return;
-        definirCatalogo(montarCatalogo(dicionarios, instituicoes, interlocutores, pessoas));
+        definirCatalogo(
+          montarCatalogo(dicionarios, instituicoes, interlocutores, pessoas, referencias),
+        );
       })
       .catch((falha: Error) => {
         if (ativo) definirErro(falha.message);

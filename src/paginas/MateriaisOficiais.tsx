@@ -14,13 +14,13 @@
  *  comparar exige que o mesmo dado fique na mesma posição em toda linha.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { Botao, Carregando, FaixaDeErro, Modal, Vazio, estiloDeEntrada } from '@/componentes/basicos';
+import { Botao, Carregando, Modal, Vazio, estiloDeEntrada } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
-import { listarReferencias, urlDaVersao } from '@/api/cliente';
+import { urlDaVersao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
 import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
@@ -69,8 +69,12 @@ function formatoLegivel(tipo: string): string {
 
 export function MateriaisOficiais() {
   const { catalogo } = usePainel();
-  const [referencias, definirReferencias] = useState<Referencia[] | null>(null);
-  const [erro, definirErro] = useState<string | null>(null);
+  // DO CATÁLOGO: uma referência cadastrada ou desativada na Administração
+  // aparece — ou some — daqui sem F5. Só as ativas, como no formulário.
+  const referencias = useMemo<Referencia[] | null>(
+    () => (catalogo ? catalogo.referencias.filter((r) => r.ativo) : null),
+    [catalogo],
+  );
   const [busca, definirBusca] = useState('');
   const [tipo, definirTipo] = useState('');
   const [tema, definirTema] = useState('');
@@ -81,20 +85,6 @@ export function MateriaisOficiais() {
     'base-posicionamentos-e-papers',
     COLUNAS,
   );
-
-  useEffect(() => {
-    let vivo = true;
-    listarReferencias()
-      .then((lista) => {
-        if (vivo) definirReferencias(lista.filter((r) => r.ativo));
-      })
-      .catch((e: Error) => {
-        if (vivo) definirErro(e.message);
-      });
-    return () => {
-      vivo = false;
-    };
-  }, []);
 
   const filtradas = useMemo(() => {
     if (!referencias) return [];
@@ -115,7 +105,6 @@ export function MateriaisOficiais() {
     [filtradas, ordenacao],
   );
 
-  if (erro) return <FaixaDeErro mensagem={erro} />;
   if (referencias === null || !catalogo) return <Carregando />;
 
   const nomeDoTema = (id: number) =>
