@@ -202,10 +202,25 @@ export function TabelaDeInteracoes({
                       : undefined
                   }
                 >
-                  <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }} className="tabular">
+                  <td
+                    style={{ ...celulaAtual, whiteSpace: 'nowrap', width: reduzida ? 62 : undefined }}
+                    className="tabular"
+                  >
                     {dataCompleta(interacao.data_interacao)}
                   </td>
-                  <td style={{ ...celulaAtual, minWidth: reduzida ? 90 : 160 }}>
+                  <td
+                    style={
+                      reduzida
+                        ? {
+                            ...celulaAtual,
+                            width: 84,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }
+                        : { ...celulaAtual, minWidth: 160 }
+                    }
+                  >
                     {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                   </td>
                   {reduzida ? null : (
@@ -216,7 +231,7 @@ export function TabelaDeInteracoes({
                   <td
                     style={
                       reduzida
-                        ? { ...celulaAtual, maxWidth: 130, ...PAUTA_EM_DUAS_LINHAS }
+                        ? { ...celulaAtual, ...PAUTA_EM_DUAS_LINHAS }
                         : {
                             ...celulaAtual,
                             maxWidth: 280,
