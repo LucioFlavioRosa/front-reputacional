@@ -87,9 +87,14 @@ function nomeDoStakeholder(catalogo: Catalogo, id: number | null): string {
 export function TabelaDeInteracoes({
   interacoes,
   catalogo,
+  aoAbrirFicha,
 }: {
   interacoes: Interacao[];
   catalogo: Catalogo;
+  /** Abre a Ficha completa de uma interação específica — a mesma usada pela
+   *  Base. A linha do tempo, dentro do popup, leva até ela quando alguém
+   *  clica numa das outras interações do mesmo ente público. */
+  aoAbrirFicha: (id: string) => void;
 }) {
   const [pagina, definirPagina] = useState(1);
   const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
@@ -192,6 +197,14 @@ export function TabelaDeInteracoes({
           interacoes={interacoes}
           catalogo={catalogo}
           aoFechar={() => definirAberta(null)}
+          aoAbrirFicha={(id) => {
+            // FECHA ESTE POPUP ANTES DE ABRIR A FICHA — os dois são
+            // overlays por cima da tela; um por cima do outro deixaria dois
+            // fundos escurecidos empilhados, e fechar só a Ficha devolveria
+            // a alguém um popup que ele não lembra ter deixado aberto.
+            definirAberta(null);
+            aoAbrirFicha(id);
+          }}
         />
       ) : null}
     </Secao>
@@ -272,16 +285,20 @@ const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
   { campo: 'observacoes', rotulo: 'Observações' },
 ];
 
+const COLUNAS_DA_LINHA_DO_TEMPO = ['Data', 'Pauta', 'Área(s)', 'Clima'];
+
 function PopupDaInteracao({
   interacao,
   interacoes,
   catalogo,
   aoFechar,
+  aoAbrirFicha,
 }: {
   interacao: Interacao;
   interacoes: Interacao[];
   catalogo: Catalogo;
   aoFechar: () => void;
+  aoAbrirFicha: (id: string) => void;
 }) {
   const nomeInstituicao = nomeDaInstituicao(catalogo, interacao.instituicao_id);
 
@@ -371,33 +388,41 @@ function PopupDaInteracao({
             Linha do tempo com {nomeInstituicao}
           </div>
           {linhaDoTempo.length ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {linhaDoTempo.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    alignItems: 'flex-start',
-                    padding: '10px 0',
-                    borderBottom: '1px solid var(--borda)',
-                  }}
-                >
-                  <div
-                    className="tabular"
-                    style={{ fontSize: 12, color: 'var(--cinza-2)', flexShrink: 0, width: 76, marginTop: 2 }}
+            <>
+              <Tabela colunas={COLUNAS_DA_LINHA_DO_TEMPO} altura="none">
+                {linhaDoTempo.map((item) => (
+                  <LinhaDaTabela
+                    key={item.id}
+                    aoClicar={() => aoAbrirFicha(item.id)}
+                    titulo="Abrir esta interação na Base"
                   >
-                    {dataCompleta(item.data_interacao)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: 'var(--cinza-4)' }}>
+                    <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                      {dataCompleta(item.data_interacao)}
+                    </td>
+                    <td
+                      style={{
+                        ...celula,
+                        maxWidth: 320,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {tituloDaAgenda(item, (ids) => nomesDosTemas(catalogo, ids))}
-                    </div>
-                  </div>
-                  <SeloDeClima codigo={item.clima} catalogo={catalogo} />
-                </div>
-              ))}
-            </div>
+                    </td>
+                    <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                      {nomesDasAreas(item, catalogo)}
+                    </td>
+                    <td style={celula}>
+                      <SeloDeClima codigo={item.clima} catalogo={catalogo} />
+                    </td>
+                  </LinhaDaTabela>
+                ))}
+              </Tabela>
+              <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 8 }}>
+                Clique numa interação para abrir a ficha completa na Base.
+              </p>
+            </>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
               Nenhuma outra interação com esta instituição neste recorte.

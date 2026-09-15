@@ -394,7 +394,7 @@ export function Painel({
         </Secao>
       </div>
 
-      <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} />
+      <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} aoAbrirFicha={aoAbrirAgenda} />
 
       {/* NO LUGAR DOS KPIS, enquanto EXIBIR_KPIS estiver false — é o
           conteúdo que o comentário de `EXIBIR_KPIS` já previa para esse
