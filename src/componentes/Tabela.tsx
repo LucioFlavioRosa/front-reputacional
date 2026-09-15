@@ -32,7 +32,7 @@ export function Tabela({
   chaveDeArmazenamento,
   altura = 'calc(100vh - 340px)',
   compacta = false,
-  permiteRedimensionar = true,
+  largurasPadrao,
   children,
 }: {
   colunas: string[];
@@ -52,12 +52,23 @@ export function Tabela({
    *  fixa do Painel). As células continuam com o padrão de sempre; quem
    *  chama ajusta o próprio `<td>` se precisar do mesmo aperto. */
   compacta?: boolean;
-  /** `false` tira a alça de arrastar de todo cabeçalho — as três tabelas de
-   *  área fixa do Painel já dividem a largura do cartão em Data/Instituição/
-   *  Pauta a dedo (ver `TabelaDeInteracoes`); arrastar uma coluna ali vira o
-   *  layout inteiro pra `table-layout: fixed` e some com esse ajuste, numa
-   *  tabela estreita demais para sobrar espaço de qualquer jeito. */
-  permiteRedimensionar?: boolean;
+  /** Largura inicial (px) de uma ou mais colunas, PELO NOME — a coluna que
+   *  não está aqui absorve o espaço que sobrar. Diferente de `larguras` (o
+   *  ajuste que o próprio usuário arrasta): isto entra ANTES de qualquer
+   *  arraste, e é o que já deixa `table-layout: fixed` desde o primeiro
+   *  render, em vez de só depois do primeiro arraste.
+   *
+   *  SEM ISTO, uma tabela em `table-layout: auto` (o padrão) cresce pelo
+   *  CONTEÚDO — um nome de instituição comprido empurra a coluna, a tabela, e
+   *  o cartão inteiro além da largura que o layout reservou para ele. Numa
+   *  tabela sozinha isso só rola por dentro (`.rolagem-interna`); lado a lado
+   *  com outras num grid (as três tabelas de área fixa do Painel), o cartão
+   *  que cresce pelo conteúdo aperta a largura dos vizinhos — arrastar uma
+   *  coluna parecia "mexer no tamanho das outras tabelas", mas o problema
+   *  era a tabela em `auto` nunca ter tido uma largura própria, com ou sem
+   *  arraste. `largurasPadrao` fixa a largura de saída, e o cartão para de
+   *  negociar espaço com os vizinhos pelo conteúdo de dentro. */
+  largurasPadrao?: Record<string, number>;
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -130,11 +141,14 @@ export function Tabela({
     redimensionando.current = { coluna, inicioX: evento.clientX, larguraInicial: larguraAtual };
   }
 
-  // `table-layout: fixed` só entra depois que alguém redimensiona algo.
-  // Antes disso a tabela continua com o comportamento de sempre — largura
-  // pelo conteúdo —, que é o que as três páginas já contam com (`minWidth`
-  // por célula, texto que quebra, etc.).
-  const temLarguraCustomizada = Object.keys(larguras).length > 0;
+  // `table-layout: fixed` entra assim que existir QUALQUER largura definida —
+  // do usuário (`larguras`, depois de um arraste) ou de quem chama
+  // (`largurasPadrao`, antes de qualquer arraste). Sem nenhuma das duas, a
+  // tabela continua com o comportamento de sempre — largura pelo conteúdo —,
+  // que é o que as páginas sem largura própria já contam com (`minWidth` por
+  // célula, texto que quebra, etc.).
+  const temLarguraDefinida =
+    Object.keys(larguras).length > 0 || Boolean(largurasPadrao && Object.keys(largurasPadrao).length);
 
   return (
     <div className="rolagem-interna" style={{ maxHeight: altura }}>
@@ -143,13 +157,14 @@ export function Tabela({
           width: '100%',
           borderCollapse: 'collapse',
           fontSize: compacta ? 12 : 13,
-          tableLayout: temLarguraCustomizada ? 'fixed' : 'auto',
+          tableLayout: temLarguraDefinida ? 'fixed' : 'auto',
         }}
       >
         <colgroup>
-          {colunas.map((coluna) => (
-            <col key={coluna} style={larguras[coluna] ? { width: larguras[coluna] } : undefined} />
-          ))}
+          {colunas.map((coluna) => {
+            const largura = larguras[coluna] ?? largurasPadrao?.[coluna];
+            return <col key={coluna} style={largura ? { width: largura } : undefined} />;
+          })}
         </colgroup>
         <thead>
           <tr>
@@ -210,7 +225,7 @@ export function Tabela({
 
                   {/* A ÚLTIMA COLUNA NÃO GANHA ALÇA: não há o que redimensionar
                       à direita dela — só a rolagem interna da tabela. */}
-                  {permiteRedimensionar && indice < colunas.length - 1 ? (
+                  {indice < colunas.length - 1 ? (
                     <span
                       onMouseDown={(evento) => iniciarRedimensionamento(evento, coluna)}
                       title="Arrastar para redimensionar a coluna"

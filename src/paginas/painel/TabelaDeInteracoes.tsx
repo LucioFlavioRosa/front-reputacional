@@ -184,12 +184,13 @@ export function TabelaDeInteracoes({
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
             compacta={reduzida}
-            // AS TRÊS TABELAS DE ÁREA FIXA (`reduzida`) já têm a largura de
-            // cada coluna ajustada a dedo para caberem lado a lado — deixar
-            // arrastar aqui trocava o layout pra `table-layout: fixed` e
-            // perdia esse ajuste. A tabela geral (colunas completas) continua
-            // redimensionável, como sempre foi.
-            permiteRedimensionar={!reduzida}
+            // AS TRÊS TABELAS DE ÁREA FIXA (`reduzida`) ganham largura fixa
+            // desde o primeiro render — Data e Instituição enxutas, Pauta
+            // (fora do mapa) leva o resto. Sem isto a tabela cresce pelo
+            // CONTEÚDO (uma instituição de nome comprido, por exemplo) e
+            // aperta a largura das outras duas tabelas ao lado no grid — ver
+            // o comentário de `largurasPadrao` em `Tabela.tsx`.
+            largurasPadrao={reduzida ? { Data: 62, Instituição: 84 } : undefined}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
@@ -208,22 +209,13 @@ export function TabelaDeInteracoes({
                       : undefined
                   }
                 >
-                  <td
-                    style={{ ...celulaAtual, whiteSpace: 'nowrap', width: reduzida ? 62 : undefined }}
-                    className="tabular"
-                  >
+                  <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }} className="tabular">
                     {dataCompleta(interacao.data_interacao)}
                   </td>
                   <td
                     style={
                       reduzida
-                        ? {
-                            ...celulaAtual,
-                            width: 84,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }
+                        ? { ...celulaAtual, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                         : { ...celulaAtual, minWidth: 160 }
                     }
                   >
