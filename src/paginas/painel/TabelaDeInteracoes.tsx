@@ -3,12 +3,13 @@
  *  REDUZIDA DE PROPÓSITO: a Base já tem a tabela completa, com todas as
  *  colunas e seleção de quais mostrar. Aqui o objetivo é outro — um resumo de
  *  "quem apareceu por último e como foi" dentro do próprio Painel —, e por
- *  isso só as colunas mais lidas: Data, Instituição, Pauta, Área(s),
- *  Relevância e Clima.
+ *  isso só as colunas mais lidas: Data, Instituição, Stakeholder, Pauta,
+ *  Área(s), Relevância e Clima.
  *
- *  PAGINADA DE 10 EM 10, e não com rolagem interna como a Base: dez linhas
- *  cabem inteiras no cartão, sem precisar rolar por dentro de uma tela que já
- *  rola por fora.
+ *  PAGINADA, e não com rolagem interna como a Base: dez linhas por página por
+ *  padrão, com a quantidade ajustável — quem quiser ver mais de uma vez só
+ *  aumenta o número, em vez de rolar por dentro de uma tela que já rola por
+ *  fora.
  *
  *  MESMO RECORTE do resto do Painel — a lista vem de `interacoes`, que já é o
  *  recorte filtrado; esta tabela nunca busca dado próprio.
@@ -20,15 +21,18 @@ import {
   Botao,
   Chip,
   ChipDeFrente,
-  Drawer,
+  Modal,
   Secao,
   Selo,
   Vazio,
+  estiloDeEntrada,
 } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
 import { rotuloDeAbrangencia } from '@/dominio/frentes';
+import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
+import type { Ordenacao } from '@/dominio/ordenacao';
 import {
   nomeDaInstituicao,
   nomesDosTemas,
@@ -38,8 +42,13 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
 
-const COLUNAS = ['Data', 'Instituição', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
-const POR_PAGINA = 10;
+const COLUNAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+
+//: SÓ DATA E INSTITUIÇÃO, por pedido — mais antigo/mais novo e A-Z/Z-A. As
+//: demais colunas continuam como cabeçalho simples, sem seta nem clique.
+const COLUNAS_ORDENAVEIS = ['Data', 'Instituição'];
+
+const PADRAO_POR_PAGINA = 10;
 
 /** O clima tem TRÊS códigos hoje (Propositivo/Neutro/Tenso), não cinco — ver
  *  `catalogo.dicionarios.climas`. O selo usa as mesmas cores do resto do
@@ -66,6 +75,15 @@ function nomesDasAreas(interacao: Interacao, catalogo: Catalogo): string {
     .join(', ');
 }
 
+/** O STAKEHOLDER É UM ID, não um código — diferente dos outros dicionários
+ *  desta tela, que resolvem por `codigo` (ver `rotuloDeCodigo`). Mesmo campo
+ *  que hoje só é lido e gravado (nada mais no app filtra ou soma por ele);
+ *  aqui ele aparece pela primeira vez numa tela. */
+function nomeDoStakeholder(catalogo: Catalogo, id: number | null): string {
+  if (id == null) return '—';
+  return catalogo.dicionarios.stakeholders.find((s) => s.id === id)?.nome ?? '—';
+}
+
 export function TabelaDeInteracoes({
   interacoes,
   catalogo,
@@ -74,22 +92,31 @@ export function TabelaDeInteracoes({
   catalogo: Catalogo;
 }) {
   const [pagina, definirPagina] = useState(1);
+  const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
+  const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>({
+    coluna: 'Data',
+    direcao: 'desc',
+  });
   const [aberta, definirAberta] = useState<Interacao | null>(null);
 
-  const ordenadas = useMemo(
-    () => [...interacoes].sort((a, b) => b.data_interacao.localeCompare(a.data_interacao)),
-    [interacoes],
-  );
+  const ordenadas = useMemo(() => {
+    const extratores: Record<string, (i: Interacao) => string | number> = {
+      Data: (i) => i.data_interacao,
+      Instituição: (i) => nomeDaInstituicao(catalogo, i.instituicao_id),
+    };
+    return ordenarPor(interacoes, ordenacao, extratores);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interacoes, ordenacao, catalogo]);
 
-  const totalDePaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
-  // Clampa sozinho quando o recorte muda e a página guardada deixa de
-  // existir — sem isto, filtrar para um recorte menor podia deixar a tabela
-  // "na página 4 de 2", em branco, sem dizer por quê.
+  const totalDePaginas = Math.max(1, Math.ceil(ordenadas.length / porPagina));
+  // Clampa sozinho quando o recorte (ou o tamanho da página) muda e a página
+  // guardada deixa de existir — sem isto, filtrar para um recorte menor podia
+  // deixar a tabela "na página 4 de 2", em branco, sem dizer por quê.
   const paginaAtual = Math.min(pagina, totalDePaginas);
-  const daPagina = ordenadas.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
+  const daPagina = ordenadas.slice((paginaAtual - 1) * porPagina, paginaAtual * porPagina);
 
   return (
-    <Secao titulo="Interações do recorte">
+    <Secao titulo="Interações mais recentes">
       {!ordenadas.length ? (
         <Vazio
           mensagem="Nenhuma interação no recorte"
@@ -97,7 +124,16 @@ export function TabelaDeInteracoes({
         />
       ) : (
         <>
-          <Tabela colunas={COLUNAS} altura="none">
+          <Tabela
+            colunas={COLUNAS}
+            altura="none"
+            colunasOrdenaveis={COLUNAS_ORDENAVEIS}
+            ordenacao={ordenacao}
+            aoOrdenar={(coluna) => {
+              definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
+              definirPagina(1);
+            }}
+          >
             {daPagina.map((interacao) => (
               <LinhaDaTabela
                 key={interacao.id}
@@ -109,6 +145,9 @@ export function TabelaDeInteracoes({
                 </td>
                 <td style={{ ...celula, minWidth: 160 }}>
                   {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
+                </td>
+                <td style={{ ...celula, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                  {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
                 </td>
                 <td
                   style={{
@@ -134,16 +173,21 @@ export function TabelaDeInteracoes({
             ))}
           </Tabela>
 
-          <PaginacaoSimples
+          <RodapeDePaginacao
             pagina={paginaAtual}
             totalDePaginas={totalDePaginas}
-            aoMudar={definirPagina}
+            porPagina={porPagina}
+            aoMudarPagina={definirPagina}
+            aoMudarPorPagina={(novo) => {
+              definirPorPagina(novo);
+              definirPagina(1);
+            }}
           />
         </>
       )}
 
       {aberta ? (
-        <DrawerDaInteracao
+        <PopupDaInteracao
           interacao={aberta}
           interacoes={interacoes}
           catalogo={catalogo}
@@ -154,40 +198,64 @@ export function TabelaDeInteracoes({
   );
 }
 
-function PaginacaoSimples({
+function RodapeDePaginacao({
   pagina,
   totalDePaginas,
-  aoMudar,
+  porPagina,
+  aoMudarPagina,
+  aoMudarPorPagina,
 }: {
   pagina: number;
   totalDePaginas: number;
-  aoMudar: (pagina: number) => void;
+  porPagina: number;
+  aoMudarPagina: (pagina: number) => void;
+  aoMudarPorPagina: (porPagina: number) => void;
 }) {
-  if (totalDePaginas <= 1) return null;
-
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
         marginTop: 14,
       }}
     >
-      <Botao variante="fantasma" desabilitado={pagina <= 1} aoClicar={() => aoMudar(pagina - 1)}>
-        ← Anterior
-      </Botao>
-      <span className="tabular" style={{ fontSize: 12.5, color: 'var(--cinza-3)' }}>
-        Página {pagina} de {totalDePaginas}
-      </span>
-      <Botao
-        variante="fantasma"
-        desabilitado={pagina >= totalDePaginas}
-        aoClicar={() => aoMudar(pagina + 1)}
-      >
-        Próxima →
-      </Botao>
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--cinza-3)' }}>
+        Mostrar
+        <input
+          type="number"
+          min={1}
+          inputMode="numeric"
+          value={porPagina}
+          onChange={(evento) => {
+            const numero = Number(evento.target.value);
+            aoMudarPorPagina(Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 1);
+          }}
+          style={{ ...estiloDeEntrada, width: 60, height: 30, padding: '0 8px', textAlign: 'center' }}
+          aria-label="Quantos registros mostrar por página"
+        />
+        registros por página
+      </label>
+
+      {totalDePaginas > 1 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Botao variante="fantasma" desabilitado={pagina <= 1} aoClicar={() => aoMudarPagina(pagina - 1)}>
+            ← Anterior
+          </Botao>
+          <span className="tabular" style={{ fontSize: 12.5, color: 'var(--cinza-3)' }}>
+            Página {pagina} de {totalDePaginas}
+          </span>
+          <Botao
+            variante="fantasma"
+            desabilitado={pagina >= totalDePaginas}
+            aoClicar={() => aoMudarPagina(pagina + 1)}
+          >
+            Próxima →
+          </Botao>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -204,7 +272,7 @@ const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
   { campo: 'observacoes', rotulo: 'Observações' },
 ];
 
-function DrawerDaInteracao({
+function PopupDaInteracao({
   interacao,
   interacoes,
   catalogo,
@@ -220,7 +288,7 @@ function DrawerDaInteracao({
   // A LINHA DO TEMPO VEM DO MESMO `interacoes` do Painel — o recorte
   // filtrado, não a história inteira da instituição fora dele. É a mesma
   // regra da tabela ("respeitando o filtro global"), estendida para dentro
-  // do drawer: nenhum dos dois busca dado que os filtros já excluíram.
+  // do popup: nenhum dos dois busca dado que os filtros já excluíram.
   const linhaDoTempo = useMemo(
     () =>
       interacoes
@@ -232,7 +300,7 @@ function DrawerDaInteracao({
   const conteudo = CONTEUDO.filter(({ campo }) => Boolean(interacao[campo]));
 
   return (
-    <Drawer
+    <Modal
       titulo={nomeInstituicao}
       subtitulo={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -256,6 +324,7 @@ function DrawerDaInteracao({
               margin: 0,
             }}
           >
+            <Metadado rotulo="Stakeholder" valor={nomeDoStakeholder(catalogo, interacao.stakeholder_id)} />
             <Metadado rotulo="Relevância" valor={rotuloDeRelevancia(catalogo, interacao.tier)} />
             <Metadado rotulo="Clima" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
             <Metadado rotulo="UF" valor={rotuloDeAbrangencia(interacao.uf)} />
@@ -336,7 +405,7 @@ function DrawerDaInteracao({
           )}
         </section>
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 
