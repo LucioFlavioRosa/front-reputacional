@@ -178,7 +178,7 @@ export function Layout({
               style={{ height: 40, width: 'auto', filter: 'brightness(0) invert(1)' }}
             />
             <span style={{ textAlign: 'left', lineHeight: 1.2 }}>
-              <span style={{ display: 'block', fontSize: 18, fontWeight: 700, color: 'var(--branco)' }}>
+              <span style={{ display: 'block', fontSize: 23, fontWeight: 700, color: 'var(--branco)' }}>
                 CRM dos Stakeholders
               </span>
             </span>
