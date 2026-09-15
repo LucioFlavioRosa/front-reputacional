@@ -84,6 +84,22 @@ const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
 //: lado) — a completa continua com o espaçamento de sempre.
 const CELULA_COMPACTA = { padding: '6px 8px' };
 
+//: A PAUTA DA VERSÃO REDUZIDA quebra em até DUAS linhas antes de truncar —
+//: uma só (a versão completa, `overflow+ellipsis+nowrap` de sempre) cortava
+//: pauta longa cedo demais nas três tabelas lado a lado, que já têm menos
+//: largura. `minHeight` reserva o espaço das duas linhas mesmo numa pauta
+//: curta: é o que deixa a ALTURA DA LINHA FIXA — sem isto, cada linha da
+//: tabela teria uma altura diferente dependendo do tamanho da própria pauta.
+const PAUTA_EM_DUAS_LINHAS = {
+  whiteSpace: 'normal' as const,
+  display: '-webkit-box' as const,
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical' as const,
+  overflow: 'hidden',
+  lineHeight: 1.35,
+  minHeight: '2.7em',
+};
+
 function SeloDeClima({ codigo, catalogo }: { codigo: string | null; catalogo: Catalogo }) {
   if (!codigo) return <span style={{ color: 'var(--cinza-2)', fontSize: 13 }}>—</span>;
   const cores = SELO_DO_CLIMA[codigo];
@@ -198,13 +214,17 @@ export function TabelaDeInteracoes({
                     </td>
                   )}
                   <td
-                    style={{
-                      ...celulaAtual,
-                      maxWidth: reduzida ? 130 : 280,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
+                    style={
+                      reduzida
+                        ? { ...celulaAtual, maxWidth: 130, ...PAUTA_EM_DUAS_LINHAS }
+                        : {
+                            ...celulaAtual,
+                            maxWidth: 280,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }
+                    }
                   >
                     {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
                   </td>
