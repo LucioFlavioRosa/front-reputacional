@@ -225,6 +225,14 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 //: significados diferentes.
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
+//: A MESMA PALETA, EM ORDEM INVERTIDA — só para área. As roscas de "Interações
+//: por tier" e "Interações por áreas" ficam lado a lado no Painel; com a
+//: mesma paleta na mesma ordem, a primeira fatia de cada uma sairia da MESMA
+//: cor (azul) sem que isso signifique nada em comum entre um tier e uma
+//: área. Invertida, as 3 áreas de hoje começam em amarelo/rosa/laranja —
+//: nenhuma delas repete a cor de nenhum dos tiers.
+const PALETA_DE_AREAS = [...PALETA_DO_PAINEL].reverse();
+
 /** Quantas interações em cada nível de relevância — sempre um item por
  *  tier cadastrado (`catalogo.dicionarios.relevancias`), mesmo os com zero
  *  neste recorte: é o que faz a rosca sempre ter o mesmo número de fatias,
@@ -271,7 +279,11 @@ export function topInstituicoesPorTier(
 }
 
 /** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
- *  uma interação com duas áreas soma nas duas, e não escolhe uma. */
+ *  uma interação com duas áreas soma nas duas, e não escolhe uma.
+ *
+ *  `cor` vem de `PALETA_DE_AREAS` — a paleta do painel invertida, para a
+ *  rosca de "Interações por áreas" não repetir a cor da rosca de "Interações
+ *  por tier" logo ao lado. */
 export function porArea(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -289,7 +301,47 @@ export function porArea(
   return [...contagem.entries()]
     .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
     .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
-    .slice(0, quantos);
+    .slice(0, quantos)
+    .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
+}
+
+export interface ClimaDaArea {
+  propositivo: number;
+  neutro: number;
+  tenso: number;
+}
+
+/** A quebra de clima de cada área — o que o tooltip de "Volume por área"
+ *  mostra ao passar o mouse. MULTIVALORADO como `porArea`: uma interação com
+ *  duas áreas soma clima nas duas. Sem clima registrado não entra em
+ *  nenhuma das três contagens, mesmo critério de `scorePorTema`. */
+export function climaPorArea(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+): Record<string, ClimaDaArea> {
+  const contagem: Record<string, ClimaDaArea> = {};
+
+  for (const interacao of interacoes) {
+    if (!interacao.clima) continue;
+    for (const areaId of interacao.areas) {
+      const chave = String(areaId);
+      const atual = contagem[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+      if (interacao.clima === 'propositivo') atual.propositivo += 1;
+      else if (interacao.clima === 'neutro') atual.neutro += 1;
+      else if (interacao.clima === 'tenso') atual.tenso += 1;
+      contagem[chave] = atual;
+    }
+  }
+
+  // Mantém as áreas sem clima nenhum no mapa, com zeros — evita `undefined`
+  // em quem consulta uma área que existe em `porArea` mas ainda não tem
+  // nenhuma interação com clima registrado.
+  for (const area of catalogo.dicionarios.areas_pessoa) {
+    const chave = String(area.id);
+    if (!contagem[chave]) contagem[chave] = { propositivo: 0, neutro: 0, tenso: 0 };
+  }
+
+  return contagem;
 }
 
 export interface ScoreDeInstituicao {
@@ -301,11 +353,12 @@ export interface ScoreDeInstituicao {
   score: number;
 }
 
-/** O placar de clima por instituição ("público"), nos mesmos moldes de
- *  `scorePorTema`: só quem tem clima registrado entra na conta, o score é
- *  (proativas − reativas) ÷ total em pontos de −100 a 100, e os `quantos`
- *  mais discutidos entram primeiro — só depois a ordenação vira a do score,
- *  pior primeiro. */
+/** O placar de clima por instituição ("público"): só quem tem clima
+ *  registrado entra na conta, o score é (proativas − reativas) ÷ total em
+ *  pontos de −100 a 100. Os `quantos` com MAIS interações entram primeiro —
+ *  e a ordem final é a mesma, da maior para a menor quantidade: é "com quem
+ *  falamos mais, e como está indo", não um ranking de pior para melhor
+ *  score (esse já existe em `scorePorTema`/`scorePorArea`). */
 export function scorePorInstituicao(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -335,8 +388,7 @@ export function scorePorInstituicao(
 
   return todos
     .sort((a, b) => b.total - a.total)
-    .slice(0, quantos)
-    .sort((a, b) => a.score - b.score);
+    .slice(0, quantos);
 }
 
 /* -- séries mensais ------------------------------------------------------- */

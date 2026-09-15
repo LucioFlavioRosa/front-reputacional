@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Ordenacao } from '@/dominio/ordenacao';
 
 const LARGURA_MINIMA = 60;
@@ -31,6 +31,8 @@ export function Tabela({
   aoOrdenar,
   chaveDeArmazenamento,
   altura = 'calc(100vh - 340px)',
+  compacta = false,
+  largurasPadrao,
   children,
 }: {
   colunas: string[];
@@ -45,6 +47,28 @@ export function Tabela({
   chaveDeArmazenamento?: string;
   /** Até onde a lista cresce antes de rolar por dentro. */
   altura?: string;
+  /** Cabeçalho mais baixo e fonte um pouco menor — para tabelas que dividem
+   *  a largura do cartão com outras, lado a lado (as três tabelas de área
+   *  fixa do Painel). As células continuam com o padrão de sempre; quem
+   *  chama ajusta o próprio `<td>` se precisar do mesmo aperto. */
+  compacta?: boolean;
+  /** Largura inicial (px) de uma ou mais colunas, PELO NOME — a coluna que
+   *  não está aqui absorve o espaço que sobrar. Diferente de `larguras` (o
+   *  ajuste que o próprio usuário arrasta): isto entra ANTES de qualquer
+   *  arraste, e é o que já deixa `table-layout: fixed` desde o primeiro
+   *  render, em vez de só depois do primeiro arraste.
+   *
+   *  SEM ISTO, uma tabela em `table-layout: auto` (o padrão) cresce pelo
+   *  CONTEÚDO — um nome de instituição comprido empurra a coluna, a tabela, e
+   *  o cartão inteiro além da largura que o layout reservou para ele. Numa
+   *  tabela sozinha isso só rola por dentro (`.rolagem-interna`); lado a lado
+   *  com outras num grid (as três tabelas de área fixa do Painel), o cartão
+   *  que cresce pelo conteúdo aperta a largura dos vizinhos — arrastar uma
+   *  coluna parecia "mexer no tamanho das outras tabelas", mas o problema
+   *  era a tabela em `auto` nunca ter tido uma largura própria, com ou sem
+   *  arraste. `largurasPadrao` fixa a largura de saída, e o cartão para de
+   *  negociar espaço com os vizinhos pelo conteúdo de dentro. */
+  largurasPadrao?: Record<string, number>;
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -117,11 +141,14 @@ export function Tabela({
     redimensionando.current = { coluna, inicioX: evento.clientX, larguraInicial: larguraAtual };
   }
 
-  // `table-layout: fixed` só entra depois que alguém redimensiona algo.
-  // Antes disso a tabela continua com o comportamento de sempre — largura
-  // pelo conteúdo —, que é o que as três páginas já contam com (`minWidth`
-  // por célula, texto que quebra, etc.).
-  const temLarguraCustomizada = Object.keys(larguras).length > 0;
+  // `table-layout: fixed` entra assim que existir QUALQUER largura definida —
+  // do usuário (`larguras`, depois de um arraste) ou de quem chama
+  // (`largurasPadrao`, antes de qualquer arraste). Sem nenhuma das duas, a
+  // tabela continua com o comportamento de sempre — largura pelo conteúdo —,
+  // que é o que as páginas sem largura própria já contam com (`minWidth` por
+  // célula, texto que quebra, etc.).
+  const temLarguraDefinida =
+    Object.keys(larguras).length > 0 || Boolean(largurasPadrao && Object.keys(largurasPadrao).length);
 
   return (
     <div className="rolagem-interna" style={{ maxHeight: altura }}>
@@ -129,14 +156,15 @@ export function Tabela({
         style={{
           width: '100%',
           borderCollapse: 'collapse',
-          fontSize: 13,
-          tableLayout: temLarguraCustomizada ? 'fixed' : 'auto',
+          fontSize: compacta ? 12 : 13,
+          tableLayout: temLarguraDefinida ? 'fixed' : 'auto',
         }}
       >
         <colgroup>
-          {colunas.map((coluna) => (
-            <col key={coluna} style={larguras[coluna] ? { width: larguras[coluna] } : undefined} />
-          ))}
+          {colunas.map((coluna) => {
+            const largura = larguras[coluna] ?? largurasPadrao?.[coluna];
+            return <col key={coluna} style={largura ? { width: largura } : undefined} />;
+          })}
         </colgroup>
         <thead>
           <tr>
@@ -153,9 +181,9 @@ export function Tabela({
                     background: 'var(--bg-trilho)',
                     textAlign: 'left',
                     padding: 0,
-                    fontSize: 13,
+                    fontSize: compacta ? 11 : 13,
                     fontWeight: 700,
-                    letterSpacing: '0.05em',
+                    letterSpacing: compacta ? '0.02em' : '0.05em',
                     textTransform: 'uppercase',
                     // Azul da marca, e não o cinza neutro de antes: é o que
                     // distingue o cabeçalho do resto da tabela à primeira
@@ -175,7 +203,7 @@ export function Tabela({
                         alignItems: 'center',
                         gap: 5,
                         width: '100%',
-                        padding: '10px 14px',
+                        padding: compacta ? '6px 8px' : '10px 14px',
                         border: 'none',
                         background: 'transparent',
                         font: 'inherit',
@@ -192,7 +220,7 @@ export function Tabela({
                       </span>
                     </button>
                   ) : (
-                    <div style={{ padding: '10px 14px' }}>{coluna}</div>
+                    <div style={{ padding: compacta ? '6px 8px' : '10px 14px' }}>{coluna}</div>
                   )}
 
                   {/* A ÚLTIMA COLUNA NÃO GANHA ALÇA: não há o que redimensionar
@@ -230,10 +258,15 @@ export function Tabela({
 export function Linha({
   aoClicar,
   titulo,
+  estilo,
   children,
 }: {
   aoClicar?: () => void;
   titulo?: string;
+  /** Fundo próprio da linha — as três tabelas de área fixa do Painel pintam
+   *  a linha inteira pelo clima. O hover continua por cima (`bg-hover`);
+   *  tirar o mouse RESTAURA este fundo, e não o branco de sempre. */
+  estilo?: CSSProperties;
   children: ReactNode;
 }) {
   return (
@@ -243,12 +276,13 @@ export function Linha({
       style={{
         cursor: aoClicar ? 'pointer' : undefined,
         borderBottom: '1px solid var(--borda)',
+        ...estilo,
       }}
       onMouseEnter={(evento) => {
         if (aoClicar) evento.currentTarget.style.background = 'var(--bg-hover)';
       }}
       onMouseLeave={(evento) => {
-        evento.currentTarget.style.background = '';
+        evento.currentTarget.style.background = (estilo?.background as string) ?? '';
       }}
     >
       {children}

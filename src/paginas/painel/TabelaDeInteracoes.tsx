@@ -42,7 +42,16 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
 
-const COLUNAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+const COLUNAS_COMPLETAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+
+//: A VERSÃO REDUZIDA serve às três tabelas de área fixa do Painel: a área já
+//: está no título do cartão (é fixa, não uma coluna), Stakeholder e
+//: Relevância saem para a lista caber lado a lado com as outras duas sem
+//: rolagem horizontal. CLIMA TAMBÉM SAI COMO COLUNA — a linha inteira já
+//: pinta pela cor do clima (`FUNDO_DA_LINHA_POR_CLIMA`), então o selo
+//: repetiria em texto uma informação que a cor já deu, só para ocupar um
+//: espaço que as três tabelas lado a lado não sobram.
+const COLUNAS_REDUZIDAS = ['Data', 'Instituição', 'Pauta'];
 
 //: SÓ DATA E INSTITUIÇÃO, por pedido — mais antigo/mais novo e A-Z/Z-A. As
 //: demais colunas continuam como cabeçalho simples, sem seta nem clique.
@@ -58,6 +67,37 @@ const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
   propositivo: { fundo: 'var(--turquesa-rio)', texto: 'var(--sobre-turquesa)' },
   neutro: { fundo: 'var(--cinza-2)', texto: 'var(--branco)' },
   tenso: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
+};
+
+//: A LINHA INTEIRA das três tabelas de área fixa pinta pelo clima — mesma
+//: técnica de `Barra` (`color-mix` com o branco, a uma fração baixa): a cor
+//: crua do selo (feita para contraste de texto em cima dela) é forte demais
+//: pra virar fundo de linha inteira; diluída, dá para ler o texto normal por
+//: cima sem competir com o selo da própria linha.
+const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
+  propositivo: 'color-mix(in srgb, var(--turquesa-rio) 10%, var(--branco))',
+  neutro: 'color-mix(in srgb, var(--cinza-2) 7%, var(--branco))',
+  tenso: 'color-mix(in srgb, var(--vermelho-pitanga) 10%, var(--branco))',
+};
+
+//: CÉLULA MAIS APERTADA, só para a versão reduzida (as três tabelas lado a
+//: lado) — a completa continua com o espaçamento de sempre.
+const CELULA_COMPACTA = { padding: '6px 8px' };
+
+//: A PAUTA DA VERSÃO REDUZIDA quebra em até DUAS linhas antes de truncar —
+//: uma só (a versão completa, `overflow+ellipsis+nowrap` de sempre) cortava
+//: pauta longa cedo demais nas três tabelas lado a lado, que já têm menos
+//: largura. `minHeight` reserva o espaço das duas linhas mesmo numa pauta
+//: curta: é o que deixa a ALTURA DA LINHA FIXA — sem isto, cada linha da
+//: tabela teria uma altura diferente dependendo do tamanho da própria pauta.
+const PAUTA_EM_DUAS_LINHAS = {
+  whiteSpace: 'normal' as const,
+  display: '-webkit-box' as const,
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical' as const,
+  overflow: 'hidden',
+  lineHeight: 1.35,
+  minHeight: '2.7em',
 };
 
 function SeloDeClima({ codigo, catalogo }: { codigo: string | null; catalogo: Catalogo }) {
@@ -87,10 +127,24 @@ function nomeDoStakeholder(catalogo: Catalogo, id: number | null): string {
 export function TabelaDeInteracoes({
   interacoes,
   catalogo,
+  aoAbrirFicha,
+  titulo = 'Interações mais recentes',
+  colunas = 'completas',
 }: {
   interacoes: Interacao[];
   catalogo: Catalogo;
+  /** Abre a Ficha completa de uma interação específica — a mesma usada pela
+   *  Base. A linha do tempo, dentro do popup, leva até ela quando alguém
+   *  clica numa das outras interações do mesmo ente público. */
+  aoAbrirFicha: (id: string) => void;
+  /** Título do cartão — as três tabelas de área fixa usam o nome da área. */
+  titulo?: string;
+  /** 'reduzidas' tira Stakeholder e Relevância — usado pelas três tabelas de
+   *  área fixa, lado a lado, onde a área já está dita no título do cartão. */
+  colunas?: 'completas' | 'reduzidas';
 }) {
+  const reduzida = colunas === 'reduzidas';
+  const colunasDaTabela = reduzida ? COLUNAS_REDUZIDAS : COLUNAS_COMPLETAS;
   const [pagina, definirPagina] = useState(1);
   const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>({
@@ -116,61 +170,95 @@ export function TabelaDeInteracoes({
   const daPagina = ordenadas.slice((paginaAtual - 1) * porPagina, paginaAtual * porPagina);
 
   return (
-    <Secao titulo="Interações mais recentes">
+    <Secao titulo={titulo}>
       {!ordenadas.length ? (
         <Vazio
-          mensagem="Nenhuma interação no recorte"
+          mensagem={`Nenhuma interação em ${titulo} neste recorte`}
           dica="Ajuste os filtros para ver resultados."
         />
       ) : (
         <>
           <Tabela
-            colunas={COLUNAS}
+            colunas={colunasDaTabela}
             altura="none"
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
+            compacta={reduzida}
+            // AS TRÊS TABELAS DE ÁREA FIXA (`reduzida`) ganham largura fixa
+            // desde o primeiro render — Data e Instituição enxutas, Pauta
+            // (fora do mapa) leva o resto. Sem isto a tabela cresce pelo
+            // CONTEÚDO (uma instituição de nome comprido, por exemplo) e
+            // aperta a largura das outras duas tabelas ao lado no grid — ver
+            // o comentário de `largurasPadrao` em `Tabela.tsx`.
+            largurasPadrao={reduzida ? { Data: 76, Instituição: 84 } : undefined}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
             }}
           >
-            {daPagina.map((interacao) => (
-              <LinhaDaTabela
-                key={interacao.id}
-                aoClicar={() => definirAberta(interacao)}
-                titulo="Ver a ficha e a linha do tempo desta instituição"
-              >
-                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
-                  {dataCompleta(interacao.data_interacao)}
-                </td>
-                <td style={{ ...celula, minWidth: 160 }}>
-                  {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
-                </td>
-                <td style={{ ...celula, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
-                  {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
-                </td>
-                <td
-                  style={{
-                    ...celula,
-                    maxWidth: 280,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+            {daPagina.map((interacao) => {
+              const celulaAtual = reduzida ? { ...celula, ...CELULA_COMPACTA } : celula;
+              return (
+                <LinhaDaTabela
+                  key={interacao.id}
+                  aoClicar={() => definirAberta(interacao)}
+                  titulo="Ver a ficha e a linha do tempo desta instituição"
+                  estilo={
+                    reduzida && interacao.clima
+                      ? { background: FUNDO_DA_LINHA_POR_CLIMA[interacao.clima] }
+                      : undefined
+                  }
                 >
-                  {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
-                </td>
-                <td style={{ ...celula, color: 'var(--cinza-2)' }}>
-                  {nomesDasAreas(interacao, catalogo)}
-                </td>
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                  {rotuloDeRelevancia(catalogo, interacao.tier)}
-                </td>
-                <td style={celula}>
-                  <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
-                </td>
-              </LinhaDaTabela>
-            ))}
+                  <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }} className="tabular">
+                    {dataCompleta(interacao.data_interacao)}
+                  </td>
+                  <td
+                    style={
+                      reduzida
+                        ? { ...celulaAtual, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                        : { ...celulaAtual, minWidth: 160 }
+                    }
+                  >
+                    {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
+                  </td>
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                      {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
+                    </td>
+                  )}
+                  <td
+                    style={
+                      reduzida
+                        ? { ...celulaAtual, ...PAUTA_EM_DUAS_LINHAS }
+                        : {
+                            ...celulaAtual,
+                            maxWidth: 280,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }
+                    }
+                  >
+                    {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
+                  </td>
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, color: 'var(--cinza-2)' }}>
+                      {nomesDasAreas(interacao, catalogo)}
+                    </td>
+                  )}
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }}>
+                      {rotuloDeRelevancia(catalogo, interacao.tier)}
+                    </td>
+                  )}
+                  {reduzida ? null : (
+                    <td style={celulaAtual}>
+                      <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
+                    </td>
+                  )}
+                </LinhaDaTabela>
+              );
+            })}
           </Tabela>
 
           <RodapeDePaginacao
@@ -192,6 +280,14 @@ export function TabelaDeInteracoes({
           interacoes={interacoes}
           catalogo={catalogo}
           aoFechar={() => definirAberta(null)}
+          aoAbrirFicha={(id) => {
+            // FECHA ESTE POPUP ANTES DE ABRIR A FICHA — os dois são
+            // overlays por cima da tela; um por cima do outro deixaria dois
+            // fundos escurecidos empilhados, e fechar só a Ficha devolveria
+            // a alguém um popup que ele não lembra ter deixado aberto.
+            definirAberta(null);
+            aoAbrirFicha(id);
+          }}
         />
       ) : null}
     </Secao>
@@ -272,16 +368,20 @@ const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
   { campo: 'observacoes', rotulo: 'Observações' },
 ];
 
+const COLUNAS_DA_LINHA_DO_TEMPO = ['Data', 'Pauta', 'Área(s)', 'Clima'];
+
 function PopupDaInteracao({
   interacao,
   interacoes,
   catalogo,
   aoFechar,
+  aoAbrirFicha,
 }: {
   interacao: Interacao;
   interacoes: Interacao[];
   catalogo: Catalogo;
   aoFechar: () => void;
+  aoAbrirFicha: (id: string) => void;
 }) {
   const nomeInstituicao = nomeDaInstituicao(catalogo, interacao.instituicao_id);
 
@@ -371,33 +471,41 @@ function PopupDaInteracao({
             Linha do tempo com {nomeInstituicao}
           </div>
           {linhaDoTempo.length ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {linhaDoTempo.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    alignItems: 'flex-start',
-                    padding: '10px 0',
-                    borderBottom: '1px solid var(--borda)',
-                  }}
-                >
-                  <div
-                    className="tabular"
-                    style={{ fontSize: 12, color: 'var(--cinza-2)', flexShrink: 0, width: 76, marginTop: 2 }}
+            <>
+              <Tabela colunas={COLUNAS_DA_LINHA_DO_TEMPO} altura="none">
+                {linhaDoTempo.map((item) => (
+                  <LinhaDaTabela
+                    key={item.id}
+                    aoClicar={() => aoAbrirFicha(item.id)}
+                    titulo="Abrir esta interação na Base"
                   >
-                    {dataCompleta(item.data_interacao)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: 'var(--cinza-4)' }}>
+                    <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                      {dataCompleta(item.data_interacao)}
+                    </td>
+                    <td
+                      style={{
+                        ...celula,
+                        maxWidth: 320,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {tituloDaAgenda(item, (ids) => nomesDosTemas(catalogo, ids))}
-                    </div>
-                  </div>
-                  <SeloDeClima codigo={item.clima} catalogo={catalogo} />
-                </div>
-              ))}
-            </div>
+                    </td>
+                    <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                      {nomesDasAreas(item, catalogo)}
+                    </td>
+                    <td style={celula}>
+                      <SeloDeClima codigo={item.clima} catalogo={catalogo} />
+                    </td>
+                  </LinhaDaTabela>
+                ))}
+              </Tabela>
+              <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 8 }}>
+                Clique numa interação para abrir a ficha completa na Base.
+              </p>
+            </>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
               Nenhuma outra interação com esta instituição neste recorte.
