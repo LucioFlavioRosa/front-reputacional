@@ -55,10 +55,6 @@ export class Sincronizador {
   avisar(): void {
     for (const ouvinte of this.ouvintes) ouvinte();
   }
-
-  get quantosEscutam(): number {
-    return this.ouvintes.size;
-  }
 }
 
 /** O único sincronizador da aplicação: o cliente da API avisa aqui, e o

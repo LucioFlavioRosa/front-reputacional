@@ -69,7 +69,6 @@ describe('Sincronizador — o aviso', () => {
     s.avisar();
 
     expect(a).not.toHaveBeenCalled();
-    expect(s.quantosEscutam).toBe(0);
   });
 
   it('assinar duas vezes a mesma função não duplica o aviso', () => {
