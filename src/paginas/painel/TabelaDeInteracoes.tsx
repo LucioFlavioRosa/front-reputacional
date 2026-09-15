@@ -47,8 +47,11 @@ const COLUNAS_COMPLETAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Ár
 //: A VERSÃO REDUZIDA serve às três tabelas de área fixa do Painel: a área já
 //: está no título do cartão (é fixa, não uma coluna), Stakeholder e
 //: Relevância saem para a lista caber lado a lado com as outras duas sem
-//: rolagem horizontal.
-const COLUNAS_REDUZIDAS = ['Data', 'Instituição', 'Pauta', 'Clima'];
+//: rolagem horizontal. CLIMA TAMBÉM SAI COMO COLUNA — a linha inteira já
+//: pinta pela cor do clima (`FUNDO_DA_LINHA_POR_CLIMA`), então o selo
+//: repetiria em texto uma informação que a cor já deu, só para ocupar um
+//: espaço que as três tabelas lado a lado não sobram.
+const COLUNAS_REDUZIDAS = ['Data', 'Instituição', 'Pauta'];
 
 //: SÓ DATA E INSTITUIÇÃO, por pedido — mais antigo/mais novo e A-Z/Z-A. As
 //: demais colunas continuam como cabeçalho simples, sem seta nem clique.
@@ -215,9 +218,11 @@ export function TabelaDeInteracoes({
                       {rotuloDeRelevancia(catalogo, interacao.tier)}
                     </td>
                   )}
-                  <td style={celulaAtual}>
-                    <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
-                  </td>
+                  {reduzida ? null : (
+                    <td style={celulaAtual}>
+                      <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
+                    </td>
+                  )}
                 </LinhaDaTabela>
               );
             })}
