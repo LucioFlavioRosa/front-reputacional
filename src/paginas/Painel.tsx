@@ -33,6 +33,7 @@ import {
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
+  topInstituicoesPorTier,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 
@@ -161,6 +162,7 @@ export function Painel({
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
+      topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
   }, [interacoes, catalogo, temasExtras, granularidade]);
 
@@ -291,6 +293,12 @@ export function Painel({
                 ativo={recorte.tier != null ? String(recorte.tier) : undefined}
                 aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
                 rotuloCentral="interações"
+                detalheAoPassarMouse={(chave) =>
+                  (derivado.topInstituicoesPorTier[chave] ?? []).map((item) => ({
+                    rotulo: item.rotulo,
+                    valor: numero(item.total),
+                  }))
+                }
               />
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>

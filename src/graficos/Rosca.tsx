@@ -10,6 +10,7 @@
  *  zero do círculo trigonométrico).
  */
 
+import { useState } from 'react';
 import type { ItemContado } from '@/dominio/derivacoes';
 import { numero, percentual } from '@/dominio/formato';
 
@@ -23,6 +24,7 @@ export function Rosca({
   ativo,
   aoClicar,
   rotuloCentral,
+  detalheAoPassarMouse,
   vazio = 'Nenhum registro no recorte.',
 }: {
   itens: ItemContado[];
@@ -30,8 +32,14 @@ export function Rosca({
   aoClicar?: (chave: string) => void;
   /** O texto abaixo do número, no centro — "interações", por exemplo. */
   rotuloCentral?: string;
+  /** Linhas extras no tooltip ao passar o mouse numa fatia — mesma ideia de
+   *  `detalheDoMes` em `BarrasEmpilhadas`: quem desenha a rosca não precisa
+   *  saber o que são essas linhas, só que existem. */
+  detalheAoPassarMouse?: (chave: string) => { rotulo: string; valor: string }[];
   vazio?: string;
 }) {
+  //: Uma fatia em foco por vez — mouse ou teclado, o que vier primeiro.
+  const [emFoco, definirEmFoco] = useState<string | null>(null);
   const total = itens.reduce((soma, item) => soma + item.total, 0);
 
   if (!total) {
@@ -95,6 +103,10 @@ export function Rosca({
                   transition: 'stroke-width .12s',
                 }}
                 onClick={() => aoClicar?.(item.chave)}
+                onMouseEnter={() => definirEmFoco(item.chave)}
+                onMouseLeave={() => definirEmFoco(null)}
+                onFocus={() => definirEmFoco(item.chave)}
+                onBlur={() => definirEmFoco(null)}
               >
                 <title>{`${item.rotulo}: ${numero(item.total)} (${percentual(item.total, total)})`}</title>
               </circle>
@@ -122,6 +134,14 @@ export function Rosca({
             <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>{rotuloCentral}</span>
           ) : null}
         </div>
+
+        {emFoco && detalheAoPassarMouse ? (
+          <TooltipDaFatia
+            item={visiveis.find((item) => item.chave === emFoco)!}
+            total={total}
+            detalhe={detalheAoPassarMouse(emFoco)}
+          />
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
@@ -197,6 +217,85 @@ export function Rosca({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** O tooltip de uma fatia — mesmo desenho do tooltip de `BarrasEmpilhadas`
+ *  (fundo escuro, cantos arredondados, `pointerEvents: 'none'` para não
+ *  disputar o hover com a própria fatia). Centralizado acima da rosca: com
+ *  uma fatia só em foco por vez, não há necessidade da lógica de "encostar
+ *  na borda" que a barra empilhada precisa para dezenas de colunas. */
+function TooltipDaFatia({
+  item,
+  total,
+  detalhe,
+}: {
+  item: ItemContado;
+  total: number;
+  detalhe: { rotulo: string; valor: string }[];
+}) {
+  return (
+    <div
+      role="tooltip"
+      style={{
+        position: 'absolute',
+        bottom: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        marginBottom: 10,
+        zIndex: 20,
+        minWidth: 210,
+        background: 'var(--cinza-4)',
+        color: 'var(--branco)',
+        borderRadius: 'var(--r-card-int)',
+        padding: '11px 13px',
+        boxShadow: 'var(--sh-tooltip)',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          fontSize: 12,
+          fontWeight: 700,
+          marginBottom: 7,
+        }}
+      >
+        <span>{item.rotulo}</span>
+        <span className="tabular">
+          {numero(item.total)} ({percentual(item.total, total)})
+        </span>
+      </div>
+
+      {detalhe.length ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ fontSize: 11, color: '#8C91A4', marginBottom: 2 }}>Top instituições</div>
+          {detalhe.map((linha) => (
+            <div
+              key={linha.rotulo}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}
+            >
+              <span
+                style={{
+                  color: '#D5DAEA',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: 150,
+                }}
+              >
+                {linha.rotulo}
+              </span>
+              <span className="tabular">{linha.valor}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: '#8C91A4' }}>Sem instituição registrada.</div>
+      )}
     </div>
   );
 }

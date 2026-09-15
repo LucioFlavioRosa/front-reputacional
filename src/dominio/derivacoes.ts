@@ -238,6 +238,30 @@ export function porTier(interacoes: Interacao[], catalogo: Catalogo): ItemContad
     }));
 }
 
+/** O top instituições de CADA tier, à parte — é o que a rosca mostra no
+ *  tooltip ao passar o mouse numa fatia, sem esperar o clique (que troca o
+ *  recorte inteiro). Uma chave por tier presente neste recorte; tier sem
+ *  nenhuma interação simplesmente não entra no mapa. */
+export function topInstituicoesPorTier(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+): Record<string, ItemContado[]> {
+  const porTierLocal = new Map<number, Interacao[]>();
+  for (const interacao of interacoes) {
+    if (interacao.tier == null) continue;
+    const lista = porTierLocal.get(interacao.tier) ?? [];
+    lista.push(interacao);
+    porTierLocal.set(interacao.tier, lista);
+  }
+
+  const resultado: Record<string, ItemContado[]> = {};
+  for (const [tier, lista] of porTierLocal.entries()) {
+    resultado[String(tier)] = ranking(lista, catalogo, 'entidade', quantos);
+  }
+  return resultado;
+}
+
 /** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
  *  uma interação com duas áreas soma nas duas, e não escolhe uma. */
 export function porArea(
