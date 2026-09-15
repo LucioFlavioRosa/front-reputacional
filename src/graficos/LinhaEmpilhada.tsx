@@ -23,11 +23,17 @@ export function LinhaEmpilhada({
   colunas,
   altura = 150,
   formatarRotulo = rotuloDoMes,
+  ordem,
 }: {
   colunas: ColunaMensal[];
   altura?: number;
   /** Como ler `coluna.mes` em texto — mesmo contrato de `BarrasEmpilhadas`. */
   formatarRotulo?: (chave: string) => string;
+  /** Chaves de categoria, DE BAIXO PARA CIMA na pilha — por exemplo, o
+   *  Reativo do clima sempre na base, em vez de seguir a ordem em que cada
+   *  categoria apareceu pela primeira vez nas colunas. Quem não está nesta
+   *  lista mantém a ordem de aparição, depois das listadas. */
+  ordem?: string[];
 }) {
   const [emFoco, definirEmFoco] = useState<number | null>(null);
 
@@ -39,12 +45,25 @@ export function LinhaEmpilhada({
     );
   }
 
-  const categorias: Segmento[] = [];
+  const categoriasNaOrdemDeAparicao: Segmento[] = [];
   for (const coluna of colunas) {
     for (const segmento of coluna.segmentos) {
-      if (!categorias.some((c) => c.chave === segmento.chave)) categorias.push(segmento);
+      if (!categoriasNaOrdemDeAparicao.some((c) => c.chave === segmento.chave)) {
+        categoriasNaOrdemDeAparicao.push(segmento);
+      }
     }
   }
+
+  const categorias = ordem
+    ? [...categoriasNaOrdemDeAparicao].sort((a, b) => {
+        const indiceA = ordem.indexOf(a.chave);
+        const indiceB = ordem.indexOf(b.chave);
+        if (indiceA === -1 && indiceB === -1) return 0;
+        if (indiceA === -1) return 1;
+        if (indiceB === -1) return -1;
+        return indiceA - indiceB;
+      })
+    : categoriasNaOrdemDeAparicao;
 
   const maximo = Math.max(1, ...colunas.map((c) => c.total));
   const alturaDoTrilho = altura - ALTURA_DO_MES;

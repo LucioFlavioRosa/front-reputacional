@@ -525,13 +525,16 @@ export function Painel({
         </Secao>
 
         <Secao
-          titulo="Clima da interação no tempo"
+          titulo="Clima das interações no tempo"
           subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
         >
           <LinhaEmpilhada
             colunas={derivado.clima}
             altura={140}
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+            // Reativo sempre na base da área — os códigos de clima não mudam
+            // (só o nome exibido), então esta ordem não se perde num rename.
+            ordem={['tenso', 'neutro', 'propositivo']}
           />
           <Legenda
             itens={derivado.categoriasDeClima}
