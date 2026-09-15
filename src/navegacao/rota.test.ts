@@ -64,7 +64,7 @@ describe('ler e escrever o caminho', () => {
 describe('o recorte na consulta', () => {
   it('vai e volta inteiro', () => {
     const recorte = {
-      periodo: 'ano-corrente' as const,
+      periodoPassado: 'ano-corrente' as const,
       frente: 'imprensa' as const,
       tier: 1,
       tags: ['3', '7'],
@@ -131,7 +131,7 @@ describe('o nome da tela para a telemetria', () => {
 describe('o endereço para mandar a alguém', () => {
   it('junta a tela e o recorte', () => {
     expect(
-      enderecoDe({ destino: 'situacao' }, { periodo: 'ultimos-30', tier: 1 }),
-    ).toBe('/situacao?periodo=ultimos-30&tier=1');
+      enderecoDe({ destino: 'situacao' }, { periodoPassado: 'ultimos-30', tier: 1 }),
+    ).toBe('/situacao?periodoPassado=ultimos-30&tier=1');
   });
 });
