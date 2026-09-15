@@ -53,7 +53,11 @@ const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E1237
  *  o avanço no tempo. */
 function BotaoDeHistorico({ aoClicar }: { aoClicar: () => void }) {
   return (
-    <Botao variante="fantasma" aoClicar={aoClicar}>
+    <Botao
+      variante="fantasma"
+      aoClicar={aoClicar}
+      estilo={{ border: '1px solid var(--borda-input)' }}
+    >
       Ver histórico
     </Botao>
   );
@@ -394,7 +398,7 @@ export function Painel({
         </Secao>
 
         <Secao
-          titulo="Clima por público"
+          titulo="Clima por Instituições"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
         >
           <BarraDivergentePorItem
@@ -724,7 +728,7 @@ function HistoricoDoBloco({
       cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
     }));
     return {
-      titulo: 'Volume por público ao longo do tempo',
+      titulo: 'Volume por instituição ao longo do tempo',
       categorias: categoriasDePublico,
       categoriasDe: (i: Interacao) => {
         const nome = nomeDaInstituicao(catalogo, i.instituicao_id);
