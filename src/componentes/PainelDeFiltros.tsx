@@ -397,53 +397,79 @@ function CampoDePeriodo({
     definirRecorte(proximo);
   }
 
+  //: OS ATALHOS SE DIVIDEM PELO PRÓPRIO NOME: "proximos-*" é o único prefixo
+  //: que olha para a frente; todo o resto ("ano-corrente", "ultimos-*") olha
+  //: para trás. Não é uma lista separada para manter em dia — é a mesma
+  //: `ATALHOS_DE_PERIODO` de sempre, só particionada na hora de desenhar.
+  const atalhosDoPassado = Object.entries(ATALHOS_DE_PERIODO).filter(
+    ([chave]) => !chave.startsWith('proximos-'),
+  );
+  const atalhosDoFuturo = Object.entries(ATALHOS_DE_PERIODO).filter(([chave]) =>
+    chave.startsWith('proximos-'),
+  );
+
+  const escolherAtalho = (chave: string) => {
+    const proximo = { ...recorte };
+    if (recorte.periodo === chave) delete proximo.periodo;
+    else proximo.periodo = chave as AtalhoDePeriodo;
+    delete proximo.de;
+    delete proximo.ate;
+    definirRecorte(proximo);
+  };
+
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-          color: 'var(--cinza-2)',
-          marginBottom: 8,
-        }}
-      >
-        Período
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {Object.entries(ATALHOS_DE_PERIODO).map(([chave, rotulo]) => (
-          <button
-            key={chave}
-            type="button"
-            onClick={() => {
-              const proximo = { ...recorte };
-              if (recorte.periodo === chave) delete proximo.periodo;
-              else proximo.periodo = chave as AtalhoDePeriodo;
-              delete proximo.de;
-              delete proximo.ate;
-              definirRecorte(proximo);
-            }}
-            style={pilulaEstilo(recorte.periodo === chave)}
-          >
-            {rotulo}
-          </button>
-        ))}
+      <div style={ESTILO_DO_ROTULO}>Período</div>
+      {/* DOIS SUB-BLOCOS, e não uma fileira só: "passado" e "futuro" são
+          perguntas diferentes ("o que já aconteceu" vs. "o que vem por aí"),
+          e misturados numa fileira só a pessoa precisa ler o texto de cada
+          pílula para saber de que lado do calendário ela está. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div>
+          <div style={ESTILO_DO_SUBROTULO}>Passado</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            {atalhosDoPassado.map(([chave, rotulo]) => (
+              <button
+                key={chave}
+                type="button"
+                onClick={() => escolherAtalho(chave)}
+                style={pilulaEstilo(recorte.periodo === chave)}
+              >
+                {rotulo}
+              </button>
+            ))}
+            <CaixaDeDias
+              rotulo="Últimos"
+              valor={diasNoPassado}
+              aoAlterar={definirDiasNoPassado}
+              aoAplicar={aplicarPassado}
+              rotuloAcessivel="Quantidade de dias atrás, até hoje"
+            />
+          </div>
+        </div>
 
-        <CaixaDeDias
-          rotulo="Últimos"
-          valor={diasNoPassado}
-          aoAlterar={definirDiasNoPassado}
-          aoAplicar={aplicarPassado}
-          rotuloAcessivel="Quantidade de dias atrás, até hoje"
-        />
-        <CaixaDeDias
-          rotulo="Próximos"
-          valor={diasNoFuturo}
-          aoAlterar={definirDiasNoFuturo}
-          aoAplicar={aplicarFuturo}
-          rotuloAcessivel="Quantidade de dias à frente, a partir de hoje"
-        />
+        <div>
+          <div style={ESTILO_DO_SUBROTULO}>Futuro</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            {atalhosDoFuturo.map(([chave, rotulo]) => (
+              <button
+                key={chave}
+                type="button"
+                onClick={() => escolherAtalho(chave)}
+                style={pilulaEstilo(recorte.periodo === chave)}
+              >
+                {rotulo}
+              </button>
+            ))}
+            <CaixaDeDias
+              rotulo="Próximos"
+              valor={diasNoFuturo}
+              aoAlterar={definirDiasNoFuturo}
+              aoAplicar={aplicarFuturo}
+              rotuloAcessivel="Quantidade de dias à frente, a partir de hoje"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -542,6 +568,27 @@ function SetaDaAegea({ aberto }: { aberto: boolean }) {
   );
 }
 
+/** O título de cada campo de filtro (Período, Frente, Área(s)…) — na cor da
+ *  marca, e um pouco maior que o texto das pílulas abaixo, para que a lista de
+ *  rótulos funcione como um índice rápido de "que filtros existem aqui". */
+const ESTILO_DO_ROTULO: CSSProperties = {
+  fontSize: 12.5,
+  fontWeight: 700,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+  color: 'var(--turquesa-rio)',
+  marginBottom: 8,
+};
+
+/** "Passado"/"Futuro", dentro do campo Período — mais discreto que o título
+ *  do campo, senão os dois níveis de rótulo se confundem à primeira olhada. */
+const ESTILO_DO_SUBROTULO: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: 'var(--cinza-2)',
+  marginBottom: 6,
+};
+
 function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
   const [expandido, definirExpandido] = useState(false);
   const visiveis = expandido ? campo.itens : campo.itens.slice(0, LIMITE_PADRAO);
@@ -549,18 +596,7 @@ function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-          color: 'var(--cinza-2)',
-          marginBottom: 8,
-        }}
-      >
-        {campo.rotulo}
-      </div>
+      <div style={ESTILO_DO_ROTULO}>{campo.rotulo}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {visiveis.map((item) => {
           const marcado = campo.multiplo
