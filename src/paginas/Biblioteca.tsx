@@ -155,7 +155,7 @@ export function Biblioteca() {
         </div>
       ) : null}
 
-      <Secao titulo="Cadastrar referência">
+      <Secao titulo="Cadastrar Posicionamento e Papers Aegea">
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             O arquivo fica no armazenamento do painel, numa pasta por tema e
@@ -172,7 +172,7 @@ export function Biblioteca() {
             <Campo
               rotulo="Arquivo"
               obrigatorio
-              dica="É ele que vira a versão 1 da referência."
+              dica="É ele que vira a versão 1 do posicionamento."
             >
               <CampoDeArquivo
                 entradaRef={campoDeArquivo}
@@ -398,7 +398,7 @@ function FormularioDeReferencia({
 
       <Campo
         rotulo="Outros temas"
-        dica="Além do principal. É por eles que a referência aparece no preparo de uma agenda."
+        dica="Além do principal. É por eles que o posicionamento aparece no preparo de uma interação."
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {temas

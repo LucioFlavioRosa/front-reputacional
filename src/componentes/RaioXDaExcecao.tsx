@@ -173,16 +173,16 @@ export function RaioXDaExcecao({
           agendas={escolhidas}
           catalogo={catalogo}
           aoAbrirAgenda={aoAbrirAgenda}
-          // "Imprensa · 14 agendas" serve às duas fatias. "14 em imprensa"
+          // "Imprensa · 14 interações" serve às duas fatias. "14 em imprensa"
           // servia à frente e emperrava no tempo: "5 em de 30 a 60 dias".
           cabecalho={`${rotuloDaFatia || 'Todas'} · ${numero(escolhidas.length)} ${
-            escolhidas.length === 1 ? 'agenda' : 'agendas'
+            escolhidas.length === 1 ? 'interação' : 'interações'
           }`}
           aoLimpar={() => definirFatia(null)}
         />
       ) : (
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-          Clique numa barra para ver as agendas, ou{' '}
+          Clique numa barra para ver as interações, ou{' '}
           <button
             type="button"
             onClick={() => definirFatia(TODAS)}

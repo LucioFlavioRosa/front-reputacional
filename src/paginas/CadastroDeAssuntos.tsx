@@ -15,7 +15,7 @@
  *  formulário e continua nomeando o que já foi registrado.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { criarTema, editarTema, listarTemas } from '@/api/cliente';
 import type { TemaCadastrado } from '@/api/cliente';
 import {
@@ -47,7 +47,7 @@ const NIVEIS = [
     rotulo: 'Sensível',
     ajuda: 'Exige alinhamento antes de alguém falar.',
   },
-  { valor: 'estrategico', rotulo: 'Estratégico', ajuda: 'Agenda da companhia.' },
+  { valor: 'estrategico', rotulo: 'Estratégico', ajuda: 'Prioridade estratégica da companhia.' },
   { valor: 'gerais', rotulo: 'Gerais', ajuda: 'O que aparece sem ter sido planejado.' },
 ];
 
@@ -73,6 +73,7 @@ export function CadastroDeAssuntos() {
   const [novo, definirNovo] = useState({ nome: '', nivel: 'gerais' });
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
   const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'gerais' });
+  const [busca, definirBusca] = useState('');
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
   //: porque alimenta filtro e formulário; aqui é preciso ver o que foi
@@ -103,6 +104,13 @@ export function CadastroDeAssuntos() {
       definirSalvando(false);
     }
   };
+
+  const temasFiltrados = useMemo(() => {
+    if (!temas) return [];
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return temas;
+    return temas.filter((tema) => tema.nome.toLowerCase().includes(termo));
+  }, [temas, busca]);
 
   if (!temas) return <Carregando rotulo="Carregando os temas…" />;
 
@@ -162,7 +170,20 @@ export function CadastroDeAssuntos() {
 
       <Secao titulo={`Cadastrados (${temas.length})`}>
         <Cartao>
-          {temas.map((tema) => (
+          <input
+            style={{ ...estiloDeEntrada, marginBottom: 14 }}
+            value={busca}
+            onChange={(e) => definirBusca(e.target.value)}
+            placeholder="Buscar por nome…"
+          />
+
+          {temasFiltrados.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
+              {busca ? 'Nada com esse termo.' : 'Nenhum tema cadastrado ainda.'}
+            </p>
+          ) : null}
+
+          {temasFiltrados.map((tema) => (
             <div
               key={tema.id}
               style={{

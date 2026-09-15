@@ -130,8 +130,8 @@ export function CadeiaDaAgenda({
       titulo="Como chegamos aqui"
       subtitulo={
         nos.length > 1
-          ? `${nos.length} agendas encadeadas · clique num nó para ler os detalhes dele`
-          : 'A cadeia desta agenda'
+          ? `${nos.length} interações encadeadas · clique num nó para ler os detalhes dele`
+          : 'A cadeia desta interação'
       }
       aoFechar={aoFechar}
       // 1240, e nao 1180: o leque de onze — tres subcolunas mais a raiz —
@@ -159,8 +159,8 @@ export function CadeiaDaAgenda({
         <Vazio
           mensagem={
             origem && temCadeia(origem)
-              ? 'A cadeia desta agenda está fora do recorte carregado.'
-              : 'Esta agenda não decorre de nenhuma outra, e nenhuma decorre dela.'
+              ? 'A cadeia desta interação está fora do recorte carregado.'
+              : 'Esta interação não decorre de nenhuma outra, e nenhuma decorre dela.'
           }
           dica={
             origem && temCadeia(origem)
@@ -187,8 +187,8 @@ export function CadeiaDaAgenda({
                   para a reunião leria menos do que existe, sem nada indicando
                   que falta. O ⋯ ao lado do nó diz QUAL, e de que lado. */}
               {incompletos === 1
-                ? 'Uma agenda desta cadeia tem ligações fora do recorte — o ⋯ marca de que lado.'
-                : `${incompletos} agendas deste desenho têm ligações fora do recorte atual — o ⋯ marca de que lado a história continua.`}{' '}
+                ? 'Uma interação desta cadeia tem ligações fora do recorte — o ⋯ marca de que lado.'
+                : `${incompletos} interações deste desenho têm ligações fora do recorte atual — o ⋯ marca de que lado a história continua.`}{' '}
               Amplie o período para ver a cadeia inteira.
             </p>
           ) : null}
@@ -198,7 +198,7 @@ export function CadeiaDaAgenda({
               width={largura}
               height={altura}
               role="img"
-              aria-label={`Cadeia com ${nos.length} agendas encadeadas`}
+              aria-label={`Cadeia com ${nos.length} interações encadeadas`}
               style={{ display: 'block' }}
             >
               <defs>
@@ -268,9 +268,9 @@ export function CadeiaDaAgenda({
                     // informação que a tela existe para dar.
                     aria-label={
                       `${rotulo}. ${dataCompleta(no.interacao.data_interacao)}.` +
-                      (daLinha ? ' É a agenda de onde você veio.' : '') +
+                      (daLinha ? ' É a interação de onde você veio.' : '') +
                       (no.origensForaDaJanela > 0
-                        ? ' Decorre de agenda fora do recorte atual.'
+                        ? ' Decorre de interação fora do recorte atual.'
                         : '') +
                       (adiante > 0 ? ' Tem desdobramento fora do recorte atual.' : '') +
                       ' Ver os detalhes.'
@@ -429,7 +429,7 @@ function OQueAconteceu({
   if (!blocos.length && !pelaAegea.length && !pelaOutraParte.length && !materiais.length) {
     return (
       <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-        Esta agenda ainda não tem relato. Abra a ficha completa para preencher.
+        Esta interação ainda não tem relato. Abra a ficha completa para preencher.
       </p>
     );
   }
@@ -502,7 +502,7 @@ function OQueAconteceu({
  */
 function descreverLigacoes(vemDe: number, levouA: number): string {
   const partes: string[] = [];
-  if (vemDe > 0) partes.push(`Decorre de ${vemDe} ${vemDe === 1 ? 'agenda' : 'agendas'}`);
-  if (levouA > 0) partes.push(`Levou a ${levouA} ${levouA === 1 ? 'agenda' : 'agendas'}`);
+  if (vemDe > 0) partes.push(`Decorre de ${vemDe} ${vemDe === 1 ? 'interação' : 'interações'}`);
+  if (levouA > 0) partes.push(`Levou a ${levouA} ${levouA === 1 ? 'interação' : 'interações'}`);
   return partes.length ? partes.join(' · ') : 'Começo e fim desta parte da conversa';
 }

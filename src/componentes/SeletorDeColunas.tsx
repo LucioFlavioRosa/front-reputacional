@@ -12,15 +12,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export function useColunasVisiveis(chave: string, todasAsColunas: string[]) {
+export function useColunasVisiveis(
+  chave: string,
+  todasAsColunas: string[],
+  /** Colunas que nascem escondidas na PRIMEIRA visita — antes de existir
+   *  qualquer escolha salva. Existe para acrescentar uma coluna nova (ex.:
+   *  "Modalidade") sem entupir a tabela de quem já usa a tela: sem isso, toda
+   *  coluna nova chegaria visível por padrão, e a tabela ficaria cada vez mais
+   *  larga a cada campo que o cadastro ganhasse. */
+  ocultasPorPadrao: string[] = [],
+) {
   const chaveLocal = `painel-reputacional:colunas-ocultas:${chave}`;
 
   const [ocultas, definirOcultas] = useState<Set<string>>(() => {
     try {
       const salvo = window.localStorage.getItem(chaveLocal);
-      return salvo ? new Set(JSON.parse(salvo) as string[]) : new Set();
+      return salvo ? new Set(JSON.parse(salvo) as string[]) : new Set(ocultasPorPadrao);
     } catch {
-      return new Set();
+      return new Set(ocultasPorPadrao);
     }
   });
 

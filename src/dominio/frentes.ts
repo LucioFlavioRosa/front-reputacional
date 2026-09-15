@@ -53,14 +53,22 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
  *  diferença entre "Entidades" e "Parceiros", ou não sabe o que "Interna"
  *  guarda, não precisar abrir o registro pra descobrir. */
 export const DESCRICAO_DE_FRENTE: Record<Frente, string> = {
-  imprensa: 'Jornalistas e veículos de imprensa — entrevista, matéria, resposta a pauta.',
-  governo: 'Órgãos públicos e representantes do governo.',
-  parceiros: 'Entidades parceiras da Aegea — associações, ONGs, institutos.',
-  eventos: 'Participação ou promoção de eventos institucionais.',
-  investidores: 'Investidores e o mercado financeiro.',
-  legislativo: 'Proposições em tramitação no Legislativo.',
-  interna: 'Demanda interna da Aegea, sem interlocutor de fora.',
-  bancos_credores: 'Bancos e credores — relação de crédito e dívida, não de mercado de capitais.',
+  imprensa:
+    'Agendas realizadas com veículos de imprensa, como exemplo: revistas, jornais, rádio e televisão.',
+  governo:
+    'Agendas realizadas com órgãos públicos e seus representantes, como exemplo: ministérios, agências reguladoras, prefeituras e secretarias.',
+  parceiros:
+    'Agendas realizadas com entidades parceiras da Aegea, como exemplo: associações, ONGs, institutos e federações do setor.',
+  eventos:
+    'Participação ou promoção de eventos institucionais, como exemplo: congressos, seminários e feiras do setor.',
+  investidores:
+    'Agendas realizadas com investidores e o mercado financeiro, como exemplo: analistas, gestoras e bancos de investimento.',
+  legislativo:
+    'Agendas sobre proposições em tramitação no Legislativo, como exemplo: projetos de lei, emendas e audiências públicas.',
+  interna:
+    'Demandas internas da Aegea, sem interlocutor de fora — pedidos entre áreas da própria companhia.',
+  bancos_credores:
+    'Agendas realizadas com bancos e credores — relação de crédito e dívida, diferente da relação com investidores de mercado.',
 };
 
 /** Que TIPO de instituição cada frente conversa.

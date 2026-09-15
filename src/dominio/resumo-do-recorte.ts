@@ -11,6 +11,16 @@ import type { Recorte } from '@/dominio/recorte';
 import { ROTULOS_DE_FRENTE, ROTULOS_DE_GRUPO } from '@/dominio/frentes';
 import { dataCompleta } from '@/dominio/formato';
 
+/** Ids de área viram nome pelo mesmo dicionário que `PessoaAegea.area_id` usa.
+ *  Um id sem correspondência (área desativada depois do filtro aplicado)
+ *  mostra o próprio número, em vez de sumir da ficha sem explicação. */
+function nomesDasAreas(ids: number[], catalogo: Catalogo | null): string[] {
+  return ids.map((id) => {
+    const area = catalogo?.dicionarios.areas_pessoa.find((a) => a.id === id);
+    return area?.nome ?? String(id);
+  });
+}
+
 export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): string {
   const partes: string[] = [];
 
@@ -42,6 +52,7 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
   }
 
   if (recorte.tags?.length) partes.push(recorte.tags.join(' ou '));
+  if (recorte.areas?.length) partes.push(nomesDasAreas(recorte.areas, catalogo).join(' ou '));
   if (recorte.q) partes.push(`“${recorte.q}”`);
 
   return partes.length ? partes.join(' · ') : 'Base completa, sem filtros';
@@ -104,6 +115,7 @@ export function fichasDoRecorte(
   }
 
   if (recorte.tags?.length) por('tags', recorte.tags.join(' ou '));
+  if (recorte.areas?.length) por('areas', nomesDasAreas(recorte.areas, catalogo).join(' ou '));
   if (recorte.q) por('q', `“${recorte.q}”`);
 
   return fichas;

@@ -95,7 +95,7 @@ export function Situacao({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => voi
           />
           <Grupo
             titulo="Registro incompleto"
-            explica="A agenda aconteceu e o registro ficou pela metade."
+            explica="A interação aconteceu e o registro ficou pela metade."
             excecoes={paraCompletar}
             aberta={aberta}
             definirAberta={definirAberta}
@@ -110,8 +110,8 @@ export function Situacao({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => voi
           porta-voz aparece em duas linhas. */}
       {fila.length > 1 ? (
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-          A mesma agenda pode aparecer em mais de uma linha. {numero(apontadas)}{' '}
-          {apontadas === 1 ? 'agenda distinta' : 'agendas distintas'} no total.
+          A mesma interação pode aparecer em mais de uma linha. {numero(apontadas)}{' '}
+          {apontadas === 1 ? 'interação distinta' : 'interações distintas'} no total.
         </p>
       ) : null}
     </div>
@@ -143,7 +143,7 @@ function Grupo({
 
   return (
     <Secao
-      titulo={`${titulo} — ${numero(quantas)} ${quantas === 1 ? 'agenda' : 'agendas'}`}
+      titulo={`${titulo} — ${numero(quantas)} ${quantas === 1 ? 'interação' : 'interações'}`}
       estilo={{ padding: 0 }}
     >
       <p

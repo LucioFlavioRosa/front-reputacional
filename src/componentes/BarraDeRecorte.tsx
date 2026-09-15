@@ -94,7 +94,8 @@ export function BarraDeRecorte() {
         onChange={(evento) => alterarBusca(evento.target.value)}
         style={{
           height: 28,
-          width: 190,
+          flex: '1 1 260px',
+          minWidth: 200,
           padding: '0 10px',
           border: '1px solid var(--borda-input)',
           borderRadius: 'var(--r-btn)',
@@ -124,7 +125,7 @@ export function BarraDeRecorte() {
         className="tabular"
         style={{ fontSize: 12, color: 'var(--cinza-2)', marginLeft: 4 }}
       >
-        {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'agenda' : 'agendas'}`}
+        {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'interação' : 'interações'}`}
       </span>
 
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>

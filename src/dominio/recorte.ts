@@ -14,6 +14,12 @@ export const ATALHOS_DE_PERIODO = {
   'ultimos-30': 'Últimos 30 dias',
   'ultimos-90': 'Últimos 90 dias',
   'ultimos-180': 'Últimos 180 dias',
+  //: PARA A FRENTE: agendas ainda por vir — mesma janela dos "últimos",
+  //: olhando para o outro lado do calendário. Espelha `AtalhoDePeriodo` do
+  //: backend (`app/dominio/periodo.py`).
+  'proximos-30': 'Próximos 30 dias',
+  'proximos-90': 'Próximos 90 dias',
+  'proximos-180': 'Próximos 180 dias',
 } as const;
 
 export type AtalhoDePeriodo = keyof typeof ATALHOS_DE_PERIODO;
@@ -36,6 +42,9 @@ export interface Recorte {
   portaVoz?: string;
   pessoa?: string;
   tags?: string[];
+  /** Áreas internas da Aegea envolvidas — ids de `catalogo.dicionarios.areas_pessoa`.
+   *  Multisseleção com OR entre elas, mesmo comportamento de `tags`. */
+  areas?: number[];
   q?: string;
 }
 
@@ -51,6 +60,7 @@ export function quantidadeDeFiltros(recorte: Recorte): number {
   let ativos = CAMPOS_CONTAVEIS.filter((campo) => recorte[campo] != null).length;
   if (recorte.periodo || recorte.de || recorte.ate) ativos += 1;
   if (recorte.tags?.length) ativos += 1;
+  if (recorte.areas?.length) ativos += 1;
   return ativos;
 }
 
@@ -84,6 +94,18 @@ export function alternarTag(recorte: Recorte, tag: string): Recorte {
   return proximo;
 }
 
+/** Áreas são multisseleção com OR entre elas — mesma regra de `alternarTag`. */
+export function alternarArea(recorte: Recorte, areaId: number): Recorte {
+  const atuais = new Set(recorte.areas ?? []);
+  if (atuais.has(areaId)) atuais.delete(areaId);
+  else atuais.add(areaId);
+  const areas = [...atuais].sort((a, b) => a - b);
+  const proximo = { ...recorte };
+  if (areas.length) proximo.areas = areas;
+  else delete proximo.areas;
+  return proximo;
+}
+
 export function limpar(): Recorte {
   return { ...RECORTE_VAZIO };
 }
@@ -112,11 +134,19 @@ export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate
   }
   if (!recorte.periodo) return {};
 
-  const dias = { 'ultimos-30': 30, 'ultimos-90': 90, 'ultimos-180': 180 } as const;
   if (recorte.periodo === 'ano-corrente') {
     return { de: new Date(hoje.getFullYear(), 0, 1), ate: hoje };
   }
-  const inicio = new Date(hoje);
-  inicio.setDate(inicio.getDate() - dias[recorte.periodo]);
-  return { de: inicio, ate: hoje };
+
+  const diasNoPassado = { 'ultimos-30': 30, 'ultimos-90': 90, 'ultimos-180': 180 } as const;
+  if (recorte.periodo in diasNoPassado) {
+    const inicio = new Date(hoje);
+    inicio.setDate(inicio.getDate() - diasNoPassado[recorte.periodo as keyof typeof diasNoPassado]);
+    return { de: inicio, ate: hoje };
+  }
+
+  const diasNoFuturo = { 'proximos-30': 30, 'proximos-90': 90, 'proximos-180': 180 } as const;
+  const fim = new Date(hoje);
+  fim.setDate(fim.getDate() + diasNoFuturo[recorte.periodo as keyof typeof diasNoFuturo]);
+  return { de: hoje, ate: fim };
 }

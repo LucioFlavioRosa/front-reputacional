@@ -36,45 +36,25 @@ type Aba = 'acessos' | 'assuntos' | 'biblioteca' | 'cadastros' | 'porta_vozes';
 //: ele: o porta-voz é autorizado por assunto, e a agenda é somada por assunto.
 //: Cadastrar na ordem inversa obriga a voltar — abrir Porta-vozes, descobrir
 //: que o assunto não existe, sair, criar, voltar.
-const ABAS: { id: Aba; rotulo: string; descricao: string }[] = [
-  {
-    id: 'acessos',
-    rotulo: 'Acessos',
-    descricao: 'Quem entra na plataforma e até quando.',
-  },
-  {
-    id: 'assuntos',
-    rotulo: 'Temas',
-    descricao: 'O que o painel consegue somar — e o que cada porta-voz pode falar.',
-  },
-  {
-    id: 'biblioteca',
-    rotulo: 'Posicionamento',
-    descricao:
-      'O acervo oficial, por tema — o que o porta-voz leva para a reunião.',
-  },
-  {
-    id: 'cadastros',
-    rotulo: 'Instituições',
-    descricao: 'Com quem a Aegea conversa, e quem fala por cada instituição.',
-  },
-  {
-    id: 'porta_vozes',
-    rotulo: 'Representantes Aegea',
-    descricao: 'Quem fala pela Aegea, e sobre quais temas.',
-  },
+const ABAS: { id: Aba; rotulo: string }[] = [
+  { id: 'acessos', rotulo: 'Acessos' },
+  { id: 'assuntos', rotulo: 'Temas' },
+  { id: 'biblioteca', rotulo: 'Posicionamento' },
+  { id: 'cadastros', rotulo: 'Instituições' },
+  { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
 ];
 
 export function PortalDoAdmin({ euId }: { euId: string | null }) {
   const [aba, definirAba] = useState<Aba>('acessos');
-  const atual = ABAS.find((a) => a.id === aba) ?? ABAS[0];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <h1 style={{ fontSize: 26 }}>Administração</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
-          {atual.descricao}
+          Central de cadastro das informações utilizadas no painel — quem acessa,
+          quem fala pela Aegea e pela outra parte, os temas e o acervo por trás
+          de cada interação.
         </p>
       </div>
 
@@ -86,11 +66,9 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         aria-label="Seções da administração"
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           gap: 6,
           borderBottom: '1px solid var(--borda)',
-          // Quatro abas nao cabem em telefone: rolam em vez de quebrar em duas
-          // linhas, que faria a segunda parecer outro grupo.
-          overflowX: 'auto',
         }}
       >
         {ABAS.map((opcao) => {

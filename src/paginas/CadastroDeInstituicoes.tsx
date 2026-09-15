@@ -277,7 +277,7 @@ export function CadastroDeInstituicoes() {
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
               O tipo escolhido é o que faz esta instituição aparecer nas
-              agendas certas — um órgão em Governo, um veículo em Imprensa, e
+              interações certas — um órgão em Governo, um veículo em Imprensa, e
               assim por diante.
             </p>
           )}

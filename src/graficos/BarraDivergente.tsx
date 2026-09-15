@@ -55,8 +55,8 @@ function composicao(item: ScoreDivergente): string {
 //: `total === 0`. Sem esta guarda, `composicao()` devolve string vazia e a
 //: linha lê "0 agendas — ", com um traço solto sem nada depois.
 function descricaoDaLinha(item: ScoreDivergente): string {
-  if (item.total === 0) return 'Nenhuma agenda com clima registrado ainda';
-  return `${item.total} ${item.total === 1 ? 'agenda' : 'agendas'} — ${composicao(item)}`;
+  if (item.total === 0) return 'Nenhuma interação com clima registrado ainda';
+  return `${item.total} ${item.total === 1 ? 'interação' : 'interações'} — ${composicao(item)}`;
 }
 
 export function BarraDivergente({
@@ -102,7 +102,7 @@ export function BarraDivergente({
               title={
                 item.total === 0
                   ? descricaoDaLinha(item)
-                  : `${composicao(item)} — clique para ver as agendas`
+                  : `${composicao(item)} — clique para ver as interações`
               }
               style={{
                 display: 'grid',

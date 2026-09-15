@@ -347,6 +347,44 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   .entrada__forma { padding: 32px 18px !important; }
 }
 
+/* O balão que aparece ao passar o mouse — a explicação de uma frente, o
+   script sugerido sobre uma pergunta de "depois da reunião".
+   CSS puro, e não estado do React: é só mostrar/esconder por `:hover`, e
+   `:hover` no envoltório continua valendo com o ponteiro em cima do balão,
+   mesmo ele "saindo" da caixa em fluxo normal — é isso que permite ter um
+   botão "Copiar" clicável dentro do balão sem ele fechar antes do clique.
+   `visibility` (e não só `opacity`) tira o balão da árvore de foco/tabulação
+   enquanto está escondido. */
+.dica-flutuante { position: relative; }
+.dica-flutuante__balao {
+  position: absolute;
+  z-index: 40;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  width: max-content;
+  max-width: 260px;
+  padding: 11px 13px;
+  border-radius: var(--r-card-int);
+  background: var(--branco);
+  box-shadow: var(--sh-tooltip);
+  color: var(--cinza-3);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .12s;
+  pointer-events: none;
+}
+.dica-flutuante:hover .dica-flutuante__balao,
+.dica-flutuante:focus-within .dica-flutuante__balao {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* Faixa ondulada dupla — o elemento orgânico da marca Aegea, que fecha o hero.
    Duas ondas defasadas dão a leitura de água em movimento sem animação. */
 .onda-do-hero {

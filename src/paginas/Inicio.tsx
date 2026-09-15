@@ -45,7 +45,7 @@ const ONDA_1: {
 
 const FRENTES_DE_ANALISE = [
   { titulo: 'Imprensa', descricao: 'demandas, aproveitamento e porta-vozes' },
-  { titulo: 'Entidades', descricao: 'agendas com o poder público' },
+  { titulo: 'Entidades', descricao: 'interações com o poder público' },
   { titulo: 'Parceiros', descricao: 'entidades, associações e escritórios' },
   { titulo: 'Eventos', descricao: 'presença institucional' },
   { titulo: 'Investidores', descricao: 'relacionamento com o mercado' },

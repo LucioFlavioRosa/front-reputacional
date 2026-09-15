@@ -78,9 +78,9 @@ export function EscolherAgendas({
 
   return (
     <Modal
-      titulo="De quais agendas esta decorre"
+      titulo="De quais interações esta decorre"
       subtitulo={
-        `${numero(candidatas.length)} ${candidatas.length === 1 ? 'agenda' : 'agendas'} — ` +
+        `${numero(candidatas.length)} ${candidatas.length === 1 ? 'interação' : 'interações'} — ` +
         'só as que já aconteceram, até a data desta'
       }
       aoFechar={aoFechar}
@@ -99,7 +99,7 @@ export function EscolherAgendas({
                 quem se enganou e quer desfazer. */}
             {marcadas.size === 0
               ? 'Não vem de nenhuma'
-              : `Usar ${numero(marcadas.size)} ${marcadas.size === 1 ? 'agenda' : 'agendas'}`}
+              : `Usar ${numero(marcadas.size)} ${marcadas.size === 1 ? 'interação' : 'interações'}`}
           </Botao>
         </>
       }
@@ -111,7 +111,7 @@ export function EscolherAgendas({
           placeholder="Buscar por tema, instituição, UF ou data…"
           value={busca}
           onChange={(evento) => definirBusca(evento.target.value)}
-          aria-label="Buscar agenda anterior"
+          aria-label="Buscar interação anterior"
           autoFocus
         />
 
@@ -119,8 +119,8 @@ export function EscolherAgendas({
           <Vazio
             mensagem={
               candidatas.length
-                ? 'Nenhuma agenda encontrada com esse texto'
-                : 'Nenhuma agenda concluída antes desta data'
+                ? 'Nenhuma interação encontrada com esse texto'
+                : 'Nenhuma interação concluída antes desta data'
             }
             dica={
               candidatas.length

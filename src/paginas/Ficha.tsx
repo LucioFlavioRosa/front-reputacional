@@ -84,7 +84,7 @@ export function Ficha({
 
   if (erro) {
     return (
-      <Modal titulo="Registro" aoFechar={aoFechar}>
+      <Modal titulo="Interação" aoFechar={aoFechar}>
         <FaixaDeErro mensagem={erro} />
       </Modal>
     );
@@ -92,7 +92,7 @@ export function Ficha({
 
   if (!interacao || !catalogo) {
     return (
-      <Modal titulo="Registro" aoFechar={aoFechar}>
+      <Modal titulo="Interação" aoFechar={aoFechar}>
         <Carregando />
       </Modal>
     );
@@ -116,7 +116,7 @@ export function Ficha({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
         <section>
           <div className="kicker" style={{ marginBottom: 10 }}>
-            Conteúdo do registro
+            Conteúdo da interação
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {preenchidos.map(({ campo, rotulo }) => (
@@ -150,11 +150,11 @@ export function Ficha({
                 rel="noreferrer"
                 style={{ fontSize: 13, color: 'var(--azul-mar)' }}
               >
-                Abrir registro / documentação
+                Abrir link / documentação
               </a>
             ) : interacao.registro_url ? (
               <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                O registro tem um endereço que não é um link navegável.
+                O endereço informado não é um link navegável.
               </span>
             ) : null}
           </div>
@@ -191,13 +191,13 @@ export function Ficha({
               rotulo="Unidade de negócio"
               valor={nomeDaUnidade(catalogo, interacao.unidade_negocio_id)}
             />
-            {/* "UF da agenda", como no formulario. O mesmo campo com dois
+            {/* "UF da interação", como no formulario. O mesmo campo com dois
                 nomes faz a pessoa procurar "abrangencia" onde esta escrito
                 "UF" — e "Abrangencia" segue valendo no cadastro de
                 INSTITUICAO, onde descreve o alcance do orgao e nao a UF de uma
                 reuniao. */}
             <Metadado
-              rotulo="UF da agenda"
+              rotulo="UF da interação"
               valor={rotuloDeAbrangencia(interacao.uf)}
             />
             {/* ONDE ACONTECEU. Sem isto, o campo entrava no formulario e
@@ -274,7 +274,7 @@ export function Ficha({
               }}
             />
             <Botao variante="primario" aoClicar={() => aoEditar(interacao.id)}>
-              Editar registro
+              Editar interação
             </Botao>
           </div>
         ) : null}
@@ -359,7 +359,7 @@ function Remover({ id, aoRemover }: { id: string; aoRemover: () => void }) {
             definirFalha(
               erro instanceof Error
                 ? erro.message
-                : 'Não foi possível remover o registro.',
+                : 'Não foi possível remover a interação.',
             );
             definirRemovendo(false);
           }
@@ -560,7 +560,7 @@ function CicloDaAgenda({
       {interacao.preve_desdobramento != null && (
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
           {interacao.preve_desdobramento
-            ? 'Prevê desdobramento em outra agenda.'
+            ? 'Prevê desdobramento em outra interação.'
             : 'Não prevê desdobramento.'}
         </p>
       )}

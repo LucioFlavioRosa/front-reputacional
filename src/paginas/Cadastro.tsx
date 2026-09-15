@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   criarInteracao,
   editarInteracao,
@@ -56,6 +57,20 @@ import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
 import { ListaDaAegea, ListaDeParticipantes } from '@/paginas/cadastro/participantes';
+
+//: TÍTULO MAIOR NESTA TELA, de propósito — "Antes"/"Depois" são as únicas
+//: onde alguém passa vários minutos preenchendo, e não só lendo; o padrão de
+//: `Secao` (21px) continua valendo no resto do produto.
+const ESTILO_DO_TITULO_DO_CADASTRO: CSSProperties = { fontSize: 24 };
+
+//: O CHIP DE SEMPRE, só maior — "Tipo de registro" e "Área(s)" são escolhas
+//: feitas uma vez por agenda, então merecem um alvo de clique maior que o
+//: chip de 24px usado nos filtros da Base.
+const ESTILO_DO_CHIP_MAIOR: CSSProperties = {
+  height: 32,
+  padding: '0 13px',
+  fontSize: 12,
+};
 
 export function Cadastro({
   aoSalvar,
@@ -448,17 +463,17 @@ export function Cadastro({
     }
   };
 
-  if (carregando) return <Carregando rotulo="Carregando o registro…" />;
+  if (carregando) return <Carregando rotulo="Carregando a interação…" />;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         {/* O TITULO ACOMPANHA A ACAO. Dizia "Novo registro" tambem na
-            edicao: a pessoa abria uma agenda para alterar e a tela afirmava
+            edicao: a pessoa abria uma interacao para alterar e a tela afirmava
             que ela estava criando outra. E o nome bate com o botao da ficha
             que trouxe ate aqui — uma acao mantem o mesmo nome ao longo do
             caminho, senao a pessoa nao sabe se chegou onde queria. */}
-        <h1 style={{ fontSize: 26 }}>{id ? 'Editar agenda' : 'Nova agenda'}</h1>
+        <h1 style={{ fontSize: 26 }}>{id ? 'Editar interação' : 'Cadastrar nova Interação'}</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
           {/* CADA ABA TEM O SEU CONSELHO. "Escolha a frente" é a primeira coisa
               a fazer na aba de antes e não quer dizer nada na de depois, onde
@@ -467,6 +482,17 @@ export function Cadastro({
             ? 'Escolha a frente antes de preencher o resto.'
             : 'O que ficou da reunião. Nada aqui é obrigatório para salvar.'}
         </p>
+        {/* O PORQUÊ DO CADASTRO, uma vez só, no topo — e não repetido em cada
+            seção. Quem preenche precisa saber que o valor do registro está na
+            padronização: o mesmo campo, preenchido do mesmo jeito, em toda
+            interação, é o que permite somar e comparar depois. */}
+        {!id ? (
+          <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 6, maxWidth: 640 }}>
+            Este cadastro padroniza como cada interação com stakeholders é
+            registrada, para que o painel some e compare agendas de frentes e
+            áreas diferentes da mesma forma.
+          </p>
+        ) : null}
       </div>
 
       {/* O DESFECHO DO SALVAR PRECISA ALCANÇAR QUEM APERTOU O BOTÃO.
@@ -492,7 +518,7 @@ export function Cadastro({
           >
             {id
               ? 'Alterações salvas.'
-              : 'Agenda salva. O formulário está pronto para a próxima.'}
+              : 'Interação salva. O formulário está pronto para a próxima.'}
           </div>
         ) : null}
       </div>
@@ -501,7 +527,7 @@ export function Cadastro({
         abas={ABAS_DA_ETAPA}
         ativa={etapa}
         aoTrocar={definirEtapa}
-        rotulo="Etapas do registro da agenda"
+        rotulo="Etapas do registro da interação"
         prefixo="etapa"
       />
 
@@ -511,21 +537,22 @@ export function Cadastro({
         aria-labelledby="etapa-antes"
         style={COLUNA_DA_ETAPA(etapa === 'antes')}
       >
-      <Secao titulo="Tipo de registro">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      <Secao titulo="1. Tipo de interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {FRENTES.map((frente) => (
             <ChipDeFrente
               key={frente}
               frente={frente}
               ativo={form.frente === frente}
               aoClicar={() => trocarFrente(frente)}
+              estilo={ESTILO_DO_CHIP_MAIOR}
             />
           ))}
         </div>
       </Secao>
 
-      <Secao titulo="Área(s)">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <Secao titulo="2. Área(s)" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.areas_pessoa.map((area) => {
             const ativo = form.areas.includes(area.id);
             return (
@@ -536,13 +563,14 @@ export function Cadastro({
                 fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
                 texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
                 aoClicar={() => alternarArea(area.id)}
+                estilo={ESTILO_DO_CHIP_MAIOR}
               />
             );
           })}
         </div>
       </Secao>
 
-      <Secao titulo="Identificação">
+      <Secao titulo="3. Identificação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div className="grade grade--2" style={{ gap: 16 }}>
           <Campo rotulo="Data da interação" obrigatorio>
             <input
@@ -592,7 +620,7 @@ export function Cadastro({
               discordar entre si. */}
 
           <CampoQueCompleta
-            rotulo="UF da agenda"
+            rotulo="UF da interação"
             obrigatorio
             dica="UF, NA (nacional) ou IN (internacional)."
             valor={form.uf}
@@ -668,7 +696,7 @@ export function Cadastro({
           — "quantas foram presenciais neste trimestre?" — e o endereco nao;
           ler "Teams" e concluir online funcionaria ate alguem escrever "sala
           4". */}
-      <Secao titulo="Onde acontece">
+      <Secao titulo="4. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
@@ -716,14 +744,14 @@ export function Cadastro({
       {/* O QUE SE SABE ANTES DE A AGENDA ACONTECER.
           Vem logo depois da identificação porque é nesta ordem que se pensa
           uma agenda: quem pediu, em que pé está, o quanto importa, e o que se
-          espera dela. O que houve fica em "Desfecho da agenda"; o relato, em
+          espera dela. O que houve fica em "Desfecho da interação"; o relato, em
           "Conteúdo" — ambos depois de "Quem participa" e "Materiais", que são
           o que se resolve entre marcar e realizar.
 
           Três comentários se acumularam aqui, de reorganizações sucessivas, e
           dois falavam de campos que já tinham saído desta seção. Comentário
           que descreve uma tela anterior é pior que comentário nenhum. */}
-      <Secao titulo="Situação e expectativa">
+      <Secao titulo="5. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
@@ -741,7 +769,7 @@ export function Cadastro({
 {/* TRÊS OPÇÕES, E SÓ TRÊS.
                 Aqui só há três coisas a saber: o pedido foi feito, foi aceito,
                 ou foi negado. O que a agenda VIROU depois é outra pergunta, e
-                mora em "Desfecho da agenda"; misturar as duas leituras no
+                mora em "Desfecho da interação"; misturar as duas leituras no
                 mesmo campo devolveria uma lista de onze opções.
 
                 O status GRAVADO entra na lista mesmo fora das três. Sem isso,
@@ -841,7 +869,7 @@ export function Cadastro({
           {/* SÓ O QUE SE SABE ANTES DA AGENDA ACONTECER.
               Clima esperado é previsão; de onde a agenda veio é fato dado. O
               clima REAL, o resultado e o desdobramento saíram daqui para
-              "Desfecho da agenda" — quem abre o formulário para marcar uma
+              "Desfecho da interação" — quem abre o formulário para marcar uma
               reunião não tem como responder nenhum dos três.
 
               O par esperado × real, que motivou juntá-los aqui, continua
@@ -861,7 +889,7 @@ export function Cadastro({
                 esta reuniao" perderia uma das duas — e e esse caso que o grafo
                 existe para mostrar. */}
             <Campo
-              rotulo="Veio de outras agendas?"
+              rotulo="Veio de outras interações?"
               dica="Dá para escolher mais de uma."
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher
@@ -886,7 +914,7 @@ export function Cadastro({
                         rotulo={
                           agenda
                             ? `${dataCompleta(agenda.data_interacao)} · ${tituloDaAgenda(agenda, (ids) => nomesDosTemas(catalogo, ids)).slice(0, 40)}`
-                            : 'Agenda anterior (fora das mais recentes)'
+                            : 'Interação anterior (fora das mais recentes)'
                         }
                         titulo="Remover esta origem"
                         ativo
@@ -906,7 +934,7 @@ export function Cadastro({
 
               {falhaDasOrigens ? (
                 <p style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
-                  Não foi possível carregar as agendas anteriores.
+                  Não foi possível carregar as interações anteriores.
                 </p>
               ) : (
                 <Botao
@@ -946,7 +974,7 @@ export function Cadastro({
           diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
           pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
           um com bandeirinha. */}
-      <Secao titulo="Quem participa">
+      <Secao titulo="6. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
             o que diz que são partes distintas da mesma mesa: num cartão só, as
             duas listas leriam como uma lista longa com dois títulos, e é
@@ -1002,7 +1030,7 @@ export function Cadastro({
           se leva se junta antes, o que se traz chega depois. Separadas, cada
           instante tem o seu lugar, e a lista de preparacao nao cresce com o
           que so vai existir depois da reuniao. */}
-      <Secao titulo="Materiais de preparação">
+      <Secao titulo="7. Materiais de preparação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Suba o arquivo, ou informe o link se ele já mora em outro lugar.
@@ -1096,7 +1124,7 @@ export function Cadastro({
             !form.uf
           }
         >
-          {enviando ? 'Salvando…' : id ? 'Salvar alterações' : 'Salvar agenda'}
+          {enviando ? 'Salvando…' : id ? 'Salvar alterações' : 'Salvar interação'}
         </Botao>
       </Cartao>
 

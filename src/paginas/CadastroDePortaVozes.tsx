@@ -48,6 +48,7 @@ export function CadastroDePortaVozes() {
   const [nova, definirNova] = useState(VAZIA);
   const [emEdicao, definirEmEdicao] = useState<string | null>(null);
   const [rascunho, definirRascunho] = useState(VAZIA);
+  const [busca, definirBusca] = useState('');
 
   //: Os assuntos de cada pessoa, carregados sob demanda.
   //:
@@ -68,6 +69,20 @@ export function CadastroDePortaVozes() {
       ),
     [catalogo],
   );
+
+  //: BUSCA POR NOME (E-MAIL E CARGO TAMBÉM), em memória — a lista inteira já
+  //: vem carregada do catálogo do painel, mesmo padrão usado na Biblioteca de
+  //: referências e nos Acessos.
+  const pessoasFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return pessoas;
+    return pessoas.filter(
+      (p) =>
+        p.nome.toLowerCase().includes(termo) ||
+        (p.email ?? '').toLowerCase().includes(termo) ||
+        (p.cargo ?? '').toLowerCase().includes(termo),
+    );
+  }, [pessoas, busca]);
 
   useEffect(
     function carregarOsTemasDeCadaPessoa() {
@@ -146,7 +161,7 @@ export function CadastroDePortaVozes() {
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Os temas marcados são sobre o que esta pessoa pode falar. É o que
-            sustenta a leitura de "fora do escopo": agenda cujo tema não está na
+            sustenta a leitura de "fora do escopo": interação cujo tema não está na
             lista de quem a conduziu.
           </p>
 
@@ -266,9 +281,21 @@ export function CadastroDePortaVozes() {
 
       <Secao titulo={`Cadastradas (${pessoas.length})`}>
         <Cartao>
-          {pessoas.length === 0 ? <Vazio mensagem="Ninguém cadastrado ainda." /> : null}
+          <input
+            style={{ ...estiloDeEntrada, marginBottom: 14 }}
+            value={busca}
+            onChange={(evento) => definirBusca(evento.target.value)}
+            placeholder="Buscar por nome, e-mail ou cargo…"
+            aria-label="Buscar pessoas da Aegea"
+          />
 
-          {pessoas.map((pessoa) => (
+          {pessoas.length === 0 ? (
+            <Vazio mensagem="Ninguém cadastrado ainda." />
+          ) : pessoasFiltradas.length === 0 ? (
+            <Vazio mensagem="Nada com esse termo." />
+          ) : null}
+
+          {pessoasFiltradas.map((pessoa) => (
             <div
               key={pessoa.id}
               style={{

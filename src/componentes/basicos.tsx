@@ -120,10 +120,14 @@ export function ChipDeFrente({
   frente,
   ativo,
   aoClicar,
+  estilo,
 }: {
   frente: Frente;
   ativo?: boolean;
   aoClicar?: () => void;
+  /** Sobrepõe o tamanho padrão — o cadastro usa um chip maior que o resto do
+   *  produto, sem precisar de um segundo componente para isso. */
+  estilo?: CSSProperties;
 }) {
   return (
     <Chip
@@ -133,6 +137,7 @@ export function ChipDeFrente({
       ativo={ativo}
       aoClicar={aoClicar}
       titulo={DESCRICAO_DE_FRENTE[frente]}
+      estilo={estilo}
     />
   );
 }
@@ -144,6 +149,7 @@ export function Chip({
   ativo,
   aoClicar,
   titulo,
+  estilo,
 }: {
   rotulo: string;
   fundo?: string;
@@ -151,6 +157,9 @@ export function Chip({
   ativo?: boolean;
   aoClicar?: () => void;
   titulo?: string;
+  /** Sobrepõe o tamanho padrão (altura, recuo, fonte) — usado onde um chip
+   *  precisa de mais destaque do que o de sempre, ex.: o cadastro. */
+  estilo?: CSSProperties;
 }) {
   const conteudo = (
     <>
@@ -158,7 +167,7 @@ export function Chip({
       {ativo ? <span aria-hidden style={{ marginLeft: 6, opacity: 0.75 }}>×</span> : null}
     </>
   );
-  const estilo: CSSProperties = {
+  const estiloBase: CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
     height: 24,
@@ -171,15 +180,16 @@ export function Chip({
     lineHeight: 1,
     border: ativo ? '1px solid var(--cinza-4)' : '1px solid transparent',
     whiteSpace: 'nowrap',
+    ...estilo,
   };
 
-  if (!aoClicar) return <span style={estilo} title={titulo}>{conteudo}</span>;
+  if (!aoClicar) return <span style={estiloBase} title={titulo}>{conteudo}</span>;
   return (
     <button
       type="button"
       onClick={aoClicar}
       title={titulo ?? (ativo ? 'Clique para remover o filtro' : 'Clique para filtrar')}
-      style={{ ...estilo, cursor: 'pointer' }}
+      style={{ ...estiloBase, cursor: 'pointer' }}
     >
       {conteudo}
     </button>
@@ -473,7 +483,7 @@ export function Botao({
       height: 40,
       // O gradiente turquesa → azul-mar da marca, e não a cor chapada de
       // antes — mesmo par de cores em todo botão primário do produto, do
-      // "Novo registro" no cabeçalho ao "Exportar CSV" da Base.
+      // "Nova interação" no cabeçalho ao "Exportar CSV" da Base.
       background: 'linear-gradient(135deg, var(--turquesa-rio) 0%, var(--azul-mar) 100%)',
       color: 'var(--branco)',
       border: 'none',
