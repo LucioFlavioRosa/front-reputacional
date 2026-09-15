@@ -225,6 +225,14 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 //: significados diferentes.
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
+//: A MESMA PALETA, EM ORDEM INVERTIDA — só para área. As roscas de "Interações
+//: por tier" e "Interações por áreas" ficam lado a lado no Painel; com a
+//: mesma paleta na mesma ordem, a primeira fatia de cada uma sairia da MESMA
+//: cor (azul) sem que isso signifique nada em comum entre um tier e uma
+//: área. Invertida, as 3 áreas de hoje começam em amarelo/rosa/laranja —
+//: nenhuma delas repete a cor de nenhum dos tiers.
+const PALETA_DE_AREAS = [...PALETA_DO_PAINEL].reverse();
+
 /** Quantas interações em cada nível de relevância — sempre um item por
  *  tier cadastrado (`catalogo.dicionarios.relevancias`), mesmo os com zero
  *  neste recorte: é o que faz a rosca sempre ter o mesmo número de fatias,
@@ -273,9 +281,9 @@ export function topInstituicoesPorTier(
 /** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
  *  uma interação com duas áreas soma nas duas, e não escolhe uma.
  *
- *  `cor` vem da MESMA paleta de `porTier`/`temasMaisRecorrentes` — é o que
- *  faz a rosca de "Interações por áreas" ter uma fatia por área, e não uma
- *  cor só repetida em todas. */
+ *  `cor` vem de `PALETA_DE_AREAS` — a paleta do painel invertida, para a
+ *  rosca de "Interações por áreas" não repetir a cor da rosca de "Interações
+ *  por tier" logo ao lado. */
 export function porArea(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -294,7 +302,7 @@ export function porArea(
     .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
     .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
     .slice(0, quantos)
-    .map((item, indice) => ({ ...item, cor: PALETA_DO_PAINEL[indice % PALETA_DO_PAINEL.length] }));
+    .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
 }
 
 export interface ClimaDaArea {
