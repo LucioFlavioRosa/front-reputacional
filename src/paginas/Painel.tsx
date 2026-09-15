@@ -812,12 +812,12 @@ function ResumoExecutivoDoRecorte({
         background: 'var(--branco)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card)',
-        fontSize: 12.5,
+        fontSize: 14.5,
         color: 'var(--cinza-3)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="kicker" style={{ color: 'var(--azul-mar)' }}>
+        <span className="kicker" style={{ color: 'var(--azul-mar)', fontSize: 13.5 }}>
           Síntese Executiva
         </span>
         <span style={{ color: 'var(--borda-input)' }}>|</span>
