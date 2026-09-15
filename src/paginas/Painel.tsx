@@ -47,6 +47,14 @@ import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 //: cor por categoria, só o gráfico empilhado no tempo precisa).
 const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
+//: AS TRÊS ÁREAS QUE GANHAM TABELA PRÓPRIA, lado a lado — nomeadas, e não
+//: "as 3 primeiras do dicionário": a área interna pode ganhar ou perder
+//: linha (ver as migrations 0032/0033), e a tela não deve reagir sozinha a
+//: isso trocando quais tabelas aparecem. Uma área daqui que deixar de existir
+//: (renomeada ou desativada) some da tela — sem erro, só a tabela vazia (ver
+//: `interacoesPorAreaFixa` abaixo).
+const AREAS_FIXAS = ['Comunicação', 'Relações Institucionais', 'RI + Oper. Financeiras'];
+
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
  *  sem disputar clique com as fatias/barras de dentro dele — a área
  *  clicável do gráfico filtra o recorte; este botão é o único jeito de abrir
@@ -212,6 +220,17 @@ export function Painel({
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
       climaPorArea: climaPorArea(interacoes, catalogo),
+      // UMA LISTA DE INTERAÇÕES POR ÁREA FIXA, e não um id — a área é
+      // multivalorada (`interacao.areas`), então a mesma interação pode
+      // aparecer em mais de uma das três tabelas, exatamente como o filtro
+      // "Área" do resto do Painel já trata OR entre áreas.
+      interacoesPorAreaFixa: AREAS_FIXAS.map((nome) => {
+        const area = catalogo.dicionarios.areas_pessoa.find((a) => a.nome === nome);
+        return {
+          nome,
+          interacoes: area ? interacoes.filter((i) => i.areas.includes(area.id)) : [],
+        };
+      }),
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
       topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
@@ -325,7 +344,48 @@ export function Painel({
         topUf={derivado.resumoExecutivo.topUf}
       />
 
-      {/* BLOCO 1 — com quem estamos falando e como está a relação.
+      {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
+          (mesmo sem nenhuma interação ainda), porque é um termômetro para
+          comparar todas de uma vez, não um ranking recortado como a barra
+          por tema mais abaixo. A contagem não é fixa em código — `area` pode
+          aposentar ou ganhar linha (ver as migrations 0032/0033) —, e o texto
+          abaixo lê o tamanho de verdade em vez de repetir um número. */}
+      <Secao titulo="Termômetro por área" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
+          {derivado.scorePorArea.length === 1
+            ? 'A única área interna ativa'
+            : `As ${derivado.scorePorArea.length} áreas internas ativas`}
+          , com o clima das interações em que participaram — do pior para o melhor.
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+          O número é o placar de clima da área: (proativas − reativas) ÷ total de interações ×
+          100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, maioria
+          neutra, ou nenhuma interação com clima ainda.
+        </p>
+        <BarraDivergente itens={derivado.scorePorArea} aoAbrirAgenda={aoAbrirAgenda} />
+      </Secao>
+
+      {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — três tabelas fixas lado a
+          lado, uma por área (Comunicação, Relações Institucionais, RI + Oper.
+          Financeiras — ver `AREAS_FIXAS`). MESMO CARTÃO de "Interações mais
+          recentes" (`TabelaDeInteracoes`), só com menos colunas: a área já
+          está dita no título, então Área(s) sairia repetindo o óbvio, e
+          Stakeholder/Relevância saem para as três caberem lado a lado sem
+          rolagem horizontal. */}
+      <div className="grade grade--3" style={{ gap: 16 }}>
+        {derivado.interacoesPorAreaFixa.map(({ nome, interacoes: interacoesDaArea }) => (
+          <TabelaDeInteracoes
+            key={nome}
+            titulo={nome}
+            interacoes={interacoesDaArea}
+            catalogo={catalogo}
+            aoAbrirFicha={aoAbrirAgenda}
+            colunas="reduzidas"
+          />
+        ))}
+      </div>
+
+      {/* 4. BLOCO 1 — com quem estamos falando e como está a relação.
           Três cartões, um clique por dentro (a fatia/barra filtra o recorte)
           e um clique por fora (o botão "Ver histórico" abre o avanço no
           tempo) — os dois convivem porque nunca disputam a mesma área. */}
@@ -409,31 +469,9 @@ export function Painel({
         </Secao>
       </div>
 
+      {/* 5. INTERAÇÕES MAIS RECENTES — reaproveita o mesmo cartão de cima,
+          agora sem filtro de área nenhum: todo o recorte, colunas completas. */}
       <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} aoAbrirFicha={aoAbrirAgenda} />
-
-      {/* NO LUGAR DOS KPIS, enquanto EXIBIR_KPIS estiver false — é o
-          conteúdo que o comentário de `EXIBIR_KPIS` já previa para esse
-          espaço. Sempre TODAS as áreas ativas do dicionário (mesmo sem
-          nenhuma agenda ainda), porque é um termômetro para comparar todas de
-          uma vez, não um ranking recortado como a barra por tema logo abaixo.
-          A contagem não é fixa em código — `area_pessoa` pode aposentar ou
-          ganhar linha (ver 0033_area_performance_e_dados_desativada.sql), e o
-          texto abaixo lê o tamanho de verdade em vez de repetir um número. */}
-      <Secao titulo="Termômetro por área" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
-          {derivado.scorePorArea.length === 1
-            ? 'A única área interna ativa'
-            : `As ${derivado.scorePorArea.length} áreas internas ativas`}
-          , com o clima das interações em que participaram — do pior para o melhor.
-        </p>
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-          O número é o placar de clima da área: (proativas − reativas) ÷ total de interações ×
-          100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, maioria
-          neutra, ou nenhuma interação com clima ainda.
-        </p>
-        <BarraDivergente itens={derivado.scorePorArea} aoAbrirAgenda={aoAbrirAgenda} />
-      </Secao>
-
 
       {/* BLOCO: SÉRIES TEMPORAIS — volumetria, clima e temas compartilham o
           mesmo seletor de granularidade e respondem juntos "o que aconteceu

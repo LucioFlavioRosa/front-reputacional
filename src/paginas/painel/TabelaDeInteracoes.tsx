@@ -42,7 +42,13 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
 
-const COLUNAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+const COLUNAS_COMPLETAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+
+//: A VERSÃO REDUZIDA serve às três tabelas de área fixa do Painel: a área já
+//: está no título do cartão (é fixa, não uma coluna), Stakeholder e
+//: Relevância saem para a lista caber lado a lado com as outras duas sem
+//: rolagem horizontal.
+const COLUNAS_REDUZIDAS = ['Data', 'Instituição', 'Pauta', 'Clima'];
 
 //: SÓ DATA E INSTITUIÇÃO, por pedido — mais antigo/mais novo e A-Z/Z-A. As
 //: demais colunas continuam como cabeçalho simples, sem seta nem clique.
@@ -88,6 +94,8 @@ export function TabelaDeInteracoes({
   interacoes,
   catalogo,
   aoAbrirFicha,
+  titulo = 'Interações mais recentes',
+  colunas = 'completas',
 }: {
   interacoes: Interacao[];
   catalogo: Catalogo;
@@ -95,7 +103,14 @@ export function TabelaDeInteracoes({
    *  Base. A linha do tempo, dentro do popup, leva até ela quando alguém
    *  clica numa das outras interações do mesmo ente público. */
   aoAbrirFicha: (id: string) => void;
+  /** Título do cartão — as três tabelas de área fixa usam o nome da área. */
+  titulo?: string;
+  /** 'reduzidas' tira Stakeholder e Relevância — usado pelas três tabelas de
+   *  área fixa, lado a lado, onde a área já está dita no título do cartão. */
+  colunas?: 'completas' | 'reduzidas';
 }) {
+  const reduzida = colunas === 'reduzidas';
+  const colunasDaTabela = reduzida ? COLUNAS_REDUZIDAS : COLUNAS_COMPLETAS;
   const [pagina, definirPagina] = useState(1);
   const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>({
@@ -121,16 +136,16 @@ export function TabelaDeInteracoes({
   const daPagina = ordenadas.slice((paginaAtual - 1) * porPagina, paginaAtual * porPagina);
 
   return (
-    <Secao titulo="Interações mais recentes">
+    <Secao titulo={titulo}>
       {!ordenadas.length ? (
         <Vazio
-          mensagem="Nenhuma interação no recorte"
+          mensagem={`Nenhuma interação em ${titulo} neste recorte`}
           dica="Ajuste os filtros para ver resultados."
         />
       ) : (
         <>
           <Tabela
-            colunas={COLUNAS}
+            colunas={colunasDaTabela}
             altura="none"
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
@@ -151,9 +166,11 @@ export function TabelaDeInteracoes({
                 <td style={{ ...celula, minWidth: 160 }}>
                   {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                 </td>
-                <td style={{ ...celula, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
-                  {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
-                </td>
+                {reduzida ? null : (
+                  <td style={{ ...celula, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                    {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
+                  </td>
+                )}
                 <td
                   style={{
                     ...celula,
@@ -165,12 +182,16 @@ export function TabelaDeInteracoes({
                 >
                   {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
                 </td>
-                <td style={{ ...celula, color: 'var(--cinza-2)' }}>
-                  {nomesDasAreas(interacao, catalogo)}
-                </td>
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-                  {rotuloDeRelevancia(catalogo, interacao.tier)}
-                </td>
+                {reduzida ? null : (
+                  <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                    {nomesDasAreas(interacao, catalogo)}
+                  </td>
+                )}
+                {reduzida ? null : (
+                  <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                    {rotuloDeRelevancia(catalogo, interacao.tier)}
+                  </td>
+                )}
                 <td style={celula}>
                   <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
                 </td>
