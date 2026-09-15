@@ -398,9 +398,9 @@ function CampoDePeriodo({
   }
 
   //: OS ATALHOS SE DIVIDEM PELO PRÓPRIO NOME: "proximos-*" é o único prefixo
-  //: que olha para a frente; todo o resto ("ano-corrente", "ultimos-*") olha
-  //: para trás. Não é uma lista separada para manter em dia — é a mesma
-  //: `ATALHOS_DE_PERIODO` de sempre, só particionada na hora de desenhar.
+  //: que olha para a frente; "ultimos-*" olha para trás. Não é uma lista
+  //: separada para manter em dia — é a mesma `ATALHOS_DE_PERIODO` de sempre,
+  //: só particionada na hora de desenhar.
   const atalhosDoPassado = Object.entries(ATALHOS_DE_PERIODO).filter(
     ([chave]) => !chave.startsWith('proximos-'),
   );

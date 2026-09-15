@@ -64,7 +64,7 @@ describe('ler e escrever o caminho', () => {
 describe('o recorte na consulta', () => {
   it('vai e volta inteiro', () => {
     const recorte = {
-      periodo: 'ano-corrente' as const,
+      periodo: 'ultimos-360' as const,
       frente: 'imprensa' as const,
       tier: 1,
       tags: ['3', '7'],

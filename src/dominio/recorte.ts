@@ -9,18 +9,21 @@
 
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 
+//: PASSADO E FUTURO NA MESMA ESCALA, de propósito: 30/60/90/180/360 dias dos
+//: dois lados do calendário. "Ano corrente" saiu daqui — não tinha um espelho
+//: para a frente, e a barra de filtros passou a tratar as duas direções de
+//: forma simétrica. Espelha `AtalhoDePeriodo` do backend (`app/dominio/periodo.py`).
 export const ATALHOS_DE_PERIODO = {
-  'ano-corrente': 'Ano corrente',
-  'ultimos-30': 'Últimos 30 dias',
-  'ultimos-90': 'Últimos 90 dias',
+  'ultimos-360': 'Últimos 360 dias',
   'ultimos-180': 'Últimos 180 dias',
-  //: PARA A FRENTE: agendas ainda por vir — mesma janela dos "últimos",
-  //: olhando para o outro lado do calendário. Espelha `AtalhoDePeriodo` do
-  //: backend (`app/dominio/periodo.py`).
-  'proximos-30': 'Próximos 30 dias',
-  'proximos-90': 'Próximos 90 dias',
+  'ultimos-90': 'Últimos 90 dias',
+  'ultimos-60': 'Últimos 60 dias',
+  'ultimos-30': 'Últimos 30 dias',
+  'proximos-360': 'Próximos 360 dias',
   'proximos-180': 'Próximos 180 dias',
-  'proximos-365': 'Próximos 12 meses',
+  'proximos-90': 'Próximos 90 dias',
+  'proximos-60': 'Próximos 60 dias',
+  'proximos-30': 'Próximos 30 dias',
 } as const;
 
 export type AtalhoDePeriodo = keyof typeof ATALHOS_DE_PERIODO;
@@ -135,11 +138,13 @@ export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate
   }
   if (!recorte.periodo) return {};
 
-  if (recorte.periodo === 'ano-corrente') {
-    return { de: new Date(hoje.getFullYear(), 0, 1), ate: hoje };
-  }
-
-  const diasNoPassado = { 'ultimos-30': 30, 'ultimos-90': 90, 'ultimos-180': 180 } as const;
+  const diasNoPassado = {
+    'ultimos-30': 30,
+    'ultimos-60': 60,
+    'ultimos-90': 90,
+    'ultimos-180': 180,
+    'ultimos-360': 360,
+  } as const;
   if (recorte.periodo in diasNoPassado) {
     const inicio = new Date(hoje);
     inicio.setDate(inicio.getDate() - diasNoPassado[recorte.periodo as keyof typeof diasNoPassado]);
@@ -148,9 +153,10 @@ export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate
 
   const diasNoFuturo = {
     'proximos-30': 30,
+    'proximos-60': 60,
     'proximos-90': 90,
     'proximos-180': 180,
-    'proximos-365': 365,
+    'proximos-360': 360,
   } as const;
   const fim = new Date(hoje);
   fim.setDate(fim.getDate() + diasNoFuturo[recorte.periodo as keyof typeof diasNoFuturo]);
