@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Carregando, FaixaDeErro, Vazio, estiloDeEntrada } from '@/componentes/basicos';
+import { Botao, Carregando, FaixaDeErro, Modal, Vazio, estiloDeEntrada } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
@@ -75,6 +75,8 @@ export function MateriaisOficiais() {
   const [tipo, definirTipo] = useState('');
   const [tema, definirTema] = useState('');
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
+  //: A referência com o popup de detalhes aberto. Null = nenhum.
+  const [detalhe, definirDetalhe] = useState<Referencia | null>(null);
   const { ocultas, visiveis, alternar } = useColunasVisiveis(
     'base-posicionamentos-e-papers',
     COLUNAS,
@@ -168,7 +170,7 @@ export function MateriaisOficiais() {
       >
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
           {filtradas.length} de {referencias.length} no acervo. Clique na linha para
-          abrir a versão mais recente.
+          ver os detalhes.
         </p>
         <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
       </div>
@@ -192,15 +194,8 @@ export function MateriaisOficiais() {
           {ordenadas.map((referencia) => (
             <Linha
               key={referencia.id}
-              titulo="Abrir a versão mais recente"
-              aoClicar={() => {
-                if (referencia.versao)
-                  window.open(
-                    urlDaVersao(referencia.id, referencia.versao.id),
-                    '_blank',
-                    'noopener,noreferrer',
-                  );
-              }}
+              titulo="Ver detalhes"
+              aoClicar={() => definirDetalhe(referencia)}
             >
               {!visiveis.includes('Título') ? null : (
                 <td style={{ ...celula, minWidth: 260 }}>
@@ -268,6 +263,119 @@ export function MateriaisOficiais() {
           ))}
         </Tabela>
       )}
+
+      {detalhe ? (
+        <DetalhesDoPosicionamento
+          referencia={detalhe}
+          nomeDoTema={nomeDoTema}
+          aoFechar={() => definirDetalhe(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/** O popup de detalhes de um posicionamento/paper — mesma ideia da Ficha da
+ *  interação: um clique na linha abre mais contexto do que cabe na tabela, e é
+ *  daqui que se abre ou baixa o arquivo anexado, sem sair da tela.
+ *
+ *  ABRIR, e não forçar download: o navegador decide (um PDF abre inline, por
+ *  exemplo), que é o mesmo comportamento de "abrir a versão mais recente" que
+ *  existia antes desta tela ganhar o popup — só que agora com contexto ao lado. */
+function DetalhesDoPosicionamento({
+  referencia,
+  nomeDoTema,
+  aoFechar,
+}: {
+  referencia: Referencia;
+  nomeDoTema: (id: number) => string;
+  aoFechar: () => void;
+}) {
+  const versao = referencia.versao;
+
+  return (
+    <Modal
+      titulo={referencia.titulo}
+      subtitulo={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          {ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo}
+          {versao ? ` · v${versao.numero}` : ''}
+          {versao ? ` · ${dataCompleta(versao.atualizado_em)}` : ''}
+        </span>
+      }
+      aoFechar={aoFechar}
+      rodape={
+        versao ? (
+          <Botao
+            variante="primario"
+            aoClicar={() =>
+              window.open(urlDaVersao(referencia.id, versao.id), '_blank', 'noopener,noreferrer')
+            }
+          >
+            Abrir arquivo
+          </Botao>
+        ) : undefined
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {referencia.resumo ? (
+          <div>
+            <div className="kicker" style={{ marginBottom: 6 }}>
+              Resumo
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: 0, lineHeight: 1.6 }}>
+              {referencia.resumo}
+            </p>
+          </div>
+        ) : null}
+
+        <div>
+          <div className="kicker" style={{ marginBottom: 6 }}>
+            Temas
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: 0 }}>
+            {referencia.temas.map(nomeDoTema).join(', ') || '—'}
+          </p>
+        </div>
+
+        <div>
+          <div className="kicker" style={{ marginBottom: 6 }}>
+            Arquivo anexado
+          </div>
+          {versao ? (
+            <div
+              style={{
+                background: 'var(--bg-app)',
+                borderRadius: 'var(--r-card-int)',
+                padding: '13px 15px',
+              }}
+            >
+              <p style={{ fontSize: 13, color: 'var(--cinza-4)', margin: 0, wordBreak: 'break-all' }}>
+                {versao.arquivo_nome}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }} className="tabular">
+                {formatoLegivel(versao.arquivo_tipo)} · {tamanhoLegivel(versao.arquivo_tamanho)}
+                {versao.criado_por ? ` · anexado por ${versao.criado_por}` : ''}
+              </p>
+              {versao.nota ? (
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                  {versao.nota}
+                </p>
+              ) : null}
+              {referencia.quantas_versoes > 1 ? (
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                  {referencia.quantas_versoes} versões ao todo — este popup mostra a mais
+                  recente.
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+              Sem arquivo anexado.
+            </p>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }
