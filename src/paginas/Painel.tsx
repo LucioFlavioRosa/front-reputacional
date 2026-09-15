@@ -160,7 +160,7 @@ export function Painel({
       unidades: ranking(interacoes, catalogo, 'unidade'),
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
-      climaPorPublico: scorePorInstituicao(interacoes, catalogo, 10),
+      climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
     };
   }, [interacoes, catalogo, temasExtras, granularidade]);
 
