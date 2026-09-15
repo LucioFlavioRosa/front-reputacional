@@ -289,7 +289,13 @@ function TooltipDaFatia({
               >
                 {linha.rotulo}
               </span>
-              <span className="tabular">{linha.valor}</span>
+              {/* A COR DA FATIA EM FOCO, e não branco neutro — é o que liga
+                  visualmente esta lista de instituições de volta à fatia que
+                  o mouse está sobre, sem precisar repetir o nome do tier na
+                  frente de cada linha. */}
+              <span className="tabular" style={{ color: item.cor ?? 'var(--branco)', fontWeight: 700 }}>
+                {linha.valor}
+              </span>
             </div>
           ))}
         </div>

@@ -340,11 +340,12 @@ export interface ScoreDeInstituicao {
   score: number;
 }
 
-/** O placar de clima por instituição ("público"), nos mesmos moldes de
- *  `scorePorTema`: só quem tem clima registrado entra na conta, o score é
- *  (proativas − reativas) ÷ total em pontos de −100 a 100, e os `quantos`
- *  mais discutidos entram primeiro — só depois a ordenação vira a do score,
- *  pior primeiro. */
+/** O placar de clima por instituição ("público"): só quem tem clima
+ *  registrado entra na conta, o score é (proativas − reativas) ÷ total em
+ *  pontos de −100 a 100. Os `quantos` com MAIS interações entram primeiro —
+ *  e a ordem final é a mesma, da maior para a menor quantidade: é "com quem
+ *  falamos mais, e como está indo", não um ranking de pior para melhor
+ *  score (esse já existe em `scorePorTema`/`scorePorArea`). */
 export function scorePorInstituicao(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -374,8 +375,7 @@ export function scorePorInstituicao(
 
   return todos
     .sort((a, b) => b.total - a.total)
-    .slice(0, quantos)
-    .sort((a, b) => a.score - b.score);
+    .slice(0, quantos);
 }
 
 /* -- séries mensais ------------------------------------------------------- */

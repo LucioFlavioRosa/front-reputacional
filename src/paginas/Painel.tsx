@@ -5,6 +5,7 @@ import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
+import { LinhaEmpilhada } from '@/graficos/LinhaEmpilhada';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -434,7 +435,7 @@ export function Painel({
         </Secao>
 
         <Secao
-          titulo="Volume por área"
+          titulo="Interações por áreas"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
         >
           {/* BARRA, E NÃO ROSCA: as áreas têm tamanhos parecidos entre si, e
@@ -466,6 +467,12 @@ export function Painel({
             ativo={recorte.entidade}
             aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
           />
+          <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
+            As instituições com mais interações neste recorte, da maior para a menor
+            quantidade. O Sentimento ao lado é o placar de clima: (proativas − reativas) ÷
+            total × 100 — de −100 (só reativas) a +100 (só proativas), 0 é equilíbrio ou
+            maioria neutra.
+          </p>
         </Secao>
       </div>
 
@@ -521,7 +528,7 @@ export function Painel({
           titulo="Clima da interação no tempo"
           subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
         >
-          <BarrasEmpilhadas
+          <LinhaEmpilhada
             colunas={derivado.clima}
             altura={140}
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
@@ -754,7 +761,7 @@ function HistoricoDoBloco({
         cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
       }));
       return {
-        titulo: 'Volume por área ao longo do tempo',
+        titulo: 'Interações por áreas ao longo do tempo',
         categorias: categoriasDeArea,
         categoriasDe: (i: Interacao) =>
           i.areas.map(String).filter((id) => categoriasDeArea.some((c) => c.chave === id)),
