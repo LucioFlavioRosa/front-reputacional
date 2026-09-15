@@ -1,19 +1,10 @@
-/** Mapa do Brasil com uma bolha por UF, posicionada na capital.
- *
- *  A geometria é real — Natural Earth, extraída do world-atlas e servida do
- *  próprio projeto (`brasil.geo.json`, 8 KB). O handoff é explícito: nunca
- *  desenhar o contorno do Brasil à mão, e nunca depender de CDN público.
- *
- *  A área da bolha é proporcional ao volume (escala de raiz quadrada), porque
- *  é a área que o olho compara, não o raio.
- */
-
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { geoMercator, geoPath } from 'd3-geo';
 import { scaleSqrt } from 'd3-scale';
 import type { Feature, Geometry } from 'geojson';
 import brasil from '@/graficos/brasil.geo.json';
 import type { PontoNoMapa } from '@/dominio/derivacoes';
+import { rotuloDeAbrangencia } from '@/dominio/frentes';
 
 /** Capitais em lat/lon reais. */
 const CAPITAIS: Record<string, [number, number]> = {
@@ -39,6 +30,7 @@ export function MapaUf({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(420);
+  const [hoverUf, setHoverUf] = useState<string | null>(null);
 
   useEffect(function acompanharLarguraDoContainer() {
     const alvo = container.current;
@@ -57,26 +49,27 @@ export function MapaUf({
     const feature = brasil as Feature<Geometry>;
     const projecao = geoMercator().fitExtent(
       [
-        [8, 8],
-        [largura - 8, altura - 8],
+        [10, 10],
+        [largura - 10, altura - 10],
       ],
       feature,
     );
     return { contorno: geoPath(projecao)(feature) ?? '', projecao };
   }, [largura, altura]);
 
-  // 'NA' e 'IN' não têm capital: aparecem no ranking ao lado, não no mapa.
   const comCapital = pontos.filter((p) => CAPITAIS[p.uf] && p.total > 0);
+  const totalNacional = pontos.reduce((acc, p) => acc + p.total, 0) || 1;
   const maximo = Math.max(1, ...comCapital.map((p) => p.total));
-  const raioMaximo = Math.min(26, Math.max(10, largura * 0.055));
-  // O PISO importa tanto quanto o teto. Com `range([0, ...])`, uma UF com uma
-  // única interação encolhia para ~4px de raio — abaixo dos 8px mínimos que a
-  // própria marca exige para continuar sendo um alvo, visível e clicável, e
-  // não um pixel perdido no mapa.
-  const raio = scaleSqrt().domain([0, maximo]).range([6, raioMaximo]);
+  const raioMaximo = Math.min(28, Math.max(12, largura * 0.058));
+  const raio = scaleSqrt().domain([0, maximo]).range([7, raioMaximo]);
+
+  const pontoHoverOuSelecionado = comCapital.find(
+    (p) => p.uf === (hoverUf || selecionada),
+  );
 
   return (
-    <div ref={container} style={{ width: '100%' }}>
+    <div ref={container} style={{ width: '100%', position: 'relative' }}>
+      {/* Grade de coordenadas tática / mapa analítico */}
       <svg
         width="100%"
         viewBox={`0 0 ${largura} ${altura}`}
@@ -84,13 +77,25 @@ export function MapaUf({
         role="img"
         aria-label="Distribuição geográfica das interações por unidade da federação"
       >
-        {/* `--bg-trilho` sobre cartão branco é quase o mesmo tom — o contorno
-            sumia. Um lavado do PRÓPRIO acento (a cor das bolhas), não um cinza
-            qualquer: o mapa lê como o "chão" das marcas, e acompanha `acento`
-            se algum dia outra tela passar uma cor diferente. */}
-        <path d={contorno} fill={acento} fillOpacity={0.07} stroke={acento} strokeOpacity={0.32} strokeWidth={1} />
+        <defs>
+          <pattern id="grid-mapa" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="var(--borda)" strokeWidth="0.5" strokeDasharray="2 2" />
+          </pattern>
+        </defs>
 
-        {/* Maiores primeiro para que as menores fiquem por cima e clicáveis. */}
+        {/* Fundo de malha espacial / retículo */}
+        <rect width={largura} height={altura} fill="url(#grid-mapa)" opacity={0.6} rx={4} />
+
+        {/* Contorno do Brasil com preenchimento limpo e linha estruturada */}
+        <path
+          d={contorno}
+          fill="var(--bg-app)"
+          stroke="var(--azul-mar)"
+          strokeOpacity={0.4}
+          strokeWidth={1.2}
+        />
+
+        {/* Círculos / Bolhas de dados */}
         {[...comCapital]
           .sort((a, b) => b.total - a.total)
           .map((ponto) => {
@@ -99,6 +104,7 @@ export function MapaUf({
             if (!posicao) return null;
 
             const ativa = selecionada === ponto.uf;
+            const emHover = hoverUf === ponto.uf;
             const r = raio(ponto.total);
 
             return (
@@ -106,37 +112,44 @@ export function MapaUf({
                 key={ponto.uf}
                 transform={`translate(${posicao[0]},${posicao[1]})`}
                 onClick={() => aoClicarUf?.(ponto.uf)}
+                onMouseEnter={() => setHoverUf(ponto.uf)}
+                onMouseLeave={() => setHoverUf(null)}
                 style={{ cursor: aoClicarUf ? 'pointer' : undefined }}
               >
-                <title>
-                  {ponto.uf}: {ponto.total}{' '}
-                  {ponto.total === 1 ? 'interação' : 'interações'}
-                  {aoClicarUf ? ' — clique para filtrar o painel' : ''}
-                </title>
-                {aoClicarUf && r < 12 ? (
-                  // Alvo de clique maior que a marca visível: um raio de 6px
-                  // desenha um alvo de 12px, abaixo do mínimo de ~24px que um
-                  // toque em tela pequena precisa. Invisível, só amplia a área
-                  // que responde — o círculo pintado continua do tamanho certo.
-                  <circle r={12} fill="transparent" />
+                {aoClicarUf && r < 14 ? (
+                  <circle r={14} fill="transparent" />
                 ) : null}
+
+                {/* Anel de foco / pulso em hover ou seleção */}
+                {(ativa || emHover) ? (
+                  <circle
+                    r={r + 4}
+                    fill="none"
+                    stroke={acento}
+                    strokeWidth={ativa ? 2 : 1}
+                    strokeDasharray={emHover && !ativa ? "3 3" : undefined}
+                    opacity={0.8}
+                  />
+                ) : null}
+
+                {/* Círculo da bolha */}
                 <circle
                   r={r}
-                  fill={acento}
-                  fillOpacity={ativa ? 0.55 : 0.22}
+                  fill={ativa ? acento : emHover ? 'var(--azul-mar)' : acento}
+                  fillOpacity={ativa ? 0.85 : emHover ? 0.6 : 0.25}
                   stroke={acento}
-                  strokeWidth={ativa ? 3 : 1.5}
+                  strokeWidth={ativa ? 2.5 : 1.5}
                 />
-                {r >= 13 ? (
-                  // Texto não veste a cor da série: o rótulo dentro da marca
-                  // usa tinta escura, porque o preenchimento é um lavado de
-                  // 22% e não sustenta contraste com a própria cor por cima.
+
+                {/* Rótulo da UF e total */}
+                {r >= 12 ? (
                   <text
                     textAnchor="middle"
                     dy="0.35em"
-                    fontSize={11}
+                    fontSize={r >= 18 ? 11 : 9.5}
                     fontWeight={700}
-                    fill="var(--cinza-4)"
+                    fill={ativa ? 'var(--branco)' : 'var(--cinza-4)'}
+                    className="tabular"
                   >
                     {ponto.total}
                   </text>
@@ -146,24 +159,62 @@ export function MapaUf({
           })}
       </svg>
 
-      {/* A legenda de escala que faltava: sem ela, o tamanho da bolha só
-          significa algo enquanto o mouse está em cima lendo o `title`. Duas
-          referências — a menor e a maior UF do recorte — bastam para o olho
-          calibrar todas as outras por interpolação. Some sozinha quando o
-          recorte não tem variação para calibrar (uma UF só, ou todas iguais).
-
-          O RÓTULO PRECISA DIZER A RELAÇÃO, não só nomear a unidade: "Interações"
-          sozinho ao lado de duas bolhas não conta que o TAMANHO é o que varia —
-          lia como duas UFs soltas, não como uma régua. E cada bolha agora leva
-          a palavra "interação(ões)" junto do número, então nenhuma delas
-          depende de ler o rótulo do grupo pra fazer sentido sozinha. */}
-      {maximo > 1 ? (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 11, color: 'var(--cinza-2)', marginBottom: 6 }}>
-            O tamanho da bolha mostra o número de interações
+      {/* Badge analítica do estado selecionado ou em hover */}
+      {pontoHoverOuSelecionado ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            background: 'var(--branco)',
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-chip)',
+            padding: '6px 10px',
+            boxShadow: '0 2px 8px rgba(17,23,60,0.08)',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 2,
+              background: acento,
+              display: 'inline-block',
+            }}
+          />
+          <div>
+            <strong style={{ color: 'var(--azul-mar)' }}>
+              {rotuloDeAbrangencia(pontoHoverOuSelecionado.uf)}
+            </strong>
+            <span style={{ color: 'var(--cinza-2)', marginLeft: 6 }} className="tabular">
+              {pontoHoverOuSelecionado.total} agendas ({Math.round((pontoHoverOuSelecionado.total / totalNacional) * 100)}%)
+            </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            {[1, maximo].map((valor) => {
+        </div>
+      ) : null}
+
+      {/* Legenda de escala com barra e valores */}
+      {maximo > 1 ? (
+        <div
+          style={{
+            marginTop: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 11,
+            color: 'var(--cinza-2)',
+            paddingTop: 8,
+            borderTop: '1px solid var(--borda)',
+          }}
+        >
+          <span>Escala por volume de interações</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {[1, Math.round(maximo / 2), maximo].map((valor) => {
               const r = raio(valor);
               return (
                 <span
@@ -171,28 +222,22 @@ export function MapaUf({
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    fontSize: 11,
-                    color: 'var(--cinza-2)',
+                    gap: 5,
+                    color: 'var(--cinza-3)',
                   }}
                 >
-                  <svg
-                    width={raioMaximo * 2}
-                    height={raioMaximo * 2}
-                    style={{ display: 'block', flexShrink: 0 }}
-                    aria-hidden
-                  >
+                  <svg width={r * 2 + 2} height={r * 2 + 2} style={{ display: 'block', flexShrink: 0 }}>
                     <circle
-                      cx={raioMaximo}
-                      cy={raioMaximo}
+                      cx={r + 1}
+                      cy={r + 1}
                       r={r}
                       fill={acento}
-                      fillOpacity={0.22}
+                      fillOpacity={0.25}
                       stroke={acento}
-                      strokeWidth={1.5}
+                      strokeWidth={1.2}
                     />
                   </svg>
-                  {valor} {valor === 1 ? 'interação' : 'interações'}
+                  <span className="tabular">{valor}</span>
                 </span>
               );
             })}

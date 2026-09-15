@@ -9,13 +9,15 @@
   --turquesa-rio: #17E3CB;
   --turquesa-sombra: #9DEEE7;
 
-  /* Paleta secundária — detalhes, ícones e gráficos */
+  /* Paleta secundária — detalhes, ícones e gráficos (PPT_Padrao_Aegea_V4) */
   --amarelo-pequi: #F8DC00;
   --laranja-baia: #FE952B;
   --vermelho-pitanga: #FF5C60;
   --magenta-pitaia: #E12379;
   --roxo-acai: #A11FFF;
   --rosa-goiaba: #FF8FE1;
+  --marrom-cacau: #AD6547;
+  --marrom-cafe: #332727;
 
   /* Neutros */
   --branco: #FFFFFF;
@@ -52,11 +54,11 @@
   --frente-eventos: #FE952B;
   --frente-investidores: #DF2378;  /* 1% mais escuro que o Magenta Pitaia: ver dominio/frentes.ts */
   --frente-legislativo: #F8DC00;
-  --frente-interna: #8C91A4;
+  --frente-interna: #B0B9C8;
 
   /* Clima */
   --clima-propositivo: #17E3CB;
-  --clima-neutro: #8C91A4;
+  --clima-neutro: #B0B9C8;
   --clima-tenso: #FF5C60;
 
   /* Resultado */
@@ -74,18 +76,18 @@
   --font-sans: "DM Sans", Arial, sans-serif;
   --font-destaque: Georgia, "Times New Roman", serif; /* usado em itálico */
 
-  /* Raios */
-  --r-chip: 5px;
-  --r-btn: 9px;
-  --r-card-int: 12px;
-  --r-card: 14px;
-  --r-destaque: 16px;
+  /* Raios — estilo analítico/empresarial (cantos sóbrios de 3px-4px, sem o aspecto arredondado mobile) */
+  --r-chip: 3px;
+  --r-btn: 4px;
+  --r-card-int: 4px;
+  --r-card: 4px;
+  --r-destaque: 6px;
 
-  /* Sombras */
-  --sh-card-hover: 0 6px 18px rgba(0, 39, 189, 0.10);
-  --sh-tooltip: 0 8px 24px rgba(25, 27, 35, 0.22);
-  --sh-modal: 0 24px 64px rgba(25, 27, 35, 0.28);
-  --sh-drawer: 0 0 40px rgba(25, 27, 35, 0.18);
+  /* Sombras — mais sutis e planas para um layout corporativo limpo */
+  --sh-card-hover: 0 3px 10px rgba(0, 39, 189, 0.08);
+  --sh-tooltip: 0 4px 14px rgba(25, 27, 35, 0.16);
+  --sh-modal: 0 12px 32px rgba(25, 27, 35, 0.22);
+  --sh-drawer: 0 -4px 20px rgba(25, 27, 35, 0.12);
 }
 
 * { box-sizing: border-box; }
@@ -166,7 +168,7 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
    nos clicáveis, e usa `--sh-card-hover` — que já existia como token, sem
    nunca ter sido aplicado em lugar nenhum. */
 .cartao {
-  box-shadow: 0 1px 2px rgba(17, 23, 60, 0.04), 0 2px 8px rgba(17, 23, 60, 0.05);
+  box-shadow: 0 1px 3px rgba(17, 23, 60, 0.05);
 }
 .cartao--clicavel:hover {
   box-shadow: var(--sh-card-hover);
@@ -250,15 +252,24 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 .grade--auto { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
 /* A linha de KPIs do Painel: um herói ocupando as duas linhas da primeira
-   coluna, cinco secundários preenchendo o resto. Ver a nota de design em
-   `Painel.tsx` — só há UM herói de propósito. */
+   coluna, seis secundários preenchendo as três colunas à direita (2 por col.).
+   4 colunas × 2 linhas = 8 slots; hero ocupa 1 × 2 = 2, sobrando 6 — exatamente
+   o número de KPIs secundários. Ver a nota de design em `Painel.tsx`. */
 .grade--kpis-painel {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
   grid-template-rows: auto auto;
-  gap: 16px;
+  gap: 14px;
 }
 .grade--kpis-painel > :first-child { grid-row: 1 / 3; }
+
+@media (max-width: 1200px) {
+  /* Em 4 colunas, o Hero + 6 KPIs cabem bem até ~1200px. Abaixo disso,
+     cai para 2 colunas (Hero + 1 por linha) antes de achatar no celular. */
+  .grade--kpis-painel {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+}
 
 @media (max-width: 1040px) {
   .grade--4,

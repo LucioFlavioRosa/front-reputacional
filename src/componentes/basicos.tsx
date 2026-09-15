@@ -61,6 +61,7 @@ export function Cartao({
 
 export function Secao({
   titulo,
+  subtitulo,
   acao,
   children,
   estilo,
@@ -68,6 +69,7 @@ export function Secao({
   nivelDoTitulo = 2,
 }: {
   titulo: string;
+  subtitulo?: string;
   acao?: ReactNode;
   children: ReactNode;
   estilo?: CSSProperties;
@@ -87,8 +89,7 @@ export function Secao({
   const estiloDaMarca: CSSProperties = {
     fontSize: nivelDoTitulo === 1 ? 26 : 21,
     color: 'var(--azul-mar)',
-    marginTop: 12,
-    marginLeft: 12,
+    marginTop: 4,
   };
 
   return (
@@ -96,17 +97,26 @@ export function Secao({
       <div
         style={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: subtitulo ? 'flex-start' : 'center',
           justifyContent: 'space-between',
           gap: 12,
-          marginBottom: 16,
+          marginBottom: 18,
+          paddingBottom: 12,
+          borderBottom: '1px solid var(--borda)',
         }}
       >
-        {nivelDoTitulo === 1 ? (
-          <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
-        ) : (
-          <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
-        )}
+        <div>
+          {nivelDoTitulo === 1 ? (
+            <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
+          ) : (
+            <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
+          )}
+          {subtitulo ? (
+            <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 3, fontWeight: 400 }}>
+              {subtitulo}
+            </div>
+          ) : null}
+        </div>
         {acao}
       </div>
       {children}
@@ -246,17 +256,16 @@ export function Kpi({
    */
   coresCompostas?: readonly [string, string];
 }) {
-  // Secundário não é sinônimo de branco e plano — só de mais quieto que o
-  // herói. Um lavado de 6% da própria cor no corpo do cartão (via
-  // `color-mix`, que aceita tanto hex quanto `var(--token)`) dá identidade sem
-  // brigar com o número, que continua em tinta neutra por cima dele.
-  const fundo = coresCompostas
-    ? 'color-mix(in srgb, var(--cinza-1) 45%, var(--branco))'
-    : `color-mix(in srgb, ${cor} 6%, var(--branco))`;
-
   return (
-    <Cartao estilo={{ padding: 0, overflow: 'hidden', background: fundo }} aoClicar={aoClicar}>
-      <div style={{ height: 3, background: coresCompostas ? 'var(--borda-input)' : cor }} />
+    <Cartao estilo={{ padding: 0, overflow: 'hidden', background: 'var(--branco)' }} aoClicar={aoClicar}>
+      <div
+        style={{
+          height: 3,
+          background: coresCompostas
+            ? `linear-gradient(90deg, ${coresCompostas[0]} 50%, ${coresCompostas[1]} 50%)`
+            : cor,
+        }}
+      />
       <div style={{ padding: '16px 18px 18px' }}>
         {/* Os dois pontinhos que indicavam "isto soma duas frentes" saíram:
             sem legenda nenhuma na tela, liam como decoração sem propósito. A
@@ -268,12 +277,10 @@ export function Kpi({
         <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 6 }}>
           {valor}
         </div>
-        {dica ? (
-          <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 4 }}>
-            {dica}
-            {aoClicar ? <span aria-hidden style={{ marginLeft: 5 }}>→</span> : null}
-          </div>
-        ) : null}
+        <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>{dica ?? ''}</span>
+          {aoClicar ? <span aria-hidden style={{ color: 'var(--azul-mar)', fontWeight: 700, marginLeft: 4 }}>→</span> : null}
+        </div>
       </div>
     </Cartao>
   );
@@ -318,9 +325,9 @@ export function KpiHero({
       className={clicavel ? 'kpi-hero kpi-hero--clicavel' : 'kpi-hero'}
       style={{
         borderRadius: 'var(--r-card)',
-        padding: '22px 24px 24px',
+        padding: '20px 22px 22px',
         background:
-          'radial-gradient(120% 140% at 100% 0%, rgba(23,227,203,0.55) 0%, rgba(23,227,203,0) 46%),' +
+          'radial-gradient(120% 140% at 100% 0%, rgba(23,227,203,0.45) 0%, rgba(23,227,203,0) 50%),' +
           'linear-gradient(155deg, var(--azul-mar) 0%, var(--azul-mar-sombra) 100%)',
         color: 'var(--branco)',
         display: 'flex',
@@ -330,17 +337,15 @@ export function KpiHero({
         overflow: 'hidden',
         cursor: clicavel ? 'pointer' : undefined,
         minHeight: '100%',
-        // Uma sombra na COR do próprio gradiente, não um cinza genérico — o
-        // card já se separa do fundo pela cor; a sombra só aprofunda esse
-        // relevo em vez de competir com ele.
-        boxShadow: '0 8px 24px rgba(0, 39, 189, 0.22)',
+        boxShadow: '0 2px 6px rgba(0, 25, 120, 0.12)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
       }}
     >
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <span
             className="kicker"
-            style={{ color: 'rgba(255,255,255,0.78)' }}
+            style={{ color: 'rgba(255,255,255,0.85)' }}
           >
             {rotulo}
           </span>
@@ -349,9 +354,10 @@ export function KpiHero({
               style={{
                 fontSize: 10.5,
                 fontWeight: 700,
-                padding: '3px 9px',
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.16)',
+                padding: '2px 7px',
+                borderRadius: 'var(--r-chip)',
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.22)',
                 color: '#EFFFFC',
                 whiteSpace: 'nowrap',
               }}
@@ -362,20 +368,20 @@ export function KpiHero({
         </div>
         <div
           className="tabular"
-          style={{ fontSize: 56, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, marginTop: 14 }}
+          style={{ fontSize: 52, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, marginTop: 12 }}
         >
           {valor}
         </div>
       </div>
 
       {progresso ? (
-        <div>
+        <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
                 flex: 1,
-                height: 6,
-                borderRadius: 3,
+                height: 5,
+                borderRadius: 2,
                 background: 'rgba(255,255,255,0.22)',
                 overflow: 'hidden',
               }}
@@ -385,22 +391,22 @@ export function KpiHero({
                   width: `${Math.round(Math.min(1, Math.max(0, progresso.fracao)) * 100)}%`,
                   height: '100%',
                   background: 'var(--turquesa-rio)',
-                  borderRadius: 3,
+                  borderRadius: 2,
                 }}
               />
             </div>
             <span
+              className="tabular"
               style={{
-                fontFamily: 'var(--font-destaque)',
-                fontStyle: 'italic',
-                fontSize: 17,
+                fontWeight: 700,
+                fontSize: 15,
                 whiteSpace: 'nowrap',
               }}
             >
               {Math.round(progresso.fracao * 100)}%
             </span>
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 6 }}>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.80)', marginTop: 5 }}>
             {progresso.rotulo}
             {aoClicar ? <span aria-hidden style={{ marginLeft: 5 }}>→</span> : null}
           </div>
@@ -415,7 +421,7 @@ export function Barra({
   valor,
   maximo,
   cor = 'var(--azul-mar)',
-  altura = 8,
+  altura = 7,
 }: {
   valor: number;
   maximo: number;
@@ -424,28 +430,19 @@ export function Barra({
 }) {
   const largura = maximo > 0 ? Math.max(2, (valor / maximo) * 100) : 0;
   return (
-    // O trilho era sempre o mesmo cinza `--bg-trilho`, não importa a cor do
-    // dado — dez rankings de cores diferentes liam como o mesmo cinza com
-    // pontas trocadas. Um trilho na PRÓPRIA cor, bem clara, é o que o guia da
-    // skill de dataviz chama de "mesma rampa, um degrau mais claro": o estado
-    // (preenchido vs. vazio) continua lendo na barra inteira, não só na ponta.
     <div
       style={{
         height: altura,
         background: `color-mix(in srgb, ${cor} 12%, var(--branco))`,
-        borderRadius: 4,
+        borderRadius: 2,
       }}
     >
-      {/* Ponta arredondada no fim do dado, reta na linha de base: a barra
-          cresce de uma base só e o arredondamento marca onde ela termina. O
-          gradiente é a MESMA cor em dois tons — nunca uma segunda cor —, só
-          para dar um relevo sutil em vez de uma chapa lisa. */}
       <div
         style={{
           width: `${largura}%`,
           height: '100%',
           background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 78%, var(--branco)), ${cor})`,
-          borderRadius: 4,
+          borderRadius: 2,
         }}
       />
     </div>
