@@ -9,6 +9,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
@@ -342,6 +343,8 @@ export function Painel({
           />
         </Secao>
       </div>
+
+      <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} />
 
       <Secao
         titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}

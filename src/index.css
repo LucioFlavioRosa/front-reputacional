@@ -202,6 +202,14 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
+/* O Drawer entra deslizando da direita — a regra de cima já desliga esta
+   animação para quem pede menos movimento, então não precisa de condição
+   própria aqui. */
+@keyframes entra-da-direita {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   body { background: #fff; }

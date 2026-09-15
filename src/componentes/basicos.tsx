@@ -940,3 +940,122 @@ export function Modal({
     </div>
   );
 }
+
+/** O painel lateral — mesma moldura do `Modal` (fundo escurecido, cabeçalho
+ *  azul-mar, corpo com rolagem própria, rodapé opcional), só que encostado na
+ *  borda direita da tela e com altura cheia, em vez de centralizado.
+ *
+ *  UM COMPONENTE À PARTE, e não uma variante de `Modal`: as duas molduras
+ *  compartilham a receita, mas os detalhes de posição (`inset` vs. `top:0;
+ *  bottom:0; right:0`, altura cheia vs. altura pelo conteúdo) tornariam
+ *  `Modal` um emaranhado de condicionais para servir dois layouts bem
+ *  diferentes. */
+export function Drawer({
+  titulo,
+  subtitulo,
+  aoFechar,
+  children,
+  rodape,
+  largura = 460,
+}: {
+  titulo: ReactNode;
+  subtitulo?: ReactNode;
+  aoFechar: () => void;
+  children: ReactNode;
+  rodape?: ReactNode;
+  largura?: number;
+}) {
+  const idDoTitulo = useId();
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={idDoTitulo}
+      onClick={aoFechar}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(25,27,35,0.55)',
+        zIndex: 60,
+        display: 'flex',
+        justifyContent: 'flex-end',
+      }}
+    >
+      <div
+        onClick={(evento) => evento.stopPropagation()}
+        style={{
+          background: 'var(--branco)',
+          width: '100%',
+          maxWidth: largura,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: 'var(--sh-modal)',
+          animation: 'entra-da-direita .18s ease-out',
+        }}
+      >
+        <header
+          style={{
+            background: 'var(--azul-mar)',
+            color: 'var(--branco)',
+            padding: '18px 24px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 16,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h2 id={idDoTitulo} style={{ fontSize: 19, color: 'var(--branco)' }}>
+              {titulo}
+            </h2>
+            {subtitulo ? (
+              <div style={{ fontSize: 12, color: 'var(--turquesa-sombra)', marginTop: 4 }}>
+                {subtitulo}
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={aoFechar}
+            aria-label="Fechar"
+            style={{
+              width: 34,
+              height: 34,
+              flexShrink: 0,
+              borderRadius: 'var(--r-btn)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              background: 'transparent',
+              color: 'var(--branco)',
+              fontSize: 17,
+              cursor: 'pointer',
+            }}
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="rolagem-interna" style={{ padding: 24, flex: 1 }}>
+          {children}
+        </div>
+
+        {rodape ? (
+          <footer
+            style={{
+              borderTop: '1px solid var(--borda)',
+              background: 'var(--bg-rodape-card)',
+              padding: '14px 24px',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 10,
+            }}
+          >
+            {rodape}
+          </footer>
+        ) : null}
+      </div>
+    </div>
+  );
+}

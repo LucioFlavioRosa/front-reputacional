@@ -1,0 +1,350 @@
+/** Tabela reduzida de interações, logo abaixo do Bloco 1 do Painel.
+ *
+ *  REDUZIDA DE PROPÓSITO: a Base já tem a tabela completa, com todas as
+ *  colunas e seleção de quais mostrar. Aqui o objetivo é outro — um resumo de
+ *  "quem apareceu por último e como foi" dentro do próprio Painel —, e por
+ *  isso só as colunas mais lidas: Data, Instituição, Pauta, Área(s),
+ *  Relevância e Clima.
+ *
+ *  PAGINADA DE 10 EM 10, e não com rolagem interna como a Base: dez linhas
+ *  cabem inteiras no cartão, sem precisar rolar por dentro de uma tela que já
+ *  rola por fora.
+ *
+ *  MESMO RECORTE do resto do Painel — a lista vem de `interacoes`, que já é o
+ *  recorte filtrado; esta tabela nunca busca dado próprio.
+ */
+
+import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import {
+  Botao,
+  Chip,
+  ChipDeFrente,
+  Drawer,
+  Secao,
+  Selo,
+  Vazio,
+} from '@/componentes/basicos';
+import { celula } from '@/componentes/estilos';
+import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
+import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
+import { rotuloDeAbrangencia } from '@/dominio/frentes';
+import {
+  nomeDaInstituicao,
+  nomesDosTemas,
+  rotuloDeCodigo,
+  rotuloDeRelevancia,
+} from '@/dominio/derivacoes';
+import type { Catalogo } from '@/dominio/derivacoes';
+import type { Interacao } from '@/dominio/tipos';
+
+const COLUNAS = ['Data', 'Instituição', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+const POR_PAGINA = 10;
+
+/** O clima tem TRÊS códigos hoje (Propositivo/Neutro/Tenso), não cinco — ver
+ *  `catalogo.dicionarios.climas`. O selo usa as mesmas cores do resto do
+ *  produto (`CORES_DE_CLIMA` em `dominio/frentes.ts`), com o par fundo/texto
+ *  já conferido para contraste — turquesa só passa com texto escuro. */
+const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
+  propositivo: { fundo: 'var(--turquesa-rio)', texto: 'var(--sobre-turquesa)' },
+  neutro: { fundo: 'var(--cinza-2)', texto: 'var(--branco)' },
+  tenso: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
+};
+
+function SeloDeClima({ codigo, catalogo }: { codigo: string | null; catalogo: Catalogo }) {
+  if (!codigo) return <span style={{ color: 'var(--cinza-2)', fontSize: 13 }}>—</span>;
+  const cores = SELO_DO_CLIMA[codigo];
+  const rotulo = rotuloDeCodigo(catalogo, 'climas', codigo);
+  if (!cores) return <span style={{ fontSize: 13 }}>{rotulo}</span>;
+  return <Selo rotulo={rotulo} fundo={cores.fundo} texto={cores.texto} />;
+}
+
+function nomesDasAreas(interacao: Interacao, catalogo: Catalogo): string {
+  if (!interacao.areas.length) return '—';
+  return interacao.areas
+    .map((id) => catalogo.dicionarios.areas_pessoa.find((a) => a.id === id)?.nome ?? String(id))
+    .join(', ');
+}
+
+export function TabelaDeInteracoes({
+  interacoes,
+  catalogo,
+}: {
+  interacoes: Interacao[];
+  catalogo: Catalogo;
+}) {
+  const [pagina, definirPagina] = useState(1);
+  const [aberta, definirAberta] = useState<Interacao | null>(null);
+
+  const ordenadas = useMemo(
+    () => [...interacoes].sort((a, b) => b.data_interacao.localeCompare(a.data_interacao)),
+    [interacoes],
+  );
+
+  const totalDePaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
+  // Clampa sozinho quando o recorte muda e a página guardada deixa de
+  // existir — sem isto, filtrar para um recorte menor podia deixar a tabela
+  // "na página 4 de 2", em branco, sem dizer por quê.
+  const paginaAtual = Math.min(pagina, totalDePaginas);
+  const daPagina = ordenadas.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
+
+  return (
+    <Secao titulo="Interações do recorte">
+      {!ordenadas.length ? (
+        <Vazio
+          mensagem="Nenhuma interação no recorte"
+          dica="Ajuste os filtros para ver resultados."
+        />
+      ) : (
+        <>
+          <Tabela colunas={COLUNAS} altura="none">
+            {daPagina.map((interacao) => (
+              <LinhaDaTabela
+                key={interacao.id}
+                aoClicar={() => definirAberta(interacao)}
+                titulo="Ver a ficha e a linha do tempo desta instituição"
+              >
+                <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+                  {dataCompleta(interacao.data_interacao)}
+                </td>
+                <td style={{ ...celula, minWidth: 160 }}>
+                  {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
+                </td>
+                <td
+                  style={{
+                    ...celula,
+                    maxWidth: 280,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
+                </td>
+                <td style={{ ...celula, color: 'var(--cinza-2)' }}>
+                  {nomesDasAreas(interacao, catalogo)}
+                </td>
+                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                  {rotuloDeRelevancia(catalogo, interacao.tier)}
+                </td>
+                <td style={celula}>
+                  <SeloDeClima codigo={interacao.clima} catalogo={catalogo} />
+                </td>
+              </LinhaDaTabela>
+            ))}
+          </Tabela>
+
+          <PaginacaoSimples
+            pagina={paginaAtual}
+            totalDePaginas={totalDePaginas}
+            aoMudar={definirPagina}
+          />
+        </>
+      )}
+
+      {aberta ? (
+        <DrawerDaInteracao
+          interacao={aberta}
+          interacoes={interacoes}
+          catalogo={catalogo}
+          aoFechar={() => definirAberta(null)}
+        />
+      ) : null}
+    </Secao>
+  );
+}
+
+function PaginacaoSimples({
+  pagina,
+  totalDePaginas,
+  aoMudar,
+}: {
+  pagina: number;
+  totalDePaginas: number;
+  aoMudar: (pagina: number) => void;
+}) {
+  if (totalDePaginas <= 1) return null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        marginTop: 14,
+      }}
+    >
+      <Botao variante="fantasma" desabilitado={pagina <= 1} aoClicar={() => aoMudar(pagina - 1)}>
+        ← Anterior
+      </Botao>
+      <span className="tabular" style={{ fontSize: 12.5, color: 'var(--cinza-3)' }}>
+        Página {pagina} de {totalDePaginas}
+      </span>
+      <Botao
+        variante="fantasma"
+        desabilitado={pagina >= totalDePaginas}
+        aoClicar={() => aoMudar(pagina + 1)}
+      >
+        Próxima →
+      </Botao>
+    </div>
+  );
+}
+
+/** Os mesmos campos de texto livre que a Ficha mostra — pauta, o
+ *  posicionamento levado, e o que ficou registrado depois da reunião. Só os
+ *  preenchidos entram, a mesma regra de `Ficha.tsx`. */
+const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
+  { campo: 'pauta', rotulo: 'Pauta' },
+  { campo: 'posicionamento', rotulo: 'Posicionamento da companhia' },
+  { campo: 'relato', rotulo: 'Relato' },
+  { campo: 'encaminhamentos', rotulo: 'Repercussão e encaminhamentos' },
+  { campo: 'pendencias', rotulo: 'Pendências' },
+  { campo: 'observacoes', rotulo: 'Observações' },
+];
+
+function DrawerDaInteracao({
+  interacao,
+  interacoes,
+  catalogo,
+  aoFechar,
+}: {
+  interacao: Interacao;
+  interacoes: Interacao[];
+  catalogo: Catalogo;
+  aoFechar: () => void;
+}) {
+  const nomeInstituicao = nomeDaInstituicao(catalogo, interacao.instituicao_id);
+
+  // A LINHA DO TEMPO VEM DO MESMO `interacoes` do Painel — o recorte
+  // filtrado, não a história inteira da instituição fora dele. É a mesma
+  // regra da tabela ("respeitando o filtro global"), estendida para dentro
+  // do drawer: nenhum dos dois busca dado que os filtros já excluíram.
+  const linhaDoTempo = useMemo(
+    () =>
+      interacoes
+        .filter((i) => i.instituicao_id === interacao.instituicao_id && i.id !== interacao.id)
+        .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao)),
+    [interacoes, interacao],
+  );
+
+  const conteudo = CONTEUDO.filter(({ campo }) => Boolean(interacao[campo]));
+
+  return (
+    <Drawer
+      titulo={nomeInstituicao}
+      subtitulo={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <ChipDeFrente frente={interacao.frente} />
+          {dataCompleta(interacao.data_interacao)}
+        </span>
+      }
+      aoFechar={aoFechar}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <section>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--cinza-4)', margin: '0 0 14px' }}>
+            {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
+          </p>
+
+          <dl
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 14,
+              margin: 0,
+            }}
+          >
+            <Metadado rotulo="Relevância" valor={rotuloDeRelevancia(catalogo, interacao.tier)} />
+            <Metadado rotulo="Clima" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
+            <Metadado rotulo="UF" valor={rotuloDeAbrangencia(interacao.uf)} />
+            <Metadado rotulo="Situação" valor={rotuloDeCodigo(catalogo, 'status', interacao.status)} />
+            <Metadado rotulo="Área(s)" valor={nomesDasAreas(interacao, catalogo)} />
+          </dl>
+
+          {interacao.temas.length ? (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--cinza-2)', marginBottom: 6 }}>
+                Temas
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {nomesDosTemas(catalogo, interacao.temas).map((tema) => (
+                  <Chip key={tema} rotulo={tema} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        {conteudo.length ? (
+          <section>
+            <div className="kicker" style={{ marginBottom: 10 }}>
+              Conteúdo
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {conteudo.map(({ campo, rotulo }) => (
+                <div key={campo}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--cinza-2)' }}>
+                    {rotulo}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 3, lineHeight: 1.5 }}>
+                    {String(interacao[campo])}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Linha do tempo com {nomeInstituicao}
+          </div>
+          {linhaDoTempo.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {linhaDoTempo.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                    padding: '10px 0',
+                    borderBottom: '1px solid var(--borda)',
+                  }}
+                >
+                  <div
+                    className="tabular"
+                    style={{ fontSize: 12, color: 'var(--cinza-2)', flexShrink: 0, width: 76, marginTop: 2 }}
+                  >
+                    {dataCompleta(item.data_interacao)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--cinza-4)' }}>
+                      {tituloDaAgenda(item, (ids) => nomesDosTemas(catalogo, ids))}
+                    </div>
+                  </div>
+                  <SeloDeClima codigo={item.clima} catalogo={catalogo} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
+              Nenhuma outra interação com esta instituição neste recorte.
+            </p>
+          )}
+        </section>
+      </div>
+    </Drawer>
+  );
+}
+
+function Metadado({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
+  return (
+    <div>
+      <dt style={{ fontSize: 11, fontWeight: 700, color: 'var(--cinza-2)' }}>{rotulo}</dt>
+      <dd style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--cinza-3)' }}>{valor}</dd>
+    </div>
+  );
+}
