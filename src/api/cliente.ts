@@ -184,23 +184,25 @@ export interface RecorteCompleto {
   filtrosAtivos: number;
 }
 
-/** Busca o recorte inteiro, página a página.
+/** Busca o recorte inteiro: a primeira página diz quantas há, e as outras
+ *  vêm TODAS DE UMA VEZ.
  *
  *  As telas de análise derivam os agregados do conjunto completo, então
- *  precisam dele inteiro — não da primeira página. */
+ *  precisam dele inteiro — não da primeira página. Uma página atrás da outra
+ *  somava as latências; em paralelo, o recorte chega no tempo da mais lenta. */
 export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCompleto> {
   const primeira = await listarInteracoes(recorte, { pagina: 1, tamanho: TAMANHO_MAXIMO });
-  const itens = [...primeira.itens];
 
   const paginasNecessarias = Math.min(
     primeira.paginas,
     Math.ceil(TETO_DE_DERIVACAO / TAMANHO_MAXIMO),
   );
-
-  for (let pagina = 2; pagina <= paginasNecessarias; pagina += 1) {
-    const proxima = await listarInteracoes(recorte, { pagina, tamanho: TAMANHO_MAXIMO });
-    itens.push(...proxima.itens);
-  }
+  const restantes = await Promise.all(
+    Array.from({ length: Math.max(0, paginasNecessarias - 1) }, (_, i) =>
+      listarInteracoes(recorte, { pagina: i + 2, tamanho: TAMANHO_MAXIMO }),
+    ),
+  );
+  const itens = [primeira, ...restantes].flatMap((pagina) => pagina.itens);
 
   return {
     itens,
