@@ -274,12 +274,37 @@ export function Painel({
           titulo="Interações por tier"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
         >
-          <Rosca
-            itens={derivado.porTier}
-            ativo={recorte.tier != null ? String(recorte.tier) : undefined}
-            aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
-            rotuloCentral="interações"
-          />
+          {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
+              coluna de fatias+legenda não usa toda a largura do cartão, e o
+              top 5 de instituições preenche esse vão em vez de deixá-lo em
+              branco. MESMA IDEIA de "Distribuição geográfica" (mapa + ranking
+              lado a lado) logo abaixo.
+
+              É O MESMO RECORTE que filtra a rosca que também filtra este
+              ranking: clicar numa fatia de tier estreita `interacoes` para
+              aquele tier, e o top 5 abaixo passa a listar as instituições
+              DENTRO dele, sem precisar de uma segunda consulta. */}
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 0 auto' }}>
+              <Rosca
+                itens={derivado.porTier}
+                ativo={recorte.tier != null ? String(recorte.tier) : undefined}
+                aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
+                rotuloCentral="interações"
+              />
+            </div>
+            <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+              <div className="kicker" style={{ marginBottom: 12 }}>
+                Top 5 instituições
+              </div>
+              <Ranking
+                itens={derivado.instituicoes.slice(0, 5)}
+                ativo={recorte.entidade}
+                aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
+                vazio="Nenhuma instituição neste recorte."
+              />
+            </div>
+          </div>
         </Secao>
 
         <Secao
