@@ -190,7 +190,7 @@ export function TabelaDeInteracoes({
             // CONTEÚDO (uma instituição de nome comprido, por exemplo) e
             // aperta a largura das outras duas tabelas ao lado no grid — ver
             // o comentário de `largurasPadrao` em `Tabela.tsx`.
-            largurasPadrao={reduzida ? { Data: 62, Instituição: 84 } : undefined}
+            largurasPadrao={reduzida ? { Data: 76, Instituição: 84 } : undefined}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
