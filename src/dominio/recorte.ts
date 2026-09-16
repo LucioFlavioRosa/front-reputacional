@@ -114,9 +114,21 @@ export function alternarTag(recorte: Recorte, tag: string): Recorte {
 
 /** Áreas são multisseleção com OR entre elas — mesma regra de `alternarTag`. */
 export function alternarArea(recorte: Recorte, areaId: number): Recorte {
+  return alternarCategoriaDeArea(recorte, [areaId]);
+}
+
+/** Uma CATEGORIA de área (uma ou mais áreas somadas — ver `CATEGORIAS_DE_AREA`
+ *  em `dominio/derivacoes.ts`) liga/desliga como um grupo só: se todas as
+ *  áreas do grupo já estão selecionadas, o clique desliga todas; senão, liga
+ *  as que faltam. `alternarArea` é o mesmo caso com um id só. */
+export function alternarCategoriaDeArea(recorte: Recorte, ids: Iterable<number>): Recorte {
+  const grupo = [...ids];
   const atuais = new Set(recorte.areas ?? []);
-  if (atuais.has(areaId)) atuais.delete(areaId);
-  else atuais.add(areaId);
+  const todasLigadas = grupo.length > 0 && grupo.every((id) => atuais.has(id));
+  for (const id of grupo) {
+    if (todasLigadas) atuais.delete(id);
+    else atuais.add(id);
+  }
   const areas = [...atuais].sort((a, b) => a - b);
   const proximo = { ...recorte };
   if (areas.length) proximo.areas = areas;

@@ -24,6 +24,7 @@ import {
   montarCatalogo,
   novosContatos,
   panoramaDeInterlocutores,
+  porArea,
   ranking,
   resolutividade,
   resultados,
@@ -270,6 +271,49 @@ describe('scorePorArea', () => {
     const resultado = scorePorArea(dados, CATALOGO);
     expect(resultado[0].chave).toBe('1');
     expect(resultado[resultado.length - 1].chave).toBe('2');
+  });
+});
+
+describe('porArea', () => {
+  it('agrupa as áreas do dicionário em 3 categorias fixas', () => {
+    const dados = [
+      interacao({ areas: [1] }), // Comunicação
+      interacao({ areas: [2] }), // Relações Institucionais
+      interacao({ areas: [3] }), // Operações Financeiras
+      interacao({ areas: [5] }), // Relações com Investidores
+    ];
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado).toHaveLength(3);
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.total).toBe(1);
+    // Operações Financeiras (3) + Relações com Investidores (5) somam na
+    // mesma categoria — 1 interação de cada, 2 no total da categoria.
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(2);
+  });
+
+  it('uma interação com as duas áreas da categoria composta conta uma vez só', () => {
+    const dados = [interacao({ areas: [3, 5] })]; // Operações Financeiras + RI, mesma interação
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(1);
+  });
+
+  it('cada categoria tem a cor oficial fixa, não por posição no ranking', () => {
+    // Só a categoria composta tem interação — se a cor fosse por posição no
+    // ranking (a antiga PALETA_DE_AREAS[indice]), ela sairia na 1ª cor.
+    const resultado = porArea([interacao({ areas: [5] })], CATALOGO);
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.cor).toBe('#A11FFF');
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.cor).toBe('#E12379');
+    expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.cor).toBe('#17E3CB');
+  });
+
+  it('uma área sem categoria correspondente (desativada) não conta em nenhuma', () => {
+    // id 4 = "Performance e Dados": existe no dicionário do cenário, mas não
+    // faz parte de nenhuma das 3 categorias — o mesmo efeito de uma área
+    // desativada, que nem chega a aparecer no dicionário de verdade.
+    const dados = [interacao({ areas: [4] }), interacao({ areas: [1] })];
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado.reduce((soma, c) => soma + c.total, 0)).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
   });
 });
 

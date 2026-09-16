@@ -4,7 +4,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { intervalo, paraParametros, quantidadeDeFiltros } from '@/dominio/recorte';
+import {
+  alternarCategoriaDeArea,
+  intervalo,
+  paraParametros,
+  quantidadeDeFiltros,
+} from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
 
 const HOJE = new Date(2026, 8, 15); // 15/09/2026, mês 0-indexado
@@ -84,5 +89,37 @@ describe('paraParametros', () => {
     expect(parametros.has('de')).toBe(false);
     expect(parametros.has('ate')).toBe(false);
     expect(parametros.get('frente')).toBe('imprensa');
+  });
+});
+
+describe('alternarCategoriaDeArea', () => {
+  it('liga todas as áreas do grupo de uma vez, quando nenhuma está ligada', () => {
+    const resultado = alternarCategoriaDeArea({}, [3, 5]);
+    expect(resultado.areas).toEqual([3, 5]);
+  });
+
+  it('desliga todas as áreas do grupo de uma vez, quando todas já estão ligadas', () => {
+    const resultado = alternarCategoriaDeArea({ areas: [3, 5] }, [3, 5]);
+    expect(resultado.areas).toBeUndefined();
+  });
+
+  it('uma área do grupo já ligada por fora (ex: filtro manual) não impede ligar o resto', () => {
+    const resultado = alternarCategoriaDeArea({ areas: [3] }, [3, 5]);
+    expect(resultado.areas).toEqual([3, 5]);
+  });
+
+  it('preserva áreas fora do grupo, ao ligar ou desligar', () => {
+    const ligando = alternarCategoriaDeArea({ areas: [1] }, [3, 5]);
+    expect(ligando.areas).toEqual([1, 3, 5]);
+
+    const desligando = alternarCategoriaDeArea({ areas: [1, 3, 5] }, [3, 5]);
+    expect(desligando.areas).toEqual([1]);
+  });
+
+  it('um grupo de uma área só se comporta como alternarArea', () => {
+    const ligado = alternarCategoriaDeArea({}, [1]);
+    expect(ligado.areas).toEqual([1]);
+    const desligado = alternarCategoriaDeArea(ligado, [1]);
+    expect(desligado.areas).toBeUndefined();
   });
 });

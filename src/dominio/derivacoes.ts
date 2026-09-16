@@ -225,13 +225,62 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 //: significados diferentes.
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
-//: A MESMA PALETA, EM ORDEM INVERTIDA — só para área. As roscas de "Interações
-//: por tier" e "Interações por áreas" ficam lado a lado no Painel; com a
-//: mesma paleta na mesma ordem, a primeira fatia de cada uma sairia da MESMA
-//: cor (azul) sem que isso signifique nada em comum entre um tier e uma
-//: área. Invertida, as 3 áreas de hoje começam em amarelo/rosa/laranja —
-//: nenhuma delas repete a cor de nenhum dos tiers.
-const PALETA_DE_AREAS = [...PALETA_DO_PAINEL].reverse();
+export interface CategoriaDeArea {
+  rotulo: string;
+  nomes: string[];
+  cor: string;
+}
+
+//: AS TRÊS CATEGORIAS QUE O PAINEL TRATA COMO "área interna" — nomeadas, e
+//: não "as N primeiras do dicionário": uma área pode ganhar ou perder linha
+//: (migrations 0029/0032/0033) sem que a tela reaja sozinha trocando quais
+//: categorias existem. UM LUGAR SÓ: usada tanto pelas 3 tabelas fixas do
+//: Painel (`interacoesPorAreaFixa`) quanto pela rosca/histórico de
+//: "Interações por áreas" (`porArea`/`climaPorArea`) — antes cada um tinha a
+//: própria lista, e podiam divergir sem ninguém perceber.
+//:
+//: A TERCEIRA SOMA DUAS LINHAS DO DICIONÁRIO — mesmo padrão de
+//: `institucionais` em `kpis()` (governo + parceiros): "Relações com
+//: Investidores" e "Operações Financeiras" são áreas afins e pequenas
+//: separadas; juntas rendem um volume de verdade.
+//:
+//: CORES DA PALETA OFICIAL DA AEGEA, FIXAS POR CATEGORIA — não por posição
+//: no ranking: com `PALETA_DE_AREAS[indice]` a cor de "Comunicação" mudava
+//: conforme ela subia ou descia de posição entre um recorte e outro. Evita
+//: Azul Mar de propósito: já é a cor de Imprensa/Comunicação em outros
+//: gráficos do sistema, e repeti-la aqui confundiria as duas coisas.
+export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
+  { rotulo: 'Comunicação', nomes: ['Comunicação'], cor: '#E12379' }, // Magenta Pitaia
+  {
+    rotulo: 'Relações Institucionais',
+    nomes: ['Relações Institucionais'],
+    cor: '#17E3CB', // Turquesa Rio
+  },
+  {
+    rotulo: 'RI & Oper. Financeiras',
+    nomes: ['Relações com Investidores', 'Operações Financeiras'],
+    cor: '#A11FFF', // Roxo Açaí
+  },
+];
+
+//: Os ids ATIVOS de cada categoria, resolvidos contra o dicionário do
+//: momento — uma área desativada nunca entra aqui (o dicionário só traz as
+//: ativas), e por isso nunca conta em `porArea`/`climaPorArea`/
+//: `interacoesPorAreaFixa`: os dados continuam no banco, só saem da leitura.
+export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<number>> {
+  const mapa = new Map<string, Set<number>>();
+  for (const categoria of CATEGORIAS_DE_AREA) {
+    mapa.set(
+      categoria.rotulo,
+      new Set(
+        catalogo.dicionarios.areas_pessoa
+          .filter((a) => categoria.nomes.includes(a.nome))
+          .map((a) => a.id),
+      ),
+    );
+  }
+  return mapa;
+}
 
 /** Quantas interações em cada nível de relevância — sempre um item por
  *  tier cadastrado (`catalogo.dicionarios.relevancias`), mesmo os com zero
@@ -278,39 +327,29 @@ export function topInstituicoesPorTier(
   return resultado;
 }
 
-/** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
- *  uma interação com duas áreas soma nas duas, e não escolhe uma.
+/** As três categorias de área interna (`CATEGORIAS_DE_AREA`), com quantas
+ *  interações cada uma tem neste recorte — MULTIVALORADO: uma interação com
+ *  áreas de duas categorias diferentes soma nas duas; dentro de uma mesma
+ *  categoria composta ("RI & Oper. Financeiras"), conta uma vez só, mesmo
+ *  tocando as duas áreas dela — o mesmo critério OR de
+ *  `interacoesPorAreaFixa`.
  *
- *  `cor` vem de `PALETA_DE_AREAS` — a paleta do painel invertida, para a
- *  rosca de "Interações por áreas" não repetir a cor da rosca de "Interações
- *  por tier" logo ao lado. */
-export function porArea(
-  interacoes: Interacao[],
-  catalogo: Catalogo,
-  quantos = 5,
-): ItemContado[] {
-  const contagem = new Map<number, number>();
-  for (const interacao of interacoes) {
-    for (const areaId of interacao.areas) {
-      contagem.set(areaId, (contagem.get(areaId) ?? 0) + 1);
-    }
-  }
+ *  Uma área sem categoria correspondente (desativada depois de a interação
+ *  já ter sido gravada com ela) simplesmente não conta em lugar nenhum: os
+ *  dados continuam no banco, só saem desta leitura — ver
+ *  `idsPorCategoriaDeArea`. */
+export function porArea(interacoes: Interacao[], catalogo: Catalogo): ItemContado[] {
+  const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
-  const nomePorId = new Map(catalogo.dicionarios.areas_pessoa.map((a) => [a.id, a.nome]));
-
-  // Um id sem correspondência é uma área DESATIVADA depois de a interação já
-  // ter sido gravada com ela (`GET /api/dicionarios` só devolve as ativas) —
-  // não um id inventado. Mostrar o número puro ("4") pareceria um bug; o
-  // rótulo genérico diz o que está de fato acontecendo.
-  return [...contagem.entries()]
-    .map(([id, total]) => ({
-      chave: String(id),
-      rotulo: nomePorId.get(id) ?? 'Área removida',
-      total,
-    }))
-    .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
-    .slice(0, quantos)
-    .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
+  return CATEGORIAS_DE_AREA.map((categoria) => {
+    const ids = idsPorRotulo.get(categoria.rotulo)!;
+    return {
+      chave: categoria.rotulo,
+      rotulo: categoria.rotulo,
+      total: interacoes.filter((i) => i.areas.some((id) => ids.has(id))).length,
+      cor: categoria.cor,
+    };
+  }).sort((a, b) => b.total - a.total);
 }
 
 export interface ClimaDaArea {
@@ -319,34 +358,26 @@ export interface ClimaDaArea {
   tenso: number;
 }
 
-/** A quebra de clima de cada área — o que o tooltip de "Volume por área"
- *  mostra ao passar o mouse. MULTIVALORADO como `porArea`: uma interação com
- *  duas áreas soma clima nas duas. Sem clima registrado não entra em
- *  nenhuma das três contagens, mesmo critério de `scorePorTema`. */
+/** A quebra de clima de cada CATEGORIA de área — o que o tooltip da rosca
+ *  "Interações por áreas" mostra ao passar o mouse. Mesma chave de `porArea`
+ *  (o rótulo da categoria), e o mesmo critério OR dela: uma interação com as
+ *  duas áreas de "RI & Oper. Financeiras" conta uma vez só naquela
+ *  categoria. Sem clima registrado não entra em nenhuma das três contagens,
+ *  mesmo critério de `scorePorTema`. */
 export function climaPorArea(
   interacoes: Interacao[],
   catalogo: Catalogo,
 ): Record<string, ClimaDaArea> {
+  const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
   const contagem: Record<string, ClimaDaArea> = {};
 
-  for (const interacao of interacoes) {
-    if (!interacao.clima) continue;
-    for (const areaId of interacao.areas) {
-      const chave = String(areaId);
-      const atual = contagem[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
-      if (interacao.clima === 'propositivo') atual.propositivo += 1;
-      else if (interacao.clima === 'neutro') atual.neutro += 1;
-      else if (interacao.clima === 'tenso') atual.tenso += 1;
-      contagem[chave] = atual;
-    }
-  }
-
-  // Mantém as áreas sem clima nenhum no mapa, com zeros — evita `undefined`
-  // em quem consulta uma área que existe em `porArea` mas ainda não tem
-  // nenhuma interação com clima registrado.
-  for (const area of catalogo.dicionarios.areas_pessoa) {
-    const chave = String(area.id);
-    if (!contagem[chave]) contagem[chave] = { propositivo: 0, neutro: 0, tenso: 0 };
+  for (const [rotulo, ids] of idsPorRotulo) {
+    const doGrupo = interacoes.filter((i) => i.clima && i.areas.some((id) => ids.has(id)));
+    contagem[rotulo] = {
+      propositivo: doGrupo.filter((i) => i.clima === 'propositivo').length,
+      neutro: doGrupo.filter((i) => i.clima === 'neutro').length,
+      tenso: doGrupo.filter((i) => i.clima === 'tenso').length,
+    };
   }
 
   return contagem;
