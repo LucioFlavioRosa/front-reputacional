@@ -10,6 +10,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
@@ -347,6 +348,26 @@ export function Painel({
         </div>
       ) : null}
 
+      {/* O TÍTULO SAIU DE DENTRO DO BANNER — antes era um rótulo pequeno no
+          canto esquerdo dele; agora é o título da seção inteira, centralizado
+          e fora de qualquer cartão, no mesmo degradê azul-mar → turquesa-rio
+          do título da caixa de IA (ver `SinteseExecutivaPelaIA`). */}
+      <h2
+        style={{
+          textAlign: 'center',
+          fontSize: 34,
+          fontWeight: 800,
+          margin: 0,
+          backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+          WebkitTextFillColor: 'transparent',
+        }}
+      >
+        Síntese Executiva
+      </h2>
+
       {/* BANNER DE SÍNTESE EXECUTIVA — Fatos relevantes do recorte em destaque */}
       <ResumoExecutivoDoRecorte
         total={derivado.resumoExecutivo.total}
@@ -360,6 +381,11 @@ export function Painel({
           agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
           vale fixar agora. */}
       <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
+
+      {/* RELATÓRIO DE REUNIÕES — mesma caixa retrátil, agora em azul-mar: é
+          o REGISTRO em si (toda interação do mês, por extenso), e não um
+          resumo interpretado. Ver o comentário no topo do componente. */}
+      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
 
       {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
           (mesmo sem nenhuma interação ainda), porque é um termômetro para
@@ -908,9 +934,13 @@ function ResumoExecutivoDoRecorte({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '12px 18px',
+        // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
+        // um cluster à esquerda e três à direita: sem o rótulo "Síntese
+        // Executiva" (virou o título grande, fora daqui), o total sozinho à
+        // esquerda ficava desequilibrado contra os três do outro lado.
+        justifyContent: 'space-evenly',
+        gap: 16,
+        padding: '14px 18px',
         background: 'var(--branco)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card)',
@@ -918,41 +948,35 @@ function ResumoExecutivoDoRecorte({
         color: 'var(--cinza-3)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="kicker" style={{ color: 'var(--azul-mar)', fontSize: 13.5 }}>
-          Síntese Executiva
-        </span>
-        <span style={{ color: 'var(--borda-input)' }}>|</span>
-        <span>
-          Amostra: <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong> agendas no recorte
-        </span>
+      <div>
+        <span style={{ color: 'var(--cinza-2)' }}>Total de interações: </span>
+        <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong>{' '}
+        <span style={{ color: 'var(--cinza-2)' }}>interações no filtro</span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
-        {frentePrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {frentePrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {climaPrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {climaPrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {topUf ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
-          </div>
-        ) : null}
-      </div>
+      {topUf ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+        </div>
+      ) : null}
     </div>
   );
 }
