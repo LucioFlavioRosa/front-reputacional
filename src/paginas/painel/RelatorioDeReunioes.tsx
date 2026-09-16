@@ -1,4 +1,4 @@
-/** O Relatório de Reuniões — registro mensal, por dia, campo a campo.
+/** O Relatório de Interações Mensais — registro mensal, por dia, campo a campo.
  *
  *  MESMA CAIXA RETRÁTIL da "Síntese Executiva pela IA" (borda, botão com
  *  seta que gira 180°) — mas em azul-mar, não turquesa: aquela caixa é um
@@ -47,69 +47,69 @@ export function RelatorioDeReunioes({
         background: 'color-mix(in srgb, var(--azul-mar) 3%, var(--branco))',
       }}
     >
-      <button
-        type="button"
-        onClick={() => definirAberto((v) => !v)}
-        aria-expanded={aberto}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '13px 16px 0',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--azul-mar)' }}>
-          Relatório de Reuniões
-        </span>
-        <SetaDoRelatorio aberto={aberto} />
-      </button>
-
-      {/* OS NÚMEROS E O SELETOR DE MÊS, fora do `{aberto ? ... : null}` de
-          propósito — ver o comentário no topo do arquivo. */}
+      {/* TÍTULO E NÚMEROS NA MESMA LINHA, como uma continuação um do outro —
+          e não título numa linha e números numa linha própria abaixo. A
+          caixa inteira (menos o select, que precisa do próprio clique) abre
+          e fecha ao clicar em qualquer ponto desta faixa. */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={aberto}
+        onClick={() => definirAberto((v) => !v)}
+        onKeyDown={(evento) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
+          evento.preventDefault();
+          definirAberto((v) => !v);
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: 16,
-          padding: '10px 16px 16px',
+          padding: '13px 16px',
+          cursor: 'pointer',
         }}
       >
-        <div style={{ display: 'flex', gap: 22 }}>
-          <NumeroGrande valor={relatorio?.totalReunioes ?? 0} rotulo="Reuniões" />
-          <NumeroGrande valor={relatorio?.totalInstituicoes ?? 0} rotulo="Instituições" />
-          <NumeroGrande valor={relatorio?.totalDias ?? 0} rotulo="Dias com reunião" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--azul-mar)' }}>
+            Relatório de Interações Mensais
+          </span>
+          <div style={{ display: 'flex', gap: 22 }}>
+            <NumeroGrande valor={relatorio?.totalReunioes ?? 0} rotulo="Interações" />
+            <NumeroGrande valor={relatorio?.totalInstituicoes ?? 0} rotulo="Instituições" />
+            <NumeroGrande valor={relatorio?.totalDias ?? 0} rotulo="Dias com reunião" />
+          </div>
         </div>
 
-        {meses.length > 1 ? (
-          <select
-            value={mes}
-            onChange={(evento) => definirMesEscolhido(evento.target.value)}
-            aria-label="Mês do relatório"
-            style={{
-              height: 28,
-              padding: '0 10px',
-              borderRadius: 'var(--r-chip)',
-              border: '1px solid var(--azul-mar)',
-              background: 'var(--branco)',
-              color: 'var(--cinza-4)',
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            {meses.map((chave) => (
-              <option key={chave} value={chave}>
-                {rotuloDoMesComAno(chave)}
-              </option>
-            ))}
-          </select>
-        ) : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {meses.length > 1 ? (
+            <select
+              value={mes}
+              onChange={(evento) => definirMesEscolhido(evento.target.value)}
+              onClick={(evento) => evento.stopPropagation()}
+              aria-label="Mês do relatório"
+              style={{
+                height: 28,
+                padding: '0 10px',
+                borderRadius: 'var(--r-chip)',
+                border: '1px solid var(--azul-mar)',
+                background: 'var(--branco)',
+                color: 'var(--cinza-4)',
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {meses.map((chave) => (
+                <option key={chave} value={chave}>
+                  {rotuloDoMesComAno(chave)}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <SetaDoRelatorio aberto={aberto} />
+        </div>
       </div>
 
       {aberto ? (
@@ -125,7 +125,7 @@ export function RelatorioDeReunioes({
         >
           {!relatorio ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-              Nenhuma reunião registrada em {rotuloDoMesComAno(mes).toLowerCase()}.
+              Nenhuma interação registrada em {rotuloDoMesComAno(mes).toLowerCase()}.
             </p>
           ) : (
             relatorio.dias.map((dia) => (
