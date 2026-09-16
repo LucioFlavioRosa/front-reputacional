@@ -376,17 +376,16 @@ export function Painel({
         topUf={derivado.resumoExecutivo.topUf}
       />
 
-      {/* RELATÓRIO DE INTERAÇÕES MENSAIS — na frente da caixa de IA logo
-          abaixo: é o REGISTRO em si (toda interação do mês, por extenso),
-          e não um resumo interpretado. Ver o comentário no topo do
-          componente. */}
-      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
-
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
           componente: hoje é o front montando o texto com dados reais, sem
           agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
           vale fixar agora. */}
       <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
+
+      {/* RELATÓRIO DE INTERAÇÕES MENSAIS — é o REGISTRO em si (toda
+          interação do mês, por extenso), e não um resumo interpretado. Ver
+          o comentário no topo do componente. */}
+      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
 
       {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
           (mesmo sem nenhuma interação ainda), porque é um termômetro para
