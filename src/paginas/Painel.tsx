@@ -32,6 +32,7 @@ import {
   porArea,
   porTier,
   ranking,
+  rankingDePortaVozes,
   resumoDeClimaPorFrente,
   rotuloDeCodigo,
   scorePorArea,
@@ -225,7 +226,7 @@ export function Painel({
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
-      portaVozes: ranking(interacoes, catalogo, 'portaVoz'),
+      portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
@@ -679,7 +680,7 @@ export function Painel({
         </div>
 
         <Secao
-          titulo="Distribuição geográfica"
+          titulo="Distribuição geográfica das Interações e Porta-vozes"
           subtitulo="Concentração de presença física e impacto institucional por Estado (UF)"
         >
           <div className="grade grade--mapa" style={{ gap: 24 }}>
@@ -700,6 +701,8 @@ export function Painel({
               </div>
               <Ranking
                 itens={derivado.portaVozes}
+                ativo={recorte.portaVoz}
+                aoClicar={(nome) => definirRecorte(alternar(recorte, 'portaVoz', nome))}
                 vazio="Nenhum porta-voz registrado neste recorte."
                 detalheAoPassarMouse={(chave) =>
                   (derivado.temasPorPortaVoz[chave] ?? []).map((item) => ({

@@ -814,7 +814,6 @@ export function distribuicaoPorUf(interacoes: Interacao[]): PontoNoMapa[] {
 export type DimensaoDeRanking =
   | 'entidade'
   | 'pessoa'
-  | 'portaVoz'
   | 'unidade'
   | 'esfera'
   | 'uf'
@@ -841,14 +840,6 @@ export function ranking(
         if (nome !== '—') somar(nome);
         break;
       }
-      case 'portaVoz':
-        // O registro conta para cada porta-voz: "Radamés e André" soma nos dois.
-        for (const participacao of interacao.participacoes) {
-          if (participacao.papel === 'porta_voz') {
-            somar(nomeDaPessoa(catalogo, participacao.pessoa_aegea_id));
-          }
-        }
-        break;
       case 'unidade': {
         const nome = nomeDaUnidade(catalogo, interacao.unidade_negocio_id);
         if (nome !== '—') somar(nome);
@@ -1125,10 +1116,38 @@ export function exposicaoDePortaVozes(
   };
 }
 
+/** O ranking por porta-voz do Painel — À PARTE de `ranking()` porque a
+ *  chave PRECISA SER O ID (`pessoa_aegea_id`), não o nome: é assim que o
+ *  filtro por porta-voz existe no backend (`recorte.porta_voz` compara
+ *  contra o id da pessoa, diferente de `entidade`/`unidade`, que comparam
+ *  contra o nome — ver `app/banco/filtros_sql.py::_teve_porta_voz`).
+ *  Chavear pelo nome aqui faria o clique mandar um filtro que nunca bate
+ *  com nenhum registro. */
+export function rankingDePortaVozes(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  limite = 8,
+): ItemContado[] {
+  const contagem = new Map<string, number>();
+  for (const interacao of interacoes) {
+    // O registro conta para cada porta-voz: "Radamés e André" soma nos dois.
+    for (const participacao of interacao.participacoes) {
+      if (participacao.papel !== 'porta_voz') continue;
+      const id = participacao.pessoa_aegea_id;
+      contagem.set(id, (contagem.get(id) ?? 0) + 1);
+    }
+  }
+
+  return [...contagem.entries()]
+    .map(([id, total]) => ({ chave: id, rotulo: nomeDaPessoa(catalogo, id), total }))
+    .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
+    .slice(0, limite);
+}
+
 /** Os temas mais falados por CADA porta-voz — é o que o "Ranking por
  *  porta-voz" do Painel mostra no tooltip ao passar o mouse, sem esperar o
- *  clique. Mesma soma de `ranking(..., 'portaVoz')`: uma interação com dois
- *  porta-vozes soma nos dois, pelo NOME (a chave que aquele ranking usa). */
+ *  clique. Chaveado pelo MESMO id de `rankingDePortaVozes`, e não pelo nome:
+ *  o `chave` que o hover recebe é o que veio do ranking. */
 export function temasPorPortaVoz(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -1139,16 +1158,16 @@ export function temasPorPortaVoz(
   for (const interacao of interacoes) {
     for (const participacao of interacao.participacoes) {
       if (participacao.papel !== 'porta_voz') continue;
-      const nome = nomeDaPessoa(catalogo, participacao.pessoa_aegea_id);
-      const lista = porPessoa.get(nome) ?? [];
+      const id = participacao.pessoa_aegea_id;
+      const lista = porPessoa.get(id) ?? [];
       lista.push(interacao);
-      porPessoa.set(nome, lista);
+      porPessoa.set(id, lista);
     }
   }
 
   const resultado: Record<string, ItemContado[]> = {};
-  for (const [nome, registros] of porPessoa.entries()) {
-    resultado[nome] = temasMaisRecorrentes(registros, catalogo, quantos);
+  for (const [id, registros] of porPessoa.entries()) {
+    resultado[id] = temasMaisRecorrentes(registros, catalogo, quantos);
   }
   return resultado;
 }
