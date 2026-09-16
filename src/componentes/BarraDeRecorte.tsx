@@ -9,10 +9,6 @@
  *  Fichas removíveis, e não uma frase corrida: desfazer um filtro é um clique
  *  na ficha, e não uma busca dentro de uma gaveta.
  *
- *  E COPIAR O LINK MORA AQUI, ao lado do recorte, porque é o recorte que o
- *  link carrega: "manda esta leitura para a liderança" é um endereço, e não
- *  uma captura de tela.
- *
  *  `PainelDeFiltros` (a seção "Filtros" com as pílulas) NÃO mora aqui dentro,
  *  de propósito: esta barra vive num `<header>` `position: sticky` em
  *  `Layout`, e um painel que expande e recolhe DENTRO de um elemento fixo no
@@ -22,7 +18,6 @@
  *  normal da página, logo abaixo dele.
  */
 
-import { useState } from 'react';
 import { usePainel } from '@/estado/painel';
 import { Botao, Chip } from '@/componentes/basicos';
 import { fichasDoRecorte, semOFiltro } from '@/dominio/resumo-do-recorte';
@@ -30,7 +25,6 @@ import { numero } from '@/dominio/formato';
 
 export function BarraDeRecorte() {
   const { recorte, definirRecorte, limparRecorte, catalogo, total, atualizando } = usePainel();
-  const [copiado, definirCopiado] = useState(false);
 
   // `q` já tem campo próprio, sempre visível, logo abaixo — virar também uma
   // ficha aqui duplicaria o mesmo valor em dois lugares da barra.
@@ -41,24 +35,6 @@ export function BarraDeRecorte() {
     if (valor) proximo.q = valor;
     else delete proximo.q;
     definirRecorte(proximo);
-  };
-
-  const copiar = async () => {
-    try {
-      // DA JANELA, e não do estado da navegação.
-      //
-      // MEDIDO: aplicar um filtro clicando num indicador troca a URL por
-      // `replaceState`, dentro do provedor — e o hook de navegação não é
-      // avisado. Copiando do estado, o link saía sem o filtro que a pessoa
-      // acabara de aplicar: a URL na barra dizia `?tier=1` e a área de
-      // transferência levava `/painel`.
-      await navigator.clipboard.writeText(window.location.href);
-      definirCopiado(true);
-      window.setTimeout(() => definirCopiado(false), 2200);
-    } catch {
-      // Área de transferência negada pelo navegador — o endereço continua na
-      // barra, e dizer "falhou" aqui não ajudaria em nada.
-    }
   };
 
   return (
@@ -85,12 +61,12 @@ export function BarraDeRecorte() {
           color: 'var(--cinza-2)',
         }}
       >
-        Recorte
+        Busca inteligente
       </span>
 
       <input
         value={recorte.q ?? ''}
-        placeholder="Buscar pauta, instituição, pessoa…"
+        placeholder="Buscar por tema, pauta, área, frente, stakeholder, tier..."
         onChange={(evento) => alterarBusca(evento.target.value)}
         style={{
           height: 28,
@@ -128,20 +104,13 @@ export function BarraDeRecorte() {
         {atualizando ? 'atualizando…' : `${numero(total)} ${total === 1 ? 'interação' : 'interações'}`}
       </span>
 
-      <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-        {fichas.length || recorte.q ? (
+      {fichas.length || recorte.q ? (
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Botao variante="fantasma" aoClicar={limparRecorte}>
             Limpar
           </Botao>
-        ) : null}
-        <Botao
-          variante="fantasma"
-          aoClicar={copiar}
-          titulo="Copia o endereço desta tela com o recorte aplicado"
-        >
-          {copiado ? 'Link copiado' : 'Copiar link'}
-        </Botao>
-      </span>
+        </span>
+      ) : null}
     </div>
   );
 }

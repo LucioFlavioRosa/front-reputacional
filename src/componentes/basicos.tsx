@@ -81,9 +81,9 @@ export function Secao({
    *  página. */
   nivelDoTitulo?: 1 | 2;
 }) {
-  // O PADRÃO DE TÍTULO DA MARCA: azul-mar, maior que o corpo do texto, e um
-  // pouco afastado do canto — é a mesma régua para toda `Secao` do produto,
-  // de propósito. Um título por tela com um valor diferente faria a mesma
+  // O PADRÃO DE TÍTULO DA MARCA: azul-mar, maior que o corpo do texto, e
+  // colado ao canto — é a mesma régua para toda `Secao` do produto, de
+  // propósito. Um título por tela com um valor diferente faria a mesma
   // etiqueta ("título da seção") significar coisas visualmente diferentes de
   // uma tela para outra.
   const estiloDaMarca: CSSProperties = {
@@ -94,6 +94,9 @@ export function Secao({
 
   return (
     <Cartao estilo={{ padding: 22, ...estilo }}>
+      {/* A LINHA CINZA FECHA O ENQUADRAMENTO: sem ela, o título flutuava
+          sobre o conteúdo sem uma borda que dissesse "isto é o cabeçalho do
+          cartão, o resto é o corpo". */}
       <div
         style={{
           display: 'flex',

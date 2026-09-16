@@ -41,11 +41,11 @@ describe('intervalo', () => {
     expect(resultado.de).toEqual(new Date(2026, 0, 1));
   });
 
-  it('ano-corrente começa em 1º de janeiro do ano de referência', () => {
-    const recorte: Recorte = { periodoPassado: 'ano-corrente' };
+  it('as duas pontas oferecem a mesma escala de dias (30/60/90/180/360)', () => {
+    const recorte: Recorte = { periodoPassado: 'ultimos-60', periodoFuturo: 'proximos-360' };
     const resultado = intervalo(recorte, HOJE);
-    expect(resultado.de).toEqual(new Date(2026, 0, 1));
-    expect(resultado.ate).toEqual(HOJE);
+    expect(resultado.de).toEqual(new Date(2026, 6, 17)); // 60 dias antes
+    expect(resultado.ate).toEqual(new Date(2027, 8, 10)); // 360 dias depois
   });
 
   it('de e ate customizados, um de cada lado, combinam sem preset nenhum', () => {

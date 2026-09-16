@@ -344,15 +344,27 @@ export function Legenda({
   itens,
   ativo,
   aoClicar,
+  centralizada = false,
 }: {
   itens: { chave: string; rotulo: string; cor: string; detalhe?: string }[];
   ativo?: string;
   aoClicar?: (chave: string) => void;
+  /** Centraliza a legenda na caixa, em vez de colada à borda esquerda —
+   *  pedido pontual para os gráficos de série no tempo do Painel. */
+  centralizada?: boolean;
 }) {
   if (itens.length < 2) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 14 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: centralizada ? 'center' : 'flex-start',
+        gap: '6px 16px',
+        marginTop: 14,
+      }}
+    >
       {itens.map((item) => {
         const selecionado = ativo === item.chave;
         return (

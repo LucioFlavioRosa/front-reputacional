@@ -217,6 +217,180 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
   };
 }
 
+/* -- painel: tier, área e público ------------------------------------------ */
+
+//: A MESMA PALETA de `temasMaisRecorrentes`, na mesma ordem — é o conjunto de
+//: cores que já aparece em outros gráficos do Painel, e reaproveitá-lo aqui
+//: evita que "Tier 1" e um tema qualquer disputem visualmente a mesma cor com
+//: significados diferentes.
+const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
+
+//: A MESMA PALETA, EM ORDEM INVERTIDA — só para área. As roscas de "Interações
+//: por tier" e "Interações por áreas" ficam lado a lado no Painel; com a
+//: mesma paleta na mesma ordem, a primeira fatia de cada uma sairia da MESMA
+//: cor (azul) sem que isso signifique nada em comum entre um tier e uma
+//: área. Invertida, as 3 áreas de hoje começam em amarelo/rosa/laranja —
+//: nenhuma delas repete a cor de nenhum dos tiers.
+const PALETA_DE_AREAS = [...PALETA_DO_PAINEL].reverse();
+
+/** Quantas interações em cada nível de relevância — sempre um item por
+ *  tier cadastrado (`catalogo.dicionarios.relevancias`), mesmo os com zero
+ *  neste recorte: é o que faz a rosca sempre ter o mesmo número de fatias,
+ *  em vez de encolher quando um tier fica sem registro. */
+export function porTier(interacoes: Interacao[], catalogo: Catalogo): ItemContado[] {
+  const contagem = new Map<number, number>();
+  for (const interacao of interacoes) {
+    if (interacao.tier == null) continue;
+    contagem.set(interacao.tier, (contagem.get(interacao.tier) ?? 0) + 1);
+  }
+
+  return [...catalogo.dicionarios.relevancias]
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((nivel, indice) => ({
+      chave: String(nivel.id),
+      rotulo: nivel.nome,
+      total: contagem.get(nivel.id) ?? 0,
+      cor: PALETA_DO_PAINEL[indice % PALETA_DO_PAINEL.length],
+    }));
+}
+
+/** O top instituições de CADA tier, à parte — é o que a rosca mostra no
+ *  tooltip ao passar o mouse numa fatia, sem esperar o clique (que troca o
+ *  recorte inteiro). Uma chave por tier presente neste recorte; tier sem
+ *  nenhuma interação simplesmente não entra no mapa. */
+export function topInstituicoesPorTier(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+): Record<string, ItemContado[]> {
+  const porTierLocal = new Map<number, Interacao[]>();
+  for (const interacao of interacoes) {
+    if (interacao.tier == null) continue;
+    const lista = porTierLocal.get(interacao.tier) ?? [];
+    lista.push(interacao);
+    porTierLocal.set(interacao.tier, lista);
+  }
+
+  const resultado: Record<string, ItemContado[]> = {};
+  for (const [tier, lista] of porTierLocal.entries()) {
+    resultado[String(tier)] = ranking(lista, catalogo, 'entidade', quantos);
+  }
+  return resultado;
+}
+
+/** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
+ *  uma interação com duas áreas soma nas duas, e não escolhe uma.
+ *
+ *  `cor` vem de `PALETA_DE_AREAS` — a paleta do painel invertida, para a
+ *  rosca de "Interações por áreas" não repetir a cor da rosca de "Interações
+ *  por tier" logo ao lado. */
+export function porArea(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+): ItemContado[] {
+  const contagem = new Map<number, number>();
+  for (const interacao of interacoes) {
+    for (const areaId of interacao.areas) {
+      contagem.set(areaId, (contagem.get(areaId) ?? 0) + 1);
+    }
+  }
+
+  const nomePorId = new Map(catalogo.dicionarios.areas_pessoa.map((a) => [a.id, a.nome]));
+
+  return [...contagem.entries()]
+    .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
+    .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
+    .slice(0, quantos)
+    .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
+}
+
+export interface ClimaDaArea {
+  propositivo: number;
+  neutro: number;
+  tenso: number;
+}
+
+/** A quebra de clima de cada área — o que o tooltip de "Volume por área"
+ *  mostra ao passar o mouse. MULTIVALORADO como `porArea`: uma interação com
+ *  duas áreas soma clima nas duas. Sem clima registrado não entra em
+ *  nenhuma das três contagens, mesmo critério de `scorePorTema`. */
+export function climaPorArea(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+): Record<string, ClimaDaArea> {
+  const contagem: Record<string, ClimaDaArea> = {};
+
+  for (const interacao of interacoes) {
+    if (!interacao.clima) continue;
+    for (const areaId of interacao.areas) {
+      const chave = String(areaId);
+      const atual = contagem[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+      if (interacao.clima === 'propositivo') atual.propositivo += 1;
+      else if (interacao.clima === 'neutro') atual.neutro += 1;
+      else if (interacao.clima === 'tenso') atual.tenso += 1;
+      contagem[chave] = atual;
+    }
+  }
+
+  // Mantém as áreas sem clima nenhum no mapa, com zeros — evita `undefined`
+  // em quem consulta uma área que existe em `porArea` mas ainda não tem
+  // nenhuma interação com clima registrado.
+  for (const area of catalogo.dicionarios.areas_pessoa) {
+    const chave = String(area.id);
+    if (!contagem[chave]) contagem[chave] = { propositivo: 0, neutro: 0, tenso: 0 };
+  }
+
+  return contagem;
+}
+
+export interface ScoreDeInstituicao {
+  chave: string;
+  rotulo: string;
+  total: number;
+  positivas: number;
+  negativas: number;
+  score: number;
+}
+
+/** O placar de clima por instituição ("público"): só quem tem clima
+ *  registrado entra na conta, o score é (proativas − reativas) ÷ total em
+ *  pontos de −100 a 100. Os `quantos` com MAIS interações entram primeiro —
+ *  e a ordem final é a mesma, da maior para a menor quantidade: é "com quem
+ *  falamos mais, e como está indo", não um ranking de pior para melhor
+ *  score (esse já existe em `scorePorTema`/`scorePorArea`). */
+export function scorePorInstituicao(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+): ScoreDeInstituicao[] {
+  const contagem = new Map<string, { total: number; positivas: number; negativas: number }>();
+
+  for (const interacao of interacoes) {
+    if (!interacao.clima) continue;
+    const nome = nomeDaInstituicao(catalogo, interacao.instituicao_id);
+    if (nome === '—') continue;
+    const atual = contagem.get(nome) ?? { total: 0, positivas: 0, negativas: 0 };
+    atual.total += 1;
+    if (interacao.clima === 'propositivo') atual.positivas += 1;
+    if (interacao.clima === 'tenso') atual.negativas += 1;
+    contagem.set(nome, atual);
+  }
+
+  const todos: ScoreDeInstituicao[] = [...contagem.entries()].map(([nome, c]) => ({
+    chave: nome,
+    rotulo: nome,
+    total: c.total,
+    positivas: c.positivas,
+    negativas: c.negativas,
+    score: Math.round(((c.positivas - c.negativas) / c.total) * 100),
+  }));
+
+  return todos
+    .sort((a, b) => b.total - a.total)
+    .slice(0, quantos);
+}
+
 /* -- séries mensais ------------------------------------------------------- */
 
 export interface Segmento {
