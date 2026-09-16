@@ -724,9 +724,20 @@ describe('temasMaisRecorrentes', () => {
     expect(temas.every((t) => t.total > 0)).toBe(true);
   });
 
-  it('dá uma cor distinta a cada tema', () => {
-    const dados = [interacao({ temas: [10, 11, 12] })];
-    const cores = temasMaisRecorrentes(dados, CATALOGO, 3).map((t) => t.cor);
-    expect(new Set(cores).size).toBe(3);
+  it('pinta o tema com a cor da área que mais aparece nas agendas dele', () => {
+    const dados = [
+      interacao({ temas: [10], areas: [1] }),
+      interacao({ temas: [10], areas: [1] }),
+      interacao({ temas: [11], areas: [2] }),
+    ];
+    const temas = temasMaisRecorrentes(dados, CATALOGO, 2);
+    expect(temas.find((t) => t.rotulo === 'Tarifa')?.cor).toBe('#44495C');
+    expect(temas.find((t) => t.rotulo === 'IPO')?.cor).toBe('#0027BD');
+  });
+
+  it('se o tema não tem área, usa o cinza mais claro da paleta', () => {
+    const dados = [interacao({ temas: [10, 11] })];
+    const cores = temasMaisRecorrentes(dados, CATALOGO, 2).map((t) => t.cor);
+    expect(cores).toEqual(['#E2E5F0', '#E2E5F0']);
   });
 });
