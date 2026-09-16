@@ -18,7 +18,7 @@
  */
 
 import { useState } from 'react';
-import type { ColunaMensal } from '@/dominio/derivacoes';
+import type { ColunaMensal, Segmento } from '@/dominio/derivacoes';
 import { rotuloDoMes } from '@/dominio/formato';
 
 const ALTURA_DO_ROTULO = 16;
@@ -38,6 +38,7 @@ export function BarrasEmpilhadas({
   aoClicarMes,
   mesAtivo,
   detalheDoMes,
+  detalheDoSegmento,
   formatarRotulo = rotuloDoMes,
 }: {
   colunas: ColunaMensal[];
@@ -51,6 +52,14 @@ export function BarrasEmpilhadas({
   mesAtivo?: string;
   /** Linhas extras no tooltip — Tier 1 e tema dominante, por exemplo. */
   detalheDoMes?: (coluna: ColunaMensal) => { rotulo: string; valor: string }[];
+  /** Linhas extras ao passar o mouse num SEGMENTO da pilha — a mesma ideia
+   *  de `detalheAoPassarMouse` na rosca de "Interações por tier": quem desenha
+   *  a barra não precisa saber o que são (instituições daquele tier, no
+   *  histórico), só que existem. */
+  detalheDoSegmento?: (
+    coluna: ColunaMensal,
+    chave: string,
+  ) => { rotulo: string; valor: string }[];
   /** Como ler `coluna.mes` em texto. Default `rotuloDoMes`, que é a única
    *  leitura que `RaioXDaExcecao` precisa; o Painel passa outra quando a
    *  coluna é semana ou semestre — o gráfico em si não sabe nem precisa saber
@@ -58,6 +67,7 @@ export function BarrasEmpilhadas({
   formatarRotulo?: (chave: string) => string;
 }) {
   const [emFoco, setEmFoco] = useState<number | null>(null);
+  const [segmentoEmFoco, setSegmentoEmFoco] = useState<string | null>(null);
 
   if (!colunas.length) {
     return (
@@ -126,9 +136,15 @@ export function BarrasEmpilhadas({
                 : undefined
             }
             onMouseEnter={() => setEmFoco(indice)}
-            onMouseLeave={() => setEmFoco(null)}
+            onMouseLeave={() => {
+              setEmFoco(null);
+              setSegmentoEmFoco(null);
+            }}
             onFocus={() => setEmFoco(indice)}
-            onBlur={() => setEmFoco(null)}
+            onBlur={() => {
+              setEmFoco(null);
+              setSegmentoEmFoco(null);
+            }}
             tabIndex={0}
             role={aoClicarMes ? 'button' : undefined}
             aria-pressed={aoClicarMes ? mesAtivo === coluna.mes : undefined}
@@ -183,7 +199,16 @@ export function BarrasEmpilhadas({
                       evento.stopPropagation();
                       aoClicarSegmento(segmento.chave);
                     }}
-                    title={`${segmento.rotulo}: ${segmento.total}`}
+                    onMouseEnter={
+                      detalheDoSegmento
+                        ? () => setSegmentoEmFoco(segmento.chave)
+                        : undefined
+                    }
+                    title={
+                      detalheDoSegmento
+                        ? undefined
+                        : `${segmento.rotulo}: ${segmento.total}`
+                    }
                     style={{
                       flex: segmento.total,
                       minHeight: apertada ? 0 : 2,
@@ -197,7 +222,7 @@ export function BarrasEmpilhadas({
                       // preenchida. O vão entre segmentos continua sendo o
                       // separador; isto só ancora CADA segmento contra o fundo.
                       boxShadow: 'inset 0 0 0 1px rgba(17,23,35,0.08)',
-                      cursor: aoClicarSegmento ? 'pointer' : undefined,
+                      cursor: aoClicarSegmento || detalheDoSegmento ? 'pointer' : undefined,
                     }}
                   />
                 ))}
@@ -225,7 +250,28 @@ export function BarrasEmpilhadas({
               <Tooltip
                 coluna={coluna}
                 alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
-                detalhe={detalheDoMes?.(coluna)}
+                detalhe={
+                  segmentoEmFoco && detalheDoSegmento
+                    ? undefined
+                    : detalheDoMes?.(coluna)
+                }
+                segmento={
+                  segmentoEmFoco
+                    ? coluna.segmentos.find((s) => s.chave === segmentoEmFoco)
+                    : undefined
+                }
+                detalheDoSegmento={
+                  segmentoEmFoco && detalheDoSegmento
+                    ? detalheDoSegmento(coluna, segmentoEmFoco)
+                    : undefined
+                }
+                instituicoesPorSegmento={
+                  !segmentoEmFoco && detalheDoSegmento
+                    ? Object.fromEntries(
+                        coluna.segmentos.map((s) => [s.chave, detalheDoSegmento(coluna, s.chave)]),
+                      )
+                    : undefined
+                }
                 formatarRotulo={formatarRotulo}
               />
             ) : null}
@@ -240,11 +286,23 @@ function Tooltip({
   coluna,
   alinhamento,
   detalhe,
+  segmento,
+  detalheDoSegmento,
+  instituicoesPorSegmento,
   formatarRotulo,
 }: {
   coluna: ColunaMensal;
   alinhamento: 'esquerda' | 'centro' | 'direita';
   detalhe?: { rotulo: string; valor: string }[];
+  /** O segmento em foco, quando o mouse está numa fatia da pilha — o tooltip
+   *  deixa de listar a coluna inteira e mostra o recorte daquela categoria,
+   *  como a rosca faz com a fatia. */
+  segmento?: Segmento;
+  detalheDoSegmento?: { rotulo: string; valor: string }[];
+  /** Top instituições de cada fatia, quando o mouse está na COLUNA e não
+   *  numa fatia específica — o mesmo dado da rosca, só que uma lista por
+   *  tier, para o hover da barra inteira não perder a informação. */
+  instituicoesPorSegmento?: Record<string, { rotulo: string; valor: string }[]>;
   formatarRotulo: (chave: string) => string;
 }) {
   const posicao =
@@ -282,31 +340,95 @@ function Tooltip({
           marginBottom: 7,
         }}
       >
-        <span style={{ textTransform: 'capitalize' }}>{formatarRotulo(coluna.mes)}</span>
-        <span className="tabular">{coluna.total}</span>
+        <span style={{ textTransform: 'capitalize' }}>
+          {segmento
+            ? `${formatarRotulo(coluna.mes)} · ${segmento.rotulo}`
+            : formatarRotulo(coluna.mes)}
+        </span>
+        <span className="tabular">{segmento ? segmento.total : coluna.total}</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {coluna.segmentos.map((segmento) => (
-          <div
-            key={segmento.chave}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}
-          >
-            <span
-              aria-hidden
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 2,
-                background: segmento.cor,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ flex: 1, color: '#D5DAEA' }}>{segmento.rotulo}</span>
-            <span className="tabular">{segmento.total}</span>
+      {segmento && detalheDoSegmento ? (
+        detalheDoSegmento.length ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ fontSize: 11, color: '#8C91A4', marginBottom: 2 }}>Top instituições</div>
+            {detalheDoSegmento.map((linha) => (
+              <div
+                key={linha.rotulo}
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}
+              >
+                <span
+                  style={{
+                    color: '#D5DAEA',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 150,
+                  }}
+                >
+                  {linha.rotulo}
+                </span>
+                <span className="tabular" style={{ color: segmento.cor, fontWeight: 700 }}>
+                  {linha.valor}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        ) : (
+          <div style={{ fontSize: 11, color: '#8C91A4' }}>Sem instituição registrada.</div>
+        )
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: instituicoesPorSegmento ? 7 : 3 }}>
+          {coluna.segmentos.map((item) => {
+            const instituicoes = instituicoesPorSegmento?.[item.chave] ?? [];
+            return (
+              <div key={item.chave} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 2,
+                      background: item.cor,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ flex: 1, color: '#D5DAEA' }}>{item.rotulo}</span>
+                  <span className="tabular">{item.total}</span>
+                </div>
+                {instituicoes.map((linha) => (
+                  <div
+                    key={linha.rotulo}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      fontSize: 11,
+                      paddingLeft: 15,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: '#8C91A4',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: 150,
+                      }}
+                    >
+                      {linha.rotulo}
+                    </span>
+                    <span className="tabular" style={{ color: item.cor, fontWeight: 600 }}>
+                      {linha.valor}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {detalhe?.length ? (
         <div

@@ -83,7 +83,7 @@ function BotaoDeHistorico({ aoClicar }: { aoClicar: () => void }) {
     <Botao
       variante="fantasma"
       aoClicar={aoClicar}
-      estilo={{ border: '1px solid var(--borda-input)' }}
+      estilo={{ border: '1px solid var(--borda-input)', whiteSpace: 'nowrap' }}
     >
       Ver histórico
     </Botao>
@@ -460,6 +460,7 @@ export function Painel({
       <div className="grade grade--3" style={{ gap: 16 }}>
         <Secao
           titulo="Interações por tier"
+          subtitulo="Volume de agendas pela relevância da instituição de contato"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
         >
           {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
@@ -503,6 +504,7 @@ export function Painel({
 
         <Secao
           titulo="Interações por áreas"
+          subtitulo="Volume de agendas segundo as áreas internas participantes"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
         >
           {/* MESMO LAYOUT de "Interações por tier" ao lado: a rosca (com sua
@@ -550,6 +552,7 @@ export function Painel({
 
         <Secao
           titulo="Clima por Instituições"
+          subtitulo="Placar de clima das instituições mais presentes no recorte"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
         >
           <BarraDivergentePorItem
@@ -921,12 +924,32 @@ function HistoricoDoBloco({
           bloco de detalhe (esta chamada não passa `detalheDoMes`). Consertar
           dentro de `BarrasEmpilhadas.tsx` mudaria todos os outros usos dele
           (`RaioXDaExcecao`, o Painel fora do popup), que não têm este
-          problema — por isso o espaço é reservado só aqui. */}
+          problema — por isso o espaço é reservado só aqui.
+
+          ATENÇÃO: com `detalheDoSegmento` abaixo, o tooltip de "tier" agora
+          pode listar o top de instituições de cada fatia — potencialmente
+          mais alto que os 140px acima cobrem. Reconferir visualmente depois
+          deste merge. */}
       <div style={{ paddingTop: 140 }}>
         <BarrasEmpilhadas
           colunas={colunas}
           altura={220}
           formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+          detalheDoSegmento={
+            chave === 'tier'
+              ? (coluna, chaveDoTier) => {
+                  const doPeriodo = interacoes.filter(
+                    (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
+                  );
+                  return (topInstituicoesPorTier(doPeriodo, catalogo, 5)[chaveDoTier] ?? []).map(
+                    (item) => ({
+                      rotulo: item.rotulo,
+                      valor: numero(item.total),
+                    }),
+                  );
+                }
+              : undefined
+          }
         />
       </div>
       <Legenda itens={categorias} centralizada />

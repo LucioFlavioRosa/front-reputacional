@@ -219,10 +219,10 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 
 /* -- painel: tier, área e público ------------------------------------------ */
 
-//: A MESMA PALETA de `temasMaisRecorrentes`, na mesma ordem — é o conjunto de
-//: cores que já aparece em outros gráficos do Painel, e reaproveitá-lo aqui
-//: evita que "Tier 1" e um tema qualquer disputem visualmente a mesma cor com
-//: significados diferentes.
+//: Paleta da rosca de tier (e de outros gráficos do Painel que ainda usam
+//: o arco-íris da marca). Temas ao lado da rosca de área NÃO reusam esta
+//: lista — eles herdam a cor da categoria dominante (`CATEGORIAS_DE_AREA`),
+//: em `temasMaisRecorrentes`.
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
 export interface CategoriaDeArea {
@@ -626,29 +626,69 @@ export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
  *
  *  Serve tanto como categorias da série empilhada quanto como ranking, e por
  *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
- *  recontar, e duas contagens da mesma base são duas chances de divergir. */
+ *  recontar, e duas contagens da mesma base são duas chances de divergir.
+ *
+ *  A COR É A DA CATEGORIA DE ÁREA DOMINANTE do tema neste recorte — a
+ *  categoria (`CATEGORIAS_DE_AREA`) que mais aparece nas agendas que carregam
+ *  aquele tema —, a mesma cor oficial da rosca de "Interações por áreas".
+ *  Área sem categoria correspondente (ver `idsPorCategoriaDeArea`) não vota;
+ *  tema sem nenhum voto cai no cinza 1 (`--cinza-1`), a mesma leitura de
+ *  "sem área" que o resto do Painel usa. */
 export function temasMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
   quantos = 5,
 ): { chave: string; rotulo: string; cor: string; total: number }[] {
-  const paleta = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
   const contagem = new Map<string, number>();
+  const votosPorTema = new Map<string, Map<string, number>>();
+  const categoriaPorAreaId = new Map<number, string>();
+  for (const [rotulo, ids] of idsPorCategoriaDeArea(catalogo)) {
+    for (const id of ids) categoriaPorAreaId.set(id, rotulo);
+  }
 
   for (const interacao of interacoes) {
     for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
+      if (!interacao.areas.length) continue;
+      let votos = votosPorTema.get(nome);
+      if (!votos) {
+        votos = new Map();
+        votosPorTema.set(nome, votos);
+      }
+      for (const areaId of interacao.areas) {
+        const categoria = categoriaPorAreaId.get(areaId);
+        if (!categoria) continue;
+        votos.set(categoria, (votos.get(categoria) ?? 0) + 1);
+      }
     }
+  }
+
+  function categoriaDominante(nome: string): string | null {
+    const votos = votosPorTema.get(nome);
+    if (!votos?.size) return null;
+    let escolhida: string | null = null;
+    let max = -1;
+    for (const [rotulo, n] of votos) {
+      if (n > max || (n === max && (escolhida === null || rotulo.localeCompare(escolhida, 'pt-BR') < 0))) {
+        max = n;
+        escolhida = rotulo;
+      }
+    }
+    return escolhida;
   }
 
   return ordenarDecrescente(contagem)
     .slice(0, quantos)
-    .map((item, indice) => ({
-      chave: item.chave,
-      rotulo: item.rotulo,
-      total: item.total,
-      cor: paleta[indice % paleta.length],
-    }));
+    .map((item) => {
+      const rotuloDaCategoria = categoriaDominante(item.chave);
+      const categoria = CATEGORIAS_DE_AREA.find((c) => c.rotulo === rotuloDaCategoria);
+      return {
+        chave: item.chave,
+        rotulo: item.rotulo,
+        total: item.total,
+        cor: categoria?.cor ?? 'var(--cinza-1)',
+      };
+    });
 }
 
 /** Uma linha da lista que abre ao clicar num tema — só o que basta para

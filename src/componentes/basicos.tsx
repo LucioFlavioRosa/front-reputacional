@@ -108,7 +108,7 @@ export function Secao({
           borderBottom: '1px solid var(--borda)',
         }}
       >
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           {nivelDoTitulo === 1 ? (
             <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
           ) : (
@@ -120,7 +120,7 @@ export function Secao({
             </div>
           ) : null}
         </div>
-        {acao}
+        {acao ? <div style={{ flexShrink: 0 }}>{acao}</div> : null}
       </div>
       {children}
     </Cartao>
