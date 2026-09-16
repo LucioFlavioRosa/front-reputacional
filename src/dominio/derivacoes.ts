@@ -219,10 +219,10 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 
 /* -- painel: tier, área e público ------------------------------------------ */
 
-//: Paleta da rosca de tier (e de outros gráficos do Painel que ainda usam
-//: o arco-íris da marca). Temas ao lado da rosca de área NÃO reusam esta
-//: lista — eles herdam a cor da categoria dominante (`CATEGORIAS_DE_AREA`),
-//: em `temasMaisRecorrentes`.
+//: Paleta da rosca de tier e de `temasMaisRecorrentes` — por posição no
+//: ranking, não por área: "Temas no tempo" compara várias séries lado a
+//: lado, e cor por área (só 3 possíveis) colidia entre temas diferentes.
+//: A rosca de área tem a própria paleta, fixa por identidade (`CATEGORIAS_DE_AREA`).
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
 export interface CategoriaDeArea {
@@ -628,67 +628,35 @@ export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
  *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
  *  recontar, e duas contagens da mesma base são duas chances de divergir.
  *
- *  A COR É A DA CATEGORIA DE ÁREA DOMINANTE do tema neste recorte — a
- *  categoria (`CATEGORIAS_DE_AREA`) que mais aparece nas agendas que carregam
- *  aquele tema —, a mesma cor oficial da rosca de "Interações por áreas".
- *  Área sem categoria correspondente (ver `idsPorCategoriaDeArea`) não vota;
- *  tema sem nenhum voto cai no cinza 1 (`--cinza-1`), a mesma leitura de
- *  "sem área" que o resto do Painel usa. */
+ *  A COR É POR POSIÇÃO NO RANKING (`PALETA_DO_PAINEL`), não pela área
+ *  dominante do tema: "Temas no tempo" compara até `quantos` séries lado a
+ *  lado, e a cor é o principal jeito de diferenciar uma da outra — com só 3
+ *  cores possíveis (uma por categoria de área) e até 5 temas, duas ou mais
+ *  acabavam saindo idênticas, o que atrapalha exatamente a comparação que o
+ *  gráfico existe para fazer. Ligar a cor à área É uma ideia com valor (ver
+ *  discussão em torno do commit que introduziu isso), mas como um indicador
+ *  COMPLEMENTAR ao lado do tema — não substituindo a cor da série. */
 export function temasMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
   quantos = 5,
 ): { chave: string; rotulo: string; cor: string; total: number }[] {
   const contagem = new Map<string, number>();
-  const votosPorTema = new Map<string, Map<string, number>>();
-  const categoriaPorAreaId = new Map<number, string>();
-  for (const [rotulo, ids] of idsPorCategoriaDeArea(catalogo)) {
-    for (const id of ids) categoriaPorAreaId.set(id, rotulo);
-  }
 
   for (const interacao of interacoes) {
     for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
-      if (!interacao.areas.length) continue;
-      let votos = votosPorTema.get(nome);
-      if (!votos) {
-        votos = new Map();
-        votosPorTema.set(nome, votos);
-      }
-      for (const areaId of interacao.areas) {
-        const categoria = categoriaPorAreaId.get(areaId);
-        if (!categoria) continue;
-        votos.set(categoria, (votos.get(categoria) ?? 0) + 1);
-      }
     }
-  }
-
-  function categoriaDominante(nome: string): string | null {
-    const votos = votosPorTema.get(nome);
-    if (!votos?.size) return null;
-    let escolhida: string | null = null;
-    let max = -1;
-    for (const [rotulo, n] of votos) {
-      if (n > max || (n === max && (escolhida === null || rotulo.localeCompare(escolhida, 'pt-BR') < 0))) {
-        max = n;
-        escolhida = rotulo;
-      }
-    }
-    return escolhida;
   }
 
   return ordenarDecrescente(contagem)
     .slice(0, quantos)
-    .map((item) => {
-      const rotuloDaCategoria = categoriaDominante(item.chave);
-      const categoria = CATEGORIAS_DE_AREA.find((c) => c.rotulo === rotuloDaCategoria);
-      return {
-        chave: item.chave,
-        rotulo: item.rotulo,
-        total: item.total,
-        cor: categoria?.cor ?? 'var(--cinza-1)',
-      };
-    });
+    .map((item, indice) => ({
+      chave: item.chave,
+      rotulo: item.rotulo,
+      total: item.total,
+      cor: PALETA_DO_PAINEL[indice % PALETA_DO_PAINEL.length],
+    }));
 }
 
 /** Uma linha da lista que abre ao clicar num tema — só o que basta para

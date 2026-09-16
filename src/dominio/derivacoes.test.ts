@@ -768,22 +768,9 @@ describe('temasMaisRecorrentes', () => {
     expect(temas.every((t) => t.total > 0)).toBe(true);
   });
 
-  it('pinta o tema com a cor da CATEGORIA de área que mais aparece nas agendas dele', () => {
-    // Área 1 = Comunicação, área 2 = Relações Institucionais — cada uma sua
-    // própria categoria de `CATEGORIAS_DE_AREA`, com cor oficial fixa.
-    const dados = [
-      interacao({ temas: [10], areas: [1] }),
-      interacao({ temas: [10], areas: [1] }),
-      interacao({ temas: [11], areas: [2] }),
-    ];
-    const temas = temasMaisRecorrentes(dados, CATALOGO, 2);
-    expect(temas.find((t) => t.rotulo === 'Tarifa')?.cor).toBe('#E12379'); // Comunicação
-    expect(temas.find((t) => t.rotulo === 'IPO')?.cor).toBe('#17E3CB'); // Relações Institucionais
-  });
-
-  it('se o tema não tem área (ou a área não pertence a nenhuma categoria), usa o cinza 1', () => {
-    const dados = [interacao({ temas: [10, 11] })];
-    const cores = temasMaisRecorrentes(dados, CATALOGO, 2).map((t) => t.cor);
-    expect(cores).toEqual(['var(--cinza-1)', 'var(--cinza-1)']);
+  it('dá uma cor distinta a cada tema', () => {
+    const dados = [interacao({ temas: [10, 11, 12] })];
+    const cores = temasMaisRecorrentes(dados, CATALOGO, 3).map((t) => t.cor);
+    expect(new Set(cores).size).toBe(3);
   });
 });
