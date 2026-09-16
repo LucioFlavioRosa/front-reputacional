@@ -177,6 +177,15 @@ const TAMANHO_MAXIMO = 200;
  *  sentido e as agregações precisam ir para o backend. */
 export const TETO_DE_DERIVACAO = 5000;
 
+/** Quantas páginas restantes pedir de cada vez, e não todas de uma vez.
+ *
+ *  CADA PÁGINA CUSTA MAIS DE UMA CONSULTA NO BACKEND — a principal, mais uma
+ *  por relacionamento carregado à parte (temas, áreas, participações…). Um
+ *  recorte de 25 páginas em paralelo somava dezenas de consultas simultâneas
+ *  no banco, de uma vez só, a cada troca de filtro. Em lotes pequenos, nunca
+ *  há mais que `TAMANHO_DO_LOTE` páginas deste recorte em voo ao mesmo tempo. */
+export const TAMANHO_DO_LOTE = 5;
+
 export interface RecorteCompleto {
   itens: Interacao[];
   total: number;
@@ -185,11 +194,14 @@ export interface RecorteCompleto {
 }
 
 /** Busca o recorte inteiro: a primeira página diz quantas há, e as outras
- *  vêm TODAS DE UMA VEZ.
+ *  vêm em LOTES de `TAMANHO_DO_LOTE`, um lote de cada vez.
  *
  *  As telas de análise derivam os agregados do conjunto completo, então
- *  precisam dele inteiro — não da primeira página. Uma página atrás da outra
- *  somava as latências; em paralelo, o recorte chega no tempo da mais lenta. */
+ *  precisam dele inteiro — não da primeira página. Um lote por vez, e não
+ *  todas de uma vez, é o meio-termo entre "uma página atrás da outra" (soma
+ *  as latências) e "todas em paralelo" (multiplica a carga no backend pelo
+ *  número de páginas). O RESULTADO FINAL não muda — mesmos itens, mesma
+ *  ordem —, só o RITMO das requisições. */
 export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCompleto> {
   const primeira = await listarInteracoes(recorte, { pagina: 1, tamanho: TAMANHO_MAXIMO });
 
@@ -197,11 +209,18 @@ export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCo
     primeira.paginas,
     Math.ceil(TETO_DE_DERIVACAO / TAMANHO_MAXIMO),
   );
-  const restantes = await Promise.all(
-    Array.from({ length: Math.max(0, paginasNecessarias - 1) }, (_, i) =>
-      listarInteracoes(recorte, { pagina: i + 2, tamanho: TAMANHO_MAXIMO }),
-    ),
-  );
+
+  const restantes: PaginaDeInteracoes[] = [];
+  for (let inicio = 2; inicio <= paginasNecessarias; inicio += TAMANHO_DO_LOTE) {
+    const fim = Math.min(inicio + TAMANHO_DO_LOTE - 1, paginasNecessarias);
+    const lote = await Promise.all(
+      Array.from({ length: fim - inicio + 1 }, (_, i) =>
+        listarInteracoes(recorte, { pagina: inicio + i, tamanho: TAMANHO_MAXIMO }),
+      ),
+    );
+    restantes.push(...lote);
+  }
+
   const itens = [primeira, ...restantes].flatMap((pagina) => pagina.itens);
 
   return {
