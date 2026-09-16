@@ -18,37 +18,11 @@
 
 import type { Catalogo } from '@/dominio/derivacoes';
 import { nomesDosTemas, porArea, ranking, temasMaisRecorrentes } from '@/dominio/derivacoes';
+import { deslocarMes, mesesDisponiveis, nomeDoMes, ultimoDiaDoMes } from '@/dominio/calendarioMensal';
 import { chaveDoMes, diasDesde, titulo as capitalizar, variacao } from '@/dominio/formato';
 import type { Interacao } from '@/dominio/tipos';
 
-const MESES_POR_EXTENSO = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-];
-
-function nomeDoMes(chave: string): string {
-  const mes = Number(chave.slice(5, 7));
-  return MESES_POR_EXTENSO[mes - 1];
-}
-
-/** `chave` ("YYYY-MM") deslocada `deltaMeses` para frente (ou para trás, com
- *  um delta negativo) — a mesma conta de calendário, não a posição de `chave`
- *  numa lista de meses disponíveis: mês passado é o mês de calendário
- *  anterior, exista ou não interação registrada nele. */
-export function deslocarMes(chave: string, deltaMeses: number): string {
-  const [ano, mes] = chave.split('-').map(Number);
-  const data = new Date(ano, mes - 1 + deltaMeses, 1);
-  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-}
-
-/** O último dia (de calendário) do mês de `chave` — o "hoje" que os alertas
- *  usam quando a janela escolhida é um fechamento do passado: perguntar "há
- *  quanto tempo sem interação" faz sentido em relação ao FIM da janela em
- *  análise, não em relação ao dia de hoje de verdade. */
-function ultimoDiaDoMes(chave: string): Date {
-  const [ano, mes] = chave.split('-').map(Number);
-  return new Date(ano, mes, 0);
-}
+export { deslocarMes, mesesDisponiveis, rotuloDoMesComAno } from '@/dominio/calendarioMensal';
 
 /** As `tamanho` chaves de mês que terminam em `referencia`, em ordem
  *  crescente — `['2026-07','2026-08','2026-09']` para `referencia='2026-09'`
@@ -73,21 +47,6 @@ function scoreDeClima(lista: Interacao[]): number {
   const positivas = comClima.filter((i) => i.clima === 'propositivo').length;
   const negativas = comClima.filter((i) => i.clima === 'tenso').length;
   return Math.round(((positivas - negativas) / comClima.length) * 100);
-}
-
-/** Todo mês ("YYYY-MM") com pelo menos uma interação no recorte, do mais
- *  recente ao mais antigo — a lista que alimenta o seletor "escolher um mês
- *  específico" da caixa. */
-export function mesesDisponiveis(interacoes: Interacao[]): string[] {
-  return [...new Set(interacoes.map((i) => chaveDoMes(i.data_interacao)))].sort((a, b) =>
-    b.localeCompare(a),
-  );
-}
-
-/** "Agosto de 2026" — rótulo com ano, para quando o mês por si só é
- *  ambíguo (o seletor lista meses de anos possivelmente diferentes). */
-export function rotuloDoMesComAno(chave: string): string {
-  return `${capitalizar(nomeDoMes(chave))} de ${chave.slice(0, 4)}`;
 }
 
 /** A janela que a caixa está analisando: `referencia` é o ÚLTIMO mês dela

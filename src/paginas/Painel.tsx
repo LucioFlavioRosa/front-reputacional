@@ -10,6 +10,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
@@ -360,6 +361,11 @@ export function Painel({
           agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
           vale fixar agora. */}
       <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
+
+      {/* RELATÓRIO DE REUNIÕES — mesma caixa retrátil, agora em azul-mar: é
+          o REGISTRO em si (toda interação do mês, por extenso), e não um
+          resumo interpretado. Ver o comentário no topo do componente. */}
+      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
 
       {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
           (mesmo sem nenhuma interação ainda), porque é um termômetro para
