@@ -21,12 +21,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Botao, estiloDeEntrada } from '@/componentes/basicos';
 import type { Catalogo } from '@/dominio/derivacoes';
 import { numero } from '@/dominio/formato';
-import {
-  deslocarMes,
-  gerarSinteseExecutivaIA,
-  mesesDisponiveis,
-  rotuloDoMesComAno,
-} from '@/dominio/sinteseIA';
+import { gerarSinteseExecutivaIA, mesesDisponiveis, rotuloDoMesComAno } from '@/dominio/sinteseIA';
 import type { JanelaDaSinteseIA } from '@/dominio/sinteseIA';
 import type { Interacao } from '@/dominio/tipos';
 
@@ -38,14 +33,6 @@ function Num({ children }: { children: ReactNode }) {
   );
 }
 
-//: QUATRO MODOS, e não só a janela pronta: o rótulo de cada pílula precisa
-//: sobreviver a `interacoes` mudando (o recorte global sendo filtrado de
-//: novo) sem resetar sozinho — "trimestre" continua sendo "o trimestre mais
-//: recente", não uma janela travada no que era mais recente há um clique.
-//: Só o mês ESCOLHIDO A DEDO (`personalizado`) precisa guardar a chave em
-//: si, porque não há como recalculá-la a partir de "o mais recente".
-type ModoDePeriodo = 'atual' | 'passado' | 'trimestre' | 'personalizado';
-
 export function SinteseExecutivaPelaIA({
   interacoes,
   catalogo,
@@ -54,19 +41,18 @@ export function SinteseExecutivaPelaIA({
   catalogo: Catalogo;
 }) {
   const [aberto, definirAberto] = useState(true);
-  const [modo, definirModo] = useState<ModoDePeriodo>('atual');
   const [mesEscolhido, definirMesEscolhido] = useState('');
 
   const meses = useMemo(() => mesesDisponiveis(interacoes), [interacoes]);
-  const maisRecente = meses[0];
+  // SEM ESCOLHA AINDA, o mês é o mais recente — e continua sendo, sozinho,
+  // se o recorte mudar (o filtro global sendo ajustado de novo): só passa a
+  // travar num mês fixo depois que alguém de fato escolhe um no select.
+  const mes = mesEscolhido || meses[0];
 
-  const janela: JanelaDaSinteseIA | undefined = useMemo(() => {
-    if (!maisRecente) return undefined;
-    if (modo === 'passado') return { referencia: deslocarMes(maisRecente, -1), tamanho: 1 };
-    if (modo === 'trimestre') return { referencia: maisRecente, tamanho: 3 };
-    if (modo === 'personalizado' && mesEscolhido) return { referencia: mesEscolhido, tamanho: 1 };
-    return { referencia: maisRecente, tamanho: 1 };
-  }, [modo, mesEscolhido, maisRecente]);
+  const janela: JanelaDaSinteseIA | undefined = useMemo(
+    () => (mes ? { referencia: mes, tamanho: 1 } : undefined),
+    [mes],
+  );
 
   const sintese = useMemo(
     () => gerarSinteseExecutivaIA(interacoes, catalogo, janela),
@@ -109,18 +95,29 @@ export function SinteseExecutivaPelaIA({
         background: 'color-mix(in srgb, var(--turquesa-rio) 4%, var(--branco))',
       }}
     >
-      <button
-        type="button"
-        onClick={() => definirAberto((v) => !v)}
+      {/* SELECT AO LADO DA SETA, e não numa linha própria abaixo: o botão
+          inteiro alterna aberto/fechado ao clicar em qualquer ponto — menos
+          no select, que precisa do próprio clique (por isso o `<div
+          role="button">` em vez do `<button>` de antes: um `<select>` não
+          pode morar dentro de um `<button>`). */}
+      <div
+        role="button"
+        tabIndex={0}
         aria-expanded={aberto}
+        onClick={() => definirAberto((v) => !v)}
+        onKeyDown={(evento) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
+          evento.preventDefault();
+          definirAberto((v) => !v);
+        }}
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
           padding: '13px 16px',
-          background: 'transparent',
-          border: 'none',
           cursor: 'pointer',
         }}
       >
@@ -142,8 +139,16 @@ export function SinteseExecutivaPelaIA({
         >
           Síntese Executiva pela IA
         </span>
-        <SetaTurquesa aberto={aberto} />
-      </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {meses.length > 1 ? (
+            <span onClick={(evento) => evento.stopPropagation()}>
+              <SeletorDeMes meses={meses} mes={mes} definirMes={definirMesEscolhido} />
+            </span>
+          ) : null}
+          <SetaTurquesa aberto={aberto} />
+        </div>
+      </div>
 
       {aberto ? (
         <div
@@ -155,14 +160,6 @@ export function SinteseExecutivaPelaIA({
             gap: 18,
           }}
         >
-          <SeletorDePeriodo
-            modo={modo}
-            definirModo={definirModo}
-            meses={meses}
-            mesEscolhido={mesEscolhido}
-            definirMesEscolhido={definirMesEscolhido}
-          />
-
           <Bloco titulo="O que aconteceu">
             <p style={ESTILO_DO_PARAGRAFO}>
               <Num>{mesAtual}</Num> fechou com <Num>{numero(totalAtual)}</Num> interações registradas
@@ -315,89 +312,48 @@ function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-/** Qual janela esta caixa analisa — INDEPENDENTE do filtro de período do
- *  resto do Painel (ver o comentário no topo de `dominio/sinteseIA.ts`).
- *  Três pílulas para os casos de sempre, e um select por baixo para o caso
- *  pontual ("quero ver o fechamento de agosto"): escolher um mês ali troca
- *  o modo para `personalizado` sozinho, sem precisar de um botão à parte
- *  para "confirmar" a escolha. */
-function SeletorDePeriodo({
-  modo,
-  definirModo,
+/** Qual mês esta caixa analisa — INDEPENDENTE do filtro de período do resto
+ *  do Painel (ver o comentário no topo de `dominio/sinteseIA.ts`). MESMO
+ *  SELECT do "Relatório de Interações Mensais" — um só controle, sem
+ *  pílulas de atalho —, só que no degradê da marca desta caixa em vez do
+ *  azul-mar sólido do relatório: é o mesmo padrão de filtro, na cor de quem
+ *  o usa. */
+function SeletorDeMes({
   meses,
-  mesEscolhido,
-  definirMesEscolhido,
+  mes,
+  definirMes,
 }: {
-  modo: ModoDePeriodo;
-  definirModo: (modo: ModoDePeriodo) => void;
   meses: string[];
-  mesEscolhido: string;
-  definirMesEscolhido: (mes: string) => void;
+  mes: string;
+  definirMes: (mes: string) => void;
 }) {
-  const PILULAS: { modo: ModoDePeriodo; rotulo: string }[] = [
-    { modo: 'atual', rotulo: 'Mês atual' },
-    { modo: 'passado', rotulo: 'Mês passado' },
-    { modo: 'trimestre', rotulo: 'Trimestre' },
-  ];
-
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      {PILULAS.map((pilula) => {
-        const ativa = modo === pilula.modo;
-        return (
-          <button
-            key={pilula.modo}
-            type="button"
-            onClick={() => definirModo(pilula.modo)}
-            aria-pressed={ativa}
-            style={{
-              height: 26,
-              padding: '0 11px',
-              borderRadius: 'var(--r-chip)',
-              border: `1px solid ${ativa ? 'var(--turquesa-rio)' : 'var(--borda-input)'}`,
-              background: ativa ? 'var(--turquesa-rio)' : 'var(--branco)',
-              color: ativa ? 'var(--branco)' : 'var(--cinza-3)',
-              fontSize: 11.5,
-              fontWeight: ativa ? 700 : 500,
-              cursor: 'pointer',
-            }}
-          >
-            {pilula.rotulo}
-          </button>
-        );
-      })}
-
-      {meses.length > 1 ? (
-        <select
-          value={modo === 'personalizado' ? mesEscolhido : ''}
-          onChange={(evento) => {
-            definirMesEscolhido(evento.target.value);
-            definirModo('personalizado');
-          }}
-          aria-label="Escolher um mês específico para analisar"
-          style={{
-            height: 26,
-            padding: '0 8px',
-            borderRadius: 'var(--r-chip)',
-            border: `1px solid ${modo === 'personalizado' ? 'var(--turquesa-rio)' : 'var(--borda-input)'}`,
-            background: 'var(--branco)',
-            color: modo === 'personalizado' ? 'var(--cinza-4)' : 'var(--cinza-2)',
-            fontSize: 11.5,
-            fontWeight: modo === 'personalizado' ? 700 : 500,
-            cursor: 'pointer',
-          }}
-        >
-          <option value="" disabled>
-            Ou escolha um mês…
-          </option>
-          {meses.map((mes) => (
-            <option key={mes} value={mes}>
-              {rotuloDoMesComAno(mes)}
-            </option>
-          ))}
-        </select>
-      ) : null}
-    </div>
+    <select
+      value={mes}
+      onChange={(evento) => definirMes(evento.target.value)}
+      aria-label="Mês da síntese"
+      style={{
+        height: 28,
+        padding: '0 10px',
+        borderRadius: 'var(--r-chip)',
+        border: 'none',
+        backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+        color: 'var(--branco)',
+        fontSize: 12.5,
+        fontWeight: 700,
+        cursor: 'pointer',
+      }}
+    >
+      {/* A LISTA ABERTA é sempre desenhada pelo sistema operacional, nunca
+          pelo CSS da página — herdar o branco do controle fechado deixaria
+          cada opção branca sobre o fundo branco que o SO usa ali. Cor
+          própria só nas `<option>`, então. */}
+      {meses.map((chave) => (
+        <option key={chave} value={chave} style={{ color: 'var(--cinza-4)', background: 'var(--branco)' }}>
+          {rotuloDoMesComAno(chave)}
+        </option>
+      ))}
+    </select>
   );
 }
 
