@@ -25,6 +25,7 @@ import {
   novosContatos,
   panoramaDeInterlocutores,
   ranking,
+  rankingDePortaVozes,
   resolutividade,
   resultados,
   resumoDeClimaPorFrente,
@@ -406,8 +407,8 @@ describe('distribuicaoPorUf', () => {
   });
 });
 
-describe('ranking', () => {
-  it('conta o registro para cada porta-voz', () => {
+describe('rankingDePortaVozes', () => {
+  it('conta o registro para cada porta-voz, chaveado pelo id', () => {
     const dados = [
       interacao({
         participacoes: [
@@ -416,9 +417,13 @@ describe('ranking', () => {
         ],
       }),
     ];
-    const lista = ranking(dados, CATALOGO, 'portaVoz');
+    const lista = rankingDePortaVozes(dados, CATALOGO);
     expect(lista).toHaveLength(2);
     expect(lista.every((item) => item.total === 1)).toBe(true);
+    // A CHAVE É O ID, não o nome — é o valor que o clique manda para
+    // `recorte.portaVoz`, e o backend só entende um id (ver o comentário de
+    // `rankingDePortaVozes`).
+    expect(lista.map((item) => item.chave).sort()).toEqual(['a1', 'a2']);
   });
 
   it('ignora quem participou como equipe no ranking de porta-vozes', () => {
@@ -430,9 +435,11 @@ describe('ranking', () => {
         ],
       }),
     ];
-    expect(ranking(dados, CATALOGO, 'portaVoz')).toHaveLength(1);
+    expect(rankingDePortaVozes(dados, CATALOGO)).toHaveLength(1);
   });
+});
 
+describe('ranking', () => {
   it('resolve o nome da instituição', () => {
     const lista = ranking([interacao({ instituicao_id: 'i2' })], CATALOGO, 'entidade');
     expect(lista[0].rotulo).toBe('ANA');
