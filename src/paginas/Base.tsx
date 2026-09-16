@@ -75,40 +75,6 @@ const NOVAS_COLUNAS_OCULTAS_POR_PADRAO = [
 //: comparar entre linhas — ordenar por ela não diria nada.
 const COLUNAS_ORDENAVEIS = COLUNAS.filter((coluna) => coluna !== 'Cadeia');
 
-//: A LARGURA DE SAÍDA de cada coluna, em proporção — não em pixel final.
-//:
-//: `Tabela` escala tudo isto para caber nos 100% do cartão (é o que
-//: `table-layout: fixed` faz quando a soma das larguras não bate com a largura
-//: real): o número aqui é só o PESO relativo entre colunas, não um valor
-//: absoluto. Sem isto, a tabela nasce em `table-layout: auto` — que cresce
-//: pelo conteúdo em vez de respeitar o cartão — e é o que cortava "Copasa" e
-//: "Clima" na borda direita sem barra de rolagem nenhuma aparecer: o cartão
-//: tinha crescido além do viewport, e não sobrava tela para rolar até lá.
-//:
-//: Cobre TODAS as colunas, e não só as visíveis por padrão: quem ligar
-//: "Área(s)" ou "Modalidade" em Colunas precisa de uma largura pronta também,
-//: e não de uma coluna nova brigando por espaço sem peso nenhum definido.
-const LARGURAS_PADRAO: Record<string, number> = {
-  Cadeia: 40,
-  Data: 95,
-  Frente: 130,
-  Instituição: 150,
-  Unidade: 150,
-  Interlocutor: 140,
-  Pauta: 280,
-  UF: 55,
-  Relevância: 90,
-  Situação: 100,
-  Temas: 160,
-  'Área(s)': 130,
-  Modalidade: 100,
-  Local: 130,
-  Esfera: 120,
-  Clima: 100,
-  Desfecho: 110,
-  Iniciativa: 110,
-};
-
 const ROTULO_DA_MODALIDADE: Record<string, string> = {
   presencial: 'Presencial',
   online: 'Online',
@@ -259,7 +225,6 @@ export function Base({
           ordenacao={ordenacao}
           aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
           chaveDeArmazenamento="base-interacoes"
-          largurasPadrao={LARGURAS_PADRAO}
         >
           {linhasOrdenadas.map((linha) => (
             <LinhaDaTabela
