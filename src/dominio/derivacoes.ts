@@ -1125,6 +1125,34 @@ export function exposicaoDePortaVozes(
   };
 }
 
+/** Os temas mais falados por CADA porta-voz — é o que o "Ranking por
+ *  porta-voz" do Painel mostra no tooltip ao passar o mouse, sem esperar o
+ *  clique. Mesma soma de `ranking(..., 'portaVoz')`: uma interação com dois
+ *  porta-vozes soma nos dois, pelo NOME (a chave que aquele ranking usa). */
+export function temasPorPortaVoz(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 3,
+): Record<string, ItemContado[]> {
+  const porPessoa = new Map<string, Interacao[]>();
+
+  for (const interacao of interacoes) {
+    for (const participacao of interacao.participacoes) {
+      if (participacao.papel !== 'porta_voz') continue;
+      const nome = nomeDaPessoa(catalogo, participacao.pessoa_aegea_id);
+      const lista = porPessoa.get(nome) ?? [];
+      lista.push(interacao);
+      porPessoa.set(nome, lista);
+    }
+  }
+
+  const resultado: Record<string, ItemContado[]> = {};
+  for (const [nome, registros] of porPessoa.entries()) {
+    resultado[nome] = temasMaisRecorrentes(registros, catalogo, quantos);
+  }
+  return resultado;
+}
+
 /** Fora do escopo: registro cujo tema não está entre os temas autorizados do
  *  porta-voz que o conduziu. Depende de `pessoa_aegea_tema`, que ainda não é
  *  exposto pela API — por isso a função recebe os temas autorizados de fora. */

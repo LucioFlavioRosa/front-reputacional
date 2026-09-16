@@ -39,6 +39,7 @@ import {
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
+  temasPorPortaVoz,
   topInstituicoesPorTier,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
@@ -216,9 +217,16 @@ export function Painel({
       scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
       scorePorArea: scorePorArea(interacoes, catalogo),
       geo,
+      // NÃO TÊM CAPITAL PARA MARCAR NO MAPA — a pessoa podia estar em
+      // qualquer UF, a reunião foi por chamada. Por isso o total entra à
+      // parte, como uma bolha fora do contorno (ver `MapaUf`), e não some
+      // do mapa como as interações "NA"/"IN" já somem hoje.
+      totalInteracoesOnline: interacoes.filter((i) => i.modalidade === 'online').length,
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
+      portaVozes: ranking(interacoes, catalogo, 'portaVoz'),
+      temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo, 5),
       climaPorArea: climaPorArea(interacoes, catalogo),
@@ -679,19 +687,26 @@ export function Painel({
               pontos={derivado.geo}
               selecionada={recorte.uf}
               aoClicarUf={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+              totalOnline={derivado.totalInteracoesOnline}
             />
             <div>
+              {/* PORTA-VOZ, e não UF, ao lado do mapa: a UF já está inteira
+                  no mapa (bolha por estado + a de Online); o vão ao lado
+                  responde outra pergunta — QUEM mais falou, e sobre o quê.
+                  Mesma ideia de "Interações por tier" (rosca + Top 5 ao
+                  lado): duas dimensões diferentes, um cartão só. */}
               <div className="kicker" style={{ marginBottom: 12 }}>
-                Ranking por UF
+                Ranking por porta-voz
               </div>
               <Ranking
-                itens={derivado.geo.map((ponto) => ({
-                  chave: ponto.uf,
-                  rotulo: rotuloDeAbrangencia(ponto.uf),
-                  total: ponto.total,
-                }))}
-                ativo={recorte.uf}
-                aoClicar={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+                itens={derivado.portaVozes}
+                vazio="Nenhum porta-voz registrado neste recorte."
+                detalheAoPassarMouse={(chave) =>
+                  (derivado.temasPorPortaVoz[chave] ?? []).map((item) => ({
+                    rotulo: item.rotulo,
+                    valor: numero(item.total),
+                  }))
+                }
               />
             </div>
           </div>
