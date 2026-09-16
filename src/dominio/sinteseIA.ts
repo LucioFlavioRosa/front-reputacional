@@ -17,7 +17,14 @@
  */
 
 import type { Catalogo } from '@/dominio/derivacoes';
-import { nomesDosTemas, porArea, ranking, temasMaisRecorrentes } from '@/dominio/derivacoes';
+import {
+  CATEGORIAS_DE_AREA,
+  idsPorCategoriaDeArea,
+  nomesDosTemas,
+  porArea,
+  ranking,
+  temasMaisRecorrentes,
+} from '@/dominio/derivacoes';
 import { deslocarMes, mesesDisponiveis, nomeDoMes, ultimoDiaDoMes } from '@/dominio/calendarioMensal';
 import { chaveDoMes, diasDesde, titulo as capitalizar, variacao } from '@/dominio/formato';
 import type { Interacao } from '@/dominio/tipos';
@@ -121,8 +128,7 @@ export function gerarSinteseExecutivaIA(
     ? Math.round((topInstituicoes.reduce((soma, i) => soma + i.total, 0) / atual.length) * 100)
     : 0;
 
-  const totalDeAreas = catalogo.dicionarios.areas_pessoa.length;
-  const areasDoMes = porArea(atual, catalogo, totalDeAreas);
+  const areasDoMes = porArea(atual, catalogo);
   const areaDestaque =
     areasDoMes.length && atual.length
       ? { nome: areasDoMes[0].rotulo, pct: Math.round((areasDoMes[0].total / atual.length) * 100) }
@@ -130,20 +136,20 @@ export function gerarSinteseExecutivaIA(
 
   let areaEmQueda: SinteseExecutivaIA['areaEmQueda'] = null;
   if (temHistorico) {
-    const areasDoMesAnterior = porArea(anterior, catalogo, totalDeAreas);
+    const areasDoMesAnterior = porArea(anterior, catalogo);
     const pctPorNome = (lista: typeof areasDoMes, total: number) =>
       new Map(lista.map((item) => [item.rotulo, total ? (item.total / total) * 100 : 0]));
     const pctAtualPorArea = pctPorNome(areasDoMes, atual.length);
     const pctAnteriorPorArea = pctPorNome(areasDoMesAnterior, anterior.length);
 
     let piorQueda: { nome: string; pctAtual: number; pctAnterior: number; delta: number } | null = null;
-    for (const area of catalogo.dicionarios.areas_pessoa) {
-      const pctAtualArea = pctAtualPorArea.get(area.nome) ?? 0;
-      const pctAnteriorArea = pctAnteriorPorArea.get(area.nome) ?? 0;
+    for (const categoria of CATEGORIAS_DE_AREA) {
+      const pctAtualArea = pctAtualPorArea.get(categoria.rotulo) ?? 0;
+      const pctAnteriorArea = pctAnteriorPorArea.get(categoria.rotulo) ?? 0;
       const delta = pctAtualArea - pctAnteriorArea;
       if (pctAnteriorArea > 0 && (!piorQueda || delta < piorQueda.delta)) {
         piorQueda = {
-          nome: area.nome,
+          nome: categoria.rotulo,
           pctAtual: Math.round(pctAtualArea),
           pctAnterior: Math.round(pctAnteriorArea),
           delta,
@@ -165,12 +171,14 @@ export function gerarSinteseExecutivaIA(
   }
 
   let areaAlerta: SinteseExecutivaIA['areaAlerta'] = null;
-  for (const area of catalogo.dicionarios.areas_pessoa) {
-    const doArea = ateOFimDaJanela.filter((i) => i.areas.includes(area.id) && i.clima);
-    if (doArea.length < 3) continue;
-    const score = scoreDeClima(doArea);
+  const idsPorCategoria = idsPorCategoriaDeArea(catalogo);
+  for (const categoria of CATEGORIAS_DE_AREA) {
+    const ids = idsPorCategoria.get(categoria.rotulo)!;
+    const doCategoria = ateOFimDaJanela.filter((i) => i.areas.some((id) => ids.has(id)) && i.clima);
+    if (doCategoria.length < 3) continue;
+    const score = scoreDeClima(doCategoria);
     if (score < 0 && (!areaAlerta || score < areaAlerta.score)) {
-      areaAlerta = { nome: area.nome, score, total: doArea.length };
+      areaAlerta = { nome: categoria.rotulo, score, total: doCategoria.length };
     }
   }
 
