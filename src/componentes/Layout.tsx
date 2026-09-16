@@ -40,9 +40,11 @@ import type { Destino } from '@/navegacao/rota';
 //:
 //: A CADEIA NAO E UM DESTINO: como aba, obrigaria a escolher QUAL cadeia antes
 //: de poder olhar. Mora na linha da Base, que e onde a pergunta nasce.
+//: "SITUAÇÃO" SAIU DA LISTA VISÍVEL — a rota (`/situacao`) e a tela
+//: continuam existindo, só não tem mais botão no cabeçalho. Quem já tinha um
+//: link salvo continua chegando lá normalmente.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
-  { view: 'situacao', rotulo: 'Situação' },
   { view: 'explorar', rotulo: 'Explorar' },
   { view: 'base', rotulo: 'Base' },
 ];

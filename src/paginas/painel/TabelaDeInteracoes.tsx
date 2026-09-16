@@ -145,8 +145,13 @@ export function TabelaDeInteracoes({
 }) {
   const reduzida = colunas === 'reduzidas';
   const colunasDaTabela = reduzida ? COLUNAS_REDUZIDAS : COLUNAS_COMPLETAS;
+  //: SÓ AS TRÊS TABELAS DE ÁREA (`reduzida`) têm teto: lado a lado, sem
+  //: rolagem horizontal, uma delas crescendo sem limite quebra o layout das
+  //: outras duas. A tabela completa ("Interações mais recentes") continua
+  //: sem teto — ela é a única na tela, e crescer não atrapalha ninguém.
+  const maxPorPagina = reduzida ? 10 : undefined;
   const [pagina, definirPagina] = useState(1);
-  const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
+  const [porPagina, definirPorPagina] = useState(reduzida ? 5 : PADRAO_POR_PAGINA);
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>({
     coluna: 'Data',
     direcao: 'desc',
@@ -265,6 +270,7 @@ export function TabelaDeInteracoes({
             pagina={paginaAtual}
             totalDePaginas={totalDePaginas}
             porPagina={porPagina}
+            maxPorPagina={maxPorPagina}
             aoMudarPagina={definirPagina}
             aoMudarPorPagina={(novo) => {
               definirPorPagina(novo);
@@ -298,12 +304,16 @@ function RodapeDePaginacao({
   pagina,
   totalDePaginas,
   porPagina,
+  maxPorPagina,
   aoMudarPagina,
   aoMudarPorPagina,
 }: {
   pagina: number;
   totalDePaginas: number;
   porPagina: number;
+  /** Teto de registros por página — as três tabelas de área fixa o usam
+   *  (lado a lado, sem rolagem horizontal); a tabela completa não tem. */
+  maxPorPagina?: number;
   aoMudarPagina: (pagina: number) => void;
   aoMudarPorPagina: (porPagina: number) => void;
 }) {
@@ -323,11 +333,15 @@ function RodapeDePaginacao({
         <input
           type="number"
           min={1}
+          max={maxPorPagina}
           inputMode="numeric"
           value={porPagina}
           onChange={(evento) => {
             const numero = Number(evento.target.value);
-            aoMudarPorPagina(Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 1);
+            // O `max` do HTML só afasta as setinhas do spinner — digitar ou
+            // colar um número maior ainda passa. O teto de verdade é aqui.
+            const inteiro = Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 1;
+            aoMudarPorPagina(maxPorPagina ? Math.min(inteiro, maxPorPagina) : inteiro);
           }}
           style={{ ...estiloDeEntrada, width: 60, height: 30, padding: '0 8px', textAlign: 'center' }}
           aria-label="Quantos registros mostrar por página"

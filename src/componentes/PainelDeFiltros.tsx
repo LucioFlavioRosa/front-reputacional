@@ -93,7 +93,7 @@ export function PainelDeFiltros() {
   //: para uso constante, e chegar escondido no primeiro acesso contrariaria
   //: isso. Mas continua retrátil: quem já escolheu o que precisa pode recolher
   //: para sobrar tela para a tabela.
-  const [abertoRapidos, definirAbertoRapidos] = useState(true);
+  const [abertoRapidos, definirAbertoRapidos] = useState(false);
 
   const definirOuAlternar = <C extends keyof Recorte>(
     campo: C,

@@ -835,11 +835,24 @@ function HistoricoDoBloco({
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
         <SeletorDeGranularidade valor={granularidade} aoEscolher={definirGranularidade} />
       </div>
-      <BarrasEmpilhadas
-        colunas={colunas}
-        altura={220}
-        formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
-      />
+      {/* O TOOLTIP DE `BarrasEmpilhadas` DESENHA PARA CIMA da coluna
+          (`position: absolute; bottom: 100%`), sem limite de altura próprio —
+          e o corpo do Modal tem rolagem interna (`.rolagem-interna`,
+          `overflow: auto`). Sem espaço reservado aqui, uma coluna alta (perto
+          do topo do gráfico) não tem para onde o tooltip crescer, e o texto
+          sai cortado pela borda da rolagem. 140px cobre o tooltip mais alto
+          possível nesta tela — cabeçalho + até 5 linhas de segmento, sem
+          bloco de detalhe (esta chamada não passa `detalheDoMes`). Consertar
+          dentro de `BarrasEmpilhadas.tsx` mudaria todos os outros usos dele
+          (`RaioXDaExcecao`, o Painel fora do popup), que não têm este
+          problema — por isso o espaço é reservado só aqui. */}
+      <div style={{ paddingTop: 140 }}>
+        <BarrasEmpilhadas
+          colunas={colunas}
+          altura={220}
+          formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+        />
+      </div>
       <Legenda itens={categorias} centralizada />
     </Modal>
   );

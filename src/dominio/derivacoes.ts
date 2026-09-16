@@ -298,8 +298,16 @@ export function porArea(
 
   const nomePorId = new Map(catalogo.dicionarios.areas_pessoa.map((a) => [a.id, a.nome]));
 
+  // Um id sem correspondência é uma área DESATIVADA depois de a interação já
+  // ter sido gravada com ela (`GET /api/dicionarios` só devolve as ativas) —
+  // não um id inventado. Mostrar o número puro ("4") pareceria um bug; o
+  // rótulo genérico diz o que está de fato acontecendo.
   return [...contagem.entries()]
-    .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
+    .map(([id, total]) => ({
+      chave: String(id),
+      rotulo: nomePorId.get(id) ?? 'Área removida',
+      total,
+    }))
     .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
     .slice(0, quantos)
     .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
