@@ -1,4 +1,4 @@
-/** O Relatório de Reuniões — registro mensal, por dia, campo a campo.
+/** O Relatório de Interações Mensais — registro mensal, por dia, campo a campo.
  *
  *  MESMA CAIXA RETRÁTIL da "Síntese Executiva pela IA" (borda, botão com
  *  seta que gira 180°) — mas em azul-mar, não turquesa: aquela caixa é um
@@ -63,7 +63,7 @@ export function RelatorioDeReunioes({
         }}
       >
         <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--azul-mar)' }}>
-          Relatório de Reuniões
+          Relatório de Interações Mensais
         </span>
         <SetaDoRelatorio aberto={aberto} />
       </button>
@@ -81,7 +81,7 @@ export function RelatorioDeReunioes({
         }}
       >
         <div style={{ display: 'flex', gap: 22 }}>
-          <NumeroGrande valor={relatorio?.totalReunioes ?? 0} rotulo="Reuniões" />
+          <NumeroGrande valor={relatorio?.totalReunioes ?? 0} rotulo="Interações" />
           <NumeroGrande valor={relatorio?.totalInstituicoes ?? 0} rotulo="Instituições" />
           <NumeroGrande valor={relatorio?.totalDias ?? 0} rotulo="Dias com reunião" />
         </div>
@@ -125,7 +125,7 @@ export function RelatorioDeReunioes({
         >
           {!relatorio ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-              Nenhuma reunião registrada em {rotuloDoMesComAno(mes).toLowerCase()}.
+              Nenhuma interação registrada em {rotuloDoMesComAno(mes).toLowerCase()}.
             </p>
           ) : (
             relatorio.dias.map((dia) => (
