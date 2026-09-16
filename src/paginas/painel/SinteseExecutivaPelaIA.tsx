@@ -40,7 +40,7 @@ export function SinteseExecutivaPelaIA({
   interacoes: Interacao[];
   catalogo: Catalogo;
 }) {
-  const [aberto, definirAberto] = useState(true);
+  const [aberto, definirAberto] = useState(false);
   const [mesEscolhido, definirMesEscolhido] = useState('');
 
   const meses = useMemo(() => mesesDisponiveis(interacoes), [interacoes]);
