@@ -82,12 +82,26 @@ export function SinteseExecutivaPelaIA({ sintese }: { sintese: SinteseExecutivaI
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--turquesa-rio)',
         }}
       >
-        <span>Síntese Executiva pela IA</span>
+        {/* MESMO DEGRADÊ azul-mar → turquesa-rio do cabeçalho da tela
+            (`Layout.tsx`) — e não uma cor nova, para o título soar como a
+            MESMA marca, só que em texto em vez de fundo. A seta continua
+            sólida em turquesa, sem degradê: um SVG com `stroke` não tem
+            `background-clip` para recortar. */}
+        <span
+          style={{
+            fontSize: 15,
+            fontWeight: 800,
+            backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          Síntese Executiva pela IA
+        </span>
         <SetaTurquesa aberto={aberto} />
       </button>
 
