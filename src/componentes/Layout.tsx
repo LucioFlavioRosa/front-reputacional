@@ -289,7 +289,7 @@ export function Layout({
         // largura da coluna. Com `width: 100%`, ele estica primeiro e só
         // depois o `maxWidth` limita — o mesmo par que `<main>` já usa.
         <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '12px 32px 0' }}>
-          <PainelDeFiltros />
+          <PainelDeFiltros view={view} />
         </div>
       ) : null}
 

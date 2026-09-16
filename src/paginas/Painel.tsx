@@ -10,6 +10,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { campoDeAreaPorCategoria, GrupoDeCampo } from '@/componentes/PainelDeFiltros';
 import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
@@ -400,6 +401,24 @@ export function Painel({
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
         topUf={derivado.resumoExecutivo.topUf}
       />
+
+      {/* FILTRO DE ÁREA(S) FIXO — sempre visível aqui, sem precisar abrir
+          "Filtros rápidos": é o filtro que mais amarra com o resto desta
+          tela (donut, 3 tabelas fixas, histórico), então ganha posição
+          própria em vez de ficar atrás de um clique. Por categoria
+          (`CATEGORIAS_DE_AREA`), igual ao resto do Painel — ver o comentário
+          em `PainelDeFiltros.tsx` sobre por que este campo não mora lá para
+          esta view. */}
+      <div
+        style={{
+          border: '1px solid var(--borda)',
+          borderRadius: 'var(--r-card-int)',
+          background: 'var(--branco)',
+          padding: '12px 14px',
+        }}
+      >
+        <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
+      </div>
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
           componente: hoje é o front montando o texto com dados reais, sem

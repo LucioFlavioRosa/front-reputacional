@@ -116,7 +116,7 @@ describe('alternarCategoriaDeArea', () => {
     expect(desligando.areas).toEqual([1]);
   });
 
-  it('um grupo de uma área só se comporta como alternarArea', () => {
+  it('um grupo de uma área só liga/desliga só ela, como uma seleção simples', () => {
     const ligado = alternarCategoriaDeArea({}, [1]);
     expect(ligado.areas).toEqual([1]);
     const desligado = alternarCategoriaDeArea(ligado, [1]);
