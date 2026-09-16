@@ -934,9 +934,13 @@ function ResumoExecutivoDoRecorte({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '12px 18px',
+        // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
+        // um cluster à esquerda e três à direita: sem o rótulo "Síntese
+        // Executiva" (virou o título grande, fora daqui), o total sozinho à
+        // esquerda ficava desequilibrado contra os três do outro lado.
+        justifyContent: 'space-evenly',
+        gap: 16,
+        padding: '14px 18px',
         background: 'var(--branco)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card)',
@@ -944,37 +948,35 @@ function ResumoExecutivoDoRecorte({
         color: 'var(--cinza-3)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>
-          Amostra: <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong> agendas no recorte
-        </span>
+      <div>
+        <span style={{ color: 'var(--cinza-2)' }}>Total de interações: </span>
+        <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong>{' '}
+        <span style={{ color: 'var(--cinza-2)' }}>interações no filtro</span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
-        {frentePrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {frentePrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {climaPrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {climaPrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {topUf ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
-          </div>
-        ) : null}
-      </div>
+      {topUf ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+        </div>
+      ) : null}
     </div>
   );
 }
