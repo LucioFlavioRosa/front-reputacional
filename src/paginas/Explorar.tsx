@@ -134,7 +134,7 @@ export function Explorar({
         </div>
       </Cartao>
 
-      <Secao titulo={`Por ${rotuloDoEixo.toLowerCase()} — ${grupos.length} ${grupos.length === 1 ? 'grupo' : 'grupos'}`} estilo={{ padding: 0 }}>
+      <Secao titulo={`Por ${rotuloDoEixo.toLowerCase()} — ${grupos.length} ${grupos.length === 1 ? 'grupo' : 'grupos'}`} estilo={{ padding: 20 }}>
         {!grupos.length ? (
           <div style={{ padding: 24 }}>
             <Vazio mensagem="Nenhum registro no recorte" dica="Ajuste os filtros." />

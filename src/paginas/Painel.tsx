@@ -10,6 +10,8 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
+import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
 import {
@@ -34,6 +36,7 @@ import {
   porArea,
   porTier,
   ranking,
+  rankingDePortaVozes,
   resumoDeClimaPorFrente,
   rotuloDeCodigo,
   scorePorArea,
@@ -41,6 +44,7 @@ import {
   scorePorTema,
   serieMensal,
   temasMaisRecorrentes,
+  temasPorPortaVoz,
   topInstituicoesPorTier,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
@@ -233,9 +237,16 @@ export function Painel({
       scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
       scorePorArea: scorePorArea(interacoes, catalogo),
       geo,
+      // NÃO TÊM CAPITAL PARA MARCAR NO MAPA — a pessoa podia estar em
+      // qualquer UF, a reunião foi por chamada. Por isso o total entra à
+      // parte, como uma bolha fora do contorno (ver `MapaUf`), e não some
+      // do mapa como as interações "NA"/"IN" já somem hoje.
+      totalInteracoesOnline: interacoes.filter((i) => i.modalidade === 'online').length,
       instituicoes: ranking(interacoes, catalogo, 'entidade'),
       esferas: ranking(interacoes, catalogo, 'esfera'),
       unidades: ranking(interacoes, catalogo, 'unidade'),
+      portaVozes: rankingDePortaVozes(interacoes, catalogo),
+      temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
       porArea: porArea(interacoes, catalogo),
       climaPorArea: climaPorArea(interacoes, catalogo),
@@ -362,6 +373,26 @@ export function Painel({
         </div>
       ) : null}
 
+      {/* O TÍTULO SAIU DE DENTRO DO BANNER — antes era um rótulo pequeno no
+          canto esquerdo dele; agora é o título da seção inteira, centralizado
+          e fora de qualquer cartão, no mesmo degradê azul-mar → turquesa-rio
+          do título da caixa de IA (ver `SinteseExecutivaPelaIA`). */}
+      <h2
+        style={{
+          textAlign: 'center',
+          fontSize: 34,
+          fontWeight: 800,
+          margin: 0,
+          backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+          WebkitTextFillColor: 'transparent',
+        }}
+      >
+        Síntese Executiva
+      </h2>
+
       {/* BANNER DE SÍNTESE EXECUTIVA — Fatos relevantes do recorte em destaque */}
       <ResumoExecutivoDoRecorte
         total={derivado.resumoExecutivo.total}
@@ -369,6 +400,17 @@ export function Painel({
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
         topUf={derivado.resumoExecutivo.topUf}
       />
+
+      {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
+          componente: hoje é o front montando o texto com dados reais, sem
+          agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
+          vale fixar agora. */}
+      <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
+
+      {/* RELATÓRIO DE INTERAÇÕES MENSAIS — é o REGISTRO em si (toda
+          interação do mês, por extenso), e não um resumo interpretado. Ver
+          o comentário no topo do componente. */}
+      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
 
       {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
           (mesmo sem nenhuma interação ainda), porque é um termômetro para
@@ -696,7 +738,7 @@ export function Painel({
         </div>
 
         <Secao
-          titulo="Distribuição geográfica"
+          titulo="Distribuição geográfica das Interações e Porta-vozes"
           subtitulo="Concentração de presença física e impacto institucional por Estado (UF)"
         >
           <div className="grade grade--mapa" style={{ gap: 24 }}>
@@ -704,19 +746,28 @@ export function Painel({
               pontos={derivado.geo}
               selecionada={recorte.uf}
               aoClicarUf={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+              totalOnline={derivado.totalInteracoesOnline}
             />
             <div>
+              {/* PORTA-VOZ, e não UF, ao lado do mapa: a UF já está inteira
+                  no mapa (bolha por estado + a de Online); o vão ao lado
+                  responde outra pergunta — QUEM mais falou, e sobre o quê.
+                  Mesma ideia de "Interações por tier" (rosca + Top 5 ao
+                  lado): duas dimensões diferentes, um cartão só. */}
               <div className="kicker" style={{ marginBottom: 12 }}>
-                Ranking por UF
+                Ranking por porta-voz
               </div>
               <Ranking
-                itens={derivado.geo.map((ponto) => ({
-                  chave: ponto.uf,
-                  rotulo: rotuloDeAbrangencia(ponto.uf),
-                  total: ponto.total,
-                }))}
-                ativo={recorte.uf}
-                aoClicar={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
+                itens={derivado.portaVozes}
+                ativo={recorte.portaVoz}
+                aoClicar={(nome) => definirRecorte(alternar(recorte, 'portaVoz', nome))}
+                vazio="Nenhum porta-voz registrado neste recorte."
+                detalheAoPassarMouse={(chave) =>
+                  (derivado.temasPorPortaVoz[chave] ?? []).map((item) => ({
+                    rotulo: item.rotulo,
+                    valor: numero(item.total),
+                  }))
+                }
               />
             </div>
           </div>
@@ -942,9 +993,13 @@ function ResumoExecutivoDoRecorte({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '12px 18px',
+        // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
+        // um cluster à esquerda e três à direita: sem o rótulo "Síntese
+        // Executiva" (virou o título grande, fora daqui), o total sozinho à
+        // esquerda ficava desequilibrado contra os três do outro lado.
+        justifyContent: 'space-evenly',
+        gap: 16,
+        padding: '14px 18px',
         background: 'var(--branco)',
         border: '1px solid var(--borda)',
         borderRadius: 'var(--r-card)',
@@ -952,41 +1007,35 @@ function ResumoExecutivoDoRecorte({
         color: 'var(--cinza-3)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="kicker" style={{ color: 'var(--azul-mar)', fontSize: 13.5 }}>
-          Síntese Executiva
-        </span>
-        <span style={{ color: 'var(--borda-input)' }}>|</span>
-        <span>
-          Amostra: <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong> agendas no recorte
-        </span>
+      <div>
+        <span style={{ color: 'var(--cinza-2)' }}>Total de interações: </span>
+        <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong>{' '}
+        <span style={{ color: 'var(--cinza-2)' }}>interações no filtro</span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
-        {frentePrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {frentePrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {climaPrincipal ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
-          </div>
-        ) : null}
+      {climaPrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
+        </div>
+      ) : null}
 
-        {topUf ? (
-          <div>
-            <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
-            <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
-            <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
-          </div>
-        ) : null}
-      </div>
+      {topUf ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+        </div>
+      ) : null}
     </div>
   );
 }

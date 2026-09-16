@@ -22,11 +22,19 @@ export function MapaUf({
   selecionada,
   aoClicarUf,
   acento = '#0027BD',
+  totalOnline = 0,
+  corDoOnline = 'var(--roxo-acai)',
 }: {
   pontos: PontoNoMapa[];
   selecionada?: string;
   aoClicarUf?: (uf: string) => void;
   acento?: string;
+  /** Interações com modalidade "online" — não têm uma capital para marcar
+   *  (a pessoa podia estar em qualquer UF, a reunião foi por chamada), então
+   *  entram como uma bolha à parte, num canto fora do contorno do Brasil,
+   *  tracejada e numa cor diferente das bolhas de estado. */
+  totalOnline?: number;
+  corDoOnline?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(420);
@@ -59,7 +67,11 @@ export function MapaUf({
 
   const comCapital = pontos.filter((p) => CAPITAIS[p.uf] && p.total > 0);
   const totalNacional = pontos.reduce((acc, p) => acc + p.total, 0) || 1;
-  const maximo = Math.max(1, ...comCapital.map((p) => p.total));
+  // O DOMÍNIO DA ESCALA INCLUI O ONLINE, para a bolha de fora ficar do
+  // mesmo tamanho relativo que uma bolha de estado com o mesmo volume —
+  // nunca maior que a maior bolha do mapa, mesmo quando online é o total
+  // mais alto do recorte.
+  const maximo = Math.max(1, ...comCapital.map((p) => p.total), totalOnline);
   const raioMaximo = Math.min(28, Math.max(12, largura * 0.058));
   const raio = scaleSqrt().domain([0, maximo]).range([7, raioMaximo]);
 
@@ -157,6 +169,45 @@ export function MapaUf({
               </g>
             );
           })}
+
+        {/* Bolha do Online, fora do contorno — canto inferior direito, mar
+            aberto na altura de SP/RJ: o ponto mais a leste do país (o bico
+            do Nordeste) fica bem mais ao norte, então esta faixa do canvas
+            nunca cruza a costa, em qualquer proporção de tela. Tracejada e
+            noutra cor: para não parecer "mais um estado". */}
+        {totalOnline > 0 ? (
+          <g transform={`translate(${largura * 0.92},${altura * 0.64})`}>
+            <circle
+              r={raio(totalOnline)}
+              fill={corDoOnline}
+              fillOpacity={0.22}
+              stroke={corDoOnline}
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+            />
+            {raio(totalOnline) >= 12 ? (
+              <text
+                textAnchor="middle"
+                dy="0.35em"
+                fontSize={raio(totalOnline) >= 18 ? 11 : 9.5}
+                fontWeight={700}
+                fill="var(--cinza-4)"
+                className="tabular"
+              >
+                {totalOnline}
+              </text>
+            ) : null}
+            <text
+              textAnchor="middle"
+              y={raio(totalOnline) + 13}
+              fontSize={10}
+              fontWeight={700}
+              fill={corDoOnline}
+            >
+              Online
+            </text>
+          </g>
+        ) : null}
       </svg>
 
       {/* Badge analítica do estado selecionado ou em hover */}
