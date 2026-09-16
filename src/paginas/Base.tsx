@@ -156,13 +156,13 @@ export function Base({
       />
 
       {aba === 'oficiais' ? (
-        <Secao nivelDoTitulo={1} titulo="Posicionamentos e Papers" estilo={{ padding: 0 }}>
+        <Secao nivelDoTitulo={1} titulo="Posicionamentos e Papers" estilo={{ padding: 20 }}>
           <MateriaisOficiais />
         </Secao>
       ) : null}
 
       {aba === 'documentos' ? (
-        <Secao nivelDoTitulo={1} titulo="Documentos das reuniões" estilo={{ padding: 0 }}>
+        <Secao nivelDoTitulo={1} titulo="Documentos das reuniões" estilo={{ padding: 20 }}>
           <DocumentosDaReuniao aoAbrirFicha={aoAbrirFicha} />
         </Secao>
       ) : null}
@@ -174,7 +174,7 @@ export function Base({
       // parece um pedaço de outra página.
       nivelDoTitulo={1}
       titulo={`Base de registros — ${numero(total)} ${total === 1 ? 'registro' : 'registros'}`}
-      estilo={{ padding: 0 }}
+      estilo={{ padding: 20 }}
     >
       <div style={{ padding: '16px 16px 12px' }}>
         <FiltrosDeAgendas />
