@@ -16,11 +16,19 @@
  *  agente entrar de verdade: um "ruim" sem explicação não ensina nada.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Botao, estiloDeEntrada } from '@/componentes/basicos';
+import type { Catalogo } from '@/dominio/derivacoes';
 import { numero } from '@/dominio/formato';
-import type { SinteseExecutivaIA } from '@/dominio/sinteseIA';
+import {
+  deslocarMes,
+  gerarSinteseExecutivaIA,
+  mesesDisponiveis,
+  rotuloDoMesComAno,
+} from '@/dominio/sinteseIA';
+import type { JanelaDaSinteseIA } from '@/dominio/sinteseIA';
+import type { Interacao } from '@/dominio/tipos';
 
 function Num({ children }: { children: ReactNode }) {
   return (
@@ -30,8 +38,40 @@ function Num({ children }: { children: ReactNode }) {
   );
 }
 
-export function SinteseExecutivaPelaIA({ sintese }: { sintese: SinteseExecutivaIA | null }) {
+//: QUATRO MODOS, e não só a janela pronta: o rótulo de cada pílula precisa
+//: sobreviver a `interacoes` mudando (o recorte global sendo filtrado de
+//: novo) sem resetar sozinho — "trimestre" continua sendo "o trimestre mais
+//: recente", não uma janela travada no que era mais recente há um clique.
+//: Só o mês ESCOLHIDO A DEDO (`personalizado`) precisa guardar a chave em
+//: si, porque não há como recalculá-la a partir de "o mais recente".
+type ModoDePeriodo = 'atual' | 'passado' | 'trimestre' | 'personalizado';
+
+export function SinteseExecutivaPelaIA({
+  interacoes,
+  catalogo,
+}: {
+  interacoes: Interacao[];
+  catalogo: Catalogo;
+}) {
   const [aberto, definirAberto] = useState(true);
+  const [modo, definirModo] = useState<ModoDePeriodo>('atual');
+  const [mesEscolhido, definirMesEscolhido] = useState('');
+
+  const meses = useMemo(() => mesesDisponiveis(interacoes), [interacoes]);
+  const maisRecente = meses[0];
+
+  const janela: JanelaDaSinteseIA | undefined = useMemo(() => {
+    if (!maisRecente) return undefined;
+    if (modo === 'passado') return { referencia: deslocarMes(maisRecente, -1), tamanho: 1 };
+    if (modo === 'trimestre') return { referencia: maisRecente, tamanho: 3 };
+    if (modo === 'personalizado' && mesEscolhido) return { referencia: mesEscolhido, tamanho: 1 };
+    return { referencia: maisRecente, tamanho: 1 };
+  }, [modo, mesEscolhido, maisRecente]);
+
+  const sintese = useMemo(
+    () => gerarSinteseExecutivaIA(interacoes, catalogo, janela),
+    [interacoes, catalogo, janela],
+  );
 
   if (!sintese) return null;
 
@@ -115,6 +155,14 @@ export function SinteseExecutivaPelaIA({ sintese }: { sintese: SinteseExecutivaI
             gap: 18,
           }}
         >
+          <SeletorDePeriodo
+            modo={modo}
+            definirModo={definirModo}
+            meses={meses}
+            mesEscolhido={mesEscolhido}
+            definirMesEscolhido={definirMesEscolhido}
+          />
+
           <Bloco titulo="O que aconteceu">
             <p style={ESTILO_DO_PARAGRAFO}>
               <Num>{mesAtual}</Num> fechou com <Num>{numero(totalAtual)}</Num> interações registradas
@@ -263,6 +311,92 @@ function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
         {titulo}
       </div>
       {children}
+    </div>
+  );
+}
+
+/** Qual janela esta caixa analisa — INDEPENDENTE do filtro de período do
+ *  resto do Painel (ver o comentário no topo de `dominio/sinteseIA.ts`).
+ *  Três pílulas para os casos de sempre, e um select por baixo para o caso
+ *  pontual ("quero ver o fechamento de agosto"): escolher um mês ali troca
+ *  o modo para `personalizado` sozinho, sem precisar de um botão à parte
+ *  para "confirmar" a escolha. */
+function SeletorDePeriodo({
+  modo,
+  definirModo,
+  meses,
+  mesEscolhido,
+  definirMesEscolhido,
+}: {
+  modo: ModoDePeriodo;
+  definirModo: (modo: ModoDePeriodo) => void;
+  meses: string[];
+  mesEscolhido: string;
+  definirMesEscolhido: (mes: string) => void;
+}) {
+  const PILULAS: { modo: ModoDePeriodo; rotulo: string }[] = [
+    { modo: 'atual', rotulo: 'Mês atual' },
+    { modo: 'passado', rotulo: 'Mês passado' },
+    { modo: 'trimestre', rotulo: 'Trimestre' },
+  ];
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {PILULAS.map((pilula) => {
+        const ativa = modo === pilula.modo;
+        return (
+          <button
+            key={pilula.modo}
+            type="button"
+            onClick={() => definirModo(pilula.modo)}
+            aria-pressed={ativa}
+            style={{
+              height: 26,
+              padding: '0 11px',
+              borderRadius: 'var(--r-chip)',
+              border: `1px solid ${ativa ? 'var(--turquesa-rio)' : 'var(--borda-input)'}`,
+              background: ativa ? 'var(--turquesa-rio)' : 'var(--branco)',
+              color: ativa ? 'var(--branco)' : 'var(--cinza-3)',
+              fontSize: 11.5,
+              fontWeight: ativa ? 700 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            {pilula.rotulo}
+          </button>
+        );
+      })}
+
+      {meses.length > 1 ? (
+        <select
+          value={modo === 'personalizado' ? mesEscolhido : ''}
+          onChange={(evento) => {
+            definirMesEscolhido(evento.target.value);
+            definirModo('personalizado');
+          }}
+          aria-label="Escolher um mês específico para analisar"
+          style={{
+            height: 26,
+            padding: '0 8px',
+            borderRadius: 'var(--r-chip)',
+            border: `1px solid ${modo === 'personalizado' ? 'var(--turquesa-rio)' : 'var(--borda-input)'}`,
+            background: 'var(--branco)',
+            color: modo === 'personalizado' ? 'var(--cinza-4)' : 'var(--cinza-2)',
+            fontSize: 11.5,
+            fontWeight: modo === 'personalizado' ? 700 : 500,
+            cursor: 'pointer',
+          }}
+        >
+          <option value="" disabled>
+            Ou escolha um mês…
+          </option>
+          {meses.map((mes) => (
+            <option key={mes} value={mes}>
+              {rotuloDoMesComAno(mes)}
+            </option>
+          ))}
+        </select>
+      ) : null}
     </div>
   );
 }
