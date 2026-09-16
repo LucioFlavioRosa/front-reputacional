@@ -105,7 +105,9 @@ export function LegendaDeClimaPorArea({ catalogo }: { catalogo: Catalogo }) {
         gap: 16,
         fontSize: 12,
         color: 'var(--cinza-3)',
-        marginBottom: 10,
+        marginTop: 14,
+        paddingTop: 10,
+        borderTop: '1px solid var(--borda)',
       }}
     >
       <span style={{ color: 'var(--cinza-2)' }}>Cor da linha:</span>
@@ -325,6 +327,12 @@ export function TabelaDeInteracoes({
               definirPagina(1);
             }}
           />
+
+          {/* NO RODAPÉ DE CADA UMA DAS TRÊS TABELAS, e não uma legenda só
+              acima do grid: quem olha só uma das três (a maioria das vezes)
+              não deveria precisar rolar pra cima pra achar o que a cor da
+              linha significa. */}
+          {reduzida ? <LegendaDeClimaPorArea catalogo={catalogo} /> : null}
         </>
       )}
 

@@ -10,7 +10,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
-import { LegendaDeClimaPorArea, TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
+import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
@@ -398,7 +398,6 @@ export function Painel({
           está dita no título, então Área(s) sairia repetindo o óbvio, e
           Stakeholder/Relevância saem para as três caberem lado a lado sem
           rolagem horizontal. */}
-      <LegendaDeClimaPorArea catalogo={catalogo} />
       <div className="grade grade--3" style={{ gap: 16 }}>
         {derivado.interacoesPorAreaFixa.map(({ nome, interacoes: interacoesDaArea }) => (
           <TabelaDeInteracoes
