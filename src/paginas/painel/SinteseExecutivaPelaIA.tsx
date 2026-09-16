@@ -95,18 +95,29 @@ export function SinteseExecutivaPelaIA({
         background: 'color-mix(in srgb, var(--turquesa-rio) 4%, var(--branco))',
       }}
     >
-      <button
-        type="button"
-        onClick={() => definirAberto((v) => !v)}
+      {/* SELECT AO LADO DA SETA, e não numa linha própria abaixo: o botão
+          inteiro alterna aberto/fechado ao clicar em qualquer ponto — menos
+          no select, que precisa do próprio clique (por isso o `<div
+          role="button">` em vez do `<button>` de antes: um `<select>` não
+          pode morar dentro de um `<button>`). */}
+      <div
+        role="button"
+        tabIndex={0}
         aria-expanded={aberto}
+        onClick={() => definirAberto((v) => !v)}
+        onKeyDown={(evento) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
+          evento.preventDefault();
+          definirAberto((v) => !v);
+        }}
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
           padding: '13px 16px',
-          background: 'transparent',
-          border: 'none',
           cursor: 'pointer',
         }}
       >
@@ -128,8 +139,16 @@ export function SinteseExecutivaPelaIA({
         >
           Síntese Executiva pela IA
         </span>
-        <SetaTurquesa aberto={aberto} />
-      </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {meses.length > 1 ? (
+            <span onClick={(evento) => evento.stopPropagation()}>
+              <SeletorDeMes meses={meses} mes={mes} definirMes={definirMesEscolhido} />
+            </span>
+          ) : null}
+          <SetaTurquesa aberto={aberto} />
+        </div>
+      </div>
 
       {aberto ? (
         <div
@@ -141,10 +160,6 @@ export function SinteseExecutivaPelaIA({
             gap: 18,
           }}
         >
-          {meses.length > 1 ? (
-            <SeletorDeMes meses={meses} mes={mes} definirMes={definirMesEscolhido} />
-          ) : null}
-
           <Bloco titulo="O que aconteceu">
             <p style={ESTILO_DO_PARAGRAFO}>
               <Num>{mesAtual}</Num> fechou com <Num>{numero(totalAtual)}</Num> interações registradas
@@ -327,7 +342,6 @@ function SeletorDeMes({
         fontSize: 12.5,
         fontWeight: 700,
         cursor: 'pointer',
-        alignSelf: 'flex-start',
       }}
     >
       {/* A LISTA ABERTA é sempre desenhada pelo sistema operacional, nunca
