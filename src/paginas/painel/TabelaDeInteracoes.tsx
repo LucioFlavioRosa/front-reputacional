@@ -76,7 +76,9 @@ const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
 //: cima sem competir com o selo da própria linha.
 const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
   propositivo: 'color-mix(in srgb, var(--turquesa-rio) 10%, var(--branco))',
-  neutro: 'color-mix(in srgb, var(--cinza-2) 7%, var(--branco))',
+  // Neutro precisa de mais tinta que os outros dois: turquesa e vermelho
+  // saturados já aparecem a 10%; o cinza a 7% some no branco da tabela.
+  neutro: 'color-mix(in srgb, var(--cinza-2) 18%, var(--branco))',
   tenso: 'color-mix(in srgb, var(--vermelho-pitanga) 10%, var(--branco))',
 };
 

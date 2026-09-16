@@ -219,19 +219,32 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 
 /* -- painel: tier, área e público ------------------------------------------ */
 
-//: A MESMA PALETA de `temasMaisRecorrentes`, na mesma ordem — é o conjunto de
-//: cores que já aparece em outros gráficos do Painel, e reaproveitá-lo aqui
-//: evita que "Tier 1" e um tema qualquer disputem visualmente a mesma cor com
-//: significados diferentes.
+//: Paleta da rosca de tier (e de outros gráficos do Painel que ainda usam
+//: o arco-íris da marca). Temas ao lado da rosca de área NÃO reusam esta
+//: lista — eles herdam `corDaArea`.
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
-//: A MESMA PALETA, EM ORDEM INVERTIDA — só para área. As roscas de "Interações
-//: por tier" e "Interações por áreas" ficam lado a lado no Painel; com a
-//: mesma paleta na mesma ordem, a primeira fatia de cada uma sairia da MESMA
-//: cor (azul) sem que isso signifique nada em comum entre um tier e uma
-//: área. Invertida, as 3 áreas de hoje começam em amarelo/rosa/laranja —
-//: nenhuma delas repete a cor de nenhum dos tiers.
-const PALETA_DE_AREAS = [...PALETA_DO_PAINEL].reverse();
+//: Paleta só de área (rosca, histórico e temas ligados a ela) — cinzas da
+//: marca e os dois azuis-mar, na ordem do catálogo (`area.id`): Comunicação,
+//: Relações Institucionais, Jurídico, Regulatório, Sustentabilidade, e o
+//: cinza 1 para qualquer área extra. Não segue o volume do recorte: a mesma
+//: área guarda a mesma cor ao lado do ranking de temas.
+export const PALETA_DE_AREAS = [
+  '#44495C', // cinza 3 — Comunicação
+  '#0027BD', // azul mar — Relações Institucionais
+  '#8C91A4', // cinza 2 — Jurídico
+  '#111799', // azul mar sombra — Regulatório
+  '#191B23', // cinza 4 — Sustentabilidade
+  '#E2E5F0', // cinza 1 — extra / tema sem área
+];
+
+/** A cor estável da área — pelo `id` de cadastro, não pela fatia da rosca. */
+export function corDaArea(catalogo: Catalogo, areaId: number): string {
+  const ordenadas = [...catalogo.dicionarios.areas_pessoa].sort((a, b) => a.id - b.id);
+  const indice = ordenadas.findIndex((area) => area.id === areaId);
+  if (indice < 0) return PALETA_DE_AREAS[PALETA_DE_AREAS.length - 1];
+  return PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length];
+}
 
 /** Quantas interações em cada nível de relevância — sempre um item por
  *  tier cadastrado (`catalogo.dicionarios.relevancias`), mesmo os com zero
@@ -281,9 +294,9 @@ export function topInstituicoesPorTier(
 /** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
  *  uma interação com duas áreas soma nas duas, e não escolhe uma.
  *
- *  `cor` vem de `PALETA_DE_AREAS` — a paleta do painel invertida, para a
- *  rosca de "Interações por áreas" não repetir a cor da rosca de "Interações
- *  por tier" logo ao lado. */
+ *  `cor` vem de `corDaArea` — a mesma da fatia da rosca para aquela área,
+ *  fixa no cadastro, para o ranking de temas ao lado repetir a cor da área
+ *  a que o tema mais se liga. */
 export function porArea(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -302,7 +315,7 @@ export function porArea(
     .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
     .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
     .slice(0, quantos)
-    .map((item, indice) => ({ ...item, cor: PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length] }));
+    .map((item) => ({ ...item, cor: corDaArea(catalogo, Number(item.chave)) }));
 }
 
 export interface ClimaDaArea {
@@ -588,28 +601,63 @@ export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
  *  Serve tanto como categorias da série empilhada quanto como ranking, e por
  *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
  *  recontar, e duas contagens da mesma base são duas chances de divergir. */
+/** Os temas mais recorrentes do recorte, já com a contagem.
+ *
+ *  Serve tanto como categorias da série empilhada quanto como ranking, e por
+ *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
+ *  recontar, e duas contagens da mesma base são duas chances de divergir.
+ *
+ *  A COR É A DA ÁREA DOMINANTE do tema neste recorte — a área que mais aparece
+ *  nas agendas que carregam aquele tema —, a mesma de `corDaArea` / da rosca
+ *  de "Interações por áreas". Sem área registrada, cai no cinza 1. */
 export function temasMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
   quantos = 5,
 ): { chave: string; rotulo: string; cor: string; total: number }[] {
-  const paleta = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
   const contagem = new Map<string, number>();
+  const votosPorTema = new Map<string, Map<number, number>>();
 
   for (const interacao of interacoes) {
     for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
+      if (!interacao.areas.length) continue;
+      let votos = votosPorTema.get(nome);
+      if (!votos) {
+        votos = new Map();
+        votosPorTema.set(nome, votos);
+      }
+      for (const areaId of interacao.areas) {
+        votos.set(areaId, (votos.get(areaId) ?? 0) + 1);
+      }
     }
+  }
+
+  function areaDominante(nome: string): number | null {
+    const votos = votosPorTema.get(nome);
+    if (!votos?.size) return null;
+    let escolhida = Number.POSITIVE_INFINITY;
+    let max = -1;
+    for (const [areaId, n] of votos) {
+      if (n > max || (n === max && areaId < escolhida)) {
+        max = n;
+        escolhida = areaId;
+      }
+    }
+    return Number.isFinite(escolhida) ? escolhida : null;
   }
 
   return ordenarDecrescente(contagem)
     .slice(0, quantos)
-    .map((item, indice) => ({
-      chave: item.chave,
-      rotulo: item.rotulo,
-      total: item.total,
-      cor: paleta[indice % paleta.length],
-    }));
+    .map((item) => {
+      const areaId = areaDominante(item.chave);
+      return {
+        chave: item.chave,
+        rotulo: item.rotulo,
+        total: item.total,
+        cor: areaId != null ? corDaArea(catalogo, areaId) : PALETA_DE_AREAS[PALETA_DE_AREAS.length - 1],
+      };
+    });
 }
 
 /** Uma linha da lista que abre ao clicar num tema — só o que basta para

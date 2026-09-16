@@ -68,7 +68,7 @@ function BotaoDeHistorico({ aoClicar }: { aoClicar: () => void }) {
     <Botao
       variante="fantasma"
       aoClicar={aoClicar}
-      estilo={{ border: '1px solid var(--borda-input)' }}
+      estilo={{ border: '1px solid var(--borda-input)', whiteSpace: 'nowrap' }}
     >
       Ver histórico
     </Botao>
@@ -409,6 +409,7 @@ export function Painel({
       <div className="grade grade--3" style={{ gap: 16 }}>
         <Secao
           titulo="Interações por tier"
+          subtitulo="Volume de agendas pela relevância da instituição de contato"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
         >
           {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
@@ -452,6 +453,7 @@ export function Painel({
 
         <Secao
           titulo="Interações por áreas"
+          subtitulo="Volume de agendas segundo as áreas internas participantes"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
         >
           {/* MESMO LAYOUT de "Interações por tier" ao lado: a rosca (com sua
@@ -492,6 +494,7 @@ export function Painel({
 
         <Secao
           titulo="Clima por Instituições"
+          subtitulo="Placar de clima das instituições mais presentes no recorte"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
         >
           <BarraDivergentePorItem
@@ -797,10 +800,10 @@ function HistoricoDoBloco({
       };
     }
     if (chave === 'area') {
-      const categoriasDeArea = itensDeArea.map((item, indice) => ({
+      const categoriasDeArea = itensDeArea.map((item) => ({
         chave: item.chave,
         rotulo: item.rotulo,
-        cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
+        cor: item.cor ?? 'var(--azul-mar)',
       }));
       return {
         titulo: 'Interações por áreas ao longo do tempo',
@@ -843,6 +846,21 @@ function HistoricoDoBloco({
         colunas={colunas}
         altura={220}
         formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+        detalheDoSegmento={
+          chave === 'tier'
+            ? (coluna, chaveDoTier) => {
+                const doPeriodo = interacoes.filter(
+                  (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
+                );
+                return (topInstituicoesPorTier(doPeriodo, catalogo, 5)[chaveDoTier] ?? []).map(
+                  (item) => ({
+                    rotulo: item.rotulo,
+                    valor: numero(item.total),
+                  }),
+                );
+              }
+            : undefined
+        }
       />
       <Legenda itens={categorias} centralizada />
     </Modal>
