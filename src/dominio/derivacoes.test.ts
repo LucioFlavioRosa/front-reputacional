@@ -76,8 +76,14 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const INSTITUICOES: Instituicao[] = [
-  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1 },
-  { id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null },
+  {
+    id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1,
+    categoria_publico_id: null, subcategoria_publico_id: null,
+  },
+  {
+    id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null,
+    categoria_publico_id: null, subcategoria_publico_id: null,
+  },
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [

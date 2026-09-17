@@ -214,6 +214,35 @@ export interface FormatoDoDicionario extends ItemDeDicionario {
   escopo: 'imprensa' | 'investidores' | 'geral';
 }
 
+/** Uma das 10 categorias da taxonomia de públicos — mora em
+ *  `Instituicao.categoria_publico_id`, não em `Interacao`.
+ *
+ *  `padrao_de_quebra` descreve COMO esta categoria se subdivide — não é ela
+ *  quem lista as subcategorias (isso vem de `subcategorias_publico`,
+ *  filtrado por `categoria_publico_id`), só diz que tipo de eixo esperar
+ *  quando `padrao_de_quebra !== 'sem_quebra'`.
+ *
+ *  `area_dona_id` é nulo só em "Parceiros e Cadeia de Valor": ali a área
+ *  responsável é quem demandou a interação, variável por instituição — não
+ *  fixa por categoria como nas outras nove. */
+export interface CategoriaPublicoDoDicionario extends ItemDeDicionario {
+  padrao_de_quebra:
+    | 'esfera'
+    | 'logica_de_relacao'
+    | 'posicao_de_capital'
+    | 'logica_editorial'
+    | 'sem_quebra';
+  area_dona_id: number | null;
+}
+
+/** A subdivisão dentro de uma categoria (Federal/Estadual/Municipal...).
+ *  `codigo` se repete entre categorias diferentes de propósito ("federal"
+ *  aparece em Poder Executivo, Poder Legislativo e Reguladores) — a chave
+ *  real é `(categoria_publico_id, codigo)`, nunca `codigo` sozinho. */
+export interface SubcategoriaPublicoDoDicionario extends ItemDeDicionario {
+  categoria_publico_id: number;
+}
+
 export interface Tema {
   id: number;
   nome: string;
@@ -278,6 +307,11 @@ export interface Dicionarios {
   areas_pessoa: ItemDeDicionario[];
   unidades_negocio: UnidadeDeNegocio[];
   temas: Tema[];
+  /** As 10 categorias da taxonomia de públicos. Ver `Instituicao.categoria_publico_id`. */
+  categorias_publico: CategoriaPublicoDoDicionario[];
+  /** As subcategorias, de todas as categorias juntas — filtre por
+   *  `categoria_publico_id` para achar as de uma categoria específica. */
+  subcategorias_publico: SubcategoriaPublicoDoDicionario[];
 }
 
 /* -- stakeholders --------------------------------------------------------- */
@@ -292,6 +326,10 @@ export interface Instituicao {
   /** Tier 1 a 4 — a relevância da instituição, e não a de uma agenda dela.
    *  `null` nas cadastradas antes de a coluna existir. */
   tier: number | null;
+  /** A taxonomia de públicos (10 categorias) e sua subdivisão. `null` em quem
+   *  ainda não foi reclassificado — ver `0036_categoria_de_publico.sql`. */
+  categoria_publico_id: number | null;
+  subcategoria_publico_id: number | null;
 }
 
 export interface Interlocutor {

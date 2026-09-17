@@ -469,6 +469,10 @@ export interface InstituicaoEntrada {
    *  agenda: a Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
    *  ser Tier 3. `null` nas cadastradas antes de a coluna existir. */
   tier?: number | null;
+  /** A taxonomia de públicos (10 categorias) e sua subdivisão. `null` nas
+   *  cadastradas antes de a coluna existir — ver `0036_categoria_de_publico.sql`. */
+  categoria_publico_id?: number | null;
+  subcategoria_publico_id?: number | null;
   ativo?: boolean;
   representante?: RepresentanteInicial | null;
 }
