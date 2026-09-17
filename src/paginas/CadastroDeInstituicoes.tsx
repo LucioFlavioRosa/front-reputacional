@@ -39,7 +39,14 @@ import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { usePainel } from '@/estado/painel';
 import { ROTULOS_DE_FRENTE, TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
-import type { Frente, Instituicao, Interlocutor } from '@/dominio/tipos';
+import type {
+  CategoriaPublicoDoDicionario,
+  Frente,
+  Instituicao,
+  Interlocutor,
+  SubcategoriaPublicoDoDicionario,
+} from '@/dominio/tipos';
+import type { Catalogo } from '@/dominio/derivacoes';
 
 /** O que este gesto de cadastro cria.
  *
@@ -102,6 +109,20 @@ function tiposComSuasFrentes(): { tipo: string; rotulo: string; onde: string }[]
 
 const TIPOS = tiposComSuasFrentes();
 
+/** As subcategorias de UMA categoria, na ordem — `subcategorias_publico` vem
+ *  do dicionário inteiro, de todas as categorias juntas (ver
+ *  `Dicionarios.subcategorias_publico`), então quem monta o `<select>`
+ *  dependente sempre filtra por `categoria_publico_id` primeiro. */
+function subcategoriasDe(
+  catalogo: Catalogo,
+  categoriaPublicoId: string,
+): SubcategoriaPublicoDoDicionario[] {
+  const id = Number(categoriaPublicoId);
+  return catalogo.dicionarios.subcategorias_publico
+    .filter((s) => s.categoria_publico_id === id)
+    .sort((a, b) => a.ordem - b.ordem);
+}
+
 const VAZIA = {
   nome: '',
   nome_completo: '',
@@ -114,6 +135,15 @@ const VAZIA = {
   //: campo passa a existir sem significar nada. Vazio obriga a escolher,
   //: enquanto quem cadastra ainda sabe por que aquela instituicao importa.
   tier: '',
+  //: MESMO RACIOCINIO DO TIER: sem padrao, para obrigar a escolha. Ao
+  //: contrario do tier, aqui o backend aceita nulo mesmo em instituicao nova
+  //: — as ~99 que ja existiam ficam sem categoria ate o backfill, e o mesmo
+  //: formulario serve para corrigi-las. `obrigatorio` na tela é só para
+  //: instituição CRIADA daqui pra frente não nascer sem classificação.
+  categoria_publico_id: '',
+  //: SÓ FAZ SENTIDO junto de uma categoria com `padrao_de_quebra !==
+  //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
+  subcategoria_publico_id: '',
   //: O primeiro representante, cadastrado JUNTO. Uma instituicao sem ninguem
   //: nao serve para nada: o formulario de agenda so oferece pessoas depois de
   //: escolhe-la, e a lista sairia vazia.
@@ -139,6 +169,8 @@ interface RascunhoDaInstituicao {
   tipo: string;
   uf: string;
   tier: string;
+  categoria_publico_id: string;
+  subcategoria_publico_id: string;
 }
 
 export function CadastroDeInstituicoes() {
@@ -176,6 +208,8 @@ export function CadastroDeInstituicoes() {
     tipo: 'orgao',
     uf: '',
     tier: '',
+    categoria_publico_id: '',
+    subcategoria_publico_id: '',
   });
   const [pessoaNova, definirPessoaNova] = useState(SEM_PESSOA);
   //: Qual PESSOA esta aberta para edicao, e o rascunho dela. Separado do
@@ -239,6 +273,15 @@ export function CadastroDeInstituicoes() {
   };
 
   if (!catalogo) return null;
+
+  //: A SUBCATEGORIA SÓ APARECE quando a categoria escolhida tem
+  //: `padrao_de_quebra !== 'sem_quebra'` — Poder Judiciário, Entidades
+  //: Setoriais e Parceiros e Cadeia de Valor não têm subdivisão nenhuma.
+  //: (O rascunho de EDIÇÃO tem o mesmo cálculo dentro de `LinhaDeInstituicao`,
+  //: que é onde ele é usado — este aqui serve só o formulário "nova".)
+  const categoriaDaNova = catalogo.dicionarios.categorias_publico.find(
+    (c) => c.id === Number(nova.categoria_publico_id),
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -360,6 +403,58 @@ export function CadastroDeInstituicoes() {
                 ))}
               </select>
             </Campo>
+
+            {/* A CATEGORIA DE PÚBLICO é atributo da instituição, igual à
+                relevância acima — não da agenda. Ver
+                0036_categoria_de_publico.sql. Obrigatória aqui: o backend
+                aceita nulo (para não travar a edição das ~99 instituições que
+                existiam antes desta coluna), mas instituição CRIADA daqui pra
+                frente não deveria nascer sem classificação. */}
+            <Campo
+              rotulo="Categoria de público"
+              obrigatorio
+              dica="A nova taxonomia de públicos — de que tipo de ator esta instituição é."
+            >
+              <select
+                style={estiloDeEntrada}
+                value={nova.categoria_publico_id}
+                onChange={(e) =>
+                  definirNova({
+                    ...nova,
+                    categoria_publico_id: e.target.value,
+                    // TROCAR A CATEGORIA LIMPA A SUBCATEGORIA: uma escolhida
+                    // antes pode não pertencer mais à categoria nova.
+                    subcategoria_publico_id: '',
+                  })
+                }
+              >
+                <option value="">Selecione…</option>
+                {catalogo.dicionarios.categorias_publico.map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>
+                    {categoria.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
+            {categoriaDaNova && categoriaDaNova.padrao_de_quebra !== 'sem_quebra' ? (
+              <Campo rotulo="Subcategoria" obrigatorio>
+                <select
+                  style={estiloDeEntrada}
+                  value={nova.subcategoria_publico_id}
+                  onChange={(e) =>
+                    definirNova({ ...nova, subcategoria_publico_id: e.target.value })
+                  }
+                >
+                  <option value="">Selecione…</option>
+                  {subcategoriasDe(catalogo, nova.categoria_publico_id).map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            ) : null}
           </div>
           )}
 
@@ -479,7 +574,14 @@ export function CadastroDeInstituicoes() {
                 salvando ||
                 (modo === 'pessoa'
                   ? !pessoaAvulsa.instituicao_id || !pessoaAvulsa.nome.trim()
-                  : !nova.nome.trim() || !nova.tier)
+                  : !nova.nome.trim() ||
+                    !nova.tier ||
+                    // INSTITUIÇÃO NOVA NÃO NASCE SEM CATEGORIA — diferente da
+                    // edição, que aceita nulo para não travar a correção das
+                    // ~99 que existiam antes desta coluna (ver backfill).
+                    !nova.categoria_publico_id ||
+                    (categoriaDaNova?.padrao_de_quebra !== 'sem_quebra' &&
+                      !nova.subcategoria_publico_id))
               }
               aoClicar={() =>
                 modo === 'pessoa'
@@ -502,6 +604,12 @@ export function CadastroDeInstituicoes() {
                           tipo: nova.tipo,
                           uf: nova.uf || null,
                           tier: Number(nova.tier),
+                          categoria_publico_id: nova.categoria_publico_id
+                            ? Number(nova.categoria_publico_id)
+                            : null,
+                          subcategoria_publico_id: nova.subcategoria_publico_id
+                            ? Number(nova.subcategoria_publico_id)
+                            : null,
                           // SO QUANDO HA NOME E O MODO PERMITE. Mandar
                           // `{nome: ''}` seria recusado pelo `min_length`, e o
                           // modo "Só a instituição" nunca tem representante —
@@ -551,6 +659,8 @@ export function CadastroDeInstituicoes() {
               pessoas={pessoasDe(instituicao.id)}
               ufs={catalogo.dicionarios.ufs}
               relevancias={catalogo.dicionarios.relevancias}
+              categoriasPublico={catalogo.dicionarios.categorias_publico}
+              subcategoriasPublico={catalogo.dicionarios.subcategorias_publico}
               emEdicao={emEdicao === instituicao.id}
               aberta={aberta === instituicao.id}
               salvando={salvando}
@@ -569,6 +679,12 @@ export function CadastroDeInstituicoes() {
                   tipo: instituicao.tipo,
                   uf: instituicao.uf ?? '',
                   tier: instituicao.tier ? String(instituicao.tier) : '',
+                  categoria_publico_id: instituicao.categoria_publico_id
+                    ? String(instituicao.categoria_publico_id)
+                    : '',
+                  subcategoria_publico_id: instituicao.subcategoria_publico_id
+                    ? String(instituicao.subcategoria_publico_id)
+                    : '',
                 });
               }}
               aoCancelar={() => definirEmEdicao(null)}
@@ -584,6 +700,15 @@ export function CadastroDeInstituicoes() {
                       // anteriores a coluna nao tem tier, e corrigir o nome de
                       // uma delas nao pode obrigar a classifica-la primeiro.
                       tier: rascunho.tier ? Number(rascunho.tier) : null,
+                      // MESMO RACIOCINIO: as ~99 instituicoes anteriores a
+                      // categoria de publico tambem nao tem uma, e o PUT nao
+                      // pode travar a edicao delas por causa disso.
+                      categoria_publico_id: rascunho.categoria_publico_id
+                        ? Number(rascunho.categoria_publico_id)
+                        : null,
+                      subcategoria_publico_id: rascunho.subcategoria_publico_id
+                        ? Number(rascunho.subcategoria_publico_id)
+                        : null,
                     }),
                   () => definirEmEdicao(null),
                 )
@@ -674,6 +799,8 @@ function LinhaDeInstituicao({
   pessoas,
   ufs,
   relevancias,
+  categoriasPublico,
+  subcategoriasPublico,
   emEdicao,
   aberta,
   salvando,
@@ -702,6 +829,8 @@ function LinhaDeInstituicao({
   pessoas: Interlocutor[];
   ufs: { codigo: string; nome: string }[];
   relevancias: { id: number; nome: string }[];
+  categoriasPublico: CategoriaPublicoDoDicionario[];
+  subcategoriasPublico: SubcategoriaPublicoDoDicionario[];
   emEdicao: boolean;
   aberta: boolean;
   salvando: boolean;
@@ -732,6 +861,9 @@ function LinhaDeInstituicao({
 }) {
   const onde = TIPOS.find((t) => t.tipo === instituicao.tipo)?.onde ?? '—';
   const rotuloDoTipo = ROTULO_DO_TIPO[instituicao.tipo] ?? instituicao.tipo;
+  const categoriaDoRascunho = categoriasPublico.find(
+    (c) => c.id === Number(rascunho.categoria_publico_id),
+  );
 
   return (
     <div
@@ -804,6 +936,51 @@ function LinhaDeInstituicao({
               ))}
             </select>
           </Campo>
+          <Campo rotulo="Categoria de público">
+            <select
+              style={estiloDeEntrada}
+              value={rascunho.categoria_publico_id}
+              onChange={(e) =>
+                aoRascunhar({
+                  ...rascunho,
+                  categoria_publico_id: e.target.value,
+                  subcategoria_publico_id: '',
+                })
+              }
+            >
+              {/* SEM ASTERISCO, mesmo motivo da Relevância: as ~99
+                  instituições anteriores a esta coluna não têm categoria, e
+                  exigi-la aqui trancaria a correção de um nome atrás de uma
+                  classificação que é trabalho do backfill, não deste campo. */}
+              <option value="">Não informada</option>
+              {categoriasPublico.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          {categoriaDoRascunho && categoriaDoRascunho.padrao_de_quebra !== 'sem_quebra' ? (
+            <Campo rotulo="Subcategoria">
+              <select
+                style={estiloDeEntrada}
+                value={rascunho.subcategoria_publico_id}
+                onChange={(e) =>
+                  aoRascunhar({ ...rascunho, subcategoria_publico_id: e.target.value })
+                }
+              >
+                <option value="">Não informada</option>
+                {subcategoriasPublico
+                  .filter((s) => s.categoria_publico_id === categoriaDoRascunho.id)
+                  .sort((a, b) => a.ordem - b.ordem)
+                  .map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.nome}
+                    </option>
+                  ))}
+              </select>
+            </Campo>
+          ) : null}
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

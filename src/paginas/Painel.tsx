@@ -10,6 +10,7 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { campoDeAreaPorCategoria, GrupoDeCampo } from '@/componentes/PainelDeFiltros';
 import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
@@ -19,14 +20,17 @@ import {
   ROTULOS_DE_FRENTE,
   rotuloDeAbrangencia,
 } from '@/dominio/frentes';
-import { alternar, alternarArea, alternarTag } from '@/dominio/recorte';
+import { alternar, alternarCategoriaDeArea, alternarTag } from '@/dominio/recorte';
+import type { Recorte } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 import {
+  CATEGORIAS_DE_AREA,
   chaveDoPeriodo,
   climaPorArea,
   completarPeriodos,
   distribuicaoPorUf,
+  idsPorCategoriaDeArea,
   kpis as calcularKpis,
   nomeDaInstituicao,
   nomesDosTemas,
@@ -47,18 +51,29 @@ import {
 import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 
 //: A MESMA PALETA usada em `temasMaisRecorrentes` — reaproveitada aqui para
-//: colorir as categorias do popup de histórico de área/público, que não têm
+//: colorir as categorias do popup de histórico de tier/público, que não têm
 //: cor própria (Ranking e a barra divergente por item não precisam de uma
-//: cor por categoria, só o gráfico empilhado no tempo precisa).
+//: cor por categoria, só o gráfico empilhado no tempo precisa). O histórico
+//: de ÁREA não usa esta paleta — reaproveita a cor fixa de
+//: `CATEGORIAS_DE_AREA`, a mesma da rosca ao lado.
 const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
-//: AS TRÊS ÁREAS QUE GANHAM TABELA PRÓPRIA, lado a lado — nomeadas, e não
-//: "as 3 primeiras do dicionário": a área interna pode ganhar ou perder
-//: linha (ver as migrations 0032/0033), e a tela não deve reagir sozinha a
-//: isso trocando quais tabelas aparecem. Uma área daqui que deixar de existir
-//: (renomeada ou desativada) some da tela — sem erro, só a tabela vazia (ver
-//: `interacoesPorAreaFixa` abaixo).
-const AREAS_FIXAS = ['Comunicação', 'Relações Institucionais', 'RI + Oper. Financeiras'];
+/** Qual categoria de área acende como "ativa" na rosca — a que tem
+ *  EXATAMENTE o mesmo conjunto de áreas que `recorte.areas`, nem a mais nem
+ *  a menos. Generaliza o antigo `recorte.areas?.length === 1`: uma categoria
+ *  de área única é o mesmo caso, com um id no conjunto. */
+function categoriaDeAreaAtiva(
+  recorte: Recorte,
+  idsPorCategoria: Map<string, Set<number>>,
+): string | undefined {
+  const atuais = recorte.areas;
+  if (!atuais?.length) return undefined;
+  const atuaisSet = new Set(atuais);
+  for (const [rotulo, ids] of idsPorCategoria) {
+    if (ids.size === atuaisSet.size && [...ids].every((id) => atuaisSet.has(id))) return rotulo;
+  }
+  return undefined;
+}
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
  *  sem disputar clique com as fatias/barras de dentro dele — a área
@@ -132,6 +147,10 @@ export function Painel({
 
   const derivado = useMemo(() => {
     if (!catalogo) return null;
+
+    //: Resolvido uma vez aqui, reaproveitado nas 3 tabelas fixas de área
+    //: (abaixo) e no clique/destaque da rosca de área (na renderização).
+    const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
     const totalInteracoes = interacoes.length || 1;
 
@@ -230,19 +249,26 @@ export function Painel({
       portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
-      porArea: porArea(interacoes, catalogo, 5),
+      porArea: porArea(interacoes, catalogo),
       climaPorArea: climaPorArea(interacoes, catalogo),
-      // UMA LISTA DE INTERAÇÕES POR ÁREA FIXA, e não um id — a área é
+      // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
       // aparecer em mais de uma das três tabelas, exatamente como o filtro
-      // "Área" do resto do Painel já trata OR entre áreas.
-      interacoesPorAreaFixa: AREAS_FIXAS.map((nome) => {
-        const area = catalogo.dicionarios.areas_pessoa.find((a) => a.nome === nome);
+      // "Área" do resto do Painel já trata OR entre áreas. Dentro de uma
+      // categoria composta (RI & Oper. Financeiras) o critério também é OR:
+      // basta a interação ter QUALQUER uma das áreas somadas para entrar.
+      interacoesPorAreaFixa: CATEGORIAS_DE_AREA.map(({ rotulo }) => {
+        const ids = idsPorRotulo.get(rotulo)!;
         return {
-          nome,
-          interacoes: area ? interacoes.filter((i) => i.areas.includes(area.id)) : [],
+          nome: rotulo,
+          interacoes: ids.size
+            ? interacoes.filter((i) => i.areas.some((id) => ids.has(id)))
+            : [],
         };
       }),
+      // EXPOSTO PARA O CLIQUE/DESTAQUE DA ROSCA DE ÁREA, mais abaixo — a
+      // mesma resolução de ids usada aqui, sem recalcular.
+      idsPorCategoriaDeArea: idsPorRotulo,
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
       topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
@@ -376,6 +402,24 @@ export function Painel({
         topUf={derivado.resumoExecutivo.topUf}
       />
 
+      {/* FILTRO DE ÁREA(S) FIXO — sempre visível aqui, sem precisar abrir
+          "Filtros rápidos": é o filtro que mais amarra com o resto desta
+          tela (donut, 3 tabelas fixas, histórico), então ganha posição
+          própria em vez de ficar atrás de um clique. Por categoria
+          (`CATEGORIAS_DE_AREA`), igual ao resto do Painel — ver o comentário
+          em `PainelDeFiltros.tsx` sobre por que este campo não mora lá para
+          esta view. */}
+      <div
+        style={{
+          border: '1px solid var(--borda)',
+          borderRadius: 'var(--r-card-int)',
+          background: 'var(--branco)',
+          padding: '12px 14px',
+        }}
+      >
+        <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
+      </div>
+
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
           componente: hoje é o front montando o texto com dados reais, sem
           agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
@@ -409,8 +453,8 @@ export function Painel({
       </Secao>
 
       {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — três tabelas fixas lado a
-          lado, uma por área (Comunicação, Relações Institucionais, RI + Oper.
-          Financeiras — ver `AREAS_FIXAS`). MESMO CARTÃO de "Interações mais
+          lado, uma por categoria de área (ver `CATEGORIAS_DE_AREA` em
+          `dominio/derivacoes.ts`). MESMO CARTÃO de "Interações mais
           recentes" (`TabelaDeInteracoes`), só com menos colunas: a área já
           está dita no título, então Área(s) sairia repetindo o óbvio, e
           Stakeholder/Relevância saem para as três caberem lado a lado sem
@@ -490,8 +534,15 @@ export function Painel({
             <div style={{ flex: '0 0 auto' }}>
               <Rosca
                 itens={derivado.porArea}
-                ativo={recorte.areas?.length === 1 ? String(recorte.areas[0]) : undefined}
-                aoClicar={(chave) => definirRecorte(alternarArea(recorte, Number(chave)))}
+                ativo={categoriaDeAreaAtiva(recorte, derivado.idsPorCategoriaDeArea)}
+                aoClicar={(chave) =>
+                  definirRecorte(
+                    alternarCategoriaDeArea(
+                      recorte,
+                      derivado.idsPorCategoriaDeArea.get(chave) ?? [],
+                    ),
+                  )
+                }
                 rotuloCentral="interações"
                 vazio="Nenhuma área registrada neste recorte."
                 detalheAoPassarMouse={(chave) => {
@@ -775,6 +826,7 @@ export function Painel({
           catalogo={catalogo}
           porTier={derivado.porTier}
           porArea={derivado.porArea}
+          idsPorArea={derivado.idsPorCategoriaDeArea}
           climaPorPublico={derivado.climaPorPublico}
           aoFechar={() => definirHistorico(null)}
         />
@@ -796,6 +848,7 @@ function HistoricoDoBloco({
   catalogo,
   porTier: itensDeTier,
   porArea: itensDeArea,
+  idsPorArea,
   climaPorPublico,
   aoFechar,
 }: {
@@ -804,6 +857,10 @@ function HistoricoDoBloco({
   catalogo: Catalogo;
   porTier: ReturnType<typeof porTier>;
   porArea: ReturnType<typeof porArea>;
+  /** Os ids ativos de cada categoria de área — mesmo mapa que o clique/
+   *  destaque da rosca usa, para resolver a quais categorias uma interação
+   *  pertence sem recalcular. */
+  idsPorArea: Map<string, Set<number>>;
   climaPorPublico: ReturnType<typeof scorePorInstituicao>;
   aoFechar: () => void;
 }) {
@@ -826,6 +883,9 @@ function HistoricoDoBloco({
       };
     }
     if (chave === 'area') {
+      // COR FIXA POR CATEGORIA (`item.cor`, de `CATEGORIAS_DE_AREA`), e não
+      // `PALETA_DO_HISTORICO` por posição — a mesma cor da rosca ao lado,
+      // Comunicação sempre igual a Comunicação neste gráfico e no outro.
       const categoriasDeArea = itensDeArea.map((item) => ({
         chave: item.chave,
         rotulo: item.rotulo,
@@ -834,8 +894,13 @@ function HistoricoDoBloco({
       return {
         titulo: 'Interações por áreas ao longo do tempo',
         categorias: categoriasDeArea,
+        // `chave` agora é o RÓTULO da categoria, não um id de área bruto —
+        // resolve por `idsPorArea` a quais categorias a interação pertence,
+        // em vez de comparar `i.areas` direto contra `chave`.
         categoriasDe: (i: Interacao) =>
-          i.areas.map(String).filter((id) => categoriasDeArea.some((c) => c.chave === id)),
+          categoriasDeArea
+            .filter((c) => i.areas.some((id) => idsPorArea.get(c.chave)?.has(id)))
+            .map((c) => c.chave),
       };
     }
     const categoriasDePublico = climaPorPublico.map((item, indice) => ({
@@ -851,7 +916,7 @@ function HistoricoDoBloco({
         return categoriasDePublico.some((c) => c.chave === nome) ? [nome] : [];
       },
     };
-  }, [chave, itensDeTier, itensDeArea, climaPorPublico, catalogo]);
+  }, [chave, itensDeTier, itensDeArea, idsPorArea, climaPorPublico, catalogo]);
 
   const colunas = useMemo(
     () => completarPeriodos(serieMensal(interacoes, categorias, categoriasDe, granularidade), granularidade),
@@ -868,26 +933,44 @@ function HistoricoDoBloco({
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
         <SeletorDeGranularidade valor={granularidade} aoEscolher={definirGranularidade} />
       </div>
-      <BarrasEmpilhadas
-        colunas={colunas}
-        altura={220}
-        formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
-        detalheDoSegmento={
-          chave === 'tier'
-            ? (coluna, chaveDoTier) => {
-                const doPeriodo = interacoes.filter(
-                  (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
-                );
-                return (topInstituicoesPorTier(doPeriodo, catalogo, 5)[chaveDoTier] ?? []).map(
-                  (item) => ({
-                    rotulo: item.rotulo,
-                    valor: numero(item.total),
-                  }),
-                );
-              }
-            : undefined
-        }
-      />
+      {/* O TOOLTIP DE `BarrasEmpilhadas` DESENHA PARA CIMA da coluna
+          (`position: absolute; bottom: 100%`), sem limite de altura próprio —
+          e o corpo do Modal tem rolagem interna (`.rolagem-interna`,
+          `overflow: auto`). Sem espaço reservado aqui, uma coluna alta (perto
+          do topo do gráfico) não tem para onde o tooltip crescer, e o texto
+          sai cortado pela borda da rolagem. 140px cobre o tooltip mais alto
+          possível nesta tela — cabeçalho + até 5 linhas de segmento, sem
+          bloco de detalhe (esta chamada não passa `detalheDoMes`). Consertar
+          dentro de `BarrasEmpilhadas.tsx` mudaria todos os outros usos dele
+          (`RaioXDaExcecao`, o Painel fora do popup), que não têm este
+          problema — por isso o espaço é reservado só aqui.
+
+          ATENÇÃO: com `detalheDoSegmento` abaixo, o tooltip de "tier" agora
+          pode listar o top de instituições de cada fatia — potencialmente
+          mais alto que os 140px acima cobrem. Reconferir visualmente depois
+          deste merge. */}
+      <div style={{ paddingTop: 140 }}>
+        <BarrasEmpilhadas
+          colunas={colunas}
+          altura={220}
+          formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+          detalheDoSegmento={
+            chave === 'tier'
+              ? (coluna, chaveDoTier) => {
+                  const doPeriodo = interacoes.filter(
+                    (i) => chaveDoPeriodo(i.data_interacao, granularidade) === coluna.mes,
+                  );
+                  return (topInstituicoesPorTier(doPeriodo, catalogo, 5)[chaveDoTier] ?? []).map(
+                    (item) => ({
+                      rotulo: item.rotulo,
+                      valor: numero(item.total),
+                    }),
+                  );
+                }
+              : undefined
+          }
+        />
+      </div>
       <Legenda itens={categorias} centralizada />
     </Modal>
   );

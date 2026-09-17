@@ -74,13 +74,61 @@ const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
 //: crua do selo (feita para contraste de texto em cima dela) é forte demais
 //: pra virar fundo de linha inteira; diluída, dá para ler o texto normal por
 //: cima sem competir com o selo da própria linha.
+//:
+//: NEUTRO A 12%, NÃO 7% — `--cinza-2` é um cinza-azulado de saturação baixa;
+//: na mesma fração das outras duas (que são cores vivas, turquesa/vermelho)
+//: ele ficava quase imperceptível. 12% equilibra visualmente com os 10% de
+//: propositivo/tenso sem comprometer a leitura do texto por cima.
 const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
   propositivo: 'color-mix(in srgb, var(--turquesa-rio) 10%, var(--branco))',
-  // Neutro precisa de mais tinta que os outros dois: turquesa e vermelho
-  // saturados já aparecem a 10%; o cinza a 7% some no branco da tabela.
-  neutro: 'color-mix(in srgb, var(--cinza-2) 18%, var(--branco))',
+  neutro: 'color-mix(in srgb, var(--cinza-2) 12%, var(--branco))',
   tenso: 'color-mix(in srgb, var(--vermelho-pitanga) 10%, var(--branco))',
 };
+
+//: A ORDEM QUE A LEGENDA MOSTRA — sempre proativo/neutro/reativo, a mesma
+//: leitura da esquerda-pra-direita do resto do produto (ver `BarraDivergente`).
+const CODIGOS_DE_CLIMA_NA_LEGENDA = ['propositivo', 'neutro', 'tenso'] as const;
+
+/** Explica o que a cor de fundo de cada linha das três tabelas de área
+ *  significa — uma legenda só, acima das três, não uma por tabela.
+ *
+ *  O RÓTULO VEM DO DICIONÁRIO (`rotuloDeCodigo`), a mesma fonte que o selo de
+ *  clima de cada linha já usa (`SeloDeClima` abaixo): "Proativo"/"Reativo",
+ *  não "Positiva"/"Negativa" — uma segunda nomenclatura para o mesmo conceito
+ *  só confundiria quem já lê o selo da própria linha. */
+export function LegendaDeClimaPorArea({ catalogo }: { catalogo: Catalogo }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 16,
+        fontSize: 12,
+        color: 'var(--cinza-3)',
+        marginTop: 14,
+        paddingTop: 10,
+        borderTop: '1px solid var(--borda)',
+      }}
+    >
+      <span style={{ color: 'var(--cinza-2)' }}>Cor da linha:</span>
+      {CODIGOS_DE_CLIMA_NA_LEGENDA.map((codigo) => (
+        <span key={codigo} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span
+            aria-hidden
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 3,
+              background: FUNDO_DA_LINHA_POR_CLIMA[codigo],
+              border: '1px solid var(--borda)',
+            }}
+          />
+          {rotuloDeCodigo(catalogo, 'climas', codigo)}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 //: CÉLULA MAIS APERTADA, só para a versão reduzida (as três tabelas lado a
 //: lado) — a completa continua com o espaçamento de sempre.
@@ -147,8 +195,13 @@ export function TabelaDeInteracoes({
 }) {
   const reduzida = colunas === 'reduzidas';
   const colunasDaTabela = reduzida ? COLUNAS_REDUZIDAS : COLUNAS_COMPLETAS;
+  //: SÓ AS TRÊS TABELAS DE ÁREA (`reduzida`) têm teto: lado a lado, sem
+  //: rolagem horizontal, uma delas crescendo sem limite quebra o layout das
+  //: outras duas. A tabela completa ("Interações mais recentes") continua
+  //: sem teto — ela é a única na tela, e crescer não atrapalha ninguém.
+  const maxPorPagina = reduzida ? 10 : undefined;
   const [pagina, definirPagina] = useState(1);
-  const [porPagina, definirPorPagina] = useState(PADRAO_POR_PAGINA);
+  const [porPagina, definirPorPagina] = useState(reduzida ? 5 : PADRAO_POR_PAGINA);
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>({
     coluna: 'Data',
     direcao: 'desc',
@@ -267,12 +320,19 @@ export function TabelaDeInteracoes({
             pagina={paginaAtual}
             totalDePaginas={totalDePaginas}
             porPagina={porPagina}
+            maxPorPagina={maxPorPagina}
             aoMudarPagina={definirPagina}
             aoMudarPorPagina={(novo) => {
               definirPorPagina(novo);
               definirPagina(1);
             }}
           />
+
+          {/* NO RODAPÉ DE CADA UMA DAS TRÊS TABELAS, e não uma legenda só
+              acima do grid: quem olha só uma das três (a maioria das vezes)
+              não deveria precisar rolar pra cima pra achar o que a cor da
+              linha significa. */}
+          {reduzida ? <LegendaDeClimaPorArea catalogo={catalogo} /> : null}
         </>
       )}
 
@@ -300,12 +360,16 @@ function RodapeDePaginacao({
   pagina,
   totalDePaginas,
   porPagina,
+  maxPorPagina,
   aoMudarPagina,
   aoMudarPorPagina,
 }: {
   pagina: number;
   totalDePaginas: number;
   porPagina: number;
+  /** Teto de registros por página — as três tabelas de área fixa o usam
+   *  (lado a lado, sem rolagem horizontal); a tabela completa não tem. */
+  maxPorPagina?: number;
   aoMudarPagina: (pagina: number) => void;
   aoMudarPorPagina: (porPagina: number) => void;
 }) {
@@ -325,11 +389,15 @@ function RodapeDePaginacao({
         <input
           type="number"
           min={1}
+          max={maxPorPagina}
           inputMode="numeric"
           value={porPagina}
           onChange={(evento) => {
             const numero = Number(evento.target.value);
-            aoMudarPorPagina(Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 1);
+            // O `max` do HTML só afasta as setinhas do spinner — digitar ou
+            // colar um número maior ainda passa. O teto de verdade é aqui.
+            const inteiro = Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 1;
+            aoMudarPorPagina(maxPorPagina ? Math.min(inteiro, maxPorPagina) : inteiro);
           }}
           style={{ ...estiloDeEntrada, width: 60, height: 30, padding: '0 8px', textAlign: 'center' }}
           aria-label="Quantos registros mostrar por página"

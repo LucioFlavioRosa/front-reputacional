@@ -71,13 +71,27 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   editarPessoaAegea: () => cliente.editarPessoaAegea('id-3', { nome: 'Radamés' }),
   criarReferencia: () =>
     cliente.criarReferencia(
-      { titulo: 'Q&A', tipo: 'qa', tema_principal_id: 1, temas: [], atualizado_em: '2026-09-01' },
+      {
+        titulo: 'Q&A',
+        tipo: 'qa',
+        tema_principal_id: 1,
+        temas: [],
+        resumo: 'O que responder.',
+        conteudo: 'O texto desta versão.',
+        atualizado_em: '2026-09-01',
+      },
       arquivo(),
     ),
   editarReferencia: () =>
-    cliente.editarReferencia('id-4', { titulo: 'Q&A', tipo: 'qa', tema_principal_id: 1, temas: [] }),
+    cliente.editarReferencia('id-4', {
+      titulo: 'Q&A',
+      tipo: 'qa',
+      resumo: 'O que responder.',
+      tema_principal_id: 1,
+      temas: [],
+    }),
   subirVersaoDaReferencia: () =>
-    cliente.subirVersaoDaReferencia('id-4', arquivo(), '2026-09-02'),
+    cliente.subirVersaoDaReferencia('id-4', arquivo(), 'O texto da versão.', '2026-09-02'),
 };
 
 describe('toda escrita de catálogo avisa quem depende do catálogo', () => {

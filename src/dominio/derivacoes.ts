@@ -219,31 +219,67 @@ export function resumoDeClimaPorFrente(interacoes: Interacao[], frentes: Frente[
 
 /* -- painel: tier, área e público ------------------------------------------ */
 
-//: Paleta da rosca de tier (e de outros gráficos do Painel que ainda usam
-//: o arco-íris da marca). Temas ao lado da rosca de área NÃO reusam esta
-//: lista — eles herdam `corDaArea`.
+//: Paleta da rosca de tier e de `temasMaisRecorrentes` — por posição no
+//: ranking, não por área: "Temas no tempo" compara várias séries lado a
+//: lado, e cor por área (só 3 possíveis) colidia entre temas diferentes.
+//: A rosca de área tem a própria paleta, fixa por identidade (`CATEGORIAS_DE_AREA`).
 const PALETA_DO_PAINEL = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
 
-//: Paleta só de área (rosca, histórico e temas ligados a ela) — cinzas da
-//: marca e os dois azuis-mar, na ordem do catálogo (`area.id`): Comunicação,
-//: Relações Institucionais, Jurídico, Regulatório, Sustentabilidade, e o
-//: cinza 1 para qualquer área extra. Não segue o volume do recorte: a mesma
-//: área guarda a mesma cor ao lado do ranking de temas.
-export const PALETA_DE_AREAS = [
-  '#44495C', // cinza 3 — Comunicação
-  '#0027BD', // azul mar — Relações Institucionais
-  '#8C91A4', // cinza 2 — Jurídico
-  '#111799', // azul mar sombra — Regulatório
-  '#191B23', // cinza 4 — Sustentabilidade
-  '#E2E5F0', // cinza 1 — extra / tema sem área
+export interface CategoriaDeArea {
+  rotulo: string;
+  nomes: string[];
+  cor: string;
+}
+
+//: AS TRÊS CATEGORIAS QUE O PAINEL TRATA COMO "área interna" — nomeadas, e
+//: não "as N primeiras do dicionário": uma área pode ganhar ou perder linha
+//: (migrations 0029/0032/0033) sem que a tela reaja sozinha trocando quais
+//: categorias existem. UM LUGAR SÓ: usada tanto pelas 3 tabelas fixas do
+//: Painel (`interacoesPorAreaFixa`) quanto pela rosca/histórico de
+//: "Interações por áreas" (`porArea`/`climaPorArea`) — antes cada um tinha a
+//: própria lista, e podiam divergir sem ninguém perceber.
+//:
+//: A TERCEIRA SOMA DUAS LINHAS DO DICIONÁRIO — mesmo padrão de
+//: `institucionais` em `kpis()` (governo + parceiros): "Relações com
+//: Investidores" e "Operações Financeiras" são áreas afins e pequenas
+//: separadas; juntas rendem um volume de verdade.
+//:
+//: CORES DA PALETA OFICIAL DA AEGEA, FIXAS POR CATEGORIA — não por posição
+//: no ranking: com `PALETA_DE_AREAS[indice]` a cor de "Comunicação" mudava
+//: conforme ela subia ou descia de posição entre um recorte e outro. Evita
+//: Azul Mar de propósito: já é a cor de Imprensa/Comunicação em outros
+//: gráficos do sistema, e repeti-la aqui confundiria as duas coisas.
+export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
+  { rotulo: 'Comunicação', nomes: ['Comunicação'], cor: '#E12379' }, // Magenta Pitaia
+  {
+    rotulo: 'Relações Institucionais',
+    nomes: ['Relações Institucionais'],
+    cor: '#17E3CB', // Turquesa Rio
+  },
+  {
+    rotulo: 'RI & Oper. Financeiras',
+    nomes: ['Relações com Investidores', 'Operações Financeiras'],
+    cor: '#A11FFF', // Roxo Açaí
+  },
 ];
 
-/** A cor estável da área — pelo `id` de cadastro, não pela fatia da rosca. */
-export function corDaArea(catalogo: Catalogo, areaId: number): string {
-  const ordenadas = [...catalogo.dicionarios.areas_pessoa].sort((a, b) => a.id - b.id);
-  const indice = ordenadas.findIndex((area) => area.id === areaId);
-  if (indice < 0) return PALETA_DE_AREAS[PALETA_DE_AREAS.length - 1];
-  return PALETA_DE_AREAS[indice % PALETA_DE_AREAS.length];
+//: Os ids ATIVOS de cada categoria, resolvidos contra o dicionário do
+//: momento — uma área desativada nunca entra aqui (o dicionário só traz as
+//: ativas), e por isso nunca conta em `porArea`/`climaPorArea`/
+//: `interacoesPorAreaFixa`: os dados continuam no banco, só saem da leitura.
+export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<number>> {
+  const mapa = new Map<string, Set<number>>();
+  for (const categoria of CATEGORIAS_DE_AREA) {
+    mapa.set(
+      categoria.rotulo,
+      new Set(
+        catalogo.dicionarios.areas_pessoa
+          .filter((a) => categoria.nomes.includes(a.nome))
+          .map((a) => a.id),
+      ),
+    );
+  }
+  return mapa;
 }
 
 /** Quantas interações em cada nível de relevância — sempre um item por
@@ -291,31 +327,29 @@ export function topInstituicoesPorTier(
   return resultado;
 }
 
-/** As áreas internas mais presentes — MULTIVALORADO, como `temasMaisRecorrentes`:
- *  uma interação com duas áreas soma nas duas, e não escolhe uma.
+/** As três categorias de área interna (`CATEGORIAS_DE_AREA`), com quantas
+ *  interações cada uma tem neste recorte — MULTIVALORADO: uma interação com
+ *  áreas de duas categorias diferentes soma nas duas; dentro de uma mesma
+ *  categoria composta ("RI & Oper. Financeiras"), conta uma vez só, mesmo
+ *  tocando as duas áreas dela — o mesmo critério OR de
+ *  `interacoesPorAreaFixa`.
  *
- *  `cor` vem de `corDaArea` — a mesma da fatia da rosca para aquela área,
- *  fixa no cadastro, para o ranking de temas ao lado repetir a cor da área
- *  a que o tema mais se liga. */
-export function porArea(
-  interacoes: Interacao[],
-  catalogo: Catalogo,
-  quantos = 5,
-): ItemContado[] {
-  const contagem = new Map<number, number>();
-  for (const interacao of interacoes) {
-    for (const areaId of interacao.areas) {
-      contagem.set(areaId, (contagem.get(areaId) ?? 0) + 1);
-    }
-  }
+ *  Uma área sem categoria correspondente (desativada depois de a interação
+ *  já ter sido gravada com ela) simplesmente não conta em lugar nenhum: os
+ *  dados continuam no banco, só saem desta leitura — ver
+ *  `idsPorCategoriaDeArea`. */
+export function porArea(interacoes: Interacao[], catalogo: Catalogo): ItemContado[] {
+  const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
-  const nomePorId = new Map(catalogo.dicionarios.areas_pessoa.map((a) => [a.id, a.nome]));
-
-  return [...contagem.entries()]
-    .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? String(id), total }))
-    .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
-    .slice(0, quantos)
-    .map((item) => ({ ...item, cor: corDaArea(catalogo, Number(item.chave)) }));
+  return CATEGORIAS_DE_AREA.map((categoria) => {
+    const ids = idsPorRotulo.get(categoria.rotulo)!;
+    return {
+      chave: categoria.rotulo,
+      rotulo: categoria.rotulo,
+      total: interacoes.filter((i) => i.areas.some((id) => ids.has(id))).length,
+      cor: categoria.cor,
+    };
+  }).sort((a, b) => b.total - a.total);
 }
 
 export interface ClimaDaArea {
@@ -324,34 +358,26 @@ export interface ClimaDaArea {
   tenso: number;
 }
 
-/** A quebra de clima de cada área — o que o tooltip de "Volume por área"
- *  mostra ao passar o mouse. MULTIVALORADO como `porArea`: uma interação com
- *  duas áreas soma clima nas duas. Sem clima registrado não entra em
- *  nenhuma das três contagens, mesmo critério de `scorePorTema`. */
+/** A quebra de clima de cada CATEGORIA de área — o que o tooltip da rosca
+ *  "Interações por áreas" mostra ao passar o mouse. Mesma chave de `porArea`
+ *  (o rótulo da categoria), e o mesmo critério OR dela: uma interação com as
+ *  duas áreas de "RI & Oper. Financeiras" conta uma vez só naquela
+ *  categoria. Sem clima registrado não entra em nenhuma das três contagens,
+ *  mesmo critério de `scorePorTema`. */
 export function climaPorArea(
   interacoes: Interacao[],
   catalogo: Catalogo,
 ): Record<string, ClimaDaArea> {
+  const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
   const contagem: Record<string, ClimaDaArea> = {};
 
-  for (const interacao of interacoes) {
-    if (!interacao.clima) continue;
-    for (const areaId of interacao.areas) {
-      const chave = String(areaId);
-      const atual = contagem[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
-      if (interacao.clima === 'propositivo') atual.propositivo += 1;
-      else if (interacao.clima === 'neutro') atual.neutro += 1;
-      else if (interacao.clima === 'tenso') atual.tenso += 1;
-      contagem[chave] = atual;
-    }
-  }
-
-  // Mantém as áreas sem clima nenhum no mapa, com zeros — evita `undefined`
-  // em quem consulta uma área que existe em `porArea` mas ainda não tem
-  // nenhuma interação com clima registrado.
-  for (const area of catalogo.dicionarios.areas_pessoa) {
-    const chave = String(area.id);
-    if (!contagem[chave]) contagem[chave] = { propositivo: 0, neutro: 0, tenso: 0 };
+  for (const [rotulo, ids] of idsPorRotulo) {
+    const doGrupo = interacoes.filter((i) => i.clima && i.areas.some((id) => ids.has(id)));
+    contagem[rotulo] = {
+      propositivo: doGrupo.filter((i) => i.clima === 'propositivo').length,
+      neutro: doGrupo.filter((i) => i.clima === 'neutro').length,
+      tenso: doGrupo.filter((i) => i.clima === 'tenso').length,
+    };
   }
 
   return contagem;
@@ -600,64 +626,37 @@ export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
  *
  *  Serve tanto como categorias da série empilhada quanto como ranking, e por
  *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
- *  recontar, e duas contagens da mesma base são duas chances de divergir. */
-/** Os temas mais recorrentes do recorte, já com a contagem.
- *
- *  Serve tanto como categorias da série empilhada quanto como ranking, e por
- *  isso devolve `total`: jogar a contagem fora obrigaria quem monta o ranking a
  *  recontar, e duas contagens da mesma base são duas chances de divergir.
  *
- *  A COR É A DA ÁREA DOMINANTE do tema neste recorte — a área que mais aparece
- *  nas agendas que carregam aquele tema —, a mesma de `corDaArea` / da rosca
- *  de "Interações por áreas". Sem área registrada, cai no cinza 1. */
+ *  A COR É POR POSIÇÃO NO RANKING (`PALETA_DO_PAINEL`), não pela área
+ *  dominante do tema: "Temas no tempo" compara até `quantos` séries lado a
+ *  lado, e a cor é o principal jeito de diferenciar uma da outra — com só 3
+ *  cores possíveis (uma por categoria de área) e até 5 temas, duas ou mais
+ *  acabavam saindo idênticas, o que atrapalha exatamente a comparação que o
+ *  gráfico existe para fazer. Ligar a cor à área É uma ideia com valor (ver
+ *  discussão em torno do commit que introduziu isso), mas como um indicador
+ *  COMPLEMENTAR ao lado do tema — não substituindo a cor da série. */
 export function temasMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
   quantos = 5,
 ): { chave: string; rotulo: string; cor: string; total: number }[] {
   const contagem = new Map<string, number>();
-  const votosPorTema = new Map<string, Map<number, number>>();
 
   for (const interacao of interacoes) {
     for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
-      if (!interacao.areas.length) continue;
-      let votos = votosPorTema.get(nome);
-      if (!votos) {
-        votos = new Map();
-        votosPorTema.set(nome, votos);
-      }
-      for (const areaId of interacao.areas) {
-        votos.set(areaId, (votos.get(areaId) ?? 0) + 1);
-      }
     }
-  }
-
-  function areaDominante(nome: string): number | null {
-    const votos = votosPorTema.get(nome);
-    if (!votos?.size) return null;
-    let escolhida = Number.POSITIVE_INFINITY;
-    let max = -1;
-    for (const [areaId, n] of votos) {
-      if (n > max || (n === max && areaId < escolhida)) {
-        max = n;
-        escolhida = areaId;
-      }
-    }
-    return Number.isFinite(escolhida) ? escolhida : null;
   }
 
   return ordenarDecrescente(contagem)
     .slice(0, quantos)
-    .map((item) => {
-      const areaId = areaDominante(item.chave);
-      return {
-        chave: item.chave,
-        rotulo: item.rotulo,
-        total: item.total,
-        cor: areaId != null ? corDaArea(catalogo, areaId) : PALETA_DE_AREAS[PALETA_DE_AREAS.length - 1],
-      };
-    });
+    .map((item, indice) => ({
+      chave: item.chave,
+      rotulo: item.rotulo,
+      total: item.total,
+      cor: PALETA_DO_PAINEL[indice % PALETA_DO_PAINEL.length],
+    }));
 }
 
 /** Uma linha da lista que abre ao clicar num tema — só o que basta para

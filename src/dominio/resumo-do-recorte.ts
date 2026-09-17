@@ -21,16 +21,33 @@ function nomesDasAreas(ids: number[], catalogo: Catalogo | null): string[] {
   });
 }
 
+/** O período em palavras — Passado e Futuro são lados independentes do
+ *  Recorte agora (`periodoPassado`/`periodoFuturo`, preset ou data
+ *  customizada em `de`/`ate`), então esta função monta a frase de cada lado
+ *  separadamente e as junta só se as duas existirem. Com só um lado ativo, o
+ *  resumo fica idêntico ao que já era antes da divisão Passado/Futuro. */
+function rotuloDoPeriodo(recorte: Recorte): string | undefined {
+  const passado = recorte.de
+    ? `desde ${dataCompleta(recorte.de)}`
+    : recorte.periodoPassado
+      ? ATALHOS_DE_PERIODO[recorte.periodoPassado]
+      : undefined;
+
+  const futuro = recorte.ate
+    ? `até ${dataCompleta(recorte.ate)}`
+    : recorte.periodoFuturo
+      ? ATALHOS_DE_PERIODO[recorte.periodoFuturo]
+      : undefined;
+
+  if (passado && futuro) return `${passado} + ${futuro}`;
+  return passado ?? futuro;
+}
+
 export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): string {
   const partes: string[] = [];
 
-  if (recorte.de || recorte.ate) {
-    const de = recorte.de ? dataCompleta(recorte.de) : 'início';
-    const ate = recorte.ate ? dataCompleta(recorte.ate) : 'hoje';
-    partes.push(`${de} a ${ate}`);
-  } else if (recorte.periodo) {
-    partes.push(ATALHOS_DE_PERIODO[recorte.periodo]);
-  }
+  const periodo = rotuloDoPeriodo(recorte);
+  if (periodo) partes.push(periodo);
 
   if (recorte.frente) partes.push(ROTULOS_DE_FRENTE[recorte.frente]);
   if (recorte.uf) {
@@ -65,8 +82,9 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
  *  que pôs dez minutos antes — e quebrado em fichas porque desfazer um filtro
  *  tem de ser um clique nele, e não uma busca dentro de uma gaveta.
  *
- *  `campo` é o que a ficha remove. Período é um caso especial: `de`/`ate` e o
- *  atalho são o MESMO filtro para quem lê, e removê-lo tem de limpar os três.
+ *  `campo` é o que a ficha remove. Período é um caso especial: Passado e
+ *  Futuro (preset ou data customizada, quatro campos ao todo) são o MESMO
+ *  filtro para quem lê, e removê-lo tem de limpar os quatro de uma vez.
  */
 export interface FichaDeFiltro {
   campo: keyof Recorte | 'periodo-inteiro';
@@ -82,13 +100,7 @@ export function fichasDoRecorte(
     if (rotulo) fichas.push({ campo, rotulo });
   };
 
-  if (recorte.de || recorte.ate) {
-    const de = recorte.de ? dataCompleta(recorte.de) : 'início';
-    const ate = recorte.ate ? dataCompleta(recorte.ate) : 'hoje';
-    por('periodo-inteiro', `${de} a ${ate}`);
-  } else if (recorte.periodo) {
-    por('periodo-inteiro', ATALHOS_DE_PERIODO[recorte.periodo]);
-  }
+  por('periodo-inteiro', rotuloDoPeriodo(recorte));
 
   if (recorte.frente) por('frente', ROTULOS_DE_FRENTE[recorte.frente]);
   if (recorte.uf) {
@@ -128,7 +140,8 @@ export function semOFiltro(
 ): Recorte {
   const novo = { ...recorte };
   if (campo === 'periodo-inteiro') {
-    delete novo.periodo;
+    delete novo.periodoPassado;
+    delete novo.periodoFuturo;
     delete novo.de;
     delete novo.ate;
     return novo;

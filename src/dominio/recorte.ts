@@ -7,6 +7,7 @@
  *  É imutável: as telas produzem um Recorte novo em vez de mutar o corrente.
  */
 
+import { paraIso } from '@/dominio/formato';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 
 //: PASSADO E FUTURO NA MESMA ESCALA, de propósito: 30/60/90/180/360 dias dos
@@ -28,8 +29,21 @@ export const ATALHOS_DE_PERIODO = {
 
 export type AtalhoDePeriodo = keyof typeof ATALHOS_DE_PERIODO;
 
+//: Os mesmos atalhos de sempre, particionados por tipo — sem duplicar
+//: `ATALHOS_DE_PERIODO` (que continua sendo a única fonte de rótulos).
+//: `PainelDeFiltros` usa a mesma partição em tempo de execução, pelo prefixo
+//: `proximos-`.
+export type AtalhoDoFuturo = Extract<AtalhoDePeriodo, `proximos-${string}`>;
+export type AtalhoDoPassado = Exclude<AtalhoDePeriodo, AtalhoDoFuturo>;
+
 export interface Recorte {
-  periodo?: AtalhoDePeriodo;
+  periodoPassado?: AtalhoDoPassado;
+  periodoFuturo?: AtalhoDoFuturo;
+  //: `de` pertence só ao lado PASSADO agora (data customizada de início);
+  //: `ate`, só ao lado FUTURO (data customizada de fim). Antes da divisão
+  //: Passado/Futuro os dois eram um par escrito junto; agora cada um é
+  //: escrito por um lado só, e os dois podem conviver — é o que permite
+  //: combinar "últimos 30 dias" com "próximos 60 dias" num intervalo só.
   de?: string;
   ate?: string;
   frente?: Frente;
@@ -62,7 +76,7 @@ const CAMPOS_CONTAVEIS: (keyof Recorte)[] = [
 
 export function quantidadeDeFiltros(recorte: Recorte): number {
   let ativos = CAMPOS_CONTAVEIS.filter((campo) => recorte[campo] != null).length;
-  if (recorte.periodo || recorte.de || recorte.ate) ativos += 1;
+  if (recorte.periodoPassado || recorte.periodoFuturo || recorte.de || recorte.ate) ativos += 1;
   if (recorte.tags?.length) ativos += 1;
   if (recorte.areas?.length) ativos += 1;
   return ativos;
@@ -98,11 +112,20 @@ export function alternarTag(recorte: Recorte, tag: string): Recorte {
   return proximo;
 }
 
-/** Áreas são multisseleção com OR entre elas — mesma regra de `alternarTag`. */
-export function alternarArea(recorte: Recorte, areaId: number): Recorte {
+/** Uma CATEGORIA de área (uma ou mais áreas somadas — ver `CATEGORIAS_DE_AREA`
+ *  em `dominio/derivacoes.ts`) liga/desliga como um grupo só: se todas as
+ *  áreas do grupo já estão selecionadas, o clique desliga todas; senão, liga
+ *  as que faltam. Um grupo de um id só cobre o caso de alternar uma única
+ *  área. Áreas são multisseleção com OR entre elas — mesma regra de
+ *  `alternarTag`. */
+export function alternarCategoriaDeArea(recorte: Recorte, ids: Iterable<number>): Recorte {
+  const grupo = [...ids];
   const atuais = new Set(recorte.areas ?? []);
-  if (atuais.has(areaId)) atuais.delete(areaId);
-  else atuais.add(areaId);
+  const todasLigadas = grupo.length > 0 && grupo.every((id) => atuais.has(id));
+  for (const id of grupo) {
+    if (todasLigadas) atuais.delete(id);
+    else atuais.add(id);
+  }
   const areas = [...atuais].sort((a, b) => a - b);
   const proximo = { ...recorte };
   if (areas.length) proximo.areas = areas;
@@ -114,10 +137,15 @@ export function limpar(): Recorte {
   return { ...RECORTE_VAZIO };
 }
 
+//: São 4 campos, mas o backend só entende `de`/`ate` — ver `intervalo()` e o
+//: comentário dentro de `paraParametros`.
+const CAMPOS_DE_PERIODO = new Set(['periodoPassado', 'periodoFuturo', 'de', 'ate']);
+
 /** Serializa para query string — a mesma que o backend sabe ler. */
 export function paraParametros(recorte: Recorte): URLSearchParams {
   const parametros = new URLSearchParams();
   for (const [chave, valor] of Object.entries(recorte)) {
+    if (CAMPOS_DE_PERIODO.has(chave)) continue; // tratamento próprio, abaixo
     if (valor == null || valor === '') continue;
     if (Array.isArray(valor)) {
       if (valor.length) parametros.set(chave, valor.join(','));
@@ -125,40 +153,73 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
       parametros.set(chave, String(valor));
     }
   }
+
+  // O BACKEND SÓ CONHECE OS ATALHOS DE PASSADO (`app/dominio/periodo.py`
+  // do back-reputacional-novo) — nenhum `proximos-*`. Mandar um preset de
+  // futuro cru (`periodo=proximos-30`) devolve 422. Resolver os dois lados
+  // aqui, sempre, é o que evita isso E o que permite combinar passado com
+  // futuro num intervalo só: o backend só vê `de`/`ate`, nunca precisa saber
+  // que vieram de dois presets diferentes.
+  const { de, ate } = intervalo(recorte);
+  if (de) parametros.set('de', paraIso(de));
+  if (ate) parametros.set('ate', paraIso(ate));
+
   return parametros;
 }
 
-/** Resolve o atalho de período em datas, para as derivações do cliente. */
-export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate?: Date } {
-  if (recorte.de || recorte.ate) {
-    return {
-      de: recorte.de ? new Date(`${recorte.de}T00:00:00`) : undefined,
-      ate: recorte.ate ? new Date(`${recorte.ate}T00:00:00`) : undefined,
-    };
-  }
-  if (!recorte.periodo) return {};
+//: DIAS SIMÉTRICOS dos dois lados — 30/60/90/180/360, a mesma escala de
+//: `ATALHOS_DE_PERIODO`. "Ano corrente" saiu (ver o comentário lá em cima):
+//: não tinha espelho no futuro.
+const DIAS_NO_PASSADO = {
+  'ultimos-30': 30,
+  'ultimos-60': 60,
+  'ultimos-90': 90,
+  'ultimos-180': 180,
+  'ultimos-360': 360,
+} as const;
 
-  const diasNoPassado = {
-    'ultimos-30': 30,
-    'ultimos-60': 60,
-    'ultimos-90': 90,
-    'ultimos-180': 180,
-    'ultimos-360': 360,
-  } as const;
-  if (recorte.periodo in diasNoPassado) {
-    const inicio = new Date(hoje);
-    inicio.setDate(inicio.getDate() - diasNoPassado[recorte.periodo as keyof typeof diasNoPassado]);
-    return { de: inicio, ate: hoje };
-  }
+const DIAS_NO_FUTURO = {
+  'proximos-30': 30,
+  'proximos-60': 60,
+  'proximos-90': 90,
+  'proximos-180': 180,
+  'proximos-360': 360,
+} as const;
 
-  const diasNoFuturo = {
-    'proximos-30': 30,
-    'proximos-60': 60,
-    'proximos-90': 90,
-    'proximos-180': 180,
-    'proximos-360': 360,
-  } as const;
+function inicioDoPassado(atalho: AtalhoDoPassado, hoje: Date): Date {
+  const inicio = new Date(hoje);
+  inicio.setDate(inicio.getDate() - DIAS_NO_PASSADO[atalho]);
+  return inicio;
+}
+
+function fimDoFuturo(atalho: AtalhoDoFuturo, hoje: Date): Date {
   const fim = new Date(hoje);
-  fim.setDate(fim.getDate() + diasNoFuturo[recorte.periodo as keyof typeof diasNoFuturo]);
-  return { de: hoje, ate: fim };
+  fim.setDate(fim.getDate() + DIAS_NO_FUTURO[atalho]);
+  return fim;
+}
+
+/** Resolve os dois lados do período (Passado/Futuro) — preset ou data
+ *  customizada, em cada lado — num único `{ de, ate }`.
+ *
+ *  QUATRO CASOS: só passado ativo (`ate` vira hoje, igual sempre foi); só
+ *  futuro ativo (`de` vira hoje, igual sempre foi); os dois ativos (as duas
+ *  pontas resolvidas juntas, o intervalo assimétrico); nenhum ativo (`{}`,
+ *  sem filtro de data). O primeiro e o segundo caso são exatamente o
+ *  comportamento de antes da divisão Passado/Futuro — só o terceiro é novo. */
+export function intervalo(recorte: Recorte, hoje = new Date()): { de?: Date; ate?: Date } {
+  const de = recorte.de
+    ? new Date(`${recorte.de}T00:00:00`)
+    : recorte.periodoPassado
+      ? inicioDoPassado(recorte.periodoPassado, hoje)
+      : undefined;
+
+  const ate = recorte.ate
+    ? new Date(`${recorte.ate}T00:00:00`)
+    : recorte.periodoFuturo
+      ? fimDoFuturo(recorte.periodoFuturo, hoje)
+      : undefined;
+
+  if (de && !ate) return { de, ate: hoje };
+  if (ate && !de) return { de: hoje, ate };
+  return { de, ate };
 }

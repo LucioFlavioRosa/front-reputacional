@@ -24,6 +24,7 @@ import {
   montarCatalogo,
   novosContatos,
   panoramaDeInterlocutores,
+  porArea,
   ranking,
   rankingDePortaVozes,
   resolutividade,
@@ -75,8 +76,14 @@ const DICIONARIOS = {
 } as unknown as Dicionarios;
 
 const INSTITUICOES: Instituicao[] = [
-  { id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1 },
-  { id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null },
+  {
+    id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1,
+    categoria_publico_id: null, subcategoria_publico_id: null,
+  },
+  {
+    id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null,
+    categoria_publico_id: null, subcategoria_publico_id: null,
+  },
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [
@@ -271,6 +278,49 @@ describe('scorePorArea', () => {
     const resultado = scorePorArea(dados, CATALOGO);
     expect(resultado[0].chave).toBe('1');
     expect(resultado[resultado.length - 1].chave).toBe('2');
+  });
+});
+
+describe('porArea', () => {
+  it('agrupa as áreas do dicionário em 3 categorias fixas', () => {
+    const dados = [
+      interacao({ areas: [1] }), // Comunicação
+      interacao({ areas: [2] }), // Relações Institucionais
+      interacao({ areas: [3] }), // Operações Financeiras
+      interacao({ areas: [5] }), // Relações com Investidores
+    ];
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado).toHaveLength(3);
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.total).toBe(1);
+    // Operações Financeiras (3) + Relações com Investidores (5) somam na
+    // mesma categoria — 1 interação de cada, 2 no total da categoria.
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(2);
+  });
+
+  it('uma interação com as duas áreas da categoria composta conta uma vez só', () => {
+    const dados = [interacao({ areas: [3, 5] })]; // Operações Financeiras + RI, mesma interação
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(1);
+  });
+
+  it('cada categoria tem a cor oficial fixa, não por posição no ranking', () => {
+    // Só a categoria composta tem interação — se a cor fosse por posição no
+    // ranking (a antiga PALETA_DE_AREAS[indice]), ela sairia na 1ª cor.
+    const resultado = porArea([interacao({ areas: [5] })], CATALOGO);
+    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.cor).toBe('#A11FFF');
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.cor).toBe('#E12379');
+    expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.cor).toBe('#17E3CB');
+  });
+
+  it('uma área sem categoria correspondente (desativada) não conta em nenhuma', () => {
+    // id 4 = "Performance e Dados": existe no dicionário do cenário, mas não
+    // faz parte de nenhuma das 3 categorias — o mesmo efeito de uma área
+    // desativada, que nem chega a aparecer no dicionário de verdade.
+    const dados = [interacao({ areas: [4] }), interacao({ areas: [1] })];
+    const resultado = porArea(dados, CATALOGO);
+    expect(resultado.reduce((soma, c) => soma + c.total, 0)).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
   });
 });
 
@@ -724,20 +774,9 @@ describe('temasMaisRecorrentes', () => {
     expect(temas.every((t) => t.total > 0)).toBe(true);
   });
 
-  it('pinta o tema com a cor da área que mais aparece nas agendas dele', () => {
-    const dados = [
-      interacao({ temas: [10], areas: [1] }),
-      interacao({ temas: [10], areas: [1] }),
-      interacao({ temas: [11], areas: [2] }),
-    ];
-    const temas = temasMaisRecorrentes(dados, CATALOGO, 2);
-    expect(temas.find((t) => t.rotulo === 'Tarifa')?.cor).toBe('#44495C');
-    expect(temas.find((t) => t.rotulo === 'IPO')?.cor).toBe('#0027BD');
-  });
-
-  it('se o tema não tem área, usa o cinza mais claro da paleta', () => {
-    const dados = [interacao({ temas: [10, 11] })];
-    const cores = temasMaisRecorrentes(dados, CATALOGO, 2).map((t) => t.cor);
-    expect(cores).toEqual(['#E2E5F0', '#E2E5F0']);
+  it('dá uma cor distinta a cada tema', () => {
+    const dados = [interacao({ temas: [10, 11, 12] })];
+    const cores = temasMaisRecorrentes(dados, CATALOGO, 3).map((t) => t.cor);
+    expect(new Set(cores).size).toBe(3);
   });
 });

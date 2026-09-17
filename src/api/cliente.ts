@@ -177,6 +177,15 @@ const TAMANHO_MAXIMO = 200;
  *  sentido e as agregações precisam ir para o backend. */
 export const TETO_DE_DERIVACAO = 5000;
 
+/** Quantas páginas restantes pedir de cada vez, e não todas de uma vez.
+ *
+ *  CADA PÁGINA CUSTA MAIS DE UMA CONSULTA NO BACKEND — a principal, mais uma
+ *  por relacionamento carregado à parte (temas, áreas, participações…). Um
+ *  recorte de 25 páginas em paralelo somava dezenas de consultas simultâneas
+ *  no banco, de uma vez só, a cada troca de filtro. Em lotes pequenos, nunca
+ *  há mais que `TAMANHO_DO_LOTE` páginas deste recorte em voo ao mesmo tempo. */
+export const TAMANHO_DO_LOTE = 5;
+
 export interface RecorteCompleto {
   itens: Interacao[];
   total: number;
@@ -185,11 +194,14 @@ export interface RecorteCompleto {
 }
 
 /** Busca o recorte inteiro: a primeira página diz quantas há, e as outras
- *  vêm TODAS DE UMA VEZ.
+ *  vêm em LOTES de `TAMANHO_DO_LOTE`, um lote de cada vez.
  *
  *  As telas de análise derivam os agregados do conjunto completo, então
- *  precisam dele inteiro — não da primeira página. Uma página atrás da outra
- *  somava as latências; em paralelo, o recorte chega no tempo da mais lenta. */
+ *  precisam dele inteiro — não da primeira página. Um lote por vez, e não
+ *  todas de uma vez, é o meio-termo entre "uma página atrás da outra" (soma
+ *  as latências) e "todas em paralelo" (multiplica a carga no backend pelo
+ *  número de páginas). O RESULTADO FINAL não muda — mesmos itens, mesma
+ *  ordem —, só o RITMO das requisições. */
 export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCompleto> {
   const primeira = await listarInteracoes(recorte, { pagina: 1, tamanho: TAMANHO_MAXIMO });
 
@@ -197,11 +209,18 @@ export async function listarRecorteCompleto(recorte: Recorte): Promise<RecorteCo
     primeira.paginas,
     Math.ceil(TETO_DE_DERIVACAO / TAMANHO_MAXIMO),
   );
-  const restantes = await Promise.all(
-    Array.from({ length: Math.max(0, paginasNecessarias - 1) }, (_, i) =>
-      listarInteracoes(recorte, { pagina: i + 2, tamanho: TAMANHO_MAXIMO }),
-    ),
-  );
+
+  const restantes: PaginaDeInteracoes[] = [];
+  for (let inicio = 2; inicio <= paginasNecessarias; inicio += TAMANHO_DO_LOTE) {
+    const fim = Math.min(inicio + TAMANHO_DO_LOTE - 1, paginasNecessarias);
+    const lote = await Promise.all(
+      Array.from({ length: fim - inicio + 1 }, (_, i) =>
+        listarInteracoes(recorte, { pagina: inicio + i, tamanho: TAMANHO_MAXIMO }),
+      ),
+    );
+    restantes.push(...lote);
+  }
+
   const itens = [primeira, ...restantes].flatMap((pagina) => pagina.itens);
 
   return {
@@ -450,6 +469,10 @@ export interface InstituicaoEntrada {
    *  agenda: a Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
    *  ser Tier 3. `null` nas cadastradas antes de a coluna existir. */
   tier?: number | null;
+  /** A taxonomia de públicos (10 categorias) e sua subdivisão. `null` nas
+   *  cadastradas antes de a coluna existir — ver `0036_categoria_de_publico.sql`. */
+  categoria_publico_id?: number | null;
+  subcategoria_publico_id?: number | null;
   ativo?: boolean;
   representante?: RepresentanteInicial | null;
 }
@@ -610,8 +633,8 @@ export function listarReferencias(): Promise<Referencia[]> {
 /**
  * Cadastra a referência COM a primeira versão, numa requisição só.
  *
- * Multipart, e não JSON: o arquivo é obrigatório. Uma referência sem ele é um
- * título que não leva a lugar nenhum.
+ * Multipart, e não JSON: tem arquivo. Mas ele é OPCIONAL agora — a versão
+ * pode viver só do Conteúdo, que por sua vez é obrigatório.
  */
 export function criarReferencia(
   metadados: {
@@ -620,11 +643,12 @@ export function criarReferencia(
     tema_principal_id: number;
     /** Os demais assuntos. O principal entra sozinho. */
     temas: number[];
-    resumo?: string | null;
+    resumo: string;
+    conteudo: string;
     atualizado_em: string;
     nota?: string | null;
   },
-  arquivo: File,
+  arquivo: File | null,
 ): Promise<Referencia> {
   const corpo = new FormData();
   corpo.append('titulo', metadados.titulo);
@@ -634,9 +658,10 @@ export function criarReferencia(
   // Lista vira texto separado por vírgula: multipart não carrega array, e um
   // campo repetido complicaria o cliente mais do que resolve.
   corpo.append('temas', metadados.temas.join(','));
-  if (metadados.resumo) corpo.append('resumo', metadados.resumo);
+  corpo.append('resumo', metadados.resumo);
+  corpo.append('conteudo', metadados.conteudo);
   if (metadados.nota) corpo.append('nota', metadados.nota);
-  corpo.append('arquivo', arquivo);
+  if (arquivo) corpo.append('arquivo', arquivo);
   return requisitar<Referencia>('/api/referencias', { method: 'POST', body: corpo });
 }
 
@@ -655,18 +680,21 @@ export function editarReferencia(
  * Acrescenta uma versão. A anterior CONTINUA — é o histórico.
  *
  * É ele que responde "qual Q&A a gente levou naquela reunião de março", e é
- * por isso que subir a versão de agosto não apaga a de março.
+ * por isso que subir a versão de agosto não apaga a de março. O arquivo é
+ * opcional, igual na criação; o conteúdo, obrigatório.
  */
 export function subirVersaoDaReferencia(
   id: string,
-  arquivo: File,
+  arquivo: File | null,
+  conteudo: string,
   atualizado_em: string,
   nota?: string,
 ): Promise<Referencia> {
   const corpo = new FormData();
   corpo.append('atualizado_em', atualizado_em);
+  corpo.append('conteudo', conteudo);
   if (nota) corpo.append('nota', nota);
-  corpo.append('arquivo', arquivo);
+  if (arquivo) corpo.append('arquivo', arquivo);
   return requisitar<Referencia>(`/api/referencias/${id}/versoes`, {
     method: 'POST',
     body: corpo,

@@ -13,10 +13,17 @@
  *  ranking). "Temas" e "Área(s)" são exceção: aceitam vários ao mesmo tempo.
  *
  *  A DIVISÃO RÁPIDOS/AVANÇADOS é curatorial, e não um cálculo (ex.: "os 5 mais
- *  usados"): Frente, Área(s), Período, Relevância e Temas são os que quem pediu
- *  esta tela disse abrir toda vez; o resto — Esfera, Clima, Desfecho, Situação,
+ *  usados"): Frente, Período, Relevância e Temas são os que quem pediu esta
+ *  tela disse abrir toda vez; o resto — Esfera, Clima, Desfecho, Situação,
  *  Unidade, Instituição, Tipo de investidor, UF — é consultado com menos
  *  frequência e fica atrás do clique em "Filtros avançados".
+ *
+ *  "ÁREA(S)" NÃO MORA EM NENHUM DOS DOIS GRUPOS NO PAINEL: lá ela é um bloco
+ *  fixo e sempre visível, logo abaixo da barra "Síntese Executiva" (ver
+ *  `campoDeAreaPorCategoria`/`GrupoDeCampo`, reaproveitados por `Painel.tsx`).
+ *  Em Explorar/Base — as outras telas que montam este componente — não existe
+ *  essa barra para ancorar um bloco fixo, então lá ela continua acessível,
+ *  só que dentro de "Filtros avançados" em vez de "Filtros rápidos".
  *
  *  LISTAS GRANDES (Instituição, Temas, UF) começam recolhidas em
  *  `LIMITE_PADRAO` itens, com uma pílula "+N" para abrir o resto. Sem isso, um
@@ -30,9 +37,12 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
-import { alternarArea, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
-import type { AtalhoDePeriodo, Recorte } from '@/dominio/recorte';
+import { alternarCategoriaDeArea, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
+import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
+import { CATEGORIAS_DE_AREA, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
+import type { Catalogo } from '@/dominio/derivacoes';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
+import type { Destino } from '@/navegacao/rota';
 
 const LIMITE_PADRAO = 10;
 
@@ -41,7 +51,7 @@ interface ItemDeValor {
   rotulo: string;
 }
 
-interface CampoDeFiltro {
+export interface CampoDeFiltro {
   chave: string;
   rotulo: string;
   itens: ItemDeValor[];
@@ -49,6 +59,45 @@ interface CampoDeFiltro {
   multiplo?: boolean;
   selecionados?: string[];
   aoEscolher: (valor: string) => void;
+}
+
+/** O campo "Área(s)" por CATEGORIA (`CATEGORIAS_DE_AREA`), não por área
+ *  individual — mesma ideia de `alternarCategoriaDeArea` usada no clique da
+ *  rosca de "Interações por áreas": marcar "RI & Oper. Financeiras" liga/
+ *  desliga as duas áreas reais daquela categoria juntas.
+ *
+ *  EXPORTADA (e não uma das entradas fixas de `CAMPOS_RAPIDOS`/
+ *  `CAMPOS_AVANCADOS`) porque tem DOIS pontos de montagem: aqui, dentro de
+ *  "Filtros avançados" (Explorar/Base); e em `Painel.tsx`, como bloco fixo
+ *  sempre visível abaixo da barra "Síntese Executiva" — ver o comentário no
+ *  topo do arquivo. */
+export function campoDeAreaPorCategoria(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  const idsPorCategoria = catalogo ? idsPorCategoriaDeArea(catalogo) : new Map<string, Set<number>>();
+  const atuais = new Set(recorte.areas ?? []);
+
+  return {
+    chave: 'areas',
+    rotulo: 'Área(s)',
+    multiplo: true,
+    // Categoria sem nenhum id ativo (as duas áreas dela desativadas) não
+    // aparece como pílula — ela nunca teria efeito nenhum no recorte.
+    itens: CATEGORIAS_DE_AREA.filter((c) => (idsPorCategoria.get(c.rotulo)?.size ?? 0) > 0).map(
+      (c) => ({ valor: c.rotulo, rotulo: c.rotulo }),
+    ),
+    // Marcada quando TODAS as áreas da categoria já estão no recorte — não
+    // "pelo menos uma", senão um clique que liga as duas pareceria já
+    // marcado com só uma ligada por fora.
+    selecionados: CATEGORIAS_DE_AREA.filter((c) => {
+      const ids = idsPorCategoria.get(c.rotulo);
+      return !!ids?.size && [...ids].every((id) => atuais.has(id));
+    }).map((c) => c.rotulo),
+    aoEscolher: (valor: string) =>
+      definirRecorte(alternarCategoriaDeArea(recorte, idsPorCategoria.get(valor) ?? [])),
+  };
 }
 
 /** Hoje, sem hora — é o que faz "há 10 dias" bater no dia seguinte também,
@@ -85,15 +134,12 @@ function ateEmDias(dias: number): string {
   return data.toISOString().slice(0, 10);
 }
 
-export function PainelDeFiltros() {
+export function PainelDeFiltros({ view }: { view: Destino }) {
   const { recorte, definirRecorte, catalogo } = usePainel();
   const [abertoAvancados, definirAbertoAvancados] = useState(false);
-  //: RÁPIDOS NASCE ABERTO, e não fechado como os avançados: são os cinco
-  //: campos que a tela inteira deveria abrir com — o próprio nome diz que são
-  //: para uso constante, e chegar escondido no primeiro acesso contrariaria
-  //: isso. Mas continua retrátil: quem já escolheu o que precisa pode recolher
+  //: RETRÁTIL COMO OS AVANÇADOS: quem já escolheu o que precisa pode recolher
   //: para sobrar tela para a tabela.
-  const [abertoRapidos, definirAbertoRapidos] = useState(true);
+  const [abertoRapidos, definirAbertoRapidos] = useState(false);
 
   const definirOuAlternar = <C extends keyof Recorte>(
     campo: C,
@@ -124,17 +170,6 @@ export function PainelDeFiltros() {
       aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
     },
     {
-      chave: 'areas',
-      rotulo: 'Área(s)',
-      multiplo: true,
-      selecionados: (recorte.areas ?? []).map(String),
-      itens: (catalogo?.dicionarios.areas_pessoa ?? []).map((a) => ({
-        valor: String(a.id),
-        rotulo: a.nome,
-      })),
-      aoEscolher: (valor: string) => definirRecorte(alternarArea(recorte, Number(valor))),
-    },
-    {
       chave: 'tier',
       rotulo: 'Relevância',
       valorAtual: recorte.tier != null ? String(recorte.tier) : undefined,
@@ -161,6 +196,9 @@ export function PainelDeFiltros() {
   ].filter((campo) => campo.itens.length > 0);
 
   const CAMPOS_AVANCADOS: CampoDeFiltro[] = [
+    // NO PAINEL, "Área(s)" mora fixa abaixo da "Síntese Executiva" — ver o
+    // comentário no topo do arquivo — e não duplica aqui.
+    ...(view !== 'painel' ? [campoDeAreaPorCategoria(recorte, definirRecorte, catalogo ?? null)] : []),
     {
       chave: 'esfera',
       rotulo: 'Esfera',
@@ -236,7 +274,8 @@ export function PainelDeFiltros() {
 
   const ativosAvancados = ativosContando(CAMPOS_AVANCADOS);
   const ativosRapidos =
-    ativosContando(CAMPOS_RAPIDOS) + (recorte.periodo || recorte.de || recorte.ate ? 1 : 0);
+    ativosContando(CAMPOS_RAPIDOS) +
+    (recorte.periodoPassado || recorte.periodoFuturo || recorte.de || recorte.ate ? 1 : 0);
 
   return (
     <div className="sem-impressao" style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -355,14 +394,14 @@ function CampoDePeriodo({
   recorte: Recorte;
   definirRecorte: (recorte: Recorte) => void;
 }) {
-  //: O texto do campo "Últimos ___ dias" nasce do que o recorte já diz — e só
-  //: quando o período ATUAL é mesmo um `de`+`ate` sem atalho, com `ate` igual
-  //: a hoje (a marca de que foi ESTE campo que escreveu, e não "Próximos").
-  //: Assim, reabrir um link com `?de=...&ate=...` mostra o número certo, e
-  //: clicar num atalho fixo ou no campo "Próximos" esvazia este sozinho.
-  const hojeIso = meiaNoiteDeHoje().toISOString().slice(0, 10);
+  //: O texto do campo "Últimos ___ dias" nasce do que o recorte já diz —
+  //: `de` agora pertence só a este lado (Passado), então basta checar se ele
+  //: veio de texto livre (sem `periodoPassado` junto) e não mais comparar
+  //: com hoje: antes da divisão de `de`/`ate` por lado, os dois eram
+  //: escritos juntos e só dava para saber quem escreveu comparando `ate`
+  //: com hoje — essa ambiguidade não existe mais.
   const derivadoPassado =
-    recorte.de && !recorte.periodo && recorte.ate === hojeIso ? String(diasDesde(recorte.de)) : '';
+    recorte.de && !recorte.periodoPassado ? String(diasDesde(recorte.de)) : '';
   const [anteriorPassado, definirAnteriorPassado] = useState(derivadoPassado);
   const [diasNoPassado, definirDiasNoPassado] = useState(derivadoPassado);
   if (derivadoPassado !== anteriorPassado) {
@@ -370,10 +409,9 @@ function CampoDePeriodo({
     definirDiasNoPassado(derivadoPassado);
   }
 
-  //: MESMA LÓGICA, para o lado de "Próximos": `de` igual a hoje é a marca de
-  //: que foi este campo (e não "Últimos") que escreveu o período.
+  //: MESMA LÓGICA, para o lado de "Próximos".
   const derivadoFuturo =
-    recorte.ate && !recorte.periodo && recorte.de === hojeIso ? String(diasAte(recorte.ate)) : '';
+    recorte.ate && !recorte.periodoFuturo ? String(diasAte(recorte.ate)) : '';
   const [anteriorFuturo, definirAnteriorFuturo] = useState(derivadoFuturo);
   const [diasNoFuturo, definirDiasNoFuturo] = useState(derivadoFuturo);
   if (derivadoFuturo !== anteriorFuturo) {
@@ -384,16 +422,18 @@ function CampoDePeriodo({
   function aplicarPassado() {
     const numero = Number(diasNoPassado);
     if (!diasNoPassado.trim() || !Number.isFinite(numero) || numero <= 0) return;
-    const proximo = { ...recorte, de: deHaDias(numero), ate: hojeIso };
-    delete proximo.periodo;
+    // Só mexe no lado Passado — `ate`/`periodoFuturo` ficam como estavam,
+    // para não apagar uma seleção de Futuro que já exista.
+    const proximo = { ...recorte, de: deHaDias(numero) };
+    delete proximo.periodoPassado;
     definirRecorte(proximo);
   }
 
   function aplicarFuturo() {
     const numero = Number(diasNoFuturo);
     if (!diasNoFuturo.trim() || !Number.isFinite(numero) || numero <= 0) return;
-    const proximo = { ...recorte, de: hojeIso, ate: ateEmDias(numero) };
-    delete proximo.periodo;
+    const proximo = { ...recorte, ate: ateEmDias(numero) };
+    delete proximo.periodoFuturo;
     definirRecorte(proximo);
   }
 
@@ -408,12 +448,22 @@ function CampoDePeriodo({
     chave.startsWith('proximos-'),
   );
 
-  const escolherAtalho = (chave: string) => {
+  //: PASSADO E FUTURO SÃO CAMPOS DIFERENTES DO RECORTE agora
+  //: (`periodoPassado`/`periodoFuturo`) — por isso a função recebe de qual
+  //: lado veio o clique, e só mexe nesse lado. Antes da divisão, os dois
+  //: escreviam o mesmo campo `periodo`, e escolher um sempre substituía o
+  //: outro; combinar os dois exige justamente que isso pare de acontecer.
+  const escolherAtalho = (lado: 'passado' | 'futuro', chave: string) => {
     const proximo = { ...recorte };
-    if (recorte.periodo === chave) delete proximo.periodo;
-    else proximo.periodo = chave as AtalhoDePeriodo;
-    delete proximo.de;
-    delete proximo.ate;
+    if (lado === 'passado') {
+      if (recorte.periodoPassado === chave) delete proximo.periodoPassado;
+      else proximo.periodoPassado = chave as AtalhoDoPassado;
+      delete proximo.de;
+    } else {
+      if (recorte.periodoFuturo === chave) delete proximo.periodoFuturo;
+      else proximo.periodoFuturo = chave as AtalhoDoFuturo;
+      delete proximo.ate;
+    }
     definirRecorte(proximo);
   };
 
@@ -432,8 +482,8 @@ function CampoDePeriodo({
               <button
                 key={chave}
                 type="button"
-                onClick={() => escolherAtalho(chave)}
-                style={pilulaEstilo(recorte.periodo === chave)}
+                onClick={() => escolherAtalho('passado', chave)}
+                style={pilulaEstilo(recorte.periodoPassado === chave)}
               >
                 {rotulo}
               </button>
@@ -455,8 +505,8 @@ function CampoDePeriodo({
               <button
                 key={chave}
                 type="button"
-                onClick={() => escolherAtalho(chave)}
-                style={pilulaEstilo(recorte.periodo === chave)}
+                onClick={() => escolherAtalho('futuro', chave)}
+                style={pilulaEstilo(recorte.periodoFuturo === chave)}
               >
                 {rotulo}
               </button>
@@ -589,7 +639,7 @@ const ESTILO_DO_SUBROTULO: CSSProperties = {
   marginBottom: 6,
 };
 
-function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
+export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
   const [expandido, definirExpandido] = useState(false);
   const visiveis = expandido ? campo.itens : campo.itens.slice(0, LIMITE_PADRAO);
   const escondidos = campo.itens.length - visiveis.length;
