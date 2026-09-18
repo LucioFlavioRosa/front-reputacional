@@ -50,6 +50,9 @@ src/
 ├── index.css
 │
 ├── paginas/            UMA por tela. É o índice do produto.
+│   ├── painel/           as caixas do Painel que cresceram: tabela de interações,
+│   │                     Relatório de Interações Mensais, Síntese Executiva pela IA
+│   └── cadastro/         as partes do formulário de agenda
 ├── componentes/        o vocabulário visual reusado entre telas
 ├── graficos/           as visualizações (barras, mapa, ranking)
 ├── api/                tudo que fala com o backend
@@ -59,8 +62,8 @@ src/
 ```
 
 **`dominio/` não importa React.** É a regra que vale para o resto se orientar:
-o que está ali é função pura, testável sem montar componente, e é onde moram os
-quatro arquivos de teste. Se um arquivo de `dominio/` precisar de `useState`,
+o que está ali é função pura, testável sem montar componente, e é onde moram
+13 dos 18 arquivos de teste. Se um arquivo de `dominio/` precisar de `useState`,
 ele está na pasta errada.
 
 **Hook começa com `use`, mesmo em código português.** `usePainel`, e não
@@ -79,13 +82,27 @@ pasta. O alias está declarado em **dois** lugares que precisam concordar:
 ### Onde os filtros moram, e por quê em três lugares
 
 O recorte — o conjunto de filtros do painel — aparece em `componentes/
-FiltrosDrawer.tsx` (a gaveta), `estado/painel.tsx` (o contexto que o guarda) e
+PainelDeFiltros.tsx` (a caixa de filtros), `estado/painel.tsx` (o contexto que o guarda) e
 `dominio/resumo-do-recorte.ts` (o texto que o descreve). São três pastas para um
 conceito só, e é consequência de organizar por tipo.
 
 A alternativa seria uma pasta `filtros/` com os três dentro, mas aí ela seria a
 única pasta-por-assunto no meio de pastas-por-tipo, e a regra deixaria de ser
 uma regra. Procure por `Recorte` para ver o conceito inteiro de uma vez.
+
+**O período tem dois atalhos, um para cada lado.** `periodoPassado`
+(`ultimos-30|60|90|180|360`) e `periodoFuturo` (`proximos-30|60|90|180|360`)
+combinam num intervalo só; `dominio/recorte.ts` resolve os dois para `de`/`ate`
+antes de mandar, e é só isso que o back recebe. A escala é a mesma para trás e
+para a frente de propósito — "ano corrente" saiu porque não tinha espelho no
+futuro.
+
+**A base do recorte vem em lotes.** `api/cliente.ts › listarRecorteCompleto`
+pede a primeira página, descobre o total e busca o resto em lotes de páginas —
+nunca todas em paralelo —, até `TETO_DE_DERIVACAO` (5.000 registros). Passado o
+teto, `truncado` chega `true` no contexto (`estado/painel.tsx`) e o Painel
+abre com uma faixa dizendo sobre quantos registros está calculando — os
+mais recentes, que é a ordem padrão da API.
 
 ## O que é decidido em tempo de BUILD
 
@@ -103,8 +120,8 @@ string, o SDK do Application Insights sai inteiro do bundle.
 
 ## Testes
 
-Vitest, 213 testes em 13 arquivos. A maior parte cobre `dominio/` — as regras
-puras, que é onde o teste rende —, e o resto cobre `navegacao/`,
+Vitest, 305 testes em 18 arquivos. A maior parte cobre `dominio/` — as regras
+puras, que é onde o teste rende —, e o resto cobre `api/`, `navegacao/`,
 `observabilidade/` e o menu do usuário. Moram ao lado do arquivo que testam
 (`formato.ts` e `formato.test.ts`), que é o costume do ecossistema — diferente
 do back, onde os testes ficam numa pasta `tests/`, porque lá o costume é
@@ -121,6 +138,12 @@ Testing Library.
   tem rotas de métrica prontas (`/api/metricas/*`) que o front ainda não
   consome.
 - **Não importa planilha.** A tela não existe; o schema do lado do back existe.
+- **Não chama modelo nenhum.** A caixa "Síntese Executiva pela IA" do Painel
+  (`paginas/painel/SinteseExecutivaPelaIA.tsx`) monta o texto no front, a
+  partir dos mesmos números que o resto do Painel deriva
+  (`dominio/sinteseIA.ts`). É o desenho da caixa, do abrir/fechar e do
+  feedback bom/ruim com "porquê" que já vale fixar; o conteúdo troca de fonte
+  (front → agente no back) sem trocar a caixa.
 ## CI
 
 `.github/workflows/ci.yml`, quatro etapas em push para `main` e em todo PR:

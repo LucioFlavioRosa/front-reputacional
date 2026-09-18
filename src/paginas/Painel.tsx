@@ -9,7 +9,7 @@ import { LinhaEmpilhada } from '@/graficos/LinhaEmpilhada';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
-import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import { Botao, Carregando, Chip, FaixaDeAtencao, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
 import { campoDeAreaPorCategoria, GrupoDeCampo } from '@/componentes/PainelDeFiltros';
 import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
@@ -127,7 +127,8 @@ export function Painel({
    *  clicar num tema na barra divergente. */
   aoAbrirAgenda: (id: string) => void;
 }) {
-  const { interacoes, recorte, definirRecorte, catalogo, carregando, erro } = usePainel();
+  const { interacoes, recorte, definirRecorte, catalogo, carregando, erro, total, truncado } =
+    usePainel();
 
   //: SÓ DESTE GRÁFICO, e não do Recorte. É "mostre também este tema", não
   //: "filtre a base por este tema" — por isso vive aqui, e não na URL: um
@@ -303,6 +304,20 @@ export function Painel({
     // 24px entre blocos principais — degrau único de respiro entre seções distintas.
     // Blocos relacionados (clima + temas) usam gap menor internamente (12px).
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* A base do recorte vem em lotes até `TETO_DE_DERIVACAO`
+          (`api/cliente.ts`). Passado o teto, tudo abaixo é calculado sobre
+          uma PARTE — e um número parcial sem aviso é pior do que nenhum. */}
+      {truncado ? (
+        <FaixaDeAtencao
+          mensagem={
+            <>
+              O recorte tem <strong>{numero(total)}</strong> registros e o Painel calcula sobre
+              os <strong>{numero(interacoes.length)}</strong> mais recentes. Refine o período ou
+              os filtros para ver os números completos.
+            </>
+          }
+        />
+      ) : null}
       {/* UM herói, seis quietos — de propósito.
           Imprensa é a frente mais lida como "reputação" no dia a dia, e é a
           única com uma meta de qualidade (aproveitamento) e não só volume: as

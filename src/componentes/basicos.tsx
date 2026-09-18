@@ -816,6 +816,39 @@ export function FaixaDeErro({ mensagem }: { mensagem: string }) {
   );
 }
 
+/** O mesmo desenho da faixa de erro, no tom de atenção: a tela continua
+ *  usável, mas o que ela mostra tem uma ressalva que quem lê precisa saber.
+ *  `role="status"`, e não `alert`: não interrompe o leitor de tela. */
+export function FaixaDeAtencao({ mensagem }: { mensagem: ReactNode }) {
+  return (
+    <div
+      role="status"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9,
+        background: 'var(--atencao-bg)',
+        color: 'var(--atencao-fg)',
+        borderRadius: 'var(--r-card-int)',
+        padding: '11px 14px',
+        fontSize: 13,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 9,
+          height: 9,
+          background: 'currentColor',
+          transform: 'rotate(45deg)',
+          flexShrink: 0,
+        }}
+      />
+      {mensagem}
+    </div>
+  );
+}
+
 /* -- modal ---------------------------------------------------------------- */
 
 export function Modal({
