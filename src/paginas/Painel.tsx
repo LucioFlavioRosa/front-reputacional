@@ -407,48 +407,43 @@ export function Painel({
           em `PainelDeFiltros.tsx` sobre por que este campo não mora lá para
           esta view.
 
-          SEM CARTÃO por baixo — só rótulo + pílulas, centralizado na tela.
-          Um cartão branco fixo aqui só criava uma moldura vazia ao redor de
-          três botões, sem nada mais dentro para preencher a largura. */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-          <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
-          {recorte.areas?.length ? (
-            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparAreas(recorte))}>
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
+          SEM CARTÃO por baixo — só rótulo + pílulas, alinhado à esquerda como
+          o resto da tela. Um cartão branco fixo aqui só criava uma moldura
+          vazia ao redor de três botões, sem nada mais dentro para preencher
+          a largura. */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+        <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
+        {recorte.areas?.length ? (
+          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparAreas(recorte))}>
+            Limpar
+          </Botao>
+        ) : null}
       </div>
 
       {/* FILTRO TIPO DE INTERAÇÃO FIXO — mesmo layout do Filtro Áreas acima:
           sem cartão, centralizado, "Limpar" só aparece com algo selecionado.
           É o MESMO `recorte.frente` de "Filtros rápidos" — ver o comentário
           em `campoDeFrente`. */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-          <GrupoDeCampo campo={campoDeFrente(recorte, definirRecorte, catalogo)} />
-          {recorte.frente ? (
-            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFrente(recorte))}>
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+        <GrupoDeCampo campo={campoDeFrente(recorte, definirRecorte, catalogo)} />
+        {recorte.frente ? (
+          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFrente(recorte))}>
+            Limpar
+          </Botao>
+        ) : null}
       </div>
 
       {/* FILTRO TIPO DE PÚBLICO FIXO — mesmo layout dos dois acima. SÓ NO
           CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o que já
           chegou da API, juntando pelo catálogo — não é a mesma "categoria de
           área" das outras. */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-          <GrupoDeCampo campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)} />
-          {recorte.categoriaPublico?.length ? (
-            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}>
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+        <GrupoDeCampo campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)} />
+        {recorte.categoriaPublico?.length ? (
+          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}>
+            Limpar
+          </Botao>
+        ) : null}
       </div>
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
