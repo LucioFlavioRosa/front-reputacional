@@ -66,9 +66,9 @@ import type { Catalogo } from '@/dominio/derivacoes';
 //: com "Instituição e pessoa" primeiro — é o comportamento que a tela sempre
 //: teve, então é o que aparece selecionado ao abrir a página.
 const MODOS_DE_CADASTRO: readonly Aba<'ambos' | 'instituicao' | 'pessoa'>[] = [
-  { id: 'ambos', rotulo: 'Instituição e Stakeholders' },
+  { id: 'ambos', rotulo: 'Instituição e Contatos' },
   { id: 'instituicao', rotulo: 'Instituição' },
-  { id: 'pessoa', rotulo: 'Stakeholders' },
+  { id: 'pessoa', rotulo: 'Contatos' },
 ];
 
 const PESSOA_AVULSA_VAZIA = { instituicao_id: '', nome: '', email: '', cargo: '' };
@@ -128,6 +128,7 @@ const VAZIA = {
   nome_completo: '',
   tipo: 'orgao',
   uf: '',
+  esfera: '',
   //: SEM PADRAO, e e por isso que e string vazia e nao 3.
   //:
   //: Um padrao aqui viraria o valor da maioria: quem cadastra com pressa
@@ -168,6 +169,7 @@ interface RascunhoDaInstituicao {
   nome_completo: string;
   tipo: string;
   uf: string;
+  esfera: string;
   tier: string;
   categoria_publico_id: string;
   subcategoria_publico_id: string;
@@ -207,6 +209,7 @@ export function CadastroDeInstituicoes() {
     nome_completo: '',
     tipo: 'orgao',
     uf: '',
+    esfera: '',
     tier: '',
     categoria_publico_id: '',
     subcategoria_publico_id: '',
@@ -380,6 +383,21 @@ export function CadastroDeInstituicoes() {
               </select>
             </Campo>
 
+            <Campo rotulo="Esfera">
+              <select
+                style={estiloDeEntrada}
+                value={nova.esfera}
+                onChange={(e) => definirNova({ ...nova, esfera: e.target.value })}
+              >
+                <option value="">Não informada</option>
+                {catalogo.dicionarios.esferas.map((esfera) => (
+                  <option key={esfera.id} value={esfera.id}>
+                    {esfera.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+
             {/* A RELEVÂNCIA É DA INSTITUIÇÃO, e não do encontro.
                 A agenda tem o seu próprio tier, e são coisas diferentes: a
                 Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
@@ -480,7 +498,7 @@ export function CadastroDeInstituicoes() {
                   margin: '18px 0 4px',
                 }}
               >
-                Stakeholders
+                Contatos
               </p>
               <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
                 É esta pessoa que o formulário de agenda vai oferecer em "Pela
@@ -603,6 +621,7 @@ export function CadastroDeInstituicoes() {
                           nome_completo: nova.nome_completo || null,
                           tipo: nova.tipo,
                           uf: nova.uf || null,
+                          esfera_id: nova.esfera ? Number(nova.esfera) : null,
                           tier: Number(nova.tier),
                           categoria_publico_id: nova.categoria_publico_id
                             ? Number(nova.categoria_publico_id)
@@ -658,6 +677,7 @@ export function CadastroDeInstituicoes() {
               instituicao={instituicao}
               pessoas={pessoasDe(instituicao.id)}
               ufs={catalogo.dicionarios.ufs}
+              esferas={catalogo.dicionarios.esferas}
               relevancias={catalogo.dicionarios.relevancias}
               categoriasPublico={catalogo.dicionarios.categorias_publico}
               subcategoriasPublico={catalogo.dicionarios.subcategorias_publico}
@@ -678,6 +698,7 @@ export function CadastroDeInstituicoes() {
                   nome_completo: instituicao.nome_completo ?? '',
                   tipo: instituicao.tipo,
                   uf: instituicao.uf ?? '',
+                  esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
                   tier: instituicao.tier ? String(instituicao.tier) : '',
                   categoria_publico_id: instituicao.categoria_publico_id
                     ? String(instituicao.categoria_publico_id)
@@ -696,6 +717,7 @@ export function CadastroDeInstituicoes() {
                       nome_completo: rascunho.nome_completo || null,
                       tipo: rascunho.tipo,
                       uf: rascunho.uf || null,
+                      esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
                       // VAZIO VIRA `null`, e nao 0: as 98 instituicoes
                       // anteriores a coluna nao tem tier, e corrigir o nome de
                       // uma delas nao pode obrigar a classifica-la primeiro.
@@ -798,6 +820,7 @@ function LinhaDeInstituicao({
   instituicao,
   pessoas,
   ufs,
+  esferas,
   relevancias,
   categoriasPublico,
   subcategoriasPublico,
@@ -828,6 +851,7 @@ function LinhaDeInstituicao({
   instituicao: Instituicao;
   pessoas: Interlocutor[];
   ufs: { codigo: string; nome: string }[];
+  esferas: { id: number; nome: string }[];
   relevancias: { id: number; nome: string }[];
   categoriasPublico: CategoriaPublicoDoDicionario[];
   subcategoriasPublico: SubcategoriaPublicoDoDicionario[];
@@ -932,6 +956,20 @@ function LinhaDeInstituicao({
               {ufs.map((uf) => (
                 <option key={uf.codigo} value={uf.codigo}>
                   {uf.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Esfera">
+            <select
+              style={estiloDeEntrada}
+              value={rascunho.esfera}
+              onChange={(e) => aoRascunhar({ ...rascunho, esfera: e.target.value })}
+            >
+              <option value="">Não informada</option>
+              {esferas.map((esfera) => (
+                <option key={esfera.id} value={esfera.id}>
+                  {esfera.nome}
                 </option>
               ))}
             </select>

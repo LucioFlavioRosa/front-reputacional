@@ -323,6 +323,7 @@ export interface Instituicao {
   /** O nome por extenso. `nome` guarda a forma curta, que é como se fala. */
   nome_completo: string | null;
   uf: string | null;
+  esfera_id: number | null;
   /** Tier 1 a 4 — a relevância da instituição, e não a de uma agenda dela.
    *  `null` nas cadastradas antes de a coluna existir. */
   tier: number | null;

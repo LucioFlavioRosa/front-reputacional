@@ -78,11 +78,11 @@ const DICIONARIOS = {
 const INSTITUICOES: Instituicao[] = [
   {
     id: 'i1', nome: 'Valor Econômico', tipo: 'veiculo', nome_completo: null, uf: 'SP', tier: 1,
-    categoria_publico_id: null, subcategoria_publico_id: null,
+    esfera_id: null, categoria_publico_id: null, subcategoria_publico_id: null,
   },
   {
     id: 'i2', nome: 'ANA', tipo: 'orgao', nome_completo: null, uf: 'DF', tier: null,
-    categoria_publico_id: null, subcategoria_publico_id: null,
+    esfera_id: null, categoria_publico_id: null, subcategoria_publico_id: null,
   },
 ];
 
