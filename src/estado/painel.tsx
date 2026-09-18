@@ -189,7 +189,7 @@ export function ProvedorDoPainel({
     return function cancelarBuscaDeInteracoes() {
       ativo = false;
     };
-  }, [recorte, versaoDasAgendas]);
+  }, [recorte, versaoDasAgendas, alcancaOCrm]);
 
   // "FILTRO TIPO DE PÚBLICO" E "FILTRO TIPO DE INTERAÇÃO" NÃO PASSAM PELO
   // BACKEND — ver os comentários em `Recorte.categoriaPublico` e
