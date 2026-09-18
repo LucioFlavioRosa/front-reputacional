@@ -88,6 +88,15 @@
   --sh-tooltip: 0 4px 14px rgba(25, 27, 35, 0.16);
   --sh-modal: 0 12px 32px rgba(25, 27, 35, 0.22);
   --sh-drawer: 0 -4px 20px rgba(25, 27, 35, 0.12);
+
+  /* ALTURA REAL DO `<header>` sticky, escrita por `Layout.tsx` via
+     ResizeObserver — varia com o número de fichas na `BarraDeRecorte` e com
+     quebra de linha em telas estreitas. Este valor é só o CHUTE INICIAL,
+     antes da primeira medição (evita um salto visual no primeiro frame); a
+     faixa fixa de filtros do Painel gruda em `top: var(--altura-cabecalho)`
+     para ficar sempre colada embaixo do cabeçalho, nunca por cima nem com
+     vão. */
+  --altura-cabecalho: 132px;
 }
 
 * { box-sizing: border-box; }

@@ -691,6 +691,13 @@ const ESTILO_DO_ROTULO: CSSProperties = {
   marginBottom: 8,
 };
 
+/** Mesmo rótulo, tingido com `--sobre-turquesa` — a versão `--turquesa-rio`
+ *  some contra o próprio fundo da faixa fixa de filtros do Painel. */
+const ESTILO_DO_ROTULO_SOBRE_TURQUESA: CSSProperties = {
+  ...ESTILO_DO_ROTULO,
+  color: 'var(--sobre-turquesa)',
+};
+
 /** "Passado"/"Futuro", dentro do campo Período — mais discreto que o título
  *  do campo, senão os dois níveis de rótulo se confundem à primeira olhada. */
 const ESTILO_DO_SUBROTULO: CSSProperties = {
@@ -700,14 +707,28 @@ const ESTILO_DO_SUBROTULO: CSSProperties = {
   marginBottom: 6,
 };
 
-export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
+export function GrupoDeCampo({
+  campo,
+  variante = 'padrao',
+}: {
+  campo: CampoDeFiltro;
+  /** 'sobreTurquesa': o grupo desenha sobre o fundo `--turquesa-rio` da faixa
+   *  fixa de filtros do Painel — rótulo e pílulas trocam para o par
+   *  fundo/texto pensado para essa cor (`--sobre-turquesa`), porque o estilo
+   *  `'padrao'` (rótulo turquesa, pílula branca) desapareceria contra um
+   *  fundo da própria cor. */
+  variante?: 'padrao' | 'sobreTurquesa';
+}) {
   const [expandido, definirExpandido] = useState(false);
   const visiveis = expandido ? campo.itens : campo.itens.slice(0, LIMITE_PADRAO);
   const escondidos = campo.itens.length - visiveis.length;
+  const sobreTurquesa = variante === 'sobreTurquesa';
 
   return (
     <div>
-      <div style={ESTILO_DO_ROTULO}>{campo.rotulo}</div>
+      <div style={sobreTurquesa ? ESTILO_DO_ROTULO_SOBRE_TURQUESA : ESTILO_DO_ROTULO}>
+        {campo.rotulo}
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {visiveis.map((item) => {
           const marcado = campo.multiplo
@@ -718,18 +739,26 @@ export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
               key={item.valor}
               type="button"
               onClick={() => campo.aoEscolher(item.valor)}
-              style={pilulaEstilo(marcado)}
+              style={pilulaEstilo(marcado, sobreTurquesa)}
             >
               {item.rotulo}
             </button>
           );
         })}
         {escondidos > 0 ? (
-          <button type="button" onClick={() => definirExpandido(true)} style={pilulaFantasmaEstilo}>
+          <button
+            type="button"
+            onClick={() => definirExpandido(true)}
+            style={sobreTurquesa ? pilulaFantasmaSobreTurquesaEstilo : pilulaFantasmaEstilo}
+          >
             +{escondidos}
           </button>
         ) : expandido && campo.itens.length > LIMITE_PADRAO ? (
-          <button type="button" onClick={() => definirExpandido(false)} style={pilulaFantasmaEstilo}>
+          <button
+            type="button"
+            onClick={() => definirExpandido(false)}
+            style={sobreTurquesa ? pilulaFantasmaSobreTurquesaEstilo : pilulaFantasmaEstilo}
+          >
             mostrar menos
           </button>
         ) : null}
@@ -738,14 +767,22 @@ export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
   );
 }
 
-function pilulaEstilo(marcado: boolean): CSSProperties {
+/** `sobreTurquesa` troca só a pílula DESMARCADA — a marcada (`--azul-mar`
+ *  sólido, texto branco) já lê bem sobre `--turquesa-rio`, é a MESMA dupla
+ *  do gradiente do cabeçalho. A desmarcada precisa de fundo próprio: sem
+ *  fundo, a borda clara `--borda-input` quase some contra o turquesa. */
+function pilulaEstilo(marcado: boolean, sobreTurquesa = false): CSSProperties {
   return {
     height: 27,
     padding: '0 12px',
     borderRadius: 'var(--r-chip)',
-    border: marcado ? '1px solid var(--azul-mar)' : '1px solid var(--borda-input)',
+    border: marcado
+      ? '1px solid var(--azul-mar)'
+      : sobreTurquesa
+        ? '1px solid transparent'
+        : '1px solid var(--borda-input)',
     background: marcado ? 'var(--azul-mar)' : 'var(--branco)',
-    color: marcado ? 'var(--branco)' : 'var(--cinza-3)',
+    color: marcado ? 'var(--branco)' : sobreTurquesa ? 'var(--sobre-turquesa)' : 'var(--cinza-3)',
     fontSize: 12,
     fontWeight: marcado ? 700 : 500,
     cursor: 'pointer',
@@ -764,4 +801,13 @@ const pilulaFantasmaEstilo: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
+};
+
+/** Mesma pílula-fantasma ("+N"/"mostrar menos"), tingida para não desaparecer
+ *  contra `--turquesa-rio` — a versão `transparent`/`--borda-input` conta com
+ *  um fundo claro por trás para o tracejado aparecer. */
+const pilulaFantasmaSobreTurquesaEstilo: CSSProperties = {
+  ...pilulaFantasmaEstilo,
+  border: '1px dashed var(--sobre-turquesa)',
+  color: 'var(--sobre-turquesa)',
 };

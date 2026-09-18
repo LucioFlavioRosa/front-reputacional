@@ -12,6 +12,7 @@
  *   - clicar em "Painel" zera todos os filtros; as outras abas preservam.
  */
 
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import type { Eu } from '@/dominio/tipos';
@@ -124,6 +125,26 @@ export function Layout({
   //: tem o botão na barra.
   const navegar = irPara;
 
+  //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
+  //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
+  //: fixa de filtros do Painel) — sem acoplar aquele componente à estrutura
+  //: deste. Mede de novo a cada mudança de tamanho: a `BarraDeRecorte` quebra
+  //: linha conforme o número de fichas do recorte, então a altura não é uma
+  //: constante.
+  const refDoCabecalho = useRef<HTMLElement>(null);
+  useEffect(function publicarAlturaDoCabecalho() {
+    const elemento = refDoCabecalho.current;
+    if (!elemento) return;
+    const observador = new ResizeObserver(([entrada]) => {
+      const altura = entrada?.borderBoxSize?.[0]?.blockSize ?? entrada?.contentRect.height;
+      if (altura) {
+        document.documentElement.style.setProperty('--altura-cabecalho', `${Math.round(altura)}px`);
+      }
+    });
+    observador.observe(elemento);
+    return () => observador.disconnect();
+  }, [naCapa]);
+
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* NA CAPA NÃO HÁ CABEÇALHO NENHUM — nem as abas, nem a marca.
@@ -134,6 +155,7 @@ export function Layout({
           serve para alguma coisa: ela é o caminho de volta para a capa. */}
       {naCapa ? null : (
       <header
+        ref={refDoCabecalho}
         className="sem-impressao"
         style={{
           // A FAIXA DE GRANDE ÁREA que o guia da marca pede: gradiente

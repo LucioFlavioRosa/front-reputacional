@@ -16,6 +16,7 @@ import {
   campoDeFormatoInteracao,
   GrupoDeCampo,
 } from '@/componentes/PainelDeFiltros';
+import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
@@ -399,55 +400,96 @@ export function Painel({
         topUf={derivado.resumoExecutivo.topUf}
       />
 
-      {/* FILTRO DE ÁREA(S) FIXO — sempre visível aqui, sem precisar abrir
-          "Filtros rápidos": é o filtro que mais amarra com o resto desta
-          tela (donut, 3 tabelas fixas, histórico), então ganha posição
-          própria em vez de ficar atrás de um clique. Por categoria
-          (`CATEGORIAS_DE_AREA`), igual ao resto do Painel — ver o comentário
-          em `PainelDeFiltros.tsx` sobre por que este campo não mora lá para
-          esta view.
+      {/* FAIXA FIXA DE FILTROS — Área(s), Tipo de Interação, Tipo de Público
+          e o período arrastável, todos dentro de UM bloco `position: sticky`
+          só, colado em `top: var(--altura-cabecalho)` (a altura real do
+          `<header>` azul, medida e publicada por `Layout.tsx`) — desce com a
+          página até encostar embaixo do cabeçalho, e daí em diante rola
+          junto, sempre visível. `zIndex` abaixo do cabeçalho (30) para o
+          cabeçalho sempre vencer se algum dia os dois colidirem na borda.
 
-          SEM CARTÃO por baixo — só rótulo + pílulas, alinhado à esquerda como
-          o resto da tela. Um cartão branco fixo aqui só criava uma moldura
-          vazia ao redor de três botões, sem nada mais dentro para preencher
-          a largura. */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-        <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
-        {recorte.areas?.length ? (
-          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparAreas(recorte))}>
-            Limpar
-          </Botao>
-        ) : null}
-      </div>
+          FUNDO `--turquesa-rio`: pediu para destacar do resto da tela como
+          uma faixa própria, não mais transparente/sem-caixa como a primeira
+          versão. `GrupoDeCampo` ganhou `variante="sobreTurquesa"` só para
+          isto — o par rótulo/pílula padrão (texto turquesa, pílula branca)
+          desaparecia contra um fundo da própria cor. */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 'var(--altura-cabecalho)',
+          zIndex: 25,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          background: 'var(--turquesa-rio)',
+          borderRadius: 'var(--r-card)',
+          padding: '16px 20px',
+          boxShadow: '0 6px 18px rgba(0,49,44,0.22)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <GrupoDeCampo
+            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+            variante="sobreTurquesa"
+          />
+          {recorte.areas?.length ? (
+            <Botao
+              variante="fantasma"
+              estilo={{ color: 'var(--sobre-turquesa)' }}
+              aoClicar={() => definirRecorte(limparAreas(recorte))}
+            >
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
 
-      {/* FILTRO TIPO DE INTERAÇÃO FIXO — mesmo layout do Filtro Áreas acima:
-          sem cartão, centralizado, "Limpar" só aparece com algo selecionado.
-          `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
-          Manifestação formal/Evento/Visita/Reunião — `0038_formato_
-          interacao.sql`), NÃO `frente`: responde "que tipo de encontro foi
-          esse", uma pergunta ortogonal a "quem é a contraparte" — `frente`
-          continua filtrável em "Filtros rápidos". SÓ NO CLIENTE, mesma
-          lógica do Filtro Tipo de Público — ver `campoDeFormatoInteracao`. */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-        <GrupoDeCampo campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)} />
-        {recorte.formatoInteracao?.length ? (
-          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFormatoInteracao(recorte))}>
-            Limpar
-          </Botao>
-        ) : null}
-      </div>
+        {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
+            Manifestação formal/Evento/Visita/Reunião — `0038_formato_
+            interacao.sql`), NÃO `frente`: responde "que tipo de encontro foi
+            esse", uma pergunta ortogonal a "quem é a contraparte" — `frente`
+            continua filtrável em "Filtros rápidos". SÓ NO CLIENTE, mesma
+            lógica do Filtro Tipo de Público — ver `campoDeFormatoInteracao`. */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <GrupoDeCampo
+            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+            variante="sobreTurquesa"
+          />
+          {recorte.formatoInteracao?.length ? (
+            <Botao
+              variante="fantasma"
+              estilo={{ color: 'var(--sobre-turquesa)' }}
+              aoClicar={() => definirRecorte(limparFormatoInteracao(recorte))}
+            >
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
 
-      {/* FILTRO TIPO DE PÚBLICO FIXO — mesmo layout dos dois acima. SÓ NO
-          CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o que já
-          chegou da API, juntando pelo catálogo — não é a mesma "categoria de
-          área" das outras. */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-        <GrupoDeCampo campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)} />
-        {recorte.categoriaPublico?.length ? (
-          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}>
-            Limpar
-          </Botao>
-        ) : null}
+        {/* SÓ NO CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o que
+            já chegou da API, juntando pelo catálogo — não é a mesma
+            "categoria de área" das outras. */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <GrupoDeCampo
+            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+            variante="sobreTurquesa"
+          />
+          {recorte.categoriaPublico?.length ? (
+            <Botao
+              variante="fantasma"
+              estilo={{ color: 'var(--sobre-turquesa)' }}
+              aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}
+            >
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
+
+        {/* O PERÍODO ARRASTÁVEL — complementa os atalhos de "Filtros
+            rápidos" (30/60/90...), para quem quer ajustar no olho em vez de
+            escolher um número fechado. Ver `FiltroDePeriodoArrastavel`. */}
+        <div style={{ borderTop: '1px solid rgba(0,49,44,0.18)', paddingTop: 12 }}>
+          <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
+        </div>
       </div>
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
