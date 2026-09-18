@@ -13,7 +13,7 @@ import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio
 import {
   campoDeAreaPorCategoria,
   campoDeCategoriaPublico,
-  campoDeFrente,
+  campoDeFormatoInteracao,
   GrupoDeCampo,
 } from '@/componentes/PainelDeFiltros';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
@@ -29,7 +29,7 @@ import {
   alternarTag,
   limparAreas,
   limparCategoriaPublico,
-  limparFrente,
+  limparFormatoInteracao,
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
@@ -422,12 +422,16 @@ export function Painel({
 
       {/* FILTRO TIPO DE INTERAÇÃO FIXO — mesmo layout do Filtro Áreas acima:
           sem cartão, centralizado, "Limpar" só aparece com algo selecionado.
-          É o MESMO `recorte.frente` de "Filtros rápidos" — ver o comentário
-          em `campoDeFrente`. */}
+          `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
+          Manifestação formal/Evento/Visita/Reunião — `0038_formato_
+          interacao.sql`), NÃO `frente`: responde "que tipo de encontro foi
+          esse", uma pergunta ortogonal a "quem é a contraparte" — `frente`
+          continua filtrável em "Filtros rápidos". SÓ NO CLIENTE, mesma
+          lógica do Filtro Tipo de Público — ver `campoDeFormatoInteracao`. */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-        <GrupoDeCampo campo={campoDeFrente(recorte, definirRecorte, catalogo)} />
-        {recorte.frente ? (
-          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFrente(recorte))}>
+        <GrupoDeCampo campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)} />
+        {recorte.formatoInteracao?.length ? (
+          <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFormatoInteracao(recorte))}>
             Limpar
           </Botao>
         ) : null}

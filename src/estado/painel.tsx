@@ -24,7 +24,11 @@ import {
 } from '@/api/cliente';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
-import { filtrarPorCategoriaPublico, montarCatalogo } from '@/dominio/derivacoes';
+import {
+  filtrarPorCategoriaPublico,
+  filtrarPorFormatoInteracao,
+  montarCatalogo,
+} from '@/dominio/derivacoes';
 import type { Recorte } from '@/dominio/recorte';
 import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
@@ -187,21 +191,28 @@ export function ProvedorDoPainel({
     };
   }, [recorte, versaoDasAgendas]);
 
-  // "FILTRO TIPO DE PÚBLICO" NÃO PASSA PELO BACKEND — ver o comentário em
-  // `Recorte.categoriaPublico`. Junta aqui, sobre o que já voltou da API,
+  // "FILTRO TIPO DE PÚBLICO" E "FILTRO TIPO DE INTERAÇÃO" NÃO PASSAM PELO
+  // BACKEND — ver os comentários em `Recorte.categoriaPublico` e
+  // `Recorte.formatoInteracao`. Junta aqui, sobre o que já voltou da API,
   // em vez de mandar um parâmetro que a rota de interações não entende.
-  const interacoesFiltradas = useMemo(
-    () =>
-      recorte.categoriaPublico?.length && catalogo
-        ? filtrarPorCategoriaPublico(interacoes, catalogo, recorte.categoriaPublico)
-        : interacoes,
-    [interacoes, catalogo, recorte.categoriaPublico],
-  );
+  const interacoesFiltradas = useMemo(() => {
+    let lista = interacoes;
+    if (recorte.categoriaPublico?.length && catalogo) {
+      lista = filtrarPorCategoriaPublico(lista, catalogo, recorte.categoriaPublico);
+    }
+    if (recorte.formatoInteracao?.length) {
+      lista = filtrarPorFormatoInteracao(lista, recorte.formatoInteracao);
+    }
+    return lista;
+  }, [interacoes, catalogo, recorte.categoriaPublico, recorte.formatoInteracao]);
 
-  // O `total` do backend não sabe deste filtro — contar de novo aqui é o
+  // O `total` do backend não sabe destes filtros — contar de novo aqui é o
   // que mantém o número do topo igual ao que a tela mostra, em vez de dizer
   // "60 interações" com 12 na tabela.
-  const totalExibido = recorte.categoriaPublico?.length ? interacoesFiltradas.length : total;
+  const totalExibido =
+    recorte.categoriaPublico?.length || recorte.formatoInteracao?.length
+      ? interacoesFiltradas.length
+      : total;
 
   const valor = useMemo<EstadoDoPainel>(
     () => ({

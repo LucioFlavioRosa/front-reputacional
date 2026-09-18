@@ -112,6 +112,21 @@ export function filtrarPorCategoriaPublico(
   });
 }
 
+/** O filtro "Filtro Tipo de Interação" do Painel — SÓ NO CLIENTE, e não em
+ *  `GET /api/interacoes`: ver o comentário em `Recorte.formatoInteracao`.
+ *  Diferente de `filtrarPorCategoriaPublico`, não precisa do catálogo —
+ *  `formato_interacao_id` já mora na própria Interação. */
+export function filtrarPorFormatoInteracao(
+  interacoes: Interacao[],
+  ids: number[],
+): Interacao[] {
+  if (!ids.length) return interacoes;
+  const permitidas = new Set(ids);
+  return interacoes.filter(
+    (i) => i.formato_interacao_id != null && permitidas.has(i.formato_interacao_id),
+  );
+}
+
 export function nomeDoInterlocutor(catalogo: Catalogo, id: string | null): string {
   if (!id) return '—';
   return catalogo.interlocutores.get(id)?.nome ?? '—';

@@ -73,6 +73,17 @@ export interface Recorte {
    *  pelo catálogo (`catalogo.instituicoes`) — ver `filtrarPorCategoriaPublico`
    *  em `dominio/derivacoes.ts`. */
   categoriaPublico?: number[];
+  /** Formato da interação (Mídia, Agenda de mercado, Evento...) — ids de
+   *  `catalogo.dicionarios.formatos_interacao`. Multisseleção com OR entre
+   *  elas, mesmo comportamento de `categoriaPublico`.
+   *
+   *  SÓ NO CLIENTE — nunca viaja para o backend (ver o `continue` dedicado
+   *  em `paraParametros`): `formato_interacao_id` existe em `interacao`
+   *  desde a `0038_formato_interacao.sql`, mas `GET /api/interacoes` ainda
+   *  não tem esse filtro. Diferente de `categoriaPublico`, não precisa
+   *  juntar pelo catálogo — mora direto na interação — mas segue o mesmo
+   *  caminho só-cliente enquanto o backend não abrir o parâmetro. */
+  formatoInteracao?: number[];
   q?: string;
 }
 
@@ -90,6 +101,7 @@ export function quantidadeDeFiltros(recorte: Recorte): number {
   if (recorte.tags?.length) ativos += 1;
   if (recorte.areas?.length) ativos += 1;
   if (recorte.categoriaPublico?.length) ativos += 1;
+  if (recorte.formatoInteracao?.length) ativos += 1;
   return ativos;
 }
 
@@ -108,15 +120,6 @@ export function alternar<C extends keyof Recorte>(
   const proximo = { ...recorte };
   if (igual) delete proximo[campo];
   else proximo[campo] = valor;
-  return proximo;
-}
-
-/** Só o campo Frente, sem afastar o resto do recorte — o "Limpar" ao lado
- *  das pílulas de tipo de interação é local a elas, mesma ideia de
- *  `limparAreas`. */
-export function limparFrente(recorte: Recorte): Recorte {
-  const proximo = { ...recorte };
-  delete proximo.frente;
   return proximo;
 }
 
@@ -182,6 +185,27 @@ export function limparCategoriaPublico(recorte: Recorte): Recorte {
   return proximo;
 }
 
+/** Um formato de interação liga/desliga sozinho — multisseleção com OR
+ *  entre eles, mesma regra de `alternarCategoriaPublico`. */
+export function alternarFormatoInteracao(recorte: Recorte, id: number): Recorte {
+  const atuais = new Set(recorte.formatoInteracao ?? []);
+  if (atuais.has(id)) atuais.delete(id);
+  else atuais.add(id);
+  const formatoInteracao = [...atuais].sort((a, b) => a - b);
+  const proximo = { ...recorte };
+  if (formatoInteracao.length) proximo.formatoInteracao = formatoInteracao;
+  else delete proximo.formatoInteracao;
+  return proximo;
+}
+
+/** Só o campo Formato da interação, sem afastar o resto do recorte — mesma
+ *  ideia de `limparCategoriaPublico`. */
+export function limparFormatoInteracao(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.formatoInteracao;
+  return proximo;
+}
+
 export function limpar(): Recorte {
   return { ...RECORTE_VAZIO };
 }
@@ -195,10 +219,10 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
   const parametros = new URLSearchParams();
   for (const [chave, valor] of Object.entries(recorte)) {
     if (CAMPOS_DE_PERIODO.has(chave)) continue; // tratamento próprio, abaixo
-    // `categoriaPublico` é só do cliente — o backend não tem esse filtro,
-    // e não junta Interação com Instituição para aplicá-lo. Ver o comentário
-    // no campo, em `Recorte`.
-    if (chave === 'categoriaPublico') continue;
+    // `categoriaPublico`/`formatoInteracao` são só do cliente — o backend
+    // ainda não tem esses filtros em `GET /api/interacoes`. Ver o comentário
+    // em cada campo, em `Recorte`.
+    if (chave === 'categoriaPublico' || chave === 'formatoInteracao') continue;
     if (valor == null || valor === '') continue;
     if (Array.isArray(valor)) {
       if (valor.length) parametros.set(chave, valor.join(','));

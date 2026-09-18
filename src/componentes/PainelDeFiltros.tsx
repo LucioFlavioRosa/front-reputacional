@@ -37,7 +37,12 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
-import { alternar, alternarCategoriaDeArea, alternarCategoriaPublico, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
+import {
+  alternarCategoriaDeArea,
+  alternarCategoriaPublico,
+  alternarFormatoInteracao,
+  ATALHOS_DE_PERIODO,
+} from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
 import { CATEGORIAS_DE_AREA, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
@@ -100,24 +105,6 @@ export function campoDeAreaPorCategoria(
   };
 }
 
-/** O campo "Frente" (`FRENTES`/`catalogo.dicionarios.frentes`), como bloco
- *  fixo do Painel — mesma ideia de `campoDeAreaPorCategoria`, mas seleção
- *  ÚNICA: é o MESMO `recorte.frente` que `CAMPOS_RAPIDOS` já usa, então as
- *  duas pílulas (aqui e em "Filtros rápidos") sempre mostram o mesmo estado. */
-export function campoDeFrente(
-  recorte: Recorte,
-  definirRecorte: (recorte: Recorte) => void,
-  catalogo: Catalogo | null | undefined,
-): CampoDeFiltro {
-  return {
-    chave: 'frente',
-    rotulo: 'Filtro Tipo de Interação',
-    valorAtual: recorte.frente,
-    itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
-    aoEscolher: (valor: string) => definirRecorte(alternar(recorte, 'frente', valor as Frente)),
-  };
-}
-
 /** O campo "Categoria de público" (`catalogo.dicionarios.categorias_publico`),
  *  como bloco fixo do Painel — mesma ideia de `campoDeAreaPorCategoria`, só
  *  que sem a indireção de categoria-de-categoria: aqui cada item já É uma
@@ -141,6 +128,36 @@ export function campoDeCategoriaPublico(
       .map((c) => String(c.id)),
     aoEscolher: (valor: string) =>
       definirRecorte(alternarCategoriaPublico(recorte, Number(valor))),
+  };
+}
+
+/** O campo "Formato da interação" (`catalogo.dicionarios.formatos_interacao`
+ *  — Mídia, Agenda de mercado, Agenda pública, Manifestação formal, Evento,
+ *  Visita, Reunião), como bloco fixo do Painel — mesma ideia de
+ *  `campoDeCategoriaPublico`: multisseleção com OR, sem indireção de grupo.
+ *
+ *  NÃO É `frente` (Imprensa/Entidades/Parceiros...): "formato" responde "que
+ *  tipo de encontro foi esse", `frente` responde "quem é a contraparte" — as
+ *  duas colunas são ortogonais, ver `0038_formato_interacao.sql`. */
+export function campoDeFormatoInteracao(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  const atuais = new Set(recorte.formatoInteracao ?? []);
+  return {
+    chave: 'formatoInteracao',
+    rotulo: 'Filtro Tipo de Interação',
+    multiplo: true,
+    itens: (catalogo?.dicionarios.formatos_interacao ?? []).map((f) => ({
+      valor: String(f.id),
+      rotulo: f.nome,
+    })),
+    selecionados: (catalogo?.dicionarios.formatos_interacao ?? [])
+      .filter((f) => atuais.has(f.id))
+      .map((f) => String(f.id)),
+    aoEscolher: (valor: string) =>
+      definirRecorte(alternarFormatoInteracao(recorte, Number(valor))),
   };
 }
 
