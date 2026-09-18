@@ -24,7 +24,7 @@ import {
 } from '@/api/cliente';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
-import { montarCatalogo } from '@/dominio/derivacoes';
+import { filtrarPorCategoriaPublico, montarCatalogo } from '@/dominio/derivacoes';
 import type { Recorte } from '@/dominio/recorte';
 import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
@@ -187,13 +187,29 @@ export function ProvedorDoPainel({
     };
   }, [recorte, versaoDasAgendas]);
 
+  // "FILTRO TIPO DE PÚBLICO" NÃO PASSA PELO BACKEND — ver o comentário em
+  // `Recorte.categoriaPublico`. Junta aqui, sobre o que já voltou da API,
+  // em vez de mandar um parâmetro que a rota de interações não entende.
+  const interacoesFiltradas = useMemo(
+    () =>
+      recorte.categoriaPublico?.length && catalogo
+        ? filtrarPorCategoriaPublico(interacoes, catalogo, recorte.categoriaPublico)
+        : interacoes,
+    [interacoes, catalogo, recorte.categoriaPublico],
+  );
+
+  // O `total` do backend não sabe deste filtro — contar de novo aqui é o
+  // que mantém o número do topo igual ao que a tela mostra, em vez de dizer
+  // "60 interações" com 12 na tabela.
+  const totalExibido = recorte.categoriaPublico?.length ? interacoesFiltradas.length : total;
+
   const valor = useMemo<EstadoDoPainel>(
     () => ({
       recorte,
       definirRecorte,
       limparRecorte: () => definirRecorte({}),
-      interacoes,
-      total,
+      interacoes: interacoesFiltradas,
+      total: totalExibido,
       truncado,
       catalogo,
       carregando,
@@ -202,7 +218,7 @@ export function ProvedorDoPainel({
       recarregar,
     }),
     [
-      recorte, interacoes, total, truncado, catalogo,
+      recorte, interacoesFiltradas, totalExibido, truncado, catalogo,
       carregando, atualizando, erro, recarregar,
       // `definirRecorte` não é o `setState` cru: também escreve o endereço, e
       // por isso é um `useCallback` que precisa entrar aqui. Fora da lista, um

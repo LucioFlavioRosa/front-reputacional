@@ -95,6 +95,23 @@ export function nomeDaInstituicao(catalogo: Catalogo, id: string): string {
   return catalogo.instituicoes.get(id)?.nome ?? '—';
 }
 
+/** O filtro "Filtro Tipo de Público" do Painel — SÓ NO CLIENTE, e não em
+ *  `GET /api/interacoes`: `categoria_publico_id` mora na Instituição, não na
+ *  Interação, então a única forma de aplicá-lo é juntar pelo catálogo aqui.
+ *  Ver o comentário em `Recorte.categoriaPublico`. */
+export function filtrarPorCategoriaPublico(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  ids: number[],
+): Interacao[] {
+  if (!ids.length) return interacoes;
+  const permitidas = new Set(ids);
+  return interacoes.filter((i) => {
+    const categoria = catalogo.instituicoes.get(i.instituicao_id)?.categoria_publico_id;
+    return categoria != null && permitidas.has(categoria);
+  });
+}
+
 export function nomeDoInterlocutor(catalogo: Catalogo, id: string | null): string {
   if (!id) return '—';
   return catalogo.interlocutores.get(id)?.nome ?? '—';
@@ -352,34 +369,39 @@ export function porArea(interacoes: Interacao[], catalogo: Catalogo): ItemContad
   }).sort((a, b) => b.total - a.total);
 }
 
-export interface ClimaDaArea {
+export interface QuebraDeClima {
   propositivo: number;
   neutro: number;
   tenso: number;
 }
 
-/** A quebra de clima de cada CATEGORIA de área — o que o tooltip da rosca
- *  "Interações por áreas" mostra ao passar o mouse. Mesma chave de `porArea`
- *  (o rótulo da categoria), e o mesmo critério OR dela: uma interação com as
- *  duas áreas de "RI & Oper. Financeiras" conta uma vez só naquela
- *  categoria. Sem clima registrado não entra em nenhuma das três contagens,
- *  mesmo critério de `scorePorTema`. */
-export function climaPorArea(
+/** A quebra de clima de cada TEMA — o que o tooltip da rosca "% de Interações
+ *  por Temas" mostra ao passar o mouse. Mesma chave de `temasMaisRecorrentes`
+ *  (o nome do tema). Sem clima registrado não entra em nenhuma das três
+ *  contagens, mesmo critério de `scorePorTema`; uma interação com três temas
+ *  conta nos três, mesmo critério de `nomesDosTemas`. */
+export function climaPorTema(
   interacoes: Interacao[],
   catalogo: Catalogo,
-): Record<string, ClimaDaArea> {
-  const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
-  const contagem: Record<string, ClimaDaArea> = {};
+): Record<string, QuebraDeClima> {
+  const porNome = new Map<string, Interacao[]>();
+  for (const interacao of interacoes) {
+    if (!interacao.clima) continue;
+    for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
+      const lista = porNome.get(nome) ?? [];
+      lista.push(interacao);
+      porNome.set(nome, lista);
+    }
+  }
 
-  for (const [rotulo, ids] of idsPorRotulo) {
-    const doGrupo = interacoes.filter((i) => i.clima && i.areas.some((id) => ids.has(id)));
-    contagem[rotulo] = {
+  const contagem: Record<string, QuebraDeClima> = {};
+  for (const [nome, doGrupo] of porNome) {
+    contagem[nome] = {
       propositivo: doGrupo.filter((i) => i.clima === 'propositivo').length,
       neutro: doGrupo.filter((i) => i.clima === 'neutro').length,
       tenso: doGrupo.filter((i) => i.clima === 'tenso').length,
     };
   }
-
   return contagem;
 }
 
@@ -780,18 +802,32 @@ export function scorePorTema(
   return { itens, totalDeTemas: todos.length, todos: porVolume };
 }
 
-/** O placar de clima de cada área interna — SEMPRE as 5 de
- *  `catalogo.dicionarios.areas_pessoa`, mesmo a que ainda não tem nenhuma
- *  agenda vinculada. Diferente de `scorePorTema`: área é um dicionário
- *  fixo e pequeno (5 hoje), então não há corte por volume nem "forçar mais
- *  uma" — é um termômetro das 5, não um ranking recortado.
+export interface ScorePorCategoriaPublico {
+  itens: ScoreDivergente[];
+  /** Quantas categorias TINHAM clima suficiente para entrar na conta, antes
+   *  do corte de `quantos` — mesmo papel de `ScorePorTema.totalDeTemas`. */
+  totalDeCategorias: number;
+  /** TODAS as categorias com clima registrado, da mais discutida à menos —
+   *  fonte do "adicionar outro público" da tela, mesmo papel de
+   *  `ScorePorTema.todos`. */
+  todos: ScoreDivergente[];
+}
+
+/** O placar de clima por categoria da taxonomia de públicos
+ *  (`Instituicao.categoria_publico_id`) — mesma lógica de `scorePorTema`: os
+ *  `quantos` com mais volume entram primeiro, `categoriasForcadas` acrescenta
+ *  mais uma sem tirar do topo, e a lista final ordena do pior score pro
+ *  melhor.
  *
- *  `interacao.areas ?? []`: durante a transição para este vínculo (backend
- *  sem a feature publicada, ou dado anterior à migration que criou
- *  `interacao_area`), o campo pode nem vir no payload. Uma interação sem
- *  área (ou com `areas` ausente) simplesmente não entra em nenhum balde —
- *  não conta a mais em área nenhuma, e não quebra a conta. */
-export function scorePorArea(interacoes: Interacao[], catalogo: Catalogo): ScoreDivergente[] {
+ *  SÓ NO CLIENTE, como o filtro "Tipo de Público" (`Recorte.categoriaPublico`,
+ *  `filtrarPorCategoriaPublico`): a categoria mora na Instituição, não na
+ *  Interação, e a única forma de agregar por ela é juntar pelo catálogo. */
+export function scorePorCategoriaPublico(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+  categoriasForcadas: string[] = [],
+): ScorePorCategoriaPublico {
   const contagem = new Map<
     number,
     { total: number; positivas: number; negativas: number; agendas: AgendaDoTema[] }
@@ -802,42 +838,48 @@ export function scorePorArea(interacoes: Interacao[], catalogo: Catalogo): Score
     // lugar nenhum desta conta, nem no total.
     if (!interacao.clima) continue;
 
-    for (const areaId of interacao.areas ?? []) {
-      const atual = contagem.get(areaId) ?? {
-        total: 0,
-        positivas: 0,
-        negativas: 0,
-        agendas: [],
-      };
-      atual.total += 1;
-      if (interacao.clima === 'propositivo') atual.positivas += 1;
-      if (interacao.clima === 'tenso') atual.negativas += 1;
-      atual.agendas.push({
-        id: interacao.id,
-        titulo: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
-        data: interacao.data_interacao,
-        clima: interacao.clima,
-      });
-      contagem.set(areaId, atual);
-    }
+    const categoriaId = catalogo.instituicoes.get(interacao.instituicao_id)?.categoria_publico_id;
+    if (categoriaId == null) continue;
+
+    const atual = contagem.get(categoriaId) ?? {
+      total: 0,
+      positivas: 0,
+      negativas: 0,
+      agendas: [],
+    };
+    atual.total += 1;
+    if (interacao.clima === 'propositivo') atual.positivas += 1;
+    if (interacao.clima === 'tenso') atual.negativas += 1;
+    atual.agendas.push({
+      id: interacao.id,
+      titulo: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),
+      data: interacao.data_interacao,
+      clima: interacao.clima,
+    });
+    contagem.set(categoriaId, atual);
   }
 
-  return catalogo.dicionarios.areas_pessoa
-    .map((area) => {
-      const c = contagem.get(area.id) ?? { total: 0, positivas: 0, negativas: 0, agendas: [] };
-      return {
-        chave: String(area.id),
-        rotulo: area.nome,
-        total: c.total,
-        positivas: c.positivas,
-        negativas: c.negativas,
-        // Guarda contra divisão por zero: área sem nenhuma agenda com clima
-        // fica em 0 (o centro do trilho), não em erro nem em NaN.
-        score: c.total ? Math.round(((c.positivas - c.negativas) / c.total) * 100) : 0,
-        agendas: c.agendas,
-      };
-    })
-    .sort((a, b) => a.score - b.score);
+  const nomePorId = new Map(catalogo.dicionarios.categorias_publico.map((c) => [c.id, c.nome]));
+
+  const todos: ScoreDivergente[] = [...contagem.entries()].map(([id, c]) => ({
+    chave: String(id),
+    rotulo: nomePorId.get(id) ?? '—',
+    total: c.total,
+    positivas: c.positivas,
+    negativas: c.negativas,
+    score: Math.round(((c.positivas - c.negativas) / c.total) * 100),
+    agendas: c.agendas,
+  }));
+
+  const porVolume = [...todos].sort((a, b) => b.total - a.total);
+
+  const forcadasSet = new Set(categoriasForcadas);
+  const forcadas = porVolume.filter((categoria) => forcadasSet.has(categoria.chave));
+  const resto = porVolume.filter((categoria) => !forcadasSet.has(categoria.chave));
+
+  const itens = [...forcadas, ...resto.slice(0, quantos)].sort((a, b) => a.score - b.score);
+
+  return { itens, totalDeCategorias: todos.length, todos: porVolume };
 }
 
 /* -- geografia ------------------------------------------------------------ */

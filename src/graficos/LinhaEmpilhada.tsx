@@ -10,6 +10,17 @@
  *  exemplo, não teria essa categoria na própria coluna) —, e a pilha precisa
  *  da mesma categoria em todo período para desenhar uma área contínua, com
  *  zero onde não houver registro.
+ *
+ *  A ESCALA É PERCENTUAL POR COLUNA, e não um máximo global: cada coluna
+ *  sempre enche a altura inteira (100% = `coluna.total`), então o que se
+ *  compara de um período a outro é a COMPOSIÇÃO (a fatia de cada clima),
+ *  nunca o volume — para volume, ver a barra abaixo.
+ *
+ *  A BARRA DE VOLUME embaixo da linha é o motivo de a linha poder virar
+ *  percentual sem esconder informação: normalizar por coluna apaga o "quanto
+ *  aconteceu" (um mês com 2 interações e outro com 40 ficam do mesmo
+ *  tamanho); a barra devolve essa leitura, na mesma escala (um máximo global,
+ *  como a linha usava antes desta mudança).
  */
 
 import { useState } from 'react';
@@ -17,6 +28,7 @@ import type { ColunaMensal, Segmento } from '@/dominio/derivacoes';
 import { rotuloDoMes } from '@/dominio/formato';
 
 const ALTURA_DO_MES = 14;
+const ALTURA_DO_VOLUME = 28;
 const LIMITE_DE_ROTULOS_NO_EIXO = 12;
 
 export function LinhaEmpilhada({
@@ -69,7 +81,14 @@ export function LinhaEmpilhada({
   const alturaDoTrilho = altura - ALTURA_DO_MES;
   const n = colunas.length;
   const x = (indice: number) => (n > 1 ? (indice / (n - 1)) * 100 : 50);
-  const y = (valor: number) => alturaDoTrilho - (valor / maximo) * alturaDoTrilho;
+  // PERCENTUAL DA PRÓPRIA COLUNA, não do máximo global — ver o comentário no
+  // topo do arquivo. Coluna sem nenhum registro (`total === 0`) fica na base
+  // (0%): não há composição para mostrar, e dividir por zero devolveria NaN.
+  const y = (valor: number, indiceDaColuna: number) => {
+    const total = colunas[indiceDaColuna].total;
+    if (!total) return alturaDoTrilho;
+    return alturaDoTrilho - (valor / total) * alturaDoTrilho;
+  };
 
   // O valor "cru" (não acumulado) de cada categoria, coluna a coluna — a
   // base para calcular onde cada camada da pilha começa e termina.
@@ -89,48 +108,72 @@ export function LinhaEmpilhada({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ height: alturaDoTrilho, position: 'relative' }}>
-        <svg
-          width="100%"
-          height={alturaDoTrilho}
-          viewBox={`0 0 100 ${alturaDoTrilho}`}
-          preserveAspectRatio="none"
-          style={{ display: 'block', overflow: 'visible' }}
-        >
-          <line
-            x1={0}
-            y1={alturaDoTrilho - 0.5}
-            x2={100}
-            y2={alturaDoTrilho - 0.5}
-            stroke="var(--borda)"
-            vectorEffect="non-scaling-stroke"
-          />
-          {categorias.map((categoria, indice) => {
-            const topo = camadas[indice];
-            const base = camadas[indice - 1] ?? colunas.map(() => 0);
-            const pontosTopo = topo.map((v, i) => `${x(i)},${y(v)}`);
-            const pontosBase = base.map((v, i) => `${x(i)},${y(v)}`).reverse();
-            return (
-              <g key={categoria.chave}>
-                <path
-                  d={`M ${pontosTopo.join(' L ')} L ${pontosBase.join(' L ')} Z`}
-                  fill={categoria.cor}
-                  opacity={0.2}
-                  stroke="none"
-                />
-                <path
-                  d={`M ${pontosTopo.join(' L ')}`}
-                  fill="none"
-                  stroke={categoria.cor}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
-            );
-          })}
-        </svg>
+      {/* LINHA + BARRA NUM CONTÊINER SÓ: a faixa de hover (mais abaixo) cobre
+          as duas juntas, então passar o mouse na barra de volume abre o
+          mesmo tooltip que passar na linha acima dela. */}
+      <div style={{ position: 'relative' }}>
+        <div style={{ height: alturaDoTrilho }}>
+          <svg
+            width="100%"
+            height={alturaDoTrilho}
+            viewBox={`0 0 100 ${alturaDoTrilho}`}
+            preserveAspectRatio="none"
+            style={{ display: 'block', overflow: 'visible' }}
+          >
+            <line
+              x1={0}
+              y1={alturaDoTrilho - 0.5}
+              x2={100}
+              y2={alturaDoTrilho - 0.5}
+              stroke="var(--borda)"
+              vectorEffect="non-scaling-stroke"
+            />
+            {categorias.map((categoria, indice) => {
+              const topo = camadas[indice];
+              const base = camadas[indice - 1] ?? colunas.map(() => 0);
+              const pontosTopo = topo.map((v, i) => `${x(i)},${y(v, i)}`);
+              const pontosBase = base.map((v, i) => `${x(i)},${y(v, i)}`).reverse();
+              return (
+                <g key={categoria.chave}>
+                  <path
+                    d={`M ${pontosTopo.join(' L ')} L ${pontosBase.join(' L ')} Z`}
+                    fill={categoria.cor}
+                    opacity={0.2}
+                    stroke="none"
+                  />
+                  <path
+                    d={`M ${pontosTopo.join(' L ')}`}
+                    fill="none"
+                    stroke={categoria.cor}
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* A BARRA DE VOLUME — ver o comentário no topo do arquivo. Escala
+            pelo MÁXIMO GLOBAL (`maximo`), não por coluna: é o volume em si
+            que se quer comparar aqui, o oposto da linha acima. */}
+        <div style={{ height: ALTURA_DO_VOLUME, display: 'flex', alignItems: 'flex-end', gap: 1, marginTop: 3 }}>
+          {colunas.map((coluna) => (
+            <div
+              key={coluna.mes}
+              style={{
+                flex: 1,
+                height: `${Math.round((coluna.total / maximo) * 100)}%`,
+                minHeight: coluna.total > 0 ? 2 : 0,
+                background: 'var(--azul-mar)',
+                opacity: 0.25,
+                borderRadius: '2px 2px 0 0',
+              }}
+            />
+          ))}
+        </div>
 
         {/* Uma faixa invisível por coluna só para detectar o hover — a linha
             em si não tem "corpo" para receber o evento, diferente da barra. */}

@@ -10,8 +10,12 @@ import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { Botao, Carregando, Chip, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
-import { campoDeAreaPorCategoria, GrupoDeCampo } from '@/componentes/PainelDeFiltros';
-import { RelatorioDeReunioes } from '@/paginas/painel/RelatorioDeReunioes';
+import {
+  campoDeAreaPorCategoria,
+  campoDeCategoriaPublico,
+  campoDeFrente,
+  GrupoDeCampo,
+} from '@/componentes/PainelDeFiltros';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
@@ -20,27 +24,31 @@ import {
   ROTULOS_DE_FRENTE,
   rotuloDeAbrangencia,
 } from '@/dominio/frentes';
-import { alternar, alternarCategoriaDeArea, alternarTag } from '@/dominio/recorte';
-import type { Recorte } from '@/dominio/recorte';
+import {
+  alternar,
+  alternarTag,
+  limparAreas,
+  limparCategoriaPublico,
+  limparFrente,
+} from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 import {
   CATEGORIAS_DE_AREA,
   chaveDoPeriodo,
-  climaPorArea,
+  climaPorTema,
   completarPeriodos,
   distribuicaoPorUf,
   idsPorCategoriaDeArea,
   kpis as calcularKpis,
   nomeDaInstituicao,
   nomesDosTemas,
-  porArea,
   porTier,
   ranking,
   rankingDePortaVozes,
   resumoDeClimaPorFrente,
   rotuloDeCodigo,
-  scorePorArea,
+  scorePorCategoriaPublico,
   scorePorInstituicao,
   scorePorTema,
   serieMensal,
@@ -57,23 +65,6 @@ import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 //: de ÁREA não usa esta paleta — reaproveita a cor fixa de
 //: `CATEGORIAS_DE_AREA`, a mesma da rosca ao lado.
 const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
-
-/** Qual categoria de área acende como "ativa" na rosca — a que tem
- *  EXATAMENTE o mesmo conjunto de áreas que `recorte.areas`, nem a mais nem
- *  a menos. Generaliza o antigo `recorte.areas?.length === 1`: uma categoria
- *  de área única é o mesmo caso, com um id no conjunto. */
-function categoriaDeAreaAtiva(
-  recorte: Recorte,
-  idsPorCategoria: Map<string, Set<number>>,
-): string | undefined {
-  const atuais = recorte.areas;
-  if (!atuais?.length) return undefined;
-  const atuaisSet = new Set(atuais);
-  for (const [rotulo, ids] of idsPorCategoria) {
-    if (ids.size === atuaisSet.size && [...ids].every((id) => atuaisSet.has(id))) return rotulo;
-  }
-  return undefined;
-}
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
  *  sem disputar clique com as fatias/barras de dentro dele — a área
@@ -134,6 +125,10 @@ export function Painel({
   //: link copiado não precisa carregar qual tema extra alguém espiou.
   const [temasExtras, definirTemasExtras] = useState<string[]>([]);
 
+  //: MESMA IDEIA DE `temasExtras`, para o Termômetro por público — "mostre
+  //: também esta categoria" no gráfico, não um filtro do recorte.
+  const [categoriaPublicoExtras, definirCategoriaPublicoExtras] = useState<string[]>([]);
+
   //: TAMBÉM SÓ DA TELA, não do Recorte — é "como eu quero ENXERGAR a série no
   //: tempo", não um filtro sobre quais interações entram na conta. Os três
   //: gráficos de série temporal compartilham a mesma escolha: lê-los em
@@ -143,7 +138,7 @@ export function Painel({
   //: QUAL DOS TRÊS CARDS DO BLOCO 1 tem o popup de histórico aberto. Um só
   //: por vez, como o tema expandido de `BarraDivergente` — dois popups juntos
   //: disputariam a mesma atenção.
-  const [historico, definirHistorico] = useState<'tier' | 'area' | 'publico' | null>(null);
+  const [historico, definirHistorico] = useState<'tier' | 'tema' | 'publico' | null>(null);
 
   const derivado = useMemo(() => {
     if (!catalogo) return null;
@@ -236,7 +231,6 @@ export function Painel({
         granularidade,
       ),
       scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
-      scorePorArea: scorePorArea(interacoes, catalogo),
       geo,
       // NÃO TÊM CAPITAL PARA MARCAR NO MAPA — a pessoa podia estar em
       // qualquer UF, a reunião foi por chamada. Por isso o total entra à
@@ -249,8 +243,8 @@ export function Painel({
       portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
-      porArea: porArea(interacoes, catalogo),
-      climaPorArea: climaPorArea(interacoes, catalogo),
+      climaPorTema: climaPorTema(interacoes, catalogo),
+      scorePorCategoriaPublico: scorePorCategoriaPublico(interacoes, catalogo, 5, categoriaPublicoExtras),
       // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
       // aparecer em mais de uma das três tabelas, exatamente como o filtro
@@ -266,13 +260,10 @@ export function Painel({
             : [],
         };
       }),
-      // EXPOSTO PARA O CLIQUE/DESTAQUE DA ROSCA DE ÁREA, mais abaixo — a
-      // mesma resolução de ids usada aqui, sem recalcular.
-      idsPorCategoriaDeArea: idsPorRotulo,
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
       topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
-  }, [interacoes, catalogo, temasExtras, granularidade]);
+  }, [interacoes, catalogo, temasExtras, categoriaPublicoExtras, granularidade]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   // `!catalogo` nunca é `true` aqui na prática — `derivado` só existe quando
@@ -297,6 +288,12 @@ export function Painel({
   //: do catálogo cru.
   const temasDisponiveis = derivado.scorePorTema.todos.filter(
     (tema) => !derivado.scorePorTema.itens.some((item) => item.chave === tema.chave),
+  );
+
+  //: MESMA IDEIA de `temasDisponiveis`, para "+ Ver outro público" do
+  //: Termômetro por público.
+  const categoriaPublicoDisponiveis = derivado.scorePorCategoriaPublico.todos.filter(
+    (categoria) => !derivado.scorePorCategoriaPublico.itens.some((item) => item.chave === categoria.chave),
   );
 
   return (
@@ -408,16 +405,50 @@ export function Painel({
           própria em vez de ficar atrás de um clique. Por categoria
           (`CATEGORIAS_DE_AREA`), igual ao resto do Painel — ver o comentário
           em `PainelDeFiltros.tsx` sobre por que este campo não mora lá para
-          esta view. */}
-      <div
-        style={{
-          border: '1px solid var(--borda)',
-          borderRadius: 'var(--r-card-int)',
-          background: 'var(--branco)',
-          padding: '12px 14px',
-        }}
-      >
-        <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
+          esta view.
+
+          SEM CARTÃO por baixo — só rótulo + pílulas, centralizado na tela.
+          Um cartão branco fixo aqui só criava uma moldura vazia ao redor de
+          três botões, sem nada mais dentro para preencher a largura. */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <GrupoDeCampo campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)} />
+          {recorte.areas?.length ? (
+            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparAreas(recorte))}>
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
+      </div>
+
+      {/* FILTRO TIPO DE INTERAÇÃO FIXO — mesmo layout do Filtro Áreas acima:
+          sem cartão, centralizado, "Limpar" só aparece com algo selecionado.
+          É o MESMO `recorte.frente` de "Filtros rápidos" — ver o comentário
+          em `campoDeFrente`. */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <GrupoDeCampo campo={campoDeFrente(recorte, definirRecorte, catalogo)} />
+          {recorte.frente ? (
+            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparFrente(recorte))}>
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
+      </div>
+
+      {/* FILTRO TIPO DE PÚBLICO FIXO — mesmo layout dos dois acima. SÓ NO
+          CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o que já
+          chegou da API, juntando pelo catálogo — não é a mesma "categoria de
+          área" das outras. */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <GrupoDeCampo campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)} />
+          {recorte.categoriaPublico?.length ? (
+            <Botao variante="fantasma" aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}>
+              Limpar
+            </Botao>
+          ) : null}
+        </div>
       </div>
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
@@ -426,30 +457,89 @@ export function Painel({
           vale fixar agora. */}
       <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
 
-      {/* RELATÓRIO DE INTERAÇÕES MENSAIS — é o REGISTRO em si (toda
-          interação do mês, por extenso), e não um resumo interpretado. Ver
-          o comentário no topo do componente. */}
-      <RelatorioDeReunioes interacoes={interacoes} catalogo={catalogo} />
+      {/* 2. TERMÔMETRO POR PÚBLICO — mesmo layout da "Barra divergente por
+          tema" mais abaixo (mesmo componente `BarraDivergente`, mesmo botão
+          "+ Ver outro público…"): os `quantos` públicos com mais volume
+          entram primeiro, e o botão acrescenta mais um sem tirar do topo —
+          ver `scorePorCategoriaPublico`. Era "Termômetro por área"
+          (`scorePorArea`, removida): esta é a categoria nova da
+          classificação de instituições, não mais as 5 áreas internas fixas. */}
+      <Secao titulo="Termômetro por público" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: 0 }}>
+            {derivado.scorePorCategoriaPublico.totalDeCategorias >
+            derivado.scorePorCategoriaPublico.itens.length
+              ? `Os ${derivado.scorePorCategoriaPublico.itens.length} públicos com mais interações, de ${derivado.scorePorCategoriaPublico.totalDeCategorias} com clima registrado neste recorte — do pior para o melhor.`
+              : `Os ${derivado.scorePorCategoriaPublico.itens.length} públicos com clima registrado neste recorte — do pior para o melhor.`}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
+            O número é o placar de clima do público: (proativas − reativas) ÷ total de interações
+            × 100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio ou maioria
+            neutra.
+          </p>
+        </div>
 
-      {/* 2. TERMÔMETRO POR ÁREA — sempre TODAS as áreas ativas do dicionário
-          (mesmo sem nenhuma interação ainda), porque é um termômetro para
-          comparar todas de uma vez, não um ranking recortado como a barra
-          por tema mais abaixo. A contagem não é fixa em código — `area` pode
-          aposentar ou ganhar linha (ver as migrations 0032/0033) —, e o texto
-          abaixo lê o tamanho de verdade em vez de repetir um número. */}
-      <Secao titulo="Termômetro por área" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '-10px 0 4px' }}>
-          {derivado.scorePorArea.length === 1
-            ? 'A única área interna ativa'
-            : `As ${derivado.scorePorArea.length} áreas internas ativas`}
-          , com o clima das interações em que participaram — do pior para o melhor.
-        </p>
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-          O número é o placar de clima da área: (proativas − reativas) ÷ total de interações ×
-          100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio, maioria
-          neutra, ou nenhuma interação com clima ainda.
-        </p>
-        <BarraDivergente itens={derivado.scorePorArea} aoAbrirAgenda={aoAbrirAgenda} />
+        {categoriaPublicoExtras.length || categoriaPublicoDisponiveis.length ? (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 16,
+            }}
+          >
+            {categoriaPublicoExtras.map((chave) => {
+              const categoria = derivado.scorePorCategoriaPublico.todos.find((c) => c.chave === chave);
+              return (
+                <Chip
+                  key={chave}
+                  rotulo={categoria?.rotulo ?? chave}
+                  ativo
+                  fundo="var(--azul-mar)"
+                  texto="var(--branco)"
+                  titulo={`Tirar ${categoria?.rotulo ?? chave} do gráfico`}
+                  aoClicar={() =>
+                    definirCategoriaPublicoExtras(categoriaPublicoExtras.filter((c) => c !== chave))
+                  }
+                />
+              );
+            })}
+            {categoriaPublicoDisponiveis.length ? (
+              <select
+                value=""
+                onChange={(evento) => {
+                  if (evento.target.value) {
+                    definirCategoriaPublicoExtras([...categoriaPublicoExtras, evento.target.value]);
+                  }
+                }}
+                style={{
+                  height: 26,
+                  padding: '0 8px',
+                  border: '1px dashed var(--borda-input)',
+                  borderRadius: 'var(--r-chip)',
+                  background: 'transparent',
+                  color: 'var(--cinza-2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                <option value="">+ Ver outro público…</option>
+                {categoriaPublicoDisponiveis.map((categoria) => (
+                  <option key={categoria.chave} value={categoria.chave}>
+                    {categoria.rotulo} ({categoria.total})
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        ) : null}
+
+        <BarraDivergente
+          itens={derivado.scorePorCategoriaPublico.itens}
+          aoAbrirAgenda={aoAbrirAgenda}
+          vazio="Nenhum público com clima registrado neste recorte."
+        />
       </Secao>
 
       {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — três tabelas fixas lado a
@@ -473,80 +563,102 @@ export function Painel({
       </div>
 
       {/* 4. BLOCO 1 — com quem estamos falando e como está a relação.
-          Três cartões, um clique por dentro (a fatia/barra filtra o recorte)
-          e um clique por fora (o botão "Ver histórico" abre o avanço no
-          tempo) — os dois convivem porque nunca disputam a mesma área. */}
-      <div className="grade grade--3" style={{ gap: 16 }}>
-        <Secao
-          titulo="Interações por tier"
-          subtitulo="Volume de agendas pela relevância da instituição de contato"
-          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
-        >
-          {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
-              coluna de fatias+legenda não usa toda a largura do cartão, e o
-              top 5 de instituições preenche esse vão em vez de deixá-lo em
-              branco. MESMA IDEIA de "Distribuição geográfica" (mapa + ranking
-              lado a lado) logo abaixo.
+          Um clique por dentro (a fatia/barra filtra o recorte) e um clique
+          por fora (o botão "Ver histórico" abre o avanço no tempo) — os dois
+          convivem porque nunca disputam a mesma área.
 
-              É O MESMO RECORTE que filtra a rosca que também filtra este
-              ranking: clicar numa fatia de tier estreita `interacoes` para
-              aquele tier, e o top 5 abaixo passa a listar as instituições
-              DENTRO dele, sem precisar de uma segunda consulta. */}
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: '0 0 auto' }}>
-              <Rosca
-                itens={derivado.porTier}
-                ativo={recorte.tier != null ? String(recorte.tier) : undefined}
-                aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
-                rotuloCentral="interações"
-                detalheAoPassarMouse={(chave) =>
-                  (derivado.topInstituicoesPorTier[chave] ?? []).map((item) => ({
-                    rotulo: item.rotulo,
-                    valor: numero(item.total),
-                  }))
-                }
-              />
-            </div>
-            <div style={{ flex: '1 1 180px', minWidth: 160 }}>
-              <div className="kicker" style={{ marginBottom: 12 }}>
-                Top 5 instituições
+          TIER E CLIMA POR INSTITUIÇÕES EM CIMA, lado a lado — são os dois
+          cartões mais "densos" (rosca+ranking / barra divergente); TEMAS
+          EMBAIXO, sozinho e esticado — a rosca de temas por si só não
+          preenche uma coluna de grade--3 tão bem quanto um cartão largo, e
+          "% de Interações por Temas" ganha mais espaço para o ranking ao
+          lado dela respirar. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="grade grade--2" style={{ gap: 16 }}>
+          <Secao
+            titulo="% Interações por tier e Top instituições"
+            subtitulo="Volume de agendas pela relevância da instituição de contato"
+            acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
+          >
+            {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
+                coluna de fatias+legenda não usa toda a largura do cartão, e o
+                top 5 de instituições preenche esse vão em vez de deixá-lo em
+                branco. MESMA IDEIA de "Distribuição geográfica" (mapa + ranking
+                lado a lado) logo abaixo.
+
+                É O MESMO RECORTE que filtra a rosca que também filtra este
+                ranking: clicar numa fatia de tier estreita `interacoes` para
+                aquele tier, e o top 5 abaixo passa a listar as instituições
+                DENTRO dele, sem precisar de uma segunda consulta. */}
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: '0 0 auto' }}>
+                <Rosca
+                  itens={derivado.porTier}
+                  ativo={recorte.tier != null ? String(recorte.tier) : undefined}
+                  aoClicar={(chave) => definirRecorte(alternar(recorte, 'tier', Number(chave)))}
+                  rotuloCentral="interações"
+                  detalheAoPassarMouse={(chave) =>
+                    (derivado.topInstituicoesPorTier[chave] ?? []).map((item) => ({
+                      rotulo: item.rotulo,
+                      valor: numero(item.total),
+                    }))
+                  }
+                />
               </div>
-              <Ranking
-                itens={derivado.instituicoes.slice(0, 5)}
-                ativo={recorte.entidade}
-                aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
-                vazio="Nenhuma instituição neste recorte."
-              />
+              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <div className="kicker" style={{ marginBottom: 12 }}>
+                  Top 5 instituições
+                </div>
+                <Ranking
+                  itens={derivado.instituicoes.slice(0, 5)}
+                  ativo={recorte.entidade}
+                  aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
+                  vazio="Nenhuma instituição neste recorte."
+                />
+              </div>
             </div>
-          </div>
-        </Secao>
+          </Secao>
+
+          <Secao
+            titulo="Clima por Instituições"
+            subtitulo="Placar de clima das instituições mais presentes no recorte"
+            acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
+          >
+            <BarraDivergentePorItem
+              itens={derivado.climaPorPublico}
+              ativo={recorte.entidade}
+              aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
+            />
+            <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
+              [Proativas − Reativas] ÷ Total × 100 — de −100 (só reativas) a +100 (só
+              proativas), 0 é equilíbrio ou maioria neutra.
+            </p>
+          </Secao>
+        </div>
 
         <Secao
-          titulo="Interações por áreas"
-          subtitulo="Volume de agendas segundo as áreas internas participantes"
-          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('area')} />}
+          titulo="% de Interações por Temas"
+          subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
+          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
         >
-          {/* MESMO LAYOUT de "Interações por tier" ao lado: a rosca (com sua
-              própria legenda, colorida por área) e um top 5 de outra
-              dimensão preenchendo o vão ao lado — lá são instituições, aqui
-              são os temas mais falados neste recorte inteiro. */}
+          {/* MESMO LAYOUT de "Interações por tier" acima: a rosca (com sua
+              própria legenda, colorida por posição no ranking — mesma
+              paleta de `temasMaisRecorrentes`) e o top 5 dos mesmos temas ao
+              lado, como lista. Era a rosca de "Interações por áreas"
+              (`porArea`/`climaPorArea`, removidas): esta reaproveita
+              `derivado.temas`, a MESMA base do ranking ao lado e de "Temas no
+              tempo" mais abaixo — um tema em destaque aqui é o mesmo tema em
+              destaque lá. */}
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div style={{ flex: '0 0 auto' }}>
               <Rosca
-                itens={derivado.porArea}
-                ativo={categoriaDeAreaAtiva(recorte, derivado.idsPorCategoriaDeArea)}
-                aoClicar={(chave) =>
-                  definirRecorte(
-                    alternarCategoriaDeArea(
-                      recorte,
-                      derivado.idsPorCategoriaDeArea.get(chave) ?? [],
-                    ),
-                  )
-                }
+                itens={derivado.temas}
+                ativo={recorte.tags?.[0]}
+                aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
                 rotuloCentral="interações"
-                vazio="Nenhuma área registrada neste recorte."
+                vazio="Nenhum tema registrado neste recorte."
                 detalheAoPassarMouse={(chave) => {
-                  const clima = derivado.climaPorArea[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
+                  const clima = derivado.climaPorTema[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
                   return [
                     { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
                     { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
@@ -567,22 +679,6 @@ export function Painel({
               />
             </div>
           </div>
-        </Secao>
-
-        <Secao
-          titulo="Clima por Instituições"
-          subtitulo="Placar de clima das instituições mais presentes no recorte"
-          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
-        >
-          <BarraDivergentePorItem
-            itens={derivado.climaPorPublico}
-            ativo={recorte.entidade}
-            aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
-          />
-          <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-            [Proativas − Reativas] ÷ Total × 100 — de −100 (só reativas) a +100 (só
-            proativas), 0 é equilíbrio ou maioria neutra.
-          </p>
         </Secao>
       </div>
 
@@ -825,8 +921,7 @@ export function Painel({
           interacoes={interacoes}
           catalogo={catalogo}
           porTier={derivado.porTier}
-          porArea={derivado.porArea}
-          idsPorArea={derivado.idsPorCategoriaDeArea}
+          porTemas={derivado.temas}
           climaPorPublico={derivado.climaPorPublico}
           aoFechar={() => definirHistorico(null)}
         />
@@ -838,29 +933,27 @@ export function Painel({
 /** O TÍTULO E AS CATEGORIAS DE CADA POPUP, uma função por chave — o card em
  *  si (Rosca/Ranking/BarraDivergentePorItem) já resume o recorte inteiro; o
  *  popup soma essa MESMA base ao longo do tempo, mês a mês, com a mesma
- *  pilha empilhada que "Volumetria por frente" já usa. Tier reaproveita a
- *  cor que `porTier` já calculou; área e público ganham uma cor própria
- *  aqui, só para este gráfico — os outros dois (Ranking, barra divergente)
- *  não precisam de uma cor por item. */
+ *  pilha empilhada que "Volumetria por frente" já usa. Tier e tema
+ *  reaproveitam a cor que `porTier`/`temasMaisRecorrentes` já calcularam;
+ *  público ganha uma cor própria aqui, só para este gráfico — o outro
+ *  (BarraDivergentePorItem) não precisa de uma cor por item. */
 function HistoricoDoBloco({
   chave,
   interacoes,
   catalogo,
   porTier: itensDeTier,
-  porArea: itensDeArea,
-  idsPorArea,
+  porTemas,
   climaPorPublico,
   aoFechar,
 }: {
-  chave: 'tier' | 'area' | 'publico';
+  chave: 'tier' | 'tema' | 'publico';
   interacoes: Interacao[];
   catalogo: Catalogo;
   porTier: ReturnType<typeof porTier>;
-  porArea: ReturnType<typeof porArea>;
-  /** Os ids ativos de cada categoria de área — mesmo mapa que o clique/
-   *  destaque da rosca usa, para resolver a quais categorias uma interação
-   *  pertence sem recalcular. */
-  idsPorArea: Map<string, Set<number>>;
+  /** Os mesmos temas da rosca "% de Interações por Temas" e do ranking ao
+   *  lado dela (`derivado.temas`) — um tema em destaque num é o mesmo no
+   *  outro. */
+  porTemas: ReturnType<typeof temasMaisRecorrentes>;
   climaPorPublico: ReturnType<typeof scorePorInstituicao>;
   aoFechar: () => void;
 }) {
@@ -882,25 +975,15 @@ function HistoricoDoBloco({
         categoriasDe: (i: Interacao) => (i.tier != null ? [String(i.tier)] : []),
       };
     }
-    if (chave === 'area') {
-      // COR FIXA POR CATEGORIA (`item.cor`, de `CATEGORIAS_DE_AREA`), e não
-      // `PALETA_DO_HISTORICO` por posição — a mesma cor da rosca ao lado,
-      // Comunicação sempre igual a Comunicação neste gráfico e no outro.
-      const categoriasDeArea = itensDeArea.map((item) => ({
-        chave: item.chave,
-        rotulo: item.rotulo,
-        cor: item.cor ?? 'var(--azul-mar)',
-      }));
+    if (chave === 'tema') {
+      // MESMO CRITÉRIO de "Temas no tempo" (mais abaixo): uma interação com
+      // três temas conta nos três, e só os temas do top 5 entram na pilha —
+      // os demais ficariam ilegíveis num gráfico de 5 categorias.
       return {
-        titulo: 'Interações por áreas ao longo do tempo',
-        categorias: categoriasDeArea,
-        // `chave` agora é o RÓTULO da categoria, não um id de área bruto —
-        // resolve por `idsPorArea` a quais categorias a interação pertence,
-        // em vez de comparar `i.areas` direto contra `chave`.
+        titulo: 'Interações por temas ao longo do tempo',
+        categorias: porTemas,
         categoriasDe: (i: Interacao) =>
-          categoriasDeArea
-            .filter((c) => i.areas.some((id) => idsPorArea.get(c.chave)?.has(id)))
-            .map((c) => c.chave),
+          nomesDosTemas(catalogo, i.temas).filter((nome) => porTemas.some((tema) => tema.chave === nome)),
       };
     }
     const categoriasDePublico = climaPorPublico.map((item, indice) => ({
@@ -916,7 +999,7 @@ function HistoricoDoBloco({
         return categoriasDePublico.some((c) => c.chave === nome) ? [nome] : [];
       },
     };
-  }, [chave, itensDeTier, itensDeArea, idsPorArea, climaPorPublico, catalogo]);
+  }, [chave, itensDeTier, porTemas, climaPorPublico, catalogo]);
 
   const colunas = useMemo(
     () => completarPeriodos(serieMensal(interacoes, categorias, categoriasDe, granularidade), granularidade),

@@ -63,6 +63,16 @@ export interface Recorte {
   /** Áreas internas da Aegea envolvidas — ids de `catalogo.dicionarios.areas_pessoa`.
    *  Multisseleção com OR entre elas, mesmo comportamento de `tags`. */
   areas?: number[];
+  /** Categorias da taxonomia de públicos — ids de
+   *  `catalogo.dicionarios.categorias_publico`. Multisseleção com OR entre
+   *  elas, mesmo comportamento de `tags`/`areas`.
+   *
+   *  SÓ NO CLIENTE — nunca viaja para o backend (ver o `continue` dedicado
+   *  em `paraParametros`): `categoria_publico_id` mora na Instituição, não
+   *  na Interação, e a API de interações não tem esse filtro. O front junta
+   *  pelo catálogo (`catalogo.instituicoes`) — ver `filtrarPorCategoriaPublico`
+   *  em `dominio/derivacoes.ts`. */
+  categoriaPublico?: number[];
   q?: string;
 }
 
@@ -79,6 +89,7 @@ export function quantidadeDeFiltros(recorte: Recorte): number {
   if (recorte.periodoPassado || recorte.periodoFuturo || recorte.de || recorte.ate) ativos += 1;
   if (recorte.tags?.length) ativos += 1;
   if (recorte.areas?.length) ativos += 1;
+  if (recorte.categoriaPublico?.length) ativos += 1;
   return ativos;
 }
 
@@ -97,6 +108,15 @@ export function alternar<C extends keyof Recorte>(
   const proximo = { ...recorte };
   if (igual) delete proximo[campo];
   else proximo[campo] = valor;
+  return proximo;
+}
+
+/** Só o campo Frente, sem afastar o resto do recorte — o "Limpar" ao lado
+ *  das pílulas de tipo de interação é local a elas, mesma ideia de
+ *  `limparAreas`. */
+export function limparFrente(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.frente;
   return proximo;
 }
 
@@ -133,6 +153,35 @@ export function alternarCategoriaDeArea(recorte: Recorte, ids: Iterable<number>)
   return proximo;
 }
 
+/** Só o campo Área(s), sem afastar o resto do recorte — o "Limpar" ao lado
+ *  das pílulas de área é local a elas, não o reset geral da barra. */
+export function limparAreas(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.areas;
+  return proximo;
+}
+
+/** Uma categoria de público liga/desliga sozinha — multisseleção com OR
+ *  entre elas, mesma regra de `alternarTag`. */
+export function alternarCategoriaPublico(recorte: Recorte, id: number): Recorte {
+  const atuais = new Set(recorte.categoriaPublico ?? []);
+  if (atuais.has(id)) atuais.delete(id);
+  else atuais.add(id);
+  const categoriaPublico = [...atuais].sort((a, b) => a - b);
+  const proximo = { ...recorte };
+  if (categoriaPublico.length) proximo.categoriaPublico = categoriaPublico;
+  else delete proximo.categoriaPublico;
+  return proximo;
+}
+
+/** Só o campo Categoria de público, sem afastar o resto do recorte — mesma
+ *  ideia de `limparAreas`. */
+export function limparCategoriaPublico(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.categoriaPublico;
+  return proximo;
+}
+
 export function limpar(): Recorte {
   return { ...RECORTE_VAZIO };
 }
@@ -146,6 +195,10 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
   const parametros = new URLSearchParams();
   for (const [chave, valor] of Object.entries(recorte)) {
     if (CAMPOS_DE_PERIODO.has(chave)) continue; // tratamento próprio, abaixo
+    // `categoriaPublico` é só do cliente — o backend não tem esse filtro,
+    // e não junta Interação com Instituição para aplicá-lo. Ver o comentário
+    // no campo, em `Recorte`.
+    if (chave === 'categoriaPublico') continue;
     if (valor == null || valor === '') continue;
     if (Array.isArray(valor)) {
       if (valor.length) parametros.set(chave, valor.join(','));

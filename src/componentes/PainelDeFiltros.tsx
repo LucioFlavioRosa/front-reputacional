@@ -37,7 +37,7 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
-import { alternarCategoriaDeArea, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
+import { alternar, alternarCategoriaDeArea, alternarCategoriaPublico, ATALHOS_DE_PERIODO } from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
 import { CATEGORIAS_DE_AREA, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
@@ -81,7 +81,7 @@ export function campoDeAreaPorCategoria(
 
   return {
     chave: 'areas',
-    rotulo: 'Área(s)',
+    rotulo: 'Filtro Áreas',
     multiplo: true,
     // Categoria sem nenhum id ativo (as duas áreas dela desativadas) não
     // aparece como pílula — ela nunca teria efeito nenhum no recorte.
@@ -97,6 +97,50 @@ export function campoDeAreaPorCategoria(
     }).map((c) => c.rotulo),
     aoEscolher: (valor: string) =>
       definirRecorte(alternarCategoriaDeArea(recorte, idsPorCategoria.get(valor) ?? [])),
+  };
+}
+
+/** O campo "Frente" (`FRENTES`/`catalogo.dicionarios.frentes`), como bloco
+ *  fixo do Painel — mesma ideia de `campoDeAreaPorCategoria`, mas seleção
+ *  ÚNICA: é o MESMO `recorte.frente` que `CAMPOS_RAPIDOS` já usa, então as
+ *  duas pílulas (aqui e em "Filtros rápidos") sempre mostram o mesmo estado. */
+export function campoDeFrente(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  return {
+    chave: 'frente',
+    rotulo: 'Filtro Tipo de Interação',
+    valorAtual: recorte.frente,
+    itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
+    aoEscolher: (valor: string) => definirRecorte(alternar(recorte, 'frente', valor as Frente)),
+  };
+}
+
+/** O campo "Categoria de público" (`catalogo.dicionarios.categorias_publico`),
+ *  como bloco fixo do Painel — mesma ideia de `campoDeAreaPorCategoria`, só
+ *  que sem a indireção de categoria-de-categoria: aqui cada item já É uma
+ *  categoria da taxonomia, sem grupo por baixo para resolver. */
+export function campoDeCategoriaPublico(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  const atuais = new Set(recorte.categoriaPublico ?? []);
+  return {
+    chave: 'categoriaPublico',
+    rotulo: 'Filtro Tipo de Público',
+    multiplo: true,
+    itens: (catalogo?.dicionarios.categorias_publico ?? []).map((c) => ({
+      valor: String(c.id),
+      rotulo: c.nome,
+    })),
+    selecionados: (catalogo?.dicionarios.categorias_publico ?? [])
+      .filter((c) => atuais.has(c.id))
+      .map((c) => String(c.id)),
+    aoEscolher: (valor: string) =>
+      definirRecorte(alternarCategoriaPublico(recorte, Number(valor))),
   };
 }
 
