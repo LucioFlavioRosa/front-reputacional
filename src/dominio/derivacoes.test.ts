@@ -113,6 +113,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     interlocutor_id: 'p1',
     unidade_negocio_id: 1,
     esfera_id: 1,
+    formato_interacao_id: null,
     uf: 'SP',
     tier: 1,
     stakeholder_id: null,

@@ -537,6 +537,34 @@ export function Cadastro({
             />
           ))}
         </div>
+
+        {/* FORMATO É ORTOGONAL A FRENTE, não substitui — ver o comentário em
+            `0038_formato_interacao.sql`. Por isso é um segundo grupo de
+            chips, na mesma seção, não uma troca da linha de cima. Seleção
+            única, como Frente: clicar no já marcado desmarca (mesma regra de
+            `alterar`/`numeroOpcional`, que lê '' como "não informado"). */}
+        <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-3)', margin: '0 0 8px' }}>
+            Formato da interação
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {catalogo.dicionarios.formatos_interacao.map((formato) => {
+              const valor = String(formato.id);
+              const ativo = form.formato_interacao_id === valor;
+              return (
+                <Chip
+                  key={formato.id}
+                  rotulo={formato.nome}
+                  ativo={ativo}
+                  fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                  texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                  aoClicar={() => alterar('formato_interacao_id', ativo ? '' : valor)}
+                  estilo={ESTILO_DO_CHIP_MAIOR}
+                />
+              );
+            })}
+          </div>
+        </div>
       </Secao>
 
       <Secao titulo="2. Área(s)" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
@@ -1328,6 +1356,7 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     // discordarem, e é isso que o servidor recusa com 422.
     unidade_negocio_id: numeroOpcional(form.unidade_negocio_id),
     esfera_id: numeroOpcional(form.esfera_id),
+    formato_interacao_id: numeroOpcional(form.formato_interacao_id),
     tier: numeroOpcional(form.tier),
     clima: opcional(form.clima),
     resultado: opcional(form.resultado),
@@ -1487,6 +1516,7 @@ function paraFormulario(interacao: Interacao): Formulario {
     interlocutor_id: texto(interacao.interlocutor_id),
     unidade_negocio_id: texto(interacao.unidade_negocio_id),
     esfera_id: texto(interacao.esfera_id),
+    formato_interacao_id: texto(interacao.formato_interacao_id),
     uf: texto(interacao.uf),
     modalidade: texto(interacao.modalidade),
     local: texto(interacao.local),

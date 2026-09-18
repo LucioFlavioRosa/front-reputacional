@@ -112,6 +112,9 @@ export interface Interacao {
   interlocutor_id: string | null;
   unidade_negocio_id: number | null;
   esfera_id: number | null;
+  /** Que tipo de encontro foi (Mídia, Reunião, Evento...) — ortogonal a
+   *  `frente` (quem é a contraparte), não substitui. `null` = não informado. */
+  formato_interacao_id: number | null;
   uf: string;
   /** `presencial`, `online` ou `hibrida`. `null` = não informado. */
   modalidade: string | null;
@@ -292,6 +295,11 @@ export interface Dicionarios {
   ufs: Abrangencia[];
   grupos_de_status: GrupoDeStatusDoDicionario[];
   status: StatusDoDicionario[];
+  /** Mídia, Agenda de mercado, Agenda pública... — ver
+   *  `Interacao.formato_interacao_id`. NÃO é o mesmo dicionário que
+   *  `formatos` (formato de atendimento de imprensa/RI, escopado por
+   *  frente) — são conceitos diferentes, com nomes parecidos. */
+  formatos_interacao: ItemDeDicionario[];
   esferas: ItemDeDicionario[];
   climas: (ItemDeDicionario & { cor_hex: string })[];
   resultados: (ItemDeDicionario & { cor_hex: string })[];
