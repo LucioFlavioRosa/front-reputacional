@@ -25,6 +25,9 @@ export interface Formulario {
   interlocutor_id: string;
   unidade_negocio_id: string;
   esfera_id: string;
+  //: Que tipo de encontro foi (Mídia, Reunião, Evento...) — ortogonal a
+  //: `frente` (quem é a contraparte), não substitui. '' = não informado.
+  formato_interacao_id: string;
   uf: string;
   //: `presencial`, `online` ou `hibrida`. '' = nao informado, como nos demais.
   modalidade: string;
@@ -215,6 +218,7 @@ export const VAZIO: Formulario = {
   interlocutor_id: '',
   unidade_negocio_id: '',
   esfera_id: '',
+  formato_interacao_id: '',
   uf: '',
   modalidade: '',
   local: '',

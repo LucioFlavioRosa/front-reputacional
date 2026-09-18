@@ -36,6 +36,7 @@ function agenda(
     interlocutor_id: null,
     unidade_negocio_id: null,
     esfera_id: null,
+    formato_interacao_id: null,
     uf: 'SP',
     modalidade: null,
     local: null,

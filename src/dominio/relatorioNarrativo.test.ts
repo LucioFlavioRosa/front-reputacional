@@ -58,6 +58,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     interlocutor_id: 'p1',
     unidade_negocio_id: null,
     esfera_id: null,
+    formato_interacao_id: null,
     uf: 'SP',
     modalidade: null,
     local: null,
