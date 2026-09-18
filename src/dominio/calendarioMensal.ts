@@ -9,7 +9,7 @@
 import { chaveDoMes, titulo as capitalizar } from '@/dominio/formato';
 import type { Interacao } from '@/dominio/tipos';
 
-const MESES_POR_EXTENSO = [
+export const MESES_POR_EXTENSO = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];

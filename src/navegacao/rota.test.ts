@@ -23,6 +23,7 @@ describe('ler e escrever o caminho', () => {
     ['/painel', { destino: 'painel' }],
     ['/explorar', { destino: 'explorar' }],
     ['/base', { destino: 'base' }],
+    ['/relatorios', { destino: 'relatorios' }],
     ['/admin', { destino: 'admin', aba: undefined }],
     ['/admin/porta-vozes', { destino: 'admin', aba: 'porta-vozes' }],
     ['/agenda/nova', { destino: 'cadastro', sobre: 'nova' }],
