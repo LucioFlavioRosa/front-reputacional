@@ -48,12 +48,12 @@ function composicao(item: ScoreDivergente): string {
   return partes.join(', ');
 }
 
-//: SEM AGENDA NENHUMA é um caso que `scorePorTema` nunca produz — só entra no
-//: `todos`/`itens` quem já tem pelo menos uma. `scorePorArea` é diferente: ele
-//: devolve as 5 áreas sempre, para o termômetro comparar todas de uma vez, e
-//: uma área recém-criada (ou ainda sem agenda vinculada) chega aqui com
-//: `total === 0`. Sem esta guarda, `composicao()` devolve string vazia e a
-//: linha lê "0 agendas — ", com um traço solto sem nada depois.
+//: SEM AGENDA NENHUMA não acontece hoje — `scorePorTema`/
+//: `scorePorCategoriaPublico` só colocam em `todos`/`itens` quem já tem pelo
+//: menos uma interação com clima. A guarda fica por segurança: sem ela,
+//: `composicao()` devolveria string vazia e a linha leria "0 agendas — ", com
+//: um traço solto sem nada depois, se um chamador futuro (ou um item
+//: forçado sem nenhuma ocorrência) produzir `total === 0`.
 function descricaoDaLinha(item: ScoreDivergente): string {
   if (item.total === 0) return 'Nenhuma interação com clima registrado ainda';
   return `${item.total} ${item.total === 1 ? 'interação' : 'interações'} — ${composicao(item)}`;
@@ -62,11 +62,17 @@ function descricaoDaLinha(item: ScoreDivergente): string {
 export function BarraDivergente({
   itens,
   aoAbrirAgenda,
+  vazio = 'Nenhum tema com clima registrado neste recorte.',
 }: {
   itens: ScoreDivergente[];
   /** Navega até a Ficha da agenda. Sem isto, a linha ainda abre a lista —
    *  só não dá para ir além dela. */
   aoAbrirAgenda?: (id: string) => void;
+  /** A mensagem de lista vazia — "tema" é só o padrão histórico (o primeiro
+   *  uso deste componente). Quem chama para outra dimensão (público, área…)
+   *  passa a própria mensagem; sem isto, "Termômetro por público" vazio
+   *  falaria de tema. */
+  vazio?: string;
 }) {
   //: Uma aberta por vez. Duas listas abertas ao mesmo tempo brigam por
   //: espaço vertical e confundem qual "Ver agendas" pertence a qual tema.
@@ -75,7 +81,7 @@ export function BarraDivergente({
   if (!itens.length) {
     return (
       <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--cinza-2)' }}>
-        Nenhum tema com clima registrado neste recorte.
+        {vazio}
       </div>
     );
   }

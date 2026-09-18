@@ -128,6 +128,16 @@ export function plural(quantidade: number, singular: string, plural_: string): s
   return quantidade === 1 ? singular : plural_;
 }
 
+/** "A" | "A e B" | "A, B e C" — uma lista em texto corrido, como se fala em
+ *  voz alta, e não separada por vírgula sozinha até o fim (isso lê como
+ *  planilha, não como relato). O Relatório Executivo é o motivo de existir:
+ *  participantes e temas, sempre na mesma regra. */
+export function listaComE(itens: string[]): string {
+  if (itens.length <= 1) return itens[0] ?? '';
+  if (itens.length === 2) return `${itens[0]} e ${itens[1]}`;
+  return `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`;
+}
+
 export function truncar(texto: string, limite: number): string {
   return texto.length <= limite ? texto : `${texto.slice(0, limite - 1)}…`;
 }

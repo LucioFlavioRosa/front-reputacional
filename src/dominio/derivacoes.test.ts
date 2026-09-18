@@ -15,11 +15,13 @@ import type {
   PessoaAegea,
 } from '@/dominio/tipos';
 import {
+  climaPorTema,
   completarMeses,
   distribuicaoPorUf,
   dividirEmJanelas,
   exposicaoDePortaVozes,
   filaDePendencias,
+  filtrarPorCategoriaPublico,
   kpis,
   montarCatalogo,
   novosContatos,
@@ -30,7 +32,7 @@ import {
   resolutividade,
   resultados,
   resumoDeClimaPorFrente,
-  scorePorArea,
+  scorePorCategoriaPublico,
   serieMensal,
   temasMaisRecorrentes,
 } from '@/dominio/derivacoes';
@@ -225,59 +227,6 @@ describe('resumoDeClimaPorFrente', () => {
   it('devolve zeros quando não há registro da frente', () => {
     const resumo = resumoDeClimaPorFrente([], ['bancos_credores']);
     expect(resumo).toEqual({ total: 0, positivas: 0, negativas: 0 });
-  });
-});
-
-describe('scorePorArea', () => {
-  it('conta positivas e negativas por área; neutro entra no total, sem clima não', () => {
-    const dados = [
-      interacao({ areas: [1], clima: 'propositivo' }),
-      interacao({ areas: [1], clima: 'propositivo' }),
-      interacao({ areas: [1], clima: 'tenso' }),
-      interacao({ areas: [1], clima: 'neutro' }), // conta no total, não em pos/neg
-      interacao({ areas: [1], clima: null }), // sem clima: fora do total inteiro
-    ];
-    const comunicacao = scorePorArea(dados, CATALOGO).find((a) => a.chave === '1')!;
-    expect(comunicacao.total).toBe(4);
-    expect(comunicacao.positivas).toBe(2);
-    expect(comunicacao.negativas).toBe(1);
-    expect(comunicacao.score).toBe(Math.round(((2 - 1) / 4) * 100));
-  });
-
-  it('devolve sempre as 5 áreas do dicionário, mesmo sem nenhuma agenda', () => {
-    const resultado = scorePorArea([], CATALOGO);
-    expect(resultado).toHaveLength(5);
-    expect(resultado.every((a) => a.total === 0 && a.score === 0)).toBe(true);
-  });
-
-  it('uma interação sem área não conta em nenhuma', () => {
-    const dados = [interacao({ areas: [], clima: 'propositivo' })];
-    const resultado = scorePorArea(dados, CATALOGO);
-    expect(resultado.every((a) => a.total === 0)).toBe(true);
-  });
-
-  it('areas ausente (payload de transição) não quebra e não conta em nenhuma', () => {
-    const dados = [interacao({ areas: undefined, clima: 'propositivo' })];
-    expect(() => scorePorArea(dados, CATALOGO)).not.toThrow();
-    const resultado = scorePorArea(dados, CATALOGO);
-    expect(resultado.every((a) => a.total === 0)).toBe(true);
-  });
-
-  it('uma interação com mais de uma área conta nas duas', () => {
-    const dados = [interacao({ areas: [1, 2], clima: 'propositivo' })];
-    const resultado = scorePorArea(dados, CATALOGO);
-    expect(resultado.find((a) => a.chave === '1')!.total).toBe(1);
-    expect(resultado.find((a) => a.chave === '2')!.total).toBe(1);
-  });
-
-  it('ordena do pior score para o melhor', () => {
-    const dados = [
-      interacao({ areas: [1], clima: 'tenso' }),
-      interacao({ areas: [2], clima: 'propositivo' }),
-    ];
-    const resultado = scorePorArea(dados, CATALOGO);
-    expect(resultado[0].chave).toBe('1');
-    expect(resultado[resultado.length - 1].chave).toBe('2');
   });
 });
 
@@ -778,5 +727,146 @@ describe('temasMaisRecorrentes', () => {
     const dados = [interacao({ temas: [10, 11, 12] })];
     const cores = temasMaisRecorrentes(dados, CATALOGO, 3).map((t) => t.cor);
     expect(new Set(cores).size).toBe(3);
+  });
+});
+
+describe('filtrarPorCategoriaPublico', () => {
+  const INSTITUICOES_COM_CATEGORIA: Instituicao[] = [
+    { ...INSTITUICOES[0], id: 'i1', categoria_publico_id: 5 },
+    { ...INSTITUICOES[1], id: 'i2', categoria_publico_id: 7 },
+    { ...INSTITUICOES[0], id: 'i3', categoria_publico_id: null },
+  ];
+  const CATALOGO_COM_CATEGORIA = montarCatalogo(
+    DICIONARIOS,
+    INSTITUICOES_COM_CATEGORIA,
+    INTERLOCUTORES,
+    PESSOAS,
+  );
+
+  it('sem ids escolhidos, devolve tudo — nenhum filtro ativo', () => {
+    const dados = [interacao({ instituicao_id: 'i1' })];
+    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [])).toEqual(dados);
+  });
+
+  it('mantém só as interações de instituições nas categorias escolhidas', () => {
+    const dados = [
+      interacao({ id: 'a', instituicao_id: 'i1' }),
+      interacao({ id: 'b', instituicao_id: 'i2' }),
+    ];
+    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5]);
+    expect(resultado.map((i) => i.id)).toEqual(['a']);
+  });
+
+  it('OR entre categorias — mais de um id escolhido soma as interações', () => {
+    const dados = [
+      interacao({ id: 'a', instituicao_id: 'i1' }),
+      interacao({ id: 'b', instituicao_id: 'i2' }),
+    ];
+    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7]);
+    expect(resultado.map((i) => i.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('instituição sem categoria (ainda não reclassificada) nunca entra', () => {
+    const dados = [interacao({ instituicao_id: 'i3' })];
+    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7])).toEqual([]);
+  });
+});
+
+describe('climaPorTema', () => {
+  it('conta propositivo/neutro/tenso por tema, ignorando quem não tem clima', () => {
+    const dados = [
+      interacao({ temas: [10], clima: 'propositivo' }),
+      interacao({ temas: [10], clima: 'tenso' }),
+      interacao({ temas: [10], clima: null }),
+    ];
+    expect(climaPorTema(dados, CATALOGO).Tarifa).toEqual({ propositivo: 1, neutro: 0, tenso: 1 });
+  });
+
+  it('uma interação com vários temas conta em cada um deles', () => {
+    const dados = [interacao({ temas: [10, 11], clima: 'neutro' })];
+    const resultado = climaPorTema(dados, CATALOGO);
+    expect(resultado.Tarifa.neutro).toBe(1);
+    expect(resultado.IPO.neutro).toBe(1);
+  });
+
+  it('tema sem nenhuma interação com clima não aparece no resultado', () => {
+    expect(climaPorTema([], CATALOGO)).toEqual({});
+  });
+});
+
+describe('scorePorCategoriaPublico', () => {
+  const DICIONARIOS_COM_CATEGORIA = {
+    ...DICIONARIOS,
+    categorias_publico: [
+      { id: 5, codigo: 'reguladores', nome: 'Reguladores', ordem: 1, padrao_de_quebra: 'sem_quebra', area_dona_id: null },
+      { id: 7, codigo: 'poder_executivo', nome: 'Poder Executivo', ordem: 2, padrao_de_quebra: 'sem_quebra', area_dona_id: null },
+    ],
+  } as unknown as Dicionarios;
+
+  const INSTITUICOES_COM_CATEGORIA: Instituicao[] = [
+    { ...INSTITUICOES[0], id: 'i1', categoria_publico_id: 5 },
+    { ...INSTITUICOES[1], id: 'i2', categoria_publico_id: 7 },
+  ];
+
+  const CATALOGO_COM_CATEGORIA = montarCatalogo(
+    DICIONARIOS_COM_CATEGORIA,
+    INSTITUICOES_COM_CATEGORIA,
+    INTERLOCUTORES,
+    PESSOAS,
+  );
+
+  it('conta positivas e negativas por categoria; neutro entra no total, sem clima não', () => {
+    const dados = [
+      interacao({ instituicao_id: 'i1', clima: 'propositivo' }),
+      interacao({ instituicao_id: 'i1', clima: 'propositivo' }),
+      interacao({ instituicao_id: 'i1', clima: 'tenso' }),
+      interacao({ instituicao_id: 'i1', clima: 'neutro' }), // conta no total, não em pos/neg
+      interacao({ instituicao_id: 'i1', clima: null }), // sem clima: fora do total inteiro
+    ];
+    const reguladores = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA).itens.find(
+      (c) => c.chave === '5',
+    )!;
+    expect(reguladores.total).toBe(4);
+    expect(reguladores.positivas).toBe(2);
+    expect(reguladores.negativas).toBe(1);
+    expect(reguladores.score).toBe(Math.round(((2 - 1) / 4) * 100));
+  });
+
+  it('instituição sem categoria (ou inexistente no catálogo) não conta em lugar nenhum', () => {
+    const dados = [interacao({ instituicao_id: 'i3', clima: 'propositivo' })];
+    expect(scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA).itens).toHaveLength(0);
+  });
+
+  it('"quantos" corta por volume, mas categoriasForcadas acrescenta mais uma', () => {
+    const dados = [
+      interacao({ instituicao_id: 'i1', clima: 'propositivo' }),
+      interacao({ instituicao_id: 'i1', clima: 'propositivo' }), // categoria 5: 2 interações
+      interacao({ instituicao_id: 'i2', clima: 'tenso' }), // categoria 7: 1 interação
+    ];
+    const semForcar = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, 1);
+    expect(semForcar.itens.map((c) => c.chave)).toEqual(['5']);
+
+    const comForcar = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, 1, ['7']);
+    expect(comForcar.itens.map((c) => c.chave).sort()).toEqual(['5', '7']);
+  });
+
+  it('ordena os itens exibidos do pior score para o melhor', () => {
+    const dados = [
+      interacao({ instituicao_id: 'i1', clima: 'tenso' }),
+      interacao({ instituicao_id: 'i2', clima: 'propositivo' }),
+    ];
+    const resultado = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA).itens;
+    expect(resultado[0].chave).toBe('5');
+    expect(resultado[resultado.length - 1].chave).toBe('7');
+  });
+
+  it('totalDeCategorias conta antes do corte por "quantos"', () => {
+    const dados = [
+      interacao({ instituicao_id: 'i1', clima: 'tenso' }),
+      interacao({ instituicao_id: 'i2', clima: 'propositivo' }),
+    ];
+    const resultado = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, 1);
+    expect(resultado.totalDeCategorias).toBe(2);
+    expect(resultado.itens).toHaveLength(1);
   });
 });

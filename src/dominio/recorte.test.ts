@@ -6,7 +6,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   alternarCategoriaDeArea,
+  alternarCategoriaPublico,
   intervalo,
+  limparAreas,
+  limparCategoriaPublico,
   paraParametros,
   quantidadeDeFiltros,
 } from '@/dominio/recorte';
@@ -121,5 +124,48 @@ describe('alternarCategoriaDeArea', () => {
     expect(ligado.areas).toEqual([1]);
     const desligado = alternarCategoriaDeArea(ligado, [1]);
     expect(desligado.areas).toBeUndefined();
+  });
+});
+
+describe('limparAreas', () => {
+  it('remove só o campo areas, preservando o resto do recorte', () => {
+    const resultado = limparAreas({ areas: [1, 3], frente: 'imprensa' });
+    expect(resultado.areas).toBeUndefined();
+    expect(resultado.frente).toEqual('imprensa');
+  });
+
+  it('não falha quando já não há areas no recorte', () => {
+    expect(limparAreas({ frente: 'imprensa' })).toEqual({ frente: 'imprensa' });
+  });
+});
+
+describe('alternarCategoriaPublico', () => {
+  it('liga a categoria quando ainda não está no recorte', () => {
+    expect(alternarCategoriaPublico({}, 3).categoriaPublico).toEqual([3]);
+  });
+
+  it('desliga a categoria quando já está no recorte', () => {
+    expect(alternarCategoriaPublico({ categoriaPublico: [3] }, 3).categoriaPublico).toBeUndefined();
+  });
+
+  it('multisseleção com OR entre elas, preservando as demais', () => {
+    const resultado = alternarCategoriaPublico({ categoriaPublico: [1] }, 3);
+    expect(resultado.categoriaPublico).toEqual([1, 3]);
+  });
+});
+
+describe('limparCategoriaPublico', () => {
+  it('remove só o campo categoriaPublico, preservando o resto do recorte', () => {
+    const resultado = limparCategoriaPublico({ categoriaPublico: [1, 3], frente: 'imprensa' });
+    expect(resultado.categoriaPublico).toBeUndefined();
+    expect(resultado.frente).toEqual('imprensa');
+  });
+});
+
+describe('paraParametros', () => {
+  it('nunca manda categoriaPublico ao backend — é filtro só do cliente', () => {
+    const parametros = paraParametros({ categoriaPublico: [1, 3], areas: [2] });
+    expect(parametros.has('categoriaPublico')).toBe(false);
+    expect(parametros.get('areas')).toEqual('2');
   });
 });

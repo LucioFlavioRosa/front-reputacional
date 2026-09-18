@@ -7,6 +7,7 @@ import {
   dataCompleta,
   diasDesde,
   hojeLocal,
+  listaComE,
   paraData,
   urlSegura,
   variacao,
@@ -147,5 +148,25 @@ describe('como a agenda se chama numa lista', () => {
     expect(
       tituloDaAgenda({ pauta: '   ', temas: [1], expectativa: null }, temas),
     ).toBe('Reajuste tarifário');
+  });
+});
+
+describe('listaComE', () => {
+  it('lista vazia devolve string vazia', () => {
+    expect(listaComE([])).toBe('');
+  });
+
+  it('um item só, sem conector nenhum', () => {
+    expect(listaComE(['Igor Bastos'])).toBe('Igor Bastos');
+  });
+
+  it('dois itens, unidos por "e" — sem vírgula', () => {
+    expect(listaComE(['Igor Bastos', 'Juliane Silva'])).toBe('Igor Bastos e Juliane Silva');
+  });
+
+  it('três ou mais, vírgula entre todos e "e" só antes do último', () => {
+    expect(listaComE(['Igor Bastos', 'Juliane Silva', 'Anderson Juiz'])).toBe(
+      'Igor Bastos, Juliane Silva e Anderson Juiz',
+    );
   });
 });

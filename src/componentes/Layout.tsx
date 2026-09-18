@@ -21,7 +21,7 @@ import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
 
-//: CINCO DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
+//: SEIS DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
 //:
 //: O criterio nao e "por qual eixo voce quer olhar", e sim "o que voce veio
 //: fazer". Frente, situacao, resultado, porta-voz e interlocutor sao eixos da
@@ -43,10 +43,17 @@ import type { Destino } from '@/navegacao/rota';
 //: "SITUAÇÃO" SAIU DA LISTA VISÍVEL — a rota (`/situacao`) e a tela
 //: continuam existindo, só não tem mais botão no cabeçalho. Quem já tinha um
 //: link salvo continua chegando lá normalmente.
+//:
+//: "RELATÓRIOS EXECUTIVOS" RESPONDE "O QUE ACONTECEU, PRONTO PARA REPASSAR" —
+//: o registro em si, em texto corrido, para quem vai copiar e colar num
+//: e-mail ou apresentação. Diferente do Painel (números, gráficos) e da Base
+//: (tabela para filtrar/exportar): aqui não tem filtro próprio nenhum, só a
+//: escolha de semana ou mês. Ver `paginas/RelatoriosExecutivos.tsx`.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'explorar', rotulo: 'Explorar' },
   { view: 'base', rotulo: 'Base' },
+  { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 
 /**
