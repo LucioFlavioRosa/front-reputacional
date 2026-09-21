@@ -84,21 +84,47 @@ export const TIPO_DE_INSTITUICAO: Record<Frente, string> = {
   bancos_credores: 'credor',
 };
 
-/** As instituições que a frente escolhida oferece — MAIS a já gravada.
+/** O inverso de `TIPO_DE_INSTITUICAO` — a frente que o TIPO da instituição já
+ *  basta para decidir sozinho, sem perguntar mais nada. "entidade" fica de
+ *  fora de propósito: é o único tipo que duas frentes conversam (Parceiros e
+ *  Eventos), então não tem frente única — quem decide entre as duas é o
+ *  Formato da interação, em `frenteDerivada`.
  *
- *  O acréscimo não é gentileza: medido no banco, DUAS agendas de imprensa
- *  apontam para instituição do tipo `entidade`, e não `veiculo`. Filtrando sem
- *  ressalva, o campo dessas agendas abriria em branco ao editar — e campo
- *  obrigatório em branco num registro que existe se lê como dado corrompido,
- *  não como filtro fazendo efeito.
+ *  ESPELHA `FRENTE_UNICA_DO_TIPO` do backend (`app/dominio/frentes.py`) —
+ *  mesma regra, dos dois lados, pelo mesmo motivo de `TIPO_DE_INSTITUICAO`. */
+const FRENTE_UNICA_DO_TIPO: Partial<Record<string, Frente>> = Object.fromEntries(
+  (Object.entries(TIPO_DE_INSTITUICAO) as [Frente, string][])
+    .filter(([, tipo]) => tipo !== 'entidade')
+    .map(([frente, tipo]) => [tipo, frente]),
+);
+
+/** A frente desta interação — SEM perguntar. A tela não escolhe frente
+ *  diretamente: escolhe a instituição e o formato, e a frente sai daí, pela
+ *  MESMA regra que `derivar_frente` aplica no backend ao salvar (ver
+ *  `app/casos_de_uso/derivar_frente.py`):
  *
- *  Mesma solução da lista de agenda de origem, pelo mesmo motivo.
+ *    1. O tipo da instituição decide sozinho, para todo tipo menos
+ *       "entidade" — inclusive área interna (sempre Interna), proposição
+ *       (sempre Legislativo) e credor (sempre Bancos/Credores).
+ *    2. "entidade" é o único tipo ambíguo: Formato "Evento" decide Eventos;
+ *       qualquer outro formato (ou nenhum) decide Parceiros.
+ *
+ *  Sem instituição escolhida, não há o que derivar — devolve `null`. Isto é
+ *  ESPELHO, não fonte da verdade: quem decide de fato é o backend ao salvar,
+ *  porque o formulário não manda mais `frente` nenhuma no corpo. Existe aqui
+ *  só para a tela SE ORIENTAR — o rótulo "Instituição"/"Proposição", a poda
+ *  da extensão ao trocar de instituição, e o campo de leitura que mostra a
+ *  frente calculada antes de salvar.
  */
-export function instituicoesDaFrente<
-  T extends { id: string; tipo: string },
->(instituicoes: T[], frente: Frente, jaEscolhida: string): T[] {
-  const tipo = TIPO_DE_INSTITUICAO[frente];
-  return instituicoes.filter((i) => i.tipo === tipo || i.id === jaEscolhida);
+export function frenteDerivada(
+  instituicao: { tipo: string } | undefined,
+  formatoCodigo: string | undefined,
+): Frente | null {
+  if (!instituicao) return null;
+  const frenteUnica = FRENTE_UNICA_DO_TIPO[instituicao.tipo];
+  if (frenteUnica) return frenteUnica;
+  if (instituicao.tipo !== 'entidade') return null;
+  return formatoCodigo === 'evento' ? 'eventos' : 'parceiros';
 }
 
 /** Os campos de extensão que cada frente carrega — e os rótulos deles.
