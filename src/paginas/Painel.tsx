@@ -36,7 +36,7 @@ import {
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 import {
-  CATEGORIAS_DE_AREA,
+  categoriasDeArea,
   categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
   climaPorTema,
@@ -325,7 +325,7 @@ export function Painel({
       // "Área" do resto do Painel já trata OR entre áreas. Dentro de uma
       // categoria composta (RI & Oper. Financeiras) o critério também é OR:
       // basta a interação ter QUALQUER uma das áreas somadas para entrar.
-      interacoesPorAreaFixa: CATEGORIAS_DE_AREA.map(({ rotulo }) => {
+      interacoesPorAreaFixa: categoriasDeArea(catalogo).map(({ rotulo }) => {
         const ids = idsPorRotulo.get(rotulo)!;
         return {
           nome: rotulo,

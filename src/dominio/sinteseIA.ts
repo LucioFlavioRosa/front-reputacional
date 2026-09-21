@@ -18,7 +18,7 @@
 
 import type { Catalogo } from '@/dominio/derivacoes';
 import {
-  CATEGORIAS_DE_AREA,
+  categoriasDeArea,
   idsPorCategoriaDeArea,
   nomesDosTemas,
   porArea,
@@ -143,7 +143,7 @@ export function gerarSinteseExecutivaIA(
     const pctAnteriorPorArea = pctPorNome(areasDoMesAnterior, anterior.length);
 
     let piorQueda: { nome: string; pctAtual: number; pctAnterior: number; delta: number } | null = null;
-    for (const categoria of CATEGORIAS_DE_AREA) {
+    for (const categoria of categoriasDeArea(catalogo)) {
       const pctAtualArea = pctAtualPorArea.get(categoria.rotulo) ?? 0;
       const pctAnteriorArea = pctAnteriorPorArea.get(categoria.rotulo) ?? 0;
       const delta = pctAtualArea - pctAnteriorArea;
@@ -172,7 +172,7 @@ export function gerarSinteseExecutivaIA(
 
   let areaAlerta: SinteseExecutivaIA['areaAlerta'] = null;
   const idsPorCategoria = idsPorCategoriaDeArea(catalogo);
-  for (const categoria of CATEGORIAS_DE_AREA) {
+  for (const categoria of categoriasDeArea(catalogo)) {
     const ids = idsPorCategoria.get(categoria.rotulo)!;
     const doCategoria = ateOFimDaJanela.filter((i) => i.areas.some((id) => ids.has(id)) && i.clima);
     if (doCategoria.length < 3) continue;

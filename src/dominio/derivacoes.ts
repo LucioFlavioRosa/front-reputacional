@@ -22,8 +22,9 @@ import {
   diasDesde,
   tituloDaAgenda,
 } from '@/dominio/formato';
-import { faixaDeRisco } from '@/dominio/frentes';
+import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE, faixaDeRisco } from '@/dominio/frentes';
 import type { FaixaDeRisco } from '@/dominio/frentes';
+import { FRENTES } from '@/dominio/tipos';
 import type {
   Dicionarios,
   Frente,
@@ -295,13 +296,37 @@ export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
   },
 ];
 
+//: Cores para uma área que a Administração acrescentar e que nenhuma das
+//: categorias fixas conhece — a área vira categoria própria, com uma cor
+//: da paleta oficial que ainda não está em uso acima.
+const CORES_PARA_AREAS_NOVAS = ['#FE952B', '#F8DC00', '#0027BD'];
+
+/** AS CATEGORIAS DE ÁREA NASCEM DO DICIONÁRIO. As três fixas acima valem
+ *  enquanto os nomes delas existirem em `areas_pessoa`; toda área ativa que
+ *  nenhuma delas cobre vira uma categoria própria, com o nome da área. Sem
+ *  isto, uma área acrescentada na Administração seria contada em lugar
+ *  nenhum do Painel — existiria no cadastro e não no que a plataforma
+ *  mostra. UM LUGAR SÓ: todo consumidor passa por aqui, nunca por
+ *  `CATEGORIAS_DE_AREA` direto. */
+export function categoriasDeArea(catalogo: Catalogo): CategoriaDeArea[] {
+  const cobertos = new Set(CATEGORIAS_DE_AREA.flatMap((c) => c.nomes));
+  const novas = catalogo.dicionarios.areas_pessoa
+    .filter((a) => !cobertos.has(a.nome))
+    .map((a, indice) => ({
+      rotulo: a.nome,
+      nomes: [a.nome],
+      cor: CORES_PARA_AREAS_NOVAS[indice % CORES_PARA_AREAS_NOVAS.length],
+    }));
+  return [...CATEGORIAS_DE_AREA, ...novas];
+}
+
 //: Os ids ATIVOS de cada categoria, resolvidos contra o dicionário do
 //: momento — uma área desativada nunca entra aqui (o dicionário só traz as
 //: ativas), e por isso nunca conta em `porArea`/`climaPorArea`/
 //: `interacoesPorAreaFixa`: os dados continuam no banco, só saem da leitura.
 export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<number>> {
   const mapa = new Map<string, Set<number>>();
-  for (const categoria of CATEGORIAS_DE_AREA) {
+  for (const categoria of categoriasDeArea(catalogo)) {
     mapa.set(
       categoria.rotulo,
       new Set(
@@ -312,6 +337,42 @@ export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<numbe
     );
   }
   return mapa;
+}
+
+/** O que as listas fixas do front dizem e o dicionário não — ou vice-versa.
+ *
+ *  `FRENTES`, `ROTULOS_DE_FRENTE` e `CORES_DE_FRENTE` são fixas no código
+ *  porque `Frente` é um tipo, e o tipo não nasce em tempo de execução. O
+ *  dicionário `frentes` (código, nome, cor) é a fonte; esta função é o que
+ *  acusa a divergência na carga do catálogo, em vez de deixar o Painel
+ *  mostrar um nome ou uma cor que a Administração não reconhece. Devolve
+ *  mensagens; vazio é alinhado. */
+export function divergenciasDoCatalogo(catalogo: Catalogo): string[] {
+  const avisos: string[] = [];
+  const noDicionario = new Map(catalogo.dicionarios.frentes.map((f) => [f.codigo, f]));
+  for (const codigo of FRENTES) {
+    const frente = noDicionario.get(codigo);
+    if (!frente) {
+      avisos.push(`A frente "${codigo}" existe no código e não no dicionário.`);
+      continue;
+    }
+    if (frente.nome !== ROTULOS_DE_FRENTE[codigo]) {
+      avisos.push(
+        `A frente "${codigo}" chama-se "${frente.nome}" no dicionário e "${ROTULOS_DE_FRENTE[codigo]}" no código.`,
+      );
+    }
+    if (frente.cor_hex.toLowerCase() !== CORES_DE_FRENTE[codigo].toLowerCase()) {
+      avisos.push(
+        `A frente "${codigo}" tem a cor ${frente.cor_hex} no dicionário e ${CORES_DE_FRENTE[codigo]} no código.`,
+      );
+    }
+  }
+  for (const codigo of noDicionario.keys()) {
+    if (!(FRENTES as readonly string[]).includes(codigo)) {
+      avisos.push(`A frente "${codigo}" existe no dicionário e não no código.`);
+    }
+  }
+  return avisos;
 }
 
 /** Quantas interações em cada nível de relevância — sempre um item por
@@ -373,7 +434,7 @@ export function topInstituicoesPorTier(
 export function porArea(interacoes: Interacao[], catalogo: Catalogo): ItemContado[] {
   const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
-  return CATEGORIAS_DE_AREA.map((categoria) => {
+  return categoriasDeArea(catalogo).map((categoria) => {
     const ids = idsPorRotulo.get(categoria.rotulo)!;
     return {
       chave: categoria.rotulo,

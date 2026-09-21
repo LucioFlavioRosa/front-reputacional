@@ -44,7 +44,7 @@ import {
   ATALHOS_DE_PERIODO,
 } from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
-import { CATEGORIAS_DE_AREA, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
+import { categoriasDeArea, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 import type { Destino } from '@/navegacao/rota';
@@ -82,6 +82,7 @@ export function campoDeAreaPorCategoria(
   catalogo: Catalogo | null | undefined,
 ): CampoDeFiltro {
   const idsPorCategoria = catalogo ? idsPorCategoriaDeArea(catalogo) : new Map<string, Set<number>>();
+  const categorias = catalogo ? categoriasDeArea(catalogo) : [];
   const atuais = new Set(recorte.areas ?? []);
 
   return {
@@ -90,13 +91,13 @@ export function campoDeAreaPorCategoria(
     multiplo: true,
     // Categoria sem nenhum id ativo (as duas áreas dela desativadas) não
     // aparece como pílula — ela nunca teria efeito nenhum no recorte.
-    itens: CATEGORIAS_DE_AREA.filter((c) => (idsPorCategoria.get(c.rotulo)?.size ?? 0) > 0).map(
+    itens: categorias.filter((c) => (idsPorCategoria.get(c.rotulo)?.size ?? 0) > 0).map(
       (c) => ({ valor: c.rotulo, rotulo: c.rotulo }),
     ),
     // Marcada quando TODAS as áreas da categoria já estão no recorte — não
     // "pelo menos uma", senão um clique que liga as duas pareceria já
     // marcado com só uma ligada por fora.
-    selecionados: CATEGORIAS_DE_AREA.filter((c) => {
+    selecionados: categorias.filter((c) => {
       const ids = idsPorCategoria.get(c.rotulo);
       return !!ids?.size && [...ids].every((id) => atuais.has(id));
     }).map((c) => c.rotulo),

@@ -25,10 +25,12 @@ import {
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
 import {
+  divergenciasDoCatalogo,
   filtrarPorCategoriaPublico,
   filtrarPorFormatoInteracao,
   montarCatalogo,
 } from '@/dominio/derivacoes';
+import { registrarEvento } from '@/observabilidade/telemetria';
 import type { Recorte } from '@/dominio/recorte';
 import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
@@ -143,9 +145,19 @@ export function ProvedorDoPainel({
     ])
       .then(([dicionarios, instituicoes, interlocutores, pessoas, referencias]) => {
         if (!ativo) return;
-        definirCatalogo(
-          montarCatalogo(dicionarios, instituicoes, interlocutores, pessoas, referencias),
+        const catalogo = montarCatalogo(
+          dicionarios, instituicoes, interlocutores, pessoas, referencias,
         );
+        // AS LISTAS FIXAS DO FRONT CONFERIDAS CONTRA O DICIONÁRIO, a cada
+        // carga: uma frente renomeada ou recolorida no banco sem o código
+        // acompanhar não pode passar em silêncio. Aviso, e não erro — a tela
+        // continua; a telemetria e o console é que acusam.
+        const divergencias = divergenciasDoCatalogo(catalogo);
+        if (divergencias.length) {
+          console.warn('Catálogo divergente das listas fixas do front:', divergencias);
+          registrarEvento('catalogo_divergente', { divergencias });
+        }
+        definirCatalogo(catalogo);
       })
       .catch((falha: Error) => {
         if (ativo) definirErro(falha.message);
