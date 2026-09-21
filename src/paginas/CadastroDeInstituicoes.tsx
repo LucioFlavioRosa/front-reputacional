@@ -236,6 +236,8 @@ export function CadastroDeInstituicoes() {
     [catalogo],
   );
 
+  //: TODAS, desligadas inclusive — é aqui que se reativa. O formulário de
+  //: agenda é quem filtra (`interlocutoresDaInstituicao`).
   const pessoasDe = (instituicaoId: string): Interlocutor[] =>
     [...(catalogo?.interlocutores.values() ?? [])]
       .filter((p) => p.instituicao_id === instituicaoId)
@@ -977,7 +979,7 @@ function LinhaDeInstituicao({
               ) : null}
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-              {instituicao.ativo ? null : 'desativada · '}
+              {instituicao.ativo ? null : 'desativada — as pessoas dela também saem das listas · '}
               {rotuloDoTipo} · aparece em {onde}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0

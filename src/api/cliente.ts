@@ -434,8 +434,11 @@ export function listarInstituicoes(): Promise<Instituicao[]> {
   return requisitar<Instituicao[]>('/api/instituicoes?incluir_inativos=1');
 }
 
+/** COM AS DESLIGADAS, pelo mesmo motivo de `listarInstituicoes`: sem elas o
+ *  Reativar da Administração não tem em quem clicar. Quem oferece escolha
+ *  filtra — `interlocutoresDaInstituicao` só devolve quem está disponível. */
 export function listarInterlocutores(): Promise<Interlocutor[]> {
-  return requisitar<Interlocutor[]>('/api/interlocutores');
+  return requisitar<Interlocutor[]>('/api/interlocutores?incluir_inativos=1');
 }
 
 export function listarPessoasAegea(): Promise<PessoaAegea[]> {

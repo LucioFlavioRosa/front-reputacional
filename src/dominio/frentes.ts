@@ -319,12 +319,18 @@ export function rotuloDeAbrangencia(uf: string): string {
  *  de 55 nomes sem relação com nada.
  */
 export function interlocutoresDaInstituicao<
-  T extends { id: string; instituicao_id: string | null },
+  T extends { id: string; instituicao_id: string | null; ativo?: boolean },
 >(interlocutores: T[], instituicaoId: string, jaNaAgenda: string[]): T[] {
   if (!instituicaoId) {
     return interlocutores.filter((i) => jaNaAgenda.includes(i.id));
   }
+  // QUEM JÁ ESTÁ NA AGENDA FICA, desligada ou não: editar uma agenda antiga
+  // não pode perder quem esteve na sala. Quem é oferecido de novo tem de
+  // estar ativo. (A instituição desativada nem chega aqui — o seletor de
+  // instituição só lista ativas, e o catálogo de pessoas que o back serve
+  // por padrão já aplica os dois níveis.)
   return interlocutores.filter(
-    (i) => i.instituicao_id === instituicaoId || jaNaAgenda.includes(i.id),
+    (i) =>
+      jaNaAgenda.includes(i.id) || (i.instituicao_id === instituicaoId && i.ativo !== false),
   );
 }

@@ -222,4 +222,15 @@ describe('quem pode representar a instituição escolhida', () => {
       interlocutoresDaInstituicao(pessoas, '', ['c']).map((p) => p.id),
     ).toEqual(['c']);
   });
+
+  it('não oferece quem foi desligado, mas mantém quem já está na agenda', () => {
+    const comDesligadas = [
+      { id: 'a', instituicao_id: 'i1', ativo: true },
+      { id: 'b', instituicao_id: 'i1', ativo: false },
+      { id: 'c', instituicao_id: 'i1', ativo: false },
+    ];
+    expect(
+      interlocutoresDaInstituicao(comDesligadas, 'i1', ['c']).map((p) => p.id),
+    ).toEqual(['a', 'c']);
+  });
 });
