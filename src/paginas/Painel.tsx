@@ -75,17 +75,21 @@ import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 //: Executivo na "Volumetria total por Público", e a legenda era o único jeito
 //: de distinguir duas fatias do mesmo tom. Dez cobre a taxonomia inteira sem
 //: repetir nenhuma.
+//:
+//: TODAS AS DEZ SAEM DA PALETA OFICIAL DA AEGEA (principal + neutra +
+//: secundária) — nenhuma inventada. As quatro últimas são Cinza 4, Cinza 2,
+//: Marrom Claro Cacau e Vermelho Pitanga, na ordem do guia de marca.
 const PALETA_DO_HISTORICO = [
-  '#0027BD',
-  '#17E3CB',
-  '#A11FFF',
-  '#FE952B',
-  '#E12379',
-  '#F8DC00',
-  '#2E7D32',
-  '#8C91A4',
-  '#A85E40',
-  '#C62828',
+  '#0027BD', // Azul Mar
+  '#17E3CB', // Turquesa Rio
+  '#A11FFF', // Roxo Açaí
+  '#FE952B', // Laranja-da-Baía
+  '#E12379', // Magenta Pitaia
+  '#F8DC00', // Amarelo Pequi
+  '#191B23', // Cinza 4
+  '#8C91A4', // Cinza 2
+  '#AD6547', // Marrom Claro Cacau
+  '#FF5C60', // Vermelho Pitanga
 ];
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
