@@ -43,13 +43,14 @@ export function Dicionarios() {
   const [emEdicao, definirEmEdicao] = useState<{ dicionario: string; id: number } | null>(null);
   const [rascunho, definirRascunho] = useState('');
 
-  const carregar = () =>
-    listarDicionariosParaAdministracao()
-      .then(definirDicionarios)
-      .catch((falha: Error) => definirErro(falha.message));
+  //: PROPAGA A FALHA: quem chama decide o que ela significa. Na primeira
+  //: carga é a tela vazia com a mensagem; depois de uma escrita é "gravou,
+  //: mas não consegui reler" — e nesse caso o aviso de sucesso NÃO aparece,
+  //: porque a lista na tela pode não ser a do banco.
+  const carregar = async () => definirDicionarios(await listarDicionariosParaAdministracao());
 
   useEffect(function carregarDicionarios() {
-    void carregar();
+    carregar().catch((falha: Error) => definirErro(falha.message));
   }, []);
 
   const executar = async (acao: () => Promise<unknown>, aoTerminar: () => void, aviso: string) => {
@@ -58,10 +59,10 @@ export function Dicionarios() {
     definirFeito(null);
     try {
       await acao();
-      await carregar();
       // O CATÁLOGO RECARREGA SOZINHO — `/api/dicionarios` é rota de catálogo
       // em `dominio/sincronizacao.ts`, então filtros e formulários veem o
-      // valor novo sem F5.
+      // valor novo sem F5. Esta tela relê a lista completa (com inativos).
+      await carregar();
       aoTerminar();
       definirFeito(aviso);
     } catch (falha) {
