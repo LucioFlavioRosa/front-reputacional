@@ -22,6 +22,7 @@ import { Painel } from '@/paginas/Painel';
 import { Explorar } from '@/paginas/Explorar';
 import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
+import { PrepararAgenda } from '@/paginas/PrepararAgenda';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
 import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
@@ -240,6 +241,8 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {rota.destino === 'relatorios' ? (
             <RelatoriosExecutivos aoAbrirAgenda={abrirAgenda} />
           ) : null}
+
+          {rota.destino === 'preparar' ? <PrepararAgenda aoAbrirAgenda={abrirAgenda} /> : null}
 
 
           {/* A TELA também recusa, e não só o botão.
