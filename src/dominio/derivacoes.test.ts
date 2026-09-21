@@ -61,7 +61,6 @@ const DICIONARIOS = {
   casas: [],
   tramitacoes: [],
   tipos_investidor: [],
-  stakeholders: [],
   areas_pessoa: [
     { id: 1, codigo: 'comunicacao', nome: 'Comunicação', ordem: 1 },
     { id: 2, codigo: 'relacoes_institucionais', nome: 'Relações Institucionais', ordem: 2 },
@@ -116,7 +115,6 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     formato_interacao_id: null,
     uf: 'SP',
     tier: 1,
-    stakeholder_id: null,
     status: 'atendido',
     clima: 'neutro',
     resultado: null,

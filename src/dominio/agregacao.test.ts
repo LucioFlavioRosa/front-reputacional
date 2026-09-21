@@ -47,7 +47,6 @@ function agenda(ajustes: Partial<Interacao> = {}): Interacao {
     modalidade: null,
     local: null,
     tier: 2,
-    stakeholder_id: null,
     status: 'confirmada',
     clima: null,
     resultado: null,

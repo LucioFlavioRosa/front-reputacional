@@ -121,7 +121,6 @@ export interface Interacao {
   /** Onde a agenda acontece, em palavras: endereço, sala, ou o link. */
   local: string | null;
   tier: number | null;
-  stakeholder_id: number | null;
   status: string;
   clima: string | null;
   resultado: string | null;
@@ -309,7 +308,6 @@ export interface Dicionarios {
   casas: ItemDeDicionario[];
   tramitacoes: ItemDeDicionario[];
   tipos_investidor: ItemDeDicionario[];
-  stakeholders: ItemDeDicionario[];
   /** De onde quem representa a Aegea fala — Comunicação, Relações
    *  Institucionais etc. Ver `PessoaAegea.area_id`. */
   areas_pessoa: ItemDeDicionario[];

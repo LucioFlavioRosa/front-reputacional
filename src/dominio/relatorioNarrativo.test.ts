@@ -63,7 +63,6 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     modalidade: null,
     local: null,
     tier: 1,
-    stakeholder_id: null,
     status: 'atendido',
     clima: 'neutro',
     resultado: null,

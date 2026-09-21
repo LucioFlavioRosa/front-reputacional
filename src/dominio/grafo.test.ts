@@ -41,7 +41,6 @@ function agenda(
     modalidade: null,
     local: null,
     tier: null,
-    stakeholder_id: null,
     status: 'realizado',
     clima: null,
     resultado: null,
