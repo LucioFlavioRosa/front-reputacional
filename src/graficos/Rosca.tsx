@@ -14,10 +14,8 @@ import { useState } from 'react';
 import type { ItemContado } from '@/dominio/derivacoes';
 import { numero, percentual } from '@/dominio/formato';
 
-const TAMANHO = 168;
-const ESPESSURA = 24;
-const RAIO = (TAMANHO - ESPESSURA) / 2;
-const CIRCUNFERENCIA = 2 * Math.PI * RAIO;
+const TAMANHO_PADRAO = 168;
+const ESPESSURA_PADRAO = 24;
 
 export function Rosca({
   itens,
@@ -26,6 +24,8 @@ export function Rosca({
   rotuloCentral,
   detalheAoPassarMouse,
   vazio = 'Nenhum registro no recorte.',
+  tamanho = TAMANHO_PADRAO,
+  espessura = ESPESSURA_PADRAO,
 }: {
   itens: ItemContado[];
   ativo?: string;
@@ -37,10 +37,22 @@ export function Rosca({
    *  saber o que são essas linhas, só que existem. */
   detalheAoPassarMouse?: (chave: string) => { rotulo: string; valor: string }[];
   vazio?: string;
+  /** Diâmetro do círculo em px. Opcional — a maioria dos usos (Top 5
+   *  instituições, por tier...) fica no padrão; "% de Interações por Temas"
+   *  pede uma rosca maior, sem mudar as outras. */
+  tamanho?: number;
+  /** Espessura do anel — não escala junto com `tamanho` automaticamente;
+   *  quem pedir uma rosca maior e quiser o traço proporcionalmente mais
+   *  grosso passa os dois. */
+  espessura?: number;
 }) {
   //: Uma fatia em foco por vez — mouse ou teclado, o que vier primeiro.
   const [emFoco, definirEmFoco] = useState<string | null>(null);
   const total = itens.reduce((soma, item) => soma + item.total, 0);
+  const TAMANHO = tamanho;
+  const ESPESSURA = espessura;
+  const RAIO = (TAMANHO - ESPESSURA) / 2;
+  const CIRCUNFERENCIA = 2 * Math.PI * RAIO;
 
   if (!total) {
     return (

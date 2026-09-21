@@ -22,7 +22,7 @@
 
 import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { dataCurta, paraIso } from '@/dominio/formato';
+import { dataCompleta, dataCurta, paraIso } from '@/dominio/formato';
 import { intervalo } from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
 
@@ -60,6 +60,18 @@ function offsetDoFim(ate: Date | undefined, hoje: Date): number {
   if (!ate) return LIMITE_EM_DIAS;
   const dias = Math.round((ate.getTime() - hoje.getTime()) / 86_400_000);
   return Math.min(LIMITE_EM_DIAS, Math.max(0, dias));
+}
+
+/** Dias em texto — "1 ano" só no valor redondo de `LIMITE_EM_DIAS`, "N meses"
+ *  em múltiplos de 30, dia a dia no resto. Só para a legenda ao lado do
+ *  título; a trilha e as pílulas de atalho continuam contando em dias. */
+function descreverDias(dias: number): string {
+  if (dias === LIMITE_EM_DIAS) return '1 ano';
+  if (dias > 0 && dias % 30 === 0) {
+    const meses = dias / 30;
+    return `${meses} ${meses === 1 ? 'mês' : 'meses'}`;
+  }
+  return `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
 }
 
 export function FiltroDePeriodoArrastavel({
@@ -123,9 +135,23 @@ export function FiltroDePeriodoArrastavel({
   const percentualFim = ((fim + LIMITE_EM_DIAS) / (2 * LIMITE_EM_DIAS)) * 100;
   const percentualDeHoje = 50;
 
+  //: A LEGENDA AO LADO DO TÍTULO diz o que já está pré-selecionado — "Filtro
+  //: padrão" só quando os dois cabos ainda estão nas pontas (ninguém
+  //: arrastou nada); depois de um arraste, o texto descreve o alcance atual
+  //: sem chamá-lo de "padrão".
+  const noPadrao = inicio === -LIMITE_EM_DIAS && fim === LIMITE_EM_DIAS;
+  const descricaoDoPeriodo = noPadrao
+    ? `filtro padrão de ${descreverDias(LIMITE_EM_DIAS)} atrás até ${descreverDias(LIMITE_EM_DIAS)} para frente`
+    : `${descreverDias(Math.abs(inicio))} atrás até ${descreverDias(fim)} para frente`;
+
   return (
     <div>
-      <div style={ESTILO_DO_ROTULO}>Arraste o período</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <div style={ESTILO_DO_ROTULO}>Arraste o período</div>
+        <span style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--cinza-2)' }}>
+          {descricaoDoPeriodo}
+        </span>
+      </div>
       <div
         ref={refDaTrilha}
         style={{
@@ -195,6 +221,19 @@ export function FiltroDePeriodoArrastavel({
           aoSoltar={commitFim}
           offsetNoPonteiro={offsetNoPonteiro}
         />
+      </div>
+
+      {/* "HOJE" — logo abaixo da marca central da trilha (o traço em
+          `percentualDeHoje`), e não dentro da faixa de 32px da trilha: ali
+          não sobra altura para um rótulo sem disputar espaço com os
+          triângulos dos cabos quando algum deles passa perto do meio. */}
+      <div style={{ textAlign: 'center', marginTop: 2 }}>
+        <span
+          className="tabular"
+          style={{ fontSize: 11, fontWeight: 700, color: 'var(--sobre-turquesa)' }}
+        >
+          Hoje {dataCompleta(paraIso(hoje))}
+        </span>
       </div>
 
       <div
@@ -270,16 +309,18 @@ function CaboDaTrilha({
         }
       }}
       style={{
+        // TRIÂNGULO, não bolinha — a ponta toca exatamente a trilha (por
+        // isso `translate(-50%, -100%)`, e não `-50%`: a base fica acima da
+        // linha, e só a ponta encosta nela, como um pino apontando a data).
         position: 'absolute',
         top: '50%',
         left: `${posicaoPercentual}%`,
-        width: 20,
-        height: 20,
-        borderRadius: '50%',
+        width: 18,
+        height: 16,
+        clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)',
         background: 'var(--azul-mar)',
-        border: '2.5px solid var(--branco)',
-        boxShadow: '0 1px 4px rgba(0,25,120,0.35)',
-        transform: 'translate(-50%, -50%)',
+        filter: 'drop-shadow(0 1px 3px rgba(0,25,120,0.4))',
+        transform: 'translate(-50%, -100%)',
         cursor: 'grab',
         touchAction: 'none',
       }}

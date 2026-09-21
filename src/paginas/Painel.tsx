@@ -14,8 +14,8 @@ import {
   campoDeAreaPorCategoria,
   campoDeCategoriaPublico,
   campoDeFormatoInteracao,
-  GrupoDeCampo,
 } from '@/componentes/PainelDeFiltros';
+import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
@@ -27,6 +27,7 @@ import {
 } from '@/dominio/frentes';
 import {
   alternar,
+  alternarCategoriaPublico,
   alternarTag,
   limparAreas,
   limparCategoriaPublico,
@@ -36,6 +37,7 @@ import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
 import {
   CATEGORIAS_DE_AREA,
+  categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
   climaPorTema,
   completarPeriodos,
@@ -95,12 +97,6 @@ const ROTULOS_DE_GRANULARIDADE: Record<Granularidade, string> = {
   semestre: '6 meses',
 };
 
-const ADJETIVO_DE_GRANULARIDADE: Record<Granularidade, string> = {
-  semana: 'semanal',
-  mes: 'mensal',
-  semestre: 'semestral',
-};
-
 /** Como ler a chave de cada coluna em texto, por granularidade — o mesmo par
  *  chave/rótulo que `formato.ts` já expõe para mês, só que escolhido em
  *  tempo de render em vez de fixo em `rotuloDoMes`. */
@@ -129,6 +125,10 @@ export function Painel({
   //: MESMA IDEIA DE `temasExtras`, para o Termômetro por público — "mostre
   //: também esta categoria" no gráfico, não um filtro do recorte.
   const [categoriaPublicoExtras, definirCategoriaPublicoExtras] = useState<string[]>([]);
+
+  //: A faixa fixa de filtros abre fechada — só "Filtros:" e os três
+  //: gatilhos, sem a trilha de período ocupando altura de cara.
+  const [periodoAberto, definirPeriodoAberto] = useState(false);
 
   //: TAMBÉM SÓ DA TELA, não do Recorte — é "como eu quero ENXERGAR a série no
   //: tempo", não um filtro sobre quais interações entram na conta. Os três
@@ -168,6 +168,35 @@ export function Painel({
       };
     });
 
+    //: MESMA IDEIA DE `categoriasDeFrente`, para "Volumetria total por
+    //: Público" — TODAS as categorias da taxonomia (`catalogo.dicionarios.
+    //: categorias_publico`), não só o Top 5 de `categoriasPublicoMaisRecorrentes`
+    //: (aquele corta em 5 de propósito, para o ranking; aqui a pilha
+    //: empilhada quer o total inteiro, categoria nenhuma escondida). Sem cor
+    //: própria no dicionário (diferente de frente/clima) — reaproveita
+    //: `PALETA_DO_HISTORICO`, por posição.
+    const categoriaPublicoDoId = new Map(
+      [...catalogo.instituicoes.values()].map((i) => [i.id, i.categoria_publico_id]),
+    );
+    const contagemCategoriasPublico = interacoes.reduce((acc, i) => {
+      const categoriaId = categoriaPublicoDoId.get(i.instituicao_id);
+      if (categoriaId != null) acc[categoriaId] = (acc[categoriaId] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const categoriasDePublico = catalogo.dicionarios.categorias_publico.map((categoria, indice) => {
+      const tot = contagemCategoriasPublico[categoria.id] || 0;
+      const pct = Math.round((tot / totalInteracoes) * 100);
+      return {
+        chave: String(categoria.id),
+        rotulo: categoria.nome,
+        cor: PALETA_DO_HISTORICO[indice % PALETA_DO_HISTORICO.length],
+        detalhe: `${pct}% · ${tot}`,
+        total: tot,
+        pct,
+      };
+    });
+
     const interacoesComClima = interacoes.filter((i) => i.clima);
     const totalClima = interacoesComClima.length || 1;
     const contagemClimas = interacoesComClima.reduce((acc, i) => {
@@ -189,6 +218,7 @@ export function Painel({
     });
 
     const temas = temasMaisRecorrentes(interacoes, catalogo, 5);
+    const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
     const geo = distribuicaoPorUf(interacoes);
 
@@ -214,8 +244,18 @@ export function Painel({
       categoriasDeFrente,
       categoriasDeClima,
       temas,
-      volumetria: completarPeriodos(
-        serieMensal(interacoes, categoriasDeFrente, (i) => [i.frente], granularidade),
+      categoriasPublico,
+      categoriasDePublico,
+      volumetriaPorPublico: completarPeriodos(
+        serieMensal(
+          interacoes,
+          categoriasDePublico,
+          (i) => {
+            const categoriaId = categoriaPublicoDoId.get(i.instituicao_id);
+            return categoriaId != null ? [String(categoriaId)] : [];
+          },
+          granularidade,
+        ),
         granularidade,
       ),
       clima: completarPeriodos(
@@ -372,6 +412,124 @@ export function Painel({
         </div>
       ) : null}
 
+      {/* FAIXA FIXA DE FILTROS — ACIMA de "Síntese Executiva" de propósito:
+          é o primeiro controle da tela, antes de qualquer número derivado
+          dele. Versão COMPACTA: Área(s), Tipo de Interação
+          e Tipo de Público viraram GATILHOS fechados numa linha só
+          (`CampoSuspenso`), não mais três fileiras de pílulas sempre
+          abertas — aquela versão crescia demais em altura e cobria a tela
+          toda vez que descia junto. O painel com as pílulas de cada campo só
+          existe enquanto aberto, sobrepondo o conteúdo abaixo (`position:
+          absolute`) em vez de empurrá-lo.
+
+          Período virou um segundo cabeçalho retrátil embaixo do primeiro,
+          mesma ideia — fechado por padrão, abre só quando alguém quer
+          arrastar. Referência: protótipo trazido pelo usuário (faixa
+          turquesa "Filtros:" com três caixas + barra clara "Período").
+
+          UM SÓ `position: sticky`, colado em `top: var(--altura-cabecalho)`
+          (a altura real do `<header>` azul, medida e publicada por
+          `Layout.tsx`) — desce com a página até encostar embaixo do
+          cabeçalho, e daí em diante rola junto. `zIndex` abaixo do
+          cabeçalho (30) para ele sempre vencer se os dois colidirem na
+          borda. */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 'var(--altura-cabecalho)',
+          zIndex: 25,
+          borderRadius: 'var(--r-card)',
+          boxShadow: '0 6px 18px rgba(0,49,44,0.22)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            background: 'var(--turquesa-rio)',
+            borderRadius: 'var(--r-card) var(--r-card) 0 0',
+            padding: '10px 20px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 800,
+              letterSpacing: '0.03em',
+              textTransform: 'uppercase',
+              color: 'var(--sobre-turquesa)',
+              flexShrink: 0,
+            }}
+          >
+            Filtros:
+          </span>
+          <CampoSuspenso
+            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparAreas(recorte))}
+          />
+          {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
+              Manifestação formal/Evento/Visita/Reunião — `0038_formato_
+              interacao.sql`), NÃO `frente`: responde "que tipo de encontro
+              foi esse", pergunta ortogonal a "quem é a contraparte" —
+              `frente` continua filtrável em "Filtros rápidos". SÓ NO
+              CLIENTE, mesma lógica do Filtro Tipo de Público. */}
+          <CampoSuspenso
+            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
+          />
+          {/* SÓ NO CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o
+              que já chegou da API, juntando pelo catálogo. */}
+          <CampoSuspenso
+            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+          />
+        </div>
+
+        {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
+            (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
+            espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
+            para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
+        <button
+          type="button"
+          onClick={() => definirPeriodoAberto((v) => !v)}
+          aria-expanded={periodoAberto}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '9px 20px',
+            background: 'var(--bg-trilho)',
+            border: 'none',
+            borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
+            cursor: 'pointer',
+            fontSize: 12.5,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: 'var(--cinza-3)',
+          }}
+        >
+          <span>Período</span>
+          <SetaSuspensa aberto={periodoAberto} />
+        </button>
+        {periodoAberto ? (
+          <div
+            style={{
+              background: 'var(--branco)',
+              border: '1px solid var(--borda)',
+              borderTop: 'none',
+              borderRadius: '0 0 var(--r-card) var(--r-card)',
+              padding: '12px 20px 16px',
+            }}
+          >
+            <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
+          </div>
+        ) : null}
+      </div>
+
       {/* O TÍTULO SAIU DE DENTRO DO BANNER — antes era um rótulo pequeno no
           canto esquerdo dele; agora é o título da seção inteira, centralizado
           e fora de qualquer cartão, no mesmo degradê azul-mar → turquesa-rio
@@ -399,98 +557,6 @@ export function Painel({
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
         topUf={derivado.resumoExecutivo.topUf}
       />
-
-      {/* FAIXA FIXA DE FILTROS — Área(s), Tipo de Interação, Tipo de Público
-          e o período arrastável, todos dentro de UM bloco `position: sticky`
-          só, colado em `top: var(--altura-cabecalho)` (a altura real do
-          `<header>` azul, medida e publicada por `Layout.tsx`) — desce com a
-          página até encostar embaixo do cabeçalho, e daí em diante rola
-          junto, sempre visível. `zIndex` abaixo do cabeçalho (30) para o
-          cabeçalho sempre vencer se algum dia os dois colidirem na borda.
-
-          FUNDO `--turquesa-rio`: pediu para destacar do resto da tela como
-          uma faixa própria, não mais transparente/sem-caixa como a primeira
-          versão. `GrupoDeCampo` ganhou `variante="sobreTurquesa"` só para
-          isto — o par rótulo/pílula padrão (texto turquesa, pílula branca)
-          desaparecia contra um fundo da própria cor. */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 'var(--altura-cabecalho)',
-          zIndex: 25,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          background: 'var(--turquesa-rio)',
-          borderRadius: 'var(--r-card)',
-          padding: '16px 20px',
-          boxShadow: '0 6px 18px rgba(0,49,44,0.22)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-          <GrupoDeCampo
-            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
-            variante="sobreTurquesa"
-          />
-          {recorte.areas?.length ? (
-            <Botao
-              variante="fantasma"
-              estilo={{ color: 'var(--sobre-turquesa)' }}
-              aoClicar={() => definirRecorte(limparAreas(recorte))}
-            >
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
-
-        {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
-            Manifestação formal/Evento/Visita/Reunião — `0038_formato_
-            interacao.sql`), NÃO `frente`: responde "que tipo de encontro foi
-            esse", uma pergunta ortogonal a "quem é a contraparte" — `frente`
-            continua filtrável em "Filtros rápidos". SÓ NO CLIENTE, mesma
-            lógica do Filtro Tipo de Público — ver `campoDeFormatoInteracao`. */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-          <GrupoDeCampo
-            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
-            variante="sobreTurquesa"
-          />
-          {recorte.formatoInteracao?.length ? (
-            <Botao
-              variante="fantasma"
-              estilo={{ color: 'var(--sobre-turquesa)' }}
-              aoClicar={() => definirRecorte(limparFormatoInteracao(recorte))}
-            >
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
-
-        {/* SÓ NO CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o que
-            já chegou da API, juntando pelo catálogo — não é a mesma
-            "categoria de área" das outras. */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-          <GrupoDeCampo
-            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
-            variante="sobreTurquesa"
-          />
-          {recorte.categoriaPublico?.length ? (
-            <Botao
-              variante="fantasma"
-              estilo={{ color: 'var(--sobre-turquesa)' }}
-              aoClicar={() => definirRecorte(limparCategoriaPublico(recorte))}
-            >
-              Limpar
-            </Botao>
-          ) : null}
-        </div>
-
-        {/* O PERÍODO ARRASTÁVEL — complementa os atalhos de "Filtros
-            rápidos" (30/60/90...), para quem quer ajustar no olho em vez de
-            escolher um número fechado. Ver `FiltroDePeriodoArrastavel`. */}
-        <div style={{ borderTop: '1px solid rgba(0,49,44,0.18)', paddingTop: 12 }}>
-          <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
-        </div>
-      </div>
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
           componente: hoje é o front montando o texto com dados reais, sem
@@ -682,15 +748,20 @@ export function Painel({
           subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
         >
-          {/* MESMO LAYOUT de "Interações por tier" acima: a rosca (com sua
-              própria legenda, colorida por posição no ranking — mesma
-              paleta de `temasMaisRecorrentes`) e o top 5 dos mesmos temas ao
-              lado, como lista. Era a rosca de "Interações por áreas"
-              (`porArea`/`climaPorArea`, removidas): esta reaproveita
-              `derivado.temas`, a MESMA base do ranking ao lado e de "Temas no
-              tempo" mais abaixo — um tema em destaque aqui é o mesmo tema em
-              destaque lá. */}
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          {/* MESMO LAYOUT de "Interações por tier" acima, agora com a rosca
+              MAIOR (220px, era 168 — o padrão de `Rosca` continua 168 nos
+              outros usos, só este pede mais espaço) e TRÊS colunas em vez de
+              duas: a rosca (com sua própria legenda, colorida por posição no
+              ranking — mesma paleta de `temasMaisRecorrentes`), o top 5 dos
+              mesmos temas ao lado, e o top 5 de categorias de público
+              (`categoriasPublicoMaisRecorrentes`, mesma métrica de volume —
+              não o score de clima do Termômetro por Público, que é outro
+              cálculo). Era a rosca de "Interações por áreas" (`porArea`/
+              `climaPorArea`, removidas): esta reaproveita `derivado.temas`,
+              a MESMA base do ranking ao lado e de "Temas no tempo" mais
+              abaixo — um tema em destaque aqui é o mesmo tema em destaque
+              lá. */}
+          <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div style={{ flex: '0 0 auto' }}>
               <Rosca
                 itens={derivado.temas}
@@ -698,6 +769,8 @@ export function Painel({
                 aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
                 rotuloCentral="interações"
                 vazio="Nenhum tema registrado neste recorte."
+                tamanho={220}
+                espessura={30}
                 detalheAoPassarMouse={(chave) => {
                   const clima = derivado.climaPorTema[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
                   return [
@@ -719,6 +792,19 @@ export function Painel({
                 vazio="Nenhum tema neste recorte."
               />
             </div>
+            <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+              <div className="kicker" style={{ marginBottom: 12 }}>
+                Top 5 público
+              </div>
+              <Ranking
+                itens={derivado.categoriasPublico}
+                ativo={
+                  recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
+                }
+                aoClicar={(chave) => definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))}
+                vazio="Nenhuma categoria de público neste recorte."
+              />
+            </div>
           </div>
         </Secao>
       </div>
@@ -736,8 +822,8 @@ export function Painel({
         </div>
 
         <Secao
-          titulo={`Volumetria ${ADJETIVO_DE_GRANULARIDADE[granularidade]} por frente`}
-          subtitulo="Distribuição temporal das agendas acumuladas pelas 7 frentes institucionais"
+          titulo="Volumetria total por Público"
+          subtitulo="Distribuição temporal das agendas acumuladas pelas categorias da taxonomia de público"
           acao={
             <SeletorDeGranularidade
               valor={granularidade}
@@ -746,11 +832,11 @@ export function Painel({
           }
         >
           <BarrasEmpilhadas
-            colunas={derivado.volumetria}
+            colunas={derivado.volumetriaPorPublico}
             altura={220}
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
             aoClicarSegmento={(chave) =>
-              definirRecorte(alternar(recorte, 'frente', chave as Frente))
+              definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))
             }
             detalheDoMes={(coluna) => {
               const registrosDoPeriodo = interacoes.filter(
@@ -765,9 +851,11 @@ export function Painel({
             }}
           />
           <Legenda
-            itens={derivado.categoriasDeFrente}
-            ativo={recorte.frente}
-            aoClicar={(chave) => definirRecorte(alternar(recorte, 'frente', chave as Frente))}
+            itens={derivado.categoriasDePublico}
+            ativo={
+              recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
+            }
+            aoClicar={(chave) => definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))}
           />
         </Secao>
 

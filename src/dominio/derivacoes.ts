@@ -696,6 +696,41 @@ export function temasMaisRecorrentes(
     }));
 }
 
+/** As categorias de público mais recorrentes do recorte — MESMA IDEIA de
+ *  `temasMaisRecorrentes` (contagem simples, cor por posição no ranking),
+ *  para o "Top 5 público" ao lado da rosca em "% de Interações por Temas".
+ *
+ *  Diferente de `scorePorCategoriaPublico` (que soma positivas/negativas
+ *  para o Termômetro por Público): aqui é só volume, a mesma métrica de
+ *  "Top 5 temas" — por isso a chave é `String(categoria_publico_id)`, e não
+ *  o `score` daquele outro cálculo. `categoria_publico_id` mora na
+ *  Instituição, não na Interação — junta pelo catálogo, mesma lógica de
+ *  `filtrarPorCategoriaPublico`. */
+export function categoriasPublicoMaisRecorrentes(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  quantos = 5,
+): { chave: string; rotulo: string; cor: string; total: number }[] {
+  const contagem = new Map<number, number>();
+
+  for (const interacao of interacoes) {
+    const categoriaId = catalogo.instituicoes.get(interacao.instituicao_id)?.categoria_publico_id;
+    if (categoriaId == null) continue;
+    contagem.set(categoriaId, (contagem.get(categoriaId) ?? 0) + 1);
+  }
+
+  const nomePorId = new Map(catalogo.dicionarios.categorias_publico.map((c) => [c.id, c.nome]));
+
+  return [...contagem.entries()]
+    .map(([id, total]) => ({ chave: String(id), rotulo: nomePorId.get(id) ?? '—', total }))
+    .sort((a, b) => b.total - a.total || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
+    .slice(0, quantos)
+    .map((item, indice) => ({
+      ...item,
+      cor: PALETA_DO_PAINEL[indice % PALETA_DO_PAINEL.length],
+    }));
+}
+
 /** Uma linha da lista que abre ao clicar num tema — só o que basta para
  *  reconhecer a agenda e navegar até ela; o resto mora na própria Ficha. */
 export interface AgendaDoTema {

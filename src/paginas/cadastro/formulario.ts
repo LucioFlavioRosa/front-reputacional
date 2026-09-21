@@ -173,8 +173,8 @@ export const PAPEIS: { valor: string; rotulo: string }[] = [
 export type Etapa = 'antes' | 'depois';
 
 export const ABAS_DA_ETAPA: readonly { id: Etapa; rotulo: string }[] = [
-  { id: 'antes', rotulo: 'Antes da reunião' },
-  { id: 'depois', rotulo: 'Depois da reunião' },
+  { id: 'antes', rotulo: 'Pré cadastro' },
+  { id: 'depois', rotulo: 'Desdobramentos' },
 ];
 
 //: A pilha de seções de uma aba. `display` é o que esconde, e não o atributo

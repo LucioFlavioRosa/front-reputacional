@@ -342,6 +342,21 @@ export function Layout({
       >
         {children}
       </main>
+
+      {/* RODAPÉ DISCRETO — "no plano de fundo", não uma barra de marca: texto
+          pequeno e claro, só o bastante para quem procurar achar, sem
+          competir com nada da tela acima. */}
+      <footer
+        className="sem-impressao"
+        style={{
+          textAlign: 'center',
+          padding: '14px 32px',
+          fontSize: 11,
+          color: 'var(--texto-placeholder)',
+        }}
+      >
+        Powered by Peers
+      </footer>
     </div>
   );
 }

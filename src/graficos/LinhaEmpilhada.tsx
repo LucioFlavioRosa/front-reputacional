@@ -25,7 +25,7 @@
 
 import { useState } from 'react';
 import type { ColunaMensal, Segmento } from '@/dominio/derivacoes';
-import { rotuloDoMes } from '@/dominio/formato';
+import { percentual, rotuloDoMes } from '@/dominio/formato';
 
 const ALTURA_DO_MES = 14;
 const ALTURA_DO_VOLUME = 28;
@@ -47,7 +47,12 @@ export function LinhaEmpilhada({
    *  lista mantém a ordem de aparição, depois das listadas. */
   ordem?: string[];
 }) {
-  const [emFoco, definirEmFoco] = useState<number | null>(null);
+  //: DUAS ZONAS DE HOVER, não uma: a linha (percentual — a composição do
+  //: clima na coluna) e a barra de volume embaixo (absoluto — quantas
+  //: interações de fato). Passar o mouse numa ou noutra muda o que o
+  //: tooltip mostra, mesma leitura que cada uma já representa visualmente
+  //: (ver o comentário no topo do arquivo).
+  const [emFoco, definirEmFoco] = useState<{ indice: number; zona: 'linha' | 'barra' } | null>(null);
 
   if (!colunas.length) {
     return (
@@ -175,9 +180,11 @@ export function LinhaEmpilhada({
           ))}
         </div>
 
-        {/* Uma faixa invisível por coluna só para detectar o hover — a linha
-            em si não tem "corpo" para receber o evento, diferente da barra. */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+        {/* DUAS FAIXAS INVISÍVEIS por coluna, uma para cada zona — a linha em
+            si não tem "corpo" para receber o evento, diferente da barra, mas
+            aqui as duas precisam de uma faixa própria mesmo assim: é o que
+            diz qual tooltip mostrar, percentual ou absoluto. */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: alturaDoTrilho, display: 'flex' }}>
           {colunas.map((coluna, indice) => {
             const naEsquerda = indice <= 1;
             const naDireita = indice >= colunas.length - 2;
@@ -185,12 +192,45 @@ export function LinhaEmpilhada({
               <div
                 key={coluna.mes}
                 style={{ flex: 1, position: 'relative' }}
-                onMouseEnter={() => definirEmFoco(indice)}
+                onMouseEnter={() => definirEmFoco({ indice, zona: 'linha' })}
                 onMouseLeave={() => definirEmFoco(null)}
               >
-                {emFoco === indice && coluna.total > 0 ? (
+                {emFoco?.indice === indice && emFoco.zona === 'linha' && coluna.total > 0 ? (
                   <TooltipDaColuna
                     coluna={coluna}
+                    zona="linha"
+                    alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
+                    formatarRotulo={formatarRotulo}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            top: alturaDoTrilho + 3,
+            left: 0,
+            right: 0,
+            height: ALTURA_DO_VOLUME,
+            display: 'flex',
+          }}
+        >
+          {colunas.map((coluna, indice) => {
+            const naEsquerda = indice <= 1;
+            const naDireita = indice >= colunas.length - 2;
+            return (
+              <div
+                key={coluna.mes}
+                style={{ flex: 1, position: 'relative' }}
+                onMouseEnter={() => definirEmFoco({ indice, zona: 'barra' })}
+                onMouseLeave={() => definirEmFoco(null)}
+              >
+                {emFoco?.indice === indice && emFoco.zona === 'barra' && coluna.total > 0 ? (
+                  <TooltipDaColuna
+                    coluna={coluna}
+                    zona="barra"
                     alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
                     formatarRotulo={formatarRotulo}
                   />
@@ -216,7 +256,7 @@ export function LinhaEmpilhada({
               whiteSpace: 'nowrap',
             }}
           >
-            {indice % passoDoRotulo === 0 || indice === indiceDoUltimo || emFoco === indice
+            {indice % passoDoRotulo === 0 || indice === indiceDoUltimo || emFoco?.indice === indice
               ? formatarRotulo(coluna.mes)
               : ''}
           </div>
@@ -227,13 +267,19 @@ export function LinhaEmpilhada({
 }
 
 /** Mesmo desenho do tooltip de `BarrasEmpilhadas`: fundo escuro, data e total
- *  em cima, a quebra por categoria embaixo. */
+ *  em cima, a quebra por categoria embaixo — só a UNIDADE da quebra muda com
+ *  a zona: `'linha'` mostra a COMPOSIÇÃO (%, a mesma leitura da área
+ *  empilhada acima); `'barra'` mostra o volume absoluto (a mesma leitura da
+ *  barra de baixo). O total no topo continua absoluto nos dois casos — é o
+ *  número que dá contexto para a % fazer sentido. */
 function TooltipDaColuna({
   coluna,
+  zona,
   alinhamento,
   formatarRotulo,
 }: {
   coluna: ColunaMensal;
+  zona: 'linha' | 'barra';
   alinhamento: 'esquerda' | 'centro' | 'direita';
   formatarRotulo: (chave: string) => string;
 }) {
@@ -287,7 +333,9 @@ function TooltipDaColuna({
               style={{ width: 8, height: 8, borderRadius: 2, background: segmento.cor, flexShrink: 0 }}
             />
             <span style={{ flex: 1, color: '#D5DAEA' }}>{segmento.rotulo}</span>
-            <span className="tabular">{segmento.total}</span>
+            <span className="tabular">
+              {zona === 'linha' ? percentual(segmento.total, coluna.total) : segmento.total}
+            </span>
           </div>
         ))}
       </div>

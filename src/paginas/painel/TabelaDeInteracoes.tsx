@@ -42,7 +42,16 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
 
-const COLUNAS_COMPLETAS = ['Data', 'Instituição', 'Stakeholder', 'Pauta', 'Área(s)', 'Relevância', 'Clima'];
+const COLUNAS_COMPLETAS = [
+  'Data',
+  'Instituição',
+  'Público',
+  'Tipo de Interação',
+  'Pauta',
+  'Área(s)',
+  'Relevância',
+  'Clima',
+];
 
 //: A VERSÃO REDUZIDA serve às três tabelas de área fixa do Painel: a área já
 //: está no título do cartão (é fixa, não uma coluna), Stakeholder e
@@ -174,6 +183,23 @@ function nomeDoStakeholder(catalogo: Catalogo, id: number | null): string {
   return catalogo.dicionarios.stakeholders.find((s) => s.id === id)?.nome ?? '—';
 }
 
+//: A CATEGORIA DE PÚBLICO mora na INSTITUIÇÃO, não na interação — junta pelo
+//: catálogo, mesma lógica de `filtrarPorCategoriaPublico` (`dominio/
+//: derivacoes.ts`).
+function nomeDoPublico(catalogo: Catalogo, instituicaoId: string): string {
+  const categoriaId = catalogo.instituicoes.get(instituicaoId)?.categoria_publico_id;
+  if (categoriaId == null) return '—';
+  return catalogo.dicionarios.categorias_publico.find((c) => c.id === categoriaId)?.nome ?? '—';
+}
+
+//: `formato_interacao` (Mídia/Agenda de mercado/Evento/Reunião...) — ver
+//: `0038_formato_interacao.sql`. Ortogonal a `frente`, mora direto na
+//: interação, nulável em quem foi cadastrado antes do campo existir.
+function nomeDoFormatoInteracao(catalogo: Catalogo, id: number | null): string {
+  if (id == null) return '—';
+  return catalogo.dicionarios.formatos_interacao.find((f) => f.id === id)?.nome ?? '—';
+}
+
 export function TabelaDeInteracoes({
   interacoes,
   catalogo,
@@ -278,7 +304,12 @@ export function TabelaDeInteracoes({
                   </td>
                   {reduzida ? null : (
                     <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
-                      {nomeDoStakeholder(catalogo, interacao.stakeholder_id)}
+                      {nomeDoPublico(catalogo, interacao.instituicao_id)}
+                    </td>
+                  )}
+                  {reduzida ? null : (
+                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                      {nomeDoFormatoInteracao(catalogo, interacao.formato_interacao_id)}
                     </td>
                   )}
                   <td
