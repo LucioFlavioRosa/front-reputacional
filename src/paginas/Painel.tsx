@@ -147,7 +147,8 @@ export function Painel({
    *  clicar num tema na barra divergente. */
   aoAbrirAgenda: (id: string) => void;
 }) {
-  const { interacoes, recorte, definirRecorte, catalogo, carregando, erro } = usePainel();
+  const { interacoes, recorte, definirRecorte, limparRecorte, catalogo, carregando, erro } =
+    usePainel();
 
   //: SÓ DESTE GRÁFICO, e não do Recorte. É "mostre também este tema", não
   //: "filtre a base por este tema" — por isso vive aqui, e não na URL: um
@@ -344,14 +345,16 @@ export function Painel({
   // duas variáveis. O guarda serve só para destravar o tipo do resto da
   // função, que agora passa `catalogo` adiante para `HistoricoDoBloco`.
   if (carregando || !derivado || !catalogo) return <Carregando rotulo="Carregando o recorte…" />;
-  if (!interacoes.length) {
-    return (
-      <Vazio
-        mensagem="Nenhum registro no recorte"
-        dica="Ajuste os filtros ou cadastre a primeira interação."
-      />
-    );
-  }
+  // SEM RETORNO ANTECIPADO PARA RECORTE VAZIO, de propósito: um `return`
+  // aqui trocaria a página INTEIRA por `<Vazio>` — inclusive a própria
+  // faixa fixa de filtros (Áreas/Tipo de Interação/Tipo de Público +
+  // Período), que é onde mora o filtro que zerou o resultado. Quem
+  // filtrasse "Mídia" sem nenhuma interação com esse formato perdia o
+  // único jeito de ver ou desfazer o que tinha acabado de escolher. Em vez
+  // disso, os filtros sempre renderizam, e só a área de KPIs/gráficos vira
+  // `<Vazio>` — mesmo padrão da Base (`Base.tsx`), que nunca esconde a
+  // própria barra de filtros.
+  const semResultado = !interacoes.length;
 
   const { kpis } = derivado;
 
@@ -387,7 +390,7 @@ export function Painel({
           dois sozinho: dois pontos dizem que é uma soma. "Tier 1" é sinal de
           qualidade, não uma frente, e por isso fica no azul-mar da marca em
           vez de competir pela paleta das frentes. */}
-      {EXIBIR_KPIS ? (
+      {EXIBIR_KPIS && !semResultado ? (
         <div className="grade--kpis-painel">
           <KpiHero
             rotulo="Demandas de imprensa"
@@ -562,6 +565,18 @@ export function Painel({
         ) : null}
       </div>
 
+      {semResultado ? (
+        <Vazio
+          mensagem="Nenhum registro no recorte"
+          dica="Ajuste os filtros acima ou cadastre a primeira interação."
+          acao={
+            <Botao variante="fantasma" aoClicar={limparRecorte}>
+              Limpar todos os filtros
+            </Botao>
+          }
+        />
+      ) : (
+        <>
       {/* O TÍTULO SAIU DE DENTRO DO BANNER — antes era um rótulo pequeno no
           canto esquerdo dele; agora é o título da seção inteira, centralizado
           e fora de qualquer cartão, no mesmo degradê azul-mar → turquesa-rio
@@ -1075,6 +1090,8 @@ export function Painel({
           </Secao>
         </div>
       </div>
+        </>
+      )}
 
       {historico ? (
         <HistoricoDoBloco

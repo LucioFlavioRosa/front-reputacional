@@ -759,13 +759,26 @@ function IconeDeAnexo() {
 
 /* -- estados -------------------------------------------------------------- */
 
-export function Vazio({ mensagem, dica }: { mensagem: string; dica?: string }) {
+export function Vazio({
+  mensagem,
+  dica,
+  acao,
+}: {
+  mensagem: string;
+  dica?: string;
+  /** Uma saída direta do estado vazio — "Limpar filtros", por exemplo.
+   *  Sem isto, uma tela cujos próprios controles de filtro somem junto com
+   *  o conteúdo (como o Painel fazia até aqui) deixa quem filtrou sem
+   *  nenhum jeito óbvio de voltar à base completa. */
+  acao?: ReactNode;
+}) {
   return (
     <div style={{ padding: '32px 20px', textAlign: 'center' }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cinza-3)' }}>{mensagem}</div>
       {dica ? (
         <div style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 5 }}>{dica}</div>
       ) : null}
+      {acao ? <div style={{ marginTop: 14 }}>{acao}</div> : null}
     </div>
   );
 }
