@@ -202,24 +202,49 @@ describe('quem pode representar a instituição escolhida', () => {
 
   it('só as da instituição escolhida', () => {
     expect(
-      interlocutoresDaInstituicao(pessoas, 'i1', []).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, 'i1', [], true).map((p) => p.id),
     ).toEqual(['a', 'b']);
   });
 
   it('sem instituição escolhida, não oferece ninguém', () => {
     // Vazia de propósito: é a ordem em que se preenche. Uma lista de 55 nomes
     // sem relação com nada seria pior que nenhuma.
-    expect(interlocutoresDaInstituicao(pessoas, '', []).map((p) => p.id)).toEqual([]);
+    expect(interlocutoresDaInstituicao(pessoas, '', [], true).map((p) => p.id)).toEqual([]);
   });
 
   it('quem já está na agenda continua na lista', () => {
     // Uma agenda antiga pode ter pessoa de outra instituição. O campo abrindo
     // em branco pareceria dado perdido.
     expect(
-      interlocutoresDaInstituicao(pessoas, 'i1', ['c']).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, 'i1', ['c'], true).map((p) => p.id),
     ).toEqual(['a', 'b', 'c']);
     expect(
-      interlocutoresDaInstituicao(pessoas, '', ['c']).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, '', ['c'], true).map((p) => p.id),
     ).toEqual(['c']);
+  });
+
+  it('não oferece quem foi desligado, mas mantém quem já está na agenda', () => {
+    const comDesligadas = [
+      { id: 'a', instituicao_id: 'i1', ativo: true },
+      { id: 'b', instituicao_id: 'i1', ativo: false },
+      { id: 'c', instituicao_id: 'i1', ativo: false },
+    ];
+    expect(
+      interlocutoresDaInstituicao(comDesligadas, 'i1', ['c'], true).map((p) => p.id),
+    ).toEqual(['a', 'c']);
+  });
+
+  it('instituição desativada: mantém quem já está na agenda e não oferece mais ninguém', () => {
+    // Uma agenda antiga aponta para uma instituição que fechou depois. As
+    // pessoas dela continuam ATIVAS no cadastro (desativar a instituição não
+    // reescreve cada uma), mas disponível = pessoa ativa E instituição ativa.
+    const ativas = [
+      { id: 'a', instituicao_id: 'i1', ativo: true },
+      { id: 'b', instituicao_id: 'i1', ativo: true },
+    ];
+    expect(
+      interlocutoresDaInstituicao(ativas, 'i1', ['b'], false).map((p) => p.id),
+    ).toEqual(['b']);
+    expect(interlocutoresDaInstituicao(ativas, 'i1', [], false)).toEqual([]);
   });
 });

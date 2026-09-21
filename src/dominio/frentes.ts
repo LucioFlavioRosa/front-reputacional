@@ -319,12 +319,25 @@ export function rotuloDeAbrangencia(uf: string): string {
  *  de 55 nomes sem relação com nada.
  */
 export function interlocutoresDaInstituicao<
-  T extends { id: string; instituicao_id: string | null },
->(interlocutores: T[], instituicaoId: string, jaNaAgenda: string[]): T[] {
-  if (!instituicaoId) {
+  T extends { id: string; instituicao_id: string | null; ativo?: boolean },
+>(
+  interlocutores: T[],
+  instituicaoId: string,
+  jaNaAgenda: string[],
+  //: DISPONÍVEL = pessoa ativa E instituição ativa. O seletor de instituição
+  //: só lista ativas, mas uma agenda ANTIGA pode apontar para uma desativada
+  //: — e aí ninguém novo dela pode ser oferecido, só quem já estava.
+  //: SEM VALOR PADRÃO, de propósito: um chamador que esqueça o argumento
+  //: não compila, em vez de passar por "ativa" em silêncio.
+  instituicaoAtiva: boolean,
+): T[] {
+  // QUEM JÁ ESTÁ NA AGENDA FICA, desligada ou não: editar uma agenda antiga
+  // não pode perder quem esteve na sala.
+  if (!instituicaoId || !instituicaoAtiva) {
     return interlocutores.filter((i) => jaNaAgenda.includes(i.id));
   }
   return interlocutores.filter(
-    (i) => i.instituicao_id === instituicaoId || jaNaAgenda.includes(i.id),
+    (i) =>
+      jaNaAgenda.includes(i.id) || (i.instituicao_id === instituicaoId && i.ativo !== false),
   );
 }

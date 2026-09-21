@@ -454,6 +454,7 @@ export function Cadastro({
           [...catalogo.interlocutores.values()],
           form.instituicao_id,
           [],
+          instituicaoSelecionada?.ativo ?? true,
         ).map((p) => p.id),
       ),
     );
@@ -641,7 +642,12 @@ export function Cadastro({
             obrigatorio
             valor={form.instituicao_id}
             aoEscolher={escolherInstituicao}
-            opcoes={[...catalogo.instituicoes.values()].map((instituicao) => ({
+            opcoes={[...catalogo.instituicoes.values()]
+              // SÓ AS ATIVAS — mais a que esta agenda já aponta, se estiver
+              // desativada: editar uma agenda antiga não pode perder a
+              // instituição dela do seletor.
+              .filter((instituicao) => instituicao.ativo || instituicao.id === form.instituicao_id)
+              .map((instituicao) => ({
               valor: instituicao.id,
               rotulo: instituicao.nome,
               // O NOME POR EXTENSO ENTRA NA BUSCA. Quem digita "agencia
@@ -1098,6 +1104,7 @@ export function Cadastro({
                 [...catalogo.interlocutores.values()],
                 form.instituicao_id,
                 form.outraParte.map((p) => p.interlocutor_id),
+                instituicaoSelecionada?.ativo ?? true,
               )}
               aoMudar={(outraParte) => alterar('outraParte', outraParte)}
             />

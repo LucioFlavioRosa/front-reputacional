@@ -425,12 +425,20 @@ export function obterDicionarios(): Promise<Dicionarios> {
 
 /* -- stakeholders --------------------------------------------------------- */
 
+/** COM AS DESATIVADAS. Sem elas o catálogo não resolveria o nome de uma
+ *  instituição que já esteve numa agenda, e a Administração não teria como
+ *  reativá-la — o mesmo motivo pelo qual temas e referências vêm inteiros.
+ *  Quem oferece escolha filtra por `ativo` (formulário de agenda, cadastro
+ *  de pessoa); quem só mostra, mostra. */
 export function listarInstituicoes(): Promise<Instituicao[]> {
-  return requisitar<Instituicao[]>('/api/instituicoes');
+  return requisitar<Instituicao[]>('/api/instituicoes?incluir_inativos=1');
 }
 
+/** COM AS DESLIGADAS, pelo mesmo motivo de `listarInstituicoes`: sem elas o
+ *  Reativar da Administração não tem em quem clicar. Quem oferece escolha
+ *  filtra — `interlocutoresDaInstituicao` só devolve quem está disponível. */
 export function listarInterlocutores(): Promise<Interlocutor[]> {
-  return requisitar<Interlocutor[]>('/api/interlocutores');
+  return requisitar<Interlocutor[]>('/api/interlocutores?incluir_inativos=1');
 }
 
 export function listarPessoasAegea(): Promise<PessoaAegea[]> {
@@ -443,26 +451,15 @@ export function listarPessoasAegea(): Promise<PessoaAegea[]> {
 // agenda LÊ estes nomes o tempo todo e não deve reescrevê-los: renomear uma
 // instituição muda o que aparece em toda agenda que aponta para ela.
 
-/** A primeira pessoa da instituição, cadastrada JUNTO com ela.
- *
- *  Vai no mesmo corpo, e não numa segunda chamada: as duas escritas caem ou
- *  passam juntas. Separadas, uma falha na segunda deixaria a instituição criada
- *  e sem representante — e uma instituição sem ninguém não serve para nada,
- *  porque o formulário de agenda só oferece pessoas depois de escolhê-la.
- */
-export interface RepresentanteInicial {
-  nome: string;
-  email?: string | null;
-  cargo?: string | null;
-}
-
 export interface InstituicaoEntrada {
   nome: string;
   /** O nome por extenso. `nome` é a forma curta, que é como se fala. */
   nome_completo?: string | null;
-  /** `veiculo`, `orgao`, `entidade`, `investidor`, `proposicao`, `area_interna`.
-   *  É o que liga a instituição a uma frente. */
-  tipo: string;
+  /** `veiculo`, `orgao`, `entidade`, `investidor`, `proposicao`, `area_interna`,
+   *  `credor`. É o que liga a instituição a uma frente. Opcional: sem ele, o
+   *  back deriva da categoria de público (a tela de cadastro não pergunta
+   *  mais); na edição, ausente, o gravado fica. */
+  tipo?: string;
   esfera_id?: number | null;
   uf?: string | null;
   /** A relevância da INSTITUIÇÃO — Tier 1 a 4. Não confundir com o tier da
@@ -474,7 +471,6 @@ export interface InstituicaoEntrada {
   categoria_publico_id?: number | null;
   subcategoria_publico_id?: number | null;
   ativo?: boolean;
-  representante?: RepresentanteInicial | null;
 }
 
 export interface InterlocutorEntrada {
@@ -533,6 +529,13 @@ export function editarInterlocutor(
  */
 export function removerInterlocutor(id: string): Promise<void> {
   return requisitar<void>(`/api/interlocutores/${id}`, { method: 'DELETE' });
+}
+
+/** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
+ *  servidor recusa (422, contando as agendas) a que já esteve numa reunião:
+ *  para essa o caminho é Desativar (`editarInstituicao` com `ativo: false`). */
+export function removerInstituicao(id: string): Promise<void> {
+  return requisitar<void>(`/api/instituicoes/${id}`, { method: 'DELETE' });
 }
 
 export interface PessoaAegeaEntrada {

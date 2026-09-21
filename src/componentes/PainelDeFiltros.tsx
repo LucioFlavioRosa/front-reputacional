@@ -305,6 +305,9 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
       chave: 'entidade',
       rotulo: 'Instituição',
       valorAtual: recorte.entidade,
+      // COM AS DESATIVADAS, de propósito: o filtro recorta HISTÓRICO, e uma
+      // instituição desativada é justamente a que só existe no histórico.
+      // Tirá-la daqui esconderia as agendas dela sem esconder os números.
       itens: [...(catalogo?.instituicoes.values() ?? [])].map((i) => ({
         valor: i.nome,
         rotulo: i.nome,

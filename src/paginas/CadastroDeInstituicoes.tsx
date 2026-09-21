@@ -9,9 +9,12 @@
  *  não teria como ser registrada.
  *
  *  O TIPO NÃO É DETALHE. É ele que decide em qual frente a instituição aparece:
- *  `veiculo` só em Imprensa, `proposicao` só em Legislativo. Cadastrar com o
- *  tipo errado cria uma instituição que existe e nunca aparece — por isso o
- *  campo diz, ao lado de cada opção, em que frente ela vai surgir.
+ *  `veiculo` só em Imprensa, `proposicao` só em Legislativo. O cadastro não o
+ *  pergunta: ele nasce da categoria de público (`TIPO_DA_CATEGORIA_DE_PUBLICO`,
+ *  no back), que a tela já obriga. A EDIÇÃO ainda o mostra, ao lado da frente
+ *  em que ele faz a instituição surgir, porque duas coisas a taxonomia não
+ *  distingue — banco credor de investidor, e área interna de qualquer público —
+ *  e é lá que se corrige.
  *
  *  A tela NÃO é a barreira: quem decide é o backend, que responde 403 a quem
  *  não administra os cadastros. Esconder o que não se pode usar é conveniência.
@@ -23,8 +26,10 @@ import {
   criarInterlocutor,
   editarInstituicao,
   editarInterlocutor,
+  removerInstituicao,
   removerInterlocutor,
 } from '@/api/cliente';
+import type { InstituicaoEntrada } from '@/api/cliente';
 import {
   Botao,
   Campo,
@@ -50,23 +55,14 @@ import type { Catalogo } from '@/dominio/derivacoes';
 
 /** O que este gesto de cadastro cria.
  *
- *  As três opções já existiam como CAMINHOS separados — instituição sozinha
- *  (deixando "quem representa" em branco), os dois juntos, e pessoa avulsa
- *  (o "Acrescentar pessoa" de dentro de cada linha da lista). O que faltava
- *  era dizer isso na tela: a terceira opção só aparecia depois de abrir uma
- *  instituição específica, então quem queria só cadastrar uma pessoa nova
- *  tinha de saber, de antemão, que precisava ir procurar a instituição dela
- *  lá embaixo. Nomear as três aqui em cima não cria capacidade nova — só
- *  para de escondê-la.
+ *  Dois caminhos, nomeados aqui em cima: a instituição sozinha, e a pessoa
+ *  avulsa (o mesmo "Acrescentar pessoa" que existe dentro de cada linha da
+ *  lista, só que como primeira opção, sem exigir abrir a instituição certa
+ *  lá embaixo antes). Cadastrar os dois de uma vez já foi um terceiro modo
+ *  e saiu: quem representa a instituição se cadastra em "Contatos" depois
+ *  que ela existe — um gesto por decisão.
  */
-//: Rótulos curtos e simétricos — "Instituição" fala do que se cria, não de
-//: quanto se cria, então "Instituição e pessoa" ficava desalinhado ao lado de
-//: "Só a instituição"/"Só a pessoa". Os três agora respondem a mesma pergunta
-//: implícita ("o que esta ação cadastra?") do mesmo jeito. A ORDEM continua
-//: com "Instituição e pessoa" primeiro — é o comportamento que a tela sempre
-//: teve, então é o que aparece selecionado ao abrir a página.
-const MODOS_DE_CADASTRO: readonly Aba<'ambos' | 'instituicao' | 'pessoa'>[] = [
-  { id: 'ambos', rotulo: 'Instituição e Contatos' },
+const MODOS_DE_CADASTRO: readonly Aba<'instituicao' | 'pessoa'>[] = [
   { id: 'instituicao', rotulo: 'Instituição' },
   { id: 'pessoa', rotulo: 'Contatos' },
 ];
@@ -126,7 +122,6 @@ function subcategoriasDe(
 const VAZIA = {
   nome: '',
   nome_completo: '',
-  tipo: 'orgao',
   uf: '',
   esfera: '',
   //: SEM PADRAO, e e por isso que e string vazia e nao 3.
@@ -145,14 +140,52 @@ const VAZIA = {
   //: SÓ FAZ SENTIDO junto de uma categoria com `padrao_de_quebra !==
   //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
   subcategoria_publico_id: '',
-  //: O primeiro representante, cadastrado JUNTO. Uma instituicao sem ninguem
-  //: nao serve para nada: o formulario de agenda so oferece pessoas depois de
-  //: escolhe-la, e a lista sairia vazia.
-  rep_nome: '',
-  rep_email: '',
-  rep_cargo: '',
 };
 const SEM_PESSOA = { nome: '', email: '', cargo: '' };
+
+/** A ficha como a tela a mostra: é o rascunho de partida da edição, e também
+ *  o de quem só quer inverter `ativo` sem abrir a edição. */
+function rascunhoDe(instituicao: Instituicao): RascunhoDaInstituicao {
+  return {
+    nome: instituicao.nome,
+    nome_completo: instituicao.nome_completo ?? '',
+    tipo: instituicao.tipo,
+    uf: instituicao.uf ?? '',
+    esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
+    tier: instituicao.tier ? String(instituicao.tier) : '',
+    categoria_publico_id: instituicao.categoria_publico_id
+      ? String(instituicao.categoria_publico_id)
+      : '',
+    subcategoria_publico_id: instituicao.subcategoria_publico_id
+      ? String(instituicao.subcategoria_publico_id)
+      : '',
+  };
+}
+
+/** O corpo do PUT, a partir do rascunho. ESCRITO UMA VEZ: Salvar e
+ *  Desativar/Reativar passam por aqui, e é por isso que `ativo` — que o PUT
+ *  substitui junto com o resto da ficha — não pode ser esquecido em nenhum.
+ *
+ *  VAZIO VIRA `null`, e não 0: as instituições anteriores às colunas de tier
+ *  e de categoria não têm valor, e corrigir o nome de uma delas não pode
+ *  obrigar a classificá-la primeiro. */
+function entradaDaEdicao(rascunho: RascunhoDaInstituicao, ativo: boolean): InstituicaoEntrada {
+  return {
+    nome: rascunho.nome,
+    nome_completo: rascunho.nome_completo || null,
+    tipo: rascunho.tipo,
+    uf: rascunho.uf || null,
+    esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
+    tier: rascunho.tier ? Number(rascunho.tier) : null,
+    categoria_publico_id: rascunho.categoria_publico_id
+      ? Number(rascunho.categoria_publico_id)
+      : null,
+    subcategoria_publico_id: rascunho.subcategoria_publico_id
+      ? Number(rascunho.subcategoria_publico_id)
+      : null,
+    ativo,
+  };
+}
 
 /** O que a edição de uma instituição mexe.
  *
@@ -186,6 +219,10 @@ export function CadastroDeInstituicoes() {
   //: própria linha, e não um modal: o modal tira o contexto de QUAL linha, que
   //: é a informação que importa quando há dez pessoas na lista.
   const [aRemover, definirARemover] = useState<string | null>(null);
+  //: A mesma coisa, para a INSTITUIÇÃO: qual linha de "Cadastrados" está
+  //: com "Excluir de vez?" aberto. Um id só — pedir a exclusão de uma fecha a
+  //: pergunta da outra.
+  const [aExcluir, definirAExcluir] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [busca, definirBusca] = useState('');
 
@@ -194,16 +231,15 @@ export function CadastroDeInstituicoes() {
   //: instituição sem entrar no modo de edição dela.
   const [emEdicao, definirEmEdicao] = useState<string | null>(null);
   const [aberta, definirAberta] = useState<string | null>(null);
-  //: Qual das três formas o gesto de cadastro do topo está fazendo agora.
-  const [modo, definirModo] = useState<'ambos' | 'instituicao' | 'pessoa'>('ambos');
+  //: Qual das duas formas o gesto de cadastro do topo está fazendo agora.
+  const [modo, definirModo] = useState<'instituicao' | 'pessoa'>('instituicao');
   const [nova, definirNova] = useState(VAZIA);
   //: O rascunho do modo "Só a pessoa" — vive separado de `nova` porque os
   //: dois modos podem ser preenchidos e abandonados de forma independente:
   //: trocar de aba não deveria apagar o que já foi digitado no outro modo.
   const [pessoaAvulsa, definirPessoaAvulsa] = useState(PESSOA_AVULSA_VAZIA);
-  //: O rascunho da EDICAO nao carrega representante: editar a instituicao nao
-  //: e o lugar de acrescentar gente — para isso existe "Quem representa". O
-  //: backend ignora `representante` no PUT pelo mesmo motivo.
+  //: O rascunho da EDICAO nao carrega pessoa: editar a instituicao nao e o
+  //: lugar de acrescentar gente — para isso existe "Quem representa".
   const [rascunho, definirRascunho] = useState<RascunhoDaInstituicao>({
     nome: '',
     nome_completo: '',
@@ -235,6 +271,7 @@ export function CadastroDeInstituicoes() {
   const opcoesDeInstituicao = useMemo(
     () =>
       [...(catalogo?.instituicoes.values() ?? [])]
+        .filter((instituicao) => instituicao.ativo)
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
         .map((instituicao) => ({
           valor: instituicao.id,
@@ -244,6 +281,8 @@ export function CadastroDeInstituicoes() {
     [catalogo],
   );
 
+  //: TODAS, desligadas inclusive — é aqui que se reativa. O formulário de
+  //: agenda é quem filtra (`interlocutoresDaInstituicao`).
   const pessoasDe = (instituicaoId: string): Interlocutor[] =>
     [...(catalogo?.interlocutores.values() ?? [])]
       .filter((p) => p.instituicao_id === instituicaoId)
@@ -322,9 +361,9 @@ export function CadastroDeInstituicoes() {
             </p>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
-              O tipo escolhido é o que faz esta instituição aparecer nas
-              interações certas — um órgão em Governo, um veículo em Imprensa, e
-              assim por diante.
+              A categoria de público é o que faz esta instituição aparecer nas
+              interações certas — Poder Executivo em Governo, Imprensa em
+              Imprensa, e assim por diante.
             </p>
           )}
 
@@ -352,20 +391,6 @@ export function CadastroDeInstituicoes() {
                 }
                 placeholder="Agência Nacional de Águas e Saneamento Básico"
               />
-            </Campo>
-
-            <Campo rotulo="Tipo" obrigatorio>
-              <select
-                style={estiloDeEntrada}
-                value={nova.tipo}
-                onChange={(e) => definirNova({ ...nova, tipo: e.target.value })}
-              >
-                {TIPOS.map(({ tipo, rotulo, onde }) => (
-                  <option key={tipo} value={tipo}>
-                    {rotulo} — aparece em {onde}
-                  </option>
-                ))}
-              </select>
             </Campo>
 
             <Campo rotulo="Abrangência" dica="UF, NA (nacional) ou IN (internacional).">
@@ -461,64 +486,6 @@ export function CadastroDeInstituicoes() {
           </div>
           )}
 
-          {/* O REPRESENTANTE ENTRA NO MESMO GESTO. Cadastrar a instituicao e
-              depois abrir a edicao para dizer quem fala por ela sao dois passos
-              para uma decisao so — e o segundo e o que costuma nao acontecer.
-
-              Opcional: nem toda instituicao tem contato conhecido no dia em que
-              entra na base. Preenchido, vai na MESMA requisicao, e as duas
-              escritas caem ou passam juntas.
-
-              SÓ NO MODO "AMBOS": nos outros dois modos a pessoa e a instituição
-              não nascem juntas, então este bloco não se aplica — no modo "Só a
-              instituição" porque ainda não há ninguém para representar, no
-              modo "Só a pessoa" porque a instituição já existe e quem
-              representa é o próprio campo abaixo. */}
-          {modo === 'ambos' ? (
-            <>
-              <p
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  margin: '18px 0 4px',
-                }}
-              >
-                Contatos
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 12px' }}>
-                É esta pessoa que o formulário de agenda vai oferecer em "Pela
-                outra parte". Dá para deixar em branco e cadastrar depois.
-              </p>
-              <div className="grade grade--3" style={{ gap: 16 }}>
-                <Campo rotulo="Nome">
-                  <input
-                    style={estiloDeEntrada}
-                    value={nova.rep_nome}
-                    onChange={(e) => definirNova({ ...nova, rep_nome: e.target.value })}
-                    placeholder="Maria Souza"
-                  />
-                </Campo>
-                <Campo rotulo="E-mail">
-                  <input
-                    type="email"
-                    style={estiloDeEntrada}
-                    value={nova.rep_email}
-                    onChange={(e) => definirNova({ ...nova, rep_email: e.target.value })}
-                    placeholder="maria.souza@ana.gov.br"
-                  />
-                </Campo>
-                <Campo rotulo="Cargo">
-                  <input
-                    style={estiloDeEntrada}
-                    value={nova.rep_cargo}
-                    onChange={(e) => definirNova({ ...nova, rep_cargo: e.target.value })}
-                    placeholder="Diretora de Regulação"
-                  />
-                </Campo>
-              </div>
-            </>
-          ) : null}
-
           {/* MODO "SÓ A PESSOA": a mesma escrita que já existia dentro de cada
               linha de "Cadastrados" (`criarInterlocutor` com `instituicao_id`
               de uma instituição JÁ existente) — só que aqui em cima, como
@@ -604,7 +571,8 @@ export function CadastroDeInstituicoes() {
                         criarInstituicao({
                           nome: nova.nome,
                           nome_completo: nova.nome_completo || null,
-                          tipo: nova.tipo,
+                          // SEM `tipo`, de propósito: o back o deriva da
+                          // categoria de público, obrigatória logo abaixo.
                           uf: nova.uf || null,
                           esfera_id: nova.esfera ? Number(nova.esfera) : null,
                           tier: Number(nova.tier),
@@ -614,20 +582,6 @@ export function CadastroDeInstituicoes() {
                           subcategoria_publico_id: nova.subcategoria_publico_id
                             ? Number(nova.subcategoria_publico_id)
                             : null,
-                          // SO QUANDO HA NOME E O MODO PERMITE. Mandar
-                          // `{nome: ''}` seria recusado pelo `min_length`, e o
-                          // modo "Só a instituição" nunca tem representante —
-                          // mandar os campos de `nova.rep_*` (deixados de um
-                          // rascunho anterior no modo "Ambos") criaria uma
-                          // pessoa que ninguém pediu neste modo.
-                          representante:
-                            modo === 'ambos' && nova.rep_nome.trim()
-                              ? {
-                                  nome: nova.rep_nome,
-                                  email: nova.rep_email || null,
-                                  cargo: nova.rep_cargo || null,
-                                }
-                              : null,
                         }),
                       () => definirNova(VAZIA),
                     )
@@ -677,46 +631,30 @@ export function CadastroDeInstituicoes() {
               }
               aoEditar={() => {
                 definirEmEdicao(instituicao.id);
-                definirRascunho({
-                  nome: instituicao.nome,
-                  nome_completo: instituicao.nome_completo ?? '',
-                  tipo: instituicao.tipo,
-                  uf: instituicao.uf ?? '',
-                  esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
-                  tier: instituicao.tier ? String(instituicao.tier) : '',
-                  categoria_publico_id: instituicao.categoria_publico_id
-                    ? String(instituicao.categoria_publico_id)
-                    : '',
-                  subcategoria_publico_id: instituicao.subcategoria_publico_id
-                    ? String(instituicao.subcategoria_publico_id)
-                    : '',
-                });
+                definirRascunho(rascunhoDe(instituicao));
               }}
               aoCancelar={() => definirEmEdicao(null)}
               aoSalvar={() =>
                 void executar(
                   () =>
-                    editarInstituicao(instituicao.id, {
-                      nome: rascunho.nome,
-                      nome_completo: rascunho.nome_completo || null,
-                      tipo: rascunho.tipo,
-                      uf: rascunho.uf || null,
-                      esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
-                      // VAZIO VIRA `null`, e nao 0: as 98 instituicoes
-                      // anteriores a coluna nao tem tier, e corrigir o nome de
-                      // uma delas nao pode obrigar a classifica-la primeiro.
-                      tier: rascunho.tier ? Number(rascunho.tier) : null,
-                      // MESMO RACIOCINIO: as ~99 instituicoes anteriores a
-                      // categoria de publico tambem nao tem uma, e o PUT nao
-                      // pode travar a edicao delas por causa disso.
-                      categoria_publico_id: rascunho.categoria_publico_id
-                        ? Number(rascunho.categoria_publico_id)
-                        : null,
-                      subcategoria_publico_id: rascunho.subcategoria_publico_id
-                        ? Number(rascunho.subcategoria_publico_id)
-                        : null,
-                    }),
+                    editarInstituicao(
+                      instituicao.id,
+                      entradaDaEdicao(rascunho, instituicao.ativo),
+                    ),
                   () => definirEmEdicao(null),
+                )
+              }
+              aoAlternarAtiva={() =>
+                void executar(
+                  // A FICHA COMO ESTÁ, só com `ativo` invertido — pelo mesmo
+                  // montador do Salvar, para os dois PUTs nunca divergirem.
+                  () =>
+                    editarInstituicao(
+                      instituicao.id,
+                      entradaDaEdicao(rascunhoDe(instituicao), !instituicao.ativo),
+                    ),
+                  () => undefined,
+                  `${instituicao.nome} ${instituicao.ativo ? 'desativada' : 'reativada'}.`,
                 )
               }
               aoAcrescentarPessoa={() =>
@@ -757,9 +695,47 @@ export function CadastroDeInstituicoes() {
                   () => definirPessoaEmEdicao(null),
                 )
               }
+              aExcluir={aExcluir === instituicao.id}
+              // A RECUSA APARECE NA LINHA. A faixa do topo continua existindo,
+              // mas quem confirmou uma exclusão no fim de uma lista de cem
+              // não a vê — e clica de novo, e de novo, achando que nada
+              // aconteceu. O erro só é da linha enquanto a pergunta dela
+              // estiver aberta; Cancelar a fecha e limpa.
+              erroDaExclusao={aExcluir === instituicao.id ? erro : null}
+              aoPedirExclusao={() => {
+                definirErro(null);
+                definirAExcluir(instituicao.id);
+              }}
+              aoDesistirDaExclusao={() => {
+                definirErro(null);
+                definirAExcluir(null);
+              }}
+              aoExcluir={() =>
+                void executar(
+                  // Confirmação em duas etapas, como na pessoa: o servidor
+                  // recusa a que já esteve numa agenda, mas a que não esteve
+                  // some na hora, com as pessoas dela, sem desfazer.
+                  () => removerInstituicao(instituicao.id),
+                  () => {
+                    definirAExcluir(null);
+                    if (aberta === instituicao.id) definirAberta(null);
+                    if (emEdicao === instituicao.id) definirEmEdicao(null);
+                  },
+                  `${instituicao.nome} foi excluída.`,
+                )
+              }
               aRemover={aRemover}
-              aoPedirRemocao={(pessoa) => definirARemover(pessoa.id)}
-              aoDesistirDaRemocao={() => definirARemover(null)}
+              // A MESMA REGRA DA EXCLUSÃO DA INSTITUIÇÃO: a recusa do servidor
+              // aparece na linha da pessoa, não só na faixa do topo.
+              erroDaRemocao={aRemover ? erro : null}
+              aoPedirRemocao={(pessoa) => {
+                definirErro(null);
+                definirARemover(pessoa.id);
+              }}
+              aoDesistirDaRemocao={() => {
+                definirErro(null);
+                definirARemover(null);
+              }}
               aoRemoverPessoa={(pessoa) =>
                 void executar(
                   // A CONFIRMACAO E DA TELA, e nao do servidor.
@@ -825,7 +801,14 @@ function LinhaDeInstituicao({
   aoEditarPessoa,
   aoCancelarPessoa,
   aoSalvarPessoa,
+  aoAlternarAtiva,
+  aExcluir,
+  erroDaExclusao,
+  aoPedirExclusao,
+  aoDesistirDaExclusao,
+  aoExcluir,
   aRemover,
+  erroDaRemocao,
   aoPedirRemocao,
   aoDesistirDaRemocao,
   aoRemoverPessoa,
@@ -859,7 +842,14 @@ function LinhaDeInstituicao({
   aoEditarPessoa: (pessoa: Interlocutor) => void;
   aoCancelarPessoa: () => void;
   aoSalvarPessoa: (pessoa: Interlocutor) => void;
+  aoAlternarAtiva: () => void;
+  aExcluir: boolean;
+  erroDaExclusao: string | null;
+  aoPedirExclusao: () => void;
+  aoDesistirDaExclusao: () => void;
+  aoExcluir: () => void;
   aRemover: string | null;
+  erroDaRemocao: string | null;
   aoPedirRemocao: (pessoa: Interlocutor) => void;
   aoDesistirDaRemocao: () => void;
   aoRemoverPessoa: (pessoa: Interlocutor) => void;
@@ -991,7 +981,14 @@ function LinhaDeInstituicao({
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 14, fontWeight: 500 }}>
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: instituicao.ativo ? undefined : 'var(--cinza-2)',
+                textDecoration: instituicao.ativo ? 'none' : 'line-through',
+              }}
+            >
               {instituicao.nome}
               {instituicao.nome_completo ? (
                 <span style={{ fontWeight: 400, color: 'var(--cinza-3)' }}>
@@ -1001,6 +998,9 @@ function LinhaDeInstituicao({
               ) : null}
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+              {instituicao.ativo
+                ? null
+                : 'desativada — ela e as pessoas dela saem do cadastro de agenda; o histórico e os filtros continuam · '}
               {rotuloDoTipo} · aparece em {onde}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
@@ -1011,7 +1011,7 @@ function LinhaDeInstituicao({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         {emEdicao ? (
           <>
             <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
@@ -1025,6 +1025,63 @@ function LinhaDeInstituicao({
             <Botao variante="fantasma" aoClicar={aoAbrir}>
               {aberta ? 'Fechar' : 'Quem representa'}
             </Botao>
+            {/* DESATIVAR É O CAMINHO PARA QUEM TEM HISTÓRICO: sai do formulário
+                de agenda e do cadastro de pessoa, fica nas agendas que já
+                existem e nesta lista. Excluir, logo ao lado, é para quem
+                entrou por engano — e o servidor recusa se houver agenda. */}
+            <Botao
+              variante="fantasma"
+              desabilitado={salvando}
+              aoClicar={aoAlternarAtiva}
+              rotuloAcessivel={`${instituicao.ativo ? 'Desativar' : 'Reativar'} ${instituicao.nome}`}
+            >
+              {instituicao.ativo ? 'Desativar' : 'Reativar'}
+            </Botao>
+            {/* DUAS ETAPAS NA PRÓPRIA LINHA, como na remoção de pessoa: um
+                modal tiraria o contexto de QUAL instituição está saindo. O
+                servidor recusa a que já esteve numa agenda — a mensagem dele
+                aparece aqui na linha, com a contagem, e aponta Desativar. */}
+            {aExcluir && erroDaExclusao ? (
+              <>
+                <span
+                  role="alert"
+                  style={{ fontSize: 12, color: 'var(--erro-fg)', alignSelf: 'center', maxWidth: 560 }}
+                >
+                  {erroDaExclusao}
+                </span>
+                <Botao variante="fantasma" aoClicar={aoDesistirDaExclusao}>
+                  Entendi
+                </Botao>
+              </>
+            ) : aExcluir ? (
+              <>
+                <span style={{ fontSize: 12, color: 'var(--erro-fg)', alignSelf: 'center' }}>
+                  Excluir de vez, com as pessoas dela?
+                </span>
+                <Botao
+                  variante="fantasma"
+                  desabilitado={salvando}
+                  aoClicar={aoExcluir}
+                  rotuloAcessivel={`Confirmar a exclusão de ${instituicao.nome}`}
+                  estilo={{ color: 'var(--erro-fg)', fontWeight: 700 }}
+                >
+                  Sim, excluir
+                </Botao>
+                <Botao variante="fantasma" aoClicar={aoDesistirDaExclusao}>
+                  Cancelar
+                </Botao>
+              </>
+            ) : (
+              <Botao
+                variante="fantasma"
+                desabilitado={salvando}
+                aoClicar={aoPedirExclusao}
+                rotuloAcessivel={`Excluir ${instituicao.nome}`}
+                estilo={{ color: 'var(--erro-fg)' }}
+              >
+                Excluir
+              </Botao>
+            )}
           </>
         )}
       </div>
@@ -1108,6 +1165,7 @@ function LinhaDeInstituicao({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
                     gap: 10,
                     padding: '5px 0',
                   }}
@@ -1167,7 +1225,19 @@ function LinhaDeInstituicao({
                   {/* DUAS ETAPAS NA PROPRIA LINHA. Um modal tiraria o
                       contexto de QUAL pessoa esta sendo removida, que e a
                       informacao que importa numa lista de dez. */}
-                  {aRemover === pessoa.id ? (
+                  {aRemover === pessoa.id && erroDaRemocao ? (
+                    <>
+                      <span
+                        role="alert"
+                        style={{ fontSize: 12, color: 'var(--erro-fg)', maxWidth: 520 }}
+                      >
+                        {erroDaRemocao}
+                      </span>
+                      <Botao variante="fantasma" aoClicar={aoDesistirDaRemocao}>
+                        Entendi
+                      </Botao>
+                    </>
+                  ) : aRemover === pessoa.id ? (
                     <>
                       <span style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
                         Remover de vez?
