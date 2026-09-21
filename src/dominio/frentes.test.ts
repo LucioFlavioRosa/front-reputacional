@@ -233,4 +233,18 @@ describe('quem pode representar a instituição escolhida', () => {
       interlocutoresDaInstituicao(comDesligadas, 'i1', ['c']).map((p) => p.id),
     ).toEqual(['a', 'c']);
   });
+
+  it('instituição desativada: mantém quem já está na agenda e não oferece mais ninguém', () => {
+    // Uma agenda antiga aponta para uma instituição que fechou depois. As
+    // pessoas dela continuam ATIVAS no cadastro (desativar a instituição não
+    // reescreve cada uma), mas disponível = pessoa ativa E instituição ativa.
+    const ativas = [
+      { id: 'a', instituicao_id: 'i1', ativo: true },
+      { id: 'b', instituicao_id: 'i1', ativo: true },
+    ];
+    expect(
+      interlocutoresDaInstituicao(ativas, 'i1', ['b'], false).map((p) => p.id),
+    ).toEqual(['b']);
+    expect(interlocutoresDaInstituicao(ativas, 'i1', [], false)).toEqual([]);
+  });
 });

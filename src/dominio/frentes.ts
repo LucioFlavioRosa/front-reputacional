@@ -320,15 +320,20 @@ export function rotuloDeAbrangencia(uf: string): string {
  */
 export function interlocutoresDaInstituicao<
   T extends { id: string; instituicao_id: string | null; ativo?: boolean },
->(interlocutores: T[], instituicaoId: string, jaNaAgenda: string[]): T[] {
-  if (!instituicaoId) {
+>(
+  interlocutores: T[],
+  instituicaoId: string,
+  jaNaAgenda: string[],
+  //: DISPONÍVEL = pessoa ativa E instituição ativa. O seletor de instituição
+  //: só lista ativas, mas uma agenda ANTIGA pode apontar para uma desativada
+  //: — e aí ninguém novo dela pode ser oferecido, só quem já estava.
+  instituicaoAtiva = true,
+): T[] {
+  // QUEM JÁ ESTÁ NA AGENDA FICA, desligada ou não: editar uma agenda antiga
+  // não pode perder quem esteve na sala.
+  if (!instituicaoId || !instituicaoAtiva) {
     return interlocutores.filter((i) => jaNaAgenda.includes(i.id));
   }
-  // QUEM JÁ ESTÁ NA AGENDA FICA, desligada ou não: editar uma agenda antiga
-  // não pode perder quem esteve na sala. Quem é oferecido de novo tem de
-  // estar ativo. (A instituição desativada nem chega aqui — o seletor de
-  // instituição só lista ativas, e o catálogo de pessoas que o back serve
-  // por padrão já aplica os dois níveis.)
   return interlocutores.filter(
     (i) =>
       jaNaAgenda.includes(i.id) || (i.instituicao_id === instituicaoId && i.ativo !== false),

@@ -1103,6 +1103,7 @@ export function Cadastro({
                 [...catalogo.interlocutores.values()],
                 form.instituicao_id,
                 form.outraParte.map((p) => p.interlocutor_id),
+                instituicaoSelecionada?.ativo ?? true,
               )}
               aoMudar={(outraParte) => alterar('outraParte', outraParte)}
             />

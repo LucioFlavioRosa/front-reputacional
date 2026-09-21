@@ -29,6 +29,7 @@ import {
   removerInstituicao,
   removerInterlocutor,
 } from '@/api/cliente';
+import type { InstituicaoEntrada } from '@/api/cliente';
 import {
   Botao,
   Campo,
@@ -141,6 +142,50 @@ const VAZIA = {
   subcategoria_publico_id: '',
 };
 const SEM_PESSOA = { nome: '', email: '', cargo: '' };
+
+/** A ficha como a tela a mostra: é o rascunho de partida da edição, e também
+ *  o de quem só quer inverter `ativo` sem abrir a edição. */
+function rascunhoDe(instituicao: Instituicao): RascunhoDaInstituicao {
+  return {
+    nome: instituicao.nome,
+    nome_completo: instituicao.nome_completo ?? '',
+    tipo: instituicao.tipo,
+    uf: instituicao.uf ?? '',
+    esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
+    tier: instituicao.tier ? String(instituicao.tier) : '',
+    categoria_publico_id: instituicao.categoria_publico_id
+      ? String(instituicao.categoria_publico_id)
+      : '',
+    subcategoria_publico_id: instituicao.subcategoria_publico_id
+      ? String(instituicao.subcategoria_publico_id)
+      : '',
+  };
+}
+
+/** O corpo do PUT, a partir do rascunho. ESCRITO UMA VEZ: Salvar e
+ *  Desativar/Reativar passam por aqui, e é por isso que `ativo` — que o PUT
+ *  substitui junto com o resto da ficha — não pode ser esquecido em nenhum.
+ *
+ *  VAZIO VIRA `null`, e não 0: as instituições anteriores às colunas de tier
+ *  e de categoria não têm valor, e corrigir o nome de uma delas não pode
+ *  obrigar a classificá-la primeiro. */
+function entradaDaEdicao(rascunho: RascunhoDaInstituicao, ativo: boolean): InstituicaoEntrada {
+  return {
+    nome: rascunho.nome,
+    nome_completo: rascunho.nome_completo || null,
+    tipo: rascunho.tipo,
+    uf: rascunho.uf || null,
+    esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
+    tier: rascunho.tier ? Number(rascunho.tier) : null,
+    categoria_publico_id: rascunho.categoria_publico_id
+      ? Number(rascunho.categoria_publico_id)
+      : null,
+    subcategoria_publico_id: rascunho.subcategoria_publico_id
+      ? Number(rascunho.subcategoria_publico_id)
+      : null,
+    ativo,
+  };
+}
 
 /** O que a edição de uma instituição mexe.
  *
@@ -586,65 +631,28 @@ export function CadastroDeInstituicoes() {
               }
               aoEditar={() => {
                 definirEmEdicao(instituicao.id);
-                definirRascunho({
-                  nome: instituicao.nome,
-                  nome_completo: instituicao.nome_completo ?? '',
-                  tipo: instituicao.tipo,
-                  uf: instituicao.uf ?? '',
-                  esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
-                  tier: instituicao.tier ? String(instituicao.tier) : '',
-                  categoria_publico_id: instituicao.categoria_publico_id
-                    ? String(instituicao.categoria_publico_id)
-                    : '',
-                  subcategoria_publico_id: instituicao.subcategoria_publico_id
-                    ? String(instituicao.subcategoria_publico_id)
-                    : '',
-                });
+                definirRascunho(rascunhoDe(instituicao));
               }}
               aoCancelar={() => definirEmEdicao(null)}
               aoSalvar={() =>
                 void executar(
                   () =>
-                    editarInstituicao(instituicao.id, {
-                      nome: rascunho.nome,
-                      nome_completo: rascunho.nome_completo || null,
-                      tipo: rascunho.tipo,
-                      uf: rascunho.uf || null,
-                      esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
-                      // VAZIO VIRA `null`, e nao 0: as 98 instituicoes
-                      // anteriores a coluna nao tem tier, e corrigir o nome de
-                      // uma delas nao pode obrigar a classifica-la primeiro.
-                      tier: rascunho.tier ? Number(rascunho.tier) : null,
-                      // MESMO RACIOCINIO: as ~99 instituicoes anteriores a
-                      // categoria de publico tambem nao tem uma, e o PUT nao
-                      // pode travar a edicao delas por causa disso.
-                      categoria_publico_id: rascunho.categoria_publico_id
-                        ? Number(rascunho.categoria_publico_id)
-                        : null,
-                      subcategoria_publico_id: rascunho.subcategoria_publico_id
-                        ? Number(rascunho.subcategoria_publico_id)
-                        : null,
-                      // O PUT substitui a ficha inteira: sem isto, salvar o
-                      // nome de uma desativada a reativaria em silêncio.
-                      ativo: instituicao.ativo,
-                    }),
+                    editarInstituicao(
+                      instituicao.id,
+                      entradaDaEdicao(rascunho, instituicao.ativo),
+                    ),
                   () => definirEmEdicao(null),
                 )
               }
               aoAlternarAtiva={() =>
                 void executar(
+                  // A FICHA COMO ESTÁ, só com `ativo` invertido — pelo mesmo
+                  // montador do Salvar, para os dois PUTs nunca divergirem.
                   () =>
-                    editarInstituicao(instituicao.id, {
-                      nome: instituicao.nome,
-                      nome_completo: instituicao.nome_completo,
-                      tipo: instituicao.tipo,
-                      uf: instituicao.uf,
-                      esfera_id: instituicao.esfera_id,
-                      tier: instituicao.tier,
-                      categoria_publico_id: instituicao.categoria_publico_id,
-                      subcategoria_publico_id: instituicao.subcategoria_publico_id,
-                      ativo: !instituicao.ativo,
-                    }),
+                    editarInstituicao(
+                      instituicao.id,
+                      entradaDaEdicao(rascunhoDe(instituicao), !instituicao.ativo),
+                    ),
                   () => undefined,
                   `${instituicao.nome} ${instituicao.ativo ? 'desativada' : 'reativada'}.`,
                 )
@@ -979,7 +987,9 @@ function LinhaDeInstituicao({
               ) : null}
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-              {instituicao.ativo ? null : 'desativada — as pessoas dela também saem das listas · '}
+              {instituicao.ativo
+                ? null
+                : 'desativada — ela e as pessoas dela saem do cadastro de agenda; o histórico e os filtros continuam · '}
               {rotuloDoTipo} · aparece em {onde}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
