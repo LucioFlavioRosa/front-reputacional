@@ -77,8 +77,17 @@ import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 //: repetir nenhuma.
 //:
 //: TODAS AS DEZ SAEM DA PALETA OFICIAL DA AEGEA (principal + neutra +
-//: secundária) — nenhuma inventada. As quatro últimas são Cinza 4, Cinza 2,
-//: Marrom Claro Cacau e Vermelho Pitanga, na ordem do guia de marca.
+//: secundária) — nenhuma inventada.
+//:
+//: ÍNDICE 6 (Imprensa e Formadores de Opinião) NÃO É MAIS CINZA 4: o popup
+//: de detalhe do mês (`DetalheDoMes`, mais abaixo) usa `var(--cinza-4)` como
+//: FUNDO — com Cinza 4 também na paleta, o quadradinho da legenda dessa
+//: categoria ficava cor-sobre-cor, invisível dentro do próprio popup que
+//: deveria mostrá-lo.
+//:
+//: VERMELHO PITANGA E ROSA GOIABA TROCARAM DE LUGAR (índices 6 e 9) na
+//: revisão seguinte, a pedido — mesmas dez cores, só a categoria que cada
+//: uma veste mudou.
 const PALETA_DO_HISTORICO = [
   '#0027BD', // Azul Mar
   '#17E3CB', // Turquesa Rio
@@ -86,10 +95,10 @@ const PALETA_DO_HISTORICO = [
   '#FE952B', // Laranja-da-Baía
   '#E12379', // Magenta Pitaia
   '#F8DC00', // Amarelo Pequi
-  '#191B23', // Cinza 4
+  '#FF5C60', // Vermelho Pitanga
   '#8C91A4', // Cinza 2
   '#AD6547', // Marrom Claro Cacau
-  '#FF5C60', // Vermelho Pitanga
+  '#FF8FE1', // Rosa Goiaba
 ];
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
