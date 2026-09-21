@@ -226,6 +226,7 @@ export function CadastroDeInstituicoes() {
   const opcoesDeInstituicao = useMemo(
     () =>
       [...(catalogo?.instituicoes.values() ?? [])]
+        .filter((instituicao) => instituicao.ativo)
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
         .map((instituicao) => ({
           valor: instituicao.id,
@@ -621,8 +622,29 @@ export function CadastroDeInstituicoes() {
                       subcategoria_publico_id: rascunho.subcategoria_publico_id
                         ? Number(rascunho.subcategoria_publico_id)
                         : null,
+                      // O PUT substitui a ficha inteira: sem isto, salvar o
+                      // nome de uma desativada a reativaria em silêncio.
+                      ativo: instituicao.ativo,
                     }),
                   () => definirEmEdicao(null),
+                )
+              }
+              aoAlternarAtiva={() =>
+                void executar(
+                  () =>
+                    editarInstituicao(instituicao.id, {
+                      nome: instituicao.nome,
+                      nome_completo: instituicao.nome_completo,
+                      tipo: instituicao.tipo,
+                      uf: instituicao.uf,
+                      esfera_id: instituicao.esfera_id,
+                      tier: instituicao.tier,
+                      categoria_publico_id: instituicao.categoria_publico_id,
+                      subcategoria_publico_id: instituicao.subcategoria_publico_id,
+                      ativo: !instituicao.ativo,
+                    }),
+                  () => undefined,
+                  `${instituicao.nome} ${instituicao.ativo ? 'desativada' : 'reativada'}.`,
                 )
               }
               aoAcrescentarPessoa={() =>
@@ -760,6 +782,7 @@ function LinhaDeInstituicao({
   aoEditarPessoa,
   aoCancelarPessoa,
   aoSalvarPessoa,
+  aoAlternarAtiva,
   aExcluir,
   erroDaExclusao,
   aoPedirExclusao,
@@ -799,6 +822,7 @@ function LinhaDeInstituicao({
   aoEditarPessoa: (pessoa: Interlocutor) => void;
   aoCancelarPessoa: () => void;
   aoSalvarPessoa: (pessoa: Interlocutor) => void;
+  aoAlternarAtiva: () => void;
   aExcluir: boolean;
   erroDaExclusao: string | null;
   aoPedirExclusao: () => void;
@@ -936,7 +960,14 @@ function LinhaDeInstituicao({
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 14, fontWeight: 500 }}>
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: instituicao.ativo ? undefined : 'var(--cinza-2)',
+                textDecoration: instituicao.ativo ? 'none' : 'line-through',
+              }}
+            >
               {instituicao.nome}
               {instituicao.nome_completo ? (
                 <span style={{ fontWeight: 400, color: 'var(--cinza-3)' }}>
@@ -946,6 +977,7 @@ function LinhaDeInstituicao({
               ) : null}
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+              {instituicao.ativo ? null : 'desativada · '}
               {rotuloDoTipo} · aparece em {onde}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
@@ -970,10 +1002,22 @@ function LinhaDeInstituicao({
             <Botao variante="fantasma" aoClicar={aoAbrir}>
               {aberta ? 'Fechar' : 'Quem representa'}
             </Botao>
+            {/* DESATIVAR É O CAMINHO PARA QUEM TEM HISTÓRICO: sai do formulário
+                de agenda e do cadastro de pessoa, fica nas agendas que já
+                existem e nesta lista. Excluir, logo ao lado, é para quem
+                entrou por engano — e o servidor recusa se houver agenda. */}
+            <Botao
+              variante="fantasma"
+              desabilitado={salvando}
+              aoClicar={aoAlternarAtiva}
+              rotuloAcessivel={`${instituicao.ativo ? 'Desativar' : 'Reativar'} ${instituicao.nome}`}
+            >
+              {instituicao.ativo ? 'Desativar' : 'Reativar'}
+            </Botao>
             {/* DUAS ETAPAS NA PRÓPRIA LINHA, como na remoção de pessoa: um
                 modal tiraria o contexto de QUAL instituição está saindo. O
                 servidor recusa a que já esteve numa agenda — a mensagem dele
-                aparece na faixa de erro, com a contagem. */}
+                aparece aqui na linha, com a contagem, e aponta Desativar. */}
             {aExcluir && erroDaExclusao ? (
               <>
                 <span

@@ -425,8 +425,13 @@ export function obterDicionarios(): Promise<Dicionarios> {
 
 /* -- stakeholders --------------------------------------------------------- */
 
+/** COM AS DESATIVADAS. Sem elas o catálogo não resolveria o nome de uma
+ *  instituição que já esteve numa agenda, e a Administração não teria como
+ *  reativá-la — o mesmo motivo pelo qual temas e referências vêm inteiros.
+ *  Quem oferece escolha filtra por `ativo` (formulário de agenda, cadastro
+ *  de pessoa); quem só mostra, mostra. */
 export function listarInstituicoes(): Promise<Instituicao[]> {
-  return requisitar<Instituicao[]>('/api/instituicoes');
+  return requisitar<Instituicao[]>('/api/instituicoes?incluir_inativos=1');
 }
 
 export function listarInterlocutores(): Promise<Interlocutor[]> {
@@ -525,7 +530,7 @@ export function removerInterlocutor(id: string): Promise<void> {
 
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
  *  servidor recusa (422, contando as agendas) a que já esteve numa reunião:
- *  o histórico precisa dela, e o que se corrige nela é pela edição. */
+ *  para essa o caminho é Desativar (`editarInstituicao` com `ativo: false`). */
 export function removerInstituicao(id: string): Promise<void> {
   return requisitar<void>(`/api/instituicoes/${id}`, { method: 'DELETE' });
 }

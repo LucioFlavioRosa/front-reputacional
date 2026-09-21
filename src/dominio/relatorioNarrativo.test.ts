@@ -31,7 +31,7 @@ const DICIONARIOS = {
 const INSTITUICOES: Instituicao[] = [
   {
     id: 'i1', nome: 'Esfera Brasil', tipo: 'orgao', nome_completo: null, uf: 'SP', tier: 1,
-    esfera_id: null, categoria_publico_id: null, subcategoria_publico_id: null,
+    esfera_id: null, categoria_publico_id: null, subcategoria_publico_id: null, ativo: true,
   },
 ];
 

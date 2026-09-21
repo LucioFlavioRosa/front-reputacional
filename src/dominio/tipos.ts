@@ -339,6 +339,10 @@ export interface Instituicao {
    *  ainda não foi reclassificado — ver `0036_categoria_de_publico.sql`. */
   categoria_publico_id: number | null;
   subcategoria_publico_id: number | null;
+  /** `false` = desativada: sai de quem oferece escolha (formulário de agenda,
+   *  cadastro de pessoa) e fica onde é histórico ou administração. O catálogo
+   *  traz as duas, como faz com temas e referências — ver `listarInstituicoes`. */
+  ativo: boolean;
 }
 
 export interface Interlocutor {
