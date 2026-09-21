@@ -383,21 +383,6 @@ export function CadastroDeInstituicoes() {
               </select>
             </Campo>
 
-            <Campo rotulo="Esfera">
-              <select
-                style={estiloDeEntrada}
-                value={nova.esfera}
-                onChange={(e) => definirNova({ ...nova, esfera: e.target.value })}
-              >
-                <option value="">Não informada</option>
-                {catalogo.dicionarios.esferas.map((esfera) => (
-                  <option key={esfera.id} value={esfera.id}>
-                    {esfera.nome}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-
             {/* A RELEVÂNCIA É DA INSTITUIÇÃO, e não do encontro.
                 A agenda tem o seu próprio tier, e são coisas diferentes: a
                 Folha é Tier 1 sempre, e uma nota de rodapé com a Folha pode
@@ -677,7 +662,6 @@ export function CadastroDeInstituicoes() {
               instituicao={instituicao}
               pessoas={pessoasDe(instituicao.id)}
               ufs={catalogo.dicionarios.ufs}
-              esferas={catalogo.dicionarios.esferas}
               relevancias={catalogo.dicionarios.relevancias}
               categoriasPublico={catalogo.dicionarios.categorias_publico}
               subcategoriasPublico={catalogo.dicionarios.subcategorias_publico}
@@ -820,7 +804,6 @@ function LinhaDeInstituicao({
   instituicao,
   pessoas,
   ufs,
-  esferas,
   relevancias,
   categoriasPublico,
   subcategoriasPublico,
@@ -851,7 +834,6 @@ function LinhaDeInstituicao({
   instituicao: Instituicao;
   pessoas: Interlocutor[];
   ufs: { codigo: string; nome: string }[];
-  esferas: { id: number; nome: string }[];
   relevancias: { id: number; nome: string }[];
   categoriasPublico: CategoriaPublicoDoDicionario[];
   subcategoriasPublico: SubcategoriaPublicoDoDicionario[];
@@ -956,20 +938,6 @@ function LinhaDeInstituicao({
               {ufs.map((uf) => (
                 <option key={uf.codigo} value={uf.codigo}>
                   {uf.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Esfera">
-            <select
-              style={estiloDeEntrada}
-              value={rascunho.esfera}
-              onChange={(e) => aoRascunhar({ ...rascunho, esfera: e.target.value })}
-            >
-              <option value="">Não informada</option>
-              {esferas.map((esfera) => (
-                <option key={esfera.id} value={esfera.id}>
-                  {esfera.nome}
                 </option>
               ))}
             </select>
