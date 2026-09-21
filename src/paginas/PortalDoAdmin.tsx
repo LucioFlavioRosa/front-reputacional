@@ -1,16 +1,20 @@
 /** O portal de quem administra a plataforma.
  *
- *  Quatro responsabilidades, e por isso quatro abas — não quatro entradas no
- *  menu:
+ *  Seis responsabilidades, e por isso seis abas — não seis entradas no menu:
  *
  *    Acessos            quem entra na plataforma, e até quando
+ *    Temas              o vocabulário que o painel consegue somar
+ *    Posicionamento     a biblioteca de referências
  *    Instituições       com quem se conversa, e quem fala por elas
  *    Representantes Aegea  quem fala pela Aegea, e sobre o quê
- *    Assuntos           o vocabulário que o painel consegue somar
+ *    Dicionários        todo o resto do vocabulário — o que se edita e o
+ *                       que é estrutura do modelo, com o motivo
  *
- *  As três últimas se encadeiam: o assunto define o que um porta-voz pode
- *  falar, e a instituição define quem pode representar a outra parte. Separadas
- *  em telas distintas, essa cadeia ficaria invisível.
+ *  Temas, Instituições e Representantes se encadeiam: o tema define o que um
+ *  porta-voz pode falar, e a instituição define quem pode representar a outra
+ *  parte. Separadas em telas distintas, essa cadeia ficaria invisível. A regra
+ *  da plataforma — tudo que se mostra tem onde ser cadastrado — é o que
+ *  fecha com a aba Dicionários.
  *
  *  Juntas num portal porque quem faz uma faz as outras, e porque a navegação do
  *  painel é sobre o CRM — quatro entradas lá teriam a mesma cara das telas de
@@ -24,11 +28,12 @@
 import { useState } from 'react';
 import { Acessos } from '@/paginas/Acessos';
 import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
+import { Dicionarios } from '@/paginas/Dicionarios';
 import { Biblioteca } from '@/paginas/Biblioteca';
 import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
-type Aba = 'acessos' | 'assuntos' | 'biblioteca' | 'cadastros' | 'porta_vozes';
+type Aba = 'acessos' | 'assuntos' | 'biblioteca' | 'cadastros' | 'porta_vozes' | 'dicionarios';
 
 //: A ORDEM SEGUE A DEPENDÊNCIA, e não o tamanho da tela.
 //:
@@ -42,6 +47,9 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'biblioteca', rotulo: 'Posicionamento' },
   { id: 'cadastros', rotulo: 'Instituições' },
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
+  //: Por último: é o vocabulário que os outros usam, e quem chega aqui
+  //: costuma vir de um filtro ou formulário que não tinha a opção.
+  { id: 'dicionarios', rotulo: 'Dicionários' },
 ];
 
 export function PortalDoAdmin({ euId }: { euId: string | null }) {
@@ -125,6 +133,7 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         {aba === 'cadastros' ? <CadastroDeInstituicoes /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
+        {aba === 'dicionarios' ? <Dicionarios /> : null}
       </div>
     </div>
   );

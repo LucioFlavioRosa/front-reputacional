@@ -599,6 +599,61 @@ export interface TemaEntrada {
  *  formulário. Quem administra precisa ver o que desativou — senão o assunto
  *  some da tela e reaparece como "já existe" na próxima tentativa de criar.
  */
+/* -- dicionários ---------------------------------------------------------- */
+//
+// A Administração dos vocabulários. `GET /api/dicionarios` (o catálogo) traz
+// só os ativos; aqui vem tudo, com a fronteira que o back define: os ABERTOS
+// (vocabulário da coordenação) se editam, os FECHADOS (estrutura do modelo)
+// vêm com o motivo. Ver `app/api/dicionarios.py`.
+
+export interface ItemAdministravel {
+  id: number;
+  codigo?: string | null;
+  nome: string;
+  ordem?: number;
+  ativo: boolean;
+}
+
+export interface DicionarioAdministravel {
+  nome: string;
+  rotulo: string;
+  editavel: boolean;
+  motivo: string | null;
+  itens: ItemAdministravel[];
+}
+
+export interface ItemDeDicionarioEntrada {
+  nome: string;
+  ativo?: boolean;
+}
+
+export function listarDicionariosParaAdministracao(): Promise<DicionarioAdministravel[]> {
+  return requisitar<DicionarioAdministravel[]>('/api/dicionarios/administracao');
+}
+
+export function acrescentarNoDicionario(
+  dicionario: string,
+  entrada: ItemDeDicionarioEntrada,
+): Promise<ItemAdministravel> {
+  return requisitar<ItemAdministravel>(`/api/dicionarios/${dicionario}`, {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** Renomeia, desativa ou reativa. O `codigo` não muda: é ele que as agendas
+ *  guardam — renomear é mudar o rótulo, não a identidade. */
+export function editarNoDicionario(
+  dicionario: string,
+  id: number,
+  entrada: ItemDeDicionarioEntrada,
+): Promise<ItemAdministravel> {
+  return requisitar<ItemAdministravel>(`/api/dicionarios/${dicionario}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
 export function listarTemas(): Promise<TemaCadastrado[]> {
   return requisitar<TemaCadastrado[]>('/api/temas');
 }

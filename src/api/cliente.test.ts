@@ -68,6 +68,8 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   editarInterlocutor: () => cliente.editarInterlocutor('id-2', { nome: 'Ana', instituicao_id: 'id-1' }),
   removerInterlocutor: () => cliente.removerInterlocutor('id-2'),
   removerInstituicao: () => cliente.removerInstituicao('id-1'),
+  acrescentarNoDicionario: () => cliente.acrescentarNoDicionario('esferas', { nome: 'Distrital' }),
+  editarNoDicionario: () => cliente.editarNoDicionario('esferas', 7, { nome: 'Distrital' }),
   criarPessoaAegea: () => cliente.criarPessoaAegea({ nome: 'Radamés' }),
   editarPessoaAegea: () => cliente.editarPessoaAegea('id-3', { nome: 'Radamés' }),
   criarReferencia: () =>

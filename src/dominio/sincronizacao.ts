@@ -27,6 +27,9 @@
  *  casa uma hipotética `/api/temas-arquivados`. */
 export const ROTAS_DO_CATALOGO = [
   '/api/temas',
+  // Os dicionários: quem acrescenta uma esfera ou desativa um formato na
+  // Administração precisa vê-lo (ou não) no filtro e no formulário sem F5.
+  '/api/dicionarios',
   '/api/instituicoes',
   '/api/interlocutores',
   '/api/pessoas-aegea',
