@@ -959,7 +959,7 @@ function LinhaDeInstituicao({
             {/* DUAS ETAPAS NA PRÓPRIA LINHA, como na remoção de pessoa: um
                 modal tiraria o contexto de QUAL instituição está saindo. O
                 servidor recusa a que já esteve numa agenda — a mensagem dele
-                aparece na faixa de erro e aponta Desativar. */}
+                aparece na faixa de erro, com a contagem. */}
             {aExcluir ? (
               <>
                 <span style={{ fontSize: 12, color: 'var(--erro-fg)', alignSelf: 'center' }}>

@@ -524,8 +524,8 @@ export function removerInterlocutor(id: string): Promise<void> {
 }
 
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
- *  servidor recusa (422, com a contagem) a que já esteve numa agenda; para
- *  essa o caminho é Desativar. */
+ *  servidor recusa (422, contando as agendas) a que já esteve numa reunião:
+ *  o histórico precisa dela, e o que se corrige nela é pela edição. */
 export function removerInstituicao(id: string): Promise<void> {
   return requisitar<void>(`/api/instituicoes/${id}`, { method: 'DELETE' });
 }
