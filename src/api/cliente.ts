@@ -447,9 +447,11 @@ export interface InstituicaoEntrada {
   nome: string;
   /** O nome por extenso. `nome` é a forma curta, que é como se fala. */
   nome_completo?: string | null;
-  /** `veiculo`, `orgao`, `entidade`, `investidor`, `proposicao`, `area_interna`.
-   *  É o que liga a instituição a uma frente. */
-  tipo: string;
+  /** `veiculo`, `orgao`, `entidade`, `investidor`, `proposicao`, `area_interna`,
+   *  `credor`. É o que liga a instituição a uma frente. Opcional: sem ele, o
+   *  back deriva da categoria de público (a tela de cadastro não pergunta
+   *  mais); na edição, ausente, o gravado fica. */
+  tipo?: string;
   esfera_id?: number | null;
   uf?: string | null;
   /** A relevância da INSTITUIÇÃO — Tier 1 a 4. Não confundir com o tier da
@@ -519,6 +521,13 @@ export function editarInterlocutor(
  */
 export function removerInterlocutor(id: string): Promise<void> {
   return requisitar<void>(`/api/interlocutores/${id}`, { method: 'DELETE' });
+}
+
+/** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
+ *  servidor recusa (422, com a contagem) a que já esteve numa agenda; para
+ *  essa o caminho é Desativar. */
+export function removerInstituicao(id: string): Promise<void> {
+  return requisitar<void>(`/api/instituicoes/${id}`, { method: 'DELETE' });
 }
 
 export interface PessoaAegeaEntrada {

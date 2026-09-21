@@ -67,6 +67,7 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   criarInterlocutor: () => cliente.criarInterlocutor({ nome: 'Ana', instituicao_id: 'id-1' }),
   editarInterlocutor: () => cliente.editarInterlocutor('id-2', { nome: 'Ana', instituicao_id: 'id-1' }),
   removerInterlocutor: () => cliente.removerInterlocutor('id-2'),
+  removerInstituicao: () => cliente.removerInstituicao('id-1'),
   criarPessoaAegea: () => cliente.criarPessoaAegea({ nome: 'Radamés' }),
   editarPessoaAegea: () => cliente.editarPessoaAegea('id-3', { nome: 'Radamés' }),
   criarReferencia: () =>
@@ -96,9 +97,9 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
 
 describe('toda escrita de catálogo avisa quem depende do catálogo', () => {
   it.each(Object.keys(ESCRITAS_DE_CATALOGO))('%s avisa uma vez, e só depois do sucesso', async (nome) => {
-    // `removerInterlocutor` volta 204 sem corpo: é o outro caminho de sucesso
-    // dentro de `requisitar`, e precisa avisar igual.
-    if (nome === 'removerInterlocutor') respostaPadrao = () => new Response(null, { status: 204 });
+    // As remoções voltam 204 sem corpo: é o outro caminho de sucesso dentro
+    // de `requisitar`, e precisa avisar igual.
+    if (nome.startsWith('remover')) respostaPadrao = () => new Response(null, { status: 204 });
 
     await ESCRITAS_DE_CATALOGO[nome]();
 
