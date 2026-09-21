@@ -21,6 +21,24 @@ function nomesDasAreas(ids: number[], catalogo: Catalogo | null): string[] {
   });
 }
 
+/** MESMA IDEIA de `nomesDasAreas`, para `recorte.formatoInteracao` — sem
+ *  isto a ficha desses dois filtros (bloco fixo do Painel, ver
+ *  `campoDeFormatoInteracao`/`campoDeCategoriaPublico`) nunca aparecia na
+ *  barra fixa do topo, e o botão "Limpar" dali não os reconhecia. */
+function nomesDosFormatos(ids: number[], catalogo: Catalogo | null): string[] {
+  return ids.map((id) => {
+    const formato = catalogo?.dicionarios.formatos_interacao.find((f) => f.id === id);
+    return formato?.nome ?? String(id);
+  });
+}
+
+function nomesDasCategoriasPublico(ids: number[], catalogo: Catalogo | null): string[] {
+  return ids.map((id) => {
+    const categoria = catalogo?.dicionarios.categorias_publico.find((c) => c.id === id);
+    return categoria?.nome ?? String(id);
+  });
+}
+
 /** O período em palavras — Passado e Futuro são lados independentes do
  *  Recorte agora (`periodoPassado`/`periodoFuturo`, preset ou data
  *  customizada em `de`/`ate`), então esta função monta a frase de cada lado
@@ -128,6 +146,12 @@ export function fichasDoRecorte(
 
   if (recorte.tags?.length) por('tags', recorte.tags.join(' ou '));
   if (recorte.areas?.length) por('areas', nomesDasAreas(recorte.areas, catalogo).join(' ou '));
+  if (recorte.formatoInteracao?.length) {
+    por('formatoInteracao', nomesDosFormatos(recorte.formatoInteracao, catalogo).join(' ou '));
+  }
+  if (recorte.categoriaPublico?.length) {
+    por('categoriaPublico', nomesDasCategoriasPublico(recorte.categoriaPublico, catalogo).join(' ou '));
+  }
   if (recorte.q) por('q', `“${recorte.q}”`);
 
   return fichas;
