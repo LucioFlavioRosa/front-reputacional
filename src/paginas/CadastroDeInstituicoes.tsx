@@ -725,8 +725,17 @@ export function CadastroDeInstituicoes() {
                 )
               }
               aRemover={aRemover}
-              aoPedirRemocao={(pessoa) => definirARemover(pessoa.id)}
-              aoDesistirDaRemocao={() => definirARemover(null)}
+              // A MESMA REGRA DA EXCLUSÃO DA INSTITUIÇÃO: a recusa do servidor
+              // aparece na linha da pessoa, não só na faixa do topo.
+              erroDaRemocao={aRemover ? erro : null}
+              aoPedirRemocao={(pessoa) => {
+                definirErro(null);
+                definirARemover(pessoa.id);
+              }}
+              aoDesistirDaRemocao={() => {
+                definirErro(null);
+                definirARemover(null);
+              }}
               aoRemoverPessoa={(pessoa) =>
                 void executar(
                   // A CONFIRMACAO E DA TELA, e nao do servidor.
@@ -799,6 +808,7 @@ function LinhaDeInstituicao({
   aoDesistirDaExclusao,
   aoExcluir,
   aRemover,
+  erroDaRemocao,
   aoPedirRemocao,
   aoDesistirDaRemocao,
   aoRemoverPessoa,
@@ -839,6 +849,7 @@ function LinhaDeInstituicao({
   aoDesistirDaExclusao: () => void;
   aoExcluir: () => void;
   aRemover: string | null;
+  erroDaRemocao: string | null;
   aoPedirRemocao: (pessoa: Interlocutor) => void;
   aoDesistirDaRemocao: () => void;
   aoRemoverPessoa: (pessoa: Interlocutor) => void;
@@ -1154,6 +1165,7 @@ function LinhaDeInstituicao({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
                     gap: 10,
                     padding: '5px 0',
                   }}
@@ -1213,7 +1225,19 @@ function LinhaDeInstituicao({
                   {/* DUAS ETAPAS NA PROPRIA LINHA. Um modal tiraria o
                       contexto de QUAL pessoa esta sendo removida, que e a
                       informacao que importa numa lista de dez. */}
-                  {aRemover === pessoa.id ? (
+                  {aRemover === pessoa.id && erroDaRemocao ? (
+                    <>
+                      <span
+                        role="alert"
+                        style={{ fontSize: 12, color: 'var(--erro-fg)', maxWidth: 520 }}
+                      >
+                        {erroDaRemocao}
+                      </span>
+                      <Botao variante="fantasma" aoClicar={aoDesistirDaRemocao}>
+                        Entendi
+                      </Botao>
+                    </>
+                  ) : aRemover === pessoa.id ? (
                     <>
                       <span style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
                         Remover de vez?
