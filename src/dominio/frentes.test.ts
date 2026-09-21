@@ -202,24 +202,24 @@ describe('quem pode representar a instituição escolhida', () => {
 
   it('só as da instituição escolhida', () => {
     expect(
-      interlocutoresDaInstituicao(pessoas, 'i1', []).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, 'i1', [], true).map((p) => p.id),
     ).toEqual(['a', 'b']);
   });
 
   it('sem instituição escolhida, não oferece ninguém', () => {
     // Vazia de propósito: é a ordem em que se preenche. Uma lista de 55 nomes
     // sem relação com nada seria pior que nenhuma.
-    expect(interlocutoresDaInstituicao(pessoas, '', []).map((p) => p.id)).toEqual([]);
+    expect(interlocutoresDaInstituicao(pessoas, '', [], true).map((p) => p.id)).toEqual([]);
   });
 
   it('quem já está na agenda continua na lista', () => {
     // Uma agenda antiga pode ter pessoa de outra instituição. O campo abrindo
     // em branco pareceria dado perdido.
     expect(
-      interlocutoresDaInstituicao(pessoas, 'i1', ['c']).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, 'i1', ['c'], true).map((p) => p.id),
     ).toEqual(['a', 'b', 'c']);
     expect(
-      interlocutoresDaInstituicao(pessoas, '', ['c']).map((p) => p.id),
+      interlocutoresDaInstituicao(pessoas, '', ['c'], true).map((p) => p.id),
     ).toEqual(['c']);
   });
 
@@ -230,7 +230,7 @@ describe('quem pode representar a instituição escolhida', () => {
       { id: 'c', instituicao_id: 'i1', ativo: false },
     ];
     expect(
-      interlocutoresDaInstituicao(comDesligadas, 'i1', ['c']).map((p) => p.id),
+      interlocutoresDaInstituicao(comDesligadas, 'i1', ['c'], true).map((p) => p.id),
     ).toEqual(['a', 'c']);
   });
 

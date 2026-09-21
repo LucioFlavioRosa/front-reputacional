@@ -454,6 +454,7 @@ export function Cadastro({
           [...catalogo.interlocutores.values()],
           form.instituicao_id,
           [],
+          instituicaoSelecionada?.ativo ?? true,
         ).map((p) => p.id),
       ),
     );

@@ -327,7 +327,9 @@ export function interlocutoresDaInstituicao<
   //: DISPONÍVEL = pessoa ativa E instituição ativa. O seletor de instituição
   //: só lista ativas, mas uma agenda ANTIGA pode apontar para uma desativada
   //: — e aí ninguém novo dela pode ser oferecido, só quem já estava.
-  instituicaoAtiva = true,
+  //: SEM VALOR PADRÃO, de propósito: um chamador que esqueça o argumento
+  //: não compila, em vez de passar por "ativa" em silêncio.
+  instituicaoAtiva: boolean,
 ): T[] {
   // QUEM JÁ ESTÁ NA AGENDA FICA, desligada ou não: editar uma agenda antiga
   // não pode perder quem esteve na sala.
