@@ -47,11 +47,11 @@ export function LinhaEmpilhada({
    *  lista mantém a ordem de aparição, depois das listadas. */
   ordem?: string[];
 }) {
-  //: DUAS ZONAS DE HOVER, não uma: a linha (percentual — a composição do
-  //: clima na coluna) e a barra de volume embaixo (absoluto — quantas
-  //: interações de fato). Passar o mouse numa ou noutra muda o que o
-  //: tooltip mostra, mesma leitura que cada uma já representa visualmente
-  //: (ver o comentário no topo do arquivo).
+  //: DUAS ZONAS DE HOVER, não uma: a linha e a barra de volume embaixo
+  //: precisam de faixa própria para receber o mouse (uma área SVG não tem
+  //: "corpo"). O tooltip é o MESMO nas duas — quantidade e %, lado a lado:
+  //: a % sozinha não deixa conferir se o mês está certo (2 de 2 e 40 de 40
+  //: são os mesmos 100%), e o absoluto sozinho esconde a composição.
   const [emFoco, definirEmFoco] = useState<{ indice: number; zona: 'linha' | 'barra' } | null>(null);
 
   if (!colunas.length) {
@@ -183,7 +183,7 @@ export function LinhaEmpilhada({
         {/* DUAS FAIXAS INVISÍVEIS por coluna, uma para cada zona — a linha em
             si não tem "corpo" para receber o evento, diferente da barra, mas
             aqui as duas precisam de uma faixa própria mesmo assim: é o que
-            diz qual tooltip mostrar, percentual ou absoluto. */}
+            faz o tooltip aparecer com o mouse em qualquer uma. */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: alturaDoTrilho, display: 'flex' }}>
           {colunas.map((coluna, indice) => {
             const naEsquerda = indice <= 1;
@@ -198,7 +198,6 @@ export function LinhaEmpilhada({
                 {emFoco?.indice === indice && emFoco.zona === 'linha' && coluna.total > 0 ? (
                   <TooltipDaColuna
                     coluna={coluna}
-                    zona="linha"
                     alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
                     formatarRotulo={formatarRotulo}
                   />
@@ -230,7 +229,6 @@ export function LinhaEmpilhada({
                 {emFoco?.indice === indice && emFoco.zona === 'barra' && coluna.total > 0 ? (
                   <TooltipDaColuna
                     coluna={coluna}
-                    zona="barra"
                     alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
                     formatarRotulo={formatarRotulo}
                   />
@@ -267,19 +265,15 @@ export function LinhaEmpilhada({
 }
 
 /** Mesmo desenho do tooltip de `BarrasEmpilhadas`: fundo escuro, data e total
- *  em cima, a quebra por categoria embaixo — só a UNIDADE da quebra muda com
- *  a zona: `'linha'` mostra a COMPOSIÇÃO (%, a mesma leitura da área
- *  empilhada acima); `'barra'` mostra o volume absoluto (a mesma leitura da
- *  barra de baixo). O total no topo continua absoluto nos dois casos — é o
- *  número que dá contexto para a % fazer sentido. */
+ *  em cima, a quebra por categoria embaixo — cada linha com a QUANTIDADE e a
+ *  % da coluna, lado a lado. O total no topo é o denominador da %: é o que
+ *  deixa conferir, mês a mês, que a conta fecha. */
 function TooltipDaColuna({
   coluna,
-  zona,
   alinhamento,
   formatarRotulo,
 }: {
   coluna: ColunaMensal;
-  zona: 'linha' | 'barra';
   alinhamento: 'esquerda' | 'centro' | 'direita';
   formatarRotulo: (chave: string) => string;
 }) {
@@ -334,7 +328,8 @@ function TooltipDaColuna({
             />
             <span style={{ flex: 1, color: '#D5DAEA' }}>{segmento.rotulo}</span>
             <span className="tabular">
-              {zona === 'linha' ? percentual(segmento.total, coluna.total) : segmento.total}
+              {segmento.total}
+              <span style={{ color: '#D5DAEA' }}> · {percentual(segmento.total, coluna.total)}</span>
             </span>
           </div>
         ))}
