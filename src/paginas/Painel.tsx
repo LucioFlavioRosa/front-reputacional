@@ -67,7 +67,26 @@ import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
 //: cor por categoria, só o gráfico empilhado no tempo precisa). O histórico
 //: de ÁREA não usa esta paleta — reaproveita a cor fixa de
 //: `CATEGORIAS_DE_AREA`, a mesma da rosca ao lado.
-const PALETA_DO_HISTORICO = ['#0027BD', '#17E3CB', '#A11FFF', '#FE952B', '#E12379', '#F8DC00'];
+//:
+//: DEZ CORES, e não seis: `categoriasDePublico` colore por posição
+//: (`indice % PALETA_DO_HISTORICO.length`) as 10 categorias da taxonomia de
+//: públicos, e com seis cores a sétima categoria (índice 6) repetia a cor da
+//: primeira — Imprensa e Formadores de Opinião saía idêntica a Poder
+//: Executivo na "Volumetria total por Público", e a legenda era o único jeito
+//: de distinguir duas fatias do mesmo tom. Dez cobre a taxonomia inteira sem
+//: repetir nenhuma.
+const PALETA_DO_HISTORICO = [
+  '#0027BD',
+  '#17E3CB',
+  '#A11FFF',
+  '#FE952B',
+  '#E12379',
+  '#F8DC00',
+  '#2E7D32',
+  '#8C91A4',
+  '#A85E40',
+  '#C62828',
+];
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
  *  sem disputar clique com as fatias/barras de dentro dele — a área
