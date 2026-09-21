@@ -664,8 +664,20 @@ export function CadastroDeInstituicoes() {
                 )
               }
               aExcluir={aExcluir === instituicao.id}
-              aoPedirExclusao={() => definirAExcluir(instituicao.id)}
-              aoDesistirDaExclusao={() => definirAExcluir(null)}
+              // A RECUSA APARECE NA LINHA. A faixa do topo continua existindo,
+              // mas quem confirmou uma exclusão no fim de uma lista de cem
+              // não a vê — e clica de novo, e de novo, achando que nada
+              // aconteceu. O erro só é da linha enquanto a pergunta dela
+              // estiver aberta; Cancelar a fecha e limpa.
+              erroDaExclusao={aExcluir === instituicao.id ? erro : null}
+              aoPedirExclusao={() => {
+                definirErro(null);
+                definirAExcluir(instituicao.id);
+              }}
+              aoDesistirDaExclusao={() => {
+                definirErro(null);
+                definirAExcluir(null);
+              }}
               aoExcluir={() =>
                 void executar(
                   // Confirmação em duas etapas, como na pessoa: o servidor
@@ -749,6 +761,7 @@ function LinhaDeInstituicao({
   aoCancelarPessoa,
   aoSalvarPessoa,
   aExcluir,
+  erroDaExclusao,
   aoPedirExclusao,
   aoDesistirDaExclusao,
   aoExcluir,
@@ -787,6 +800,7 @@ function LinhaDeInstituicao({
   aoCancelarPessoa: () => void;
   aoSalvarPessoa: (pessoa: Interlocutor) => void;
   aExcluir: boolean;
+  erroDaExclusao: string | null;
   aoPedirExclusao: () => void;
   aoDesistirDaExclusao: () => void;
   aoExcluir: () => void;
@@ -942,7 +956,7 @@ function LinhaDeInstituicao({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         {emEdicao ? (
           <>
             <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
@@ -960,7 +974,19 @@ function LinhaDeInstituicao({
                 modal tiraria o contexto de QUAL instituição está saindo. O
                 servidor recusa a que já esteve numa agenda — a mensagem dele
                 aparece na faixa de erro, com a contagem. */}
-            {aExcluir ? (
+            {aExcluir && erroDaExclusao ? (
+              <>
+                <span
+                  role="alert"
+                  style={{ fontSize: 12, color: 'var(--erro-fg)', alignSelf: 'center', maxWidth: 560 }}
+                >
+                  {erroDaExclusao}
+                </span>
+                <Botao variante="fantasma" aoClicar={aoDesistirDaExclusao}>
+                  Entendi
+                </Botao>
+              </>
+            ) : aExcluir ? (
               <>
                 <span style={{ fontSize: 12, color: 'var(--erro-fg)', alignSelf: 'center' }}>
                   Excluir de vez, com as pessoas dela?
