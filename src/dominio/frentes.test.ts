@@ -88,10 +88,12 @@ describe('o que sobra da extensão ao trocar de frente', () => {
   it('guarda os campos que a nova frente também carrega', () => {
     expect(
       extensaoAoTrocarDeFrente(
-        { natureza_orgao: 'executivo', cargo_interlocutor: 'Secretário' },
+        { cargo_interlocutor: 'Secretário', natureza_orgao: 'executivo' },
         'parceiros',
       ),
-    ).toEqual({ natureza_orgao: 'executivo', cargo_interlocutor: 'Secretário' });
+      // `natureza_orgao` está aposentada (categoria de público da instituição
+      // a substitui) e não sobrevive: a tela não a pede nem a mostra.
+    ).toEqual({ cargo_interlocutor: 'Secretário' });
   });
 
   it('descarta o nome do evento ao sair de Eventos', () => {
@@ -99,13 +101,10 @@ describe('o que sobra da extensão ao trocar de frente', () => {
     // `nome_evento` num registro de Governo, onde a ficha não o mostra.
     expect(
       extensaoAoTrocarDeFrente(
-        {
-          natureza_orgao: 'executivo',
-          nome_evento: 'Fórum Mundial da Água',
-        },
+        { cargo_interlocutor: 'Secretário', nome_evento: 'Fórum Mundial da Água' },
         'governo',
       ),
-    ).toEqual({ natureza_orgao: 'executivo' });
+    ).toEqual({ cargo_interlocutor: 'Secretário' });
   });
 
   it('esvazia quando nenhum campo é comum às duas frentes', () => {

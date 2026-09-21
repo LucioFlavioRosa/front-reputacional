@@ -134,16 +134,47 @@ export function frenteDerivada(
  *
  *  É por frente, não por classe de extensão, e a diferença importa. No backend
  *  Governo, Parceiros e Eventos compartilham `Institucional`, então trocar
- *  entre as três não precisa descartar `natureza_orgao` nem
- *  `cargo_interlocutor`. Mas `nome_evento` só faz sentido em Eventos: agrupar
+ *  entre as três não precisa descartar `cargo_interlocutor`. Mas
+ *  `nome_evento` só faz sentido em Eventos: agrupar
  *  pela classe o preservaria em Governo, escondido — a ficha não o mostra
  *  fora de Eventos — e semanticamente errado.
+ *
+ *  `natureza_orgao` não está em lista nenhuma de propósito: foi aposentada
+ *  pela categoria de público da instituição (`0036`), o servidor ignora o
+ *  campo em interação nova, e a tela nem pede nem mostra.
  *
  *  Cada lista é um subconjunto do que o backend aceita para a frente. O
  *  servidor recusa campo fora da união (`extra="forbid"`), mas um campo válido
  *  na união e incoerente com a frente ele apenas ignora na conversão — some
  *  sem erro. É a tela que decide certo, então; não há rede de proteção lá.
  */
+/** As listas FECHADAS das extensões — enumerações do back (`PRIORIDADES`,
+ *  `NATUREZAS`, `CUMPRIMENTOS`, `COMPLEXIDADES` em `app/dominio/frentes.py`),
+ *  não dicionários: o servidor recusa qualquer outro valor. Espelhadas aqui
+ *  com o rótulo que a tela mostra. */
+export const ENUMERACOES_DA_EXTENSAO = {
+  prioridade: [
+    { codigo: 'alta', nome: 'Alta' },
+    { codigo: 'media', nome: 'Média' },
+    { codigo: 'baixa', nome: 'Baixa' },
+    { codigo: 'monitoramento', nome: 'Monitoramento' },
+  ],
+  natureza: [
+    { codigo: 'demanda', nome: 'Demanda' },
+    { codigo: 'entrega', nome: 'Entrega' },
+  ],
+  cumprimento: [
+    { codigo: 'interno', nome: 'Interno' },
+    { codigo: 'externo', nome: 'Externo' },
+    { codigo: 'misto', nome: 'Misto' },
+  ],
+  complexidade: [
+    { codigo: 'baixa', nome: 'Baixa' },
+    { codigo: 'media', nome: 'Média' },
+    { codigo: 'alta', nome: 'Alta' },
+  ],
+} as const;
+
 export const CAMPOS_DE_EXTENSAO: Record<
   Frente,
   { campo: keyof Extensao; rotulo: string }[]
@@ -156,15 +187,12 @@ export const CAMPOS_DE_EXTENSAO: Record<
     { campo: 'mensagens_chave', rotulo: 'Mensagens-chave' },
   ],
   governo: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
     { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
   ],
   parceiros: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
     { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
   ],
   eventos: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
     { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
     { campo: 'nome_evento', rotulo: 'Nome do evento' },
   ],
@@ -182,7 +210,6 @@ export const CAMPOS_DE_EXTENSAO: Record<
   // no backend em vez de ganhar extensão própria (ver `app/dominio/
   // frentes.py`). `nome_evento` fica de fora — só faz sentido em Eventos.
   bancos_credores: [
-    { campo: 'natureza_orgao', rotulo: 'Natureza do órgão' },
     { campo: 'cargo_interlocutor', rotulo: 'Cargo do interlocutor' },
   ],
   interna: [
