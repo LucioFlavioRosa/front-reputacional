@@ -137,6 +137,11 @@ export function nomeDaPessoa(catalogo: Catalogo, id: string): string {
   return catalogo.pessoas.get(id)?.nome ?? '—';
 }
 
+export function nomeDoFormatoDeInteracao(catalogo: Catalogo, id: number | null): string {
+  if (id == null) return '—';
+  return catalogo.dicionarios.formatos_interacao.find((f) => f.id === id)?.nome ?? '—';
+}
+
 export function nomeDaUnidade(catalogo: Catalogo, id: number | null): string {
   if (id == null) return '—';
   return catalogo.dicionarios.unidades_negocio.find((u) => u.id === id)?.nome ?? '—';
