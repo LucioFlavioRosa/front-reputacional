@@ -443,19 +443,6 @@ export function listarPessoasAegea(): Promise<PessoaAegea[]> {
 // agenda LÊ estes nomes o tempo todo e não deve reescrevê-los: renomear uma
 // instituição muda o que aparece em toda agenda que aponta para ela.
 
-/** A primeira pessoa da instituição, cadastrada JUNTO com ela.
- *
- *  Vai no mesmo corpo, e não numa segunda chamada: as duas escritas caem ou
- *  passam juntas. Separadas, uma falha na segunda deixaria a instituição criada
- *  e sem representante — e uma instituição sem ninguém não serve para nada,
- *  porque o formulário de agenda só oferece pessoas depois de escolhê-la.
- */
-export interface RepresentanteInicial {
-  nome: string;
-  email?: string | null;
-  cargo?: string | null;
-}
-
 export interface InstituicaoEntrada {
   nome: string;
   /** O nome por extenso. `nome` é a forma curta, que é como se fala. */
@@ -474,7 +461,6 @@ export interface InstituicaoEntrada {
   categoria_publico_id?: number | null;
   subcategoria_publico_id?: number | null;
   ativo?: boolean;
-  representante?: RepresentanteInicial | null;
 }
 
 export interface InterlocutorEntrada {
