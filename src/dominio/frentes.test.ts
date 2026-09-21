@@ -14,7 +14,7 @@ import {
   CAMPOS_DE_EXTENSAO,
   CORES_DE_FRENTE,
   extensaoAoTrocarDeFrente,
-  instituicoesDaFrente,
+  frenteDerivada,
   interlocutoresDaInstituicao,
   textoSobreFrente,
 } from '@/dominio/frentes';
@@ -160,40 +160,35 @@ describe('o que sobra da extensão ao trocar de frente', () => {
   });
 });
 
-describe('o que cada frente oferece no campo de instituição', () => {
-  const base = [
-    { id: 'v1', tipo: 'veiculo' },
-    { id: 'v2', tipo: 'veiculo' },
-    { id: 'e1', tipo: 'entidade' },
-    { id: 'p1', tipo: 'proposicao' },
-  ];
+describe('a frente que a instituição e o formato derivam, sem perguntar', () => {
+  // ESPELHA `test_derivar_frente.py` do backend — mesma regra, mesmos casos,
+  // dos dois lados. Se um lado mudar sem o outro, os dois conjuntos de teste
+  // divergem, e é isso que os mantém honestos entre si.
 
-  it('oferece só o tipo que a frente conversa', () => {
-    expect(instituicoesDaFrente(base, 'imprensa', '').map((i) => i.id)).toEqual([
-      'v1',
-      'v2',
-    ]);
-    expect(instituicoesDaFrente(base, 'legislativo', '').map((i) => i.id)).toEqual([
-      'p1',
-    ]);
+  it('sem instituição escolhida, não há o que derivar', () => {
+    expect(frenteDerivada(undefined, undefined)).toBeNull();
   });
 
-  it('mantém a já gravada mesmo fora do tipo', () => {
-    // MEDIDO NO BANCO: duas agendas de imprensa apontam para `entidade`. Sem
-    // esta linha, o campo obrigatório delas abriria em branco ao editar — e
-    // isso se lê como dado corrompido, não como filtro fazendo efeito.
-    expect(instituicoesDaFrente(base, 'imprensa', 'e1').map((i) => i.id)).toEqual([
-      'v1',
-      'v2',
-      'e1',
-    ]);
+  it.each([
+    ['area_interna', 'interna'],
+    ['veiculo', 'imprensa'],
+    ['orgao', 'governo'],
+    ['investidor', 'investidores'],
+    ['proposicao', 'legislativo'],
+    ['credor', 'bancos_credores'],
+  ] as const)('tipo "%s" decide sozinho: %s', (tipo, frenteEsperada) => {
+    expect(frenteDerivada({ tipo }, undefined)).toBe(frenteEsperada);
+    // O FORMATO NÃO MUDA NADA aqui — só "entidade" é ambíguo.
+    expect(frenteDerivada({ tipo }, 'evento')).toBe(frenteEsperada);
   });
 
-  it('parceiros e eventos dividem o mesmo tipo', () => {
-    // Quem promove um evento é a mesma classe de instituição com quem se faz
-    // parceria. Separá-los exigiria um tipo que o banco não tem.
-    expect(instituicoesDaFrente(base, 'eventos', '').map((i) => i.id)).toEqual(['e1']);
-    expect(instituicoesDaFrente(base, 'parceiros', '').map((i) => i.id)).toEqual(['e1']);
+  it('entidade com formato Evento vira Eventos', () => {
+    expect(frenteDerivada({ tipo: 'entidade' }, 'evento')).toBe('eventos');
+  });
+
+  it('entidade com qualquer outro formato, ou nenhum, vira Parceiros', () => {
+    expect(frenteDerivada({ tipo: 'entidade' }, 'reuniao')).toBe('parceiros');
+    expect(frenteDerivada({ tipo: 'entidade' }, undefined)).toBe('parceiros');
   });
 });
 

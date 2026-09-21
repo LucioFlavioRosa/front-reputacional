@@ -6,7 +6,7 @@
  */
 
 import { hojeLocal } from '@/dominio/formato';
-import type { ArquivoDoMaterial, Frente } from '@/dominio/tipos';
+import type { ArquivoDoMaterial } from '@/dominio/tipos';
 
 // As 27 UFs saíram daqui: vêm de `catalogo.dicionarios.ufs`, montado a
 // partir do domínio `abrangencia` do Postgres — o mesmo que recusa uma UF
@@ -18,8 +18,14 @@ import type { ArquivoDoMaterial, Frente } from '@/dominio/tipos';
    a seção, não resta escolha a fazer. `form.extensao` continua no estado e
    viaja nos dois sentidos — o dado não depende deste mapa. */
 
+/* A FRENTE SAIU DAQUI — não é mais escolhida na tela, então não é mais
+   ESTADO do formulário. Ela é DERIVADA a cada render, da instituição e do
+   formato escolhidos (`frenteDerivada`, em `dominio/frentes.ts`), a mesma
+   regra que o backend aplica ao salvar. Guardá-la aqui a deixaria
+   dessincronizada da instituição sempre que a pessoa trocasse de instituição
+   sem que algum código lembrasse de recalculá-la. */
+
 export interface Formulario {
-  frente: Frente;
   data_interacao: string;
   instituicao_id: string;
   interlocutor_id: string;
@@ -212,7 +218,6 @@ export function materiaisDe(
 }
 
 export const VAZIO: Formulario = {
-  frente: 'imprensa',
   data_interacao: hojeLocal(),
   instituicao_id: '',
   interlocutor_id: '',

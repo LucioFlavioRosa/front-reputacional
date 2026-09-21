@@ -4,8 +4,14 @@
  *
  *  Os campos extras por frente NÃO estão mais na tela. Eles continuam no
  *  registro e são reenviados como vieram, para que salvar pela tela não apague
- *  o que a planilha trouxe. Por isso a frente aqui classifica a agenda; ela
- *  não faz mais blocos aparecerem e sumirem.
+ *  o que a planilha trouxe.
+ *
+ *  A FRENTE TAMBÉM NÃO SE ESCOLHE MAIS AQUI. Quem se escolhe é o Formato da
+ *  interação (seção 1) e a Instituição (seção 3); a frente sai daí sozinha —
+ *  ver `frenteDerivada`, em `dominio/frentes.ts`, espelho da mesma regra que
+ *  o backend aplica ao salvar (`app/casos_de_uso/derivar_frente.py`). A tela
+ *  mostra o resultado como leitura, ao lado do campo "Público", mas quem
+ *  decide de fato é sempre o backend: o corpo enviado não leva mais `frente`.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -29,9 +35,8 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import {
-  TIPO_DE_INSTITUICAO,
   extensaoAoTrocarDeFrente,
-  instituicoesDaFrente,
+  frenteDerivada,
   interlocutoresDaInstituicao,
 } from '@/dominio/frentes';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
@@ -40,8 +45,7 @@ import { jaAconteceu } from '@/dominio/agregacao';
 import { Abas } from '@/componentes/Abas';
 import { EscolherAgendas } from '@/componentes/EscolherAgendas';
 import { urlDaVersao } from '@/api/cliente';
-import { FRENTES } from '@/dominio/tipos';
-import type { Frente, Interacao, Referencia } from '@/dominio/tipos';
+import type { Interacao, Referencia } from '@/dominio/tipos';
 import {
   ABAS_DA_ETAPA,
   COLUNA_DA_ETAPA,
@@ -235,12 +239,35 @@ export function Cadastro({
 
   if (!catalogo) return <Carregando />;
 
+  //: A INSTITUIÇÃO ESCOLHIDA, e o que dela se deriva — sem instituição, nada
+  //: disso existe ainda. `frenteDerivada` é a MESMA regra do backend
+  //: (`derivar_frente`), espelhada aqui só para a tela se orientar antes de
+  //: salvar; quem decide de fato, ao gravar, é sempre o servidor.
+  const instituicaoSelecionada = form.instituicao_id
+    ? catalogo.instituicoes.get(form.instituicao_id)
+    : undefined;
+  const formatoSelecionado = form.formato_interacao_id
+    ? catalogo.dicionarios.formatos_interacao.find(
+        (formato) => String(formato.id) === form.formato_interacao_id,
+      )
+    : undefined;
+  const frenteAtual = frenteDerivada(instituicaoSelecionada, formatoSelecionado?.codigo);
+  const categoriaPublicoDaInstituicao = instituicaoSelecionada?.categoria_publico_id
+    ? catalogo.dicionarios.categorias_publico.find(
+        (categoria) => categoria.id === instituicaoSelecionada.categoria_publico_id,
+      )
+    : undefined;
+
   //: O campo muda de nome no Legislativo, e a mensagem da lista de
   //: participantes fala DELE. Duas escritas do mesmo rotulo divergiriam — e ja
   //: divergiram: a lista pedia um nome e o campo mostrava outro. Uma escrita
   //: so, aqui, e as duas telas mudam juntas quando a palavra muda.
+  //:
+  //: ANTES DE ESCOLHER, o rótulo fica genérico — não há como saber ainda se é
+  //: uma proposição ou uma instituição comum, e a maioria dos casos é a
+  //: segunda.
   const rotuloDaInstituicao =
-    form.frente === 'legislativo' ? 'Proposição' : 'Instituição';
+    instituicaoSelecionada?.tipo === 'proposicao' ? 'Proposição' : 'Instituição';
 
   /** A relevância NÃO SE DIGITA AQUI: ela é da instituição.
    *
@@ -255,10 +282,7 @@ export function Cadastro({
    *  exportação leem dali, e fazer cada uma delas cruzar com a instituição
    *  seria pagar um `join` para não guardar um número.
    */
-  const tierDaInstituicao =
-    (form.instituicao_id
-      ? catalogo?.instituicoes.get(form.instituicao_id)?.tier
-      : null) ?? null;
+  const tierDaInstituicao = instituicaoSelecionada?.tier ?? null;
 
   const alterar = <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => {
     definirForm((atual) => ({ ...atual, [campo]: valor }));
@@ -368,7 +392,9 @@ export function Cadastro({
     definirSucesso(false);
   };
 
-  // Trocar de frente guarda o que a NOVA frente também carrega, e só isso.
+  // Trocar de instituição ou de formato pode trocar a frente DERIVADA —
+  // Governo por Parceiros, por exemplo. Quando isso acontece, a extensão
+  // guarda só o que a NOVA frente também carrega, e não some tudo:
   //
   // Zerar tudo seria perda de dado silenciosa: Governo, Parceiros e Eventos
   // compartilham a mesma extensão no backend, então `natureza_orgao` e
@@ -378,11 +404,38 @@ export function Cadastro({
   // Guardar tudo do mesmo grupo também estaria errado, na outra direção:
   // `nome_evento` só faz sentido em Eventos, e sair para Governo o deixaria no
   // registro, invisível — a ficha não o mostra fora de Eventos.
-  const trocarFrente = (frente: Frente) => {
+  //
+  // SÓ POda QUANDO A FRENTE REALMENTE MUDA (e é conhecida): trocar de
+  // instituição para outra do MESMO tipo — ou digitar sem ainda ter
+  // escolhido nada — não tem por que mexer no que já estava.
+  const escolherInstituicao = (instituicaoId: string) => {
+    const novaInstituicao = instituicaoId
+      ? catalogo.instituicoes.get(instituicaoId)
+      : undefined;
+    const novaFrente = frenteDerivada(novaInstituicao, formatoSelecionado?.codigo);
     definirForm((atual) => ({
       ...atual,
-      frente,
-      extensao: extensaoAoTrocarDeFrente(atual.extensao, frente),
+      instituicao_id: instituicaoId,
+      extensao:
+        novaFrente && novaFrente !== frenteAtual
+          ? extensaoAoTrocarDeFrente(atual.extensao, novaFrente)
+          : atual.extensao,
+    }));
+    definirSucesso(false);
+  };
+
+  const escolherFormato = (formatoId: string) => {
+    const novoFormato = formatoId
+      ? catalogo.dicionarios.formatos_interacao.find((f) => String(f.id) === formatoId)
+      : undefined;
+    const novaFrente = frenteDerivada(instituicaoSelecionada, novoFormato?.codigo);
+    definirForm((atual) => ({
+      ...atual,
+      formato_interacao_id: formatoId,
+      extensao:
+        novaFrente && novaFrente !== frenteAtual
+          ? extensaoAoTrocarDeFrente(atual.extensao, novaFrente)
+          : atual.extensao,
     }));
     definirSucesso(false);
   };
@@ -439,7 +492,7 @@ export function Cadastro({
         await editarInteracao(id, montarCorpo(comATierDaInstituicao, true));
       } else {
         await criarInteracao(montarCorpo(comATierDaInstituicao));
-        definirForm({ ...VAZIO, frente: form.frente });
+        definirForm(VAZIO);
       }
       definirSucesso(true);
       recarregar();
@@ -463,11 +516,11 @@ export function Cadastro({
             caminho, senao a pessoa nao sabe se chegou onde queria. */}
         <h1 style={{ fontSize: 26 }}>{id ? 'Editar interação' : 'Cadastrar nova Interação'}</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
-          {/* CADA ABA TEM O SEU CONSELHO. "Escolha a frente" é a primeira coisa
-              a fazer na aba de antes e não quer dizer nada na de depois, onde
-              a frente já foi escolhida faz tempo. */}
+          {/* CADA ABA TEM O SEU CONSELHO. "Escolha o formato" é a primeira
+              coisa a fazer na aba de antes e não quer dizer nada na de
+              depois, onde a interação já foi identificada faz tempo. */}
           {etapa === 'antes'
-            ? 'Escolha a frente antes de preencher o resto.'
+            ? 'Escolha o formato da interação antes de preencher o resto.'
             : 'O que ficou da reunião. Nada aqui é obrigatório para salvar.'}
         </p>
         {/* O PORQUÊ DO CADASTRO, uma vez só, no topo — e não repetido em cada
@@ -525,45 +578,27 @@ export function Cadastro({
         aria-labelledby="etapa-antes"
         style={COLUNA_DA_ETAPA(etapa === 'antes')}
       >
+      {/* A FRENTE SAIU DAQUI — quem se escolhe agora é o Formato, e só ele.
+          A frente é DERIVADA da instituição (seção 3) e deste formato; a
+          tela mostra o resultado como leitura, junto do campo "Público", em
+          vez de perguntar de novo o que a instituição já responde. */}
       <Secao titulo="1. Tipo de interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {FRENTES.map((frente) => (
-            <ChipDeFrente
-              key={frente}
-              frente={frente}
-              ativo={form.frente === frente}
-              aoClicar={() => trocarFrente(frente)}
-              estilo={ESTILO_DO_CHIP_MAIOR}
-            />
-          ))}
-        </div>
-
-        {/* FORMATO É ORTOGONAL A FRENTE, não substitui — ver o comentário em
-            `0038_formato_interacao.sql`. Por isso é um segundo grupo de
-            chips, na mesma seção, não uma troca da linha de cima. Seleção
-            única, como Frente: clicar no já marcado desmarca (mesma regra de
-            `alterar`/`numeroOpcional`, que lê '' como "não informado"). */}
-        <div style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-3)', margin: '0 0 8px' }}>
-            Formato da interação
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {catalogo.dicionarios.formatos_interacao.map((formato) => {
-              const valor = String(formato.id);
-              const ativo = form.formato_interacao_id === valor;
-              return (
-                <Chip
-                  key={formato.id}
-                  rotulo={formato.nome}
-                  ativo={ativo}
-                  fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                  texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                  aoClicar={() => alterar('formato_interacao_id', ativo ? '' : valor)}
-                  estilo={ESTILO_DO_CHIP_MAIOR}
-                />
-              );
-            })}
-          </div>
+          {catalogo.dicionarios.formatos_interacao.map((formato) => {
+            const valor = String(formato.id);
+            const ativo = form.formato_interacao_id === valor;
+            return (
+              <Chip
+                key={formato.id}
+                rotulo={formato.nome}
+                ativo={ativo}
+                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                aoClicar={() => escolherFormato(ativo ? '' : valor)}
+                estilo={ESTILO_DO_CHIP_MAIOR}
+              />
+            );
+          })}
         </div>
       </Secao>
 
@@ -597,35 +632,65 @@ export function Cadastro({
             />
           </Campo>
 
-          {/* SO AS DO TIPO QUE ESTA FRENTE CONVERSA. Uma agenda de imprensa
-              fala com veiculo, uma de legislativo com proposicao; a lista
-              inteira obrigaria a achar o certo entre dezenas.
-
-              A JA GRAVADA ENTRA SEMPRE, mesmo fora do tipo — ha agendas de
-              imprensa apontando para `entidade`. Sem a ressalva, o campo delas
-              abriria em branco ao editar, e campo obrigatorio vazio num
-              registro que existe se le como dado corrompido, nao como filtro
-              fazendo efeito. */}
+          {/* TODAS AS INSTITUIÇÕES CADASTRÁVEIS, sem filtro por frente — a
+              frente não é mais escolhida antes, e sim DERIVADA de qual
+              instituição esta é (ver `frenteDerivada`). A busca por nome
+              resolve encontrar a certa entre todas. */}
           <CampoQueCompleta
             rotulo={rotuloDaInstituicao}
             obrigatorio
             valor={form.instituicao_id}
-            aoEscolher={(v) => alterar('instituicao_id', v)}
-            opcoes={instituicoesDaFrente(
-              [...catalogo.instituicoes.values()],
-              form.frente,
-              form.instituicao_id,
-            ).map((instituicao) => ({
+            aoEscolher={escolherInstituicao}
+            opcoes={[...catalogo.instituicoes.values()].map((instituicao) => ({
               valor: instituicao.id,
               rotulo: instituicao.nome,
               // O NOME POR EXTENSO ENTRA NA BUSCA. Quem digita "agencia
               // nacional" precisa achar "ANA", e o rotulo sozinho nao casaria.
-              detalhe:
-                instituicao.tipo !== TIPO_DE_INSTITUICAO[form.frente]
-                  ? `${instituicao.nome_completo ?? ''} · de outra frente`.trim()
-                  : (instituicao.nome_completo ?? undefined),
+              detalhe: instituicao.nome_completo ?? undefined,
             }))}
           />
+
+          {/* A FRENTE E O PÚBLICO, LADO A LADO — os dois são leitura, os dois
+              só existem depois de escolher a instituição. A frente é o que
+              esta interação VAI VIRAR ao salvar (a tela não manda mais esse
+              campo — quem decide, de fato, é o backend, com a mesma regra);
+              o público é dado direto da instituição, informativo, e nunca
+              gravado na interação — ver `Instituicao.categoria_publico_id`. */}
+          <Campo rotulo="Frente" dica="Calculada a partir da instituição e do formato.">
+            <div
+              style={{
+                ...estiloDeEntrada,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {frenteAtual ? (
+                <ChipDeFrente frente={frenteAtual} />
+              ) : (
+                <span style={{ color: 'var(--cinza-2)' }}>
+                  {instituicaoSelecionada ? 'Não foi possível calcular' : '—'}
+                </span>
+              )}
+            </div>
+          </Campo>
+
+          <Campo rotulo="Público" dica="Vem da classificação da instituição.">
+            <div
+              style={{
+                ...estiloDeEntrada,
+                display: 'flex',
+                alignItems: 'center',
+                background: 'var(--bg-trilho)',
+                color: categoriaPublicoDaInstituicao ? 'var(--cinza-4)' : 'var(--cinza-2)',
+              }}
+            >
+              {categoriaPublicoDaInstituicao
+                ? categoriaPublicoDaInstituicao.nome
+                : instituicaoSelecionada
+                  ? 'Não classificada'
+                  : '—'}
+            </div>
+          </Campo>
 
           {/* O CAMPO "INTERLOCUTOR" SAIU DAQUI.
               Ele mostrava UMA pessoa, e a agenda tem várias. Agora todas moram
@@ -1116,7 +1181,7 @@ export function Cadastro({
           // justamente o apagamento que este botão existe para evitar.
           desabilitado={Boolean(id) && !carregado}
           aoClicar={() =>
-            definirForm(id ? (carregado ?? VAZIO) : { ...VAZIO, frente: form.frente })
+            definirForm(id ? (carregado ?? VAZIO) : VAZIO)
           }
         >
           {id ? 'Desfazer alterações' : 'Limpar'}
@@ -1333,8 +1398,13 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
     }
   }
 
+  // `frente` NÃO VIAJA MAIS. O backend deriva sozinho, tanto na criação
+  // quanto na edição, da instituição e do formato — ver `derivar_frente` e
+  // o espelho `frenteDerivada` em `dominio/frentes.ts`. Mandar a frente
+  // calculada aqui de novo seria uma segunda fonte de verdade para o mesmo
+  // fato, e as duas podendo divergir é exatamente o problema que a derivação
+  // única no servidor existe para fechar.
   return {
-    frente: form.frente,
     data_interacao: form.data_interacao,
     instituicao_id: form.instituicao_id,
     uf: form.uf,
@@ -1510,7 +1580,6 @@ function paraFormulario(interacao: Interacao): Formulario {
   }
 
   return {
-    frente: interacao.frente,
     data_interacao: interacao.data_interacao,
     instituicao_id: texto(interacao.instituicao_id),
     interlocutor_id: texto(interacao.interlocutor_id),
