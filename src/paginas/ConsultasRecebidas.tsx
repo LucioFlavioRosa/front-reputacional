@@ -1,4 +1,7 @@
-/** As consultas recebidas, em tabela — os e-mails que chegaram perguntando.
+/** As consultas recebidas, em tabela — o que chegou de fora perguntando.
+ *
+ *  "CONSULTA", E NÃO "E-MAIL": e-mail é o CANAL, e o glossário o evita como
+ *  nome da coisa — há consulta por formulário e por plataforma de rating.
  *
  *  POR QUE UMA ABA PRÓPRIA, SE A BASE JÁ LISTA TUDO. Uma consulta é uma
  *  interação, e aparece na aba Interações como qualquer outra. Mas o que se
@@ -17,7 +20,7 @@
  *
  *  A ABA DE SINAIS É A LEITURA, ESTA É O REGISTRO. Lá se pergunta "o que está
  *  circulando" e a resposta é por alegação; aqui se pergunta "o que chegou" e
- *  a resposta é por e-mail.
+ *  a resposta é uma consulta por linha.
  */
 
 import { useMemo, useState } from 'react';
@@ -27,7 +30,7 @@ import { Carregando, FaixaDeErro, Vazio } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
-import { dataCompleta } from '@/dominio/formato';
+import { dataCompleta, hojeLocal } from '@/dominio/formato';
 import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
 import { nomeDaInstituicao, nomesDosTemas, rotuloDeCodigo } from '@/dominio/derivacoes';
@@ -61,7 +64,11 @@ interface LinhaDeConsulta {
   anexos: number;
 }
 
-function montarLinha(consulta: Interacao, catalogo: Catalogo): LinhaDeConsulta {
+function montarLinha(
+  consulta: Interacao,
+  catalogo: Catalogo,
+  vencida: boolean,
+): LinhaDeConsulta {
   const canal = catalogo.dicionarios.canais_consulta.find(
     (item) => item.id === consulta.consulta?.canal_id,
   );
@@ -77,7 +84,7 @@ function montarLinha(consulta: Interacao, catalogo: Catalogo): LinhaDeConsulta {
     ),
     temas: nomesDosTemas(catalogo, consulta.temas).join(', '),
     prazo: consulta.consulta?.prazo_resposta ?? '',
-    vencida: false,
+    vencida,
     anexos: consulta.materiais.filter((material) => material.arquivo).length,
   };
 }
@@ -85,10 +92,27 @@ function montarLinha(consulta: Interacao, catalogo: Catalogo): LinhaDeConsulta {
 const EXTRATORES = {
   Data: (linha: LinhaDeConsulta) => linha.data,
   Instituição: (linha: LinhaDeConsulta) => linha.instituicao,
-  // Sem prazo vai para o fim da lista, e não para o começo: o que tem prazo é
-  // o que cobra ação.
-  Prazo: (linha: LinhaDeConsulta) => linha.prazo || '9999',
+  Prazo: (linha: LinhaDeConsulta) => linha.prazo,
 };
+
+/** A ordenação da tabela, com SEM PRAZO SEMPRE NO FIM.
+ *
+ *  `ordenarPor` multiplica a comparação pelo sinal da direção, então um valor
+ *  sentinela ("9999") só empurra os vazios para o fim na ordem crescente — ao
+ *  inverter, eles subiriam para o topo, justamente na leitura "maior prazo
+ *  primeiro". Consulta sem prazo não cobra ação: ela não disputa o topo em
+ *  nenhuma das duas direções.
+ */
+function ordenarConsultas(
+  linhas: LinhaDeConsulta[],
+  ordenacao: Ordenacao | null,
+): LinhaDeConsulta[] {
+  if (ordenacao?.coluna !== 'Prazo') return ordenarPor(linhas, ordenacao, EXTRATORES);
+
+  const comPrazo = linhas.filter((linha) => linha.prazo);
+  const semPrazo = linhas.filter((linha) => !linha.prazo);
+  return [...ordenarPor(comPrazo, ordenacao, EXTRATORES), ...semPrazo];
+}
 
 export function ConsultasRecebidas({ aoAbrirFicha }: { aoAbrirFicha: (id: string) => void }) {
   const { interacoes, catalogo, carregando, erro } = usePainel();
@@ -99,21 +123,20 @@ export function ConsultasRecebidas({ aoAbrirFicha }: { aoAbrirFicha: (id: string
     OCULTAS_POR_PADRAO,
   );
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  // `hojeLocal`, e não `toISOString`: em São Paulo, depois das 21h, o UTC já
+  // virou o dia seguinte — e o prazo apareceria vencido horas antes de vencer.
+  const hoje = hojeLocal();
 
   const linhas = useMemo(() => {
     if (!catalogo) return [];
     const consultas = consultasDe(interacoes);
     const vencidas = new Set(consultasVencidas(consultas, hoje).map((c) => c.id));
-    return consultas
-      .map((consulta) => montarLinha(consulta, catalogo))
-      .map((linha) => ({ ...linha, vencida: vencidas.has(linha.id) }));
+    return consultas.map((consulta) =>
+      montarLinha(consulta, catalogo, vencidas.has(consulta.id)),
+    );
   }, [interacoes, catalogo, hoje]);
 
-  const ordenadas = useMemo(
-    () => ordenarPor(linhas, ordenacao, EXTRATORES),
-    [linhas, ordenacao],
-  );
+  const ordenadas = useMemo(() => ordenarConsultas(linhas, ordenacao), [linhas, ordenacao]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (carregando || !catalogo) return <Carregando />;

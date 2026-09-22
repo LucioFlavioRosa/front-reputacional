@@ -47,6 +47,14 @@ const PAPEL_DE_QUEM_RECEBEU = 'equipe';
 
 const HOJE = () => new Date().toISOString().slice(0, 10);
 
+/** Um material da consulta, como o `PATCH` o espera. */
+interface MaterialDaConsulta {
+  momento: string;
+  titulo: string;
+  arquivo_id: string;
+  temas: number[];
+}
+
 interface Rascunho {
   instituicao_id: string;
   data_interacao: string;
@@ -148,19 +156,43 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
 
       // UM A UM, e não em paralelo: o servidor recusa arquivo fora da lista de
       // tipos, e subir tudo junto tornaria impossível dizer QUAL falhou.
-      const materiais = [];
-      for (const anexo of anexos) {
-        const salvo = await subirArquivoDeMaterial(criada.id, MOMENTO_DO_ANEXO, anexo);
-        materiais.push({
-          momento: MOMENTO_DO_ANEXO,
-          // O nome do arquivo É o título: quem anexa "Questionário anual.pdf"
-          // já disse como o material se chama.
-          titulo: salvo.nome,
-          arquivo_id: salvo.id,
-          temas: rascunho.temas,
-        });
+      //
+      // E CADA UM É AMARRADO ASSIM QUE SOBE, com um `PATCH` por anexo em vez
+      // de um só no fim. O byte e o material são duas escritas: com o `PATCH`
+      // depois do laço, falhar no segundo de três deixava o primeiro arquivo
+      // GRAVADO E SEM MATERIAL — invisível na tela, fora da limpeza de órfãos
+      // (que só alcança arquivo que já esteve ligado a um material) e pago
+      // para sempre. Uma requisição a mais por anexo é barata perto disso.
+      const materiais: MaterialDaConsulta[] = [];
+      let anexados = 0;
+      try {
+        for (const anexo of anexos) {
+          const salvo = await subirArquivoDeMaterial(criada.id, MOMENTO_DO_ANEXO, anexo);
+          materiais.push({
+            momento: MOMENTO_DO_ANEXO,
+            // O nome do arquivo É o título: quem anexa "Questionário anual.pdf"
+            // já disse como o material se chama.
+            titulo: salvo.nome,
+            arquivo_id: salvo.id,
+            temas: rascunho.temas,
+          });
+          await editarInteracao(criada.id, { materiais });
+          anexados += 1;
+        }
+      } catch (falha) {
+        // A CONSULTA JÁ EXISTE, e o que já subiu já está amarrado a ela. A
+        // mensagem precisa dizer as duas coisas — o que se salvou e o que
+        // falta — senão a pessoa tenta registrar tudo de novo e duplica.
+        definirErro(
+          `A consulta foi registrada com ${anexados} de ${anexos.length} anexos. ` +
+            `Abra a consulta na Base para anexar o que faltou. ` +
+            (falha instanceof Error ? falha.message : ''),
+        );
+        definirRascunho(VAZIO());
+        definirAnexos([]);
+        recarregar();
+        return;
       }
-      if (materiais.length) await editarInteracao(criada.id, { materiais });
       definirRascunho(VAZIO());
       definirAnexos([]);
       definirSucesso(
@@ -184,7 +216,7 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
       subtitulo="Chegou um questionário por e-mail? Guarde aqui, em trinta segundos — o resto se completa depois, pela ficha."
       acao={
         <Botao variante="secundario" aoClicar={() => definirAberto((v) => !v)}>
-          {aberto ? 'Fechar' : 'Registrar e-mail'}
+          {aberto ? 'Fechar' : 'Registrar consulta recebida'}
         </Botao>
       }
     >
@@ -294,7 +326,7 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
             {/* O ANEXO — o questionário em si, que é o documento que se
                 reutiliza depois. Vai para `consultas/<mês>/<instituição>/…` no
                 armazenamento, uma pasta por e-mail. */}
-            <Campo rotulo="Anexos do e-mail">
+            <Campo rotulo="Anexos da consulta">
               <input
                 type="file"
                 multiple

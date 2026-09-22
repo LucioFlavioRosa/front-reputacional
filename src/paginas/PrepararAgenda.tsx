@@ -68,8 +68,8 @@ import { usePainel } from '@/estado/painel';
 
 const QUANTAS_AGENDAS = 8;
 
-/** Quantos e-mails a preparação mostra. Menos que as agendas: aqui eles são
- *  contexto, e não o assunto da tela. */
+/** Quantas consultas recebidas a preparação mostra. Menos que as agendas:
+ *  aqui elas são contexto, e não o assunto da tela. */
 const QUANTAS_CONSULTAS_NA_PREPARACAO = 5;
 
 export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => void }) {
@@ -343,7 +343,7 @@ function BlocoDeAgendas({
 
 /* -- bloco 2b: o que o mercado andou perguntando sobre o tema ---------------- */
 
-//: ANTES DE ENTRAR NA REUNIÃO, saber o que perguntaram por e-mail sobre este
+//: ANTES DE ENTRAR NA REUNIÃO, saber o que o mercado perguntou sobre este
 //: tema muda o que se leva: se três bancos sondaram a mesma premissa nas
 //: últimas semanas, ela vai aparecer na sala. O bloco some quando não há
 //: consulta no recorte — a maioria dos temas não tem, e um cartão vazio em
@@ -398,7 +398,7 @@ function BlocoDeConsultasDoTema({
             de quem perguntou. A lista agregada acima responde "o que está
             circulando"; esta responde "o que chegou". */}
         <p className="kicker" style={{ margin: '0 0 8px' }}>
-          Últimos e-mails ({consultas.length} no recorte)
+          Últimas consultas recebidas ({consultas.length} no recorte)
         </p>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {[...consultas]
