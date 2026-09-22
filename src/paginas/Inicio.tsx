@@ -19,8 +19,9 @@ const ONDA_1: {
 }[] = [
   {
     portal: 'crm',
-    // A porta do CRM é a Situação: o que precisa de você, e não o volume.
-    view: 'situacao',
+    // A porta do CRM é o Painel: quem entra vê o panorama de uma vez, e todo
+    // clique nele filtra a própria tela. (Era a Situação até 22/09/2026.)
+    view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:
       'Cadastro das interações institucionais e os painéis que leem essa base.',

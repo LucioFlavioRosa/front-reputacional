@@ -40,8 +40,9 @@ import type { Destino } from '@/navegacao/rota';
 //: A CADEIA NAO E UM DESTINO: como aba, obrigaria a escolher QUAL cadeia antes
 //: de poder olhar. Mora na linha da Base, que e onde a pergunta nasce.
 //: "SITUAÇÃO" SAIU DA LISTA VISÍVEL — a rota (`/situacao`) e a tela
-//: continuam existindo, só não tem mais botão no cabeçalho. Quem já tinha um
-//: link salvo continua chegando lá normalmente.
+//: continuam existindo, só não tem mais botão no cabeçalho, e desde 22/09/2026
+//: o cartão "CRM" da capa abre o Painel, não mais a Situação. Só se chega
+//: nela por link salvo.
 //:
 //: "RELATÓRIOS EXECUTIVOS" RESPONDE "O QUE ACONTECEU, PRONTO PARA REPASSAR" —
 //: o registro em si, em texto corrido, para quem vai copiar e colar num
