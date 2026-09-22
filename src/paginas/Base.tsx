@@ -11,6 +11,7 @@ import { Abas } from '@/componentes/Abas';
 import { FiltrosDeAgendas } from '@/componentes/FiltrosDeAgendas';
 import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
+import { ConsultasRecebidas } from '@/paginas/ConsultasRecebidas';
 import { DocumentosDaReuniao } from '@/paginas/DocumentosDaReuniao';
 import { MateriaisOficiais } from '@/paginas/MateriaisOficiais';
 import { dataCompleta, numero, tituloDaAgenda, truncar } from '@/dominio/formato';
@@ -44,11 +45,17 @@ import type { Catalogo } from '@/dominio/derivacoes';
  *  um arquivo so se acha abrindo a agenda que o gerou — e e preciso saber qual
  *  foi.
  *
- *  A PROCEDENCIA E O QUE AS SEPARA, e nao o formato: as tres listam coisas
+ *  AS CONSULTAS RECEBIDAS sao interacoes como as agendas, e aparecem na
+ *  primeira aba tambem. Ganham a sua porque o que se pergunta DELAS e outra
+ *  coisa — quem assinou, por onde chegou, se o prazo venceu —, e sao colunas
+ *  que ficariam vazias em 97% das linhas da tabela de agendas.
+ *
+ *  A PROCEDENCIA E O QUE AS SEPARA, e nao o formato: as quatro listam coisas
  *  diferentes vindas de lugares diferentes, com governanca diferente.
  */
 const ABAS = [
   { id: 'agendas' as const, rotulo: 'Interações' },
+  { id: 'consultas' as const, rotulo: 'Consultas recebidas' },
   { id: 'oficiais' as const, rotulo: 'Posicionamentos e Papers' },
   { id: 'documentos' as const, rotulo: 'Documentos das reuniões' },
 ];
@@ -162,6 +169,15 @@ export function Base({
         rotulo="O que a Base mostra"
         prefixo="base"
       />
+
+      {aba === 'consultas' ? (
+        <Secao nivelDoTitulo={1} titulo="Consultas recebidas" estilo={{ padding: 20 }}>
+          <div style={{ padding: '16px 0 0' }}>
+            <FiltrosDeAgendas />
+          </div>
+          <ConsultasRecebidas aoAbrirFicha={aoAbrirFicha} />
+        </Secao>
+      ) : null}
 
       {aba === 'oficiais' ? (
         <Secao nivelDoTitulo={1} titulo="Posicionamentos e Papers" estilo={{ padding: 20 }}>
