@@ -17,7 +17,6 @@ import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
-import { Situacao } from '@/paginas/Situacao';
 import { Painel } from '@/paginas/Painel';
 import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
@@ -201,7 +200,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           ) : null}
 
           {/* A ÚNICA TELA QUE ALGUÉM PRECISA ABRIR TODO DIA. */}
-          {rota.destino === 'situacao' ? <Situacao aoAbrirAgenda={abrirAgenda} /> : null}
 
           {/* O PANORAMA: o recorte visto de uma vez. Clicar num indicador
               FILTRA a própria tela, como todo gráfico dela. */}

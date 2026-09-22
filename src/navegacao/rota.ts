@@ -26,7 +26,6 @@ import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 /** As telas que têm endereço próprio. */
 export type Destino =
   | 'inicio'
-  | 'situacao'
   | 'painel'
   | 'base'
   | 'relatorios'
@@ -58,7 +57,6 @@ export function lerCaminho(caminho: string): Rota {
 
   const [primeira, segunda, terceira] = partes;
 
-  if (primeira === 'situacao') return { destino: 'situacao' };
   if (primeira === 'painel') return { destino: 'painel' };
   if (primeira === 'base') return { destino: 'base' };
   if (primeira === 'relatorios') return { destino: 'relatorios' };
@@ -87,8 +85,6 @@ export function caminhoDe(rota: Rota): string {
   switch (rota.destino) {
     case 'inicio':
       return '/';
-    case 'situacao':
-      return '/situacao';
     case 'painel':
       return '/painel';
     case 'relatorios':

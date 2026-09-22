@@ -1476,3 +1476,26 @@ export function semContatoNoPeriodo(comparativo: Comparativo<Interacao>): number
   const agora = new Set(comparativo.atual.map((i) => i.interlocutor_id).filter(Boolean));
   return [...antes].filter((id) => !agora.has(id)).length;
 }
+
+/** A agenda já aconteceu?
+ *
+ *  VEM DO RELATO, e não da situação. As três situações — Solicitado, Aceito,
+ *  Negado — respondem ao PEDIDO, e nenhuma delas diz se a reunião houve:
+ *  "aceito" é a resposta, não o fato.
+ *
+ *  O relato é o marcador certo porque não depende de alguém lembrar de mudar
+ *  um campo depois da reunião: ele aparece quando a pessoa escreve o que
+ *  aconteceu, que é o gesto que ela já faz. Só se escreve o relato de uma
+ *  reunião que houve.
+ *
+ *  EXIGE AS DUAS COISAS: relato escrito E situação `Aceito`. A negada fica de
+ *  fora mesmo tendo relato — o texto ali conta a recusa, e recusa não é
+ *  reunião. A solicitada também: um pedido sem resposta não produziu reunião,
+ *  e se tem relato é inconsistência do registro, não um fato a propagar.
+ *
+ *  Quem usa é o Cadastro, para só oferecer como ORIGEM de uma agenda uma
+ *  reunião que houve.
+ */
+export function jaAconteceu(interacao: Interacao): boolean {
+  return interacao.status === 'confirmada' && Boolean((interacao.relato ?? '').trim());
+}
