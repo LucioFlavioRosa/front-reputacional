@@ -149,7 +149,7 @@ export function lerEixo(consulta: string): Eixo {
 //: daqui porque um é lista e o outro é número — ver abaixo.
 const CAMPOS_DE_TEXTO = [
   'periodoPassado', 'periodoFuturo', 'de', 'ate', 'frente', 'unidade', 'uf', 'esfera',
-  'clima', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
+  'clima', 'climaEsperado', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
   'portaVoz', 'pessoa', 'q',
 ] as const;
 

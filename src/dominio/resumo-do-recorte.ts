@@ -78,6 +78,9 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
 
   if (catalogo) {
     if (recorte.clima) partes.push(rotuloDeCodigo(catalogo, 'climas', recorte.clima));
+    if (recorte.climaEsperado) {
+      partes.push(`Esperado: ${rotuloDeCodigo(catalogo, 'climas', recorte.climaEsperado)}`);
+    }
     if (recorte.resultado) partes.push(rotuloDeCodigo(catalogo, 'resultados', recorte.resultado));
     if (recorte.esfera) partes.push(rotuloDeCodigo(catalogo, 'esferas', recorte.esfera));
     if (recorte.status) partes.push(rotuloDeCodigo(catalogo, 'status', recorte.status));
@@ -134,6 +137,11 @@ export function fichasDoRecorte(
 
   if (catalogo) {
     if (recorte.clima) por('clima', rotuloDeCodigo(catalogo, 'climas', recorte.clima));
+    // "Esperado:" na ficha: sem o prefixo, os dois climas seriam duas
+    // fichas "Reativo" e ninguém saberia qual remover.
+    if (recorte.climaEsperado) {
+      por('climaEsperado', `Esperado: ${rotuloDeCodigo(catalogo, 'climas', recorte.climaEsperado)}`);
+    }
     if (recorte.resultado) {
       por('resultado', rotuloDeCodigo(catalogo, 'resultados', recorte.resultado));
     }

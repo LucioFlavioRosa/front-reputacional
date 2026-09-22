@@ -69,6 +69,8 @@ describe('o recorte na consulta', () => {
       periodoPassado: 'ultimos-360' as const,
       frente: 'imprensa' as const,
       tier: 1,
+      clima: 'tenso',
+      climaEsperado: 'neutro',
       tags: ['3', '7'],
       q: 'copasa',
     };

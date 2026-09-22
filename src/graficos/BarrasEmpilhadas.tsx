@@ -50,7 +50,10 @@ export function BarrasEmpilhadas({
    *  fatia de cada categoria — compara-se a COMPOSIÇÃO, não o volume. O
    *  total continua no topo e no tooltip, com a % ao lado de cada fatia. */
   escala?: 'absoluta' | 'percentual';
-  aoClicarSegmento?: (chave: string) => void;
+  /** A faixa colorida clicada. `mes` é a coluna de onde veio, para quem
+   *  filtra por eixos diferentes conforme a coluna — Antes × Depois na
+   *  tela Preparar agenda; quem não precisa ignora o segundo argumento. */
+  aoClicarSegmento?: (chave: string, mes: string) => void;
   /** Clique na COLUNA inteira, e não num segmento dela. Quem usa os dois
    *  escolhe o eixo pelo alvo: a faixa colorida filtra a categoria, o resto da
    *  coluna filtra o mês. */
@@ -209,7 +212,7 @@ export function BarrasEmpilhadas({
                       // Sem isto o clique no segmento também escolheria o mês,
                       // e a tela aplicaria dois filtros de uma vez.
                       evento.stopPropagation();
-                      aoClicarSegmento(segmento.chave);
+                      aoClicarSegmento(segmento.chave, coluna.mes);
                     }}
                     onMouseEnter={
                       detalheDoSegmento

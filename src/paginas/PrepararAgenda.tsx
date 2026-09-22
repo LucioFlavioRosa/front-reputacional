@@ -35,9 +35,10 @@ import {
   nomesDosTemas,
   rotuloDeCodigo,
 } from '@/dominio/derivacoes';
-import type { Catalogo } from '@/dominio/derivacoes';
+import type { Catalogo, Segmento } from '@/dominio/derivacoes';
 import type { Interacao, Referencia } from '@/dominio/tipos';
 import {
+  COLUNA_ANTES,
   climaAntesEDepois,
   contagemPorDicionario,
   documentosDasAgendas,
@@ -314,6 +315,29 @@ function BlocoDeAgendas({
 
 /* -- bloco 3: como as conversas sobre o tema terminam ------------------------ */
 
+/** A legenda de UM lado do gráfico Antes × Depois, com o título do lado. */
+function LegendaDeUmLado({
+  titulo,
+  itens,
+  ativo,
+  aoClicar,
+}: {
+  titulo: string;
+  itens: Segmento[];
+  ativo?: string;
+  aoClicar: (chave: string) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <span className="kicker" style={{ marginTop: 14, minWidth: 48 }}>
+        {titulo}
+      </span>
+      <Legenda itens={itens} ativo={ativo} aoClicar={aoClicar} />
+    </div>
+  );
+}
+
+
 //: CLICAR NUM GRÁFICO FILTRA A PÁGINA INTEIRA — o mesmo gesto do Painel: a
 //: fatia, a coluna ou a linha clicada vira filtro do recorte, e materiais,
 //: agendas e os outros gráficos respondem. Clicar de novo desfaz
@@ -371,20 +395,30 @@ function BlocoDeGraficos({
           <p className="kicker" style={{ marginBottom: 10 }}>
             Clima: antes e depois
           </p>
-          {/* A fatia clicada filtra pelo CLIMA REGISTRADO, nas duas colunas:
-              o recorte não tem filtro de clima esperado, e "o que se esperava
-              tenso" e "o que foi tenso" se olham lado a lado no mesmo filtro. */}
+          {/* DOIS FILTROS, UM POR COLUNA: a faixa da coluna "Antes" filtra pelo
+              clima ESPERADO e a da coluna "Depois" pelo REGISTRADO. Com um
+              filtro só, clicar em "Antes" filtrava pelo registrado e a própria
+              coluna "Antes" sumia. Uma legenda por lado, marcando o que está
+              ativo em cada um. */}
           <BarrasEmpilhadas
             colunas={clima.colunas}
             altura={150}
             formatarRotulo={(chave) => chave}
-            aoClicarSegmento={(chave) => filtrar('clima', chave)}
+            aoClicarSegmento={(chave, coluna) =>
+              filtrar(coluna === COLUNA_ANTES ? 'climaEsperado' : 'clima', chave)
+            }
           />
-          <Legenda
+          <LegendaDeUmLado
+            titulo="Antes"
+            itens={clima.esperado}
+            ativo={recorte.climaEsperado}
+            aoClicar={(chave) => filtrar('climaEsperado', chave)}
+          />
+          <LegendaDeUmLado
+            titulo="Depois"
             itens={clima.registrado}
             ativo={recorte.clima}
             aoClicar={(chave) => filtrar('clima', chave)}
-            centralizada
           />
         </Cartao>
 

@@ -270,10 +270,20 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     },
     {
       chave: 'clima',
-      rotulo: 'Clima',
+      rotulo: 'Clima registrado',
       valorAtual: recorte.clima,
       itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
       aoEscolher: (valor: string) => definirOuAlternar('clima', recorte.clima, valor, (v) => v),
+    },
+    // DOIS FILTROS DE CLIMA, um por momento: o esperado ao marcar a reunião e
+    // o registrado depois dela. Mesmo dicionário, campos distintos do recorte.
+    {
+      chave: 'climaEsperado',
+      rotulo: 'Clima esperado',
+      valorAtual: recorte.climaEsperado,
+      itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
+      aoEscolher: (valor: string) =>
+        definirOuAlternar('climaEsperado', recorte.climaEsperado, valor, (v) => v),
     },
     {
       chave: 'resultado',

@@ -52,6 +52,11 @@ export interface Recorte {
   esfera?: string;
   tier?: number;
   clima?: string;
+  /** O clima que se ESPERAVA ao marcar a reunião — filtro separado do
+   *  registrado (`clima`). Com um filtro só, clicar na coluna "Antes" da
+   *  tela Preparar agenda filtrava pelo registrado e a própria coluna
+   *  "Antes" sumia. Vai ao servidor como `climaEsperado`. */
+  climaEsperado?: string;
   resultado?: string;
   status?: string;
   grupo?: GrupoDeStatus;
@@ -82,7 +87,7 @@ export const RECORTE_VAZIO: Recorte = {};
 
 /** Campos que contam como "um filtro" no contador do botão Filtros. */
 const CAMPOS_CONTAVEIS: (keyof Recorte)[] = [
-  'frente', 'unidade', 'uf', 'esfera', 'tier', 'clima', 'resultado',
+  'frente', 'unidade', 'uf', 'esfera', 'tier', 'clima', 'climaEsperado', 'resultado',
   'status', 'grupo', 'entidade', 'subtipo', 'portaVoz', 'pessoa', 'q',
 ];
 

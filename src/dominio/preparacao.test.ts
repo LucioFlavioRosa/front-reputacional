@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Interacao, Material } from '@/dominio/tipos';
 import {
+  COLUNA_ANTES,
+  COLUNA_DEPOIS,
   climaAntesEDepois,
   contagemPorDicionario,
   documentosDasAgendas,
@@ -120,8 +122,10 @@ describe('climaAntesEDepois', () => {
       interacao({ clima_esperado: 'neutro', clima: 'neutro' }),
       interacao({ clima_esperado: null, clima: 'propositivo' }),
     ];
-    const { colunas, registrado } = climaAntesEDepois(dados, CLIMAS);
-    expect(colunas.map((c) => c.mes)).toEqual(['Antes (esperado)', 'Depois (registrado)']);
+    const { colunas, esperado, registrado } = climaAntesEDepois(dados, CLIMAS);
+    expect(colunas.map((c) => c.mes)).toEqual([COLUNA_ANTES, COLUNA_DEPOIS]);
+    expect(colunas[0].segmentos).toBe(esperado);
+    expect(colunas[1].segmentos).toBe(registrado);
     expect(colunas[0].total).toBe(2); // uma sem esperado não conta no "antes"
     expect(colunas[1].total).toBe(3);
     expect(colunas[0].segmentos.map((s) => s.total)).toEqual([0, 1, 1]);

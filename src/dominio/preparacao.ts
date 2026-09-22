@@ -11,6 +11,12 @@ import type { Interacao, Material } from '@/dominio/tipos';
 
 export const QUANTAS_NO_RANKING = 5;
 
+/** Os rótulos das duas colunas de clima — exportados porque o clique numa
+ *  faixa da coluna "Antes" filtra por `climaEsperado`, e na "Depois" por
+ *  `clima`: a página decide pelo rótulo que o gráfico devolve. */
+export const COLUNA_ANTES = 'Antes (esperado)';
+export const COLUNA_DEPOIS = 'Depois (registrado)';
+
 /** Um documento de reunião, já com a agenda de onde saiu. */
 export interface DocumentoDaAgenda {
   chave: string;
@@ -59,19 +65,21 @@ export function contagemPorDicionario(
 
 /** DUAS COLUNAS, "Antes" e "Depois": o clima esperado ao marcar a reunião e
  *  o registrado depois dela. `BarrasEmpilhadas` lê `ColunaMensal` — a chave
- *  `mes` é só o rótulo da coluna. */
+ *  `mes` é só o rótulo da coluna. Devolve também os dois lados soltos, para
+ *  a legenda de cada um. */
 export function climaAntesEDepois(
   agendas: Interacao[],
   climas: { codigo: string; nome: string; cor_hex: string }[],
-): { colunas: ColunaMensal[]; registrado: Segmento[] } {
+): { colunas: ColunaMensal[]; esperado: Segmento[]; registrado: Segmento[] } {
   const esperado = contagemPorDicionario(agendas, climas, (a) => a.clima_esperado);
   const registrado = contagemPorDicionario(agendas, climas, (a) => a.clima);
   const soma = (segmentos: Segmento[]) => segmentos.reduce((s, i) => s + i.total, 0);
   return {
     colunas: [
-      { mes: 'Antes (esperado)', total: soma(esperado), segmentos: esperado },
-      { mes: 'Depois (registrado)', total: soma(registrado), segmentos: registrado },
+      { mes: COLUNA_ANTES, total: soma(esperado), segmentos: esperado },
+      { mes: COLUNA_DEPOIS, total: soma(registrado), segmentos: registrado },
     ],
+    esperado,
     registrado,
   };
 }
