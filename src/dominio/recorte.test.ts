@@ -87,6 +87,14 @@ describe('paraParametros', () => {
     expect(parametros.has('ate')).toBe(true);
   });
 
+  it('manda cada tema como parâmetro repetido, mesmo com vírgula no nome', () => {
+    // `tags` são nomes; "Saneamento, drenagem" é UM tema. As listas de ids
+    // continuam separadas por vírgula.
+    const p = paraParametros({ tags: ['Saneamento, drenagem', 'Tarifa'], areas: [1, 2] });
+    expect(p.getAll('tags')).toEqual(['Saneamento, drenagem', 'Tarifa']);
+    expect(p.get('areas')).toBe('1,2');
+  });
+
   it('sem período nenhum, não manda de/ate', () => {
     const parametros = paraParametros({ frente: 'imprensa' });
     expect(parametros.has('de')).toBe(false);

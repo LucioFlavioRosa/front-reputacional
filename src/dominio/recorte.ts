@@ -225,7 +225,11 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
     if (chave === 'categoriaPublico' || chave === 'formatoInteracao') continue;
     if (valor == null || valor === '') continue;
     if (Array.isArray(valor)) {
-      if (valor.length) parametros.set(chave, valor.join(','));
+      // `tags` SÃO NOMES DE TEMA, e um nome pode ter vírgula: viajam como
+      // parâmetro repetido (`tags=a&tags=b`), que o servidor lê como lista.
+      // As outras listas são ids numéricos, e a vírgula continua servindo.
+      if (chave === 'tags') for (const tag of valor) parametros.append('tags', String(tag));
+      else if (valor.length) parametros.set(chave, valor.join(','));
     } else {
       parametros.set(chave, String(valor));
     }

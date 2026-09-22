@@ -170,8 +170,10 @@ export function lerRecorte(consulta: string): Recorte {
   const tier = p.get('tier');
   if (tier && Number.isFinite(Number(tier))) recorte.tier = Number(tier);
 
-  const tags = p.get('tags');
-  if (tags) recorte.tags = tags.split(',').filter(Boolean);
+  // Repetido (`tags=a&tags=b`), e não separado por vírgula: um nome de tema
+  // pode ter vírgula, e partir nela quebraria o nome em dois.
+  const tags = p.getAll('tags').filter(Boolean);
+  if (tags.length) recorte.tags = tags;
 
   return recorte as Recorte;
 }
@@ -186,7 +188,7 @@ export function consultaDe(recorte: Recorte, eixo?: Eixo): string {
     if (typeof valor === 'string' && valor) p.set(campo, valor);
   }
   if (recorte.tier) p.set('tier', String(recorte.tier));
-  if (recorte.tags?.length) p.set('tags', recorte.tags.join(','));
+  for (const tag of recorte.tags ?? []) p.append('tags', tag);
   if (eixo && eixo !== 'frente') p.set('ver', eixo);
 
   const texto = p.toString();

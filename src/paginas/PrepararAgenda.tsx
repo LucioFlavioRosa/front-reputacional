@@ -11,15 +11,16 @@
  *  isso na gaveta e a tela responde.
  *
  *  OS BLOCOS REAPROVEITAM O QUE JÁ EXISTE: as agendas são as `interacoes` do
- *  contexto (o recorte já aplicado), as referências vêm do catálogo (a
+ *  contexto (o recorte já aplicado — inclusive os filtros que só existem no
+ *  cliente, como tipo de interação e categoria de público), os documentos
+ *  são os `materiais` DESSAS agendas (nenhuma chamada a mais, e nunca um
+ *  documento de agenda fora do recorte), as referências vêm do catálogo (a
  *  biblioteca da Administração, só as ativas, filtradas pelos temas do
- *  recorte), os documentos das reuniões da mesma rota da Base, e os gráficos
- *  são a `Rosca`, as `BarrasEmpilhadas` e o `Ranking` do Painel — a leitura
- *  visual é a mesma que a pessoa já conhece de lá.
+ *  recorte), e os gráficos são a `Rosca`, as `BarrasEmpilhadas` e o
+ *  `Ranking` do Painel — a leitura visual é a mesma que a pessoa já conhece.
  */
 
-import { useEffect, useState } from 'react';
-import { listarDocumentosDaReuniao, urlDaVersao, urlDoArquivo } from '@/api/cliente';
+import { urlDaVersao, urlDoArquivo } from '@/api/cliente';
 import { Botao, Cartao, Carregando, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
@@ -33,8 +34,7 @@ import {
   rotuloDeCodigo,
 } from '@/dominio/derivacoes';
 import type { Catalogo, ColunaMensal, ItemContado, Segmento } from '@/dominio/derivacoes';
-import type { Recorte } from '@/dominio/recorte';
-import type { DocumentoDaReuniao, Interacao, Referencia } from '@/dominio/tipos';
+import type { Interacao, Material, Referencia } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
 const QUANTAS_AGENDAS = 8;
@@ -44,40 +44,12 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
   const { catalogo, recorte, definirRecorte, interacoes, carregando, atualizando, erro } =
     usePainel();
 
-  //: OS DOCUMENTOS VÊM DO SERVIDOR, pelo mesmo recorte — guardados ao lado do
-  //: recorte que os buscou, para "está velho" se descobrir comparando (o
-  //: mesmo desenho de `DocumentosDaReuniao`).
-  const [documentos, definirDocumentos] = useState<{
-    recorte: Recorte;
-    lista: DocumentoDaReuniao[];
-  } | null>(null);
-  const [erroDosDocumentos, definirErroDosDocumentos] = useState<string | null>(null);
-
   const temas = recorte.tags ?? [];
   const temTema = temas.length > 0;
-
-  useEffect(
-    function buscarDocumentosDoRecorte() {
-      if (!temTema) return;
-      let vivo = true;
-      listarDocumentosDaReuniao(recorte)
-        .then((lista) => {
-          if (vivo) definirDocumentos({ recorte, lista });
-        })
-        .catch((falha: Error) => {
-          if (vivo) definirErroDosDocumentos(falha.message);
-        });
-      return () => {
-        vivo = false;
-      };
-    },
-    [recorte, temTema],
-  );
 
   if (!catalogo) return <Carregando rotulo="Carregando o catálogo…" />;
 
   const escolherTema = (nome: string) => {
-    definirErroDosDocumentos(null);
     const proximo = { ...recorte };
     if (nome) proximo.tags = [nome];
     else delete proximo.tags;
@@ -90,7 +62,6 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
   const referencias = catalogo.referencias.filter(
     (r) => r.ativo && r.temas.some((id) => idsDosTemas.has(id)),
   );
-  const documentosDoRecorte = documentos?.recorte === recorte ? documentos.lista : null;
   const rotuloDosTemas = temas.join(', ');
 
   return (
@@ -118,7 +89,6 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
       </Secao>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      {erroDosDocumentos ? <FaixaDeErro mensagem={erroDosDocumentos} /> : null}
 
       {!temTema ? (
         <Vazio mensagem="Nenhum tema escolhido" dica="Escolha um tema acima para montar a preparação." />
@@ -136,7 +106,8 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
           <BlocoDeReferencias
             tema={rotuloDosTemas}
             referencias={referencias}
-            documentos={documentosDoRecorte}
+            documentos={documentosDasAgendas(interacoes)}
+            catalogo={catalogo}
           />
           <BlocoDeAgendas agendas={interacoes} catalogo={catalogo} aoAbrirAgenda={aoAbrirAgenda} />
           <BlocoDeGraficos agendas={interacoes} catalogo={catalogo} />
@@ -154,15 +125,39 @@ const ROTULO_DO_TIPO_DE_REFERENCIA: Record<string, string> = {
   release: 'Release',
 };
 
+/** Um documento de reunião, já com a agenda de onde saiu. */
+interface DocumentoDaAgenda {
+  chave: string;
+  material: Material;
+  agenda: Interacao;
+}
+
+//: OS MATERIAIS DAS AGENDAS DO RECORTE, mais recentes primeiro. Só os que
+//: têm arquivo ou link — um material sem os dois não tem o que abrir.
+function documentosDasAgendas(agendas: Interacao[]): DocumentoDaAgenda[] {
+  return [...agendas]
+    .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao))
+    .flatMap((agenda) =>
+      agenda.materiais
+        .filter((material) => material.arquivo || material.url)
+        .map((material, indice) => ({
+          chave: material.id ?? `${agenda.id}:${indice}`,
+          material,
+          agenda,
+        })),
+    );
+}
+
 function BlocoDeReferencias({
   tema,
   referencias,
   documentos,
+  catalogo,
 }: {
   tema: string;
   referencias: Referencia[];
-  /** `null` enquanto o servidor não respondeu para este recorte. */
-  documentos: DocumentoDaReuniao[] | null;
+  documentos: DocumentoDaAgenda[];
+  catalogo: Catalogo;
 }) {
   return (
     <Secao
@@ -217,37 +212,36 @@ function BlocoDeReferencias({
 
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
-            Documentos das reuniões{documentos ? ` (${documentos.length})` : ''}
+            Documentos das reuniões ({documentos.length})
           </p>
-          {!documentos ? (
-            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>Carregando…</p>
-          ) : documentos.length === 0 ? (
+          {documentos.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
               Nenhum documento de reunião com este tema.
             </p>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {documentos.slice(0, QUANTAS_AGENDAS).map((documento) => (
-                <li
-                  key={documento.id}
-                  style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}
-                >
+              {documentos.slice(0, QUANTAS_AGENDAS).map(({ chave, material, agenda }) => (
+                <li key={chave} style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{documento.titulo}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{material.titulo}</span>
                     <span style={{ fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
-                      {dataCompleta(documento.data_interacao)}
+                      {dataCompleta(agenda.data_interacao)}
                     </span>
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: '2px 0 0' }}>
-                    {documento.instituicao ?? '—'}
+                    {nomeDaInstituicao(catalogo, agenda.instituicao_id)}
                     {' · '}
                     <a
-                      href={urlDoArquivo(documento.interacao_id, documento.arquivo_id)}
+                      href={
+                        material.arquivo
+                          ? urlDoArquivo(agenda.id, material.arquivo.id)
+                          : (material.url ?? '#')
+                      }
                       target="_blank"
                       rel="noreferrer"
                       style={{ color: 'var(--azul-mar)' }}
                     >
-                      {documento.arquivo_nome}
+                      {material.arquivo?.nome ?? 'abrir o link'}
                     </a>
                   </p>
                 </li>

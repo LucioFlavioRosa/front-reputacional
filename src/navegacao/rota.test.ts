@@ -76,6 +76,13 @@ describe('o recorte na consulta', () => {
     expect(lerRecorte(consultaDe(recorte))).toEqual(recorte);
   });
 
+  it('um tema com vírgula no nome vai e volta inteiro', () => {
+    // `tags` é repetido no endereço, não separado por vírgula: o nome é o
+    // valor, e "Saneamento, drenagem" é UM tema.
+    const recorte = { tags: ['Saneamento, drenagem', 'Tarifa'] };
+    expect(lerRecorte(consultaDe(recorte))).toEqual(recorte);
+  });
+
   it('o mesmo recorte produz sempre o mesmo endereço', () => {
     // Campos em ordem fixa: dois links do mesmo recorte precisam ser iguais
     // como texto, senão o navegador os trata como páginas diferentes.
