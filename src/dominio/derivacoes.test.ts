@@ -21,7 +21,7 @@ import {
   categoriasDeArea,
   climaPorTema,
   comReativoNaBase,
-  completarMeses,
+  completarPeriodos,
   divergenciasDoCatalogo,
   distribuicaoPorUf,
   dividirEmJanelas,
@@ -332,16 +332,17 @@ describe('serieMensal', () => {
   });
 });
 
-describe('completarMeses', () => {
+describe('completarPeriodos por mês', () => {
   it('preenche o buraco entre dois meses com registros', () => {
     const dados = [
       interacao({ data_interacao: '2026-01-10' }),
       interacao({ data_interacao: '2026-04-10' }),
     ];
-    const serie = completarMeses(
+    const serie = completarPeriodos(
       serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
         'imprensa',
       ]),
+      'mes',
     );
 
     expect(serie.map((c) => c.mes)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04']);
@@ -353,10 +354,11 @@ describe('completarMeses', () => {
       interacao({ data_interacao: '2025-11-10' }),
       interacao({ data_interacao: '2026-02-10' }),
     ];
-    const serie = completarMeses(
+    const serie = completarPeriodos(
       serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
         'imprensa',
       ]),
+      'mes',
     );
     expect(serie.map((c) => c.mes)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
   });
@@ -371,10 +373,11 @@ describe('completarMeses', () => {
       interacao({ data_interacao: '2026-02-10' }),
       interacao({ data_interacao: '2026-03-15' }),
     ];
-    const serie = completarMeses(
+    const serie = completarPeriodos(
       serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
         'imprensa',
       ]),
+      'mes',
     );
 
     expect(serie.map((c) => c.mes)).toEqual(['2026-02', '2026-03']);
@@ -389,10 +392,11 @@ describe('completarMeses', () => {
       interacao({ data_interacao: '2026-02-10' }),
       interacao({ data_interacao: '2026-08-10' }),
     ];
-    const serie = completarMeses(
+    const serie = completarPeriodos(
       serieMensal(dados, [{ chave: 'imprensa', rotulo: 'Imprensa', cor: '#000' }], () => [
         'imprensa',
       ]),
+      'mes',
     );
 
     expect(serie.map((c) => c.mes)).toEqual([

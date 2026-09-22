@@ -531,10 +531,10 @@ export interface Segmento {
 
 export interface ColunaMensal {
   /** A chave do período agrupado — "2026-05" quando `granularidade` é `mes`
-   *  (o caso original, e o único que `RaioXDaExcecao` usa), mas também
-   *  "2026-05-04" (segunda-feira da semana) ou "2026-S1" quando é `semana` ou
-   *  `semestre`. O campo continua `mes` de propósito: renomeá-lo obrigaria a
-   *  mudar `BarrasEmpilhadas` e `RaioXDaExcecao` também, e nenhum dos dois
+   *  (o caso original), mas também "2026-05-04" (segunda-feira da semana) ou
+   *  "2026-S1" quando é `semana` ou `semestre`. O campo continua `mes` de
+   *  propósito: renomeá-lo obrigaria a mudar `BarrasEmpilhadas` e a Preparar
+   *  agenda (que usa a chave como rótulo "Antes"/"Depois"), e nenhum dos dois
    *  precisa saber COMO a chave foi montada — só que ela ordena por
    *  `localeCompare` e que existe um rótulo pronto para exibir por cima dela. */
   mes: string;
@@ -559,9 +559,8 @@ export function chaveDoPeriodo(iso: string, granularidade: Granularidade): strin
  *  pilha; `categoriasDe` diz a que categorias cada interação pertence — uma
  *  só, no caso de frente e clima, várias no caso de tema.
  *
- *  `granularidade` default `'mes'` DE PROPÓSITO: é o único valor que
- *  `RaioXDaExcecao` conhece, e assim a chamada de três argumentos que ele já
- *  faz continua se comportando exatamente como antes. */
+ *  `granularidade` default `'mes'`: é a leitura original, e a chamada de três
+ *  argumentos continua valendo para quem não escolhe outra. */
 export function serieMensal(
   interacoes: Interacao[],
   categorias: { chave: string; rotulo: string; cor: string }[],
@@ -704,12 +703,6 @@ export function completarPeriodos(
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return completas;
-}
-
-/** Nome antigo, só para `mes` — `RaioXDaExcecao` chama assim, e não precisa
- *  saber que a função por baixo hoje aceita outras granularidades. */
-export function completarMeses(colunas: ColunaMensal[]): ColunaMensal[] {
-  return completarPeriodos(colunas, 'mes');
 }
 
 /** Os temas mais recorrentes do recorte, já com a contagem.

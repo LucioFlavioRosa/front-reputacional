@@ -7,8 +7,8 @@
  *  `dominio/relatorioNarrativo.ts` sobre por que o texto é corrido, sem
  *  rótulo de campo.
  *
- *  "EDITAR" ABRE A FICHA DA INTERAÇÃO (o mesmo popout que Painel/Base/
- *  Situação já usam, com o botão "Editar interação" dela) — não um editor
+ *  "EDITAR" ABRE A FICHA DA INTERAÇÃO (o mesmo popout que Painel e Base
+ *  já usam, com o botão "Editar interação" dela) — não um editor
  *  novo: a tela de edição completa já existe, e duplicá-la aqui divergiria
  *  cedo ou tarde.
  */

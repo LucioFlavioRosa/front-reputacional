@@ -1196,7 +1196,7 @@ function HistoricoDoBloco({
           possível nesta tela — cabeçalho + até 5 linhas de segmento, sem
           bloco de detalhe (esta chamada não passa `detalheDoMes`). Consertar
           dentro de `BarrasEmpilhadas.tsx` mudaria todos os outros usos dele
-          (`RaioXDaExcecao`, o Painel fora do popup), que não têm este
+          (o Painel fora do popup, a Preparar agenda), que não têm este
           problema — por isso o espaço é reservado só aqui.
 
           ATENÇÃO: com `detalheDoSegmento` abaixo, o tooltip de "tier" agora
