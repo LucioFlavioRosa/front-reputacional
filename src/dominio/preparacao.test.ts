@@ -131,6 +131,23 @@ describe('climaAntesEDepois', () => {
     expect(colunas[0].segmentos.map((s) => s.total)).toEqual([0, 1, 1]);
     expect(registrado.map((s) => s.total)).toEqual([1, 2, 0]);
   });
+
+  it('o filtro é por REUNIÃO, não por fatia: filtradas pelo esperado, elas seguem no Depois', () => {
+    // O que o servidor devolve com `climaEsperado=tenso`: todas esperavam
+    // Reativo; o registrado é o que foi. A coluna "Antes" fica só Reativo e a
+    // "Depois" mostra como essas MESMAS reuniões terminaram — quem ainda não
+    // tem clima registrado só não entra no "Depois".
+    const filtradas = [
+      interacao({ clima_esperado: 'tenso', clima: 'propositivo' }),
+      interacao({ clima_esperado: 'tenso', clima: 'tenso' }),
+      interacao({ clima_esperado: 'tenso', clima: null }),
+    ];
+    const { colunas } = climaAntesEDepois(filtradas, CLIMAS);
+    expect(colunas[0].total).toBe(3);
+    expect(colunas[0].segmentos.map((s) => s.total)).toEqual([0, 0, 3]);
+    expect(colunas[1].total).toBe(2);
+    expect(colunas[1].segmentos.map((s) => s.total)).toEqual([1, 0, 1]);
+  });
 });
 
 describe('rankingPorId', () => {
