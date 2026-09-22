@@ -5,15 +5,13 @@
  *  outro ao escrever, e por isso não brigam pela mesma URL.
  *
  *  `pushState` para trocar de tela — é o que faz o botão de voltar voltar uma
- *  tela em vez de sair do sistema. `replaceState` para trocar o eixo de
- *  Explorar: escolher outro agrupamento é ajuste da mesma leitura, e empilhar
- *  uma entrada de histórico por clique faria o voltar percorrer sete cliques
- *  antes de sair da tela.
+ *  tela em vez de sair do sistema; `replaceState` só quando quem chama pede
+ *  (`substituir`), para um ajuste que não merece entrada no histórico.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { caminhoDe, lerCaminho, lerEixo } from '@/navegacao/rota';
-import type { Eixo, Rota } from '@/navegacao/rota';
+import { caminhoDe, lerCaminho } from '@/navegacao/rota';
+import type { Rota } from '@/navegacao/rota';
 
 interface Lugar {
   caminho: string;
@@ -56,16 +54,6 @@ export function useNavegacao() {
     definirLugar({ caminho, consulta });
   }, []);
 
-  const trocarEixo = useCallback((eixo: Eixo) => {
-    const p = new URLSearchParams(window.location.search);
-    if (eixo === 'frente') p.delete('ver');
-    else p.set('ver', eixo);
-
-    const consulta = p.toString() ? `?${p.toString()}` : '';
-    window.history.replaceState(null, '', window.location.pathname + consulta);
-    definirLugar({ caminho: window.location.pathname, consulta });
-  }, []);
-
   /** Avisa que a consulta mudou por fora — quem a escreve é o recorte. */
   const sincronizarConsulta = useCallback(() => {
     definirLugar((atual) =>
@@ -77,10 +65,8 @@ export function useNavegacao() {
 
   return {
     rota: lerCaminho(lugar.caminho),
-    eixo: lerEixo(lugar.consulta),
     endereco: lugar.caminho + lugar.consulta,
     irPara,
-    trocarEixo,
     sincronizarConsulta,
   };
 }

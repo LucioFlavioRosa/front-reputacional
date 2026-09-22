@@ -19,7 +19,7 @@
 
 import { useState } from 'react';
 import type { ColunaMensal, Segmento } from '@/dominio/derivacoes';
-import { rotuloDoMes } from '@/dominio/formato';
+import { percentual, rotuloDoMes } from '@/dominio/formato';
 
 const ALTURA_DO_ROTULO = 16;
 const ALTURA_DO_MES = 14;
@@ -40,10 +40,20 @@ export function BarrasEmpilhadas({
   detalheDoMes,
   detalheDoSegmento,
   formatarRotulo = rotuloDoMes,
+  escala = 'absoluta',
 }: {
   colunas: ColunaMensal[];
   altura?: number;
-  aoClicarSegmento?: (chave: string) => void;
+  /** `'absoluta'` (padrão): a altura da coluna é o volume, contra um máximo
+   *  global — compara-se quanto aconteceu em cada período. `'percentual'`:
+   *  toda coluna com registro enche a altura inteira, e o que varia é a
+   *  fatia de cada categoria — compara-se a COMPOSIÇÃO, não o volume. O
+   *  total continua no topo e no tooltip, com a % ao lado de cada fatia. */
+  escala?: 'absoluta' | 'percentual';
+  /** A faixa colorida clicada. `mes` é a coluna de onde veio, para quem
+   *  filtra por eixos diferentes conforme a coluna — Antes × Depois na
+   *  tela Preparar agenda; quem não precisa ignora o segundo argumento. */
+  aoClicarSegmento?: (chave: string, mes: string) => void;
   /** Clique na COLUNA inteira, e não num segmento dela. Quem usa os dois
    *  escolhe o eixo pelo alvo: a faixa colorida filtra a categoria, o resto da
    *  coluna filtra o mês. */
@@ -95,7 +105,12 @@ export function BarrasEmpilhadas({
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
       {colunas.map((coluna, indice) => {
-        const alturaDaBarra = (coluna.total / maximo) * alturaDoTrilho;
+        const alturaDaBarra =
+          escala === 'percentual'
+            ? coluna.total > 0
+              ? alturaDoTrilho
+              : 0
+            : (coluna.total / maximo) * alturaDoTrilho;
 
         // Uma pilha de N segmentos precisa de N×2px de altura mínima mais
         // (N-1)×2px de vão. Numa coluna baixa com muitas frentes isso passa da
@@ -197,7 +212,7 @@ export function BarrasEmpilhadas({
                       // Sem isto o clique no segmento também escolheria o mês,
                       // e a tela aplicaria dois filtros de uma vez.
                       evento.stopPropagation();
-                      aoClicarSegmento(segmento.chave);
+                      aoClicarSegmento(segmento.chave, coluna.mes);
                     }}
                     onMouseEnter={
                       detalheDoSegmento
@@ -207,7 +222,9 @@ export function BarrasEmpilhadas({
                     title={
                       detalheDoSegmento
                         ? undefined
-                        : `${segmento.rotulo}: ${segmento.total}`
+                        : escala === 'percentual'
+                          ? `${segmento.rotulo}: ${segmento.total} · ${percentual(segmento.total, coluna.total)}`
+                          : `${segmento.rotulo}: ${segmento.total}`
                     }
                     style={{
                       flex: segmento.total,
@@ -248,6 +265,7 @@ export function BarrasEmpilhadas({
 
             {emFoco === indice && coluna.total > 0 ? (
               <Tooltip
+                escala={escala}
                 coluna={coluna}
                 alinhamento={naEsquerda ? 'esquerda' : naDireita ? 'direita' : 'centro'}
                 detalhe={
@@ -283,6 +301,7 @@ export function BarrasEmpilhadas({
 }
 
 function Tooltip({
+  escala,
   coluna,
   alinhamento,
   detalhe,
@@ -291,6 +310,7 @@ function Tooltip({
   instituicoesPorSegmento,
   formatarRotulo,
 }: {
+  escala: 'absoluta' | 'percentual';
   coluna: ColunaMensal;
   alinhamento: 'esquerda' | 'centro' | 'direita';
   detalhe?: { rotulo: string; valor: string }[];
@@ -395,7 +415,12 @@ function Tooltip({
                     }}
                   />
                   <span style={{ flex: 1, color: '#D5DAEA' }}>{item.rotulo}</span>
-                  <span className="tabular">{item.total}</span>
+                  <span className="tabular">
+                    {item.total}
+                    {escala === 'percentual' ? (
+                      <span style={{ color: '#D5DAEA' }}> · {percentual(item.total, coluna.total)}</span>
+                    ) : null}
+                  </span>
                 </div>
                 {instituicoes.map((linha) => (
                   <div

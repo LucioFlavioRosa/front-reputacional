@@ -5,7 +5,7 @@ import { usePainel } from '@/estado/painel';
 import { temCadeia } from '@/dominio/grafo';
 import { registrarExportacao } from '@/api/cliente';
 import { resumirRecorte } from '@/dominio/resumo-do-recorte';
-import { Botao, Carregando, ChipDeFrente, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
+import { Botao, Carregando, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Abas } from '@/componentes/Abas';
 import { FiltrosDeAgendas } from '@/componentes/FiltrosDeAgendas';
@@ -22,6 +22,7 @@ import {
   nomeDaEsfera,
   nomeDaInstituicao,
   nomeDaUnidade,
+  nomeDoFormatoDeInteracao,
   nomeDoInterlocutor,
   nomesDosTemas,
   rotuloDeCodigo,
@@ -54,21 +55,26 @@ const ABAS = [
 
 type AbaDaBase = (typeof ABAS)[number]['id'];
 
+//: AS COLUNAS SÃO O QUE O CADASTRO PERGUNTA. "Tipo de interação" e "Área(s)"
+//: no lugar de "Frente": a frente não é mais escolhida por quem registra —
+//: é derivada pelo servidor —, e o que se preenche na seção 1 e 2 do
+//: formulário é o tipo (Mídia, Reunião, Evento…) e a(s) área(s). A tabela
+//: mostra o que se gravou, com os mesmos nomes.
 const COLUNAS = [
-  'Cadeia', 'Data', 'Frente', 'Instituição', 'Unidade', 'Interlocutor',
-  'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
+  'Cadeia', 'Data', 'Tipo de interação', 'Área(s)', 'Instituição', 'Unidade',
+  'Interlocutor', 'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
   // -- o resto do que o cadastro pergunta, escondido por padrão -------------
   //
   // Nasce OCULTO (ver `NOVAS_COLUNAS_OCULTAS_POR_PADRAO` logo abaixo): são
   // campos reais do formulário de cadastro, mas menos lidos no dia a dia do
   // que os de cima. Quem quiser, liga em "Colunas".
-  'Área(s)', 'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
+  'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
 ];
 
 //: Some destas colunas de propósito na primeira visita — ver o comentário de
 //: `useColunasVisiveis` em `SeletorDeColunas.tsx`.
 const NOVAS_COLUNAS_OCULTAS_POR_PADRAO = [
-  'Área(s)', 'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
+  'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
 ];
 
 //: TODAS MENOS "CADEIA": ela é só o ícone de encadeamento, sem texto para
@@ -83,7 +89,7 @@ const ROTULO_DA_MODALIDADE: Record<string, string> = {
 
 const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number> = {
   Data: (linha) => linha.data,
-  Frente: (linha) => linha.frente,
+  'Tipo de interação': (linha) => linha.tipoDeInteracao,
   Instituição: (linha) => linha.entidade,
   Unidade: (linha) => linha.unidade,
   Interlocutor: (linha) => linha.interlocutor,
@@ -127,7 +133,9 @@ export function Base({
   const [aba, definirAba] = useState<AbaDaBase>('agendas');
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
   const { ocultas, visiveis, alternar } = useColunasVisiveis(
-    'base-interacoes',
+    // `-v2`: a versão anterior guardava "Área(s)" como oculta por padrão;
+    // trocar a chave é o que faz a nova coluna visível chegar a quem já usa.
+    'base-interacoes-v2',
     COLUNAS,
     NOVAS_COLUNAS_OCULTAS_POR_PADRAO,
   );
@@ -245,10 +253,11 @@ export function Base({
                 {dataCompleta(linha.data)}
               </td>
             )}
-            {!visiveis.includes('Frente') ? null : (
-              <td style={celula}>
-                <ChipDeFrente frente={linha.frente} />
-              </td>
+            {!visiveis.includes('Tipo de interação') ? null : (
+              <td style={celula}>{linha.tipoDeInteracao}</td>
+            )}
+            {!visiveis.includes('Área(s)') ? null : (
+              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
             )}
             {!visiveis.includes('Instituição') ? null : (
               <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
@@ -267,9 +276,6 @@ export function Base({
             {!visiveis.includes('Situação') ? null : <td style={celula}>{linha.status}</td>}
             {!visiveis.includes('Temas') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.tags}</td>
-            )}
-            {!visiveis.includes('Área(s)') ? null : (
-              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
             )}
             {!visiveis.includes('Modalidade') ? null : <td style={celula}>{linha.modalidade}</td>}
             {!visiveis.includes('Local') ? null : <td style={celula}>{linha.local}</td>}
@@ -360,7 +366,7 @@ interface Linha {
   levouA: number;
   naCadeia: boolean;
   data: string;
-  frente: Interacao['frente'];
+  tipoDeInteracao: string;
   entidade: string;
   unidade: string;
   interlocutor: string;
@@ -385,7 +391,7 @@ function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
     levouA: interacao.derivadas ?? 0,
     naCadeia: temCadeia(interacao),
     data: interacao.data_interacao,
-    frente: interacao.frente,
+    tipoDeInteracao: nomeDoFormatoDeInteracao(catalogo, interacao.formato_interacao_id),
     entidade: nomeDaInstituicao(catalogo, interacao.instituicao_id),
     unidade: nomeDaUnidade(catalogo, interacao.unidade_negocio_id),
     interlocutor: nomeDoInterlocutor(catalogo, interacao.interlocutor_id),
@@ -417,7 +423,8 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
       [
         linha.naCadeia ? descreverCadeia(linha) : '',
         dataCompleta(linha.data),
-        linha.frente,
+        linha.tipoDeInteracao,
+        linha.areas,
         linha.entidade,
         linha.unidade,
         linha.interlocutor,
@@ -426,7 +433,6 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
         linha.tier,
         linha.status,
         linha.tags,
-        linha.areas,
         linha.modalidade,
         linha.local,
         linha.esfera,

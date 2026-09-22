@@ -57,6 +57,7 @@ import {
 } from '@/paginas/cadastro/formulario';
 import type { Etapa, Formulario } from '@/paginas/cadastro/formulario';
 import { CampoDeDicionario, CampoDeTexto } from '@/paginas/cadastro/campos';
+import { CamposDaFrente } from '@/paginas/cadastro/CamposDaFrente';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
@@ -397,9 +398,8 @@ export function Cadastro({
   // guarda só o que a NOVA frente também carrega, e não some tudo:
   //
   // Zerar tudo seria perda de dado silenciosa: Governo, Parceiros e Eventos
-  // compartilham a mesma extensão no backend, então `natureza_orgao` e
-  // `cargo_interlocutor` sobrevivem à troca — e, como a seção desses campos
-  // não está na tela, ninguém veria sumir nem conseguiria redigitar.
+  // compartilham a mesma extensão no backend, então `cargo_interlocutor`
+  // sobrevive à troca.
   //
   // Guardar tudo do mesmo grupo também estaria errado, na outra direção:
   // `nome_evento` só faz sentido em Eventos, e sair para Governo o deixaria no
@@ -1146,15 +1146,26 @@ export function Cadastro({
         </Cartao>
       </Secao>
 
-      {/* OS CAMPOS ESPECIFICOS DE CADA FRENTE NAO SE PREENCHEM AQUI.
-          Formato, data de publicacao e link da materia na imprensa; casa,
-          tramitacao, prioridade e ementa no legislativo; e assim por diante.
-          A ficha exibe todos eles; esta tela nao pede nenhum.
-
-          O DADO VIAJA MESMO ASSIM: `form.extensao` fica no estado,
-          `paraFormulario` o carrega do servidor e `montarCorpo` o devolve. Sem
-          isso, editar um registro de imprensa apagaria o formato e o link ja
-          gravados, porque na edicao campo ausente vira `null`. */}
+      {/* OS CAMPOS ESPECÍFICOS DA FRENTE. Só existem depois que a frente é
+          conhecida — e ela é derivada da instituição e do formato, então a
+          seção aparece quando esses dois já foram escolhidos. `form.extensao`
+          é o mesmo estado que `paraFormulario` carrega e `montarCorpo`
+          devolve; ao trocar de frente, `extensaoAoTrocarDeFrente` descarta o
+          que não se aplica mais. */}
+      {frenteAtual ? (
+        <Secao titulo="8. Detalhes da frente" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+          <Cartao>
+            <CamposDaFrente
+              frente={frenteAtual}
+              extensao={form.extensao}
+              dicionarios={catalogo.dicionarios}
+              aoMudar={(campo, valor) =>
+                alterar('extensao', { ...form.extensao, [campo]: valor })
+              }
+            />
+          </Cartao>
+        </Secao>
+      ) : null}
 
       </div>
 

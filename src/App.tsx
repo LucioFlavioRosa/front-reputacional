@@ -13,19 +13,19 @@ import { portaisDe } from '@/dominio/tipos';
 import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
-import { ProvedorDoPainel, usePainel } from '@/estado/painel';
+import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
 import { Situacao } from '@/paginas/Situacao';
 import { Painel } from '@/paginas/Painel';
-import { Explorar } from '@/paginas/Explorar';
 import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
+import { PrepararAgenda } from '@/paginas/PrepararAgenda';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
 import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
-import type { Eu, Frente } from '@/dominio/tipos';
+import type { Eu } from '@/dominio/tipos';
 import { Layout } from '@/componentes/Layout';
 import { useNavegacao } from '@/navegacao/useNavegacao';
 import { nomeDaTela } from '@/navegacao/rota';
@@ -143,8 +143,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   //: É o que dá link a toda leitura, faz o botão de voltar andar dentro da
   //: aplicação sem perder o recorte, e deixa a telemetria dizer em que tela o
   //: erro aconteceu. Navegação em `useState` não faz nenhuma das três.
-  const { rota, eixo, irPara, trocarEixo } = useNavegacao();
-  const { recorte, definirRecorte } = usePainel();
+  const { rota, irPara } = useNavegacao();
   const naCapa = rota.destino === 'inicio';
 
   const irParaDestino = (destino: Destino) => irPara({ destino });
@@ -159,18 +158,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   }, [nomeDaTela(rota)]);
 
   const fechandoParaBase = () => irPara({ destino: 'base' });
-
-  /** Do panorama para o aprofundamento, já filtrado.
-   *
-   *  Clicar num indicador do Painel pede "me mostra esta frente por dentro",
-   *  e a resposta é Explorar com o recorte aplicado. O filtro entra no
-   *  recorte, e o recorte está na URL: o resultado é um endereço que se manda
-   *  a alguém.
-   */
-  const abrirFrenteEmExplorar = (frente: Frente) => {
-    definirRecorte({ ...recorte, frente });
-    irPara({ destino: 'explorar' });
-  };
 
   return (
     <>
@@ -216,17 +203,9 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {/* A ÚNICA TELA QUE ALGUÉM PRECISA ABRIR TODO DIA. */}
           {rota.destino === 'situacao' ? <Situacao aoAbrirAgenda={abrirAgenda} /> : null}
 
-          {/* O PANORAMA: o recorte visto de uma vez, sem escolher eixo. Clicar
-              num indicador FILTRA e leva ao aprofundamento — é o caminho
-              natural entre as duas telas. */}
-          {rota.destino === 'painel' ? (
-            <Painel aoAbrirFrente={abrirFrenteEmExplorar} aoAbrirAgenda={abrirAgenda} />
-          ) : null}
-
-          {/* OS CINCO EIXOS MORAM NUM SELETOR. Ver `Explorar`. */}
-          {rota.destino === 'explorar' ? (
-            <Explorar eixo={eixo} aoTrocarEixo={trocarEixo} />
-          ) : null}
+          {/* O PANORAMA: o recorte visto de uma vez. Clicar num indicador
+              FILTRA a própria tela, como todo gráfico dela. */}
+          {rota.destino === 'painel' ? <Painel aoAbrirAgenda={abrirAgenda} /> : null}
 
           {rota.destino === 'base' ? (
             <Base
@@ -240,6 +219,8 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {rota.destino === 'relatorios' ? (
             <RelatoriosExecutivos aoAbrirAgenda={abrirAgenda} />
           ) : null}
+
+          {rota.destino === 'preparar' ? <PrepararAgenda aoAbrirAgenda={abrirAgenda} /> : null}
 
 
           {/* A TELA também recusa, e não só o botão.

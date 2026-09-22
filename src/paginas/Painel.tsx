@@ -5,7 +5,6 @@ import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
-import { LinhaEmpilhada } from '@/graficos/LinhaEmpilhada';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -16,6 +15,7 @@ import {
   campoDeFormatoInteracao,
 } from '@/componentes/PainelDeFiltros';
 import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
+import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
@@ -34,9 +34,10 @@ import {
   limparFormatoInteracao,
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
-import type { Frente, Interacao } from '@/dominio/tipos';
+import type { Interacao } from '@/dominio/tipos';
 import {
-  CATEGORIAS_DE_AREA,
+  categoriasDeArea,
+  comReativoNaBase,
   categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
   climaPorTema,
@@ -139,10 +140,8 @@ const FORMATADORES_DE_ROTULO: Record<Granularidade, (chave: string) => string> =
 };
 
 export function Painel({
-  aoAbrirFrente,
   aoAbrirAgenda,
 }: {
-  aoAbrirFrente: (frente: Frente) => void;
   /** Abre a Ficha de uma agenda específica — usado pela lista que se abre ao
    *  clicar num tema na barra divergente. */
   aoAbrirAgenda: (id: string) => void;
@@ -325,7 +324,7 @@ export function Painel({
       // "Área" do resto do Painel já trata OR entre áreas. Dentro de uma
       // categoria composta (RI & Oper. Financeiras) o critério também é OR:
       // basta a interação ter QUALQUER uma das áreas somadas para entrar.
-      interacoesPorAreaFixa: CATEGORIAS_DE_AREA.map(({ rotulo }) => {
+      interacoesPorAreaFixa: categoriasDeArea(catalogo).map(({ rotulo }) => {
         const ids = idsPorRotulo.get(rotulo)!;
         return {
           nome: rotulo,
@@ -400,42 +399,42 @@ export function Painel({
               fracao: kpis.imprensa.taxa,
               rotulo: `${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`,
             }}
-            aoClicar={() => aoAbrirFrente('imprensa')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'imprensa'))}
           />
           <Kpi
             rotulo="Eventos e participações"
             valor={numero(kpis.eventos)}
             dica={`${derivado.resumoDeClima.eventos.positivas} pos, ${derivado.resumoDeClima.eventos.negativas} neg`}
             cor={CORES_DE_FRENTE.eventos}
-            aoClicar={() => aoAbrirFrente('eventos')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'eventos'))}
           />
           <Kpi
             rotulo="Interações com investidores"
             valor={numero(kpis.investidores.total)}
             dica={`${kpis.investidores.internacionais} internacionais`}
             cor={CORES_DE_FRENTE.investidores}
-            aoClicar={() => aoAbrirFrente('investidores')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'investidores'))}
           />
           <Kpi
             rotulo="Proposições legislativas"
             valor={numero(kpis.legislativo)}
             dica={`${derivado.resumoDeClima.legislativo.positivas} pos, ${derivado.resumoDeClima.legislativo.negativas} neg`}
             cor={CORES_DE_FRENTE.legislativo}
-            aoClicar={() => aoAbrirFrente('legislativo')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'legislativo'))}
           />
           <Kpi
             rotulo="Interações institucionais"
             valor={numero(kpis.institucionais)}
             dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
             cor={CORES_DE_FRENTE.governo}
-            aoClicar={() => aoAbrirFrente('governo')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'governo'))}
           />
           <Kpi
             rotulo={ROTULOS_DE_FRENTE.bancos_credores}
             valor={numero(derivado.resumoDeClima.bancosCredores.total)}
             dica={`${derivado.resumoDeClima.bancosCredores.positivas} pos, ${derivado.resumoDeClima.bancosCredores.negativas} neg`}
             cor={CORES_DE_FRENTE.bancos_credores}
-            aoClicar={() => aoAbrirFrente('bancos_credores')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'bancos_credores'))}
           />
           <Kpi
             rotulo="Relevância Tier 1"
@@ -461,109 +460,74 @@ export function Painel({
           mesma ideia — fechado por padrão, abre só quando alguém quer
           arrastar. Referência: protótipo trazido pelo usuário (faixa
           turquesa "Filtros:" com três caixas + barra clara "Período").
-
-          UM SÓ `position: sticky`, colado em `top: var(--altura-cabecalho)`
-          (a altura real do `<header>` azul, medida e publicada por
-          `Layout.tsx`) — desce com a página até encostar embaixo do
-          cabeçalho, e daí em diante rola junto. `zIndex` abaixo do
-          cabeçalho (30) para ele sempre vencer se os dois colidirem na
-          borda. */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 'var(--altura-cabecalho)',
-          zIndex: 25,
-          borderRadius: 'var(--r-card)',
-          boxShadow: '0 6px 18px rgba(0,49,44,0.22)',
-        }}
+          A faixa em si é `FaixaDeFiltros`, compartilhada com a Preparar
+          agenda. */}
+      <FaixaDeFiltros
+        rodape={
+          <>
+            {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
+                (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
+                espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
+                para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
+            <button
+              type="button"
+              onClick={() => definirPeriodoAberto((v) => !v)}
+              aria-expanded={periodoAberto}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '9px 20px',
+                background: 'var(--bg-trilho)',
+                border: 'none',
+                borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
+                cursor: 'pointer',
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: 'var(--cinza-3)',
+              }}
+            >
+              <span>Período</span>
+              <SetaSuspensa aberto={periodoAberto} />
+            </button>
+            {periodoAberto ? (
+              <div
+                style={{
+                  background: 'var(--branco)',
+                  border: '1px solid var(--borda)',
+                  borderTop: 'none',
+                  borderRadius: '0 0 var(--r-card) var(--r-card)',
+                  padding: '12px 20px 16px',
+                }}
+              >
+                <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
+              </div>
+            ) : null}
+          </>
+        }
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            background: 'var(--turquesa-rio)',
-            borderRadius: 'var(--r-card) var(--r-card) 0 0',
-            padding: '10px 20px',
-          }}
-        >
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: '0.03em',
-              textTransform: 'uppercase',
-              color: 'var(--sobre-turquesa)',
-              flexShrink: 0,
-            }}
-          >
-            Filtros:
-          </span>
-          <CampoSuspenso
-            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparAreas(recorte))}
-          />
-          {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
-              Manifestação formal/Evento/Visita/Reunião — `0038_formato_
-              interacao.sql`), NÃO `frente`: responde "que tipo de encontro
-              foi esse", pergunta ortogonal a "quem é a contraparte" —
-              `frente` continua filtrável em "Filtros rápidos". SÓ NO
-              CLIENTE, mesma lógica do Filtro Tipo de Público. */}
-          <CampoSuspenso
-            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
-          />
-          {/* SÓ NO CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o
-              que já chegou da API, juntando pelo catálogo. */}
-          <CampoSuspenso
-            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
-          />
-        </div>
-
-        {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
-            (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
-            espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
-            para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
-        <button
-          type="button"
-          onClick={() => definirPeriodoAberto((v) => !v)}
-          aria-expanded={periodoAberto}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '9px 20px',
-            background: 'var(--bg-trilho)',
-            border: 'none',
-            borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
-            cursor: 'pointer',
-            fontSize: 12.5,
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: 'var(--cinza-3)',
-          }}
-        >
-          <span>Período</span>
-          <SetaSuspensa aberto={periodoAberto} />
-        </button>
-        {periodoAberto ? (
-          <div
-            style={{
-              background: 'var(--branco)',
-              border: '1px solid var(--borda)',
-              borderTop: 'none',
-              borderRadius: '0 0 var(--r-card) var(--r-card)',
-              padding: '12px 20px 16px',
-            }}
-          >
-            <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
-          </div>
-        ) : null}
-      </div>
+        <CampoSuspenso
+          campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparAreas(recorte))}
+        />
+        {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
+            Manifestação formal/Evento/Visita/Reunião — `0038_formato_
+            interacao.sql`), NÃO `frente`: responde "que tipo de encontro
+            foi esse", pergunta ortogonal a "quem é a contraparte" —
+            `frente` continua filtrável em "Filtros rápidos". */}
+        <CampoSuspenso
+          campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
+        />
+        <CampoSuspenso
+          campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+        />
+      </FaixaDeFiltros>
 
       {semResultado ? (
         <Vazio
@@ -910,13 +874,17 @@ export function Painel({
           titulo="Clima das interações no tempo"
           subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
         >
-          <LinhaEmpilhada
-            colunas={derivado.clima}
-            altura={140}
+          {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
+              que varia é a fatia de cada clima — a pergunta aqui é "como o
+              clima se compõe mês a mês", não "quantas reuniões houve" (isso
+              a Volumetria acima já responde). O total continua no topo de
+              cada coluna e no tooltip, com a % ao lado de cada fatia. */}
+          <BarrasEmpilhadas
+            colunas={comReativoNaBase(derivado.clima)}
+            altura={150}
+            escala="percentual"
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
-            // Reativo sempre na base da área — os códigos de clima não mudam
-            // (só o nome exibido), então esta ordem não se perde num rename.
-            ordem={['tenso', 'neutro', 'propositivo']}
+            aoClicarSegmento={(chave) => definirRecorte(alternar(recorte, 'clima', chave))}
           />
           <Legenda
             itens={derivado.categoriasDeClima}

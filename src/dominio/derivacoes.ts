@@ -22,8 +22,9 @@ import {
   diasDesde,
   tituloDaAgenda,
 } from '@/dominio/formato';
-import { faixaDeRisco } from '@/dominio/frentes';
+import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE, faixaDeRisco } from '@/dominio/frentes';
 import type { FaixaDeRisco } from '@/dominio/frentes';
+import { FRENTES } from '@/dominio/tipos';
 import type {
   Dicionarios,
   Frente,
@@ -95,38 +96,6 @@ export function nomeDaInstituicao(catalogo: Catalogo, id: string): string {
   return catalogo.instituicoes.get(id)?.nome ?? '—';
 }
 
-/** O filtro "Filtro Tipo de Público" do Painel — SÓ NO CLIENTE, e não em
- *  `GET /api/interacoes`: `categoria_publico_id` mora na Instituição, não na
- *  Interação, então a única forma de aplicá-lo é juntar pelo catálogo aqui.
- *  Ver o comentário em `Recorte.categoriaPublico`. */
-export function filtrarPorCategoriaPublico(
-  interacoes: Interacao[],
-  catalogo: Catalogo,
-  ids: number[],
-): Interacao[] {
-  if (!ids.length) return interacoes;
-  const permitidas = new Set(ids);
-  return interacoes.filter((i) => {
-    const categoria = catalogo.instituicoes.get(i.instituicao_id)?.categoria_publico_id;
-    return categoria != null && permitidas.has(categoria);
-  });
-}
-
-/** O filtro "Filtro Tipo de Interação" do Painel — SÓ NO CLIENTE, e não em
- *  `GET /api/interacoes`: ver o comentário em `Recorte.formatoInteracao`.
- *  Diferente de `filtrarPorCategoriaPublico`, não precisa do catálogo —
- *  `formato_interacao_id` já mora na própria Interação. */
-export function filtrarPorFormatoInteracao(
-  interacoes: Interacao[],
-  ids: number[],
-): Interacao[] {
-  if (!ids.length) return interacoes;
-  const permitidas = new Set(ids);
-  return interacoes.filter(
-    (i) => i.formato_interacao_id != null && permitidas.has(i.formato_interacao_id),
-  );
-}
-
 export function nomeDoInterlocutor(catalogo: Catalogo, id: string | null): string {
   if (!id) return '—';
   return catalogo.interlocutores.get(id)?.nome ?? '—';
@@ -134,6 +103,11 @@ export function nomeDoInterlocutor(catalogo: Catalogo, id: string | null): strin
 
 export function nomeDaPessoa(catalogo: Catalogo, id: string): string {
   return catalogo.pessoas.get(id)?.nome ?? '—';
+}
+
+export function nomeDoFormatoDeInteracao(catalogo: Catalogo, id: number | null): string {
+  if (id == null) return '—';
+  return catalogo.dicionarios.formatos_interacao.find((f) => f.id === id)?.nome ?? '—';
 }
 
 export function nomeDaUnidade(catalogo: Catalogo, id: number | null): string {
@@ -295,13 +269,37 @@ export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
   },
 ];
 
+//: Cores para uma área que a Administração acrescentar e que nenhuma das
+//: categorias fixas conhece — a área vira categoria própria, com uma cor
+//: da paleta oficial que ainda não está em uso acima.
+const CORES_PARA_AREAS_NOVAS = ['#FE952B', '#F8DC00', '#0027BD'];
+
+/** AS CATEGORIAS DE ÁREA NASCEM DO DICIONÁRIO. As três fixas acima valem
+ *  enquanto os nomes delas existirem em `areas_pessoa`; toda área ativa que
+ *  nenhuma delas cobre vira uma categoria própria, com o nome da área. Sem
+ *  isto, uma área acrescentada na Administração seria contada em lugar
+ *  nenhum do Painel — existiria no cadastro e não no que a plataforma
+ *  mostra. UM LUGAR SÓ: todo consumidor passa por aqui, nunca por
+ *  `CATEGORIAS_DE_AREA` direto. */
+export function categoriasDeArea(catalogo: Catalogo): CategoriaDeArea[] {
+  const cobertos = new Set(CATEGORIAS_DE_AREA.flatMap((c) => c.nomes));
+  const novas = catalogo.dicionarios.areas_pessoa
+    .filter((a) => !cobertos.has(a.nome))
+    .map((a, indice) => ({
+      rotulo: a.nome,
+      nomes: [a.nome],
+      cor: CORES_PARA_AREAS_NOVAS[indice % CORES_PARA_AREAS_NOVAS.length],
+    }));
+  return [...CATEGORIAS_DE_AREA, ...novas];
+}
+
 //: Os ids ATIVOS de cada categoria, resolvidos contra o dicionário do
 //: momento — uma área desativada nunca entra aqui (o dicionário só traz as
 //: ativas), e por isso nunca conta em `porArea`/`climaPorArea`/
 //: `interacoesPorAreaFixa`: os dados continuam no banco, só saem da leitura.
 export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<number>> {
   const mapa = new Map<string, Set<number>>();
-  for (const categoria of CATEGORIAS_DE_AREA) {
+  for (const categoria of categoriasDeArea(catalogo)) {
     mapa.set(
       categoria.rotulo,
       new Set(
@@ -312,6 +310,61 @@ export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<numbe
     );
   }
   return mapa;
+}
+
+//: Reativo na BASE da pilha, propositivo no topo — os códigos de clima não
+//: mudam (só o nome exibido), então a ordem não se perde num rename. A pilha
+//: desenha o primeiro segmento em cima, por isso a lista vai invertida; um
+//: clima novo cai no fim.
+const ORDEM_DO_CLIMA = ['propositivo', 'neutro', 'tenso'];
+
+/** As colunas de clima com os segmentos na ordem da pilha. Copia — nunca
+ *  reordena o derivado original. */
+export function comReativoNaBase(colunas: ColunaMensal[]): ColunaMensal[] {
+  const posicao = (chave: string) => {
+    const indice = ORDEM_DO_CLIMA.indexOf(chave);
+    return indice === -1 ? ORDEM_DO_CLIMA.length : indice;
+  };
+  return colunas.map((coluna) => ({
+    ...coluna,
+    segmentos: [...coluna.segmentos].sort((a, b) => posicao(a.chave) - posicao(b.chave)),
+  }));
+}
+
+/** O que as listas fixas do front dizem e o dicionário não — ou vice-versa.
+ *
+ *  `FRENTES`, `ROTULOS_DE_FRENTE` e `CORES_DE_FRENTE` são fixas no código
+ *  porque `Frente` é um tipo, e o tipo não nasce em tempo de execução. O
+ *  dicionário `frentes` (código, nome, cor) é a fonte; esta função é o que
+ *  acusa a divergência na carga do catálogo, em vez de deixar o Painel
+ *  mostrar um nome ou uma cor que a Administração não reconhece. Devolve
+ *  mensagens; vazio é alinhado. */
+export function divergenciasDoCatalogo(catalogo: Catalogo): string[] {
+  const avisos: string[] = [];
+  const noDicionario = new Map(catalogo.dicionarios.frentes.map((f) => [f.codigo, f]));
+  for (const codigo of FRENTES) {
+    const frente = noDicionario.get(codigo);
+    if (!frente) {
+      avisos.push(`A frente "${codigo}" existe no código e não no dicionário.`);
+      continue;
+    }
+    if (frente.nome !== ROTULOS_DE_FRENTE[codigo]) {
+      avisos.push(
+        `A frente "${codigo}" chama-se "${frente.nome}" no dicionário e "${ROTULOS_DE_FRENTE[codigo]}" no código.`,
+      );
+    }
+    if (frente.cor_hex.toLowerCase() !== CORES_DE_FRENTE[codigo].toLowerCase()) {
+      avisos.push(
+        `A frente "${codigo}" tem a cor ${frente.cor_hex} no dicionário e ${CORES_DE_FRENTE[codigo]} no código.`,
+      );
+    }
+  }
+  for (const codigo of noDicionario.keys()) {
+    if (!(FRENTES as readonly string[]).includes(codigo)) {
+      avisos.push(`A frente "${codigo}" existe no dicionário e não no código.`);
+    }
+  }
+  return avisos;
 }
 
 /** Quantas interações em cada nível de relevância — sempre um item por
@@ -373,7 +426,7 @@ export function topInstituicoesPorTier(
 export function porArea(interacoes: Interacao[], catalogo: Catalogo): ItemContado[] {
   const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
-  return CATEGORIAS_DE_AREA.map((categoria) => {
+  return categoriasDeArea(catalogo).map((categoria) => {
     const ids = idsPorRotulo.get(categoria.rotulo)!;
     return {
       chave: categoria.rotulo,
@@ -705,7 +758,7 @@ export function temasMaisRecorrentes(
  *  "Top 5 temas" — por isso a chave é `String(categoria_publico_id)`, e não
  *  o `score` daquele outro cálculo. `categoria_publico_id` mora na
  *  Instituição, não na Interação — junta pelo catálogo, mesma lógica de
- *  `filtrarPorCategoriaPublico`. */
+ *  `Recorte.categoriaPublico`. */
 export function categoriasPublicoMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -869,9 +922,9 @@ export interface ScorePorCategoriaPublico {
  *  mais uma sem tirar do topo, e a lista final ordena do pior score pro
  *  melhor.
  *
- *  SÓ NO CLIENTE, como o filtro "Tipo de Público" (`Recorte.categoriaPublico`,
- *  `filtrarPorCategoriaPublico`): a categoria mora na Instituição, não na
- *  Interação, e a única forma de agregar por ela é juntar pelo catálogo. */
+ *  A categoria mora na Instituição, não na Interação: agrega juntando pelo
+ *  catálogo — o mesmo caminho que o servidor faz para o filtro
+ *  `categoriaPublico`. */
 export function scorePorCategoriaPublico(
   interacoes: Interacao[],
   catalogo: Catalogo,

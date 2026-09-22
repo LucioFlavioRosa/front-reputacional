@@ -174,18 +174,9 @@ function nomesDasAreas(interacao: Interacao, catalogo: Catalogo): string {
     .join(', ');
 }
 
-/** O STAKEHOLDER É UM ID, não um código — diferente dos outros dicionários
- *  desta tela, que resolvem por `codigo` (ver `rotuloDeCodigo`). Mesmo campo
- *  que hoje só é lido e gravado (nada mais no app filtra ou soma por ele);
- *  aqui ele aparece pela primeira vez numa tela. */
-function nomeDoStakeholder(catalogo: Catalogo, id: number | null): string {
-  if (id == null) return '—';
-  return catalogo.dicionarios.stakeholders.find((s) => s.id === id)?.nome ?? '—';
-}
-
 //: A CATEGORIA DE PÚBLICO mora na INSTITUIÇÃO, não na interação — junta pelo
-//: catálogo, mesma lógica de `filtrarPorCategoriaPublico` (`dominio/
-//: derivacoes.ts`).
+//: catálogo, o mesmo caminho que o servidor faz para o filtro
+//: `categoriaPublico` (`filtros_sql.py`).
 function nomeDoPublico(catalogo: Catalogo, instituicaoId: string): string {
   const categoriaId = catalogo.instituicoes.get(instituicaoId)?.categoria_publico_id;
   if (categoriaId == null) return '—';
@@ -525,7 +516,11 @@ function PopupDaInteracao({
               margin: 0,
             }}
           >
-            <Metadado rotulo="Stakeholder" valor={nomeDoStakeholder(catalogo, interacao.stakeholder_id)} />
+            {/* "PÚBLICO", e não "Stakeholder": o dicionário `stakeholder`
+                (natureza da contraparte) foi substituído pela categoria de
+                público da instituição, que a Administração cadastra — o
+                campo antigo nunca foi preenchido por tela nenhuma. */}
+            <Metadado rotulo="Público" valor={nomeDoPublico(catalogo, interacao.instituicao_id)} />
             <Metadado rotulo="Relevância" valor={rotuloDeRelevancia(catalogo, interacao.tier)} />
             <Metadado rotulo="Clima" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
             <Metadado rotulo="UF" valor={rotuloDeAbrangencia(interacao.uf)} />

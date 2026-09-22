@@ -9,19 +9,25 @@
 import { describe, expect, it } from 'vitest';
 import type {
   Dicionarios,
+  Frente,
   Instituicao,
   Interacao,
   Interlocutor,
   PessoaAegea,
 } from '@/dominio/tipos';
+import { FRENTES } from '@/dominio/tipos';
+import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import {
+  categoriasDeArea,
   climaPorTema,
+  comReativoNaBase,
   completarMeses,
+  divergenciasDoCatalogo,
   distribuicaoPorUf,
   dividirEmJanelas,
   exposicaoDePortaVozes,
   filaDePendencias,
-  filtrarPorCategoriaPublico,
+  idsPorCategoriaDeArea,
   kpis,
   montarCatalogo,
   novosContatos,
@@ -61,7 +67,6 @@ const DICIONARIOS = {
   casas: [],
   tramitacoes: [],
   tipos_investidor: [],
-  stakeholders: [],
   areas_pessoa: [
     { id: 1, codigo: 'comunicacao', nome: 'Comunicação', ordem: 1 },
     { id: 2, codigo: 'relacoes_institucionais', nome: 'Relações Institucionais', ordem: 2 },
@@ -116,7 +121,6 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     formato_interacao_id: null,
     uf: 'SP',
     tier: 1,
-    stakeholder_id: null,
     status: 'atendido',
     clima: 'neutro',
     resultado: null,
@@ -232,7 +236,7 @@ describe('resumoDeClimaPorFrente', () => {
 });
 
 describe('porArea', () => {
-  it('agrupa as áreas do dicionário em 3 categorias fixas', () => {
+  it('agrupa as áreas do dicionário nas 3 categorias fixas, mais as que o dicionário trouxer', () => {
     const dados = [
       interacao({ areas: [1] }), // Comunicação
       interacao({ areas: [2] }), // Relações Institucionais
@@ -240,7 +244,10 @@ describe('porArea', () => {
       interacao({ areas: [5] }), // Relações com Investidores
     ];
     const resultado = porArea(dados, CATALOGO);
-    expect(resultado).toHaveLength(3);
+    // 3 fixas + "Performance e Dados", que a fixture tem ativa e nenhuma
+    // categoria cobre — ver `categoriasDeArea`.
+    expect(resultado).toHaveLength(4);
+    expect(resultado.find((c) => c.rotulo === 'Performance e Dados')!.total).toBe(0);
     expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.total).toBe(1);
     // Operações Financeiras (3) + Relações com Investidores (5) somam na
@@ -263,14 +270,23 @@ describe('porArea', () => {
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.cor).toBe('#17E3CB');
   });
 
-  it('uma área sem categoria correspondente (desativada) não conta em nenhuma', () => {
-    // id 4 = "Performance e Dados": existe no dicionário do cenário, mas não
-    // faz parte de nenhuma das 3 categorias — o mesmo efeito de uma área
-    // desativada, que nem chega a aparecer no dicionário de verdade.
+  it('uma área ativa fora das 3 fixas conta na categoria própria; a desativada não conta', () => {
+    // id 4 = "Performance e Dados": ATIVA no dicionário da fixture, fora das
+    // 3 fixas — vira categoria própria e conta lá. Desativada de verdade, ela
+    // nem chega ao dicionário, e aí não conta em lugar nenhum.
     const dados = [interacao({ areas: [4] }), interacao({ areas: [1] })];
     const resultado = porArea(dados, CATALOGO);
-    expect(resultado.reduce((soma, c) => soma + c.total, 0)).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Performance e Dados')!.total).toBe(1);
     expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
+
+    const semAArea = montarCatalogo(
+      { ...DICIONARIOS, areas_pessoa: DICIONARIOS.areas_pessoa.filter((a) => a.id !== 4) },
+      INSTITUICOES,
+      INTERLOCUTORES,
+      PESSOAS,
+    );
+    const semEla = porArea(dados, semAArea);
+    expect(semEla.reduce((soma, c) => soma + c.total, 0)).toBe(1);
   });
 });
 
@@ -731,45 +747,78 @@ describe('temasMaisRecorrentes', () => {
   });
 });
 
-describe('filtrarPorCategoriaPublico', () => {
-  const INSTITUICOES_COM_CATEGORIA: Instituicao[] = [
-    { ...INSTITUICOES[0], id: 'i1', categoria_publico_id: 5 },
-    { ...INSTITUICOES[1], id: 'i2', categoria_publico_id: 7 },
-    { ...INSTITUICOES[0], id: 'i3', categoria_publico_id: null },
-  ];
-  const CATALOGO_COM_CATEGORIA = montarCatalogo(
-    DICIONARIOS,
-    INSTITUICOES_COM_CATEGORIA,
-    INTERLOCUTORES,
-    PESSOAS,
-  );
-
-  it('sem ids escolhidos, devolve tudo — nenhum filtro ativo', () => {
-    const dados = [interacao({ instituicao_id: 'i1' })];
-    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [])).toEqual(dados);
+describe('categoriasDeArea', () => {
+  it('as três fixas, mais uma por área ativa que nenhuma delas cobre', () => {
+    // "Performance e Dados" está no dicionário da fixture e em categoria
+    // nenhuma: vira categoria própria, em vez de ser contada em lugar nenhum.
+    const rotulos = categoriasDeArea(CATALOGO).map((c) => c.rotulo);
+    expect(rotulos).toEqual([
+      'Comunicação',
+      'Relações Institucionais',
+      'RI & Oper. Financeiras',
+      'Performance e Dados',
+    ]);
+    expect([...idsPorCategoriaDeArea(CATALOGO).get('Performance e Dados')!]).toEqual([4]);
   });
 
-  it('mantém só as interações de instituições nas categorias escolhidas', () => {
-    const dados = [
-      interacao({ id: 'a', instituicao_id: 'i1' }),
-      interacao({ id: 'b', instituicao_id: 'i2' }),
-    ];
-    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5]);
-    expect(resultado.map((i) => i.id)).toEqual(['a']);
+  it('sem área extra, são só as três', () => {
+    const soAsTres = montarCatalogo(
+      { ...DICIONARIOS, areas_pessoa: DICIONARIOS.areas_pessoa.filter((a) => a.id !== 4) },
+      INSTITUICOES,
+      INTERLOCUTORES,
+      PESSOAS,
+    );
+    expect(categoriasDeArea(soAsTres)).toHaveLength(3);
+  });
+});
+
+describe('comReativoNaBase', () => {
+  it('reordena os segmentos de cada coluna com Reativo por último, sem mudar o original', () => {
+    const coluna = {
+      mes: '2026-05',
+      total: 3,
+      segmentos: [
+        { chave: 'tenso', rotulo: 'Reativo', cor: '#3', total: 1 },
+        { chave: 'propositivo', rotulo: 'Proativo', cor: '#1', total: 1 },
+        { chave: 'novo', rotulo: 'Novo', cor: '#4', total: 1 },
+      ],
+    };
+    const [ordenada] = comReativoNaBase([coluna]);
+    expect(ordenada.segmentos.map((s) => s.chave)).toEqual(['propositivo', 'tenso', 'novo']);
+    expect(coluna.segmentos.map((s) => s.chave)).toEqual(['tenso', 'propositivo', 'novo']);
+  });
+});
+
+describe('divergenciasDoCatalogo', () => {
+  const frentesAlinhadas = FRENTES.map((codigo, indice) => ({
+    id: indice + 1,
+    codigo,
+    nome: ROTULOS_DE_FRENTE[codigo],
+    cor_hex: CORES_DE_FRENTE[codigo],
+    ordem: indice + 1,
+  }));
+  const catalogoCom = (frentes: typeof frentesAlinhadas) =>
+    montarCatalogo({ ...DICIONARIOS, frentes }, INSTITUICOES, INTERLOCUTORES, PESSOAS);
+
+  it('alinhado: nenhum aviso', () => {
+    expect(divergenciasDoCatalogo(catalogoCom(frentesAlinhadas))).toEqual([]);
   });
 
-  it('OR entre categorias — mais de um id escolhido soma as interações', () => {
-    const dados = [
-      interacao({ id: 'a', instituicao_id: 'i1' }),
-      interacao({ id: 'b', instituicao_id: 'i2' }),
-    ];
-    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7]);
-    expect(resultado.map((i) => i.id).sort()).toEqual(['a', 'b']);
-  });
-
-  it('instituição sem categoria (ainda não reclassificada) nunca entra', () => {
-    const dados = [interacao({ instituicao_id: 'i3' })];
-    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7])).toEqual([]);
+  it('acusa nome e cor diferentes, frente só no código e frente só no dicionário', () => {
+    const [imprensa, ...resto] = frentesAlinhadas;
+    const avisos = divergenciasDoCatalogo(
+      catalogoCom([
+        { ...imprensa, nome: 'Mídia', cor_hex: '#000000' },
+        ...resto.filter((f) => f.codigo !== 'interna'),
+        { id: 99, codigo: 'ouvidoria' as Frente, nome: 'Ouvidoria', cor_hex: '#123456', ordem: 99 },
+      ]),
+    );
+    expect(avisos).toEqual([
+      expect.stringContaining('"imprensa" chama-se "Mídia"'),
+      expect.stringContaining('"imprensa" tem a cor #000000'),
+      expect.stringContaining('"interna" existe no código e não no dicionário'),
+      expect.stringContaining('"ouvidoria" existe no dicionário e não no código'),
+    ]);
   });
 });
 

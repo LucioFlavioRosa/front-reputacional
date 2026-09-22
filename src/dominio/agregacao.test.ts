@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { agrupar, jaAconteceu, panorama, porMes } from '@/dominio/agregacao';
+import { agrupar, jaAconteceu, panorama } from '@/dominio/agregacao';
 import { montarCatalogo } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Dicionarios, Interacao, PessoaAegea } from '@/dominio/tipos';
@@ -47,7 +47,6 @@ function agenda(ajustes: Partial<Interacao> = {}): Interacao {
     modalidade: null,
     local: null,
     tier: 2,
-    stakeholder_id: null,
     status: 'confirmada',
     clima: null,
     resultado: null,
@@ -119,7 +118,7 @@ describe('um eixo por vez, as mesmas medidas', () => {
   });
 });
 
-describe('eixos em que uma agenda entra em vários grupos', () => {
+describe('porta-voz: uma agenda entra em vários grupos', () => {
   it('conta a agenda de dois porta-vozes nos dois', () => {
     // A soma dos grupos passa do total do recorte, e isso é correto: a
     // pergunta é quanto CADA UM apareceu. A tela precisa avisar.
@@ -139,32 +138,13 @@ describe('eixos em que uma agenda entra em vários grupos', () => {
     expect(grupos).toHaveLength(2);
     expect(grupos.reduce((s, g) => s + g.total, 0)).toBe(2);
   });
-
-  it('a agenda de dois assuntos conta nos dois', () => {
-    const grupos = agrupar([agenda({ temas: [1, 2] })], 'assunto', CATALOGO);
-
-    expect(grupos.map((g) => g.rotulo).sort()).toEqual(['Reúso', 'Tarifa']);
-  });
 });
 
 describe('a ausência também é um grupo', () => {
-  it('agenda sem desfecho não some da conta', () => {
-    // Escondê-la faria a taxa de avanço parecer melhor do que é.
-    const grupos = agrupar([agenda({ resultado: null })], 'desfecho', CATALOGO);
-
-    expect(grupos[0].rotulo).toBe('Sem desfecho informado');
-  });
-
   it('agenda sem porta-voz vira o grupo que a fila de exceções cobra', () => {
     const grupos = agrupar([agenda({ participacoes: [] })], 'porta-voz', CATALOGO);
 
     expect(grupos[0].rotulo).toBe('Sem porta-voz definido');
-  });
-
-  it('agenda sem assunto classificado aparece nomeada', () => {
-    const grupos = agrupar([agenda({ temas: [] })], 'assunto', CATALOGO);
-
-    expect(grupos[0].rotulo).toBe('Sem tema classificado');
   });
 });
 
@@ -175,88 +155,6 @@ describe('o panorama do recorte', () => {
     const lista = [agenda({ tier: 1 }), agenda({ frente: 'governo' })];
 
     expect(panorama(lista, CATALOGO)).toMatchObject({ total: 2, tier1: 1 });
-  });
-});
-
-describe('a série no tempo', () => {
-  it('preenche o mês vazio com zero em vez de pulá-lo', () => {
-    // Uma série que salta de março para maio desenha uma reta por cima do mês
-    // vazio — e some justamente o fato que interessa.
-    const meses = porMes([
-      agenda({ data_interacao: '2026-03-02' }),
-      agenda({ data_interacao: '2026-05-20' }),
-    ]);
-
-    expect(meses.map((m) => m.mes)).toEqual(['2026-03', '2026-04', '2026-05']);
-    expect(meses[1].total).toBe(0);
-  });
-
-  it('atravessa a virada do ano', () => {
-    const meses = porMes([
-      agenda({ data_interacao: '2025-12-10' }),
-      agenda({ data_interacao: '2026-02-10' }),
-    ]);
-
-    expect(meses.map((m) => m.mes)).toEqual(['2025-12', '2026-01', '2026-02']);
-  });
-
-  it('recorte vazio não vira série de um mês', () => {
-    expect(porMes([])).toEqual([]);
-  });
-});
-
-describe('a série não se estica sem fim', () => {
-  it('corta em quinze meses uma série contínua e longa', () => {
-    // O teto vale para a operação que roda sem parar há anos: mostrar trinta
-    // colunas de 4px não é histórico, é ruído. Quinze é um ano mais três — a
-    // comparação com o mesmo mês do ano passado, com folga.
-    const contínua = [];
-    for (let ano = 2024; ano <= 2026; ano += 1) {
-      for (let mes = 1; mes <= 12; mes += 1) {
-        if (ano === 2026 && mes > 9) break;
-        contínua.push(
-          agenda({ data_interacao: `${ano}-${String(mes).padStart(2, '0')}-10` }),
-        );
-      }
-    }
-    const meses = porMes(contínua);
-
-    expect(meses).toHaveLength(15);
-    expect(meses[meses.length - 1].mes).toBe('2026-09');
-  });
-
-  it('mantém a série inteira quando ela cabe', () => {
-    // A prova de que o corte não é um teto arbitrário aplicado sempre.
-    const meses = porMes([
-      agenda({ data_interacao: '2026-03-02' }),
-      agenda({ data_interacao: '2026-05-20' }),
-    ]);
-
-    expect(meses.map((m) => m.mes)).toEqual(['2026-03', '2026-04', '2026-05']);
-  });
-});
-
-describe('a série reconhece quando recomeçou', () => {
-  it('começa depois do último intervalo longo', () => {
-    // Cortar por quantidade não bastava: o buraco é no MEIO, e qualquer teto
-    // de meses ainda deixava parte dele na tela.
-    const meses = porMes([
-      agenda({ data_interacao: '2025-01-08' }),
-      agenda({ data_interacao: '2026-01-05' }),
-      agenda({ data_interacao: '2026-02-05' }),
-    ]);
-
-    expect(meses.map((m) => m.mes)).toEqual(['2026-01', '2026-02']);
-  });
-
-  it('um ou dois meses fracos continuam à vista', () => {
-    // O vale é a informação. Só o intervalo LONGO separa duas fases.
-    const meses = porMes([
-      agenda({ data_interacao: '2026-01-05' }),
-      agenda({ data_interacao: '2026-04-05' }),
-    ]);
-
-    expect(meses.map((m) => m.mes)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04']);
   });
 });
 

@@ -19,10 +19,11 @@ import {
 import { dataCompleta, urlSegura } from '@/dominio/formato';
 import {
   CAMPOS_DE_EXTENSAO,
+  ENUMERACOES_DA_EXTENSAO,
   ROTULOS_DE_FRENTE,
   rotuloDeAbrangencia,
 } from '@/dominio/frentes';
-import type { Interacao } from '@/dominio/tipos';
+import type { Dicionarios, Extensao, Interacao } from '@/dominio/tipos';
 import {
   nomeDaEsfera,
   nomeDaInstituicao,
@@ -237,6 +238,31 @@ export function Ficha({
           </dl>
         </section>
 
+        {/* OS DETALHES DA FRENTE — o que o cadastro pede na seção 8. Códigos
+            de dicionário viram nome (formato, casa, tramitação, tipo de
+            investidor); enumerações viram o rótulo da tela; o resto sai como
+            foi digitado. Campo vazio não ocupa lugar — a lista "sem
+            preenchimento" logo acima já diz o que falta. */}
+        {detalhesDaFrente(catalogo, interacao).length ? (
+          <section>
+            <div className="kicker" style={{ marginBottom: 10 }}>
+              Detalhes da frente
+            </div>
+            <dl
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px 22px',
+                margin: 0,
+              }}
+            >
+              {detalhesDaFrente(catalogo, interacao).map(({ rotulo, valor }) => (
+                <Metadado key={rotulo} rotulo={rotulo} valor={valor} />
+              ))}
+            </dl>
+          </section>
+        ) : null}
+
         {interacao.temas.length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>
@@ -372,6 +398,47 @@ function Remover({ id, aoRemover }: { id: string; aoRemover: () => void }) {
       ) : null}
     </div>
   );
+}
+
+//: Qual dicionário/enumeração dá nome ao código de cada campo de extensão.
+//: Quem não está aqui é texto livre (ou data/número) e sai como veio.
+const DICIONARIO_DO_CAMPO: Partial<Record<keyof Extensao, keyof Dicionarios>> = {
+  formato: 'formatos',
+  casa: 'casas',
+  tramitacao: 'tramitacoes',
+  tipo_investidor: 'tipos_investidor',
+};
+const ENUMERACAO_DO_CAMPO: Partial<Record<keyof Extensao, keyof typeof ENUMERACOES_DA_EXTENSAO>> = {
+  prioridade: 'prioridade',
+  natureza: 'natureza',
+  cumprimento: 'cumprimento',
+  complexidade: 'complexidade',
+};
+
+function detalhesDaFrente(
+  catalogo: Catalogo,
+  interacao: Interacao,
+): { rotulo: string; valor: string }[] {
+  const extensao = (interacao.extensao ?? {}) as Record<string, unknown>;
+  const linhas: { rotulo: string; valor: string }[] = [];
+  for (const { campo, rotulo } of CAMPOS_DE_EXTENSAO[interacao.frente]) {
+    const bruto = extensao[campo];
+    if (bruto == null || bruto === '' || (Array.isArray(bruto) && !bruto.length)) continue;
+    let valor: string;
+    const dicionario = DICIONARIO_DO_CAMPO[campo];
+    const enumeracao = ENUMERACAO_DO_CAMPO[campo];
+    if (Array.isArray(bruto)) valor = bruto.join('; ');
+    else if (dicionario) valor = rotuloDeCodigo(catalogo, dicionario, String(bruto));
+    else if (enumeracao)
+      valor =
+        ENUMERACOES_DA_EXTENSAO[enumeracao].find((item) => item.codigo === bruto)?.nome ??
+        String(bruto);
+    else if (campo === 'data_atendida' || campo === 'data_publicacao')
+      valor = dataCompleta(String(bruto));
+    else valor = String(bruto);
+    linhas.push({ rotulo, valor });
+  }
+  return linhas;
 }
 
 function Metadado({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {

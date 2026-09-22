@@ -21,7 +21,7 @@
  *  "ÁREA(S)" NÃO MORA EM NENHUM DOS DOIS GRUPOS NO PAINEL: lá ela é um bloco
  *  fixo e sempre visível, logo abaixo da barra "Síntese Executiva" (ver
  *  `campoDeAreaPorCategoria`/`GrupoDeCampo`, reaproveitados por `Painel.tsx`).
- *  Em Explorar/Base — as outras telas que montam este componente — não existe
+ *  Na Base — a outra tela que monta este componente — não existe
  *  essa barra para ancorar um bloco fixo, então lá ela continua acessível,
  *  só que dentro de "Filtros avançados" em vez de "Filtros rápidos".
  *
@@ -41,10 +41,11 @@ import {
   alternarCategoriaDeArea,
   alternarCategoriaPublico,
   alternarFormatoInteracao,
+  alternarTag,
   ATALHOS_DE_PERIODO,
 } from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
-import { CATEGORIAS_DE_AREA, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
+import { categoriasDeArea, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
 import type { Destino } from '@/navegacao/rota';
@@ -73,7 +74,7 @@ export interface CampoDeFiltro {
  *
  *  EXPORTADA (e não uma das entradas fixas de `CAMPOS_RAPIDOS`/
  *  `CAMPOS_AVANCADOS`) porque tem DOIS pontos de montagem: aqui, dentro de
- *  "Filtros avançados" (Explorar/Base); e em `Painel.tsx`, como bloco fixo
+ *  "Filtros avançados" (Base); e em `Painel.tsx`, como bloco fixo
  *  sempre visível abaixo da barra "Síntese Executiva" — ver o comentário no
  *  topo do arquivo. */
 export function campoDeAreaPorCategoria(
@@ -82,6 +83,7 @@ export function campoDeAreaPorCategoria(
   catalogo: Catalogo | null | undefined,
 ): CampoDeFiltro {
   const idsPorCategoria = catalogo ? idsPorCategoriaDeArea(catalogo) : new Map<string, Set<number>>();
+  const categorias = catalogo ? categoriasDeArea(catalogo) : [];
   const atuais = new Set(recorte.areas ?? []);
 
   return {
@@ -90,13 +92,13 @@ export function campoDeAreaPorCategoria(
     multiplo: true,
     // Categoria sem nenhum id ativo (as duas áreas dela desativadas) não
     // aparece como pílula — ela nunca teria efeito nenhum no recorte.
-    itens: CATEGORIAS_DE_AREA.filter((c) => (idsPorCategoria.get(c.rotulo)?.size ?? 0) > 0).map(
+    itens: categorias.filter((c) => (idsPorCategoria.get(c.rotulo)?.size ?? 0) > 0).map(
       (c) => ({ valor: c.rotulo, rotulo: c.rotulo }),
     ),
     // Marcada quando TODAS as áreas da categoria já estão no recorte — não
     // "pelo menos uma", senão um clique que liga as duas pareceria já
     // marcado com só uma ligada por fora.
-    selecionados: CATEGORIAS_DE_AREA.filter((c) => {
+    selecionados: categorias.filter((c) => {
       const ids = idsPorCategoria.get(c.rotulo);
       return !!ids?.size && [...ids].every((id) => atuais.has(id));
     }).map((c) => c.rotulo),
@@ -139,6 +141,24 @@ export function campoDeCategoriaPublico(
  *  NÃO É `frente` (Imprensa/Entidades/Parceiros...): "formato" responde "que
  *  tipo de encontro foi esse", `frente` responde "quem é a contraparte" — as
  *  duas colunas são ortogonais, ver `0038_formato_interacao.sql`. */
+/** O campo Tema(s): multisseleção com OR, os nomes como valor (é assim que
+ *  `tags` viaja para o servidor). Dois pontos de montagem: "Filtros rápidos"
+ *  na gaveta e a faixa fixa da Preparar agenda, onde é o primeiro gatilho. */
+export function campoDeTema(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  return {
+    chave: 'tags',
+    rotulo: 'Temas',
+    multiplo: true,
+    selecionados: recorte.tags ?? [],
+    itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
+    aoEscolher: (nome: string) => definirRecorte(alternarTag(recorte, nome)),
+  };
+}
+
 export function campoDeFormatoInteracao(
   recorte: Recorte,
   definirRecorte: (recorte: Recorte) => void,
@@ -214,13 +234,6 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     definirRecorte(proximo);
   };
 
-  const alternarTema = (nome: string) => {
-    const atuais = new Set(recorte.tags ?? []);
-    if (atuais.has(nome)) atuais.delete(nome);
-    else atuais.add(nome);
-    const tags = [...atuais].sort();
-    definirRecorte(tags.length ? { ...recorte, tags } : { ...recorte, tags: undefined });
-  };
 
   const CAMPOS_RAPIDOS: CampoDeFiltro[] = [
     {
@@ -246,14 +259,7 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           (v) => Number(v),
         ),
     },
-    {
-      chave: 'tags',
-      rotulo: 'Temas',
-      multiplo: true,
-      selecionados: recorte.tags ?? [],
-      itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
-      aoEscolher: alternarTema,
-    },
+    campoDeTema(recorte, definirRecorte, catalogo),
   ].filter((campo) => campo.itens.length > 0);
 
   const CAMPOS_AVANCADOS: CampoDeFiltro[] = [
@@ -269,10 +275,20 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     },
     {
       chave: 'clima',
-      rotulo: 'Clima',
+      rotulo: 'Clima registrado',
       valorAtual: recorte.clima,
       itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
       aoEscolher: (valor: string) => definirOuAlternar('clima', recorte.clima, valor, (v) => v),
+    },
+    // DOIS FILTROS DE CLIMA, um por momento: o esperado ao marcar a reunião e
+    // o registrado depois dela. Mesmo dicionário, campos distintos do recorte.
+    {
+      chave: 'climaEsperado',
+      rotulo: 'Clima esperado',
+      valorAtual: recorte.climaEsperado,
+      itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
+      aoEscolher: (valor: string) =>
+        definirOuAlternar('climaEsperado', recorte.climaEsperado, valor, (v) => v),
     },
     {
       chave: 'resultado',

@@ -11,6 +11,7 @@ import {
   limparAreas,
   limparCategoriaPublico,
   paraParametros,
+  limparTags,
   quantidadeDeFiltros,
 } from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
@@ -64,6 +65,13 @@ describe('intervalo', () => {
   });
 });
 
+describe('limparTags', () => {
+  it('tira só os temas e deixa o resto do recorte', () => {
+    const recorte: Recorte = { tags: ['Tarifa'], frente: 'imprensa' };
+    expect(limparTags(recorte)).toEqual({ frente: 'imprensa' });
+  });
+});
+
 describe('quantidadeDeFiltros', () => {
   it('período conta como 1 filtro, mesmo com os dois lados ativos', () => {
     const soPassado: Recorte = { periodoPassado: 'ultimos-30' };
@@ -75,6 +83,13 @@ describe('quantidadeDeFiltros', () => {
   it('recorte vazio não conta filtro nenhum', () => {
     expect(quantidadeDeFiltros({})).toBe(0);
   });
+
+  it('clima esperado e clima registrado são dois filtros', () => {
+    const recorte: Recorte = { clima: 'propositivo', climaEsperado: 'tenso' };
+    expect(quantidadeDeFiltros(recorte)).toBe(2);
+    expect(paraParametros(recorte).get('climaEsperado')).toBe('tenso');
+    expect(paraParametros(recorte).get('clima')).toBe('propositivo');
+  });
 });
 
 describe('paraParametros', () => {
@@ -85,6 +100,14 @@ describe('paraParametros', () => {
     expect(parametros.has('periodoFuturo')).toBe(false);
     expect(parametros.has('de')).toBe(true);
     expect(parametros.has('ate')).toBe(true);
+  });
+
+  it('manda cada tema como parâmetro repetido, mesmo com vírgula no nome', () => {
+    // `tags` são nomes; "Saneamento, drenagem" é UM tema. As listas de ids
+    // continuam separadas por vírgula.
+    const p = paraParametros({ tags: ['Saneamento, drenagem', 'Tarifa'], areas: [1, 2] });
+    expect(p.getAll('tags')).toEqual(['Saneamento, drenagem', 'Tarifa']);
+    expect(p.get('areas')).toBe('1,2');
   });
 
   it('sem período nenhum, não manda de/ate', () => {
@@ -163,9 +186,11 @@ describe('limparCategoriaPublico', () => {
 });
 
 describe('paraParametros', () => {
-  it('nunca manda categoriaPublico ao backend — é filtro só do cliente', () => {
-    const parametros = paraParametros({ categoriaPublico: [1, 3], areas: [2] });
-    expect(parametros.has('categoriaPublico')).toBe(false);
-    expect(parametros.get('areas')).toEqual('2');
+  it('manda categoriaPublico e formatoInteracao ao backend, como ids separados por vírgula', () => {
+    // Nasceram só no cliente; hoje o servidor os lê, e é o que faz métricas,
+    // materiais e exportação obedecerem ao mesmo recorte que a tela.
+    const p = paraParametros({ categoriaPublico: [3, 1], formatoInteracao: [7] });
+    expect(p.get('categoriaPublico')).toBe('3,1');
+    expect(p.get('formatoInteracao')).toBe('7');
   });
 });

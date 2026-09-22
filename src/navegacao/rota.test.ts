@@ -8,9 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   caminhoDe,
   consultaDe,
-  enderecoDe,
   lerCaminho,
-  lerEixo,
   lerRecorte,
   nomeDaTela,
 } from '@/navegacao/rota';
@@ -21,9 +19,9 @@ describe('ler e escrever o caminho', () => {
     ['/', { destino: 'inicio' }],
     ['/situacao', { destino: 'situacao' }],
     ['/painel', { destino: 'painel' }],
-    ['/explorar', { destino: 'explorar' }],
     ['/base', { destino: 'base' }],
     ['/relatorios', { destino: 'relatorios' }],
+    ['/preparar', { destino: 'preparar' }],
     ['/admin', { destino: 'admin', aba: undefined }],
     ['/admin/porta-vozes', { destino: 'admin', aba: 'porta-vozes' }],
     ['/agenda/nova', { destino: 'cadastro', sobre: 'nova' }],
@@ -68,10 +66,19 @@ describe('o recorte na consulta', () => {
       periodoPassado: 'ultimos-360' as const,
       frente: 'imprensa' as const,
       tier: 1,
+      clima: 'tenso',
+      climaEsperado: 'neutro',
       tags: ['3', '7'],
       q: 'copasa',
     };
 
+    expect(lerRecorte(consultaDe(recorte))).toEqual(recorte);
+  });
+
+  it('um tema com vírgula no nome vai e volta inteiro', () => {
+    // `tags` é repetido no endereço, não separado por vírgula: o nome é o
+    // valor, e "Saneamento, drenagem" é UM tema.
+    const recorte = { tags: ['Saneamento, drenagem', 'Tarifa'] };
     expect(lerRecorte(consultaDe(recorte))).toEqual(recorte);
   });
 
@@ -101,22 +108,6 @@ describe('o recorte na consulta', () => {
   });
 });
 
-describe('o eixo de Explorar', () => {
-  it('o padrão é frente, e não aparece na URL', () => {
-    // O endereço mais curto abre a leitura mais comum.
-    expect(lerEixo('')).toBe('frente');
-    expect(consultaDe({}, 'frente')).toBe('');
-  });
-
-  it('eixo inventado cai no padrão', () => {
-    expect(lerEixo('?ver=astrologia')).toBe('frente');
-  });
-
-  it('eixo válido sobrevive à ida e à volta', () => {
-    expect(lerEixo(consultaDe({}, 'porta-voz'))).toBe('porta-voz');
-  });
-});
-
 describe('o nome da tela para a telemetria', () => {
   it('distingue o que está aberto por cima', () => {
     // Pelo hash, TODO erro seria reportado como se fosse no Painel, porque o nome
@@ -126,13 +117,5 @@ describe('o nome da tela para a telemetria', () => {
       'base:cadeia',
     );
     expect(nomeDaTela({ destino: 'admin', aba: 'assuntos' })).toBe('admin:assuntos');
-  });
-});
-
-describe('o endereço para mandar a alguém', () => {
-  it('junta a tela e o recorte', () => {
-    expect(
-      enderecoDe({ destino: 'situacao' }, { periodoPassado: 'ultimos-30', tier: 1 }),
-    ).toBe('/situacao?periodoPassado=ultimos-30&tier=1');
   });
 });

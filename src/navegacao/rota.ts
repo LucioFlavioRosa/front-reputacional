@@ -28,33 +28,11 @@ export type Destino =
   | 'inicio'
   | 'situacao'
   | 'painel'
-  | 'explorar'
   | 'base'
   | 'relatorios'
+  | 'preparar'
   | 'cadastro'
   | 'admin';
-
-/** Por qual eixo a tela Explorar está agrupando. */
-export type Eixo =
-  | 'frente'
-  | 'situacao'
-  | 'desfecho'
-  | 'porta-voz'
-  | 'interlocutor'
-  | 'assunto'
-  | 'uf';
-
-export const EIXOS: { eixo: Eixo; rotulo: string }[] = [
-  { eixo: 'frente', rotulo: 'Frente' },
-  { eixo: 'situacao', rotulo: 'Situação' },
-  { eixo: 'desfecho', rotulo: 'Desfecho' },
-  { eixo: 'porta-voz', rotulo: 'Porta-voz' },
-  { eixo: 'interlocutor', rotulo: 'Interlocutor' },
-  { eixo: 'assunto', rotulo: 'Tema' },
-  { eixo: 'uf', rotulo: 'UF' },
-];
-
-const EIXOS_VALIDOS = new Set<string>(EIXOS.map((e) => e.eixo));
 
 export interface Rota {
   destino: Destino;
@@ -64,8 +42,6 @@ export interface Rota {
   sobre?: 'ficha' | 'cadeia' | 'editar' | 'nova';
   /** A aba da administração. */
   aba?: string;
-  /** O eixo de agrupamento, só em Explorar. */
-  eixo?: Eixo;
 }
 
 export const ROTA_INICIAL: Rota = { destino: 'inicio' };
@@ -86,9 +62,8 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'painel') return { destino: 'painel' };
   if (primeira === 'base') return { destino: 'base' };
   if (primeira === 'relatorios') return { destino: 'relatorios' };
+  if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
-
-  if (primeira === 'explorar') return { destino: 'explorar' };
 
   if (primeira === 'agenda') {
     if (!segunda) return { destino: 'base' };
@@ -116,10 +91,10 @@ export function caminhoDe(rota: Rota): string {
       return '/situacao';
     case 'painel':
       return '/painel';
-    case 'explorar':
-      return '/explorar';
     case 'relatorios':
       return '/relatorios';
+    case 'preparar':
+      return '/preparar';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'cadastro':
@@ -133,19 +108,13 @@ export function caminhoDe(rota: Rota): string {
   }
 }
 
-/** O eixo pedido na consulta, ou o padrão. */
-export function lerEixo(consulta: string): Eixo {
-  const pedido = new URLSearchParams(consulta).get('ver');
-  return pedido && EIXOS_VALIDOS.has(pedido) ? (pedido as Eixo) : 'frente';
-}
-
 /* ------------------------------------------------------- o recorte na URL */
 
 //: Os campos do Recorte que viajam como texto simples. `tags` e `tier` saem
 //: daqui porque um é lista e o outro é número — ver abaixo.
 const CAMPOS_DE_TEXTO = [
   'periodoPassado', 'periodoFuturo', 'de', 'ate', 'frente', 'unidade', 'uf', 'esfera',
-  'clima', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
+  'clima', 'climaEsperado', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
   'portaVoz', 'pessoa', 'q',
 ] as const;
 
@@ -166,15 +135,17 @@ export function lerRecorte(consulta: string): Recorte {
   const tier = p.get('tier');
   if (tier && Number.isFinite(Number(tier))) recorte.tier = Number(tier);
 
-  const tags = p.get('tags');
-  if (tags) recorte.tags = tags.split(',').filter(Boolean);
+  // Repetido (`tags=a&tags=b`), e não separado por vírgula: um nome de tema
+  // pode ter vírgula, e partir nela quebraria o nome em dois.
+  const tags = p.getAll('tags').filter(Boolean);
+  if (tags.length) recorte.tags = tags;
 
   return recorte as Recorte;
 }
 
 /** O Recorte vira consulta, na ordem dos campos — para o mesmo recorte
  *  produzir sempre o mesmo endereço, e dois links iguais se reconhecerem. */
-export function consultaDe(recorte: Recorte, eixo?: Eixo): string {
+export function consultaDe(recorte: Recorte): string {
   const p = new URLSearchParams();
 
   for (const campo of CAMPOS_DE_TEXTO) {
@@ -182,16 +153,10 @@ export function consultaDe(recorte: Recorte, eixo?: Eixo): string {
     if (typeof valor === 'string' && valor) p.set(campo, valor);
   }
   if (recorte.tier) p.set('tier', String(recorte.tier));
-  if (recorte.tags?.length) p.set('tags', recorte.tags.join(','));
-  if (eixo && eixo !== 'frente') p.set('ver', eixo);
+  for (const tag of recorte.tags ?? []) p.append('tags', tag);
 
   const texto = p.toString();
   return texto ? `?${texto}` : '';
-}
-
-/** O endereço inteiro, para copiar e mandar a alguém. */
-export function enderecoDe(rota: Rota, recorte: Recorte, eixo?: Eixo): string {
-  return caminhoDe(rota) + consultaDe(recorte, eixo);
 }
 
 /** O nome da tela, para a telemetria.
