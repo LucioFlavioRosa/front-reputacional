@@ -34,9 +34,9 @@ import {
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
-import type { ColunaMensal } from '@/dominio/derivacoes';
 import {
   categoriasDeArea,
+  comReativoNaBase,
   categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
   climaPorTema,
@@ -137,21 +137,6 @@ const FORMATADORES_DE_ROTULO: Record<Granularidade, (chave: string) => string> =
   mes: rotuloDoMes,
   semestre: rotuloDoSemestre,
 };
-
-//: Reativo na BASE da pilha, propositivo no topo — os códigos de clima não
-//: mudam (só o nome exibido), então a ordem não se perde num rename. A pilha
-//: desenha o primeiro segmento em cima, por isso a lista vai invertida.
-const ORDEM_DO_CLIMA = ['propositivo', 'neutro', 'tenso'];
-function comReativoNaBase(colunas: ColunaMensal[]): ColunaMensal[] {
-  const posicao = (chave: string) => {
-    const indice = ORDEM_DO_CLIMA.indexOf(chave);
-    return indice === -1 ? ORDEM_DO_CLIMA.length : indice;
-  };
-  return colunas.map((coluna) => ({
-    ...coluna,
-    segmentos: [...coluna.segmentos].sort((a, b) => posicao(a.chave) - posicao(b.chave)),
-  }));
-}
 
 export function Painel({
   aoAbrirFrente,

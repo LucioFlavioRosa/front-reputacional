@@ -35,12 +35,19 @@ import {
   nomesDosTemas,
   rotuloDeCodigo,
 } from '@/dominio/derivacoes';
-import type { Catalogo, ColunaMensal, ItemContado, Segmento } from '@/dominio/derivacoes';
-import type { Interacao, Material, Referencia } from '@/dominio/tipos';
+import type { Catalogo } from '@/dominio/derivacoes';
+import type { Interacao, Referencia } from '@/dominio/tipos';
+import {
+  climaAntesEDepois,
+  contagemPorDicionario,
+  documentosDasAgendas,
+  portaVozesDe,
+  rankingPorId,
+} from '@/dominio/preparacao';
+import type { DocumentoDaAgenda } from '@/dominio/preparacao';
 import { usePainel } from '@/estado/painel';
 
 const QUANTAS_AGENDAS = 8;
-const QUANTAS_NO_RANKING = 5;
 
 export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => void }) {
   const { catalogo, recorte, definirRecorte, interacoes, carregando, atualizando, erro } =
@@ -131,29 +138,6 @@ const ROTULO_DO_TIPO_DE_REFERENCIA: Record<string, string> = {
   qa: 'Q&A',
   release: 'Release',
 };
-
-/** Um documento de reunião, já com a agenda de onde saiu. */
-interface DocumentoDaAgenda {
-  chave: string;
-  material: Material;
-  agenda: Interacao;
-}
-
-//: OS MATERIAIS DAS AGENDAS DO RECORTE, mais recentes primeiro. Só os que
-//: têm arquivo ou link — um material sem os dois não tem o que abrir.
-function documentosDasAgendas(agendas: Interacao[]): DocumentoDaAgenda[] {
-  return [...agendas]
-    .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao))
-    .flatMap((agenda) =>
-      agenda.materiais
-        .filter((material) => material.arquivo || material.url)
-        .map((material, indice) => ({
-          chave: material.id ?? `${agenda.id}:${indice}`,
-          material,
-          agenda,
-        })),
-    );
-}
 
 function BlocoDeReferencias({
   tema,
@@ -330,28 +314,6 @@ function BlocoDeAgendas({
 
 /* -- bloco 3: como as conversas sobre o tema terminam ------------------------ */
 
-//: Cada clima sempre aparece na rosca e na legenda, mesmo com zero — a
-//: comparação "esperado × registrado" precisa das mesmas fatias dos dois
-//: lados, e a rosca de desfecho segue a mesma regra para não mudar de forma
-//: de um tema para outro.
-function contarPorDicionario(
-  agendas: Interacao[],
-  itens: { codigo: string; nome: string; cor_hex: string }[],
-  campo: (agenda: Interacao) => string | null,
-): Segmento[] {
-  const contagem = new Map<string, number>();
-  for (const agenda of agendas) {
-    const codigo = campo(agenda);
-    if (codigo) contagem.set(codigo, (contagem.get(codigo) ?? 0) + 1);
-  }
-  return itens.map((item) => ({
-    chave: item.codigo,
-    rotulo: item.nome,
-    total: contagem.get(item.codigo) ?? 0,
-    cor: item.cor_hex,
-  }));
-}
-
 //: CLICAR NUM GRÁFICO FILTRA A PÁGINA INTEIRA — o mesmo gesto do Painel: a
 //: fatia, a coluna ou a linha clicada vira filtro do recorte, e materiais,
 //: agendas e os outros gráficos respondem. Clicar de novo desfaz
@@ -369,32 +331,17 @@ function BlocoDeGraficos({
 }) {
   const filtrar = <C extends keyof Recorte>(campo: C, valor: Recorte[C]) =>
     definirRecorte(alternar(recorte, campo, valor));
-  const climas = catalogo.dicionarios.climas;
-  const desfechos = contarPorDicionario(agendas, catalogo.dicionarios.resultados, (a) => a.resultado);
-  const esperado = contarPorDicionario(agendas, climas, (a) => a.clima_esperado);
-  const registrado = contarPorDicionario(agendas, climas, (a) => a.clima);
-
-  //: DUAS COLUNAS, "Antes" e "Depois": o clima esperado ao marcar a reunião
-  //: e o clima registrado depois dela. `BarrasEmpilhadas` lê `ColunaMensal`
-  //: — a chave `mes` aqui é só o rótulo da coluna, e `formatarRotulo` a
-  //: devolve como está.
-  const antesEDepois: ColunaMensal[] = [
-    { mes: 'Antes (esperado)', total: esperado.reduce((s, i) => s + i.total, 0), segmentos: esperado },
-    { mes: 'Depois (registrado)', total: registrado.reduce((s, i) => s + i.total, 0), segmentos: registrado },
-  ];
-
-  const porInstituicao = ranking(
+  const desfechos = contagemPorDicionario(
+    agendas,
+    catalogo.dicionarios.resultados,
+    (a) => a.resultado,
+  );
+  const clima = climaAntesEDepois(agendas, catalogo.dicionarios.climas);
+  const porInstituicao = rankingPorId(
     agendas.map((a) => a.instituicao_id),
     (id) => nomeDaInstituicao(catalogo, id),
   );
-  //: UMA CONTAGEM POR PARTICIPAÇÃO: a agenda com dois porta-vozes conta para
-  //: os dois — a mesma regra do painel de exposição.
-  const porPortaVoz = ranking(
-    agendas.flatMap((a) =>
-      a.participacoes.filter((p) => p.papel === 'porta_voz').map((p) => p.pessoa_aegea_id),
-    ),
-    (id) => nomeDaPessoa(catalogo, id),
-  );
+  const porPortaVoz = rankingPorId(portaVozesDe(agendas), (id) => nomeDaPessoa(catalogo, id));
 
   return (
     <Secao
@@ -428,13 +375,13 @@ function BlocoDeGraficos({
               o recorte não tem filtro de clima esperado, e "o que se esperava
               tenso" e "o que foi tenso" se olham lado a lado no mesmo filtro. */}
           <BarrasEmpilhadas
-            colunas={antesEDepois}
+            colunas={clima.colunas}
             altura={150}
             formatarRotulo={(chave) => chave}
             aoClicarSegmento={(chave) => filtrar('clima', chave)}
           />
           <Legenda
-            itens={registrado}
+            itens={clima.registrado}
             ativo={recorte.clima}
             aoClicar={(chave) => filtrar('clima', chave)}
             centralizada
@@ -468,15 +415,4 @@ function BlocoDeGraficos({
       </div>
     </Secao>
   );
-}
-
-function ranking(ids: (string | null)[], nome: (id: string) => string): ItemContado[] {
-  const contagem = new Map<string, number>();
-  for (const id of ids) {
-    if (id) contagem.set(id, (contagem.get(id) ?? 0) + 1);
-  }
-  return [...contagem.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, QUANTAS_NO_RANKING)
-    .map(([id, total]) => ({ chave: id, rotulo: nome(id), total }));
 }

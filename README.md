@@ -4,6 +4,8 @@ O front do **Painel Reputacional Aegea**. React 19 + TypeScript + Vite,
 compilado num pacote estático que o nginx entrega. Não há Node em produção.
 
 A API é o [`back-reputacional`](https://github.com/LucioFlavioRosa/back-reputacional).
+O glossário do domínio — os nomes que as telas e a API usam, e os que evitam —
+é o `CONTEXT.md` na raiz daquele repositório; vale para os dois.
 
 ## Só quero VER o produto rodando
 

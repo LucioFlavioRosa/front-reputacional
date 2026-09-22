@@ -20,6 +20,7 @@ import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE } from '@/dominio/frentes';
 import {
   categoriasDeArea,
   climaPorTema,
+  comReativoNaBase,
   completarMeses,
   divergenciasDoCatalogo,
   distribuicaoPorUf,
@@ -768,6 +769,23 @@ describe('categoriasDeArea', () => {
       PESSOAS,
     );
     expect(categoriasDeArea(soAsTres)).toHaveLength(3);
+  });
+});
+
+describe('comReativoNaBase', () => {
+  it('reordena os segmentos de cada coluna com Reativo por último, sem mudar o original', () => {
+    const coluna = {
+      mes: '2026-05',
+      total: 3,
+      segmentos: [
+        { chave: 'tenso', rotulo: 'Reativo', cor: '#3', total: 1 },
+        { chave: 'propositivo', rotulo: 'Proativo', cor: '#1', total: 1 },
+        { chave: 'novo', rotulo: 'Novo', cor: '#4', total: 1 },
+      ],
+    };
+    const [ordenada] = comReativoNaBase([coluna]);
+    expect(ordenada.segmentos.map((s) => s.chave)).toEqual(['propositivo', 'tenso', 'novo']);
+    expect(coluna.segmentos.map((s) => s.chave)).toEqual(['tenso', 'propositivo', 'novo']);
   });
 });
 

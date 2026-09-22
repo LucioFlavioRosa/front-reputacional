@@ -751,7 +751,7 @@ export function CadastroDeInstituicoes() {
                     definirARemover(null);
                     definirPessoaEmEdicao(null);
                   },
-                  `${pessoa.nome} foi removida.`,
+                  `${pessoa.nome} foi excluída.`,
                 )
               }
               aoDesligarPessoa={(pessoa) =>
@@ -1209,17 +1209,17 @@ function LinhaDeInstituicao({
                   </Botao>
 
                   {/* DESLIGAR E REMOVER SAO GESTOS DIFERENTES, e a diferenca e
-                      o historico. Desligar tira das listas e mantem o nome nas
-                      agendas em que a pessoa esteve; remover so vale para quem
+                      o historico. Desativar tira das listas e mantem o nome nas
+                      agendas em que a pessoa esteve; excluir so vale para quem
                       entrou por engano — e o servidor recusa o resto, dizendo
                       quantas agendas dependem dela. */}
                   <Botao
                     variante="fantasma"
                     desabilitado={salvando}
                     aoClicar={() => aoDesligarPessoa(pessoa)}
-                    rotuloAcessivel={`${pessoa.ativo ? 'Desligar' : 'Reativar'} ${pessoa.nome}`}
+                    rotuloAcessivel={`${pessoa.ativo ? 'Desativar' : 'Reativar'} ${pessoa.nome}`}
                   >
-                    {pessoa.ativo ? 'Desligar' : 'Reativar'}
+                    {pessoa.ativo ? 'Desativar' : 'Reativar'}
                   </Botao>
 
                   {/* DUAS ETAPAS NA PROPRIA LINHA. Um modal tiraria o
@@ -1240,16 +1240,16 @@ function LinhaDeInstituicao({
                   ) : aRemover === pessoa.id ? (
                     <>
                       <span style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
-                        Remover de vez?
+                        Excluir de vez?
                       </span>
                       <Botao
                         variante="fantasma"
                         desabilitado={salvando}
                         aoClicar={() => aoRemoverPessoa(pessoa)}
-                        rotuloAcessivel={`Confirmar a remocao de ${pessoa.nome}`}
+                        rotuloAcessivel={`Confirmar a exclusão de ${pessoa.nome}`}
                         estilo={{ color: 'var(--erro-fg)', fontWeight: 700 }}
                       >
-                        Sim, remover
+                        Sim, excluir
                       </Botao>
                       <Botao variante="fantasma" aoClicar={aoDesistirDaRemocao}>
                         Cancelar
@@ -1260,10 +1260,10 @@ function LinhaDeInstituicao({
                       variante="fantasma"
                       desabilitado={salvando}
                       aoClicar={() => aoPedirRemocao(pessoa)}
-                      rotuloAcessivel={`Remover ${pessoa.nome}`}
+                      rotuloAcessivel={`Excluir ${pessoa.nome}`}
                       estilo={{ color: 'var(--erro-fg)' }}
                     >
-                      Remover
+                      Excluir
                     </Botao>
                   )}
                 </div>

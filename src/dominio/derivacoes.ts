@@ -312,6 +312,25 @@ export function idsPorCategoriaDeArea(catalogo: Catalogo): Map<string, Set<numbe
   return mapa;
 }
 
+//: Reativo na BASE da pilha, propositivo no topo — os códigos de clima não
+//: mudam (só o nome exibido), então a ordem não se perde num rename. A pilha
+//: desenha o primeiro segmento em cima, por isso a lista vai invertida; um
+//: clima novo cai no fim.
+const ORDEM_DO_CLIMA = ['propositivo', 'neutro', 'tenso'];
+
+/** As colunas de clima com os segmentos na ordem da pilha. Copia — nunca
+ *  reordena o derivado original. */
+export function comReativoNaBase(colunas: ColunaMensal[]): ColunaMensal[] {
+  const posicao = (chave: string) => {
+    const indice = ORDEM_DO_CLIMA.indexOf(chave);
+    return indice === -1 ? ORDEM_DO_CLIMA.length : indice;
+  };
+  return colunas.map((coluna) => ({
+    ...coluna,
+    segmentos: [...coluna.segmentos].sort((a, b) => posicao(a.chave) - posicao(b.chave)),
+  }));
+}
+
 /** O que as listas fixas do front dizem e o dicionário não — ou vice-versa.
  *
  *  `FRENTES`, `ROTULOS_DE_FRENTE` e `CORES_DE_FRENTE` são fixas no código
