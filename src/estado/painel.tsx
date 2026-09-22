@@ -192,7 +192,7 @@ export function ProvedorDoPainel({
     return function cancelarBuscaDeInteracoes() {
       ativo = false;
     };
-  }, [recorte, versaoDasAgendas]);
+  }, [recorte, versaoDasAgendas, alcancaOCrm]);
 
   const valor = useMemo<EstadoDoPainel>(
     () => ({

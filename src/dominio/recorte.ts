@@ -234,12 +234,11 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
     }
   }
 
-  // O BACKEND SÓ CONHECE OS ATALHOS DE PASSADO (`app/dominio/periodo.py`
-  // do back-reputacional-novo) — nenhum `proximos-*`. Mandar um preset de
-  // futuro cru (`periodo=proximos-30`) devolve 422. Resolver os dois lados
-  // aqui, sempre, é o que evita isso E o que permite combinar passado com
-  // futuro num intervalo só: o backend só vê `de`/`ate`, nunca precisa saber
-  // que vieram de dois presets diferentes.
+  // O BACKEND ACEITA OS MESMOS ATALHOS (`periodo=ultimos-*|proximos-*`, em
+  // `app/dominio/periodo.py`), mas um de cada vez. Resolver os dois lados
+  // aqui, sempre, é o que permite combinar passado com futuro num intervalo
+  // só: o backend só vê `de`/`ate`, nunca precisa saber que vieram de dois
+  // presets diferentes — e o ponto de referência ("hoje") fica num lugar só.
   const { de, ate } = intervalo(recorte);
   if (de) parametros.set('de', paraIso(de));
   if (ate) parametros.set('ate', paraIso(ate));
