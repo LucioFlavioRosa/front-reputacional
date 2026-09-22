@@ -21,6 +21,7 @@ import { Painel } from '@/paginas/Painel';
 import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
 import { PrepararAgenda } from '@/paginas/PrepararAgenda';
+import { SinaisDeMercado } from '@/paginas/SinaisDeMercado';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
 import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
@@ -219,6 +220,8 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           ) : null}
 
           {rota.destino === 'preparar' ? <PrepararAgenda aoAbrirAgenda={abrirAgenda} /> : null}
+
+          {rota.destino === 'sinais' ? <SinaisDeMercado aoAbrirAgenda={abrirAgenda} /> : null}
 
 
           {/* A TELA também recusa, e não só o botão.

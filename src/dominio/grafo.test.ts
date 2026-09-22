@@ -56,6 +56,8 @@ function agenda(
     temas: [],
     areas: [],
     participacoes: [],
+    consulta: null,
+    alegacoes: [],
     expectativa: null,
     clima_esperado: null,
     declinado_por: null,

@@ -95,6 +95,14 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
     }),
   subirVersaoDaReferencia: () =>
     cliente.subirVersaoDaReferencia('id-4', arquivo(), 'O texto da versão.', '2026-09-02'),
+  criarAlegacao: () =>
+    cliente.criarAlegacao({ texto: 'O Banco X não renegociaria a dívida', temas: [] }),
+  editarAlegacao: () =>
+    cliente.editarAlegacao('id-5', {
+      texto: 'O Banco X não renegociaria a dívida',
+      temas: [],
+      apuracao_id: 2,
+    }),
 };
 
 describe('toda escrita de catálogo avisa quem depende do catálogo', () => {

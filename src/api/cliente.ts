@@ -2,7 +2,7 @@
 
 import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
-import type { ArquivoDoMaterial } from '@/dominio/tipos';
+import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import { paraParametros } from '@/dominio/recorte';
 import type {
@@ -649,6 +649,54 @@ export function editarNoDicionario(
   entrada: ItemDeDicionarioEntrada,
 ): Promise<ItemAdministravel> {
   return requisitar<ItemAdministravel>(`/api/dicionarios/${dicionario}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/* ------------------------------------------------------------- alegações */
+
+/** O QUE ESTÁ CIRCULANDO — só as ativas, e sem a nota de apuração.
+ *
+ *  É o que o catálogo carrega para todo mundo: a lista que o formulário
+ *  oferece e que a aba de Sinais usa para resolver o texto de cada premissa.
+ *  O servidor decide o que sai pelo papel de quem pede. */
+export function listarAlegacoes(): Promise<Alegacao[]> {
+  return requisitar<Alegacao[]>('/api/alegacoes');
+}
+
+/** A LISTA INTEIRA, inclusive as fora de circulação e com a nota de apuração.
+ *
+ *  Só para a Administração, e o servidor recusa a quem não administra
+ *  cadastros: sem as inativas, a alegação desativada some da tela e volta
+ *  como "já está cadastrada" na tentativa seguinte — o índice único é sobre o
+ *  texto normalizado, e não sobre o que a pessoa vê. */
+export function listarAlegacoesParaAdministracao(): Promise<Alegacao[]> {
+  return requisitar<Alegacao[]>('/api/alegacoes?incluir_inativas=1');
+}
+
+export interface AlegacaoEntrada {
+  texto: string;
+  temas: number[];
+  apuracao_id?: number | null;
+  referencia_id?: string | null;
+  nota?: string | null;
+  ativo?: boolean;
+}
+
+/** Quem REGISTRA a consulta cadastra a alegação que ela trouxe — a alegação
+ *  nasce do registro, e não da administração. */
+export function criarAlegacao(entrada: AlegacaoEntrada): Promise<Alegacao> {
+  return requisitar<Alegacao>('/api/alegacoes', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** Apurar é da área: muda o status, amarra o posicionamento que responde,
+ *  tira de circulação. */
+export function editarAlegacao(id: string, entrada: AlegacaoEntrada): Promise<Alegacao> {
+  return requisitar<Alegacao>(`/api/alegacoes/${id}`, {
     method: 'PUT',
     body: JSON.stringify(entrada),
   });

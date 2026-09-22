@@ -16,6 +16,7 @@ import {
 import type { ReactNode } from 'react';
 import {
   listarInstituicoes,
+  listarAlegacoes,
   listarInterlocutores,
   listarPessoasAegea,
   listarRecorteCompleto,
@@ -133,11 +134,12 @@ export function ProvedorDoPainel({
       listarInterlocutores(),
       listarPessoasAegea(),
       listarReferencias(),
+      listarAlegacoes(),
     ])
-      .then(([dicionarios, instituicoes, interlocutores, pessoas, referencias]) => {
+      .then(([dicionarios, instituicoes, interlocutores, pessoas, referencias, alegacoes]) => {
         if (!ativo) return;
         const catalogo = montarCatalogo(
-          dicionarios, instituicoes, interlocutores, pessoas, referencias,
+          dicionarios, instituicoes, interlocutores, pessoas, referencias, alegacoes,
         );
         // AS LISTAS FIXAS DO FRONT CONFERIDAS CONTRA O DICIONÁRIO, a cada
         // carga: uma frente renomeada ou recolorida no banco sem o código

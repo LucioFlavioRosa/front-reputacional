@@ -28,12 +28,20 @@
 import { useState } from 'react';
 import { Acessos } from '@/paginas/Acessos';
 import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
+import { Alegacoes } from '@/paginas/Alegacoes';
 import { Dicionarios } from '@/paginas/Dicionarios';
 import { Biblioteca } from '@/paginas/Biblioteca';
 import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
-type Aba = 'acessos' | 'assuntos' | 'biblioteca' | 'cadastros' | 'porta_vozes' | 'dicionarios';
+type Aba =
+  | 'acessos'
+  | 'assuntos'
+  | 'biblioteca'
+  | 'cadastros'
+  | 'porta_vozes'
+  | 'alegacoes'
+  | 'dicionarios';
 
 //: A ORDEM SEGUE A DEPENDÊNCIA, e não o tamanho da tela.
 //:
@@ -47,6 +55,10 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'biblioteca', rotulo: 'Posicionamento' },
   { id: 'cadastros', rotulo: 'Instituições' },
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
+  //: Depois de Posicionamento, e é a ordem da dependência de novo: apurar uma
+  //: alegação é amarrá-la ao posicionamento que responde, e ele precisa
+  //: existir antes.
+  { id: 'alegacoes', rotulo: 'Consultas e alegações' },
   //: Por último: é o vocabulário que os outros usam, e quem chega aqui
   //: costuma vir de um filtro ou formulário que não tinha a opção.
   { id: 'dicionarios', rotulo: 'Dicionários' },
@@ -133,6 +145,7 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         {aba === 'cadastros' ? <CadastroDeInstituicoes /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
+        {aba === 'alegacoes' ? <Alegacoes /> : null}
         {aba === 'dicionarios' ? <Dicionarios /> : null}
       </div>
     </div>
