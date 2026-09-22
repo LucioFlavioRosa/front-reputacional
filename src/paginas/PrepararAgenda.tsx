@@ -27,6 +27,8 @@ import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
+import { alternar } from '@/dominio/recorte';
+import type { Recorte } from '@/dominio/recorte';
 import {
   nomeDaInstituicao,
   nomeDaPessoa,
@@ -110,7 +112,12 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
             catalogo={catalogo}
           />
           <BlocoDeAgendas agendas={interacoes} catalogo={catalogo} aoAbrirAgenda={aoAbrirAgenda} />
-          <BlocoDeGraficos agendas={interacoes} catalogo={catalogo} />
+          <BlocoDeGraficos
+            agendas={interacoes}
+            catalogo={catalogo}
+            recorte={recorte}
+            definirRecorte={definirRecorte}
+          />
         </div>
       )}
     </div>
@@ -345,7 +352,23 @@ function contarPorDicionario(
   }));
 }
 
-function BlocoDeGraficos({ agendas, catalogo }: { agendas: Interacao[]; catalogo: Catalogo }) {
+//: CLICAR NUM GRÁFICO FILTRA A PÁGINA INTEIRA — o mesmo gesto do Painel: a
+//: fatia, a coluna ou a linha clicada vira filtro do recorte, e materiais,
+//: agendas e os outros gráficos respondem. Clicar de novo desfaz
+//: (`alternar`), e o que está ativo fica marcado no gráfico.
+function BlocoDeGraficos({
+  agendas,
+  catalogo,
+  recorte,
+  definirRecorte,
+}: {
+  agendas: Interacao[];
+  catalogo: Catalogo;
+  recorte: Recorte;
+  definirRecorte: (recorte: Recorte) => void;
+}) {
+  const filtrar = <C extends keyof Recorte>(campo: C, valor: Recorte[C]) =>
+    definirRecorte(alternar(recorte, campo, valor));
   const climas = catalogo.dicionarios.climas;
   const desfechos = contarPorDicionario(agendas, catalogo.dicionarios.resultados, (a) => a.resultado);
   const esperado = contarPorDicionario(agendas, climas, (a) => a.clima_esperado);
@@ -376,37 +399,71 @@ function BlocoDeGraficos({ agendas, catalogo }: { agendas: Interacao[]; catalogo
   return (
     <Secao
       titulo="Como as conversas sobre o tema terminam"
-      subtitulo="Desfecho, clima esperado antes e registrado depois, e com quem se falou."
+      subtitulo="Desfecho, clima esperado antes e registrado depois, e com quem se falou. Clique numa fatia, coluna ou linha para filtrar a página; clique de novo para desfazer."
     >
       <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Desfecho
           </p>
-          <Rosca itens={desfechos} vazio="Nenhuma agenda com desfecho registrado." />
-          <Legenda itens={desfechos} centralizada />
+          <Rosca
+            itens={desfechos}
+            ativo={recorte.resultado}
+            aoClicar={(chave) => filtrar('resultado', chave)}
+            vazio="Nenhuma agenda com desfecho registrado."
+          />
+          <Legenda
+            itens={desfechos}
+            ativo={recorte.resultado}
+            aoClicar={(chave) => filtrar('resultado', chave)}
+            centralizada
+          />
         </Cartao>
 
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Clima: antes e depois
           </p>
-          <BarrasEmpilhadas colunas={antesEDepois} altura={150} formatarRotulo={(chave) => chave} />
-          <Legenda itens={registrado} centralizada />
+          {/* A fatia clicada filtra pelo CLIMA REGISTRADO, nas duas colunas:
+              o recorte não tem filtro de clima esperado, e "o que se esperava
+              tenso" e "o que foi tenso" se olham lado a lado no mesmo filtro. */}
+          <BarrasEmpilhadas
+            colunas={antesEDepois}
+            altura={150}
+            formatarRotulo={(chave) => chave}
+            aoClicarSegmento={(chave) => filtrar('clima', chave)}
+          />
+          <Legenda
+            itens={registrado}
+            ativo={recorte.clima}
+            aoClicar={(chave) => filtrar('clima', chave)}
+            centralizada
+          />
         </Cartao>
 
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Instituições mais frequentes
           </p>
-          <Ranking itens={porInstituicao} vazio="Nenhuma agenda com este tema." />
+          <Ranking
+            itens={porInstituicao}
+            ativo={recorte.entidade}
+            aoClicar={(chave) => filtrar('entidade', chave)}
+            vazio="Nenhuma agenda com este tema."
+          />
         </Cartao>
 
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Porta-vozes que mais conduziram
           </p>
-          <Ranking itens={porPortaVoz} cor="var(--turquesa-rio)" vazio="Nenhum porta-voz registrado." />
+          <Ranking
+            itens={porPortaVoz}
+            ativo={recorte.portaVoz}
+            aoClicar={(chave) => filtrar('portaVoz', chave)}
+            cor="var(--turquesa-rio)"
+            vazio="Nenhum porta-voz registrado."
+          />
         </Cartao>
       </div>
     </Secao>
