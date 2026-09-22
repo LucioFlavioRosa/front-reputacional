@@ -5,7 +5,6 @@ import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
-import { LinhaEmpilhada } from '@/graficos/LinhaEmpilhada';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -35,6 +34,7 @@ import {
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Frente, Interacao } from '@/dominio/tipos';
+import type { ColunaMensal } from '@/dominio/derivacoes';
 import {
   categoriasDeArea,
   categoriasPublicoMaisRecorrentes,
@@ -137,6 +137,21 @@ const FORMATADORES_DE_ROTULO: Record<Granularidade, (chave: string) => string> =
   mes: rotuloDoMes,
   semestre: rotuloDoSemestre,
 };
+
+//: Reativo na BASE da pilha, propositivo no topo — os códigos de clima não
+//: mudam (só o nome exibido), então a ordem não se perde num rename. A pilha
+//: desenha o primeiro segmento em cima, por isso a lista vai invertida.
+const ORDEM_DO_CLIMA = ['propositivo', 'neutro', 'tenso'];
+function comReativoNaBase(colunas: ColunaMensal[]): ColunaMensal[] {
+  const posicao = (chave: string) => {
+    const indice = ORDEM_DO_CLIMA.indexOf(chave);
+    return indice === -1 ? ORDEM_DO_CLIMA.length : indice;
+  };
+  return colunas.map((coluna) => ({
+    ...coluna,
+    segmentos: [...coluna.segmentos].sort((a, b) => posicao(a.chave) - posicao(b.chave)),
+  }));
+}
 
 export function Painel({
   aoAbrirFrente,
@@ -908,13 +923,17 @@ export function Painel({
           titulo="Clima das interações no tempo"
           subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
         >
-          <LinhaEmpilhada
-            colunas={derivado.clima}
-            altura={140}
+          {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
+              que varia é a fatia de cada clima — a pergunta aqui é "como o
+              clima se compõe mês a mês", não "quantas reuniões houve" (isso
+              a Volumetria acima já responde). O total continua no topo de
+              cada coluna e no tooltip, com a % ao lado de cada fatia. */}
+          <BarrasEmpilhadas
+            colunas={comReativoNaBase(derivado.clima)}
+            altura={150}
+            escala="percentual"
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
-            // Reativo sempre na base da área — os códigos de clima não mudam
-            // (só o nome exibido), então esta ordem não se perde num rename.
-            ordem={['tenso', 'neutro', 'propositivo']}
+            aoClicarSegmento={(chave) => definirRecorte(alternar(recorte, 'clima', chave))}
           />
           <Legenda
             itens={derivado.categoriasDeClima}
