@@ -3,30 +3,23 @@
  *  numa tela só, o que a companhia já diz sobre ele, o que aconteceu nas
  *  últimas conversas e como elas costumam terminar.
  *
- *  UM FILTRO SÓ, o tema. O Painel e a Base servem a quem analisa e quer
- *  cruzar; aqui quem chega tem uma reunião amanhã e uma pergunta: "o que eu
- *  preciso saber?". Cada filtro a mais é uma decisão a mais antes da
- *  resposta.
+ *  O TEMA É UM FILTRO DO RECORTE — o mesmo `tags` que a gaveta de filtros
+ *  usa. Escolher aqui é o mesmo que marcar o tema lá, e vice-versa; e todo
+ *  outro filtro do recorte (período, área, tipo de interação, instituição,
+ *  clima…) vale sobre os três blocos, como vale no Painel e na Base. Quem
+ *  quer "só as reuniões com a ANA sobre tarifa nos últimos 90 dias" marca
+ *  isso na gaveta e a tela responde.
  *
- *  INDEPENDENTE DO RECORTE DO PAINEL, de propósito. Quem prepara uma reunião
- *  quer o histórico inteiro do tema, e não o recorte de período ou frente que
- *  ficou marcado no Painel — por isso a tela busca as agendas dela mesma
- *  (`listarRecorteCompleto` com só o tema), e não lê `interacoes` do contexto.
- *
- *  OS BLOCOS REAPROVEITAM O QUE JÁ EXISTE: as referências vêm do catálogo
- *  (a biblioteca da Administração, só as ativas), os documentos das reuniões
- *  da mesma rota da Base, e os gráficos são a `Rosca`, as `BarrasEmpilhadas`
- *  e o `Ranking` do Painel — a leitura visual é a mesma que a pessoa já
- *  conhece de lá.
+ *  OS BLOCOS REAPROVEITAM O QUE JÁ EXISTE: as agendas são as `interacoes` do
+ *  contexto (o recorte já aplicado), as referências vêm do catálogo (a
+ *  biblioteca da Administração, só as ativas, filtradas pelos temas do
+ *  recorte), os documentos das reuniões da mesma rota da Base, e os gráficos
+ *  são a `Rosca`, as `BarrasEmpilhadas` e o `Ranking` do Painel — a leitura
+ *  visual é a mesma que a pessoa já conhece de lá.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import {
-  listarDocumentosDaReuniao,
-  listarRecorteCompleto,
-  urlDaVersao,
-  urlDoArquivo,
-} from '@/api/cliente';
+import { useEffect, useState } from 'react';
+import { listarDocumentosDaReuniao, urlDaVersao, urlDoArquivo } from '@/api/cliente';
 import { Botao, Cartao, Carregando, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
@@ -40,6 +33,7 @@ import {
   rotuloDeCodigo,
 } from '@/dominio/derivacoes';
 import type { Catalogo, ColunaMensal, ItemContado, Segmento } from '@/dominio/derivacoes';
+import type { Recorte } from '@/dominio/recorte';
 import type { DocumentoDaReuniao, Interacao, Referencia } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
@@ -47,95 +41,106 @@ const QUANTAS_AGENDAS = 8;
 const QUANTAS_NO_RANKING = 5;
 
 export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => void }) {
-  const { catalogo } = usePainel();
-  const [temaId, definirTemaId] = useState('');
-  //: O QUE FOI BUSCADO, E PARA QUAL TEMA. Guardar o tema ao lado do dado é o
-  //: que diz se ele ainda vale: trocou o tema, o dado antigo passa a ser
-  //: "carregando" sem precisar zerar estado dentro do efeito.
-  const [dados, definirDados] = useState<{
-    tema: number;
-    agendas: Interacao[];
-    documentos: DocumentoDaReuniao[];
+  const { catalogo, recorte, definirRecorte, interacoes, carregando, atualizando, erro } =
+    usePainel();
+
+  //: OS DOCUMENTOS VÊM DO SERVIDOR, pelo mesmo recorte — guardados ao lado do
+  //: recorte que os buscou, para "está velho" se descobrir comparando (o
+  //: mesmo desenho de `DocumentosDaReuniao`).
+  const [documentos, definirDocumentos] = useState<{
+    recorte: Recorte;
+    lista: DocumentoDaReuniao[];
   } | null>(null);
-  const [erro, definirErro] = useState<string | null>(null);
+  const [erroDosDocumentos, definirErroDosDocumentos] = useState<string | null>(null);
 
-  const tema = useMemo(
-    () => catalogo?.dicionarios.temas.find((t) => String(t.id) === temaId) ?? null,
-    [catalogo, temaId],
-  );
+  const temas = recorte.tags ?? [];
+  const temTema = temas.length > 0;
 
-  //: O TEMA MUDA: rebusca as agendas e os documentos, pelo NOME do tema —
-  //: é assim que o filtro `tags` do servidor os identifica.
   useEffect(
-    function buscarOTema() {
-      if (!tema) return;
+    function buscarDocumentosDoRecorte() {
+      if (!temTema) return;
       let vivo = true;
-      const recorte = { tags: [tema.nome] };
-      Promise.all([listarRecorteCompleto(recorte), listarDocumentosDaReuniao(recorte)])
-        .then(([resposta, docs]) => {
-          if (vivo) definirDados({ tema: tema.id, agendas: resposta.itens, documentos: docs });
+      listarDocumentosDaReuniao(recorte)
+        .then((lista) => {
+          if (vivo) definirDocumentos({ recorte, lista });
         })
         .catch((falha: Error) => {
-          if (vivo) definirErro(falha.message);
+          if (vivo) definirErroDosDocumentos(falha.message);
         });
       return () => {
         vivo = false;
       };
     },
-    [tema],
+    [recorte, temTema],
   );
 
   if (!catalogo) return <Carregando rotulo="Carregando o catálogo…" />;
 
-  const carregado = tema && dados?.tema === tema.id ? dados : null;
-  const referencias = tema
-    ? catalogo.referencias.filter((r) => r.ativo && r.temas.includes(tema.id))
-    : [];
+  const escolherTema = (nome: string) => {
+    definirErroDosDocumentos(null);
+    const proximo = { ...recorte };
+    if (nome) proximo.tags = [nome];
+    else delete proximo.tags;
+    definirRecorte(proximo);
+  };
+
+  const idsDosTemas = new Set(
+    catalogo.dicionarios.temas.filter((t) => temas.includes(t.nome)).map((t) => t.id),
+  );
+  const referencias = catalogo.referencias.filter(
+    (r) => r.ativo && r.temas.some((id) => idsDosTemas.has(id)),
+  );
+  const documentosDoRecorte = documentos?.recorte === recorte ? documentos.lista : null;
+  const rotuloDosTemas = temas.join(', ');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Secao
         titulo="Preparar agenda"
-        subtitulo="Escolha o tema: o que a companhia diz sobre ele, o que aconteceu nas últimas conversas e como elas terminam."
+        subtitulo="Escolha o tema: o que a companhia diz sobre ele, o que aconteceu nas últimas conversas e como elas terminam. Os demais filtros do recorte valem aqui."
       >
         <Cartao>
           <div style={{ maxWidth: 520 }}>
             <CampoQueCompleta
               rotulo="Tema"
-              valor={temaId}
-              aoEscolher={(valor) => {
-                definirErro(null);
-                definirTemaId(valor);
-              }}
-              opcoes={catalogo.dicionarios.temas.map((t) => ({
-                valor: String(t.id),
-                rotulo: t.nome,
-              }))}
+              valor={temas.length === 1 ? temas[0] : ''}
+              aoEscolher={escolherTema}
+              opcoes={catalogo.dicionarios.temas.map((t) => ({ valor: t.nome, rotulo: t.nome }))}
             />
+            {temas.length > 1 ? (
+              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                Vários temas marcados na gaveta de filtros: {rotuloDosTemas}. Escolher um aqui
+                substitui todos.
+              </p>
+            ) : null}
           </div>
         </Cartao>
       </Secao>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
+      {erroDosDocumentos ? <FaixaDeErro mensagem={erroDosDocumentos} /> : null}
 
-      {!tema ? (
+      {!temTema ? (
         <Vazio mensagem="Nenhum tema escolhido" dica="Escolha um tema acima para montar a preparação." />
-      ) : !carregado ? (
-        erro ? null : <Carregando rotulo={`Reunindo o que há sobre ${tema.nome}…`} />
+      ) : carregando ? (
+        <Carregando rotulo={`Reunindo o que há sobre ${rotuloDosTemas}…`} />
       ) : (
-        <>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 24,
+            opacity: atualizando ? 0.6 : 1,
+          }}
+        >
           <BlocoDeReferencias
-            tema={tema.nome}
+            tema={rotuloDosTemas}
             referencias={referencias}
-            documentos={carregado.documentos}
+            documentos={documentosDoRecorte}
           />
-          <BlocoDeAgendas
-            agendas={carregado.agendas}
-            catalogo={catalogo}
-            aoAbrirAgenda={aoAbrirAgenda}
-          />
-          <BlocoDeGraficos agendas={carregado.agendas} catalogo={catalogo} />
-        </>
+          <BlocoDeAgendas agendas={interacoes} catalogo={catalogo} aoAbrirAgenda={aoAbrirAgenda} />
+          <BlocoDeGraficos agendas={interacoes} catalogo={catalogo} />
+        </div>
       )}
     </div>
   );
@@ -156,7 +161,8 @@ function BlocoDeReferencias({
 }: {
   tema: string;
   referencias: Referencia[];
-  documentos: DocumentoDaReuniao[];
+  /** `null` enquanto o servidor não respondeu para este recorte. */
+  documentos: DocumentoDaReuniao[] | null;
 }) {
   return (
     <Secao
@@ -211,9 +217,11 @@ function BlocoDeReferencias({
 
         <Cartao>
           <p className="kicker" style={{ marginBottom: 10 }}>
-            Documentos das reuniões ({documentos.length})
+            Documentos das reuniões{documentos ? ` (${documentos.length})` : ''}
           </p>
-          {documentos.length === 0 ? (
+          {!documentos ? (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>Carregando…</p>
+          ) : documentos.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
               Nenhum documento de reunião com este tema.
             </p>
@@ -263,8 +271,8 @@ function BlocoDeAgendas({
   catalogo: Catalogo;
   aoAbrirAgenda: (id: string) => void;
 }) {
-  //: `listarRecorteCompleto` já vem em `-data_interacao`; a ordenação aqui
-  //: é só garantia, para a lista não depender do padrão do servidor.
+  //: O contexto já vem em `-data_interacao`; a ordenação aqui é só garantia,
+  //: para a lista não depender do padrão do servidor.
   const ultimas = [...agendas]
     .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao))
     .slice(0, QUANTAS_AGENDAS);
@@ -272,7 +280,7 @@ function BlocoDeAgendas({
   return (
     <Secao
       titulo={`Últimas agendas (${agendas.length} no total)`}
-      subtitulo="As mais recentes com este tema — clique para abrir a ficha."
+      subtitulo="As mais recentes no recorte — clique para abrir a ficha."
     >
       <Cartao>
         {ultimas.length === 0 ? (
