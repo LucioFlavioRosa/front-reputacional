@@ -70,10 +70,10 @@ export function BarrasEmpilhadas({
     coluna: ColunaMensal,
     chave: string,
   ) => { rotulo: string; valor: string }[];
-  /** Como ler `coluna.mes` em texto. Default `rotuloDoMes`, que é a única
-   *  leitura que `RaioXDaExcecao` precisa; o Painel passa outra quando a
-   *  coluna é semana ou semestre — o gráfico em si não sabe nem precisa saber
-   *  qual granularidade gerou a chave, só que existe um jeito de mostrá-la. */
+  /** Como ler `coluna.mes` em texto. Default `rotuloDoMes`; o Painel passa
+   *  outra quando a coluna é semana ou semestre, e a Preparar agenda passa a
+   *  identidade (as colunas são "Antes"/"Depois") — o gráfico em si não sabe
+   *  nem precisa saber o que gerou a chave, só que existe um jeito de mostrá-la. */
   formatarRotulo?: (chave: string) => string;
 }) {
   const [emFoco, setEmFoco] = useState<number | null>(null);

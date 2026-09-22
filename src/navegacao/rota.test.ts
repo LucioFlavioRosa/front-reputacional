@@ -51,6 +51,13 @@ describe('ler e escrever o caminho', () => {
     expect(lerCaminho('/frentes/imprensa')).toEqual({ destino: 'inicio' });
   });
 
+  it('as telas que saíram (Situação, Explorar) caem na capa', () => {
+    // Link salvo de antes de 22/09/2026: abre a capa em vez de uma tela morta;
+    // a consulta é lida pelo recorte, que não depende do caminho.
+    expect(lerCaminho('/situacao')).toEqual({ destino: 'inicio' });
+    expect(lerCaminho('/explorar')).toEqual({ destino: 'inicio' });
+  });
+
   it('a ficha e a cadeia abrem sobre a Base', () => {
     // Aberto a frio, o endereço de uma agenda precisa de uma tela embaixo do
     // modal — senão o fundo é branco e fechar não leva a lugar nenhum.
