@@ -1,7 +1,6 @@
-/** A seção de filtros: um bloco "Filtros Rápidos" sempre à vista, e um botão
- *  "Filtros Avançados" que expande o resto — um campo por linha, com todos os
- *  valores já em pílulas clicáveis. Sem menu escondido: escolher é UM clique,
- *  não dois.
+/** A seção de filtros: um botão só, "Filtro avançado", que expande um campo
+ *  por linha, com todos os valores já em pílulas clicáveis. Sem menu
+ *  escondido: escolher é UM clique, não dois.
  *
  *  Referência trazida pelo usuário: uma tela de controle de projeto onde
  *  cada campo (Aplicação, Fase, Status...) aparece como rótulo + pílulas
@@ -12,18 +11,19 @@
  *  `alternar()` usada em toda a tela (chip de frente, bolha do mapa, item de
  *  ranking). "Temas" e "Área(s)" são exceção: aceitam vários ao mesmo tempo.
  *
- *  A DIVISÃO RÁPIDOS/AVANÇADOS é curatorial, e não um cálculo (ex.: "os 5 mais
- *  usados"): Frente, Período, Relevância e Temas são os que quem pediu esta
- *  tela disse abrir toda vez; o resto — Esfera, Clima, Desfecho, Situação,
- *  Unidade, Instituição, Tipo de investidor, UF — é consultado com menos
- *  frequência e fica atrás do clique em "Filtros avançados".
+ *  ERA "Filtros rápidos" + "Filtros avançados", dois blocos retráteis
+ *  separados — os dois se juntaram num só. Período e Relevância, que
+ *  estavam nos "rápidos", ficam no TOPO da lista por pedido; Frente e Temas
+ *  (os outros dois campos dos "rápidos") entram logo depois, e o resto —
+ *  Esfera, Clima, Desfecho, Situação, Unidade, Instituição, Tipo de
+ *  investidor, UF — continua na mesma ordem de antes.
  *
- *  "ÁREA(S)" NÃO MORA EM NENHUM DOS DOIS GRUPOS NO PAINEL: lá ela é um bloco
+ *  "ÁREA(S)" NÃO MORA NO "Filtro avançado" NO PAINEL: lá ela é um bloco
  *  fixo e sempre visível, logo abaixo da barra "Síntese Executiva" (ver
  *  `campoDeAreaPorCategoria`/`GrupoDeCampo`, reaproveitados por `Painel.tsx`).
  *  Na Base — a outra tela que monta este componente — não existe
- *  essa barra para ancorar um bloco fixo, então lá ela continua acessível,
- *  só que dentro de "Filtros avançados" em vez de "Filtros rápidos".
+ *  essa barra para ancorar um bloco fixo, então lá ela continua acessível
+ *  dentro do "Filtro avançado".
  *
  *  LISTAS GRANDES (Instituição, Temas, UF) começam recolhidas em
  *  `LIMITE_PADRAO` itens, com uma pílula "+N" para abrir o resto. Sem isso, um
@@ -68,15 +68,15 @@ export interface CampoDeFiltro {
 }
 
 /** O campo "Área(s)" por CATEGORIA (`CATEGORIAS_DE_AREA`), não por área
- *  individual — mesma ideia de `alternarCategoriaDeArea` usada no clique da
- *  rosca de "Interações por áreas": marcar "RI & Oper. Financeiras" liga/
- *  desliga as duas áreas reais daquela categoria juntas.
+ *  individual — cada categoria hoje é uma área só (Comunicação, Mercado de
+ *  Capitais, Relações com Investidores, Relações Institucionais), mas uma
+ *  categoria pode somar mais de uma área real (ver `alternarCategoriaDeArea`):
+ *  marcar a categoria liga/desliga todas as áreas dela juntas.
  *
- *  EXPORTADA (e não uma das entradas fixas de `CAMPOS_RAPIDOS`/
- *  `CAMPOS_AVANCADOS`) porque tem DOIS pontos de montagem: aqui, dentro de
- *  "Filtros avançados" (Base); e em `Painel.tsx`, como bloco fixo
- *  sempre visível abaixo da barra "Síntese Executiva" — ver o comentário no
- *  topo do arquivo. */
+ *  EXPORTADA (e não uma das entradas fixas de `CAMPOS_AVANCADOS`) porque tem
+ *  DOIS pontos de montagem: aqui, dentro de "Filtro avançado" (Base); e em
+ *  `Painel.tsx`, como bloco fixo sempre visível abaixo da barra "Síntese
+ *  Executiva" — ver o comentário no topo do arquivo. */
 export function campoDeAreaPorCategoria(
   recorte: Recorte,
   definirRecorte: (recorte: Recorte) => void,
@@ -133,17 +133,9 @@ export function campoDeCategoriaPublico(
   };
 }
 
-/** O campo "Formato da interação" (`catalogo.dicionarios.formatos_interacao`
- *  — Mídia, Agenda de mercado, Agenda pública, Manifestação formal, Evento,
- *  Visita, Reunião), como bloco fixo do Painel — mesma ideia de
- *  `campoDeCategoriaPublico`: multisseleção com OR, sem indireção de grupo.
- *
- *  NÃO É `frente` (Imprensa/Entidades/Parceiros...): "formato" responde "que
- *  tipo de encontro foi esse", `frente` responde "quem é a contraparte" — as
- *  duas colunas são ortogonais, ver `0038_formato_interacao.sql`. */
 /** O campo Tema(s): multisseleção com OR, os nomes como valor (é assim que
- *  `tags` viaja para o servidor). Dois pontos de montagem: "Filtros rápidos"
- *  na gaveta e a faixa fixa da Preparar agenda, onde é o primeiro gatilho. */
+ *  `tags` viaja para o servidor). Dois pontos de montagem: "Filtro avançado"
+ *  e a faixa fixa do Painel/Preparar agenda, onde é um dos gatilhos. */
 export function campoDeTema(
   recorte: Recorte,
   definirRecorte: (recorte: Recorte) => void,
@@ -159,6 +151,14 @@ export function campoDeTema(
   };
 }
 
+/** O campo "Formato da interação" (`catalogo.dicionarios.formatos_interacao`
+ *  — Mídia, Agenda de mercado, Agenda pública, Manifestação formal, Evento,
+ *  Visita, Reunião), como bloco fixo do Painel — mesma ideia de
+ *  `campoDeCategoriaPublico`: multisseleção com OR, sem indireção de grupo.
+ *
+ *  NÃO É `frente` (Imprensa/Entidades/Parceiros...): "formato" responde "que
+ *  tipo de encontro foi esse", `frente` responde "quem é a contraparte" — as
+ *  duas colunas são ortogonais, ver `0038_formato_interacao.sql`. */
 export function campoDeFormatoInteracao(
   recorte: Recorte,
   definirRecorte: (recorte: Recorte) => void,
@@ -217,10 +217,9 @@ function ateEmDias(dias: number): string {
 
 export function PainelDeFiltros({ view }: { view: Destino }) {
   const { recorte, definirRecorte, catalogo } = usePainel();
+  //: RETRÁTIL: quem já escolheu o que precisa pode recolher para sobrar tela
+  //: para a tabela.
   const [abertoAvancados, definirAbertoAvancados] = useState(false);
-  //: RETRÁTIL COMO OS AVANÇADOS: quem já escolheu o que precisa pode recolher
-  //: para sobrar tela para a tabela.
-  const [abertoRapidos, definirAbertoRapidos] = useState(false);
 
   const definirOuAlternar = <C extends keyof Recorte>(
     campo: C,
@@ -234,15 +233,11 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     definirRecorte(proximo);
   };
 
-
-  const CAMPOS_RAPIDOS: CampoDeFiltro[] = [
-    {
-      chave: 'frente',
-      rotulo: 'Frente',
-      valorAtual: recorte.frente,
-      itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
-      aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
-    },
+  const CAMPOS_AVANCADOS: CampoDeFiltro[] = [
+    // PERÍODO E RELEVÂNCIA NO TOPO, por pedido — eram os dois primeiros
+    // campos de "Filtros rápidos", antes de ele se juntar com "Filtros
+    // avançados". Período em si não é um `CampoDeFiltro` (ver
+    // `CampoDePeriodo`, renderizado à parte, antes deste array).
     {
       chave: 'tier',
       rotulo: 'Relevância',
@@ -259,10 +254,15 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           (v) => Number(v),
         ),
     },
+    // OS OUTROS DOIS CAMPOS DE "Filtros rápidos" — mesma ordem de antes.
+    {
+      chave: 'frente',
+      rotulo: 'Frente',
+      valorAtual: recorte.frente,
+      itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
+      aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
+    },
     campoDeTema(recorte, definirRecorte, catalogo),
-  ].filter((campo) => campo.itens.length > 0);
-
-  const CAMPOS_AVANCADOS: CampoDeFiltro[] = [
     // NO PAINEL, "Área(s)" mora fixa abaixo da "Síntese Executiva" — ver o
     // comentário no topo do arquivo — e não duplica aqui.
     ...(view !== 'painel' ? [campoDeAreaPorCategoria(recorte, definirRecorte, catalogo ?? null)] : []),
@@ -352,63 +352,16 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
   const ativosContando = (campos: CampoDeFiltro[]) =>
     campos.filter((c) => (c.multiplo ? (c.selecionados?.length ?? 0) > 0 : c.valorAtual != null)).length;
 
-  const ativosAvancados = ativosContando(CAMPOS_AVANCADOS);
-  const ativosRapidos =
-    ativosContando(CAMPOS_RAPIDOS) +
+  // O PERÍODO SOMA AQUI TAMBÉM — não é um `CampoDeFiltro` (ver
+  // `CampoDePeriodo`), então não entra em `ativosContando`, mas ainda é um
+  // filtro ativo para quem olha o contador ao lado de "Filtro avançado".
+  const ativosAvancados =
+    ativosContando(CAMPOS_AVANCADOS) +
     (recorte.periodoPassado || recorte.periodoFuturo || recorte.de || recorte.ate ? 1 : 0);
 
   return (
-    <div className="sem-impressao" style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* -- Filtros Rápidos: retrátil como os avançados, mas nasce aberto --- */}
-      <div
-        style={{
-          border: '1px solid var(--borda)',
-          borderRadius: 'var(--r-card-int)',
-          background: 'var(--branco)',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => definirAbertoRapidos((v) => !v)}
-          aria-expanded={abertoRapidos}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 14px',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: 'var(--azul-mar)',
-            letterSpacing: '0.02em',
-          }}
-        >
-          <span>Filtros rápidos{ativosRapidos ? ` · ${ativosRapidos}` : ''}</span>
-          <SetaDaAegea aberto={abertoRapidos} />
-        </button>
-
-        {abertoRapidos ? (
-          <div
-            style={{
-              padding: '4px 14px 16px',
-              borderTop: '1px solid var(--borda)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-            }}
-          >
-            <CampoDePeriodo recorte={recorte} definirRecorte={definirRecorte} />
-            {CAMPOS_RAPIDOS.map((campo) => (
-              <GrupoDeCampo key={campo.chave} campo={campo} />
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {/* -- Filtros Avançados: atrás do clique, para não poluir a tela ----- */}
+    <div className="sem-impressao" style={{ marginBottom: 8 }}>
+      {/* -- Filtro avançado: atrás do clique, para não poluir a tela ------- */}
       {CAMPOS_AVANCADOS.length > 0 ? (
         <div
           style={{
@@ -426,16 +379,16 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '6px 14px',
+              padding: '4px 14px',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              fontSize: 12.5,
+              fontSize: 11.5,
               fontWeight: 700,
               color: 'var(--cinza-3)',
             }}
           >
-            <span>Filtros avançados{ativosAvancados ? ` · ${ativosAvancados}` : ''}</span>
+            <span>Filtro avançado{ativosAvancados ? ` · ${ativosAvancados}` : ''}</span>
             <SetaDaAegea aberto={abertoAvancados} />
           </button>
 
@@ -449,6 +402,9 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
                 gap: 16,
               }}
             >
+              {/* PERÍODO NO TOPO — por pedido, antes de Relevância (o
+                  primeiro item de `CAMPOS_AVANCADOS`) e de tudo o mais. */}
+              <CampoDePeriodo recorte={recorte} definirRecorte={definirRecorte} />
               {CAMPOS_AVANCADOS.map((campo) => (
                 <GrupoDeCampo key={campo.chave} campo={campo} />
               ))}
@@ -665,7 +621,7 @@ function CaixaDeDias({
   );
 }
 
-/** A seta que abre/fecha "Filtros avançados" — maior e na cor da marca, e não
+/** A seta que abre/fecha "Filtro avançado" — maior e na cor da marca, e não
  *  o `▾` pequeno e cinza de antes. O selo circular é o que dá peso ao gesto de
  *  clicar; a rotação de 180° continua sendo o que diz "já está aberto". */
 function SetaDaAegea({ aberto }: { aberto: boolean }) {
@@ -676,8 +632,8 @@ function SetaDaAegea({ aberto }: { aberto: boolean }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 22,
-        height: 22,
+        width: 18,
+        height: 18,
         borderRadius: '50%',
         background: 'var(--bg-trilho)',
         flexShrink: 0,
@@ -685,7 +641,7 @@ function SetaDaAegea({ aberto }: { aberto: boolean }) {
         transition: 'transform .18s',
       }}
     >
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
         <path
           d="M3.2 6 8 10.4 12.8 6"
           stroke="var(--azul-mar)"

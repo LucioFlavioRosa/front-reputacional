@@ -237,43 +237,47 @@ describe('resumoDeClimaPorFrente', () => {
 });
 
 describe('porArea', () => {
-  it('agrupa as áreas do dicionário nas 3 categorias fixas, mais as que o dicionário trouxer', () => {
+  it('agrupa as áreas do dicionário nas 4 categorias fixas, mais as que o dicionário trouxer', () => {
     const dados = [
       interacao({ areas: [1] }), // Comunicação
       interacao({ areas: [2] }), // Relações Institucionais
-      interacao({ areas: [3] }), // Operações Financeiras
+      interacao({ areas: [3] }), // Operações Financeiras -> "Mercado de Capitais"
       interacao({ areas: [5] }), // Relações com Investidores
     ];
     const resultado = porArea(dados, CATALOGO);
-    // 3 fixas + "Performance e Dados", que a fixture tem ativa e nenhuma
+    // 4 fixas + "Performance e Dados", que a fixture tem ativa e nenhuma
     // categoria cobre — ver `categoriasDeArea`.
-    expect(resultado).toHaveLength(4);
+    expect(resultado).toHaveLength(5);
     expect(resultado.find((c) => c.rotulo === 'Performance e Dados')!.total).toBe(0);
     expect(resultado.find((c) => c.rotulo === 'Comunicação')!.total).toBe(1);
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.total).toBe(1);
-    // Operações Financeiras (3) + Relações com Investidores (5) somam na
-    // mesma categoria — 1 interação de cada, 2 no total da categoria.
-    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(2);
+    // Operações Financeiras (3) e Relações com Investidores (5) são
+    // categorias separadas agora — cada uma soma 1, não mais uma composta.
+    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.total).toBe(1);
   });
 
-  it('uma interação com as duas áreas da categoria composta conta uma vez só', () => {
+  it('uma interação com áreas de duas categorias diferentes conta em cada uma', () => {
     const dados = [interacao({ areas: [3, 5] })]; // Operações Financeiras + RI, mesma interação
     const resultado = porArea(dados, CATALOGO);
-    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.total).toBe(1);
   });
 
   it('cada categoria tem a cor oficial fixa, não por posição no ranking', () => {
-    // Só a categoria composta tem interação — se a cor fosse por posição no
-    // ranking (a antiga PALETA_DE_AREAS[indice]), ela sairia na 1ª cor.
+    // Só "Relações com Investidores" tem interação — se a cor fosse por
+    // posição no ranking (a antiga PALETA_DE_AREAS[indice]), ela sairia na
+    // 1ª cor.
     const resultado = porArea([interacao({ areas: [5] })], CATALOGO);
-    expect(resultado.find((c) => c.rotulo === 'RI & Oper. Financeiras')!.cor).toBe('#A11FFF');
+    expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.cor).toBe('#A11FFF');
+    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.cor).toBe('#FE952B');
     expect(resultado.find((c) => c.rotulo === 'Comunicação')!.cor).toBe('#E12379');
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.cor).toBe('#17E3CB');
   });
 
-  it('uma área ativa fora das 3 fixas conta na categoria própria; a desativada não conta', () => {
+  it('uma área ativa fora das 4 fixas conta na categoria própria; a desativada não conta', () => {
     // id 4 = "Performance e Dados": ATIVA no dicionário da fixture, fora das
-    // 3 fixas — vira categoria própria e conta lá. Desativada de verdade, ela
+    // 4 fixas — vira categoria própria e conta lá. Desativada de verdade, ela
     // nem chega ao dicionário, e aí não conta em lugar nenhum.
     const dados = [interacao({ areas: [4] }), interacao({ areas: [1] })];
     const resultado = porArea(dados, CATALOGO);
@@ -753,27 +757,28 @@ describe('temasMaisRecorrentes', () => {
 });
 
 describe('categoriasDeArea', () => {
-  it('as três fixas, mais uma por área ativa que nenhuma delas cobre', () => {
+  it('as quatro fixas, mais uma por área ativa que nenhuma delas cobre', () => {
     // "Performance e Dados" está no dicionário da fixture e em categoria
     // nenhuma: vira categoria própria, em vez de ser contada em lugar nenhum.
     const rotulos = categoriasDeArea(CATALOGO).map((c) => c.rotulo);
     expect(rotulos).toEqual([
       'Comunicação',
+      'Mercado de Capitais',
+      'Relações com Investidores',
       'Relações Institucionais',
-      'RI & Oper. Financeiras',
       'Performance e Dados',
     ]);
     expect([...idsPorCategoriaDeArea(CATALOGO).get('Performance e Dados')!]).toEqual([4]);
   });
 
-  it('sem área extra, são só as três', () => {
-    const soAsTres = montarCatalogo(
+  it('sem área extra, são só as quatro', () => {
+    const soAsQuatro = montarCatalogo(
       { ...DICIONARIOS, areas_pessoa: DICIONARIOS.areas_pessoa.filter((a) => a.id !== 4) },
       INSTITUICOES,
       INTERLOCUTORES,
       PESSOAS,
     );
-    expect(categoriasDeArea(soAsTres)).toHaveLength(3);
+    expect(categoriasDeArea(soAsQuatro)).toHaveLength(4);
   });
 });
 

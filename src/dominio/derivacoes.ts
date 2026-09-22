@@ -237,18 +237,21 @@ export interface CategoriaDeArea {
   cor: string;
 }
 
-//: AS TRÊS CATEGORIAS QUE O PAINEL TRATA COMO "área interna" — nomeadas, e
+//: AS QUATRO CATEGORIAS QUE O PAINEL TRATA COMO "área interna" — nomeadas, e
 //: não "as N primeiras do dicionário": uma área pode ganhar ou perder linha
 //: (migrations 0029/0032/0033) sem que a tela reaja sozinha trocando quais
-//: categorias existem. UM LUGAR SÓ: usada tanto pelas 3 tabelas fixas do
+//: categorias existem. UM LUGAR SÓ: usada tanto pelas 4 tabelas fixas do
 //: Painel (`interacoesPorAreaFixa`) quanto pela rosca/histórico de
 //: "Interações por áreas" (`porArea`/`climaPorArea`) — antes cada um tinha a
 //: própria lista, e podiam divergir sem ninguém perceber.
 //:
-//: A TERCEIRA SOMA DUAS LINHAS DO DICIONÁRIO — mesmo padrão de
-//: `institucionais` em `kpis()` (governo + parceiros): "Relações com
-//: Investidores" e "Operações Financeiras" são áreas afins e pequenas
-//: separadas; juntas rendem um volume de verdade.
+//: "MERCADO DE CAPITAIS" É SÓ O RÓTULO — o dicionário continua chamando essa
+//: linha de "Operações Financeiras" (`codigo: 'operacoes_financeiras'`); o
+//: nome de exibição mudou por pedido, sem precisar de migration no back,
+//: mesmo padrão de `governo` → "Entidades" em `dominio/frentes.ts`.
+//: ANTES ERAM TRÊS CATEGORIAS: "Relações com Investidores" e "Operações
+//: Financeiras" viviam somadas numa só ("RI & Oper. Financeiras"); a pedido,
+//: separaram em duas fixas.
 //:
 //: CORES DA PALETA OFICIAL DA AEGEA, FIXAS POR CATEGORIA — não por posição
 //: no ranking: com `PALETA_DE_AREAS[indice]` a cor de "Comunicação" mudava
@@ -257,15 +260,16 @@ export interface CategoriaDeArea {
 //: gráficos do sistema, e repeti-la aqui confundiria as duas coisas.
 export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
   { rotulo: 'Comunicação', nomes: ['Comunicação'], cor: '#E12379' }, // Magenta Pitaia
+  { rotulo: 'Mercado de Capitais', nomes: ['Operações Financeiras'], cor: '#FE952B' }, // Laranja Baía
+  {
+    rotulo: 'Relações com Investidores',
+    nomes: ['Relações com Investidores'],
+    cor: '#A11FFF', // Roxo Açaí
+  },
   {
     rotulo: 'Relações Institucionais',
     nomes: ['Relações Institucionais'],
     cor: '#17E3CB', // Turquesa Rio
-  },
-  {
-    rotulo: 'RI & Oper. Financeiras',
-    nomes: ['Relações com Investidores', 'Operações Financeiras'],
-    cor: '#A11FFF', // Roxo Açaí
   },
 ];
 
@@ -412,11 +416,11 @@ export function topInstituicoesPorTier(
   return resultado;
 }
 
-/** As três categorias de área interna (`CATEGORIAS_DE_AREA`), com quantas
+/** As quatro categorias de área interna (`CATEGORIAS_DE_AREA`), com quantas
  *  interações cada uma tem neste recorte — MULTIVALORADO: uma interação com
  *  áreas de duas categorias diferentes soma nas duas; dentro de uma mesma
- *  categoria composta ("RI & Oper. Financeiras"), conta uma vez só, mesmo
- *  tocando as duas áreas dela — o mesmo critério OR de
+ *  categoria (se algum dia voltar a somar mais de uma área real), conta uma
+ *  vez só, mesmo tocando as duas áreas dela — o mesmo critério OR de
  *  `interacoesPorAreaFixa`.
  *
  *  Uma área sem categoria correspondente (desativada depois de a interação

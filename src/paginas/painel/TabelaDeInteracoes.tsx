@@ -53,13 +53,13 @@ const COLUNAS_COMPLETAS = [
   'Clima',
 ];
 
-//: A VERSÃO REDUZIDA serve às três tabelas de área fixa do Painel: a área já
-//: está no título do cartão (é fixa, não uma coluna), Stakeholder e
-//: Relevância saem para a lista caber lado a lado com as outras duas sem
+//: A VERSÃO REDUZIDA serve às quatro tabelas de área fixa do Painel: a área
+//: já está no título do cartão (é fixa, não uma coluna), Stakeholder e
+//: Relevância saem para a lista caber lado a lado com as outras sem
 //: rolagem horizontal. CLIMA TAMBÉM SAI COMO COLUNA — a linha inteira já
 //: pinta pela cor do clima (`FUNDO_DA_LINHA_POR_CLIMA`), então o selo
 //: repetiria em texto uma informação que a cor já deu, só para ocupar um
-//: espaço que as três tabelas lado a lado não sobram.
+//: espaço que as tabelas lado a lado não sobram.
 const COLUNAS_REDUZIDAS = ['Data', 'Instituição', 'Pauta'];
 
 //: SÓ DATA E INSTITUIÇÃO, por pedido — mais antigo/mais novo e A-Z/Z-A. As
@@ -78,7 +78,7 @@ const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
   tenso: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
 };
 
-//: A LINHA INTEIRA das três tabelas de área fixa pinta pelo clima — mesma
+//: A LINHA INTEIRA das quatro tabelas de área fixa pinta pelo clima — mesma
 //: técnica de `Barra` (`color-mix` com o branco, a uma fração baixa): a cor
 //: crua do selo (feita para contraste de texto em cima dela) é forte demais
 //: pra virar fundo de linha inteira; diluída, dá para ler o texto normal por
@@ -98,8 +98,8 @@ const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
 //: leitura da esquerda-pra-direita do resto do produto (ver `BarraDivergente`).
 const CODIGOS_DE_CLIMA_NA_LEGENDA = ['propositivo', 'neutro', 'tenso'] as const;
 
-/** Explica o que a cor de fundo de cada linha das três tabelas de área
- *  significa — uma legenda só, acima das três, não uma por tabela.
+/** Explica o que a cor de fundo de cada linha das quatro tabelas de área
+ *  significa — uma legenda só, acima delas, não uma por tabela.
  *
  *  O RÓTULO VEM DO DICIONÁRIO (`rotuloDeCodigo`), a mesma fonte que o selo de
  *  clima de cada linha já usa (`SeloDeClima` abaixo): "Proativo"/"Reativo",
@@ -139,13 +139,13 @@ export function LegendaDeClimaPorArea({ catalogo }: { catalogo: Catalogo }) {
   );
 }
 
-//: CÉLULA MAIS APERTADA, só para a versão reduzida (as três tabelas lado a
+//: CÉLULA MAIS APERTADA, só para a versão reduzida (as quatro tabelas lado a
 //: lado) — a completa continua com o espaçamento de sempre.
 const CELULA_COMPACTA = { padding: '6px 8px' };
 
 //: A PAUTA DA VERSÃO REDUZIDA quebra em até DUAS linhas antes de truncar —
 //: uma só (a versão completa, `overflow+ellipsis+nowrap` de sempre) cortava
-//: pauta longa cedo demais nas três tabelas lado a lado, que já têm menos
+//: pauta longa cedo demais nas quatro tabelas lado a lado, que já têm menos
 //: largura. `minHeight` reserva o espaço das duas linhas mesmo numa pauta
 //: curta: é o que deixa a ALTURA DA LINHA FIXA — sem isto, cada linha da
 //: tabela teria uma altura diferente dependendo do tamanho da própria pauta.
@@ -204,10 +204,11 @@ export function TabelaDeInteracoes({
    *  Base. A linha do tempo, dentro do popup, leva até ela quando alguém
    *  clica numa das outras interações do mesmo ente público. */
   aoAbrirFicha: (id: string) => void;
-  /** Título do cartão — as três tabelas de área fixa usam o nome da área. */
+  /** Título do cartão — as quatro tabelas de área fixa usam o nome da área. */
   titulo?: string;
-  /** 'reduzidas' tira Stakeholder e Relevância — usado pelas três tabelas de
-   *  área fixa, lado a lado, onde a área já está dita no título do cartão. */
+  /** 'reduzidas' tira Stakeholder e Relevância — usado pelas quatro tabelas
+   *  de área fixa, lado a lado, onde a área já está dita no título do
+   *  cartão. */
   colunas?: 'completas' | 'reduzidas';
 }) {
   const reduzida = colunas === 'reduzidas';
@@ -389,7 +390,7 @@ function RodapeDePaginacao({
   pagina: number;
   totalDePaginas: number;
   porPagina: number;
-  /** Teto de registros por página — as três tabelas de área fixa o usam
+  /** Teto de registros por página — as quatro tabelas de área fixa o usam
    *  (lado a lado, sem rolagem horizontal); a tabela completa não tem. */
   maxPorPagina?: number;
   aoMudarPagina: (pagina: number) => void;

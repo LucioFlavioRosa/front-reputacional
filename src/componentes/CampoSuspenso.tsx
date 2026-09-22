@@ -97,10 +97,14 @@ export function SetaSuspensa({ aberto }: { aberto: boolean }) {
   );
 }
 
+//: MAIOR ÊNFASE que o resto da faixa de propósito — são os filtros que mais
+//: amarram com o Painel (ver `campoDeAreaPorCategoria`), e precisavam se
+//: destacar mais do botão fino de "Filtro avançado" acima, não competir em
+//: pé de igualdade com ele.
 const ESTILO_DO_GATILHO: CSSProperties = {
   width: '100%',
-  height: 34,
-  padding: '0 12px',
+  height: 38,
+  padding: '0 14px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -109,8 +113,8 @@ const ESTILO_DO_GATILHO: CSSProperties = {
   border: '1px solid transparent',
   borderRadius: 'var(--r-btn)',
   color: 'var(--cinza-4)',
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: 14,
+  fontWeight: 700,
   cursor: 'pointer',
 };
 

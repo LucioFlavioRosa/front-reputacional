@@ -1,7 +1,7 @@
 /** O período como uma trilha arrastável — DOIS cabos, um para cada lado de
  *  "hoje": arrastar o esquerdo encurta/alonga o passado, o direito faz o
  *  mesmo com o futuro. Complementa (não substitui) os atalhos de "Período"
- *  dentro de "Filtros rápidos" — aquele é para quem já sabe o número (30/60/
+ *  dentro de "Filtro avançado" — aquele é para quem já sabe o número (30/60/
  *  90...), este é para quem quer "mais um pouco" ou "bem menos", olhando o
  *  resultado mudar em tempo real.
  *

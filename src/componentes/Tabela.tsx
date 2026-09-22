@@ -48,7 +48,7 @@ export function Tabela({
   /** Até onde a lista cresce antes de rolar por dentro. */
   altura?: string;
   /** Cabeçalho mais baixo e fonte um pouco menor — para tabelas que dividem
-   *  a largura do cartão com outras, lado a lado (as três tabelas de área
+   *  a largura do cartão com outras, lado a lado (as quatro tabelas de área
    *  fixa do Painel). As células continuam com o padrão de sempre; quem
    *  chama ajusta o próprio `<td>` se precisar do mesmo aperto. */
   compacta?: boolean;
@@ -62,7 +62,7 @@ export function Tabela({
    *  CONTEÚDO — um nome de instituição comprido empurra a coluna, a tabela, e
    *  o cartão inteiro além da largura que o layout reservou para ele. Numa
    *  tabela sozinha isso só rola por dentro (`.rolagem-interna`); lado a lado
-   *  com outras num grid (as três tabelas de área fixa do Painel), o cartão
+   *  com outras num grid (as quatro tabelas de área fixa do Painel), o cartão
    *  que cresce pelo conteúdo aperta a largura dos vizinhos — arrastar uma
    *  coluna parecia "mexer no tamanho das outras tabelas", mas o problema
    *  era a tabela em `auto` nunca ter tido uma largura própria, com ou sem
@@ -263,7 +263,7 @@ export function Linha({
 }: {
   aoClicar?: () => void;
   titulo?: string;
-  /** Fundo próprio da linha — as três tabelas de área fixa do Painel pintam
+  /** Fundo próprio da linha — as quatro tabelas de área fixa do Painel pintam
    *  a linha inteira pelo clima. O hover continua por cima (`bg-hover`);
    *  tirar o mouse RESTAURA este fundo, e não o branco de sempre. */
   estilo?: CSSProperties;

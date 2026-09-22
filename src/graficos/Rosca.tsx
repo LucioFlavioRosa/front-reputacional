@@ -79,7 +79,7 @@ export function Rosca({
 
   return (
     // LARGURA TRAVADA NO TAMANHO DO CÍRCULO: sem isto, uma legenda com um
-    // rótulo longo (uma área como "RI + Oper. Financeiras", por exemplo)
+    // rótulo longo (uma área como "Relações com Investidores", por exemplo)
     // esticaria a coluna inteira em vez de truncar em reticências — e num
     // cartão com a rosca lado a lado de outra coisa (ver "Interações por
     // áreas" no Painel), isso empurra o vizinho para a linha de baixo.

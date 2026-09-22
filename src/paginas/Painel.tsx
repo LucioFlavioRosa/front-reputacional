@@ -13,6 +13,7 @@ import {
   campoDeAreaPorCategoria,
   campoDeCategoriaPublico,
   campoDeFormatoInteracao,
+  campoDeTema,
 } from '@/componentes/PainelDeFiltros';
 import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
@@ -32,6 +33,7 @@ import {
   limparAreas,
   limparCategoriaPublico,
   limparFormatoInteracao,
+  limparTags,
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
 import type { Interacao } from '@/dominio/tipos';
@@ -185,7 +187,7 @@ export function Painel({
   const derivado = useMemo(() => {
     if (!catalogo) return null;
 
-    //: Resolvido uma vez aqui, reaproveitado nas 3 tabelas fixas de área
+    //: Resolvido uma vez aqui, reaproveitado nas 4 tabelas fixas de área
     //: (abaixo) e no clique/destaque da rosca de área (na renderização).
     const idsPorRotulo = idsPorCategoriaDeArea(catalogo);
 
@@ -329,10 +331,10 @@ export function Painel({
       scorePorCategoriaPublico: scorePorCategoriaPublico(interacoes, catalogo, 5, categoriaPublicoExtras),
       // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
-      // aparecer em mais de uma das três tabelas, exatamente como o filtro
-      // "Área" do resto do Painel já trata OR entre áreas. Dentro de uma
-      // categoria composta (RI & Oper. Financeiras) o critério também é OR:
-      // basta a interação ter QUALQUER uma das áreas somadas para entrar.
+      // aparecer em mais de uma das quatro tabelas, exatamente como o filtro
+      // "Área" do resto do Painel já trata OR entre áreas. Se uma categoria
+      // algum dia voltar a somar mais de uma área real, o critério continua
+      // OR: basta a interação ter QUALQUER uma das áreas dela para entrar.
       interacoesPorAreaFixa: categoriasDeArea(catalogo).map(({ rotulo }) => {
         const ids = idsPorRotulo.get(rotulo)!;
         return {
@@ -473,9 +475,9 @@ export function Painel({
 
       {/* FAIXA FIXA DE FILTROS — ACIMA de "Síntese Executiva" de propósito:
           é o primeiro controle da tela, antes de qualquer número derivado
-          dele. Versão COMPACTA: Área(s), Tipo de Interação
-          e Tipo de Público viraram GATILHOS fechados numa linha só
-          (`CampoSuspenso`), não mais três fileiras de pílulas sempre
+          dele. Versão COMPACTA: Área(s), Tipo de Interação, Tipo de
+          Público e Tema viraram GATILHOS fechados numa linha só
+          (`CampoSuspenso`), não mais fileiras de pílulas sempre
           abertas — aquela versão crescia demais em altura e cobria a tela
           toda vez que descia junto. O painel com as pílulas de cada campo só
           existe enquanto aberto, sobrepondo o conteúdo abaixo (`position:
@@ -483,16 +485,16 @@ export function Painel({
 
           Período virou um segundo cabeçalho retrátil embaixo do primeiro,
           mesma ideia — fechado por padrão, abre só quando alguém quer
-          arrastar. Referência: protótipo trazido pelo usuário (faixa
-          turquesa "Filtros:" com três caixas + barra clara "Período").
+          arrastar. Referência original: protótipo trazido pelo usuário
+          (faixa turquesa "Filtros:" com caixas + barra clara "Período").
           A faixa em si é `FaixaDeFiltros`, compartilhada com a Preparar
           agenda. */}
       <FaixaDeFiltros
         rodape={
           <>
-            {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
+            {/* PERÍODO — retrátil, mesma lógica de "Filtro avançado"
                 (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
-                espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
+                espaço. Complementa os atalhos de "Filtro avançado" (30/60/90...)
                 para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
             <button
               type="button"
@@ -543,7 +545,7 @@ export function Painel({
             Manifestação formal/Evento/Visita/Reunião — `0038_formato_
             interacao.sql`), NÃO `frente`: responde "que tipo de encontro
             foi esse", pergunta ortogonal a "quem é a contraparte" —
-            `frente` continua filtrável em "Filtros rápidos". */}
+            `frente` continua filtrável em "Filtro avançado". */}
         <CampoSuspenso
           campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
           aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
@@ -551,6 +553,13 @@ export function Painel({
         <CampoSuspenso
           campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
           aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+        />
+        {/* QUARTO GATILHO — `campoDeTema` é o mesmo usado pela faixa da
+            Preparar agenda; só o rótulo muda aqui (era "Temas", por pedido
+            vira "Filtrar por Tema"), o campo do recorte é o mesmo (`tags`). */}
+        <CampoSuspenso
+          campo={{ ...campoDeTema(recorte, definirRecorte, catalogo), rotulo: 'Filtrar por Tema' }}
+          aoLimpar={() => definirRecorte(limparTags(recorte))}
         />
       </FaixaDeFiltros>
 
@@ -685,14 +694,17 @@ export function Painel({
         />
       </Secao>
 
-      {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — três tabelas fixas lado a
-          lado, uma por categoria de área (ver `CATEGORIAS_DE_AREA` em
-          `dominio/derivacoes.ts`). MESMO CARTÃO de "Interações mais
-          recentes" (`TabelaDeInteracoes`), só com menos colunas: a área já
-          está dita no título, então Área(s) sairia repetindo o óbvio, e
-          Stakeholder/Relevância saem para as três caberem lado a lado sem
-          rolagem horizontal. */}
-      <div className="grade grade--3" style={{ gap: 16 }}>
+      {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — quatro tabelas fixas, 2×2
+          (duas em cima, duas embaixo — `grade--2`, não `grade--3`: eram três
+          categorias, agora são quatro), uma por categoria de área (ver
+          `CATEGORIAS_DE_AREA` em `dominio/derivacoes.ts`, que já define a
+          ordem: Comunicação/Mercado de Capitais na primeira linha, Relações
+          com Investidores/Relações Institucionais na segunda). MESMO CARTÃO
+          de "Interações mais recentes" (`TabelaDeInteracoes`), só com menos
+          colunas: a área já está dita no título, então Área(s) sairia
+          repetindo o óbvio, e Stakeholder/Relevância saem para as quatro
+          caberem em duas colunas sem rolagem horizontal. */}
+      <div className="grade grade--2" style={{ gap: 16 }}>
         {derivado.interacoesPorAreaFixa.map(({ nome, interacoes: interacoesDaArea }) => (
           <TabelaDeInteracoes
             key={nome}
