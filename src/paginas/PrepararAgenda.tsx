@@ -68,6 +68,10 @@ import { usePainel } from '@/estado/painel';
 
 const QUANTAS_AGENDAS = 8;
 
+/** Quantos e-mails a preparação mostra. Menos que as agendas: aqui eles são
+ *  contexto, e não o assunto da tela. */
+const QUANTAS_CONSULTAS_NA_PREPARACAO = 5;
+
 export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => void }) {
   const { catalogo, recorte, definirRecorte, interacoes, carregando, atualizando, erro } =
     usePainel();
@@ -142,6 +146,7 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
             consultas={consultasDe(interacoes)}
             alegacoes={catalogo.alegacoes}
             catalogo={catalogo}
+            aoAbrirAgenda={aoAbrirAgenda}
           />
           <BlocoDeGraficos
             agendas={interacoes}
@@ -347,10 +352,12 @@ function BlocoDeConsultasDoTema({
   consultas,
   alegacoes,
   catalogo,
+  aoAbrirAgenda,
 }: {
   consultas: Interacao[];
   alegacoes: Alegacao[];
   catalogo: Catalogo;
+  aoAbrirAgenda: (id: string) => void;
 }) {
   if (!consultas.length) return null;
 
@@ -386,15 +393,41 @@ function BlocoDeConsultasDoTema({
           </ul>
         ) : null}
 
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-          {consultas.length} {consultas.length === 1 ? 'consulta recebida' : 'consultas recebidas'}
-          {' de '}
-          {new Set(consultas.map((c) => c.instituicao_id)).size} instituições:{' '}
-          {[...new Set(consultas.map((c) => nomeDaInstituicao(catalogo, c.instituicao_id)))]
-            .slice(0, 5)
-            .join(', ')}
-          .
+        {/* OS ÚLTIMOS REGISTROS, e não só a contagem: antes de entrar na
+            reunião interessa ler o que de fato perguntaram, com as palavras
+            de quem perguntou. A lista agregada acima responde "o que está
+            circulando"; esta responde "o que chegou". */}
+        <p className="kicker" style={{ margin: '0 0 8px' }}>
+          Últimos e-mails ({consultas.length} no recorte)
         </p>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {[...consultas]
+            .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao))
+            .slice(0, QUANTAS_CONSULTAS_NA_PREPARACAO)
+            .map((consulta) => (
+              <li
+                key={consulta.id}
+                style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}
+              >
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+                    {nomeDaInstituicao(catalogo, consulta.instituicao_id)}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+                    {dataCompleta(consulta.data_interacao)}
+                  </span>
+                  <Botao variante="fantasma" aoClicar={() => aoAbrirAgenda(consulta.id)}>
+                    Abrir
+                  </Botao>
+                </div>
+                {consulta.consulta?.teor ? (
+                  <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '2px 0 0' }}>
+                    {consulta.consulta.teor}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+        </ul>
       </Cartao>
     </Secao>
   );
