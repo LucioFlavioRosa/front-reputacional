@@ -29,6 +29,9 @@ export function FaixaDeFiltros({ children, rodape }: { children: ReactNode; roda
       <div
         style={{
           display: 'flex',
+          // Quatro gatilhos de 150px de mínimo não cabem em tela estreita:
+          // quebram linha, em vez de estourar a faixa na horizontal.
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: 14,
           background: 'var(--turquesa-rio)',

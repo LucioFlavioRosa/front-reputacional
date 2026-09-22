@@ -24,10 +24,8 @@
   --cinza-1: #E2E5F0;
   /* ESCURECIDO. #8C91A4 dava 3,13:1 sobre branco — abaixo do mínimo 4,5:1 de
      AA — e é a cor de texto em dezenas de lugares. #6B7186 dá 4,7:1 e continua
-     na família da marca.
-     Os tokens de GRÁFICO que valiam o mesmo cinza (--frente-interna,
-     --clima-neutro) ficaram como estavam: ali a cor não carrega texto, e o
-     critério de contraste de leitura não se aplica. */
+     na família da marca. As cores de GRÁFICO não seguem esta regra: ali a cor
+     não carrega texto, e o critério de contraste de leitura não se aplica. */
   --cinza-2: #6B7186;
   --cinza-3: #44495C;
   --cinza-4: #191B23;
@@ -47,30 +45,9 @@
   --erro-bg: #FFE7E8;    --erro-fg: #B32328;
   --sobre-turquesa: #00312C;
 
-  /* Frentes */
-  --frente-imprensa: #0027BD;
-  --frente-governo: #17E3CB;
-  --frente-parceiros: #A11FFF;
-  --frente-eventos: #FE952B;
-  --frente-investidores: #DF2378;  /* 1% mais escuro que o Magenta Pitaia: ver dominio/frentes.ts */
-  --frente-legislativo: #F8DC00;
-  --frente-interna: #B0B9C8;
-
-  /* Clima */
-  --clima-propositivo: #17E3CB;
-  --clima-neutro: #94979b;
-  --clima-tenso: #FF5C60;
-
-  /* Resultado */
-  --res-avancou: #17E3CB;
-  --res-mantido: #0027BD;
-  --res-recuou: #FF5C60;
-  --res-sem-definicao: #D5DAEA;
-
-  /* Status por grupo */
-  --grupo-resolvido: #17E3CB;
-  --grupo-aberto: #FE952B;
-  --grupo-declinado: #FF5C60;
+  /* As cores de frente, clima, desfecho e situação NÃO moram aqui: vêm do
+     dicionário (`cor_hex`) e de `CORES_DE_FRENTE` em `dominio/frentes.ts`,
+     para a Administração e o gráfico concordarem sem um terceiro lugar. */
 
   /* Tipografia */
   --font-sans: "DM Sans", Arial, sans-serif;

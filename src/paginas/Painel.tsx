@@ -445,12 +445,14 @@ export function Painel({
             cor={CORES_DE_FRENTE.legislativo}
             aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'legislativo'))}
           />
+          {/* SEM CLIQUE, de propósito: este número soma DUAS frentes (governo +
+              parceiros) e o recorte filtra UMA. Clicar abriria um recorte menor
+              que o número clicado — os outros cinco batem 1:1 com a frente. */}
           <Kpi
             rotulo="Interações institucionais"
             valor={numero(kpis.institucionais)}
             dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
             cor={CORES_DE_FRENTE.governo}
-            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'governo'))}
           />
           <Kpi
             rotulo={ROTULOS_DE_FRENTE.bancos_credores}

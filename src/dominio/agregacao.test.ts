@@ -10,20 +10,9 @@ import { montarCatalogo } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Dicionarios, Interacao, PessoaAegea } from '@/dominio/tipos';
 
-const DICIONARIOS = {
-  status: [
-    { id: 1, codigo: 'solicitado', rotulo: 'Solicitado', grupo: 'aberto', ordem: 0 },
-    { id: 2, codigo: 'confirmada', rotulo: 'Aceito', grupo: 'aberto', ordem: 1 },
-  ],
-  resultados: [
-    { id: 1, codigo: 'avancou', rotulo: 'Avançou', cor_hex: '#0f0' },
-    { id: 2, codigo: 'recuou', rotulo: 'Recuou', cor_hex: '#f00' },
-  ],
-  temas: [
-    { id: 1, nome: 'Tarifa', nivel: 'estrategico' },
-    { id: 2, nome: 'Reúso', nivel: 'estrategico' },
-  ],
-} as unknown as Dicionarios;
+// Frente e porta-voz não leem dicionário nenhum — o catálogo só precisa das
+// pessoas, para o nome do porta-voz.
+const DICIONARIOS = {} as unknown as Dicionarios;
 
 const PESSOAS: PessoaAegea[] = [
   { id: 'p1', nome: 'Letícia', cargo: null, email: null, eh_porta_voz: true, area_id: null, ativo: true, temas: [] },
