@@ -44,10 +44,15 @@ export function Alegacoes() {
     let ativo = true;
     listarAlegacoesParaAdministracao()
       .then((lista) => ativo && definirAlegacoes(lista))
-      .catch((falha: unknown) =>
-        ativo &&
-        definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.'),
-      );
+      .catch((falha: unknown) => {
+        if (!ativo) return;
+        definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
+        // LISTA VAZIA, E NÃO `null`: sem isto a tela fica em "Carregando…"
+        // para sempre e a recusa nunca aparece. O caso real é quem perdeu
+        // `administra_dicionarios` — a rota devolve 403, e a pessoa precisa
+        // ler por quê, não ficar olhando um spinner.
+        definirAlegacoes([]);
+      });
     return () => {
       ativo = false;
     };
@@ -91,11 +96,16 @@ export function Alegacoes() {
       >
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+        {/* "Nenhuma alegação" só quando a lista veio VAZIA de verdade: com a
+            recusa acima, dizer que não há nenhuma seria uma segunda mensagem,
+            e errada. */}
         {alegacoes.length === 0 ? (
-          <Vazio
-            mensagem="Nenhuma alegação registrada"
-            dica="Elas nascem no registro de uma consulta recebida, com quem lê o e-mail."
-          />
+          erro ? null : (
+            <Vazio
+              mensagem="Nenhuma alegação registrada"
+              dica="Elas nascem no registro de uma consulta recebida, com quem lê o e-mail."
+            />
+          )
         ) : (
           <Cartao>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>

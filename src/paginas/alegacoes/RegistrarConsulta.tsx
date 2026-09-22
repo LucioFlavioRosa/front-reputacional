@@ -96,8 +96,16 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
     ? catalogo.instituicoes.get(rascunho.instituicao_id)
     : undefined;
 
+  //: SEM O TIPO NO DICIONÁRIO NÃO DÁ PARA REGISTRAR — e o botão precisa
+  //: DIZER isso. Só desabilitar por instituição deixava o clique não fazer
+  //: nada num catálogo divergente da migration, que é a falha mais difícil de
+  //: entender de todas: a tela parece funcionar.
+  const podeSalvar = Boolean(rascunho.instituicao_id) && Boolean(tipoDeConsulta) && !salvando;
+
   async function salvar() {
-    if (!rascunho.instituicao_id || !tipoDeConsulta || salvando) return;
+    // O `tipoDeConsulta` volta a ser conferido aqui, e não só em `podeSalvar`:
+    // é o que faz o compilador saber que ele existe daqui para baixo.
+    if (!podeSalvar || !tipoDeConsulta) return;
     definirSalvando(true);
     definirErro(null);
     definirSucesso(null);
@@ -262,10 +270,15 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
             </Campo>
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <Botao aoClicar={salvar} desabilitado={!rascunho.instituicao_id || salvando}>
+              <Botao aoClicar={salvar} desabilitado={!podeSalvar}>
                 {salvando ? 'Registrando…' : 'Registrar consulta'}
               </Botao>
-              {sucesso ? (
+              {!tipoDeConsulta ? (
+                <span style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
+                  O tipo de interação "Consulta recebida" não está no catálogo —
+                  a migration 0046 não chegou a este ambiente.
+                </span>
+              ) : sucesso ? (
                 <span style={{ fontSize: 12, color: 'var(--ok-fg)' }}>{sucesso}</span>
               ) : (
                 <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
