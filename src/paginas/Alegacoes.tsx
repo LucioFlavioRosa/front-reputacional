@@ -29,6 +29,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { RegistrarConsulta } from '@/paginas/alegacoes/RegistrarConsulta';
 import { dataCompleta } from '@/dominio/formato';
 import { nomesDosTemas } from '@/dominio/derivacoes';
 import type { Alegacao } from '@/dominio/tipos';
@@ -79,93 +80,99 @@ export function Alegacoes() {
   if (!catalogo || alegacoes === null) return <Carregando rotulo="Carregando as alegações…" />;
 
   return (
-    <Secao
-      titulo="Alegações"
-      subtitulo="O que as consultas recebidas deram como fato. Apurar é dizer em que pé está e amarrar o posicionamento que responde."
-    >
-      {erro ? <FaixaDeErro mensagem={erro} /> : null}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* REGISTRAR VEM ANTES DE APURAR, e é a ordem do trabalho: o e-mail
+          chega, alguém guarda, e só depois a área verifica. */}
+      <RegistrarConsulta catalogo={catalogo} />
 
-      {alegacoes.length === 0 ? (
-        <Vazio
-          mensagem="Nenhuma alegação registrada"
-          dica="Elas nascem no registro de uma consulta recebida, com quem lê o e-mail."
-        />
-      ) : (
-        <Cartao>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {alegacoes.map((alegacao) => (
-              <li
-                key={alegacao.id}
-                style={{
-                  padding: '12px 0',
-                  borderTop: '1px solid var(--borda)',
-                  opacity: alegacao.ativo ? 1 : 0.55,
-                }}
-              >
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{alegacao.texto}</span>
-                  <span style={{ fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
-                    {alegacao.consultas} consulta{alegacao.consultas === 1 ? '' : 's'}
-                    {alegacao.criado_em ? ` · desde ${dataCompleta(alegacao.criado_em)}` : ''}
-                  </span>
-                </div>
+      <Secao
+        titulo="Alegações"
+        subtitulo="O que as consultas recebidas deram como fato. Apurar é dizer em que pé está e amarrar o posicionamento que responde."
+      >
+        {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-                <div
+        {alegacoes.length === 0 ? (
+          <Vazio
+            mensagem="Nenhuma alegação registrada"
+            dica="Elas nascem no registro de uma consulta recebida, com quem lê o e-mail."
+          />
+        ) : (
+          <Cartao>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {alegacoes.map((alegacao) => (
+                <li
+                  key={alegacao.id}
                   style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 6,
-                    alignItems: 'center',
-                    marginTop: 6,
+                    padding: '12px 0',
+                    borderTop: '1px solid var(--borda)',
+                    opacity: alegacao.ativo ? 1 : 0.55,
                   }}
                 >
-                  {catalogo.dicionarios.apuracoes.map((apuracao) => (
-                    <Chip
-                      key={apuracao.id}
-                      rotulo={apuracao.nome}
-                      ativo={alegacao.apuracao_id === apuracao.id}
-                      aoClicar={() => salvar(alegacao, { apuracao_id: apuracao.id })}
-                    />
-                  ))}
-                  {alegacao.temas.length ? (
-                    <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
-                      {nomesDosTemas(catalogo, alegacao.temas).join(', ')}
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{alegacao.texto}</span>
+                    <span style={{ fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+                      {alegacao.consultas} consulta{alegacao.consultas === 1 ? '' : 's'}
+                      {alegacao.criado_em ? ` · desde ${dataCompleta(alegacao.criado_em)}` : ''}
                     </span>
-                  ) : null}
-                  <span style={{ flex: 1 }} />
-                  <Botao
-                    variante="fantasma"
-                    aoClicar={() => definirEmEdicao(emEdicao === alegacao.id ? null : alegacao.id)}
-                  >
-                    {emEdicao === alegacao.id ? 'Fechar' : 'Apurar'}
-                  </Botao>
-                  <Botao
-                    variante="fantasma"
-                    aoClicar={() => salvar(alegacao, { ativo: !alegacao.ativo })}
-                  >
-                    {alegacao.ativo ? 'Desativar' : 'Reativar'}
-                  </Botao>
-                </div>
+                  </div>
 
-                {emEdicao === alegacao.id ? (
-                  <Apuracao alegacao={alegacao} aoSalvar={salvar} catalogo={catalogo} />
-                ) : (
-                  <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
-                    {alegacao.referencia_id
-                      ? `Responde: ${
-                          catalogo.referencias.find((r) => r.id === alegacao.referencia_id)
-                            ?.titulo ?? 'referência removida'
-                        }`
-                      : 'Sem posicionamento publicado.'}
-                    {alegacao.nota ? ` · ${alegacao.nota}` : ''}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Cartao>
-      )}
-    </Secao>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      alignItems: 'center',
+                      marginTop: 6,
+                    }}
+                  >
+                    {catalogo.dicionarios.apuracoes.map((apuracao) => (
+                      <Chip
+                        key={apuracao.id}
+                        rotulo={apuracao.nome}
+                        ativo={alegacao.apuracao_id === apuracao.id}
+                        aoClicar={() => salvar(alegacao, { apuracao_id: apuracao.id })}
+                      />
+                    ))}
+                    {alegacao.temas.length ? (
+                      <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
+                        {nomesDosTemas(catalogo, alegacao.temas).join(', ')}
+                      </span>
+                    ) : null}
+                    <span style={{ flex: 1 }} />
+                    <Botao
+                      variante="fantasma"
+                      aoClicar={() => definirEmEdicao(emEdicao === alegacao.id ? null : alegacao.id)}
+                    >
+                      {emEdicao === alegacao.id ? 'Fechar' : 'Apurar'}
+                    </Botao>
+                    <Botao
+                      variante="fantasma"
+                      aoClicar={() => salvar(alegacao, { ativo: !alegacao.ativo })}
+                    >
+                      {alegacao.ativo ? 'Desativar' : 'Reativar'}
+                    </Botao>
+                  </div>
+
+                  {emEdicao === alegacao.id ? (
+                    <Apuracao alegacao={alegacao} aoSalvar={salvar} catalogo={catalogo} />
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                      {alegacao.referencia_id
+                        ? `Responde: ${
+                            catalogo.referencias.find((r) => r.id === alegacao.referencia_id)
+                              ?.titulo ?? 'referência removida'
+                          }`
+                        : 'Sem posicionamento publicado.'}
+                      {alegacao.nota ? ` · ${alegacao.nota}` : ''}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            </Cartao>
+          )}
+      </Secao>
+    </div>
   );
 }
 

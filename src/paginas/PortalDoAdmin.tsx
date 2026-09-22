@@ -58,7 +58,7 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   //: Depois de Posicionamento, e é a ordem da dependência de novo: apurar uma
   //: alegação é amarrá-la ao posicionamento que responde, e ele precisa
   //: existir antes.
-  { id: 'alegacoes', rotulo: 'Alegações' },
+  { id: 'alegacoes', rotulo: 'Consultas e alegações' },
   //: Por último: é o vocabulário que os outros usam, e quem chega aqui
   //: costuma vir de um filtro ou formulário que não tinha a opção.
   { id: 'dicionarios', rotulo: 'Dicionários' },
