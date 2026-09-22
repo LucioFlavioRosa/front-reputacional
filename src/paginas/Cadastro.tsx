@@ -57,6 +57,8 @@ import {
 } from '@/paginas/cadastro/formulario';
 import type { Etapa, Formulario } from '@/paginas/cadastro/formulario';
 import { CampoDeDicionario, CampoDeTexto } from '@/paginas/cadastro/campos';
+import { CODIGO_DA_CONSULTA } from '@/dominio/sinais';
+import { CamposDaConsulta } from '@/paginas/cadastro/CamposDaConsulta';
 import { CamposDaFrente } from '@/paginas/cadastro/CamposDaFrente';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
@@ -253,6 +255,10 @@ export function Cadastro({
       )
     : undefined;
   const frenteAtual = frenteDerivada(instituicaoSelecionada, formatoSelecionado?.codigo);
+  //: O bloco da consulta aparece (e viaja) pelo TIPO escolhido, e nunca pela
+  //: frente: uma consulta de banco é `bancos_credores`, a mesma frente de uma
+  //: reunião com banco.
+  const ehConsulta = formatoSelecionado?.codigo === CODIGO_DA_CONSULTA;
   const categoriaPublicoDaInstituicao = instituicaoSelecionada?.categoria_publico_id
     ? catalogo.dicionarios.categorias_publico.find(
         (categoria) => categoria.id === instituicaoSelecionada.categoria_publico_id,
@@ -490,9 +496,9 @@ export function Cadastro({
         // conjunto é o que garante que remover um material ou desmarcar o
         // principal chegue como remoção. Mandar só a diferença exigiria a tela
         // saber o que veio do servidor, e ela passaria a ter duas verdades.
-        await editarInteracao(id, montarCorpo(comATierDaInstituicao, true));
+        await editarInteracao(id, montarCorpo(comATierDaInstituicao, true, ehConsulta));
       } else {
-        await criarInteracao(montarCorpo(comATierDaInstituicao));
+        await criarInteracao(montarCorpo(comATierDaInstituicao, false, ehConsulta));
         definirForm(VAZIO);
       }
       definirSucesso(true);
@@ -1152,8 +1158,35 @@ export function Cadastro({
           é o mesmo estado que `paraFormulario` carrega e `montarCorpo`
           devolve; ao trocar de frente, `extensaoAoTrocarDeFrente` descarta o
           que não se aplica mais. */}
+      {/* O BLOCO DA CONSULTA vem antes dos detalhes da frente porque é o tipo
+          que a pessoa acabou de escolher lá em cima — e porque, numa consulta,
+          é aqui que está o conteúdo: o que perguntaram e o que a pergunta deu
+          como fato. */}
+      {ehConsulta ? (
+        <Secao titulo="8. A consulta recebida" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+          <Cartao>
+            <CamposDaConsulta
+              canalId={form.canal_id}
+              remetente={form.remetente}
+              teor={form.teor}
+              prazoResposta={form.prazo_resposta}
+              respondidaEm={form.respondida_em}
+              alegacoesMarcadas={form.alegacoes}
+              alegacoes={catalogo.alegacoes}
+              dicionarios={catalogo.dicionarios}
+              aoMudar={(campo, valor) => alterar(campo as keyof Formulario, valor)}
+              aoMarcarAlegacoes={(ids) => alterar('alegacoes', ids)}
+              aoCadastrarAlegacao={() => recarregar()}
+            />
+          </Cartao>
+        </Secao>
+      ) : null}
+
       {frenteAtual ? (
-        <Secao titulo="8. Detalhes da frente" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <Secao
+          titulo={ehConsulta ? '9. Detalhes da frente' : '8. Detalhes da frente'}
+          estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+        >
           <Cartao>
             <CamposDaFrente
               frente={frenteAtual}
@@ -1384,7 +1417,7 @@ function impedimentoNoFormulario(
 
 /** Converte o formulário no corpo que a API espera: campo vazio vira ausência,
  *  não string vazia — o backend distingue "não informado" de "limpo". */
-function montarCorpo(form: Formulario, paraEdicao = false) {
+function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = false) {
   // VAZIO VIRA `null` NA EDIÇÃO, e `undefined` na criação. A diferença decide
   // se dá para APAGAR um campo.
   //
@@ -1399,6 +1432,9 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
   const vazio = paraEdicao ? null : undefined;
   const opcional = (valor: string) => (valor.trim() ? valor.trim() : vazio);
   const ehDeclinada = form.status === 'declinado';
+  //: O bloco de consulta é escolhido pelo TIPO de interação, e o tipo é
+  //: `formato_interacao_id`. O código vem por parâmetro porque `montarCorpo`
+  //: é função pura — quem sabe o id do dicionário é a tela.
   const numeroOpcional = (valor: string) => (valor ? Number(valor) : vazio);
 
   const extensao: Record<string, unknown> = {};
@@ -1496,6 +1532,22 @@ function montarCorpo(form: Formulario, paraEdicao = false) {
       : Object.keys(form.extensao).length
         ? {}
         : vazio,
+
+    // O BLOCO DA CONSULTA SÓ VIAJA NO TIPO CERTO — e viaja como `null`
+    // quando o tipo deixou de ser esse, para o servidor largar o bloco. Sem
+    // o `null` explícito, um prazo de resposta sobraria numa reunião.
+    consulta: ehConsulta
+      ? {
+          canal_id: numeroOpcional(form.canal_id),
+          remetente: opcional(form.remetente),
+          teor: opcional(form.teor),
+          prazo_resposta: opcional(form.prazo_resposta),
+          respondida_em: opcional(form.respondida_em),
+        }
+      : null,
+    // A LISTA INTEIRA, sempre, como `origens`: o formulário sabe quais são, e
+    // omitir faria desmarcar todas nunca surtir efeito.
+    alegacoes: ehConsulta ? form.alegacoes : [],
 
     // -- o ciclo -------------------------------------------------------------
     expectativa: opcional(form.expectativa),
@@ -1618,6 +1670,12 @@ function paraFormulario(interacao: Interacao): Formulario {
     observacoes: texto(interacao.observacoes),
     temas: interacao.temas ?? [],
     areas: interacao.areas ?? [],
+    canal_id: texto(interacao.consulta?.canal_id),
+    remetente: texto(interacao.consulta?.remetente),
+    teor: texto(interacao.consulta?.teor),
+    prazo_resposta: texto(interacao.consulta?.prazo_resposta),
+    respondida_em: texto(interacao.consulta?.respondida_em),
+    alegacoes: interacao.alegacoes ?? [],
     // SEM FILTRAR POR PAPEL. Trazer de volta so os `porta_voz` apagaria, sem
     // aviso, quem estivesse gravado como `equipe`: `montarCorpo` remanda a
     // lista inteira, e o que nao voltou do servidor nao vai de volta para ele.

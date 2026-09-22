@@ -71,6 +71,19 @@ export interface Formulario {
   preve_desdobramento: '' | 'sim' | 'nao';
   outraParte: ParticipanteNoForm[];
   materiais: MaterialNoForm[];
+
+  // -- só no tipo "Consulta recebida" --------------------------------------
+  //
+  // Strings vazias como no resto do formulário: '' é NÃO INFORMADO, e o
+  // `montarCorpo` converte. O bloco só é montado — e só viaja — quando o tipo
+  // escolhido é esse.
+  canal_id: string;
+  remetente: string;
+  teor: string;
+  prazo_resposta: string;
+  respondida_em: string;
+  //: O que as perguntas desta consulta deram como fato — ids de `Alegacao`.
+  alegacoes: string[];
 }
 
 /** Alguem da Aegea nesta agenda.
@@ -253,6 +266,12 @@ export const VAZIO: Formulario = {
   preve_desdobramento: '',
   outraParte: [],
   materiais: [],
+  canal_id: '',
+  remetente: '',
+  teor: '',
+  prazo_resposta: '',
+  respondida_em: '',
+  alegacoes: [],
 };
 
 //: O QUE O FORMULÁRIO OFERECE. Os outros códigos continuam válidos e

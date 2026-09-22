@@ -2,7 +2,7 @@
 
 import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
-import type { ArquivoDoMaterial } from '@/dominio/tipos';
+import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import { paraParametros } from '@/dominio/recorte';
 import type {
@@ -649,6 +649,44 @@ export function editarNoDicionario(
   entrada: ItemDeDicionarioEntrada,
 ): Promise<ItemAdministravel> {
   return requisitar<ItemAdministravel>(`/api/dicionarios/${dicionario}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/* ------------------------------------------------------------- alegações */
+
+/** O que está circulando. COM AS INATIVAS quando pedido, pelo mesmo motivo
+ *  de instituições e referências: sem elas a alegação que saiu de circulação
+ *  some da administração e volta como "já está cadastrada" na próxima
+ *  tentativa — o índice único é sobre o texto normalizado, não sobre o que a
+ *  pessoa vê. */
+export function listarAlegacoes(): Promise<Alegacao[]> {
+  return requisitar<Alegacao[]>('/api/alegacoes?incluir_inativas=1');
+}
+
+export interface AlegacaoEntrada {
+  texto: string;
+  temas: number[];
+  apuracao_id?: number | null;
+  referencia_id?: string | null;
+  nota?: string | null;
+  ativo?: boolean;
+}
+
+/** Quem REGISTRA a consulta cadastra a alegação que ela trouxe — a alegação
+ *  nasce do registro, e não da administração. */
+export function criarAlegacao(entrada: AlegacaoEntrada): Promise<Alegacao> {
+  return requisitar<Alegacao>('/api/alegacoes', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** Apurar é da área: muda o status, amarra o posicionamento que responde,
+ *  tira de circulação. */
+export function editarAlegacao(id: string, entrada: AlegacaoEntrada): Promise<Alegacao> {
+  return requisitar<Alegacao>(`/api/alegacoes/${id}`, {
     method: 'PUT',
     body: JSON.stringify(entrada),
   });

@@ -34,6 +34,7 @@ export const ROTAS_DO_CATALOGO = [
   '/api/interlocutores',
   '/api/pessoas-aegea',
   '/api/referencias',
+  '/api/alegacoes',
 ] as const;
 
 const METODOS_QUE_LEEM = new Set(['GET', 'HEAD', 'OPTIONS']);

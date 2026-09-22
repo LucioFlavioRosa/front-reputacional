@@ -64,6 +64,9 @@ export interface Recorte {
   subtipo?: string;
   portaVoz?: string;
   pessoa?: string;
+  /** Uma ALEGAÇÃO — traz as consultas que a trouxeram. Clicar nela na aba de
+   *  Sinais filtra a tela inteira, e quem aplica é o servidor. */
+  alegacao?: string;
   tags?: string[];
   /** Áreas internas da Aegea envolvidas — ids de `catalogo.dicionarios.areas_pessoa`.
    *  Multisseleção com OR entre elas, mesmo comportamento de `tags`. */
@@ -88,7 +91,7 @@ export const RECORTE_VAZIO: Recorte = {};
 /** Campos que contam como "um filtro" no contador do botão Filtros. */
 const CAMPOS_CONTAVEIS: (keyof Recorte)[] = [
   'frente', 'unidade', 'uf', 'esfera', 'tier', 'clima', 'climaEsperado', 'resultado',
-  'status', 'grupo', 'entidade', 'subtipo', 'portaVoz', 'pessoa', 'q',
+  'status', 'grupo', 'entidade', 'subtipo', 'portaVoz', 'pessoa', 'alegacao', 'q',
 ];
 
 export function quantidadeDeFiltros(recorte: Recorte): number {

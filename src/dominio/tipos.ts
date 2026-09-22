@@ -141,6 +141,12 @@ export interface Interacao {
    *  de `PessoaAegea.area_id` (`catalogo.dicionarios.areas_pessoa`). */
   areas: number[];
   participacoes: Participacao[];
+  /** Só no tipo "Consulta recebida" — `null` no resto. É o marcador da
+   *  aba de Sinais: quem tem este bloco é uma consulta. */
+  consulta: Consulta | null;
+  /** O que as perguntas desta consulta deram como fato — ids de `Alegacao`.
+   *  Vazio no resto. */
+  alegacoes: string[];
 
   // -- o ciclo da agenda ----------------------------------------------------
   //
@@ -196,6 +202,41 @@ export interface PaginaDeInteracoes {
 }
 
 /* -- dicionários ---------------------------------------------------------- */
+
+/** O que uma CONSULTA RECEBIDA tem e uma reunião não.
+ *
+ *  O questionário em si é material da agenda e o contato que assina é a outra
+ *  parte, como em toda interação; aqui fica o resto. */
+export interface Consulta {
+  canal_id: number | null;
+  /** Quem assina, em texto — para o caso comum de não estar no cadastro. */
+  remetente: string | null;
+  /** As perguntas, coladas do e-mail. */
+  teor: string | null;
+  prazo_resposta: string | null;
+  /** Nulo com `prazo_resposta` vencido é o que a aba cobra. */
+  respondida_em: string | null;
+}
+
+/** O que uma pergunta recebida dá como fato, sem que a companhia tenha
+ *  comunicado — "o Banco X não renegociaria a dívida".
+ *
+ *  Vive solta das consultas porque se REPETE: a mesma alegação chega de
+ *  instituições diferentes, e contar as instituições distintas é a leitura
+ *  que a aba de Sinais existe para fazer. */
+export interface Alegacao {
+  id: string;
+  texto: string;
+  temas: number[];
+  apuracao_id: number;
+  /** O posicionamento da biblioteca que responde. Nulo é o que a aba cobra. */
+  referencia_id: string | null;
+  nota: string | null;
+  ativo: boolean;
+  criado_em: string | null;
+  /** Em quantas consultas já apareceu — a contagem INTEIRA, não a do recorte. */
+  consultas: number;
+}
 
 export interface ItemDeDicionario {
   id: number;
@@ -299,6 +340,10 @@ export interface Dicionarios {
    *  `formatos` (formato de atendimento de imprensa/RI, escopado por
    *  frente) — são conceitos diferentes, com nomes parecidos. */
   formatos_interacao: ItemDeDicionario[];
+  /** Por onde uma consulta recebida chegou. */
+  canais_consulta: ItemDeDicionario[];
+  /** O que a companhia apurou sobre uma alegação — tem cor, como clima. */
+  apuracoes: (ItemDeDicionario & { cor_hex: string })[];
   esferas: ItemDeDicionario[];
   climas: (ItemDeDicionario & { cor_hex: string })[];
   resultados: (ItemDeDicionario & { cor_hex: string })[];

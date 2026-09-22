@@ -263,6 +263,68 @@ export function Ficha({
           </section>
         ) : null}
 
+        {/* A CONSULTA RECEBIDA. Quem abre a ficha a partir da aba de Sinais
+            vem justamente atrás do que perguntaram — sem este bloco, a ficha
+            mostraria a agenda e esconderia o conteúdo dela. */}
+        {interacao.consulta ? (
+          <section>
+            <div className="kicker" style={{ marginBottom: 10 }}>
+              A consulta recebida
+            </div>
+            <dl
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px 22px',
+                margin: '0 0 10px',
+              }}
+            >
+              <Metadado
+                rotulo="Por onde chegou"
+                valor={
+                  catalogo.dicionarios.canais_consulta.find(
+                    (canal) => canal.id === interacao.consulta?.canal_id,
+                  )?.nome ?? null
+                }
+              />
+              <Metadado rotulo="Quem assina" valor={interacao.consulta.remetente} />
+              <Metadado
+                rotulo="Prazo para responder"
+                valor={
+                  interacao.consulta.prazo_resposta
+                    ? dataCompleta(interacao.consulta.prazo_resposta)
+                    : null
+                }
+              />
+              <Metadado
+                rotulo="Respondida em"
+                valor={
+                  interacao.consulta.respondida_em
+                    ? dataCompleta(interacao.consulta.respondida_em)
+                    : null
+                }
+              />
+            </dl>
+            {interacao.consulta.teor ? (
+              <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: 0 }}>
+                {interacao.consulta.teor}
+              </p>
+            ) : null}
+            {interacao.alegacoes.length ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {interacao.alegacoes.map((id) => (
+                  <Chip
+                    key={id}
+                    rotulo={
+                      catalogo.alegacoes.find((a) => a.id === id)?.texto ?? 'alegação removida'
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         {interacao.temas.length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>

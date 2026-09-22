@@ -30,6 +30,7 @@ export type Destino =
   | 'base'
   | 'relatorios'
   | 'preparar'
+  | 'sinais'
   | 'cadastro'
   | 'admin';
 
@@ -61,6 +62,7 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'base') return { destino: 'base' };
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
+  if (primeira === 'sinais') return { destino: 'sinais' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
 
   if (primeira === 'agenda') {
@@ -91,6 +93,8 @@ export function caminhoDe(rota: Rota): string {
       return '/relatorios';
     case 'preparar':
       return '/preparar';
+    case 'sinais':
+      return '/sinais';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'cadastro':
@@ -111,6 +115,7 @@ export function caminhoDe(rota: Rota): string {
 const CAMPOS_DE_TEXTO = [
   'periodoPassado', 'periodoFuturo', 'de', 'ate', 'frente', 'unidade', 'uf', 'esfera',
   'clima', 'climaEsperado', 'resultado', 'status', 'grupo', 'entidade', 'subtipo',
+  'alegacao',
   'portaVoz', 'pessoa', 'q',
 ] as const;
 

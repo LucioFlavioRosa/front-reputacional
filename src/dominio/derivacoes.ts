@@ -26,6 +26,7 @@ import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE, faixaDeRisco } from '@/dominio/fren
 import type { FaixaDeRisco } from '@/dominio/frentes';
 import { FRENTES } from '@/dominio/tipos';
 import type {
+  Alegacao,
   Dicionarios,
   Frente,
   GrupoDeStatus,
@@ -47,6 +48,10 @@ export interface Catalogo {
    *  catálogo pelo mesmo motivo dos outros: é opção de formulário, e opção
    *  cadastrada precisa aparecer em toda tela sem ninguém apertar F5. */
   referencias: Referencia[];
+  /** O que está circulando, ATIVAS E INATIVAS — mesma razão das referências:
+   *  a Administração precisa das duas, e quem oferece alegação a uma consulta
+   *  filtra as ativas. */
+  alegacoes: Alegacao[];
 }
 
 export function montarCatalogo(
@@ -55,6 +60,7 @@ export function montarCatalogo(
   interlocutores: Interlocutor[],
   pessoas: PessoaAegea[],
   referencias: Referencia[] = [],
+  alegacoes: Alegacao[] = [],
 ): Catalogo {
   return {
     dicionarios,
@@ -62,6 +68,7 @@ export function montarCatalogo(
     interlocutores: new Map(interlocutores.map((i) => [i.id, i])),
     pessoas: new Map(pessoas.map((p) => [p.id, p])),
     referencias,
+    alegacoes,
   };
 }
 

@@ -49,6 +49,7 @@ const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'base', rotulo: 'Base' },
   { view: 'preparar', rotulo: 'Preparar agenda' },
+  { view: 'sinais', rotulo: 'Sinais de mercado' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 

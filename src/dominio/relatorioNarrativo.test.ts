@@ -78,6 +78,8 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     temas: [],
     areas: [],
     participacoes: [],
+    consulta: null,
+    alegacoes: [],
     outra_parte: [],
     materiais: [],
     fonte: 'cadastro_manual',
