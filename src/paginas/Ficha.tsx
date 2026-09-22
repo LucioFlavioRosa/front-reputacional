@@ -310,6 +310,12 @@ export function Ficha({
                 {interacao.consulta.teor}
               </p>
             ) : null}
+            {interacao.consulta.motivo ? (
+              <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '8px 0 0' }}>
+                <span className="kicker">Leitura de quem recebeu: </span>
+                {interacao.consulta.motivo}
+              </p>
+            ) : null}
             {interacao.alegacoes.length ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                 {interacao.alegacoes.map((id) => (

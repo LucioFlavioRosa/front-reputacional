@@ -80,6 +80,7 @@ export interface Formulario {
   canal_id: string;
   remetente: string;
   teor: string;
+  motivo: string;
   prazo_resposta: string;
   respondida_em: string;
   //: O que as perguntas desta consulta deram como fato — ids de `Alegacao`.
@@ -269,6 +270,7 @@ export const VAZIO: Formulario = {
   canal_id: '',
   remetente: '',
   teor: '',
+  motivo: '',
   prazo_resposta: '',
   respondida_em: '',
   alegacoes: [],

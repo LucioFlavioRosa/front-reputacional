@@ -49,7 +49,12 @@ import {
   rotuloDeCodigo,
 } from '@/dominio/derivacoes';
 import type { Catalogo, Segmento } from '@/dominio/derivacoes';
-import type { Interacao, Referencia } from '@/dominio/tipos';
+import type { Alegacao, Interacao, Referencia } from '@/dominio/tipos';
+import {
+  INSTITUICOES_PARA_CONVERGIR,
+  alegacoesEmCirculacao,
+  consultasDe,
+} from '@/dominio/sinais';
 import {
   COLUNA_ANTES,
   climaAntesEDepois,
@@ -133,6 +138,11 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
             catalogo={catalogo}
           />
           <BlocoDeAgendas agendas={interacoes} catalogo={catalogo} aoAbrirAgenda={aoAbrirAgenda} />
+          <BlocoDeConsultasDoTema
+            consultas={consultasDe(interacoes)}
+            alegacoes={catalogo.alegacoes}
+            catalogo={catalogo}
+          />
           <BlocoDeGraficos
             agendas={interacoes}
             catalogo={catalogo}
@@ -321,6 +331,70 @@ function BlocoDeAgendas({
             ))}
           </ul>
         )}
+      </Cartao>
+    </Secao>
+  );
+}
+
+/* -- bloco 2b: o que o mercado andou perguntando sobre o tema ---------------- */
+
+//: ANTES DE ENTRAR NA REUNIÃO, saber o que perguntaram por e-mail sobre este
+//: tema muda o que se leva: se três bancos sondaram a mesma premissa nas
+//: últimas semanas, ela vai aparecer na sala. O bloco some quando não há
+//: consulta no recorte — a maioria dos temas não tem, e um cartão vazio em
+//: toda preparação treina a pessoa a ignorar a tela.
+function BlocoDeConsultasDoTema({
+  consultas,
+  alegacoes,
+  catalogo,
+}: {
+  consultas: Interacao[];
+  alegacoes: Alegacao[];
+  catalogo: Catalogo;
+}) {
+  if (!consultas.length) return null;
+
+  const emCirculacao = alegacoesEmCirculacao(consultas, alegacoes);
+
+  return (
+    <Secao
+      titulo="O que andaram perguntando sobre o tema"
+      subtitulo="Consultas recebidas de investidores, bancos e plataformas de rating no recorte — e o que as perguntas deram como fato."
+    >
+      <Cartao>
+        {emCirculacao.length ? (
+          <ul style={{ listStyle: 'none', margin: '0 0 12px', padding: 0 }}>
+            {emCirculacao.map((item) => (
+              <li
+                key={item.alegacao.id}
+                style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{item.alegacao.texto}</div>
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '2px 0 0' }}>
+                  {item.instituicoes} {item.instituicoes === 1 ? 'instituição' : 'instituições'}
+                  {' · '}
+                  {item.consultas.length}{' '}
+                  {item.consultas.length === 1 ? 'consulta' : 'consultas'}
+                  {item.janela ? (
+                    <strong style={{ color: 'var(--atencao-fg)' }}>
+                      {` · ${INSTITUICOES_PARA_CONVERGIR}+ em ${dataCompleta(item.janela.de)}–${dataCompleta(item.janela.ate)}`}
+                    </strong>
+                  ) : null}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
+          {consultas.length} {consultas.length === 1 ? 'consulta recebida' : 'consultas recebidas'}
+          {' de '}
+          {new Set(consultas.map((c) => c.instituicao_id)).size} instituições:{' '}
+          {[...new Set(consultas.map((c) => nomeDaInstituicao(catalogo, c.instituicao_id)))]
+            .slice(0, 5)
+            .join(', ')}
+          .
+        </p>
       </Cartao>
     </Secao>
   );

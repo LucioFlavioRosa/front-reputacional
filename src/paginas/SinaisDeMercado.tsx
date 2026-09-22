@@ -210,6 +210,18 @@ function BlocoDoQueCircula({
                     {item.primeira === item.ultima
                       ? dataCompleta(item.ultima)
                       : `${dataCompleta(item.primeira)} a ${dataCompleta(item.ultima)}`}
+                    {/* A JANELA do agrupamento, e não o intervalo inteiro:
+                        "três instituições em quatro dias" é o sinal; "de maio
+                        a novembro" é o histórico. */}
+                    {item.janela ? (
+                      <strong style={{ color: 'var(--atencao-fg)' }}>
+                        {' · '}
+                        {INSTITUICOES_PARA_CONVERGIR}+ em{' '}
+                        {item.janela.de === item.janela.ate
+                          ? dataCompleta(item.janela.ate)
+                          : `${dataCompleta(item.janela.de)}–${dataCompleta(item.janela.ate)}`}
+                      </strong>
+                    ) : null}
                     {item.alegacao.temas.length
                       ? ` · ${nomesDosTemas(catalogo, item.alegacao.temas).join(', ')}`
                       : ''}
@@ -414,6 +426,12 @@ function BlocoDeConsultas({
               {consulta.consulta?.teor ? (
                 <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
                   {consulta.consulta.teor}
+                </p>
+              ) : null}
+              {consulta.consulta?.motivo ? (
+                <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: '4px 0 0' }}>
+                  <span className="kicker">Leitura de quem recebeu: </span>
+                  {consulta.consulta.motivo}
                 </p>
               ) : null}
             </li>

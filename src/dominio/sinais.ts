@@ -48,8 +48,12 @@ export interface AlegacaoEmCirculacao {
   /** `2026-05-04` — a primeira e a última aparição no recorte. */
   primeira: string;
   ultima: string;
-  /** Instituições distintas o bastante, próximas o bastante. */
+  /** Houve alguma janela de `DIAS_DA_JANELA` dias com `INSTITUICOES_PARA_CONVERGIR`
+   *  instituições distintas. */
   convergente: boolean;
+  /** QUANDO foi esse agrupamento — o mais recente, quando houve mais de um.
+   *  Nulo quando não houve. */
+  janela: { de: string; ate: string } | null;
 }
 
 /** Só as interações que são CONSULTA RECEBIDA.
@@ -68,6 +72,51 @@ function diasEntre(inicio: string, fim: string): number {
   const outro = Date.parse(`${fim}T00:00:00Z`);
   if (Number.isNaN(um) || Number.isNaN(outro)) return 0;
   return Math.round((outro - um) / 86_400_000);
+}
+
+/** EXISTE alguma janela de `DIAS_DA_JANELA` dias com instituições distintas
+ *  o bastante?
+ *
+ *  JANELA DESLIZANTE, e não primeira × última aparição. Com o intervalo
+ *  inteiro, três bancos perguntando em três dias deixariam de ser
+ *  convergência assim que um quarto perguntasse seis meses depois — e o
+ *  agrupamento curto, que é o sinal, desapareceria por causa de uma pergunta
+ *  tardia. O que aconteceu não se desfaz.
+ *
+ *  Devolve também QUANDO foi o agrupamento, porque "está circulando agora" e
+ *  "circulou em maio" são leituras diferentes.
+ */
+function janelaConvergente(
+  consultas: Interacao[],
+): { de: string; ate: string } | null {
+  // Da mais antiga para a mais recente: a janela anda para frente.
+  const ordenadas = [...consultas].sort((a, b) =>
+    a.data_interacao.localeCompare(b.data_interacao),
+  );
+
+  let achada: { de: string; ate: string } | null = null;
+  let inicio = 0;
+  for (let fim = 0; fim < ordenadas.length; fim += 1) {
+    while (
+      inicio < fim &&
+      diasEntre(ordenadas[inicio].data_interacao, ordenadas[fim].data_interacao) >
+        DIAS_DA_JANELA
+    ) {
+      inicio += 1;
+    }
+    const distintas = new Set(
+      ordenadas.slice(inicio, fim + 1).map((c) => c.instituicao_id),
+    ).size;
+    if (distintas >= INSTITUICOES_PARA_CONVERGIR) {
+      // A MAIS RECENTE fica: entre dois agrupamentos, o que interessa é o
+      // que ainda pode estar em curso.
+      achada = {
+        de: ordenadas[inicio].data_interacao,
+        ate: ordenadas[fim].data_interacao,
+      };
+    }
+  }
+  return achada;
 }
 
 /** O QUE ESTÁ CIRCULANDO, da mais convergente para a menos.
@@ -99,15 +148,15 @@ export function alegacoesEmCirculacao(
       const instituicoes = new Set(daAlegacao.map((c) => c.instituicao_id)).size;
       const ultima = daAlegacao[0].data_interacao;
       const primeira = daAlegacao[daAlegacao.length - 1].data_interacao;
+      const janela = janelaConvergente(daAlegacao);
       return {
         alegacao,
         consultas: daAlegacao,
         instituicoes,
         primeira,
         ultima,
-        convergente:
-          instituicoes >= INSTITUICOES_PARA_CONVERGIR &&
-          diasEntre(primeira, ultima) <= DIAS_DA_JANELA,
+        convergente: janela !== null,
+        janela,
       };
     })
     .sort(

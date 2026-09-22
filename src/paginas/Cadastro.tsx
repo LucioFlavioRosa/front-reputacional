@@ -1169,6 +1169,7 @@ export function Cadastro({
               canalId={form.canal_id}
               remetente={form.remetente}
               teor={form.teor}
+              motivo={form.motivo}
               prazoResposta={form.prazo_resposta}
               respondidaEm={form.respondida_em}
               alegacoesMarcadas={form.alegacoes}
@@ -1541,6 +1542,7 @@ function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = false) {
           canal_id: numeroOpcional(form.canal_id),
           remetente: opcional(form.remetente),
           teor: opcional(form.teor),
+          motivo: opcional(form.motivo),
           prazo_resposta: opcional(form.prazo_resposta),
           respondida_em: opcional(form.respondida_em),
         }
@@ -1673,6 +1675,7 @@ function paraFormulario(interacao: Interacao): Formulario {
     canal_id: texto(interacao.consulta?.canal_id),
     remetente: texto(interacao.consulta?.remetente),
     teor: texto(interacao.consulta?.teor),
+    motivo: texto(interacao.consulta?.motivo),
     prazo_resposta: texto(interacao.consulta?.prazo_resposta),
     respondida_em: texto(interacao.consulta?.respondida_em),
     alegacoes: interacao.alegacoes ?? [],

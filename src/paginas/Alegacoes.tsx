@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { editarAlegacao, listarAlegacoes } from '@/api/cliente';
+import { editarAlegacao, listarAlegacoesParaAdministracao } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
   Botao,
@@ -41,7 +41,7 @@ export function Alegacoes() {
 
   useEffect(() => {
     let ativo = true;
-    listarAlegacoes()
+    listarAlegacoesParaAdministracao()
       .then((lista) => ativo && definirAlegacoes(lista))
       .catch((falha: unknown) =>
         ativo &&

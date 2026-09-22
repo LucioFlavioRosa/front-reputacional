@@ -51,6 +51,7 @@ function consulta(ajustes: Partial<Interacao> = {}): Interacao {
       canal_id: 1,
       remetente: 'analista@banco.com',
       teor: null,
+      motivo: null,
       prazo_resposta: null,
       respondida_em: null,
     },
@@ -149,6 +150,58 @@ describe('alegacoesEmCirculacao', () => {
 
     expect(item.instituicoes).toBe(3);
     expect(item.convergente).toBe(false);
+    expect(item.janela).toBeNull();
+  });
+
+  it('uma pergunta tardia NÃO apaga o agrupamento que houve', () => {
+    // JANELA DESLIZANTE. Com primeira × última aparição, a quarta consulta em
+    // novembro esticaria o intervalo e o agrupamento de maio — que é o sinal —
+    // sumiria da tela sem nada ter acontecido.
+    const [item] = alegacoesEmCirculacao(
+      [
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-05-01', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b2', data_interacao: '2026-05-03', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b3', data_interacao: '2026-05-04', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b4', data_interacao: '2026-11-20', alegacoes: ['a1'] }),
+      ],
+      [alegacao()],
+    );
+
+    expect(item.convergente).toBe(true);
+    expect(item.janela).toEqual({ de: '2026-05-01', ate: '2026-05-04' });
+  });
+
+  it('entre dois agrupamentos, a janela mostrada é a mais recente', () => {
+    // "Está circulando agora" e "circulou em maio" são leituras diferentes.
+    const [item] = alegacoesEmCirculacao(
+      [
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-05-01', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b2', data_interacao: '2026-05-02', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b3', data_interacao: '2026-05-03', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-09-01', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b2', data_interacao: '2026-09-02', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b4', data_interacao: '2026-09-03', alegacoes: ['a1'] }),
+      ],
+      [alegacao()],
+    );
+
+    expect(item.janela).toEqual({ de: '2026-09-01', ate: '2026-09-03' });
+  });
+
+  it('a mesma instituição repetindo na janela não converge sozinha', () => {
+    // Insistência de um banco não é o mercado perguntando.
+    const [item] = alegacoesEmCirculacao(
+      [
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-05-01', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-05-02', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b1', data_interacao: '2026-05-03', alegacoes: ['a1'] }),
+        consulta({ instituicao_id: 'b2', data_interacao: '2026-05-04', alegacoes: ['a1'] }),
+      ],
+      [alegacao()],
+    );
+
+    expect(item.consultas).toHaveLength(4);
+    expect(item.convergente).toBe(false);
   });
 
   it('duas instituições no mesmo dia ainda não bastam', () => {
@@ -188,19 +241,19 @@ describe('consultasVencidas', () => {
   it('só o prazo vencido e sem resposta', () => {
     const vencida = consulta({
       consulta: {
-        canal_id: 1, remetente: null, teor: null,
+        canal_id: 1, remetente: null, teor: null, motivo: null,
         prazo_resposta: '2026-05-01', respondida_em: null,
       },
     });
     const respondida = consulta({
       consulta: {
-        canal_id: 1, remetente: null, teor: null,
+        canal_id: 1, remetente: null, teor: null, motivo: null,
         prazo_resposta: '2026-05-01', respondida_em: '2026-04-30',
       },
     });
     const noPrazo = consulta({
       consulta: {
-        canal_id: 1, remetente: null, teor: null,
+        canal_id: 1, remetente: null, teor: null, motivo: null,
         prazo_resposta: '2026-12-01', respondida_em: null,
       },
     });

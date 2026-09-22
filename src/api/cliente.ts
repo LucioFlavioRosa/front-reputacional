@@ -656,12 +656,22 @@ export function editarNoDicionario(
 
 /* ------------------------------------------------------------- alegações */
 
-/** O que está circulando. COM AS INATIVAS quando pedido, pelo mesmo motivo
- *  de instituições e referências: sem elas a alegação que saiu de circulação
- *  some da administração e volta como "já está cadastrada" na próxima
- *  tentativa — o índice único é sobre o texto normalizado, não sobre o que a
- *  pessoa vê. */
+/** O QUE ESTÁ CIRCULANDO — só as ativas, e sem a nota de apuração.
+ *
+ *  É o que o catálogo carrega para todo mundo: a lista que o formulário
+ *  oferece e que a aba de Sinais usa para resolver o texto de cada premissa.
+ *  O servidor decide o que sai pelo papel de quem pede. */
 export function listarAlegacoes(): Promise<Alegacao[]> {
+  return requisitar<Alegacao[]>('/api/alegacoes');
+}
+
+/** A LISTA INTEIRA, inclusive as fora de circulação e com a nota de apuração.
+ *
+ *  Só para a Administração, e o servidor recusa a quem não administra
+ *  cadastros: sem as inativas, a alegação desativada some da tela e volta
+ *  como "já está cadastrada" na tentativa seguinte — o índice único é sobre o
+ *  texto normalizado, e não sobre o que a pessoa vê. */
+export function listarAlegacoesParaAdministracao(): Promise<Alegacao[]> {
   return requisitar<Alegacao[]>('/api/alegacoes?incluir_inativas=1');
 }
 

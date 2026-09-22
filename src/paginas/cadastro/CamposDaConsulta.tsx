@@ -22,6 +22,7 @@ export function CamposDaConsulta({
   canalId,
   remetente,
   teor,
+  motivo,
   prazoResposta,
   respondidaEm,
   alegacoesMarcadas,
@@ -34,6 +35,7 @@ export function CamposDaConsulta({
   canalId: string;
   remetente: string;
   teor: string;
+  motivo: string;
   prazoResposta: string;
   respondidaEm: string;
   alegacoesMarcadas: string[];
@@ -126,6 +128,20 @@ export function CamposDaConsulta({
           rows={3}
           style={{ ...estiloDeEntrada, resize: 'vertical' }}
           placeholder="Cole as perguntas do e-mail."
+        />
+      </Campo>
+
+      {/* A HIPÓTESE DE QUEM LEU, e por isso separada da alegação logo abaixo:
+          a alegação é o que a pergunta DIZ e é o que a aba conta; o motivo é a
+          intenção que se supõe. Juntá-los faria suposição ser apresentada com
+          a mesma autoridade de um fato registrado. */}
+      <Campo rotulo="Por que você acha que perguntaram">
+        <textarea
+          value={motivo}
+          onChange={(evento) => aoMudar('motivo', evento.target.value)}
+          rows={2}
+          style={{ ...estiloDeEntrada, resize: 'vertical' }}
+          placeholder="Quer justificar revisão de spread; está montando relatório setorial…"
         />
       </Campo>
 

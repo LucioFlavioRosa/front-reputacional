@@ -213,6 +213,10 @@ export interface Consulta {
   remetente: string | null;
   /** As perguntas, coladas do e-mail. */
   teor: string | null;
+  /** POR QUE ACHAM QUE PERGUNTARAM — a hipótese de quem recebeu. NÃO é a
+   *  alegação: esta é o que a pergunta diz (e é o que a aba conta); o motivo
+   *  é a intenção que se supõe. */
+  motivo: string | null;
   prazo_resposta: string | null;
   /** Nulo com `prazo_resposta` vencido é o que a aba cobra. */
   respondida_em: string | null;
