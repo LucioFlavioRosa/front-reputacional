@@ -24,12 +24,7 @@ import {
 } from '@/api/cliente';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
-import {
-  divergenciasDoCatalogo,
-  filtrarPorCategoriaPublico,
-  filtrarPorFormatoInteracao,
-  montarCatalogo,
-} from '@/dominio/derivacoes';
+import { divergenciasDoCatalogo, montarCatalogo } from '@/dominio/derivacoes';
 import { registrarEvento } from '@/observabilidade/telemetria';
 import type { Recorte } from '@/dominio/recorte';
 import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
@@ -203,36 +198,13 @@ export function ProvedorDoPainel({
     };
   }, [recorte, versaoDasAgendas]);
 
-  // "FILTRO TIPO DE PÚBLICO" E "FILTRO TIPO DE INTERAÇÃO" NÃO PASSAM PELO
-  // BACKEND — ver os comentários em `Recorte.categoriaPublico` e
-  // `Recorte.formatoInteracao`. Junta aqui, sobre o que já voltou da API,
-  // em vez de mandar um parâmetro que a rota de interações não entende.
-  const interacoesFiltradas = useMemo(() => {
-    let lista = interacoes;
-    if (recorte.categoriaPublico?.length && catalogo) {
-      lista = filtrarPorCategoriaPublico(lista, catalogo, recorte.categoriaPublico);
-    }
-    if (recorte.formatoInteracao?.length) {
-      lista = filtrarPorFormatoInteracao(lista, recorte.formatoInteracao);
-    }
-    return lista;
-  }, [interacoes, catalogo, recorte.categoriaPublico, recorte.formatoInteracao]);
-
-  // O `total` do backend não sabe destes filtros — contar de novo aqui é o
-  // que mantém o número do topo igual ao que a tela mostra, em vez de dizer
-  // "60 interações" com 12 na tabela.
-  const totalExibido =
-    recorte.categoriaPublico?.length || recorte.formatoInteracao?.length
-      ? interacoesFiltradas.length
-      : total;
-
   const valor = useMemo<EstadoDoPainel>(
     () => ({
       recorte,
       definirRecorte,
       limparRecorte: () => definirRecorte({}),
-      interacoes: interacoesFiltradas,
-      total: totalExibido,
+      interacoes,
+      total,
       truncado,
       catalogo,
       carregando,
@@ -241,7 +213,7 @@ export function ProvedorDoPainel({
       recarregar,
     }),
     [
-      recorte, interacoesFiltradas, totalExibido, truncado, catalogo,
+      recorte, interacoes, total, truncado, catalogo,
       carregando, atualizando, erro, recarregar,
       // `definirRecorte` não é o `setState` cru: também escreve o endereço, e
       // por isso é um `useCallback` que precisa entrar aqui. Fora da lista, um

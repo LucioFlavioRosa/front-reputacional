@@ -175,8 +175,8 @@ function nomesDasAreas(interacao: Interacao, catalogo: Catalogo): string {
 }
 
 //: A CATEGORIA DE PÚBLICO mora na INSTITUIÇÃO, não na interação — junta pelo
-//: catálogo, mesma lógica de `filtrarPorCategoriaPublico` (`dominio/
-//: derivacoes.ts`).
+//: catálogo, o mesmo caminho que o servidor faz para o filtro
+//: `categoriaPublico` (`filtros_sql.py`).
 function nomeDoPublico(catalogo: Catalogo, instituicaoId: string): string {
   const categoriaId = catalogo.instituicoes.get(instituicaoId)?.categoria_publico_id;
   if (categoriaId == null) return '—';

@@ -96,38 +96,6 @@ export function nomeDaInstituicao(catalogo: Catalogo, id: string): string {
   return catalogo.instituicoes.get(id)?.nome ?? '—';
 }
 
-/** O filtro "Filtro Tipo de Público" do Painel — SÓ NO CLIENTE, e não em
- *  `GET /api/interacoes`: `categoria_publico_id` mora na Instituição, não na
- *  Interação, então a única forma de aplicá-lo é juntar pelo catálogo aqui.
- *  Ver o comentário em `Recorte.categoriaPublico`. */
-export function filtrarPorCategoriaPublico(
-  interacoes: Interacao[],
-  catalogo: Catalogo,
-  ids: number[],
-): Interacao[] {
-  if (!ids.length) return interacoes;
-  const permitidas = new Set(ids);
-  return interacoes.filter((i) => {
-    const categoria = catalogo.instituicoes.get(i.instituicao_id)?.categoria_publico_id;
-    return categoria != null && permitidas.has(categoria);
-  });
-}
-
-/** O filtro "Filtro Tipo de Interação" do Painel — SÓ NO CLIENTE, e não em
- *  `GET /api/interacoes`: ver o comentário em `Recorte.formatoInteracao`.
- *  Diferente de `filtrarPorCategoriaPublico`, não precisa do catálogo —
- *  `formato_interacao_id` já mora na própria Interação. */
-export function filtrarPorFormatoInteracao(
-  interacoes: Interacao[],
-  ids: number[],
-): Interacao[] {
-  if (!ids.length) return interacoes;
-  const permitidas = new Set(ids);
-  return interacoes.filter(
-    (i) => i.formato_interacao_id != null && permitidas.has(i.formato_interacao_id),
-  );
-}
-
 export function nomeDoInterlocutor(catalogo: Catalogo, id: string | null): string {
   if (!id) return '—';
   return catalogo.interlocutores.get(id)?.nome ?? '—';
@@ -771,7 +739,7 @@ export function temasMaisRecorrentes(
  *  "Top 5 temas" — por isso a chave é `String(categoria_publico_id)`, e não
  *  o `score` daquele outro cálculo. `categoria_publico_id` mora na
  *  Instituição, não na Interação — junta pelo catálogo, mesma lógica de
- *  `filtrarPorCategoriaPublico`. */
+ *  `Recorte.categoriaPublico`. */
 export function categoriasPublicoMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
@@ -935,9 +903,9 @@ export interface ScorePorCategoriaPublico {
  *  mais uma sem tirar do topo, e a lista final ordena do pior score pro
  *  melhor.
  *
- *  SÓ NO CLIENTE, como o filtro "Tipo de Público" (`Recorte.categoriaPublico`,
- *  `filtrarPorCategoriaPublico`): a categoria mora na Instituição, não na
- *  Interação, e a única forma de agregar por ela é juntar pelo catálogo. */
+ *  A categoria mora na Instituição, não na Interação: agrega juntando pelo
+ *  catálogo — o mesmo caminho que o servidor faz para o filtro
+ *  `categoriaPublico`. */
 export function scorePorCategoriaPublico(
   interacoes: Interacao[],
   catalogo: Catalogo,

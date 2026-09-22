@@ -513,8 +513,6 @@ export function Painel({
             campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
             aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
           />
-          {/* SÓ NO CLIENTE (ver `Recorte.categoriaPublico`): filtra sobre o
-              que já chegou da API, juntando pelo catálogo. */}
           <CampoSuspenso
             campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
             aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}

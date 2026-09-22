@@ -171,9 +171,11 @@ describe('limparCategoriaPublico', () => {
 });
 
 describe('paraParametros', () => {
-  it('nunca manda categoriaPublico ao backend — é filtro só do cliente', () => {
-    const parametros = paraParametros({ categoriaPublico: [1, 3], areas: [2] });
-    expect(parametros.has('categoriaPublico')).toBe(false);
-    expect(parametros.get('areas')).toEqual('2');
+  it('manda categoriaPublico e formatoInteracao ao backend, como ids separados por vírgula', () => {
+    // Nasceram só no cliente; hoje o servidor os lê, e é o que faz métricas,
+    // materiais e exportação obedecerem ao mesmo recorte que a tela.
+    const p = paraParametros({ categoriaPublico: [3, 1], formatoInteracao: [7] });
+    expect(p.get('categoriaPublico')).toBe('3,1');
+    expect(p.get('formatoInteracao')).toBe('7');
   });
 });

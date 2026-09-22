@@ -65,24 +65,15 @@ export interface Recorte {
   areas?: number[];
   /** Categorias da taxonomia de públicos — ids de
    *  `catalogo.dicionarios.categorias_publico`. Multisseleção com OR entre
-   *  elas, mesmo comportamento de `tags`/`areas`.
-   *
-   *  SÓ NO CLIENTE — nunca viaja para o backend (ver o `continue` dedicado
-   *  em `paraParametros`): `categoria_publico_id` mora na Instituição, não
-   *  na Interação, e a API de interações não tem esse filtro. O front junta
-   *  pelo catálogo (`catalogo.instituicoes`) — ver `filtrarPorCategoriaPublico`
-   *  em `dominio/derivacoes.ts`. */
+   *  elas, mesmo comportamento de `tags`/`areas`. Vai ao backend como
+   *  `categoriaPublico=1,3`; lá a categoria é resolvida pela INSTITUIÇÃO da
+   *  agenda — é o que faz métricas, materiais e exportação obedecerem ao
+   *  mesmo recorte que a tela. */
   categoriaPublico?: number[];
   /** Formato da interação (Mídia, Agenda de mercado, Evento...) — ids de
    *  `catalogo.dicionarios.formatos_interacao`. Multisseleção com OR entre
-   *  elas, mesmo comportamento de `categoriaPublico`.
-   *
-   *  SÓ NO CLIENTE — nunca viaja para o backend (ver o `continue` dedicado
-   *  em `paraParametros`): `formato_interacao_id` existe em `interacao`
-   *  desde a `0038_formato_interacao.sql`, mas `GET /api/interacoes` ainda
-   *  não tem esse filtro. Diferente de `categoriaPublico`, não precisa
-   *  juntar pelo catálogo — mora direto na interação — mas segue o mesmo
-   *  caminho só-cliente enquanto o backend não abrir o parâmetro. */
+   *  elas, mesmo comportamento de `categoriaPublico`; vai ao backend como
+   *  `formatoInteracao=7`. */
   formatoInteracao?: number[];
   q?: string;
 }
@@ -219,10 +210,6 @@ export function paraParametros(recorte: Recorte): URLSearchParams {
   const parametros = new URLSearchParams();
   for (const [chave, valor] of Object.entries(recorte)) {
     if (CAMPOS_DE_PERIODO.has(chave)) continue; // tratamento próprio, abaixo
-    // `categoriaPublico`/`formatoInteracao` são só do cliente — o backend
-    // ainda não tem esses filtros em `GET /api/interacoes`. Ver o comentário
-    // em cada campo, em `Recorte`.
-    if (chave === 'categoriaPublico' || chave === 'formatoInteracao') continue;
     if (valor == null || valor === '') continue;
     if (Array.isArray(valor)) {
       // `tags` SÃO NOMES DE TEMA, e um nome pode ter vírgula: viajam como

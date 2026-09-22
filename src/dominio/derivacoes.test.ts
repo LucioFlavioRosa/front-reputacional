@@ -26,7 +26,6 @@ import {
   dividirEmJanelas,
   exposicaoDePortaVozes,
   filaDePendencias,
-  filtrarPorCategoriaPublico,
   idsPorCategoriaDeArea,
   kpis,
   montarCatalogo,
@@ -802,48 +801,6 @@ describe('divergenciasDoCatalogo', () => {
       expect.stringContaining('"interna" existe no código e não no dicionário'),
       expect.stringContaining('"ouvidoria" existe no dicionário e não no código'),
     ]);
-  });
-});
-
-describe('filtrarPorCategoriaPublico', () => {
-  const INSTITUICOES_COM_CATEGORIA: Instituicao[] = [
-    { ...INSTITUICOES[0], id: 'i1', categoria_publico_id: 5 },
-    { ...INSTITUICOES[1], id: 'i2', categoria_publico_id: 7 },
-    { ...INSTITUICOES[0], id: 'i3', categoria_publico_id: null },
-  ];
-  const CATALOGO_COM_CATEGORIA = montarCatalogo(
-    DICIONARIOS,
-    INSTITUICOES_COM_CATEGORIA,
-    INTERLOCUTORES,
-    PESSOAS,
-  );
-
-  it('sem ids escolhidos, devolve tudo — nenhum filtro ativo', () => {
-    const dados = [interacao({ instituicao_id: 'i1' })];
-    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [])).toEqual(dados);
-  });
-
-  it('mantém só as interações de instituições nas categorias escolhidas', () => {
-    const dados = [
-      interacao({ id: 'a', instituicao_id: 'i1' }),
-      interacao({ id: 'b', instituicao_id: 'i2' }),
-    ];
-    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5]);
-    expect(resultado.map((i) => i.id)).toEqual(['a']);
-  });
-
-  it('OR entre categorias — mais de um id escolhido soma as interações', () => {
-    const dados = [
-      interacao({ id: 'a', instituicao_id: 'i1' }),
-      interacao({ id: 'b', instituicao_id: 'i2' }),
-    ];
-    const resultado = filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7]);
-    expect(resultado.map((i) => i.id).sort()).toEqual(['a', 'b']);
-  });
-
-  it('instituição sem categoria (ainda não reclassificada) nunca entra', () => {
-    const dados = [interacao({ instituicao_id: 'i3' })];
-    expect(filtrarPorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, [5, 7])).toEqual([]);
   });
 });
 
