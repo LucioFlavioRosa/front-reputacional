@@ -17,7 +17,6 @@ import type { Rota } from '@/navegacao/rota';
 describe('ler e escrever o caminho', () => {
   const casos: [string, Rota][] = [
     ['/', { destino: 'inicio' }],
-    ['/situacao', { destino: 'situacao' }],
     ['/painel', { destino: 'painel' }],
     ['/base', { destino: 'base' }],
     ['/relatorios', { destino: 'relatorios' }],

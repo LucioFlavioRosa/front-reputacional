@@ -20,7 +20,7 @@ const ONDA_1: {
   {
     portal: 'crm',
     // A porta do CRM é o Painel: quem entra vê o panorama de uma vez, e todo
-    // clique nele filtra a própria tela. (Era a Situação até 22/09/2026.)
+    // clique nele filtra a própria tela.
     view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:

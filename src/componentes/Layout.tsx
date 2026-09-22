@@ -34,15 +34,11 @@ import type { Destino } from '@/navegacao/rota';
 //: lideranca faz ao abrir, e a que da contexto para todas as outras: o
 //: recorte se olha de uma vez, e todo clique nele filtra a propria tela.
 //:
-//: A SITUACAO VEM LOGO DEPOIS, e responde "o que precisa de mim hoje": e a
-//: tela de quem opera, e ela se le melhor depois de saber o tamanho do todo.
-//:
 //: A CADEIA NAO E UM DESTINO: como aba, obrigaria a escolher QUAL cadeia antes
 //: de poder olhar. Mora na linha da Base, que e onde a pergunta nasce.
-//: "SITUAÇÃO" SAIU DA LISTA VISÍVEL — a rota (`/situacao`) e a tela
-//: continuam existindo, só não tem mais botão no cabeçalho, e desde 22/09/2026
-//: o cartão "CRM" da capa abre o Painel, não mais a Situação. Só se chega
-//: nela por link salvo.
+//: A "SITUAÇÃO" (fila de exceções + leitura em palavras) e a "EXPLORAR"
+//: (eixos num seletor) SAÍRAM em 22/09/2026: o Painel responde as duas
+//: perguntas com um clique no gráfico. `/situacao` e `/explorar` caem na capa.
 //:
 //: "RELATÓRIOS EXECUTIVOS" RESPONDE "O QUE ACONTECEU, PRONTO PARA REPASSAR" —
 //: o registro em si, em texto corrido, para quem vai copiar e colar num

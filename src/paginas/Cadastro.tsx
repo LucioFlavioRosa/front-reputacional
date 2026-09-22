@@ -41,7 +41,7 @@ import {
 } from '@/dominio/frentes';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
 import { nomesDosTemas } from '@/dominio/derivacoes';
-import { jaAconteceu } from '@/dominio/agregacao';
+import { jaAconteceu } from '@/dominio/derivacoes';
 import { Abas } from '@/componentes/Abas';
 import { EscolherAgendas } from '@/componentes/EscolherAgendas';
 import { urlDaVersao } from '@/api/cliente';

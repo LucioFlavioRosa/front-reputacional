@@ -28,6 +28,7 @@ import {
   exposicaoDePortaVozes,
   filaDePendencias,
   idsPorCategoriaDeArea,
+  jaAconteceu,
   kpis,
   montarCatalogo,
   novosContatos,
@@ -918,5 +919,21 @@ describe('scorePorCategoriaPublico', () => {
     const resultado = scorePorCategoriaPublico(dados, CATALOGO_COM_CATEGORIA, 1);
     expect(resultado.totalDeCategorias).toBe(2);
     expect(resultado.itens).toHaveLength(1);
+  });
+});
+
+describe('jaAconteceu', () => {
+  it('exige aceite E relato', () => {
+    // Uma das duas sozinha não basta: aceito sem relato é reunião marcada que
+    // ninguém contou; relato sem aceite é registro inconsistente.
+    expect(jaAconteceu(interacao({ status: 'confirmada', relato: 'Houve.' }))).toBe(true);
+    expect(jaAconteceu(interacao({ status: 'confirmada', relato: null }))).toBe(false);
+    expect(jaAconteceu(interacao({ status: 'solicitado', relato: 'Houve.' }))).toBe(false);
+  });
+
+  it('a negada fica de fora mesmo com relato', () => {
+    // O texto de uma recusa conta a recusa. Recusa não é reunião, e oferecê-la
+    // como origem montaria uma cadeia a partir de algo que não aconteceu.
+    expect(jaAconteceu(interacao({ status: 'declinado', relato: 'Recusamos.' }))).toBe(false);
   });
 });
