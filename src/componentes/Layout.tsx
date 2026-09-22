@@ -22,19 +22,17 @@ import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
 
-//: SEIS DESTINOS, E CADA UM RESPONDE UMA PERGUNTA.
+//: CADA DESTINO RESPONDE UMA PERGUNTA.
 //:
 //: O criterio nao e "por qual eixo voce quer olhar", e sim "o que voce veio
 //: fazer". Frente, situacao, resultado, porta-voz e interlocutor sao eixos da
-//: MESMA tabela: moram no seletor de Explorar, e nao em cinco destinos que
-//: obrigariam a passar por tres telas para saber se a agenda de imprensa
-//: Tier 1 de agosto acabou bem.
+//: MESMA tabela, e cada um e um filtro do recorte — nao um destino. (A tela
+//: "Explorar", que os punha num seletor, saiu em 22/09/2026: o Painel ja
+//: responde a mesma pergunta clicando no grafico.)
 //:
 //: O PAINEL E O PRIMEIRO. Ele responde "como estamos" — a pergunta que a
-//: lideranca faz ao abrir, e a que da contexto para todas as outras. Panorama
-//: e aprofundamento sao perguntas diferentes: o painel se olha de uma vez, sem
-//: escolher eixo nenhum, e e onde moram o mapa e as series no tempo que
-//: Explorar nao repoe.
+//: lideranca faz ao abrir, e a que da contexto para todas as outras: o
+//: recorte se olha de uma vez, e todo clique nele filtra a propria tela.
 //:
 //: A SITUACAO VEM LOGO DEPOIS, e responde "o que precisa de mim hoje": e a
 //: tela de quem opera, e ela se le melhor depois de saber o tamanho do todo.
@@ -52,7 +50,6 @@ import type { Destino } from '@/navegacao/rota';
 //: escolha de semana ou mês. Ver `paginas/RelatoriosExecutivos.tsx`.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
-  { view: 'explorar', rotulo: 'Explorar' },
   { view: 'base', rotulo: 'Base' },
   { view: 'preparar', rotulo: 'Preparar agenda' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },

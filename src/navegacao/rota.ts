@@ -28,34 +28,11 @@ export type Destino =
   | 'inicio'
   | 'situacao'
   | 'painel'
-  | 'explorar'
   | 'base'
   | 'relatorios'
   | 'preparar'
   | 'cadastro'
   | 'admin';
-
-/** Por qual eixo a tela Explorar está agrupando. */
-export type Eixo =
-  | 'frente'
-  | 'situacao'
-  | 'desfecho'
-  | 'porta-voz'
-  | 'interlocutor'
-  | 'assunto'
-  | 'uf';
-
-export const EIXOS: { eixo: Eixo; rotulo: string }[] = [
-  { eixo: 'frente', rotulo: 'Frente' },
-  { eixo: 'situacao', rotulo: 'Situação' },
-  { eixo: 'desfecho', rotulo: 'Desfecho' },
-  { eixo: 'porta-voz', rotulo: 'Porta-voz' },
-  { eixo: 'interlocutor', rotulo: 'Interlocutor' },
-  { eixo: 'assunto', rotulo: 'Tema' },
-  { eixo: 'uf', rotulo: 'UF' },
-];
-
-const EIXOS_VALIDOS = new Set<string>(EIXOS.map((e) => e.eixo));
 
 export interface Rota {
   destino: Destino;
@@ -65,8 +42,6 @@ export interface Rota {
   sobre?: 'ficha' | 'cadeia' | 'editar' | 'nova';
   /** A aba da administração. */
   aba?: string;
-  /** O eixo de agrupamento, só em Explorar. */
-  eixo?: Eixo;
 }
 
 export const ROTA_INICIAL: Rota = { destino: 'inicio' };
@@ -89,8 +64,6 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
-
-  if (primeira === 'explorar') return { destino: 'explorar' };
 
   if (primeira === 'agenda') {
     if (!segunda) return { destino: 'base' };
@@ -118,8 +91,6 @@ export function caminhoDe(rota: Rota): string {
       return '/situacao';
     case 'painel':
       return '/painel';
-    case 'explorar':
-      return '/explorar';
     case 'relatorios':
       return '/relatorios';
     case 'preparar':
@@ -135,12 +106,6 @@ export function caminhoDe(rota: Rota): string {
       if (rota.agenda) return `/agenda/${rota.agenda}`;
       return '/base';
   }
-}
-
-/** O eixo pedido na consulta, ou o padrão. */
-export function lerEixo(consulta: string): Eixo {
-  const pedido = new URLSearchParams(consulta).get('ver');
-  return pedido && EIXOS_VALIDOS.has(pedido) ? (pedido as Eixo) : 'frente';
 }
 
 /* ------------------------------------------------------- o recorte na URL */
@@ -180,7 +145,7 @@ export function lerRecorte(consulta: string): Recorte {
 
 /** O Recorte vira consulta, na ordem dos campos — para o mesmo recorte
  *  produzir sempre o mesmo endereço, e dois links iguais se reconhecerem. */
-export function consultaDe(recorte: Recorte, eixo?: Eixo): string {
+export function consultaDe(recorte: Recorte): string {
   const p = new URLSearchParams();
 
   for (const campo of CAMPOS_DE_TEXTO) {
@@ -189,15 +154,9 @@ export function consultaDe(recorte: Recorte, eixo?: Eixo): string {
   }
   if (recorte.tier) p.set('tier', String(recorte.tier));
   for (const tag of recorte.tags ?? []) p.append('tags', tag);
-  if (eixo && eixo !== 'frente') p.set('ver', eixo);
 
   const texto = p.toString();
   return texto ? `?${texto}` : '';
-}
-
-/** O endereço inteiro, para copiar e mandar a alguém. */
-export function enderecoDe(rota: Rota, recorte: Recorte, eixo?: Eixo): string {
-  return caminhoDe(rota) + consultaDe(recorte, eixo);
 }
 
 /** O nome da tela, para a telemetria.

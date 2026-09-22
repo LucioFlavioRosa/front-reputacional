@@ -226,7 +226,6 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 .grade { display: grid; }
 .grade--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grade--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.grade--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grade--destaque { grid-template-columns: 1.35fr 1fr 1fr; }
 .grade--mapa { grid-template-columns: 1.3fr 1fr; }
 /* Os dois lados da mesa, com a MESMA largura: sao partes equivalentes da mesma
@@ -281,7 +280,6 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 }
 
 @media (max-width: 1040px) {
-  .grade--4,
   .grade--destaque { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* A mesa desmonta CEDO, em 1040 e nao junto das outras em 760. Entre as duas
      larguras a coluna direita cai para uns 400px — descontados os recuos de
@@ -295,7 +293,6 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 @media (max-width: 760px) {
   .grade--2,
   .grade--3,
-  .grade--4,
   .grade--destaque,
   .grade--kpis-painel { grid-template-columns: 1fr; }
   .grade--kpis-painel > :first-child { grid-row: auto; }

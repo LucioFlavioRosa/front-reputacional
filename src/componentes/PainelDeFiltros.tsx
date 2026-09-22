@@ -21,7 +21,7 @@
  *  "ÁREA(S)" NÃO MORA EM NENHUM DOS DOIS GRUPOS NO PAINEL: lá ela é um bloco
  *  fixo e sempre visível, logo abaixo da barra "Síntese Executiva" (ver
  *  `campoDeAreaPorCategoria`/`GrupoDeCampo`, reaproveitados por `Painel.tsx`).
- *  Em Explorar/Base — as outras telas que montam este componente — não existe
+ *  Na Base — a outra tela que monta este componente — não existe
  *  essa barra para ancorar um bloco fixo, então lá ela continua acessível,
  *  só que dentro de "Filtros avançados" em vez de "Filtros rápidos".
  *
@@ -74,7 +74,7 @@ export interface CampoDeFiltro {
  *
  *  EXPORTADA (e não uma das entradas fixas de `CAMPOS_RAPIDOS`/
  *  `CAMPOS_AVANCADOS`) porque tem DOIS pontos de montagem: aqui, dentro de
- *  "Filtros avançados" (Explorar/Base); e em `Painel.tsx`, como bloco fixo
+ *  "Filtros avançados" (Base); e em `Painel.tsx`, como bloco fixo
  *  sempre visível abaixo da barra "Síntese Executiva" — ver o comentário no
  *  topo do arquivo. */
 export function campoDeAreaPorCategoria(

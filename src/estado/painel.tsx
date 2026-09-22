@@ -27,7 +27,7 @@ import type { Catalogo } from '@/dominio/derivacoes';
 import { divergenciasDoCatalogo, montarCatalogo } from '@/dominio/derivacoes';
 import { registrarEvento } from '@/observabilidade/telemetria';
 import type { Recorte } from '@/dominio/recorte';
-import { consultaDe, lerEixo, lerRecorte } from '@/navegacao/rota';
+import { consultaDe, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
 
 interface EstadoDoPainel {
@@ -82,11 +82,7 @@ export function ProvedorDoPainel({
 
   const definirRecorte = useCallback((novo: Recorte) => {
     definirRecorteEstado(novo);
-    window.history.replaceState(
-      null,
-      '',
-      window.location.pathname + consultaDe(novo, lerEixo(window.location.search)),
-    );
+    window.history.replaceState(null, '', window.location.pathname + consultaDe(novo));
   }, []);
 
   useEffect(function ouvirOBotaoDeVoltar() {

@@ -34,7 +34,7 @@ import {
   limparFormatoInteracao,
 } from '@/dominio/recorte';
 import { FRENTES } from '@/dominio/tipos';
-import type { Frente, Interacao } from '@/dominio/tipos';
+import type { Interacao } from '@/dominio/tipos';
 import {
   categoriasDeArea,
   comReativoNaBase,
@@ -140,10 +140,8 @@ const FORMATADORES_DE_ROTULO: Record<Granularidade, (chave: string) => string> =
 };
 
 export function Painel({
-  aoAbrirFrente,
   aoAbrirAgenda,
 }: {
-  aoAbrirFrente: (frente: Frente) => void;
   /** Abre a Ficha de uma agenda específica — usado pela lista que se abre ao
    *  clicar num tema na barra divergente. */
   aoAbrirAgenda: (id: string) => void;
@@ -401,42 +399,42 @@ export function Painel({
               fracao: kpis.imprensa.taxa,
               rotulo: `${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`,
             }}
-            aoClicar={() => aoAbrirFrente('imprensa')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'imprensa'))}
           />
           <Kpi
             rotulo="Eventos e participações"
             valor={numero(kpis.eventos)}
             dica={`${derivado.resumoDeClima.eventos.positivas} pos, ${derivado.resumoDeClima.eventos.negativas} neg`}
             cor={CORES_DE_FRENTE.eventos}
-            aoClicar={() => aoAbrirFrente('eventos')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'eventos'))}
           />
           <Kpi
             rotulo="Interações com investidores"
             valor={numero(kpis.investidores.total)}
             dica={`${kpis.investidores.internacionais} internacionais`}
             cor={CORES_DE_FRENTE.investidores}
-            aoClicar={() => aoAbrirFrente('investidores')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'investidores'))}
           />
           <Kpi
             rotulo="Proposições legislativas"
             valor={numero(kpis.legislativo)}
             dica={`${derivado.resumoDeClima.legislativo.positivas} pos, ${derivado.resumoDeClima.legislativo.negativas} neg`}
             cor={CORES_DE_FRENTE.legislativo}
-            aoClicar={() => aoAbrirFrente('legislativo')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'legislativo'))}
           />
           <Kpi
             rotulo="Interações institucionais"
             valor={numero(kpis.institucionais)}
             dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
             cor={CORES_DE_FRENTE.governo}
-            aoClicar={() => aoAbrirFrente('governo')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'governo'))}
           />
           <Kpi
             rotulo={ROTULOS_DE_FRENTE.bancos_credores}
             valor={numero(derivado.resumoDeClima.bancosCredores.total)}
             dica={`${derivado.resumoDeClima.bancosCredores.positivas} pos, ${derivado.resumoDeClima.bancosCredores.negativas} neg`}
             cor={CORES_DE_FRENTE.bancos_credores}
-            aoClicar={() => aoAbrirFrente('bancos_credores')}
+            aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'bancos_credores'))}
           />
           <Kpi
             rotulo="Relevância Tier 1"
