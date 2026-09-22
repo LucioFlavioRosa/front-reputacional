@@ -12,6 +12,12 @@
  *  que muda é quanto se pergunta. O que ficou de fora (materiais, cadeia,
  *  participantes da outra parte) se completa depois, abrindo a ficha.
  *
+ *  OS ANEXOS SOBEM DEPOIS DE A CONSULTA EXISTIR, e não antes: o arquivo mora
+ *  numa pasta que leva o id dela (`consultas/<mês>/<instituição>/<dia>-<id>/`),
+ *  e essa pasta é o que permite vistoriar o contêiner sem consultar o banco.
+ *  Por isso o salvar é uma sequência — cria, sobe cada anexo, e amarra os
+ *  materiais à consulta.
+ *
  *  O QUE NÃO SE PERGUNTA AQUI, e por quê:
  *  - a FRENTE: o servidor deriva do tipo da instituição;
  *  - a SITUAÇÃO: um e-mail que chegou aconteceu — nasce "Aceito";
@@ -19,7 +25,7 @@
  */
 
 import { useState } from 'react';
-import { criarInteracao } from '@/api/cliente';
+import { criarInteracao, editarInteracao, subirArquivoDeMaterial } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import { Botao, Campo, Cartao, Chip, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
@@ -29,6 +35,10 @@ import { CODIGO_DA_CONSULTA } from '@/dominio/sinais';
 
 /** Um e-mail que chegou ACONTECEU — não é um pedido à espera de resposta. */
 const SITUACAO_DE_QUEM_RECEBEU = 'confirmada';
+
+/** O anexo veio de fora — é material OBTIDO, e não produzido pela casa nem
+ *  levado como apoio. */
+const MOMENTO_DO_ANEXO = 'obtido';
 
 /** O papel de quem recebeu: acompanhou, não falou pela companhia. Porta-voz é
  *  quem conduz, e entra no ranking de exposição — um destinatário de e-mail
@@ -73,6 +83,7 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
   const { recarregar } = usePainel();
   const [rascunho, definirRascunho] = useState<Rascunho>(VAZIO);
   const [aberto, definirAberto] = useState(false);
+  const [anexos, definirAnexos] = useState<File[]>([]);
   const [salvando, definirSalvando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
   const [sucesso, definirSucesso] = useState<string | null>(null);
@@ -110,7 +121,7 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
     definirErro(null);
     definirSucesso(null);
     try {
-      await criarInteracao({
+      const criada = await criarInteracao({
         data_interacao: rascunho.data_interacao,
         instituicao_id: rascunho.instituicao_id,
         // A UF vem da instituição: quem registra um e-mail não tem o que
@@ -134,8 +145,29 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
         },
         alegacoes: rascunho.alegacoes,
       });
+
+      // UM A UM, e não em paralelo: o servidor recusa arquivo fora da lista de
+      // tipos, e subir tudo junto tornaria impossível dizer QUAL falhou.
+      const materiais = [];
+      for (const anexo of anexos) {
+        const salvo = await subirArquivoDeMaterial(criada.id, MOMENTO_DO_ANEXO, anexo);
+        materiais.push({
+          momento: MOMENTO_DO_ANEXO,
+          // O nome do arquivo É o título: quem anexa "Questionário anual.pdf"
+          // já disse como o material se chama.
+          titulo: salvo.nome,
+          arquivo_id: salvo.id,
+          temas: rascunho.temas,
+        });
+      }
+      if (materiais.length) await editarInteracao(criada.id, { materiais });
       definirRascunho(VAZIO());
-      definirSucesso('Consulta registrada. Ela já conta na aba de Sinais.');
+      definirAnexos([]);
+      definirSucesso(
+        anexos.length
+          ? `Consulta registrada com ${anexos.length} anexo${anexos.length > 1 ? 's' : ''}. Ela já conta na aba de Sinais.`
+          : 'Consulta registrada. Ela já conta na aba de Sinais.',
+      );
       // O catálogo guarda as alegações que o formulário oferece, e a lista de
       // baixo mostra em quantas consultas cada uma apareceu.
       recarregar();
@@ -259,6 +291,30 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
               />
             </div>
 
+            {/* O ANEXO — o questionário em si, que é o documento que se
+                reutiliza depois. Vai para `consultas/<mês>/<instituição>/…` no
+                armazenamento, uma pasta por e-mail. */}
+            <Campo rotulo="Anexos do e-mail">
+              <input
+                type="file"
+                multiple
+                onChange={(evento) =>
+                  definirAnexos([...(evento.target.files ?? [])])
+                }
+                style={{ ...estiloDeEntrada, padding: '6px 8px' }}
+              />
+              {anexos.length ? (
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                  {anexos.map((a) => a.name).join(', ')} — sobem quando você
+                  registrar.
+                </p>
+              ) : (
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
+                  PDF, Word, Excel, PowerPoint ou imagem.
+                </p>
+              )}
+            </Campo>
+
             <Campo rotulo="Sua percepção">
               <textarea
                 value={rascunho.observacoes}
@@ -271,7 +327,11 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <Botao aoClicar={salvar} desabilitado={!podeSalvar}>
-                {salvando ? 'Registrando…' : 'Registrar consulta'}
+                {salvando
+                  ? anexos.length
+                    ? 'Registrando e subindo os anexos…'
+                    : 'Registrando…'
+                  : 'Registrar consulta'}
               </Botao>
               {!tipoDeConsulta ? (
                 <span style={{ fontSize: 12, color: 'var(--erro-fg)' }}>
