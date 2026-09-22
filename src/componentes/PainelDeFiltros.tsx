@@ -41,6 +41,7 @@ import {
   alternarCategoriaDeArea,
   alternarCategoriaPublico,
   alternarFormatoInteracao,
+  alternarTag,
   ATALHOS_DE_PERIODO,
 } from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
@@ -140,6 +141,24 @@ export function campoDeCategoriaPublico(
  *  NÃO É `frente` (Imprensa/Entidades/Parceiros...): "formato" responde "que
  *  tipo de encontro foi esse", `frente` responde "quem é a contraparte" — as
  *  duas colunas são ortogonais, ver `0038_formato_interacao.sql`. */
+/** O campo Tema(s): multisseleção com OR, os nomes como valor (é assim que
+ *  `tags` viaja para o servidor). Dois pontos de montagem: "Filtros rápidos"
+ *  na gaveta e a faixa fixa da Preparar agenda, onde é o primeiro gatilho. */
+export function campoDeTema(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  return {
+    chave: 'tags',
+    rotulo: 'Temas',
+    multiplo: true,
+    selecionados: recorte.tags ?? [],
+    itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
+    aoEscolher: (nome: string) => definirRecorte(alternarTag(recorte, nome)),
+  };
+}
+
 export function campoDeFormatoInteracao(
   recorte: Recorte,
   definirRecorte: (recorte: Recorte) => void,
@@ -215,13 +234,6 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     definirRecorte(proximo);
   };
 
-  const alternarTema = (nome: string) => {
-    const atuais = new Set(recorte.tags ?? []);
-    if (atuais.has(nome)) atuais.delete(nome);
-    else atuais.add(nome);
-    const tags = [...atuais].sort();
-    definirRecorte(tags.length ? { ...recorte, tags } : { ...recorte, tags: undefined });
-  };
 
   const CAMPOS_RAPIDOS: CampoDeFiltro[] = [
     {
@@ -247,14 +259,7 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           (v) => Number(v),
         ),
     },
-    {
-      chave: 'tags',
-      rotulo: 'Temas',
-      multiplo: true,
-      selecionados: recorte.tags ?? [],
-      itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
-      aoEscolher: alternarTema,
-    },
+    campoDeTema(recorte, definirRecorte, catalogo),
   ].filter((campo) => campo.itens.length > 0);
 
   const CAMPOS_AVANCADOS: CampoDeFiltro[] = [

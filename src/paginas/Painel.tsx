@@ -15,6 +15,7 @@ import {
   campoDeFormatoInteracao,
 } from '@/componentes/PainelDeFiltros';
 import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
+import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
@@ -461,107 +462,74 @@ export function Painel({
           mesma ideia — fechado por padrão, abre só quando alguém quer
           arrastar. Referência: protótipo trazido pelo usuário (faixa
           turquesa "Filtros:" com três caixas + barra clara "Período").
-
-          UM SÓ `position: sticky`, colado em `top: var(--altura-cabecalho)`
-          (a altura real do `<header>` azul, medida e publicada por
-          `Layout.tsx`) — desce com a página até encostar embaixo do
-          cabeçalho, e daí em diante rola junto. `zIndex` abaixo do
-          cabeçalho (30) para ele sempre vencer se os dois colidirem na
-          borda. */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 'var(--altura-cabecalho)',
-          zIndex: 25,
-          borderRadius: 'var(--r-card)',
-          boxShadow: '0 6px 18px rgba(0,49,44,0.22)',
-        }}
+          A faixa em si é `FaixaDeFiltros`, compartilhada com a Preparar
+          agenda. */}
+      <FaixaDeFiltros
+        rodape={
+          <>
+            {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
+                (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
+                espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
+                para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
+            <button
+              type="button"
+              onClick={() => definirPeriodoAberto((v) => !v)}
+              aria-expanded={periodoAberto}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '9px 20px',
+                background: 'var(--bg-trilho)',
+                border: 'none',
+                borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
+                cursor: 'pointer',
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: 'var(--cinza-3)',
+              }}
+            >
+              <span>Período</span>
+              <SetaSuspensa aberto={periodoAberto} />
+            </button>
+            {periodoAberto ? (
+              <div
+                style={{
+                  background: 'var(--branco)',
+                  border: '1px solid var(--borda)',
+                  borderTop: 'none',
+                  borderRadius: '0 0 var(--r-card) var(--r-card)',
+                  padding: '12px 20px 16px',
+                }}
+              >
+                <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
+              </div>
+            ) : null}
+          </>
+        }
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            background: 'var(--turquesa-rio)',
-            borderRadius: 'var(--r-card) var(--r-card) 0 0',
-            padding: '10px 20px',
-          }}
-        >
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: '0.03em',
-              textTransform: 'uppercase',
-              color: 'var(--sobre-turquesa)',
-              flexShrink: 0,
-            }}
-          >
-            Filtros:
-          </span>
-          <CampoSuspenso
-            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparAreas(recorte))}
-          />
-          {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
-              Manifestação formal/Evento/Visita/Reunião — `0038_formato_
-              interacao.sql`), NÃO `frente`: responde "que tipo de encontro
-              foi esse", pergunta ortogonal a "quem é a contraparte" —
-              `frente` continua filtrável em "Filtros rápidos". SÓ NO
-              CLIENTE, mesma lógica do Filtro Tipo de Público. */}
-          <CampoSuspenso
-            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
-          />
-          <CampoSuspenso
-            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
-          />
-        </div>
-
-        {/* PERÍODO — retrátil, mesma lógica de "Filtros rápidos"
-            (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
-            espaço. Complementa os atalhos de "Filtros rápidos" (30/60/90...)
-            para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
-        <button
-          type="button"
-          onClick={() => definirPeriodoAberto((v) => !v)}
-          aria-expanded={periodoAberto}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '9px 20px',
-            background: 'var(--bg-trilho)',
-            border: 'none',
-            borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
-            cursor: 'pointer',
-            fontSize: 12.5,
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: 'var(--cinza-3)',
-          }}
-        >
-          <span>Período</span>
-          <SetaSuspensa aberto={periodoAberto} />
-        </button>
-        {periodoAberto ? (
-          <div
-            style={{
-              background: 'var(--branco)',
-              border: '1px solid var(--borda)',
-              borderTop: 'none',
-              borderRadius: '0 0 var(--r-card) var(--r-card)',
-              padding: '12px 20px 16px',
-            }}
-          >
-            <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
-          </div>
-        ) : null}
-      </div>
+        <CampoSuspenso
+          campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparAreas(recorte))}
+        />
+        {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
+            Manifestação formal/Evento/Visita/Reunião — `0038_formato_
+            interacao.sql`), NÃO `frente`: responde "que tipo de encontro
+            foi esse", pergunta ortogonal a "quem é a contraparte" —
+            `frente` continua filtrável em "Filtros rápidos". */}
+        <CampoSuspenso
+          campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
+        />
+        <CampoSuspenso
+          campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+        />
+      </FaixaDeFiltros>
 
       {semResultado ? (
         <Vazio

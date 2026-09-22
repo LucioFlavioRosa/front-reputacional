@@ -11,6 +11,7 @@ import {
   limparAreas,
   limparCategoriaPublico,
   paraParametros,
+  limparTags,
   quantidadeDeFiltros,
 } from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
@@ -61,6 +62,13 @@ describe('intervalo', () => {
     const resultado = intervalo(recorte, HOJE);
     expect(resultado.de).toEqual(new Date(2026, 7, 1));
     expect(resultado.ate).toEqual(new Date(2026, 10, 1));
+  });
+});
+
+describe('limparTags', () => {
+  it('tira só os temas e deixa o resto do recorte', () => {
+    const recorte: Recorte = { tags: ['Tarifa'], frente: 'imprensa' };
+    expect(limparTags(recorte)).toEqual({ frente: 'imprensa' });
   });
 });
 

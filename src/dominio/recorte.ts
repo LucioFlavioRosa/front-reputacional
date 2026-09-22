@@ -152,6 +152,13 @@ export function alternarCategoriaDeArea(recorte: Recorte, ids: Iterable<number>)
   return proximo;
 }
 
+/** Só os temas — o "Limpar" do gatilho Tema, mesma regra de `limparAreas`. */
+export function limparTags(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.tags;
+  return proximo;
+}
+
 /** Só o campo Área(s), sem afastar o resto do recorte — o "Limpar" ao lado
  *  das pílulas de área é local a elas, não o reset geral da barra. */
 export function limparAreas(recorte: Recorte): Recorte {

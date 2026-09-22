@@ -22,12 +22,25 @@
 
 import { urlDaVersao, urlDoArquivo } from '@/api/cliente';
 import { Botao, Cartao, Carregando, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
-import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { CampoSuspenso } from '@/componentes/CampoSuspenso';
+import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
+import {
+  campoDeAreaPorCategoria,
+  campoDeCategoriaPublico,
+  campoDeFormatoInteracao,
+  campoDeTema,
+} from '@/componentes/PainelDeFiltros';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
-import { alternar } from '@/dominio/recorte';
+import {
+  alternar,
+  limparAreas,
+  limparCategoriaPublico,
+  limparFormatoInteracao,
+  limparTags,
+} from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
 import {
   nomeDaInstituicao,
@@ -59,13 +72,6 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
 
   if (!catalogo) return <Carregando rotulo="Carregando o catálogo…" />;
 
-  const escolherTema = (nome: string) => {
-    const proximo = { ...recorte };
-    if (nome) proximo.tags = [nome];
-    else delete proximo.tags;
-    definirRecorte(proximo);
-  };
-
   const idsDosTemas = new Set(
     catalogo.dicionarios.temas.filter((t) => temas.includes(t.nome)).map((t) => t.id),
   );
@@ -79,29 +85,36 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
       <Secao
         titulo="Preparar agenda"
         subtitulo="Escolha o tema: o que a companhia diz sobre ele, o que aconteceu nas últimas conversas e como elas terminam. Os demais filtros do recorte valem aqui."
+        nivelDoTitulo={1}
       >
-        <Cartao>
-          <div style={{ maxWidth: 520 }}>
-            <CampoQueCompleta
-              rotulo="Tema"
-              valor={temas.length === 1 ? temas[0] : ''}
-              aoEscolher={escolherTema}
-              opcoes={catalogo.dicionarios.temas.map((t) => ({ valor: t.nome, rotulo: t.nome }))}
-            />
-            {temas.length > 1 ? (
-              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '6px 0 0' }}>
-                Vários temas marcados na gaveta de filtros: {rotuloDosTemas}. Escolher um aqui
-                substitui todos.
-              </p>
-            ) : null}
-          </div>
-        </Cartao>
+        {/* A MESMA FAIXA DO PAINEL, com o Tema na frente: quem aprendeu a
+            filtrar lá filtra igual aqui. Área(s), Tipo de Interação e Tipo de
+            Público seguem ao lado porque valem sobre os três blocos — ficar
+            à vista é o que evita a pergunta "por que sumiu metade das agendas?". */}
+        <FaixaDeFiltros>
+          <CampoSuspenso
+            campo={campoDeTema(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparTags(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparAreas(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+          />
+        </FaixaDeFiltros>
       </Secao>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
       {!temTema ? (
-        <Vazio mensagem="Nenhum tema escolhido" dica="Escolha um tema acima para montar a preparação." />
+        <Vazio mensagem="Nenhum tema escolhido" dica="Escolha um tema na faixa de filtros para montar a preparação." />
       ) : carregando ? (
         <Carregando rotulo={`Reunindo o que há sobre ${rotuloDosTemas}…`} />
       ) : (
