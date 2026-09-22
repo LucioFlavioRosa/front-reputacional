@@ -211,7 +211,15 @@ export function Layout({
             </span>
           </button>
 
-          <nav className="cabecalho__nav" style={{ display: 'flex', gap: 2, flex: 1, overflowX: 'auto' }}>
+          {/* QUEBRA LINHA, e não rolagem — a rolagem horizontal escondia
+              "Administração" sem nenhuma pista visual de que havia mais
+              itens: a aba ficava cortada na borda (ex.: "Adn"), parecendo
+              truncada, sem barra de rolagem visível para avisar. Quebrar
+              linha garante que toda aba continua sempre visível; a altura do
+              cabeçalho já se ajusta sozinha (`publicarAlturaDoCabecalho`,
+              acima), o mesmo mecanismo que já existe para a `BarraDeRecorte`
+              quebrar linha conforme o número de fichas do recorte. */}
+          <nav className="cabecalho__nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
             {[
               ...NAVEGACAO,
               // A entrada administrativa entra no fim, e só para quem
