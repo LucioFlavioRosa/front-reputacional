@@ -30,6 +30,7 @@ import {
   Cartao,
   Chip,
   ChipDeFrente,
+  Ajuda,
   FaixaDeErro,
   Secao,
   estiloDeEntrada,
@@ -589,7 +590,11 @@ export function Cadastro({
           A frente é DERIVADA da instituição (seção 3) e deste formato; a
           tela mostra o resultado como leitura, junto do campo "Público", em
           vez de perguntar de novo o que a instituição já responde. */}
-      <Secao titulo="1. Tipo de interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="1. Tipo de interação"
+        ajuda="Que tipo de encontro é este? Reunião, mídia, evento, consulta recebida…"
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.formatos_interacao.map((formato) => {
             const valor = String(formato.id);
@@ -609,7 +614,11 @@ export function Cadastro({
         </div>
       </Secao>
 
-      <Secao titulo="2. Área(s)" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="2. Área(s)"
+        ajuda="Com qual área da Aegea estaremos interagindo nesta agenda?"
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.areas_pessoa.map((area) => {
             const ativo = form.areas.includes(area.id);
@@ -628,9 +637,17 @@ export function Cadastro({
         </div>
       </Secao>
 
-      <Secao titulo="3. Identificação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="3. Identificação"
+        ajuda="Quem, quando e sobre o quê. É o que identifica esta agenda na base."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div className="grade grade--2" style={{ gap: 16 }}>
-          <Campo rotulo="Data da interação" obrigatorio>
+          <Campo
+            rotulo="Data da interação"
+            obrigatorio
+            ajuda="Em que dia a interação aconteceu ou está marcada."
+          >
             <input
               type="date"
               style={estiloDeEntrada}
@@ -646,6 +663,7 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo={rotuloDaInstituicao}
             obrigatorio
+            ajuda="Com quem estamos falando. Comece a digitar o nome para achar na lista."
             valor={form.instituicao_id}
             aoEscolher={escolherInstituicao}
             opcoes={[...catalogo.instituicoes.values()]
@@ -668,7 +686,10 @@ export function Cadastro({
               campo — quem decide, de fato, é o backend, com a mesma regra);
               o público é dado direto da instituição, informativo, e nunca
               gravado na interação — ver `Instituicao.categoria_publico_id`. */}
-          <Campo rotulo="Frente" dica="Calculada a partir da instituição e do formato.">
+          <Campo
+            rotulo="Frente"
+            ajuda="Calculada sozinha a partir da instituição e do tipo. Você não escolhe este campo."
+          >
             <div
               style={{
                 ...estiloDeEntrada,
@@ -686,7 +707,10 @@ export function Cadastro({
             </div>
           </Campo>
 
-          <Campo rotulo="Público" dica="Vem da classificação da instituição.">
+          <Campo
+            rotulo="Público"
+            ajuda="A categoria da instituição (investidor, imprensa…). Também vem pronta."
+          >
             <div
               style={{
                 ...estiloDeEntrada,
@@ -715,7 +739,7 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo="UF da interação"
             obrigatorio
-            dica="UF, NA (nacional) ou IN (internacional)."
+            ajuda="Onde a interação acontece. Use NA se for nacional e IN se for internacional."
             valor={form.uf}
             aoEscolher={(v) => alterar('uf', v)}
             opcoes={(catalogo?.dicionarios.ufs ?? []).map((a) => ({
@@ -730,6 +754,7 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo="Unidade de negócio"
             vazio="Holding / corporativo"
+            ajuda="Qual operação da Aegea esta agenda envolve. Se for da holding, deixe em branco."
             valor={form.unidade_negocio_id}
             aoEscolher={(v) => alterar('unidade_negocio_id', v)}
             opcoes={catalogo.dicionarios.unidades_negocio.map((u) => ({
@@ -741,6 +766,7 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo="Esfera"
             vazio="Não informada"
+            ajuda="Federal, estadual ou municipal, quando fizer sentido."
             valor={form.esfera_id}
             aoEscolher={(v) => alterar('esfera_id', v)}
             opcoes={catalogo.dicionarios.esferas.map((e) => ({
@@ -760,7 +786,10 @@ export function Cadastro({
               "TEMAS", e não "Assuntos" nem "Tags": a Administração usa esse
               nome desde que a aba de cadastro foi renomeada, e a leitura
               vale para toda a plataforma — um campo, um nome. */}
-          <Campo rotulo="Temas">
+          <Campo
+            rotulo="Temas"
+            ajuda="Sobre o quê se vai falar. Dá para marcar mais de um."
+          >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
                 const ativo = form.temas.includes(tema.id);
@@ -789,7 +818,11 @@ export function Cadastro({
           — "quantas foram presenciais neste trimestre?" — e o endereco nao;
           ler "Teams" e concluir online funcionaria ate alguem escrever "sala
           4". */}
-      <Secao titulo="4. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="4. Onde será ou foi realizada?"
+        ajuda="Se a interação foi presencial, online ou híbrida, e o endereço ou o link."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
@@ -800,6 +833,7 @@ export function Cadastro({
                 afirmar algo falso. */}
             <CampoQueCompleta
               rotulo="Modalidade"
+              ajuda="Presencial, online ou híbrida (parte na sala e parte na chamada)."
               valor={form.modalidade}
               aoEscolher={(v) => alterar('modalidade', v)}
               opcoes={[
@@ -812,9 +846,9 @@ export function Cadastro({
             <div style={{ gridColumn: 'span 2' }}>
               <Campo
                 rotulo="Local"
-                dica={
+                ajuda={
                   form.modalidade === 'online'
-                    ? 'O link da chamada, ou a plataforma.'
+                    ? 'O link da chamada, ou a plataforma (Teams, Zoom…).'
                     : 'Endereço e sala. Na híbrida, onde fica quem vai presencialmente.'
                 }
               >
@@ -844,13 +878,18 @@ export function Cadastro({
           Três comentários se acumularam aqui, de reorganizações sucessivas, e
           dois falavam de campos que já tinham saído desta seção. Comentário
           que descreve uma tela anterior é pior que comentário nenhum. */}
-      <Secao titulo="5. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="5. Situação e expectativa"
+        ajuda="Em que pé está o convite e o que precisamos tirar desta agenda."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <Cartao>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Iniciativa"
               vazio="Não informada"
+              ajuda="Quem pediu esta agenda: a Aegea ou a outra parte."
               valor={form.iniciativa}
               aoEscolher={(v) => alterar('iniciativa', v)}
               opcoes={catalogo.dicionarios.iniciativas.map((i) => ({
@@ -872,6 +911,7 @@ export function Cadastro({
             <CampoQueCompleta
               rotulo="Situação"
               obrigatorio
+              ajuda="O convite já foi feito, aceito ou recusado."
               valor={form.status}
               aoEscolher={(v) => alterar('status', v)}
               opcoes={catalogo.dicionarios.status
@@ -900,18 +940,19 @@ export function Cadastro({
                 campo compartilhado faria trocar de situação sobrescrever o
                 texto do outro caso. */}
             {form.status === 'confirmada' ? (
-              <CampoDeTexto
-                rotulo="Nota sobre o aceite"
-                valor={form.nota_situacao}
-                aoMudar={(v) => alterar('nota_situacao', v)}
-                dica="Em que termos. Ex.: “só para março”, “com o diretor”."
-              />
+                <CampoDeTexto
+                  rotulo="Nota sobre o aceite"
+                  valor={form.nota_situacao}
+                  aoMudar={(v) => alterar('nota_situacao', v)}
+                  ajuda="Em que termos. Ex.: “só para março”, “com o diretor”."
+                />
             ) : null}
 
             {form.status === 'declinado' ? (
               <>
                 <CampoQueCompleta
                   rotulo="Quem negou"
+                  ajuda="Quem recusou o convite: a Aegea ou a outra parte."
                   valor={form.declinado_por}
                   aoEscolher={(v) => alterar('declinado_por', v)}
                   opcoes={[
@@ -923,15 +964,16 @@ export function Cadastro({
                   rotulo="Por que foi negado"
                   valor={form.motivo_declinio}
                   aoMudar={(v) => alterar('motivo_declinio', v)}
+                  ajuda="O motivo da recusa, em uma frase."
                 />
               </>
             ) : null}
 
             <Campo
               rotulo="Relevância"
-              dica={
+              ajuda={
                 form.instituicao_id
-                  ? 'Vem do cadastro da instituição.'
+                  ? 'O quanto esta instituição importa. Vem pronta do cadastro dela.'
                   : `Aparece depois de escolher ${rotuloDaInstituicao.toLowerCase()}.`
               }
             >
@@ -969,21 +1011,23 @@ export function Cadastro({
               inteiro na ficha, onde ele é LIDO. É lá que a comparação serve
               para alguma coisa; aqui ela só pedia um dado que ainda não
               existe. */}
-          <div className="grade grade--2" style={{ gap: 16 }}>
+          <div className="grade grade--2" style={{ gap: 16, marginTop: 5 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}
               aoMudar={(v) => alterar('clima_esperado', v)}
+              ajuda="Como você acha que a conversa vai ser, antes de ela acontecer."
             />
-
+          </div>
             {/* DE QUAIS AGENDAS ESTA DECORRE — plural, e nao uma so.
-                Com um pai so, o caso "a agencia e a bancada levaram juntas a
-                esta reuniao" perderia uma das duas — e e esse caso que o grafo
-                existe para mostrar. */}
+              Com um pai so, o caso "a agencia e a bancada levaram juntas a
+              esta reuniao" perderia uma das duas — e e esse caso que o grafo
+              existe para mostrar. */}
+            <div style={{ marginTop: 5, marginBottom: 5 }}>
             <Campo
               rotulo="Veio de outras interações?"
-              dica="Dá para escolher mais de uma."
+              ajuda="Esta agenda nasceu de outra? Dá para escolher mais de uma."
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher
                   mais: o campo se lê de cima para baixo. */}
@@ -1044,7 +1088,10 @@ export function Cadastro({
               antes: quem pediu, em que pé está, o quanto importa, que clima se
               projeta, de onde a agenda veio. Escrever o que se espera antes de
               responder essas coisas é escrever no vazio. */}
-          <Campo rotulo="Expectativa">
+          <Campo
+            rotulo="Expectativa"
+            ajuda="O que precisa sair desta reunião para ela ter valido a pena."
+          >
             <textarea
               style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
               value={form.expectativa}
@@ -1067,15 +1114,20 @@ export function Cadastro({
           diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
           pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
           um com bandeirinha. */}
-      <Secao titulo="6. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="6. Quem participou ou irá participar?"
+        ajuda="Quem senta nesta mesa: o time da Aegea e quem representa a outra parte."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
             o que diz que são partes distintas da mesma mesa: num cartão só, as
             duas listas leriam como uma lista longa com dois títulos, e é
             exatamente a distinção que importa aqui. */}
         <div className="grade grade--mesa" style={{ gap: 16 }}>
           <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
               Pela Aegea
+              <Ajuda texto="Quem da companhia vai à reunião. Porta-voz conta no painel; equipe, não." />
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
               Porta-voz conta no painel de exposição; equipe, não.
@@ -1088,8 +1140,9 @@ export function Cadastro({
           </Cartao>
 
           <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
               Pela outra parte
+              <Ajuda texto="Quem representa a instituição. Depois da reunião, marque quem compareceu." />
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
               Quem representa a instituição. Depois da reunião, marque quem
@@ -1124,7 +1177,11 @@ export function Cadastro({
           se leva se junta antes, o que se traz chega depois. Separadas, cada
           instante tem o seu lugar, e a lista de preparacao nao cresce com o
           que so vai existir depois da reuniao. */}
-      <Secao titulo="7. Materiais de preparação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="7. Materiais de preparação"
+        ajuda="O que se leva para a reunião: um arquivo ou um link."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Suba o arquivo, ou informe o link se ele já mora em outro lugar.
@@ -1163,7 +1220,11 @@ export function Cadastro({
           é aqui que está o conteúdo: o que perguntaram e o que a pergunta deu
           como fato. */}
       {ehConsulta ? (
-        <Secao titulo="8. A consulta recebida" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        <Secao
+          titulo="8. A consulta recebida"
+          ajuda="O questionário que chegou: de onde veio, o prazo e o que perguntaram."
+          estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+        >
           <Cartao>
             <CamposDaConsulta
               canalId={form.canal_id}
@@ -1186,6 +1247,7 @@ export function Cadastro({
       {frenteAtual ? (
         <Secao
           titulo={ehConsulta ? '9. Detalhes da frente' : '8. Detalhes da frente'}
+          ajuda="Campos extras desta frente. Só aparecem depois de escolhidos o tipo e a instituição."
           estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
         >
           <Cartao>

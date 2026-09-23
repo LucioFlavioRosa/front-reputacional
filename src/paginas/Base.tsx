@@ -216,6 +216,7 @@ export function Base({
         <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
         <Botao
           variante="primario"
+          estilo={{ height: 36, padding: '0 14px', fontWeight: 500 }}
           aoClicar={async () => {
             // Registra ANTES de montar o arquivo. Falhar aqui não impede a
             // exportação — o CSV é trabalho legítimo, e bloqueá-lo por causa da
