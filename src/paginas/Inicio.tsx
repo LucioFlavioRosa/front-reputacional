@@ -24,33 +24,38 @@ const ONDA_1: {
     view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:
-      'Cadastro das interações institucionais e os painéis que leem essa base.',
+      'Fonte única das interações institucionais — o registro e a síntese executiva que leem essa base.',
     pronto: true,
   },
   {
     portal: 'sintese',
     view: null,
-    titulo: 'Síntese Executiva',
-    descricao: 'Leitura consolidada do período para a diretoria, com o recorte impresso.',
+    titulo: 'KPIs Reputacionais',
+    descricao:
+      'O tracking da saúde reputacional da Aegea, traduzido em indicadores para decisão estratégica.',
     pronto: false,
   },
   {
     portal: 'score',
     view: null,
-    titulo: 'Score Executivo',
+    titulo: 'Inteligência de Mercado',
     descricao:
-      'Índice único de reputação.',
+      'Os indicadores que movimentam o mercado, e onde a Aegea está posicionada neles.',
     pronto: false,
   },
 ];
 
+//: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
+//: os dados que sustentam os três painéis executivos acima, o projeto
+//: atual; as próximas cinco descrevem para onde a plataforma vai, uma
+//: capacidade por onda.
 const ONDAS = [
-  'Onda 1 · MVP',
-  'Onda 2 · Importação',
-  'Onda 3 · Score',
-  'Onda 4 · Community',
-  'Onda 5 · Integrações',
-  'Onda 6 · Preditivo',
+  'Onda 1 · Foundation — estruturação dos dados e 3 painéis (projeto atual)',
+  'Onda 2 · Novos blocos e expansão para novas áreas',
+  'Onda 3 · Backtests e aplicação de agentes',
+  'Onda 4 · Insights preditivos',
+  'Onda 5 · Tendências e alertas dinâmicos com correlações',
+  'Onda 6 · Ecossistema escalável',
 ];
 
 export function Inicio({
@@ -129,7 +134,10 @@ export function Inicio({
           </Cartao>
         ) : null}
 
-        <div className="grade grade--destaque" style={{ gap: 16 }}>
+        {/* TRÊS COLUNAS IGUAIS (`grade--3`), não `grade--destaque` (que dava
+            1.35fr ao primeiro cartão): os três módulos pesam o mesmo aqui,
+            mesmo só o CRM estando disponível. */}
+        <div className="grade grade--3" style={{ gap: 16 }}>
           {meus.map((modulo) => (
             <Cartao
               key={modulo.titulo}
