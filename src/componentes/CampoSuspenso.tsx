@@ -97,24 +97,24 @@ export function SetaSuspensa({ aberto }: { aberto: boolean }) {
   );
 }
 
-//: MAIOR ÊNFASE que o resto da faixa de propósito — são os filtros que mais
-//: amarram com o Painel (ver `campoDeAreaPorCategoria`), e precisavam se
-//: destacar mais do botão fino de "Filtro avançado" acima, não competir em
-//: pé de igualdade com ele.
+//: UM POUCO MAIS DE PESO que o botão fino de "Filtro avançado" acima (peso
+//: 600, não 500) — o bastante para não competir em pé de igualdade com ele
+//: —, mas COMPACTO: a versão anterior (38px, 14px, peso 700) ocupava altura
+//: e largura demais na faixa fixa, por pedido.
 const ESTILO_DO_GATILHO: CSSProperties = {
   width: '100%',
-  height: 38,
-  padding: '0 14px',
+  height: 32,
+  padding: '0 12px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: 8,
+  gap: 6,
   background: 'var(--branco)',
   border: '1px solid transparent',
   borderRadius: 'var(--r-btn)',
   color: 'var(--cinza-4)',
-  fontSize: 14,
-  fontWeight: 700,
+  fontSize: 12.5,
+  fontWeight: 600,
   cursor: 'pointer',
 };
 
@@ -123,13 +123,13 @@ const ESTILO_DO_PAINEL: CSSProperties = {
   top: 'calc(100% + 6px)',
   left: 0,
   zIndex: 26,
-  minWidth: 280,
-  maxWidth: 360,
+  minWidth: 260,
+  maxWidth: 340,
   background: 'var(--branco)',
   border: '1px solid var(--borda)',
   borderRadius: 'var(--r-card-int)',
   boxShadow: 'var(--sh-tooltip)',
-  padding: '12px 14px',
+  padding: '10px 12px',
 };
 
 const ESTILO_DO_LIMPAR: CSSProperties = {

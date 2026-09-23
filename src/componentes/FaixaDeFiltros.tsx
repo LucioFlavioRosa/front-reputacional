@@ -45,20 +45,21 @@ export function FaixaDeFiltros({ children, rodape }: { children: ReactNode; roda
           // quebram linha, em vez de estourar a faixa na horizontal.
           flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
           // TESTE: degradê reto azul-mar → turquesa-rio, esquerda pra
           // direita — referência trazida pelo usuário (pílula "Agosto de
           // 2026"), diferente do degradê do cabeçalho (aquele é azul-mar →
           // azul-mar-sombra, com brilho turquesa só no canto).
           background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
           borderRadius: rodape ? 'var(--r-card) var(--r-card) 0 0' : 'var(--r-card)',
-          padding: '10px 20px',
+          // COMPACTO — era '10px 20px', ocupava altura demais por pedido.
+          padding: '7px 16px',
         }}
       >
         <span
           style={{
-            fontSize: 13,
-            fontWeight: 800,
+            fontSize: 11.5,
+            fontWeight: 700,
             letterSpacing: '0.03em',
             textTransform: 'uppercase',
             // BRANCO, não `--sobre-turquesa`: o fundo virou o degradê escuro
