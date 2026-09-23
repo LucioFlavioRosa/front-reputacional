@@ -35,7 +35,6 @@ import {
   limparFormatoInteracao,
   limparTags,
 } from '@/dominio/recorte';
-import { FRENTES } from '@/dominio/tipos';
 import type { Interacao } from '@/dominio/tipos';
 import {
   categoriasDeArea,
@@ -193,25 +192,7 @@ export function Painel({
 
     const totalInteracoes = interacoes.length || 1;
 
-    const contagemFrentes = interacoes.reduce((acc, i) => {
-      acc[i.frente] = (acc[i.frente] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const categoriasDeFrente = FRENTES.map((frente) => {
-      const tot = contagemFrentes[frente] || 0;
-      const pct = Math.round((tot / totalInteracoes) * 100);
-      return {
-        chave: frente,
-        rotulo: ROTULOS_DE_FRENTE[frente],
-        cor: CORES_DE_FRENTE[frente],
-        detalhe: `${pct}% · ${tot}`,
-        total: tot,
-        pct,
-      };
-    });
-
-    //: MESMA IDEIA DE `categoriasDeFrente`, para "Volumetria total por
+    //: TOTAL POR CATEGORIA DE PÚBLICO, para "Volumetria total por
     //: Público" — TODAS as categorias da taxonomia (`catalogo.dicionarios.
     //: categorias_publico`), não só o Top 5 de `categoriasPublicoMaisRecorrentes`
     //: (aquele corta em 5 de propósito, para o ranking; aqui a pilha
@@ -266,7 +247,6 @@ export function Painel({
     const geo = distribuicaoPorUf(interacoes);
 
     // Destaques para o banner analítico executivo
-    const frenteLider = [...categoriasDeFrente].sort((a, b) => b.total - a.total)[0];
     const climaLider = [...categoriasDeClima].sort((a, b) => b.total - a.total)[0];
     const topUfPonto = geo[0];
 
@@ -274,7 +254,6 @@ export function Painel({
       kpis: calcularKpis(interacoes, catalogo),
       resumoExecutivo: {
         total: interacoes.length,
-        frentePrincipal: frenteLider?.total ? { rotulo: frenteLider.rotulo, pct: frenteLider.pct } : undefined,
         climaPrincipal: climaLider?.total ? { rotulo: climaLider.rotulo, pct: climaLider.pct } : undefined,
         topUf: topUfPonto ? { rotulo: rotuloDeAbrangencia(topUfPonto.uf), total: topUfPonto.total } : undefined,
       },
@@ -284,7 +263,6 @@ export function Painel({
         institucionais: resumoDeClimaPorFrente(interacoes, ['governo', 'parceiros']),
         bancosCredores: resumoDeClimaPorFrente(interacoes, ['bancos_credores']),
       },
-      categoriasDeFrente,
       categoriasDeClima,
       temas,
       categoriasPublico,
@@ -419,7 +397,7 @@ export function Painel({
           <KpiHero
             rotulo="Demandas de imprensa"
             valor={numero(kpis.imprensa.total)}
-            selo="Frente · Imprensa"
+            selo="Imprensa"
             progresso={{
               fracao: kpis.imprensa.taxa,
               rotulo: `${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`,
@@ -598,7 +576,6 @@ export function Painel({
       {/* BANNER DE SÍNTESE EXECUTIVA — Fatos relevantes do recorte em destaque */}
       <ResumoExecutivoDoRecorte
         total={derivado.resumoExecutivo.total}
-        frentePrincipal={derivado.resumoExecutivo.frentePrincipal}
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
         topUf={derivado.resumoExecutivo.topUf}
       />
@@ -1286,12 +1263,10 @@ function SeletorDeGranularidade({
 
 function ResumoExecutivoDoRecorte({
   total,
-  frentePrincipal,
   climaPrincipal,
   topUf,
 }: {
   total: number;
-  frentePrincipal?: { rotulo: string; pct: number };
   climaPrincipal?: { rotulo: string; pct: number };
   topUf?: { rotulo: string; total: number };
 }) {
@@ -1301,10 +1276,10 @@ function ResumoExecutivoDoRecorte({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
-        // um cluster à esquerda e três à direita: sem o rótulo "Síntese
+        // OS TRÊS ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
+        // um cluster à esquerda e dois à direita: sem o rótulo "Síntese
         // Executiva" (virou o título grande, fora daqui), o total sozinho à
-        // esquerda ficava desequilibrado contra os três do outro lado.
+        // esquerda ficava desequilibrado contra o resto do outro lado.
         justifyContent: 'space-evenly',
         gap: 16,
         padding: '14px 18px',
@@ -1320,14 +1295,6 @@ function ResumoExecutivoDoRecorte({
         <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>{total}</strong>{' '}
         <span style={{ color: 'var(--cinza-2)' }}>interações no filtro</span>
       </div>
-
-      {frentePrincipal ? (
-        <div>
-          <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
-          <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
-          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
-        </div>
-      ) : null}
 
       {climaPrincipal ? (
         <div>

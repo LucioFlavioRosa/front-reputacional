@@ -2,13 +2,13 @@
  *
  *  As cores vêm do guia oficial da Aegea.
  *
- *  O CHIP É TEXTO DE 11px EM PESO 700, então o limiar de contraste que vale é
- *  4,5:1 — o de texto normal. "Texto grande", que se contenta com 3:1, começa
- *  em 18,66px negrito. Nenhum chip deste painel chega perto disso.
- *
- *  A escolha do texto sobre cada fundo está medida em `FUNDO_CLARO`, e não no
- *  olho: três frentes reprovavam, e uma delas — Eventos, laranja com texto
- *  branco — ficava em 2,20:1, menos da metade do exigido.
+ *  A FRENTE NÃO APARECE MAIS EM TELA NENHUMA — a tela pergunta e mostra
+ *  Formato da interação e Categoria de público; Frente continua existindo
+ *  por baixo (deriva a extensão que a interação carrega, o controle de
+ *  acesso por escopo), só não é mais exibida. `CORES_DE_FRENTE`/
+ *  `ROTULOS_DE_FRENTE` sobrevivem aqui só pelo que ainda depende deles
+ *  internamente: os KPIs do Painel (hoje atrás de uma flag desligada) e a
+ *  ficha removível de um link antigo com `?frente=` na URL.
  */
 
 import type { Extensao, Frente, GrupoDeStatus } from '@/dominio/tipos';
@@ -37,28 +37,6 @@ export const ROTULOS_DE_FRENTE: Record<Frente, string> = {
   legislativo: 'Agentes Públicos',
   interna: 'Interna',
   bancos_credores: 'Bancos/Credores',
-};
-
-/** O que cada frente cobre — vira o `title` do chip, para quem esquece a
- *  diferença entre "Entidades" e "Parceiros", ou não sabe o que "Interna"
- *  guarda, não precisar abrir o registro pra descobrir. */
-export const DESCRICAO_DE_FRENTE: Record<Frente, string> = {
-  imprensa:
-    'Agendas realizadas com veículos de imprensa, como exemplo: revistas, jornais, rádio e televisão.',
-  governo:
-    'Agendas realizadas com órgãos públicos e seus representantes, como exemplo: ministérios, agências reguladoras, prefeituras e secretarias.',
-  parceiros:
-    'Agendas realizadas com entidades parceiras da Aegea, como exemplo: associações, ONGs, institutos e federações do setor.',
-  eventos:
-    'Participação ou promoção de eventos institucionais, como exemplo: congressos, seminários e feiras do setor.',
-  investidores:
-    'Agendas realizadas com investidores e o mercado financeiro, como exemplo: analistas, gestoras e bancos de investimento.',
-  legislativo:
-    'Agendas sobre proposições em tramitação no Legislativo, como exemplo: projetos de lei, emendas e audiências públicas.',
-  interna:
-    'Demandas internas da Aegea, sem interlocutor de fora — pedidos entre áreas da própria companhia.',
-  bancos_credores:
-    'Agendas realizadas com bancos e credores — relação de crédito e dívida, diferente da relação com investidores de mercado.',
 };
 
 /** Que TIPO de instituição cada frente conversa.
@@ -242,31 +220,6 @@ export function extensaoAoTrocarDeFrente<T extends object>(
   return Object.fromEntries(
     Object.entries(extensao).filter(([campo]) => carrega.has(campo)),
   ) as T;
-}
-
-/** Frentes cujo chip precisa de texto escuro para o contraste fechar.
- *
- *  Medido contra `#00312C` (o escuro) e `#FFFFFF`, em razão WCAG:
- *
- *    governo           #17E3CB   escuro 8,73   branco 1,63
- *    legislativo       #F8DC00   escuro 10,32  branco 1,38
- *    eventos           #FE952B   escuro 6,47   branco 2,20
- *    interna           #8C91A4   escuro 4,54   branco 3,13
- *    bancos_credores   #FF8FE1   escuro 6,96   branco 2,05
- *
- *  As cinco só passam com texto escuro. As outras três — Imprensa (10,37),
- *  Parceiros (5,05) e Investidores (4,52 depois do ajuste acima) — passam com
- *  branco, e só com branco.
- */
-const FUNDO_CLARO: ReadonlySet<Frente> = new Set<Frente>([
-  'governo',
-  'legislativo',
-  'eventos',
-  'interna',
-]);
-
-export function textoSobreFrente(frente: Frente): string {
-  return FUNDO_CLARO.has(frente) ? '#00312C' : '#FFFFFF';
 }
 
 export const CORES_DE_CLIMA: Record<string, string> = {

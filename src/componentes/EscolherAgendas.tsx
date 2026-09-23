@@ -18,7 +18,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Botao, ChipDeFrente, Modal, Vazio } from '@/componentes/basicos';
+import { Botao, Modal, Vazio } from '@/componentes/basicos';
 import { dataCompleta, numero, tituloDaAgenda } from '@/dominio/formato';
 import { estiloDeEntrada } from '@/componentes/basicos';
 import { rotuloDeAbrangencia } from '@/dominio/frentes';
@@ -31,7 +31,7 @@ import {
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
 
-const COLUNAS = ['', 'Data', 'Frente', 'Instituição', 'Pauta', 'UF', 'Relevância', 'Situação'];
+const COLUNAS = ['', 'Data', 'Instituição', 'Pauta', 'UF', 'Relevância', 'Situação'];
 
 export function EscolherAgendas({
   candidatas,
@@ -187,9 +187,6 @@ export function EscolherAgendas({
                       </td>
                       <td className="tabular" style={{ ...celula, whiteSpace: 'nowrap' }}>
                         {dataCompleta(agenda.data_interacao)}
-                      </td>
-                      <td style={celula}>
-                        <ChipDeFrente frente={agenda.frente} />
                       </td>
                       <td style={{ ...celula, fontWeight: 500 }}>
                         {nomeDaInstituicao(catalogo, agenda.instituicao_id)}

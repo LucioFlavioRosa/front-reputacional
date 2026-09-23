@@ -8,15 +8,16 @@
  *  mesma lógica para os campos do Recorte.
  *
  *  Clicar numa pílula já marcada REMOVE o filtro — a mesma regra de
- *  `alternar()` usada em toda a tela (chip de frente, bolha do mapa, item de
- *  ranking). "Temas" e "Área(s)" são exceção: aceitam vários ao mesmo tempo.
+ *  `alternar()` usada em toda a tela (bolha do mapa, item de ranking).
+ *  "Temas" e "Área(s)" são exceção: aceitam vários ao mesmo tempo.
  *
  *  ERA "Filtros rápidos" + "Filtros avançados", dois blocos retráteis
  *  separados — os dois se juntaram num só. Período e Relevância, que
- *  estavam nos "rápidos", ficam no TOPO da lista por pedido; Frente e Temas
- *  (os outros dois campos dos "rápidos") entram logo depois, e o resto —
- *  Esfera, Clima, Desfecho, Situação, Unidade, Instituição, Tipo de
- *  investidor, UF — continua na mesma ordem de antes.
+ *  estavam nos "rápidos", ficam no TOPO da lista por pedido; Temas (o outro
+ *  campo dos "rápidos") entra logo depois, e o resto — Esfera, Clima,
+ *  Desfecho, Situação, Unidade, Instituição, Tipo de investidor, UF —
+ *  continua na mesma ordem de antes. Frente saiu da lista: a tela parou de
+ *  perguntar/mostrar Frente em qualquer lugar.
  *
  *  "ÁREA(S)" NÃO MORA NO "Filtro avançado" NO PAINEL: lá ela é um bloco
  *  fixo e sempre visível, logo abaixo da barra "Síntese Executiva" (ver
@@ -47,7 +48,7 @@ import {
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
 import { categoriasDeArea, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
-import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
+import type { GrupoDeStatus } from '@/dominio/tipos';
 import type { Destino } from '@/navegacao/rota';
 
 const LIMITE_PADRAO = 10;
@@ -254,14 +255,11 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           (v) => Number(v),
         ),
     },
-    // OS OUTROS DOIS CAMPOS DE "Filtros rápidos" — mesma ordem de antes.
-    {
-      chave: 'frente',
-      rotulo: 'Frente',
-      valorAtual: recorte.frente,
-      itens: (catalogo?.dicionarios.frentes ?? []).map((f) => ({ valor: f.codigo, rotulo: f.nome })),
-      aoEscolher: (valor: string) => definirOuAlternar('frente', recorte.frente, valor, (v) => v as Frente),
-    },
+    // O OUTRO CAMPO DE "Filtros rápidos" — mesma ordem de antes. "Frente"
+    // saiu daqui: a tela parou de perguntar/mostrar Frente em qualquer
+    // lugar; o campo continua existindo no `Recorte` e na URL (um link
+    // antigo com `?frente=` ainda funciona e ainda aparece como ficha
+    // removível na barra do topo), só não é mais oferecido como escolha.
     campoDeTema(recorte, definirRecorte, catalogo),
     // NO PAINEL, "Área(s)" mora fixa abaixo da "Síntese Executiva" — ver o
     // comentário no topo do arquivo — e não duplica aqui.
@@ -654,7 +652,7 @@ function SetaDaAegea({ aberto }: { aberto: boolean }) {
   );
 }
 
-/** O título de cada campo de filtro (Período, Frente, Área(s)…) — na cor da
+/** O título de cada campo de filtro (Período, Relevância, Área(s)…) — na cor da
  *  marca, e um pouco maior que o texto das pílulas abaixo, para que a lista de
  *  rótulos funcione como um índice rápido de "que filtros existem aqui". */
 const ESTILO_DO_ROTULO: CSSProperties = {

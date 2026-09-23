@@ -20,7 +20,6 @@ import type { ReactNode } from 'react';
 import {
   Botao,
   Chip,
-  ChipDeFrente,
   Modal,
   Secao,
   Selo,
@@ -497,7 +496,6 @@ function PopupDaInteracao({
       titulo={nomeInstituicao}
       subtitulo={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <ChipDeFrente frente={interacao.frente} />
           {dataCompleta(interacao.data_interacao)}
         </span>
       }
