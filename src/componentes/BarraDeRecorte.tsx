@@ -66,7 +66,7 @@ export function BarraDeRecorte() {
 
       <input
         value={recorte.q ?? ''}
-        placeholder="Buscar por tema, pauta, área, frente, stakeholder, tier..."
+        placeholder="Buscar por tema, pauta, área, stakeholder, tier..."
         onChange={(evento) => alterarBusca(evento.target.value)}
         style={{
           height: 28,

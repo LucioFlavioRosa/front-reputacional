@@ -43,10 +43,9 @@ import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { usePainel } from '@/estado/painel';
-import { ROTULOS_DE_FRENTE, TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
+import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
   CategoriaPublicoDoDicionario,
-  Frente,
   Instituicao,
   Interlocutor,
   SubcategoriaPublicoDoDicionario,
@@ -82,28 +81,20 @@ const ROTULO_DO_TIPO: Record<string, string> = {
   credor: 'Banco/credor',
 };
 
-/** Cada tipo, e em que frentes ele aparece.
+/** Os tipos de instituição que se pode cadastrar.
  *
  *  Derivado de `TIPO_DE_INSTITUICAO`, e não escrito à mão: uma lista própria
- *  divergiria do mapa, e a tela passaria a prometer uma frente que o filtro do
- *  formulário não cumpre.
- *
- *  `entidade` sai com duas frentes — Parceiros e Eventos dividem o tipo —, e é
- *  exatamente o que a pessoa precisa saber antes de escolher.
+ *  divergiria do mapa, e a tela ofereceria um tipo que o backend não aceita.
  */
-function tiposComSuasFrentes(): { tipo: string; rotulo: string; onde: string }[] {
-  const porTipo = new Map<string, Frente[]>();
-  for (const [frente, tipo] of Object.entries(TIPO_DE_INSTITUICAO)) {
-    porTipo.set(tipo, [...(porTipo.get(tipo) ?? []), frente as Frente]);
-  }
-  return [...porTipo.entries()].map(([tipo, frentes]) => ({
+function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
+  const tipos = new Set(Object.values(TIPO_DE_INSTITUICAO));
+  return [...tipos].map((tipo) => ({
     tipo,
     rotulo: ROTULO_DO_TIPO[tipo] ?? tipo,
-    onde: frentes.map((f) => ROTULOS_DE_FRENTE[f]).join(' e '),
   }));
 }
 
-const TIPOS = tiposComSuasFrentes();
+const TIPOS = tiposCadastraveis();
 
 /** As subcategorias de UMA categoria, na ordem — `subcategorias_publico` vem
  *  do dicionário inteiro, de todas as categorias juntas (ver
@@ -855,7 +846,6 @@ function LinhaDeInstituicao({
   aoRemoverPessoa: (pessoa: Interlocutor) => void;
   aoDesligarPessoa: (pessoa: Interlocutor) => void;
 }) {
-  const onde = TIPOS.find((t) => t.tipo === instituicao.tipo)?.onde ?? '—';
   const rotuloDoTipo = ROTULO_DO_TIPO[instituicao.tipo] ?? instituicao.tipo;
   const categoriaDoRascunho = categoriasPublico.find(
     (c) => c.id === Number(rascunho.categoria_publico_id),
@@ -893,9 +883,9 @@ function LinhaDeInstituicao({
               value={rascunho.tipo}
               onChange={(e) => aoRascunhar({ ...rascunho, tipo: e.target.value })}
             >
-              {TIPOS.map(({ tipo, rotulo, onde: aonde }) => (
+              {TIPOS.map(({ tipo, rotulo }) => (
                 <option key={tipo} value={tipo}>
-                  {rotulo} — {aonde}
+                  {rotulo}
                 </option>
               ))}
             </select>
@@ -1001,7 +991,7 @@ function LinhaDeInstituicao({
               {instituicao.ativo
                 ? null
                 : 'desativada — ela e as pessoas dela saem do cadastro de agenda; o histórico e os filtros continuam · '}
-              {rotuloDoTipo} · aparece em {onde}
+              {rotuloDoTipo}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
                 ? 'ninguém cadastrado'

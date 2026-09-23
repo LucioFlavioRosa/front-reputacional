@@ -44,17 +44,6 @@ const ONDA_1: {
   },
 ];
 
-const FRENTES_DE_ANALISE = [
-  { titulo: 'Imprensa', descricao: 'demandas, aproveitamento e porta-vozes' },
-  { titulo: 'Entidades', descricao: 'interações com o poder público' },
-  { titulo: 'Parceiros', descricao: 'entidades, associações e escritórios' },
-  { titulo: 'Eventos', descricao: 'presença institucional' },
-  { titulo: 'Investidores', descricao: 'relacionamento com o mercado' },
-  { titulo: 'Agentes Públicos', descricao: 'proposições e tramitação' },
-  { titulo: 'Interna', descricao: 'demandas e entregas entre áreas' },
-  { titulo: 'Bancos/Credores', descricao: 'relação de crédito e dívida' },
-];
-
 const ONDAS = [
   'Onda 1 · MVP',
   'Onda 2 · Importação',
@@ -119,7 +108,7 @@ export function Inicio({
             </span>
           </h1>
           <p style={{ fontSize: 15, marginTop: 12, maxWidth: '56ch', color: '#EAEEFC' }}>
-            Sete frentes, uma base só. O que era planilha vira registro com histórico, e o que era
+            Uma base só. O que era planilha vira registro com histórico, e o que era
             leitura de e-mail vira indicador.
           </p>
         </div>
@@ -179,29 +168,6 @@ export function Inicio({
 
       <section>
         <div className="kicker" style={{ marginBottom: 12 }}>
-          Análise por frente
-        </div>
-        <div
-          className="grade grade--auto" style={{ gap: 14 }}
-        >
-          {/* Estes cartões NÃO navegam, e é decisão.
-              Descrevem as oito frentes que o CRM cobre — são conteúdo da capa,
-              não atalho. A porta de entrada é uma só, o cartão "CRM dos
-              Stakeholders": foi o que o pedido definiu, e uma segunda entrada
-              faria a barra superior aparecer sem ninguém ter escolhido entrar. */}
-          {FRENTES_DE_ANALISE.map((frente) => (
-            <Cartao key={frente.titulo} estilo={{ padding: 18 }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{frente.titulo}</div>
-              <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 5 }}>
-                {frente.descricao}
-              </div>
-            </Cartao>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="kicker" style={{ marginBottom: 12 }}>
           Jornada via ondas de evolução
         </div>
         <div
@@ -251,9 +217,9 @@ export function Inicio({
         >
           {[
             ['Registro', 'o cadastro único que substitui a planilha'],
-            ['Classificação', 'frente, tier, clima, resultado e temas'],
+            ['Classificação', 'formato, público, tier, clima, resultado e temas'],
             ['Derivação', 'os indicadores saem do recorte filtrado'],
-            ['Leitura', 'painéis por frente, status e desfecho'],
+            ['Leitura', 'painéis por status e desfecho'],
             ['Decisão', 'o que precisa de resposta, e de quem'],
           ].map(([titulo, descricao]) => (
             <div key={titulo}>
