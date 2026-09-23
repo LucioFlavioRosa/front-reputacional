@@ -4,6 +4,16 @@ import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Recorte } from '@/dominio/recorte';
+import type {
+  Calibracao,
+  CalibracaoEntrada,
+  FatoDoMes,
+  FonteDoScore,
+  IndiceDoScore,
+  LenteDetalhada,
+  OpcoesDoScore,
+  PontoDaSerie,
+} from '@/dominio/score';
 import { paraParametros } from '@/dominio/recorte';
 import type {
   Acesso,
@@ -700,6 +710,62 @@ export function editarAlegacao(id: string, entrada: AlegacaoEntrada): Promise<Al
     method: 'PUT',
     body: JSON.stringify(entrada),
   });
+}
+
+/* ---------------------------------------------------------------- score */
+
+/** O índice do mês, com as lentes que o formaram.
+ *
+ *  O CÁLCULO É DO SERVIDOR: o ISR é citado em reunião, e precisa ser o mesmo
+ *  para todo mundo — calculado uma vez, com a régua que a coordenação gravou,
+ *  e não recomputado em cada navegador. */
+export function obterScore(mes: string): Promise<IndiceDoScore> {
+  return requisitar<IndiceDoScore>(`/api/score?mes=${mes}`);
+}
+
+export function obterSerieDoScore(): Promise<PontoDaSerie[]> {
+  return requisitar<PontoDaSerie[]>('/api/score/serie');
+}
+
+export function obterLenteDoScore(codigo: string, mes: string): Promise<LenteDetalhada> {
+  return requisitar<LenteDetalhada>(`/api/score/lentes/${codigo}?mes=${mes}`);
+}
+
+export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
+  return requisitar<FonteDoScore[]>(`/api/score/fontes?mes=${mes}`);
+}
+
+export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {
+  return requisitar<OpcoesDoScore>('/api/score/opcoes');
+}
+
+/** Grava uma VERSÃO NOVA da régua — a tabela só cresce, para saber com que
+ *  critério um número foi lido no mês passado. */
+export function gravarCalibracao(entrada: CalibracaoEntrada): Promise<Calibracao> {
+  return requisitar<Calibracao>('/api/score/calibracao', {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** "Restaurar padrão": volta à régua de fábrica GRAVANDO, e não apagando. */
+export function restaurarCalibracaoPadrao(): Promise<Calibracao> {
+  return requisitar<Calibracao>('/api/score/calibracao', { method: 'DELETE' });
+}
+
+export function criarFatoDoScore(entrada: {
+  mes: string;
+  texto: string;
+  efeito: string;
+}): Promise<FatoDoMes> {
+  return requisitar<FatoDoMes>('/api/score/fatos', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function removerFatoDoScore(id: string): Promise<void> {
+  return requisitar<void>(`/api/score/fatos/${id}`, { method: 'DELETE' });
 }
 
 export function listarTemas(): Promise<TemaCadastrado[]> {

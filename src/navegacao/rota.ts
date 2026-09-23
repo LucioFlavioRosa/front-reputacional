@@ -31,6 +31,7 @@ export type Destino =
   | 'relatorios'
   | 'preparar'
   | 'sinais'
+  | 'score'
   | 'cadastro'
   | 'admin';
 
@@ -63,6 +64,7 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
+  if (primeira === 'score') return { destino: 'score' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
 
   if (primeira === 'agenda') {
@@ -95,6 +97,8 @@ export function caminhoDe(rota: Rota): string {
       return '/preparar';
     case 'sinais':
       return '/sinais';
+    case 'score':
+      return '/score';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'cadastro':

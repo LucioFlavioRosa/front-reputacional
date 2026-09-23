@@ -36,11 +36,11 @@ const ONDA_1: {
   },
   {
     portal: 'score',
-    view: null,
+    view: 'score',
     titulo: 'Score Executivo',
     descricao:
-      'Índice único de reputação.',
-    pronto: false,
+      'O Índice de Saúde Reputacional: uma nota por mês, de cinco lentes.',
+    pronto: true,
   },
 ];
 
