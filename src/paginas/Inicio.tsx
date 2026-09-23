@@ -24,44 +24,38 @@ const ONDA_1: {
     view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:
-      'Cadastro das interações institucionais e os painéis que leem essa base.',
+      'Fonte única das interações institucionais — o registro e a síntese executiva que leem essa base.',
     pronto: true,
   },
   {
     portal: 'sintese',
     view: null,
-    titulo: 'Síntese Executiva',
-    descricao: 'Leitura consolidada do período para a diretoria, com o recorte impresso.',
+    titulo: 'KPIs Reputacionais',
+    descricao:
+      'O tracking da saúde reputacional da Aegea, traduzido em indicadores para decisão estratégica.',
     pronto: false,
   },
   {
     portal: 'score',
     view: null,
-    titulo: 'Score Executivo',
+    titulo: 'Inteligência de Mercado',
     descricao:
-      'Índice único de reputação.',
+      'Os indicadores que movimentam o mercado, e onde a Aegea está posicionada neles.',
     pronto: false,
   },
 ];
 
-const FRENTES_DE_ANALISE = [
-  { titulo: 'Imprensa', descricao: 'demandas, aproveitamento e porta-vozes' },
-  { titulo: 'Entidades', descricao: 'interações com o poder público' },
-  { titulo: 'Parceiros', descricao: 'entidades, associações e escritórios' },
-  { titulo: 'Eventos', descricao: 'presença institucional' },
-  { titulo: 'Investidores', descricao: 'relacionamento com o mercado' },
-  { titulo: 'Agentes Públicos', descricao: 'proposições e tramitação' },
-  { titulo: 'Interna', descricao: 'demandas e entregas entre áreas' },
-  { titulo: 'Bancos/Credores', descricao: 'relação de crédito e dívida' },
-];
-
+//: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
+//: os dados que sustentam os três painéis executivos acima, o projeto
+//: atual; as próximas cinco descrevem para onde a plataforma vai, uma
+//: capacidade por onda.
 const ONDAS = [
-  'Onda 1 · MVP',
-  'Onda 2 · Importação',
-  'Onda 3 · Score',
-  'Onda 4 · Community',
-  'Onda 5 · Integrações',
-  'Onda 6 · Preditivo',
+  'Onda 1 · Foundation — estruturação dos dados e 3 painéis (projeto atual)',
+  'Onda 2 · Novos blocos e expansão para novas áreas',
+  'Onda 3 · Backtests e aplicação de agentes',
+  'Onda 4 · Insights preditivos',
+  'Onda 5 · Tendências e alertas dinâmicos com correlações',
+  'Onda 6 · Ecossistema escalável',
 ];
 
 export function Inicio({
@@ -119,7 +113,7 @@ export function Inicio({
             </span>
           </h1>
           <p style={{ fontSize: 15, marginTop: 12, maxWidth: '56ch', color: '#EAEEFC' }}>
-            Sete frentes, uma base só. O que era planilha vira registro com histórico, e o que era
+            Uma base só. O que era planilha vira registro com histórico, e o que era
             leitura de e-mail vira indicador.
           </p>
         </div>
@@ -140,7 +134,10 @@ export function Inicio({
           </Cartao>
         ) : null}
 
-        <div className="grade grade--destaque" style={{ gap: 16 }}>
+        {/* TRÊS COLUNAS IGUAIS (`grade--3`), não `grade--destaque` (que dava
+            1.35fr ao primeiro cartão): os três módulos pesam o mesmo aqui,
+            mesmo só o CRM estando disponível. */}
+        <div className="grade grade--3" style={{ gap: 16 }}>
           {meus.map((modulo) => (
             <Cartao
               key={modulo.titulo}
@@ -172,29 +169,6 @@ export function Inicio({
                   Abrir o painel →
                 </div>
               ) : null}
-            </Cartao>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="kicker" style={{ marginBottom: 12 }}>
-          Análise por frente
-        </div>
-        <div
-          className="grade grade--auto" style={{ gap: 14 }}
-        >
-          {/* Estes cartões NÃO navegam, e é decisão.
-              Descrevem as oito frentes que o CRM cobre — são conteúdo da capa,
-              não atalho. A porta de entrada é uma só, o cartão "CRM dos
-              Stakeholders": foi o que o pedido definiu, e uma segunda entrada
-              faria a barra superior aparecer sem ninguém ter escolhido entrar. */}
-          {FRENTES_DE_ANALISE.map((frente) => (
-            <Cartao key={frente.titulo} estilo={{ padding: 18 }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{frente.titulo}</div>
-              <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 5 }}>
-                {frente.descricao}
-              </div>
             </Cartao>
           ))}
         </div>
@@ -251,9 +225,9 @@ export function Inicio({
         >
           {[
             ['Registro', 'o cadastro único que substitui a planilha'],
-            ['Classificação', 'frente, tier, clima, resultado e temas'],
+            ['Classificação', 'formato, público, tier, clima, resultado e temas'],
             ['Derivação', 'os indicadores saem do recorte filtrado'],
-            ['Leitura', 'painéis por frente, status e desfecho'],
+            ['Leitura', 'painéis por status e desfecho'],
             ['Decisão', 'o que precisa de resposta, e de quem'],
           ].map(([titulo, descricao]) => (
             <div key={titulo}>

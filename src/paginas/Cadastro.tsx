@@ -1030,12 +1030,16 @@ export function Cadastro({
               ajuda="Esta agenda nasceu de outra? Dá para escolher mais de uma."
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher
-                  mais: o campo se lê de cima para baixo. */}
-              {form.origens.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginBottom: 8 }}>
-                  Nenhuma origem escolhida.
-                </p>
-              ) : (
+                  mais: o campo se lê de cima para baixo.
+                  VAZIO NÃO DIZ NADA, de propósito: sem isto, o botão descia
+                  uma linha só para "Clima esperado", ao lado, não ter — os
+                  dois campos ficavam desalinhados na grade de duas colunas.
+                  A pergunta do rótulo ("Veio de outras interações?") mais o
+                  botão "Escolher na base…" já dizem que nada foi escolhido
+                  ainda; a frase à parte só repetia isso, e num lugar que
+                  empurrava o botão pra fora do alinhamento com a coluna ao
+                  lado. */}
+              {form.origens.length === 0 ? null : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                   {form.origens.map((origemId) => {
                     const agenda = agendas.find((a) => a.id === origemId);
@@ -1099,6 +1103,7 @@ export function Cadastro({
               placeholder="O que precisa sair desta reunião para ela ter valido a pena."
             />
           </Campo>
+          </div>
         </Cartao>
       </Secao>
 

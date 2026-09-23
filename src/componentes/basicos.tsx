@@ -6,13 +6,6 @@
 
 import { useId } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
-import type { Frente } from '@/dominio/tipos';
-import {
-  CORES_DE_FRENTE,
-  DESCRICAO_DE_FRENTE,
-  ROTULOS_DE_FRENTE,
-  textoSobreFrente,
-} from '@/dominio/frentes';
 
 /* -- superfícies ---------------------------------------------------------- */
 
@@ -134,32 +127,6 @@ export function Secao({
 }
 
 /* -- rótulos -------------------------------------------------------------- */
-
-export function ChipDeFrente({
-  frente,
-  ativo,
-  aoClicar,
-  estilo,
-}: {
-  frente: Frente;
-  ativo?: boolean;
-  aoClicar?: () => void;
-  /** Sobrepõe o tamanho padrão — o cadastro usa um chip maior que o resto do
-   *  produto, sem precisar de um segundo componente para isso. */
-  estilo?: CSSProperties;
-}) {
-  return (
-    <Chip
-      rotulo={ROTULOS_DE_FRENTE[frente]}
-      fundo={CORES_DE_FRENTE[frente]}
-      texto={textoSobreFrente(frente)}
-      ativo={ativo}
-      aoClicar={aoClicar}
-      titulo={DESCRICAO_DE_FRENTE[frente]}
-      estilo={estilo}
-    />
-  );
-}
 
 export function Chip({
   rotulo,

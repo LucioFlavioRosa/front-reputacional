@@ -26,7 +26,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   Carregando,
-  ChipDeFrente,
   FaixaDeErro,
   Vazio,
   estiloDeEntrada,
@@ -38,7 +37,7 @@ import { listarDocumentosDaReuniao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
 import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
-import type { DocumentoDaReuniao, Frente } from '@/dominio/tipos';
+import type { DocumentoDaReuniao } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
 const ROTULO_DO_MOMENTO: Record<string, string> = {
@@ -49,7 +48,6 @@ const ROTULO_DO_MOMENTO: Record<string, string> = {
 
 const COLUNAS = [
   'Data',
-  'Frente',
   'Documento',
   'Momento',
   'Temas',
@@ -247,11 +245,6 @@ export function DocumentosDaReuniao({
               {!visiveis.includes('Data') ? null : (
                 <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
                   {dataCompleta(documento.data_interacao)}
-                </td>
-              )}
-              {!visiveis.includes('Frente') ? null : (
-                <td style={celula}>
-                  <ChipDeFrente frente={documento.frente as Frente} />
                 </td>
               )}
               {!visiveis.includes('Documento') ? null : (
