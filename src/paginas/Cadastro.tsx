@@ -29,7 +29,6 @@ import {
   Carregando,
   Cartao,
   Chip,
-  ChipDeFrente,
   FaixaDeErro,
   Secao,
   estiloDeEntrada,
@@ -662,30 +661,13 @@ export function Cadastro({
             }))}
           />
 
-          {/* A FRENTE E O PÚBLICO, LADO A LADO — os dois são leitura, os dois
-              só existem depois de escolher a instituição. A frente é o que
-              esta interação VAI VIRAR ao salvar (a tela não manda mais esse
-              campo — quem decide, de fato, é o backend, com a mesma regra);
-              o público é dado direto da instituição, informativo, e nunca
-              gravado na interação — ver `Instituicao.categoria_publico_id`. */}
-          <Campo rotulo="Frente" dica="Calculada a partir da instituição e do formato.">
-            <div
-              style={{
-                ...estiloDeEntrada,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {frenteAtual ? (
-                <ChipDeFrente frente={frenteAtual} />
-              ) : (
-                <span style={{ color: 'var(--cinza-2)' }}>
-                  {instituicaoSelecionada ? 'Não foi possível calcular' : '—'}
-                </span>
-              )}
-            </div>
-          </Campo>
-
+          {/* O PÚBLICO É LEITURA, e só existe depois de escolher a
+              instituição — é dado direto dela, informativo, e nunca gravado
+              na interação (ver `Instituicao.categoria_publico_id`). A frente
+              não aparece mais aqui: continua sendo calculada por baixo (a
+              tela não manda mais esse campo — quem decide é o backend, com
+              `frenteDerivada`/`derivar_frente`), só deixou de ser mostrada
+              nas telas. */}
           <Campo rotulo="Público" dica="Vem da classificação da instituição.">
             <div
               style={{
@@ -738,16 +720,6 @@ export function Cadastro({
             }))}
           />
 
-          <CampoQueCompleta
-            rotulo="Esfera"
-            vazio="Não informada"
-            valor={form.esfera_id}
-            aoEscolher={(v) => alterar('esfera_id', v)}
-            opcoes={catalogo.dicionarios.esferas.map((e) => ({
-              valor: String(e.id),
-              rotulo: e.nome,
-            }))}
-          />
         </div>
 
         <div style={{ marginTop: 16 }}>
@@ -969,7 +941,7 @@ export function Cadastro({
               inteiro na ficha, onde ele é LIDO. É lá que a comparação serve
               para alguma coisa; aqui ela só pedia um dado que ainda não
               existe. */}
-          <div className="grade grade--2" style={{ gap: 16 }}>
+          <div className="grade grade--2" style={{ gap: 16, marginTop: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
               itens={catalogo.dicionarios.climas}
@@ -1048,6 +1020,7 @@ export function Cadastro({
               antes: quem pediu, em que pé está, o quanto importa, que clima se
               projeta, de onde a agenda veio. Escrever o que se espera antes de
               responder essas coisas é escrever no vazio. */}
+          <div style={{ marginTop: 16 }}>
           <Campo rotulo="Expectativa">
             <textarea
               style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
@@ -1190,7 +1163,7 @@ export function Cadastro({
 
       {frenteAtual ? (
         <Secao
-          titulo={ehConsulta ? '9. Detalhes da frente' : '8. Detalhes da frente'}
+          titulo={ehConsulta ? '9. Detalhes adicionais' : '8. Detalhes adicionais'}
           estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
         >
           <Cartao>
