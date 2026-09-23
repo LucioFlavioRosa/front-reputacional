@@ -48,6 +48,7 @@ import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
+  ROTULO_DO_AVISO,
   ROTULO_DO_DESCARTE,
   ROTULO_DO_EFEITO,
   colunasDaSerie,
@@ -653,7 +654,7 @@ function CalibracaoDoScore({
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [importando, definirImportando] = useState<string | null>(null);
-  const [importado, definirImportado] = useState<ImportacaoDoScore | null>(null);
+  const [importado, definirImportado] = useState<ImportacaoDoScore[] | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -912,31 +913,49 @@ function CalibracaoDoScore({
             ))}
           </ul>
 
-          {importado ? <ResumoDaImportacao resumo={importado} /> : null}
+          {importado?.map((resumo) => (
+            <ResumoDaImportacao key={resumo.fonte} resumo={resumo} />
+          ))}
         </Cartao>
       </Secao>
     </div>
   );
 }
 
-/** O que a planilha rendeu — com os descartes, e não só o que entrou. */
+/** O que a planilha rendeu numa fonte — com os descartes, e não só o que entrou.
+ *
+ *  UM RESUMO POR FONTE, porque um arquivo alimenta mais de uma. É aqui que
+ *  quem subiu o export da Clipei descobre que Mercado também foi atualizado. */
 function ResumoDaImportacao({ resumo }: { resumo: ImportacaoDoScore }) {
   const descartados = Object.entries(resumo.descartes).filter(([, total]) => total > 0);
+  const avisados = Object.entries(resumo.avisos).filter(([, total]) => total > 0);
+  // O mês encolheu: o arquivo trouxe menos do que já havia. Pode ser
+  // reclassificação do fornecedor, pode ser export baixado antes do
+  // fechamento — a tela não adivinha, mas não deixa passar em branco.
+  const encolheu = resumo.antes > resumo.ingeridas;
+
   return (
     <div
       style={{
         marginTop: 12,
         padding: '10px 12px',
         borderRadius: 6,
-        background: 'var(--ok-bg)',
+        background: encolheu ? 'var(--atencao-bg)' : 'var(--ok-bg)',
         fontSize: 12,
         lineHeight: 1.6,
       }}
     >
-      <strong>
-        {numero(resumo.ingeridas)} de {numero(resumo.linhas)} linhas entraram
-      </strong>{' '}
-      em {resumo.meses.join(', ')}.
+      <strong>{resumo.nome}:</strong> {numero(resumo.ingeridas)} de{' '}
+      {numero(resumo.linhas)} linhas entraram em {resumo.meses.join(', ')}.
+      {encolheu ? (
+        <>
+          {' '}
+          <strong>
+            O mês tinha {numero(resumo.antes)} — confira se o arquivo é o
+            fechado.
+          </strong>
+        </>
+      ) : null}
       {descartados.length ? (
         <>
           {' '}
@@ -945,6 +964,18 @@ function ResumoDaImportacao({ resumo }: { resumo: ImportacaoDoScore }) {
             .map(
               ([motivo, total]) =>
                 `${numero(total)} ${ROTULO_DO_DESCARTE[motivo] ?? motivo}`,
+            )
+            .join('; ')}
+          .
+        </>
+      ) : null}
+      {avisados.length ? (
+        <>
+          {' '}
+          Entraram com ressalva:{' '}
+          {avisados
+            .map(
+              ([motivo, total]) => `${numero(total)} ${ROTULO_DO_AVISO[motivo] ?? motivo}`,
             )
             .join('; ')}
           .

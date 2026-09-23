@@ -110,10 +110,17 @@ export interface LenteDetalhada {
  *  fornecedor mandou e o que entrou é recusa declarada, e não perda. */
 export interface ImportacaoDoScore {
   fonte: string;
+  nome: string;
   linhas: number;
   ingeridas: number;
+  /** Quantas menções esta fonte tinha nestes meses ANTES da substituição.
+   *  É o que deixa um export parcial — baixado antes do fechamento — aparecer
+   *  como o que é: um mês que encolheu. */
+  antes: number;
   /** Por motivo: `fora_do_filtro`, `sem_data`, `sem_sentimento`. */
   descartes: Record<string, number>;
+  /** O que entrou, mas merece um olhar: `tier_nao_reconhecido`. */
+  avisos: Record<string, number>;
   meses: string[];
 }
 
@@ -121,6 +128,10 @@ export const ROTULO_DO_DESCARTE: Record<string, string> = {
   fora_do_filtro: 'fora do recorte desta fonte',
   sem_data: 'sem data',
   sem_sentimento: 'sem classificação de sentimento',
+};
+
+export const ROTULO_DO_AVISO: Record<string, string> = {
+  tier_nao_reconhecido: 'com relevância que não é da escala da Clipei',
 };
 
 export interface OpcoesDoScore {

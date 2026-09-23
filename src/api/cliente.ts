@@ -738,14 +738,19 @@ export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
 
 /** Sobe o export do fornecedor. SUBSTITUI os meses que o arquivo traz — o
  *  fornecedor reenvia a planilha quando corrige uma classificação, e somar
- *  contaria o mesmo post duas vezes. */
+ *  contaria o mesmo post duas vezes.
+ *
+ *  DEVOLVE UMA LINHA POR FONTE: um arquivo alimenta mais de uma. O export da
+ *  Clipei atende Imprensa e, recortado por público investidor, Mercado; o da
+ *  Approach traz Social Listening e Community Management em abas diferentes.
+ *  Quem escolhe "Importar" numa das linhas alimenta todas as irmãs. */
 export function importarPlanilhaDoScore(
   codigo: string,
   arquivo: File,
-): Promise<ImportacaoDoScore> {
+): Promise<ImportacaoDoScore[]> {
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
-  return requisitar<ImportacaoDoScore>(`/api/score/fontes/${codigo}/planilha`, {
+  return requisitar<ImportacaoDoScore[]>(`/api/score/fontes/${codigo}/planilha`, {
     method: 'POST',
     body: corpo,
   });
