@@ -5,6 +5,7 @@ import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
+import { GraficoDeArvore } from '@/graficos/GraficoDeArvore';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -41,7 +42,6 @@ import {
   comReativoNaBase,
   categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
-  climaPorTema,
   completarPeriodos,
   distribuicaoPorUf,
   idsPorCategoriaDeArea,
@@ -52,7 +52,6 @@ import {
   ranking,
   rankingDePortaVozes,
   resumoDeClimaPorFrente,
-  rotuloDeCodigo,
   scorePorCategoriaPublico,
   scorePorInstituicao,
   scorePorTema,
@@ -101,6 +100,18 @@ const PALETA_DO_HISTORICO = [
   '#8C91A4', // Cinza 2
   '#AD6547', // Marrom Claro Cacau
   '#FF8FE1', // Rosa Goiaba
+];
+
+//: TRÊS TONS DE AZUL para o `GraficoDeArvore` de "% de Interações por
+//: Temas" colorir cada célula pela classificação (`Tema.nivel`, ver
+//: `dominio/tipos.ts`) — sem agrupar as células por nível, só pintar. Do
+//: mais restrito (Sensível) ao mais aberto (Geral), o tom vai do mais
+//: escuro (mais atenção) ao mais claro — os três dentro da mesma família de
+//: matiz de `--azul-mar` (#0027BD), não uma cor nova por classe.
+const NIVEIS_DE_TEMA: { nivel: string; cor: string; rotulo: string }[] = [
+  { nivel: 'sensivel', cor: '#0027BD', rotulo: 'Sensível' }, // Azul Mar
+  { nivel: 'estrategico', cor: '#667EDA', rotulo: 'Estratégico' }, // Azul médio
+  { nivel: 'gerais', cor: '#CBD4F6', rotulo: 'Geral' }, // Azul claro
 ];
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
@@ -242,6 +253,16 @@ export function Painel({
     });
 
     const temas = temasMaisRecorrentes(interacoes, catalogo, 5);
+    // O GRÁFICO DE ÁRVORE quer TODOS os temas do dicionário, não só o Top 5
+    // de `temas` (que continua servindo "Top 5 temas" e "Temas no tempo",
+    // sem mudar) — por pedido, para o treemap mostrar a distribuição
+    // completa. `catalogo.dicionarios.temas.length` em vez de um número
+    // fixo: acompanha o dicionário se um tema for cadastrado ou desativado.
+    const todosOsTemas = temasMaisRecorrentes(
+      interacoes,
+      catalogo,
+      catalogo.dicionarios.temas.length,
+    );
     const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
     const geo = distribuicaoPorUf(interacoes);
@@ -265,6 +286,7 @@ export function Painel({
       },
       categoriasDeClima,
       temas,
+      todosOsTemas,
       categoriasPublico,
       categoriasDePublico,
       volumetriaPorPublico: completarPeriodos(
@@ -305,7 +327,6 @@ export function Painel({
       portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
       porTier: porTier(interacoes, catalogo),
-      climaPorTema: climaPorTema(interacoes, catalogo),
       scorePorCategoriaPublico: scorePorCategoriaPublico(interacoes, catalogo, 5, categoriaPublicoExtras),
       // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
@@ -359,6 +380,14 @@ export function Painel({
   const categoriaPublicoDisponiveis = derivado.scorePorCategoriaPublico.todos.filter(
     (categoria) => !derivado.scorePorCategoriaPublico.itens.some((item) => item.chave === categoria.chave),
   );
+
+  //: NOME → NÍVEL (`Tema.nivel`, ver `dominio/tipos.ts`) — só para o
+  //: `GraficoDeArvore` de "% de Interações por Temas" colorir por
+  //: Sensível/Estratégico/Geral, por pedido (sem agrupar as células por
+  //: nível, só a cor muda). `temasMaisRecorrentes` devolve a chave como o
+  //: NOME do tema, então o lookup é por nome.
+  const nivelPorNomeDoTema = new Map(catalogo.dicionarios.temas.map((tema) => [tema.nome, tema.nivel]));
+  const corPorNivel = new Map(NIVEIS_DE_TEMA.map((n) => [n.nivel, n.cor]));
 
   return (
     // 24px entre blocos principais — degrau único de respiro entre seções distintas.
@@ -483,13 +512,13 @@ export function Painel({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 8,
-                padding: '9px 20px',
+                gap: 6,
+                padding: '6px 16px',
                 background: 'var(--bg-trilho)',
                 border: 'none',
                 borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
                 cursor: 'pointer',
-                fontSize: 12.5,
+                fontSize: 11.5,
                 fontWeight: 700,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
@@ -506,7 +535,7 @@ export function Painel({
                   border: '1px solid var(--borda)',
                   borderTop: 'none',
                   borderRadius: '0 0 var(--r-card) var(--r-card)',
-                  padding: '12px 20px 16px',
+                  padding: '10px 16px 12px',
                 }}
               >
                 <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
@@ -773,37 +802,34 @@ export function Painel({
           subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
         >
-          {/* MESMO LAYOUT de "Interações por tier" acima, agora com a rosca
-              MAIOR (220px, era 168 — o padrão de `Rosca` continua 168 nos
-              outros usos, só este pede mais espaço) e TRÊS colunas em vez de
-              duas: a rosca (com sua própria legenda, colorida por posição no
-              ranking — mesma paleta de `temasMaisRecorrentes`), o top 5 dos
-              mesmos temas ao lado, e o top 5 de categorias de público
-              (`categoriasPublicoMaisRecorrentes`, mesma métrica de volume —
-              não o score de clima do Termômetro por Público, que é outro
-              cálculo). Era a rosca de "Interações por áreas" (`porArea`/
-              `climaPorArea`, removidas): esta reaproveita `derivado.temas`,
-              a MESMA base do ranking ao lado e de "Temas no tempo" mais
-              abaixo — um tema em destaque aqui é o mesmo tema em destaque
-              lá. */}
+          {/* GRÁFICO DE ÁRVORE (treemap), não rosca — por pedido: a área de
+              cada retângulo entrega de cara "qual tema pesa mais", sem
+              precisar ler a legenda ao lado. USA `derivado.todosOsTemas`
+              (TODOS os temas do dicionário, não só o Top 5) — o ranking ao
+              lado e "Temas no tempo" mais abaixo continuam em
+              `derivado.temas` (Top 5), sem mudar: são leituras diferentes,
+              "os 5 mais discutidos" vs. "a distribuição completa". O CLIMA
+              POR TEMA (que a rosca mostrava no tooltip) saiu:
+              `GraficoDeArvore` não tem hover com detalhe extra ainda — ver o
+              comentário no próprio componente.
+
+              COR POR NÍVEL (`corDeItem`), sem agrupar as células — Sensível /
+              Estratégico / Geral em três tons de azul, via
+              `nivelPorNomeDoTema`/`corPorNivel` acima; a legenda embaixo do
+              gráfico (`legenda`) decodifica qual tom é qual nível. */}
           <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: '0 0 auto' }}>
-              <Rosca
-                itens={derivado.temas}
+            <div style={{ flex: '3 1 420px', minWidth: 320 }}>
+              <GraficoDeArvore
+                itens={derivado.todosOsTemas}
                 ativo={recorte.tags?.[0]}
                 aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
-                rotuloCentral="interações"
                 vazio="Nenhum tema registrado neste recorte."
-                tamanho={220}
-                espessura={30}
-                detalheAoPassarMouse={(chave) => {
-                  const clima = derivado.climaPorTema[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
-                  return [
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
-                  ];
-                }}
+                corDeItem={(chave) => corPorNivel.get(nivelPorNomeDoTema.get(chave) ?? 'gerais') ?? NIVEIS_DE_TEMA[2].cor}
+                legenda={NIVEIS_DE_TEMA.map(({ cor, rotulo }) => ({ cor, rotulo }))}
+                // MAIS ALTO que antes (era 240): com TODOS os temas em vez
+                // do Top 5, cada célula fica menor — a altura extra é o que
+                // mantém espaço pra maioria mostrar rótulo.
+                altura={300}
               />
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>
