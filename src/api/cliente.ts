@@ -9,6 +9,7 @@ import type {
   CalibracaoEntrada,
   FatoDoMes,
   FonteDoScore,
+  ImportacaoDoScore,
   IndiceDoScore,
   LenteDetalhada,
   OpcoesDoScore,
@@ -733,6 +734,21 @@ export function obterLenteDoScore(codigo: string, mes: string): Promise<LenteDet
 
 export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
   return requisitar<FonteDoScore[]>(`/api/score/fontes?mes=${mes}`);
+}
+
+/** Sobe o export do fornecedor. SUBSTITUI os meses que o arquivo traz — o
+ *  fornecedor reenvia a planilha quando corrige uma classificação, e somar
+ *  contaria o mesmo post duas vezes. */
+export function importarPlanilhaDoScore(
+  codigo: string,
+  arquivo: File,
+): Promise<ImportacaoDoScore> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ImportacaoDoScore>(`/api/score/fontes/${codigo}/planilha`, {
+    method: 'POST',
+    body: corpo,
+  });
 }
 
 export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {

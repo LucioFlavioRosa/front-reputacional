@@ -102,6 +102,27 @@ export interface LenteDetalhada {
   temas: { nome: string; positivo: number; negativo: number; tipo: string | null }[];
 }
 
+/** O que a importação de uma planilha rendeu.
+ *
+ *  OS DESCARTES APARECEM NA TELA. Um resumo que diz só "4.973 menções" esconde
+ *  que 1.426 posts vieram sem classificação de sentimento — e quem for
+ *  conferir o número do mês precisa saber que a diferença entre o que o
+ *  fornecedor mandou e o que entrou é recusa declarada, e não perda. */
+export interface ImportacaoDoScore {
+  fonte: string;
+  linhas: number;
+  ingeridas: number;
+  /** Por motivo: `fora_do_filtro`, `sem_data`, `sem_sentimento`. */
+  descartes: Record<string, number>;
+  meses: string[];
+}
+
+export const ROTULO_DO_DESCARTE: Record<string, string> = {
+  fora_do_filtro: 'fora do recorte desta fonte',
+  sem_data: 'sem data',
+  sem_sentimento: 'sem classificação de sentimento',
+};
+
 export interface OpcoesDoScore {
   reguas_de_tier: { codigo: string; pesos: Record<string, number> }[];
   reguas_de_engajamento: string[];

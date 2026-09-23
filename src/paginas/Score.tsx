@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import {
   gravarCalibracao,
+  importarPlanilhaDoScore,
   listarFontesDoScore,
   obterLenteDoScore,
   obterOpcoesDoScore,
@@ -47,6 +48,7 @@ import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
+  ROTULO_DO_DESCARTE,
   ROTULO_DO_EFEITO,
   colunasDaSerie,
   comoDelta,
@@ -58,6 +60,7 @@ import {
 import type {
   Calibracao,
   FonteDoScore,
+  ImportacaoDoScore,
   IndiceDoScore,
   LenteDetalhada,
   OpcoesDoScore,
@@ -649,6 +652,8 @@ function CalibracaoDoScore({
   const [fontes, definirFontes] = useState<FonteDoScore[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
+  const [importando, definirImportando] = useState<string | null>(null);
+  const [importado, definirImportado] = useState<ImportacaoDoScore | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -675,6 +680,24 @@ function CalibracaoDoScore({
       definirErro(falha instanceof Error ? falha.message : 'Não foi possível gravar.');
     } finally {
       definirSalvando(false);
+    }
+  }
+
+  async function importar(codigo: string, arquivo: File) {
+    definirImportando(codigo);
+    definirErro(null);
+    definirImportado(null);
+    try {
+      definirImportado(await importarPlanilhaDoScore(codigo, arquivo));
+      // O índice do mês muda com o arquivo: recarregar a página inteira é o
+      // que impede a tela de mostrar o número velho ao lado do resumo novo.
+      aoMudar();
+    } catch (falha) {
+      definirErro(
+        falha instanceof Error ? falha.message : 'Não foi possível ler a planilha.',
+      );
+    } finally {
+      definirImportando(null);
     }
   }
 
@@ -813,7 +836,7 @@ function CalibracaoDoScore({
 
       <Secao
         titulo="Fontes"
-        subtitulo="Desligar uma fonte tira o dado dela do índice sem apagar o histórico. Com todas as fontes de uma lente desligadas, a lente sai do cálculo e os pesos redistribuem."
+        subtitulo="Importar substitui os meses que a planilha traz — o mês que ela não traz fica intacto. Desligar uma fonte tira o dado dela do índice sem apagar o histórico; com todas as fontes de uma lente desligadas, a lente sai do cálculo e os pesos redistribuem."
       >
         <Cartao>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -849,6 +872,35 @@ function CalibracaoDoScore({
                     </div>
                   ) : null}
                 </div>
+                {/* A FONTE INTERNA NÃO TEM BOTÃO DE IMPORTAR: o CRM é este
+                    banco, e oferecer o upload sugeriria que existe uma
+                    planilha dele em algum lugar. */}
+                {fonte.interna ? null : (
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--azul-mar)',
+                      cursor: importando ? 'progress' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {importando === fonte.codigo ? 'Lendo…' : 'Importar planilha'}
+                    <input
+                      type="file"
+                      accept=".xlsx"
+                      style={{ display: 'none' }}
+                      disabled={importando !== null}
+                      onChange={(evento) => {
+                        const arquivo = evento.target.files?.[0];
+                        // O input é limpo SEMPRE: sem isto, escolher o mesmo
+                        // arquivo de novo (depois de corrigi-lo) não dispara
+                        // `change`, e a tela parece travada.
+                        evento.target.value = '';
+                        if (arquivo) void importar(fonte.codigo, arquivo);
+                      }}
+                    />
+                  </label>
+                )}
                 <Botao
                   variante="fantasma"
                   aoClicar={() => alternarFonte(fonte.codigo)}
@@ -859,8 +911,45 @@ function CalibracaoDoScore({
               </li>
             ))}
           </ul>
+
+          {importado ? <ResumoDaImportacao resumo={importado} /> : null}
         </Cartao>
       </Secao>
+    </div>
+  );
+}
+
+/** O que a planilha rendeu — com os descartes, e não só o que entrou. */
+function ResumoDaImportacao({ resumo }: { resumo: ImportacaoDoScore }) {
+  const descartados = Object.entries(resumo.descartes).filter(([, total]) => total > 0);
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: '10px 12px',
+        borderRadius: 6,
+        background: 'var(--ok-bg)',
+        fontSize: 12,
+        lineHeight: 1.6,
+      }}
+    >
+      <strong>
+        {numero(resumo.ingeridas)} de {numero(resumo.linhas)} linhas entraram
+      </strong>{' '}
+      em {resumo.meses.join(', ')}.
+      {descartados.length ? (
+        <>
+          {' '}
+          Fora:{' '}
+          {descartados
+            .map(
+              ([motivo, total]) =>
+                `${numero(total)} ${ROTULO_DO_DESCARTE[motivo] ?? motivo}`,
+            )
+            .join('; ')}
+          .
+        </>
+      ) : null}
     </div>
   );
 }
