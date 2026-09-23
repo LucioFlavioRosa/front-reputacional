@@ -56,7 +56,6 @@ export function Secao({
   titulo,
   subtitulo,
   acao,
-  ajuda,
   children,
   estilo,
   estiloDoTitulo,
@@ -65,8 +64,6 @@ export function Secao({
   titulo: string;
   subtitulo?: string;
   acao?: ReactNode;
-  /** Texto do "?" ao lado do título — o que esta seção pede, em uma frase. */
-  ajuda?: string;
   children: ReactNode;
   estilo?: CSSProperties;
   /** Ajuste pontual do título, por cima do padrão da marca abaixo — para o
@@ -105,14 +102,11 @@ export function Secao({
         }}
       >
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {nivelDoTitulo === 1 ? (
-              <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
-            ) : (
-              <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
-            )}
-            {ajuda ? <Ajuda texto={ajuda} /> : null}
-          </div>
+          {nivelDoTitulo === 1 ? (
+            <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
+          ) : (
+            <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
+          )}
           {subtitulo ? (
             <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 3, fontWeight: 400 }}>
               {subtitulo}
@@ -425,44 +419,6 @@ export function Barra({
   );
 }
 
-/* -- ajuda ---------------------------------------------------------------- */
-
-/** O "?" ao lado de um rótulo: mostra a legenda ao passar o mouse ou com Tab.
- *
- *  SERVE A QUEM NÃO CONVIVE COM ESTES CAMPOS. O nome da seção diz o quê;
- *  o balão diz o para quê, numa pergunta. CSS puro (`dica-flutuante`), o
- *  mesmo mecanismo já usado no script de transcrição. */
-export function Ajuda({ texto }: { texto: string }) {
-  return (
-    <span className="dica-flutuante" onClick={(evento) => evento.preventDefault()}>
-      <span
-        aria-label={texto}
-        tabIndex={0}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          width: 16,
-          height: 16,
-          borderRadius: '50%',
-          border: '1px solid var(--cinza-2)',
-          color: 'var(--cinza-2)',
-          fontSize: 10,
-          fontWeight: 700,
-          cursor: 'help',
-          lineHeight: 1,
-        }}
-      >
-        ?
-      </span>
-      <span className="dica-flutuante__balao" role="tooltip">
-        {texto}
-      </span>
-    </span>
-  );
-}
-
 /* -- controles ------------------------------------------------------------ */
 
 export function Botao({
@@ -543,34 +499,26 @@ export function Campo({
   rotulo,
   children,
   dica,
-  ajuda,
   obrigatorio,
 }: {
   rotulo: string;
   children: ReactNode;
   dica?: string;
-  /** Legenda do "?" ao lado do nome do campo. */
-  ajuda?: string;
   obrigatorio?: boolean;
 }) {
   return (
     <label style={{ display: 'block' }}>
       <span
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
+          display: 'block',
           fontSize: 12,
           fontWeight: 500,
           color: 'var(--cinza-3)',
           marginBottom: 5,
         }}
       >
-        <span>
-          {rotulo}
-          {obrigatorio ? <span style={{ color: 'var(--erro-fg)' }}> *</span> : null}
-        </span>
-        {ajuda ? <Ajuda texto={ajuda} /> : null}
+        {rotulo}
+        {obrigatorio ? <span style={{ color: 'var(--erro-fg)' }}> *</span> : null}
       </span>
       {children}
       {dica ? (

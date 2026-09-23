@@ -28,20 +28,17 @@ function CampoDeEnumeracao({
   chave,
   valor,
   aoMudar,
-  ajuda,
 }: {
   rotulo: string;
   chave: keyof typeof ENUMERACOES_DA_EXTENSAO;
   valor: string | undefined;
   aoMudar: (valor: string) => void;
-  ajuda?: string;
 }) {
   return (
     <CampoQueCompleta
       rotulo={rotulo}
       valor={valor ?? ''}
       aoEscolher={aoMudar}
-      ajuda={ajuda}
       opcoes={ENUMERACOES_DA_EXTENSAO[chave].map((item) => ({
         valor: item.codigo,
         rotulo: item.nome,
@@ -74,35 +71,15 @@ export function CamposDaFrente({
     case 'imprensa':
       return (
         <div className="grade grade--3" style={{ gap: 16 }}>
-          <CampoDeDicionario
-            rotulo="Formato"
-            itens={formatos('imprensa')}
-            ajuda="Entrevista, release, coletiva… o formato desta pauta."
-            {...campo('formato')}
-          />
-          <CampoDeTexto
-            rotulo="Data atendida"
-            tipo="date"
-            ajuda="O dia em que a Aegea atendeu o pedido da imprensa."
-            {...campo('data_atendida')}
-          />
-          <CampoDeTexto
-            rotulo="Data de publicação"
-            tipo="date"
-            ajuda="O dia em que a matéria saiu, se já saiu."
-            {...campo('data_publicacao')}
-          />
+          <CampoDeDicionario rotulo="Formato" itens={formatos('imprensa')} {...campo('formato')} />
+          <CampoDeTexto rotulo="Data atendida" tipo="date" {...campo('data_atendida')} />
+          <CampoDeTexto rotulo="Data de publicação" tipo="date" {...campo('data_publicacao')} />
           <div style={{ gridColumn: 'span 2' }}>
-            <CampoDeTexto
-              rotulo="Link da matéria"
-              tipo="url"
-              ajuda="O endereço da publicação, quando existir."
-              {...campo('link_materia')}
-            />
+            <CampoDeTexto rotulo="Link da matéria" tipo="url" {...campo('link_materia')} />
           </div>
           <CampoDeTexto
             rotulo="Mensagens-chave"
-            ajuda="As frases que a Aegea quis deixar. Separe com ponto e vírgula."
+            dica="Separe com ponto e vírgula."
             {...campo('mensagens_chave')}
           />
         </div>
@@ -112,56 +89,30 @@ export function CamposDaFrente({
     case 'bancos_credores':
       return (
         <div className="grade grade--3" style={{ gap: 16 }}>
-          <CampoDeTexto
-            rotulo="Cargo do interlocutor"
-            ajuda="O cargo de quem conversou conosco nesta agenda."
-            {...campo('cargo_interlocutor')}
-          />
+          <CampoDeTexto rotulo="Cargo do interlocutor" {...campo('cargo_interlocutor')} />
         </div>
       );
     case 'eventos':
       return (
         <div className="grade grade--3" style={{ gap: 16 }}>
           <div style={{ gridColumn: 'span 2' }}>
-            <CampoDeTexto
-              rotulo="Nome do evento"
-              ajuda="O nome do congresso, seminário ou encontro."
-              {...campo('nome_evento')}
-            />
+            <CampoDeTexto rotulo="Nome do evento" {...campo('nome_evento')} />
           </div>
-          <CampoDeTexto
-            rotulo="Cargo do interlocutor"
-            ajuda="O cargo de quem conversou conosco neste evento."
-            {...campo('cargo_interlocutor')}
-          />
+          <CampoDeTexto rotulo="Cargo do interlocutor" {...campo('cargo_interlocutor')} />
         </div>
       );
     case 'legislativo':
       return (
         <div className="grade grade--3" style={{ gap: 16 }}>
-          <CampoDeDicionario
-            rotulo="Casa"
-            itens={dicionarios.casas}
-            ajuda="Câmara, Senado, Assembleia… onde o tema tramita."
-            {...campo('casa')}
-          />
+          <CampoDeDicionario rotulo="Casa" itens={dicionarios.casas} {...campo('casa')} />
           <CampoDeDicionario
             rotulo="Tramitação"
             itens={dicionarios.tramitacoes}
-            ajuda="Em que estágio o projeto está hoje."
             {...campo('tramitacao')}
           />
-          <CampoDeEnumeracao
-            rotulo="Prioridade"
-            chave="prioridade"
-            ajuda="O quanto este tema importa para a Aegea neste momento."
-            {...campo('prioridade')}
-          />
+          <CampoDeEnumeracao rotulo="Prioridade" chave="prioridade" {...campo('prioridade')} />
           <div style={{ gridColumn: 'span 3' }}>
-            <Campo
-              rotulo="Ementa"
-              ajuda="O resumo do que o projeto trata, em poucas linhas."
-            >
+            <Campo rotulo="Ementa">
               <textarea
                 style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
                 value={extensao.ementa ?? ''}
@@ -177,13 +128,11 @@ export function CamposDaFrente({
           <CampoDeDicionario
             rotulo="Tipo de investidor"
             itens={dicionarios.tipos_investidor}
-            ajuda="Fundo, banco, rating… que tipo de investidor é este."
             {...campo('tipo_investidor')}
           />
           <CampoDeDicionario
             rotulo="Formato"
             itens={formatos('investidores')}
-            ajuda="Roadshow, call de resultados, reunião one-on-one…"
             {...campo('formato')}
           />
         </div>
@@ -191,30 +140,14 @@ export function CamposDaFrente({
     case 'interna':
       return (
         <div className="grade grade--3" style={{ gap: 16 }}>
-          <CampoDeEnumeracao
-            rotulo="Natureza"
-            chave="natureza"
-            ajuda="Que tipo de demanda interna é esta."
-            {...campo('natureza')}
-          />
-          <CampoDeEnumeracao
-            rotulo="Cumprimento"
-            chave="cumprimento"
-            ajuda="Se o pedido foi atendido, e em que medida."
-            {...campo('cumprimento')}
-          />
+          <CampoDeEnumeracao rotulo="Natureza" chave="natureza" {...campo('natureza')} />
+          <CampoDeEnumeracao rotulo="Cumprimento" chave="cumprimento" {...campo('cumprimento')} />
           <CampoDeEnumeracao
             rotulo="Complexidade"
             chave="complexidade"
-            ajuda="O quanto este pedido dá trabalho para responder."
             {...campo('complexidade')}
           />
-          <CampoDeTexto
-            rotulo="Prazo (dias)"
-            tipo="number"
-            ajuda="Quantos dias a área tem para responder, se houver prazo."
-            {...campo('prazo_dias')}
-          />
+          <CampoDeTexto rotulo="Prazo (dias)" tipo="number" {...campo('prazo_dias')} />
         </div>
       );
   }

@@ -169,11 +169,7 @@ export function DepoisDaReuniao({
 }) {
   return (
     <>
-      <Secao
-        titulo="8. Outputs da interação"
-        ajuda="O que ficou escrito depois da reunião: relato, encaminhamentos, pendências e observações."
-        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
-      >
+      <Secao titulo="8. Outputs da interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {(
             [
@@ -208,16 +204,11 @@ export function DepoisDaReuniao({
           escrito ali, e estes campos são a classificação daquele mesmo texto.
           Separá-los faria voltar a rolar a tela para dizer duas vezes como a
           reunião foi. */}
-      <Secao
-        titulo="9. Desfecho da interação"
-        ajuda="Como a reunião foi, se o objetivo foi atingido e se vai ter continuidade."
-        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
-      >
+      <Secao titulo="9. Desfecho da interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Clima"
-              ajuda="Como a conversa de fato foi: tensa, neutra ou positiva."
               valor={form.clima}
               aoEscolher={(v) => alterar('clima', v)}
               opcoes={catalogo.dicionarios.climas.map((c) => ({
@@ -228,7 +219,7 @@ export function DepoisDaReuniao({
 
             <CampoQueCompleta
               rotulo="Desfecho"
-              ajuda="Em relação ao objetivo da interação: avançou, ficou no mesmo ou recuou."
+              dica="Em relação ao objetivo da interação."
               vazio="Sem definição"
               valor={form.resultado}
               aoEscolher={(v) => alterar('resultado', v)}
@@ -243,7 +234,6 @@ export function DepoisDaReuniao({
                 reduzir. */}
             <CampoQueCompleta
               rotulo="Desdobra em outra interação?"
-              ajuda="Vai haver um próximo encontro por causa desta conversa?"
               valor={form.preve_desdobramento}
               aoEscolher={(v) =>
                 alterar('preve_desdobramento', v as Formulario['preve_desdobramento'])
@@ -257,11 +247,7 @@ export function DepoisDaReuniao({
         </Cartao>
       </Secao>
 
-      <Secao
-        titulo="10. Materiais pós-reunião"
-        ajuda="O que saiu da reunião. Obtido é o que a outra parte entregou; produzido é o que a Aegea escreveu depois."
-        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
-      >
+      <Secao titulo="10. Materiais pós-reunião" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             O que saiu da reunião. <strong>Obtido</strong> é o que a outra parte

@@ -13,17 +13,15 @@ export function CampoDeTexto({
   aoMudar,
   tipo = 'text',
   dica,
-  ajuda,
 }: {
   rotulo: string;
   valor: string | undefined;
   aoMudar: (valor: string) => void;
   tipo?: string;
   dica?: string;
-  ajuda?: string;
 }) {
   return (
-    <Campo rotulo={rotulo} dica={dica} ajuda={ajuda}>
+    <Campo rotulo={rotulo} dica={dica}>
       <input
         type={tipo}
         style={estiloDeEntrada}
@@ -39,20 +37,17 @@ export function CampoDeDicionario({
   itens,
   valor,
   aoMudar,
-  ajuda,
 }: {
   rotulo: string;
   itens: { codigo: string; nome: string }[];
   valor: string | undefined;
   aoMudar: (valor: string) => void;
-  ajuda?: string;
 }) {
   return (
     <CampoQueCompleta
       rotulo={rotulo}
       valor={valor ?? ''}
       aoEscolher={aoMudar}
-      ajuda={ajuda}
       opcoes={itens.map((item) => ({ valor: item.codigo, rotulo: item.nome }))}
     />
   );
