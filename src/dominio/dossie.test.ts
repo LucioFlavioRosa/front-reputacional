@@ -20,11 +20,13 @@ import {
   comoNumero,
   comoTexto,
   corDaPrioridade,
+  corDoTom,
   lacunasDoDossie,
   mesCurto,
+  quantosSinaisReais,
   temExemplo,
 } from '@/dominio/dossie';
-import type { Bloco, Dossie, Ficha } from '@/dominio/dossie';
+import type { Bloco, Dossie, Ficha, SinalDoDossie } from '@/dominio/dossie';
 
 const FICHA: Ficha = {
   origem: 'planilha',
@@ -211,8 +213,10 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     ficha_do_destaque: FICHA,
     manchete: null,
     evolucao: bloco({ tipo: 'barras_empilhadas' }),
+    sinais_da_evolucao: [],
     fatos: [],
     paineis: [],
+    sinais: [],
     ...parcial,
   };
 }
@@ -267,5 +271,58 @@ describe('avisoDeExemplo', () => {
 
   it('nada a avisar quando tudo é medido', () => {
     expect(avisoDeExemplo(dossie({ paineis: [bloco({}), bloco({})] }))).toBeNull();
+  });
+});
+
+
+/* -- os sinais do período ------------------------------------------------------ */
+
+function sinal(parcial: Partial<SinalDoDossie>): SinalDoDossie {
+  return {
+    tipo: 'Virada',
+    frase: 'A nota caiu 10 pontos em junho: o negativo foi de 45% para 57%.',
+    evidencia: '-10 pts',
+    onde: 'Evolução',
+    tom: 'neg',
+    ...parcial,
+  };
+}
+
+describe('corDoTom', () => {
+  it('pinta positivo e negativo com as cores do produto', () => {
+    expect(corDoTom('pos').texto).toBe('var(--ok-fg)');
+    expect(corDoTom('neg').texto).toBe('var(--erro-fg)');
+  });
+
+  it('cai no cinza para o neutro', () => {
+    expect(corDoTom('neu').texto).toBe('var(--cinza-3)');
+  });
+
+  it('cai no cinza para um tom que a tela não conhece', () => {
+    // O servidor manda `pos`/`neg`/`neu`, mas um tom novo não pode deixar o
+    // chip sem cor de fundo — ele sumiria da lista sem avisar.
+    expect(corDoTom('roxo')).toEqual(corDoTom('neu'));
+  });
+});
+
+describe('quantosSinaisReais', () => {
+  it('não conta as lacunas de dado', () => {
+    // "5 sinais" e "5 sinais, 2 deles lacunas" descrevem lentes muito
+    // diferentes: uma teve cinco coisas acontecendo, a outra teve três.
+    const lista = [
+      sinal({}),
+      sinal({ tipo: 'Pico', tom: 'neu' }),
+      sinal({ tipo: 'Lacuna de dado', tom: 'neu' }),
+    ];
+
+    expect(quantosSinaisReais(lista)).toBe(2);
+  });
+
+  it('devolve zero numa lente só com lacunas', () => {
+    expect(quantosSinaisReais([sinal({ tipo: 'Lacuna de dado' })])).toBe(0);
+  });
+
+  it('devolve zero sem sinal nenhum', () => {
+    expect(quantosSinaisReais([])).toBe(0);
   });
 });

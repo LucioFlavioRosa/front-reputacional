@@ -68,6 +68,23 @@ export interface FatoDoDossie {
   efeito: string;
 }
 
+/** O tom de um sinal: o que ele significa para a lente, não o que ele mede. */
+export type TomDoSinal = 'pos' | 'neg' | 'neu';
+
+/** Uma linha do bloco "Sinais do período".
+ *
+ *  NENHUM DELES É TEXTO SALVO. Todos saem de detectores sobre os próprios
+ *  dados, a cada leitura — mudar um dado muda a frase. */
+export interface SinalDoDossie {
+  tipo: string;
+  frase: string;
+  /** O número que a frase prova, em destaque ao lado dela. */
+  evidencia: string;
+  /** Em que gráfico conferir: "Evolução", o nome de um painel, ou "Lente". */
+  onde: string;
+  tom: TomDoSinal;
+}
+
 export interface Dossie {
   codigo: string;
   nome: string;
@@ -86,8 +103,12 @@ export interface Dossie {
   /** A frase que abre a lente — calculada dos dados, nunca salva. */
   manchete: string | null;
   evolucao: Bloco;
+  /** O quadro ao lado da evolução: até três sinais da série, mais as lacunas. */
+  sinais_da_evolucao: string[];
   fatos: FatoDoDossie[];
   paineis: Bloco[];
+  /** O bloco do fim da tela, já ordenado pelo servidor. */
+  sinais: SinalDoDossie[];
 }
 
 /** Como cada origem se apresenta no "?".
@@ -133,6 +154,28 @@ export const ROTULO_DO_EFEITO: Record<string, string> = {
   pressiona: 'Pressiona',
   misto: 'Misto',
 };
+
+/** O tipo que o servidor usa para o que FALTA, e não para o que aconteceu. */
+export const LACUNA_DE_DADO = 'Lacuna de dado';
+
+/** O chip de um sinal, pelo tom.
+ *
+ *  A LACUNA NÃO É NEUTRA POR ACASO: ela não é uma leitura boa nem ruim, é a
+ *  ausência de leitura — e pintá-la de cinza junto com os sinais neutros é o
+ *  que impede a lista de sugerir que "não há dado" seja uma notícia morna. */
+export function corDoTom(tom: string): { fundo: string; texto: string } {
+  if (tom === 'pos') return { fundo: 'var(--ok-bg)', texto: 'var(--ok-fg)' };
+  if (tom === 'neg') return { fundo: 'var(--erro-bg)', texto: 'var(--erro-fg)' };
+  return { fundo: 'var(--bg-trilho)', texto: 'var(--cinza-3)' };
+}
+
+/** Quantos sinais desta lente são leitura, e não ausência de leitura.
+ *
+ *  É o que decide o subtítulo do bloco: "5 sinais" e "5 sinais, 2 deles
+ *  lacunas" descrevem lentes muito diferentes. */
+export function quantosSinaisReais(sinais: SinalDoDossie[]): number {
+  return sinais.filter((sinal) => sinal.tipo !== LACUNA_DE_DADO).length;
+}
 
 /** A cor de uma prioridade da matriz de jornalistas.
  *

@@ -2,8 +2,13 @@
  *
  *  AS CINCO LENTES TÊM A MESMA ESTRUTURA, e é isso que faz a tela ser um
  *  dossiê e não cinco relatórios: destaque com a nota e a manchete, evolução
- *  com os fatos do período, dois painéis, o que aquilo revela e o que se
- *  decidiu fazer. Quem aprende a ler a Imprensa lê as outras quatro.
+ *  com os fatos do período, dois painéis e os sinais do período. Quem aprende
+ *  a ler a Imprensa lê as outras quatro.
+ *
+ *  NENHUMA FRASE DESTA TELA FOI ESCRITA À MÃO. Manchete, título de gráfico,
+ *  quadro da evolução e lista de sinais saem de detectores sobre os próprios
+ *  dados, recalculados a cada leitura — é por isso que a frase nunca
+ *  desencontra do número que está ao lado dela.
  *
  *  O SERVIDOR DIZ QUE GRÁFICO DESENHAR. Cada painel chega com um `tipo`
  *  (`barras_100`, `matriz_prioridade`, `tabela`…) e esta tela escolhe a peça
@@ -35,9 +40,11 @@ import {
   colunasDaTabela,
   comoNumero,
   comoTexto,
+  corDoTom,
   mesCurto,
+  quantosSinaisReais,
 } from '@/dominio/dossie';
-import type { Bloco, Dossie } from '@/dominio/dossie';
+import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { corDaFaixa } from '@/dominio/score';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
@@ -126,6 +133,7 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
         ))}
       </div>
 
+      <SinaisDoPeriodo dossie={dossie} />
     </>
   );
 }
@@ -255,6 +263,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           ficha={evolucao.ficha}
         />
         <Painel bloco={evolucao} fatos={dossie.fatos} />
+        <QuadroDaEvolucao linhas={dossie.sinais_da_evolucao} />
         <NotaDeFonte ficha={evolucao.ficha} />
 
         {dossie.fatos.length ? (
@@ -452,5 +461,129 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     <p style={{ fontSize: 13, color: 'var(--atencao-fg)', margin: 0 }}>
       Esta versão da tela não sabe desenhar &ldquo;{bloco.tipo}&rdquo;.
     </p>
+  );
+}
+
+/* -- 5. os sinais do período --------------------------------------------------- */
+
+/** O que a série mensal diz, ao lado do gráfico que a prova.
+ *
+ *  ERA UM QUADRO DE PARÁGRAFOS ESCRITOS À MÃO, todo mês, e envelhecia em
+ *  silêncio: a leitura de junho continuava na tela em setembro, com a mesma
+ *  cara de atual. Agora são as frases dos detectores sobre a própria série —
+ *  mudar um dado muda o quadro na próxima leitura.
+ */
+function QuadroDaEvolucao({ linhas }: { linhas: string[] }) {
+  if (!linhas.length) return null;
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: '12px 14px',
+        borderRadius: 10,
+        background: 'var(--bg-trilho)',
+      }}
+    >
+      <h4
+        style={{
+          margin: '0 0 8px',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          color: 'var(--cinza-2)',
+        }}
+      >
+        Sinais da evolução
+      </h4>
+      <ul style={{ margin: 0, padding: '0 0 0 18px' }}>
+        {linhas.map((linha) => (
+          <li key={linha} style={{ fontSize: 13, lineHeight: 1.6 }}>
+            {linha}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** O bloco que fecha a tela: o que mudou no período, por intensidade.
+ *
+ *  CADA LINHA DIZ ONDE CONFERIR. Sem isso a lista vira cinco afirmações
+ *  soltas, e quem duvida de uma não sabe em que gráfico olhar — que é
+ *  exatamente o que faz alguém parar de confiar no painel inteiro.
+ */
+function SinaisDoPeriodo({ dossie }: { dossie: Dossie }) {
+  const reais = quantosSinaisReais(dossie.sinais);
+  const lacunas = dossie.sinais.length - reais;
+
+  return (
+    <Secao
+      titulo="Sinais do período"
+      subtitulo={
+        dossie.sinais.length
+          ? `${reais} ${reais === 1 ? 'sinal' : 'sinais'} acima dos limites` +
+            (lacunas ? ` · ${lacunas} ${lacunas === 1 ? 'lacuna' : 'lacunas'} de dado` : '')
+          : undefined
+      }
+      ajuda={
+        'Cada frase sai de uma regra determinística sobre os próprios dados — ' +
+        'nunca de texto escrito à mão, e nunca de um modelo de linguagem. Os ' +
+        'limites de cada regra ficam na Calibração.'
+      }
+    >
+      <Cartao>
+        {dossie.sinais.length ? (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {dossie.sinais.map((sinal, posicao) => (
+              <LinhaDeSinal
+                key={`${posicao}-${sinal.frase}`}
+                sinal={sinal}
+                primeira={posicao === 0}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)' }}>
+            Sem variação relevante no período pelas regras atuais.
+          </p>
+        )}
+      </Cartao>
+    </Secao>
+  );
+}
+
+function LinhaDeSinal({ sinal, primeira }: { sinal: SinalDoDossie; primeira: boolean }) {
+  const cor = corDoTom(sinal.tom);
+  return (
+    <li
+      style={{
+        display: 'flex',
+        gap: 12,
+        alignItems: 'baseline',
+        flexWrap: 'wrap',
+        padding: '10px 0',
+        borderTop: primeira ? undefined : '1px solid var(--borda)',
+      }}
+    >
+      <Chip rotulo={sinal.tipo} fundo={cor.fundo} texto={cor.texto} />
+      <span style={{ fontSize: 11.5, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+        {sinal.onde}
+      </span>
+      <span style={{ fontSize: 13.5, flex: 1, minWidth: 220, lineHeight: 1.55 }}>
+        {sinal.frase}
+      </span>
+      <span
+        className="tabular"
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          color: sinal.tom === 'neu' ? 'var(--tinta)' : cor.texto,
+        }}
+      >
+        {sinal.evidencia}
+      </span>
+    </li>
   );
 }
