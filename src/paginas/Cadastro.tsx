@@ -739,7 +739,7 @@ export function Cadastro({
               vale para toda a plataforma — um campo, um nome. */}
           <Campo
             rotulo="Temas"
-            ajuda="Ao marcar um tema, os documentos da biblioteca ligados a ele entram sozinhos em Materiais de preparação. Ao desmarcar, saem só os que vieram junto; o que você adicionou à mão continua."
+            ajuda="Escolha um dos temas disponíveis que mais se encaixa com a interação. Se nenhum estiver de acordo, você pode criar um novo na Administração, na aba Temas."
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
