@@ -416,3 +416,68 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   }
   .cabecalho__resumo { order: 3; width: 100%; }
 }
+
+/* -- Jornada do índice ------------------------------------------------------
+   As margens laterais do bloco são um CONTRATO, não decoração: a grade de
+   colunas, o gráfico e a faixa dos meses precisam começar e terminar no mesmo
+   x, senão o ponto do mês cai fora da coluna dele e o leitor atribui o fato ao
+   mês errado. Por isso as três vêm da mesma variável.
+
+   E por isso tudo isto mora aqui, e não em estilo inline: `grid-template-
+   columns` embutido não alcança media query — foi o que deixou o gráfico sem
+   responsivo na primeira versão. */
+.jornada {
+  --jornada-esquerda: 34px; /* as marcas do eixo */
+  --jornada-direita: 92px;  /* os nomes das faixas */
+  --jornada-altura: 260px;
+}
+
+.jornada__margens {
+  margin-left: var(--jornada-esquerda);
+  margin-right: var(--jornada-direita);
+}
+
+.jornada__colunas,
+.jornada__meses {
+  display: grid;
+  grid-template-columns: repeat(var(--jornada-meses), minmax(0, 1fr));
+}
+
+.jornada__grafico { position: relative; height: var(--jornada-altura); }
+
+/* O cartão do mês escolhido, que só aparece quando as colunas não cabem. */
+.jornada__mes-unico { display: none; }
+/* A legenda de faixas embaixo, que substitui os nomes na margem direita. */
+.jornada__faixas-abaixo { display: none; }
+.jornada__mes-longo { display: inline; }
+.jornada__mes-curto { display: none; }
+
+@media (max-width: 1040px) {
+  .jornada { --jornada-altura: 225px; }
+}
+
+/* Abaixo de 860px as colunas de texto deixam de caber: seis delas dão 90px
+   cada, e o fato do mês vira uma palavra por linha. A jornada continua inteira
+   — o que muda é que o detalhe do mês passa a ser UM cartão, o do mês
+   escolhido, e os outros meses se alcançam tocando a curva. */
+@media (max-width: 860px) {
+  .jornada {
+    --jornada-direita: 0px;
+    --jornada-altura: 200px;
+  }
+  .jornada__colunas { display: none; }
+  .jornada__mes-unico { display: block; }
+  .jornada__nome-da-faixa { display: none; }
+  .jornada__faixas-abaixo { display: flex; }
+}
+
+@media (max-width: 560px) {
+  .jornada {
+    --jornada-esquerda: 26px;
+    --jornada-altura: 170px;
+  }
+  /* "jun/26" não cabe em 30px de coluna; "jun" cabe, e o ano está no seletor
+     de mês do cabeçalho. */
+  .jornada__mes-longo { display: none; }
+  .jornada__mes-curto { display: inline; }
+}
