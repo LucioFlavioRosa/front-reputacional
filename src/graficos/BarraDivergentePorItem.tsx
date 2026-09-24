@@ -9,6 +9,8 @@
  *  score.
  */
 
+import { numero } from '@/dominio/formato';
+
 const ALTURA_DA_FAIXA = 10;
 
 export interface ItemDivergente {
@@ -19,16 +21,27 @@ export interface ItemDivergente {
   score: number;
 }
 
+/** O que o `total` conta. O padrão é a agenda, que foi quem inaugurou esta
+ *  barra; o Score conta menção. Sem isto, a tela do Score diria "1.983
+ *  interações" sobre matérias de jornal — e a palavra errada num rótulo faz
+ *  quem lê procurar o número na tela errada. */
+export interface UnidadeDoTotal {
+  singular: string;
+  plural: string;
+}
+
 export function BarraDivergentePorItem({
   itens,
   ativo,
   aoClicar,
   vazio = 'Nenhum item com clima registrado neste recorte.',
+  unidade = { singular: 'interação', plural: 'interações' },
 }: {
   itens: ItemDivergente[];
   ativo?: string;
   aoClicar?: (chave: string) => void;
   vazio?: string;
+  unidade?: UnidadeDoTotal;
 }) {
   if (!itens.length) {
     return (
@@ -90,11 +103,16 @@ export function BarraDivergentePorItem({
                 {item.rotulo}
               </div>
               <div className="tabular" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--cinza-3)', marginTop: 1 }}>
-                {item.total} {item.total === 1 ? 'interação' : 'interações'}
+                {numero(item.total)}{' '}
+                {item.total === 1 ? unidade.singular : unidade.plural}
               </div>
             </div>
 
-            <div style={{ position: 'relative', height: ALTURA_DA_FAIXA }}>
+            <div
+              style={{ position: 'relative', height: ALTURA_DA_FAIXA }}
+              role="img"
+              aria-label={`${item.rotulo}: saldo ${item.score > 0 ? '+' : ''}${item.score} de −100 a 100`}
+            >
               <div
                 style={{
                   position: 'absolute',

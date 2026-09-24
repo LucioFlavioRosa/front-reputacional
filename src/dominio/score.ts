@@ -149,7 +149,13 @@ export interface DriversDoScore {
   atributos: AtributoDoScore[];
   unidades: UnidadeDoScore[];
   perpetuacao: TemaEmPerpetuacao[];
+  /** Os números que definem "em perpetuação" — ditos por quem aplica a regra,
+   *  para a tela não explicar a lista com uma constante que envelheceu. */
+  regra_da_perpetuacao: { meses_da_janela: number; meses_para_perpetuar: number };
   mencoes_no_mes: number;
+  /** Quantas fontes de planilha estão no cálculo. Zero com menção no banco
+   *  significa "você desligou tudo", e não "falta importar". */
+  fontes_ligadas: number;
 }
 
 export interface AtributoDoScore {
@@ -176,22 +182,6 @@ export interface TemaEmPerpetuacao {
   ultimo_mes: string;
   negativas: number;
   lentes: string[];
-}
-
-/** A barra divergente de um atributo: onde começa e quanto ocupa.
- *
- *  O EIXO É O CENTRO, e não a esquerda. Numa barra comum, "Governança" com NS
- *  −0,3 e "Prosperidade" com +0,99 aparecem as duas crescendo para a direita, e
- *  a diferença entre elas vira tamanho — quando ela é de SINAL. Saindo do meio,
- *  o olho lê de que lado está antes de ler o quanto. */
-export function faixaDivergente(ns: number): { inicio: string; largura: string } {
-  const metade = Math.abs(ns) * 50;
-  return {
-    inicio: `${ns >= 0 ? 50 : 50 - metade}%`,
-    // Nunca zero: um atributo perfeitamente equilibrado sumiria da tela, e
-    // sumir é indistinguível de não ter sido medido.
-    largura: `${Math.max(1.5, metade)}%`,
-  };
 }
 
 export interface OpcoesDoScore {

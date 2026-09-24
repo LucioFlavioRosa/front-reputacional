@@ -42,7 +42,11 @@ export function Ranking({
             key={item.chave}
             onClick={() => aoClicar?.(item.chave)}
             role={aoClicar ? 'button' : undefined}
-            tabIndex={aoClicar ? 0 : undefined}
+            // FOCÁVEL TAMBÉM QUANDO SÓ HÁ DETALHE. O tooltip aparece no
+            // `focus`, e prendê-lo ao `aoClicar` escondia o conteúdo de quem
+            // navega por teclado — num ranking sem clique, o detalhe era a
+            // única forma de saber o total e a participação de cada item.
+            tabIndex={aoClicar || detalheAoPassarMouse ? 0 : undefined}
             onKeyDown={(evento) => {
               if (!aoClicar) return;
               if (evento.key === 'Enter' || evento.key === ' ') {

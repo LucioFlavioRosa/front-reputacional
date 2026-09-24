@@ -42,6 +42,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { Legenda } from '@/graficos/BarrasEmpilhadas';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -49,7 +50,6 @@ import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
-  faixaDivergente,
   ROTULO_DO_AVISO,
   ROTULO_DO_DESCARTE,
   ROTULO_DO_EFEITO,
@@ -651,11 +651,22 @@ function DriversERiscos({ mes }: { mes: string }) {
   // "não houve nada": é que a planilha do mês não foi importada. Dizer isso é o
   // que separa um mês tranquilo de um mês sem dado.
   if (!drivers.mencoes_no_mes) {
+    // DOIS MOTIVOS PARA A MESMA TELA VAZIA, e mandar importar uma planilha que
+    // já está no banco faria a pessoa procurar o problema no lugar errado.
+    const tudoDesligado = drivers.fontes_ligadas === 0;
     return (
       <Secao titulo="Drivers e riscos">
         <Vazio
-          mensagem={`Sem menções individuais em ${mes}`}
-          dica="Atributo, unidade e perpetuação se calculam menção a menção. Importe a planilha do mês na aba Calibração — o índice e as lentes já funcionam com os totais, e estas três leituras acendem com o detalhe."
+          mensagem={
+            tudoDesligado
+              ? `Todas as fontes de planilha estão desligadas na calibração`
+              : `Sem menções individuais em ${mes}`
+          }
+          dica={
+            tudoDesligado
+              ? 'Religue ao menos uma fonte na aba Calibração para ver de que se falou no mês.'
+              : 'Atributo, unidade e perpetuação se calculam menção a menção. Importe a planilha do mês na aba Calibração — o índice e as lentes já funcionam com os totais, e estas três leituras acendem com o detalhe.'
+          }
         />
       </Secao>
     );
@@ -665,7 +676,7 @@ function DriversERiscos({ mes }: { mes: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <Secao
         titulo="O que se repete"
-        subtitulo={`Temas negativos presentes em ${PERPETUACAO_MINIMA} meses ou mais da janela de seis, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
+        subtitulo={`Temas negativos presentes em ${drivers.regra_da_perpetuacao.meses_para_perpetuar} meses ou mais da janela de ${drivers.regra_da_perpetuacao.meses_da_janela}, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
       >
         <Cartao>
           {drivers.perpetuacao.length ? (
@@ -697,7 +708,8 @@ function DriversERiscos({ mes }: { mes: string }) {
             </ul>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-              Nenhum tema negativo atravessou {PERPETUACAO_MINIMA} meses até aqui. É uma boa
+              Nenhum tema negativo atravessou{' '}
+              {drivers.regra_da_perpetuacao.meses_para_perpetuar} meses até aqui. É uma boa
               notícia — e some da tela quando deixar de ser verdade.
             </p>
           )}
@@ -709,74 +721,24 @@ function DriversERiscos({ mes }: { mes: string }) {
         subtitulo="O atributo reputacional que a clipagem marca em cada matéria ou post. Contagem simples: aqui a pergunta é o tom, e não quanto a menção pesou no índice."
       >
         <Cartao>
-          {drivers.atributos.length ? (
-            <>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {drivers.atributos.map((atributo) => {
-                  const faixa = faixaDivergente(atributo.ns);
-                  return (
-                    <li key={atributo.nome} style={{ padding: '10px 0' }}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
-                          {atributo.nome}
-                        </span>
-                        <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
-                          {numero(atributo.positivo + atributo.neutro + atributo.negativo)}{' '}
-                          menções
-                        </span>
-                        <span
-                          className="tabular"
-                          style={{ fontSize: 13, fontWeight: 700, color: corDaFaixa(atributo.score) }}
-                        >
-                          {atributo.score}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          position: 'relative',
-                          height: 10,
-                          marginTop: 6,
-                          background: 'var(--cinza-0)',
-                          borderRadius: 5,
-                        }}
-                      >
-                        {/* o eixo: onde o saldo é zero */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: '50%',
-                            top: -2,
-                            bottom: -2,
-                            width: 1,
-                            background: 'var(--borda)',
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: faixa.inicio,
-                            width: faixa.largura,
-                            top: 0,
-                            bottom: 0,
-                            borderRadius: 5,
-                            background: atributo.ns >= 0 ? 'var(--ok-fg)' : 'var(--erro-fg)',
-                          }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-                Só Clipei e Bites classificam atributo. As outras fontes não entram nesta
-                leitura — e não entram como zero, que seria dizer que elas acharam neutro.
-              </p>
-            </>
-          ) : (
-            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-              Nenhuma menção do mês traz atributo classificado.
-            </p>
-          )}
+          <BarraDivergentePorItem
+            itens={drivers.atributos.map((atributo) => ({
+              chave: atributo.nome,
+              rotulo: atributo.nome,
+              total: atributo.positivo + atributo.neutro + atributo.negativo,
+              // A BARRA FALA EM SALDO, de −100 a +100, e não no score de 0 a
+              // 100: o que ela mostra é de que lado o atributo está, e o zero
+              // precisa cair no eixo. `score` (50 no equilíbrio) desenharia
+              // tudo à direita.
+              score: Math.round(atributo.ns * 100),
+            }))}
+            unidade={{ singular: 'menção', plural: 'menções' }}
+            vazio="Nenhuma menção do mês traz atributo classificado."
+          />
+          <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+            Só Clipei e Bites classificam atributo. As outras fontes não entram nesta leitura —
+            e não entram como zero, que seria dizer que elas acharam neutro.
+          </p>
         </Cartao>
       </Secao>
 
@@ -805,10 +767,13 @@ function DriversERiscos({ mes }: { mes: string }) {
             }}
           />
           <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-            Cada fornecedor nomeia a unidade do seu jeito; o cadastro da fonte reconcilia o
-            que dá (prefixo e apelido). Onde um fornecedor agrupa duas concessionárias e o
-            outro as separa, elas aparecem como linhas distintas — juntar seria inventar um
-            número que ninguém mediu.
+            Só as fontes que identificam a concessionária entram: as redes e os canais
+            próprios. A clipagem de imprensa marca a companhia inteira em toda matéria, e
+            somá-la aqui criaria uma barra chamada &ldquo;Aegea&rdquo; maior que todas as
+            outras sem dizer nada. Cada fornecedor nomeia a unidade do seu jeito, e o cadastro
+            da fonte reconcilia o que dá — prefixo e apelido. Onde um agrupa duas
+            concessionárias e o outro as separa, elas ficam em linhas distintas: juntar seria
+            inventar um número que ninguém mediu.
           </p>
         </Cartao>
       </Secao>
@@ -816,10 +781,6 @@ function DriversERiscos({ mes }: { mes: string }) {
   );
 }
 
-//: O mesmo número que o servidor usa em `MESES_PARA_PERPETUAR`. Repetido aqui
-//: só como TEXTO da tela — quem decide o que é perpetuação é o servidor, e uma
-//: divergência entre os dois muda a frase, nunca a lista.
-const PERPETUACAO_MINIMA = 3;
 
 /* -- aba 4: a calibração -------------------------------------------------------- */
 
@@ -1316,9 +1277,9 @@ function Metodologia() {
         <Cartao>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
             <li>
-              <strong>Menções uma a uma.</strong> Hoje o índice lê os totais do mês. Temas,
-              atributos reputacionais e exposição por unidade dependem da ingestão das
-              planilhas dos fornecedores.
+              <strong>O vocabulário dos fornecedores</strong> ainda não foi casado com o
+              dicionário de temas e unidades do CRM. A tela mostra o rótulo como cada um o
+              escreve, reconciliado só onde o cadastro da fonte declara.
             </li>
             <li>
               <strong>Meses sem export</strong> usam a estimativa do resumo semestral, marcada
