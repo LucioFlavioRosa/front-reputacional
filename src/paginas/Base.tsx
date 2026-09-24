@@ -8,7 +8,21 @@ import { resumirRecorte } from '@/dominio/resumo-do-recorte';
 import { Botao, Carregando, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
 import { celula } from '@/componentes/estilos';
 import { Abas } from '@/componentes/Abas';
+import { CampoSuspenso } from '@/componentes/CampoSuspenso';
+import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltrosDeAgendas } from '@/componentes/FiltrosDeAgendas';
+import {
+  campoDeAreaPorCategoria,
+  campoDeCategoriaPublico,
+  campoDeFormatoInteracao,
+  campoDeTema,
+} from '@/componentes/PainelDeFiltros';
+import {
+  limparAreas,
+  limparCategoriaPublico,
+  limparFormatoInteracao,
+  limparTags,
+} from '@/dominio/recorte';
 import { Linha as LinhaDaTabela, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { ConsultasRecebidas } from '@/paginas/ConsultasRecebidas';
@@ -136,7 +150,7 @@ export function Base({
    *  por estado, outra por endereço — divergiriam no primeiro ajuste. */
   aoAbrirCadeia: (id: string) => void;
 }) {
-  const { interacoes, catalogo, carregando, erro, recorte, total } = usePainel();
+  const { interacoes, catalogo, carregando, erro, recorte, definirRecorte, total } = usePainel();
   const [aba, definirAba] = useState<AbaDaBase>('agendas');
   const [ordenacao, definirOrdenacao] = useState<Ordenacao | null>(null);
   const { ocultas, visiveis, alternar } = useColunasVisiveis(
@@ -163,12 +177,47 @@ export function Base({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Abas
-        abas={ABAS}
+        // "CONSULTAS RECEBIDAS" SAIU DA ABA em 24/09/2026, por pedido — vai
+        // passar por melhoria antes de voltar a aparecer (mesmo tratamento
+        // de "Sinais de mercado" no menu principal, ver `Layout.tsx`).
+        // `ABAS` continua completo: é dele que `AbaDaBase` tira o tipo, e o
+        // bloco que renderiza `aba === 'consultas'` abaixo continua de pé —
+        // só o botão da aba some.
+        abas={ABAS.filter((item) => item.id !== 'consultas')}
         ativa={aba}
         aoTrocar={definirAba}
         rotulo="O que a Base mostra"
         prefixo="base"
       />
+
+      {/* A MESMA FAIXA DO PAINEL/PREPARAR AGENDA, em 24/09/2026 — no lugar do
+          "Todas as frentes" que sobrava aqui como o único canto da Base
+          ainda perguntando Frente. Área(s), Tipo de Interação e Tipo de
+          Público são novos nesta tela (antes só existiam no Painel); Tema já
+          existia como `<select>` simples em `FiltrosDeAgendas` e virou
+          pílula multisseleção, igual às outras telas. Só nas duas abas que
+          `FiltrosDeAgendas` já cobria — "Posicionamentos e Papers" e
+          "Documentos das reuniões" filtram em memória, sem recorte. */}
+      {aba === 'agendas' || aba === 'consultas' ? (
+        <FaixaDeFiltros>
+          <CampoSuspenso
+            campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparAreas(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+          />
+          <CampoSuspenso
+            campo={{ ...campoDeTema(recorte, definirRecorte, catalogo), rotulo: 'Filtrar por Tema' }}
+            aoLimpar={() => definirRecorte(limparTags(recorte))}
+          />
+        </FaixaDeFiltros>
+      ) : null}
 
       {aba === 'consultas' ? (
         <Secao nivelDoTitulo={1} titulo="Consultas recebidas" estilo={{ padding: 20 }}>
