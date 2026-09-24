@@ -25,7 +25,6 @@ import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } fro
 import {
   CORES_DE_FRENTE,
   ROTULOS_DE_FRENTE,
-  rotuloDeAbrangencia,
 } from '@/dominio/frentes';
 import {
   alternar,
@@ -269,14 +268,26 @@ export function Painel({
 
     // Destaques para o banner analítico executivo
     const climaLider = [...categoriasDeClima].sort((a, b) => b.total - a.total)[0];
-    const topUfPonto = geo[0];
+    // TIER E PÚBLICO, no lugar de "Maior volume" (UF) — por pedido: a
+    // síntese volta a quatro itens, e os dois novos respondem "com quem
+    // estamos falando" (relevância e público), a mesma pergunta que Frente
+    // respondia antes de sair da tela. UF continua no mapa logo abaixo.
+    const porTierCalculado = porTier(interacoes, catalogo);
+    const tierLider = [...porTierCalculado].sort((a, b) => b.total - a.total)[0];
+    const totalComTier = interacoes.filter((i) => i.tier != null).length || 1;
+    const publicoLider = [...categoriasDePublico].sort((a, b) => b.total - a.total)[0];
 
     return {
       kpis: calcularKpis(interacoes, catalogo),
       resumoExecutivo: {
         total: interacoes.length,
         climaPrincipal: climaLider?.total ? { rotulo: climaLider.rotulo, pct: climaLider.pct } : undefined,
-        topUf: topUfPonto ? { rotulo: rotuloDeAbrangencia(topUfPonto.uf), total: topUfPonto.total } : undefined,
+        tierPrincipal: tierLider?.total
+          ? { rotulo: tierLider.rotulo, pct: Math.round((tierLider.total / totalComTier) * 100) }
+          : undefined,
+        publicoPrincipal: publicoLider?.total
+          ? { rotulo: publicoLider.rotulo, pct: publicoLider.pct }
+          : undefined,
       },
       resumoDeClima: {
         eventos: resumoDeClimaPorFrente(interacoes, ['eventos']),
@@ -326,7 +337,7 @@ export function Painel({
       unidades: ranking(interacoes, catalogo, 'unidade'),
       portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
-      porTier: porTier(interacoes, catalogo),
+      porTier: porTierCalculado,
       scorePorCategoriaPublico: scorePorCategoriaPublico(interacoes, catalogo, 5, categoriaPublicoExtras),
       // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
@@ -606,7 +617,8 @@ export function Painel({
       <ResumoExecutivoDoRecorte
         total={derivado.resumoExecutivo.total}
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
-        topUf={derivado.resumoExecutivo.topUf}
+        tierPrincipal={derivado.resumoExecutivo.tierPrincipal}
+        publicoPrincipal={derivado.resumoExecutivo.publicoPrincipal}
       />
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
@@ -1290,11 +1302,13 @@ function SeletorDeGranularidade({
 function ResumoExecutivoDoRecorte({
   total,
   climaPrincipal,
-  topUf,
+  tierPrincipal,
+  publicoPrincipal,
 }: {
   total: number;
   climaPrincipal?: { rotulo: string; pct: number };
-  topUf?: { rotulo: string; total: number };
+  tierPrincipal?: { rotulo: string; pct: number };
+  publicoPrincipal?: { rotulo: string; pct: number };
 }) {
   return (
     <div
@@ -1302,10 +1316,15 @@ function ResumoExecutivoDoRecorte({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        // OS TRÊS ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
+        // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
         // um cluster à esquerda e dois à direita: sem o rótulo "Síntese
         // Executiva" (virou o título grande, fora daqui), o total sozinho à
         // esquerda ficava desequilibrado contra o resto do outro lado.
+        //
+        // TIER E PÚBLICO no lugar de "Maior volume" (UF) — por pedido: a
+        // pergunta que este banner responde é "com quem estamos falando",
+        // e relevância/público respondem isso mais diretamente que UF, que
+        // continua logo abaixo, no mapa.
         justifyContent: 'space-evenly',
         gap: 16,
         padding: '14px 18px',
@@ -1330,11 +1349,19 @@ function ResumoExecutivoDoRecorte({
         </div>
       ) : null}
 
-      {topUf ? (
+      {tierPrincipal ? (
         <div>
-          <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
-          <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
-          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+          <span style={{ color: 'var(--cinza-2)' }}>Relevância predominante: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{tierPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({tierPrincipal.pct}%)</span>
+        </div>
+      ) : null}
+
+      {publicoPrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Principal público: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{publicoPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({publicoPrincipal.pct}%)</span>
         </div>
       ) : null}
     </div>
