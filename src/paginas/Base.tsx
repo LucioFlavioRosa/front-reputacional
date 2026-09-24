@@ -215,6 +215,7 @@ export function Base({
       >
         <SeletorDeColunas todasAsColunas={COLUNAS} ocultas={ocultas} aoAlternar={alternar} />
         <Botao
+          estilo={{ height: 36 }}
           variante="primario"
           aoClicar={async () => {
             // Registra ANTES de montar o arquivo. Falhar aqui não impede a
