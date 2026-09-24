@@ -1,6 +1,7 @@
 /** Painel — a visão consolidada do recorte. */
 
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -112,6 +113,52 @@ const NIVEIS_DE_TEMA: { nivel: string; cor: string; rotulo: string }[] = [
   { nivel: 'estrategico', cor: '#667EDA', rotulo: 'Estratégico' }, // Azul médio
   { nivel: 'gerais', cor: '#CBD4F6', rotulo: 'Geral' }, // Azul claro
 ];
+
+//: "TOP 5 TEMAS" E "TOP 5 PÚBLICO" ficam lado a lado em "% de Interações por
+//: Temas", e os dois vinham de `PALETA_DO_PAINEL` (a mesma paleta
+//: multicolor) — a cor do 1º tema saía igual à do 1º público, confundindo
+//: qual ranking era qual. Por pedido: cada ranking ganha a PRÓPRIA escala,
+//: do mais escuro (1º colocado) ao mais claro (5º) — temas em azul (mesma
+//: família de `--azul-mar`), público em verde-água (mesma família de
+//: `--turquesa-rio`). Só pinta estes dois rankings — o resto que usa
+//: `derivado.temas`/`.categoriasPublico` (a Legenda de "Temas no tempo", por
+//: exemplo) continua com a paleta original, sem mudar.
+const ESCALA_AZUL_TOP5 = ['#0027BD', '#3352CB', '#667EDA', '#98A9E9', '#CBD4F6'];
+const ESCALA_VERDE_TOP5 = ['#095D53', '#2E8178', '#53A69D', '#78CAC2', '#9DEEE7'];
+
+function comEscalaDeCor<T extends { cor?: string }>(itens: T[], escala: string[]): T[] {
+  return itens.map((item, indice) => ({ ...item, cor: escala[indice % escala.length] }));
+}
+
+/** Envolve um `<Secao>` de gráfico com uma faixa de 3px no topo, no mesmo
+ *  degradê azul→turquesa da faixa fixa de filtros (`FaixaDeFiltros`) — por
+ *  pedido, para o layout de todo gráfico do Painel carregar a identidade da
+ *  marca, não só a faixa de filtros lá em cima.
+ *
+ *  `border` não aceita gradiente como cor, então em vez de um `borderTop`
+ *  (que só pinta sólido) isto embrulha o card num `div` que RECORTA
+ *  (`overflow: hidden`) no mesmo raio de canto do `Cartao` por baixo
+ *  (`var(--r-card)`) e desenha a faixa como uma barra absoluta colada no
+ *  topo — os cantos da barra saem arredondados porque o recorte do
+ *  contêiner os corta, não porque a barra em si tem raio próprio. */
+function ComFaixaDoTopo({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ position: 'relative', borderRadius: 'var(--r-card)', overflow: 'hidden' }}>
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+        }}
+      />
+      {children}
+    </div>
+  );
+}
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
  *  sem disputar clique com as fatias/barras de dentro dele — a área
@@ -634,21 +681,12 @@ export function Painel({
           ver `scorePorCategoriaPublico`. Era "Termômetro por área"
           (`scorePorArea`, removida): esta é a categoria nova da
           classificação de instituições, não mais as 5 áreas internas fixas. */}
-      <Secao titulo="Termômetro por público" estilo={{ borderTop: '3px solid var(--azul-mar)' }}>
-        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: 0 }}>
-            {derivado.scorePorCategoriaPublico.totalDeCategorias >
-            derivado.scorePorCategoriaPublico.itens.length
-              ? `Os ${derivado.scorePorCategoriaPublico.itens.length} públicos com mais interações, de ${derivado.scorePorCategoriaPublico.totalDeCategorias} com clima registrado neste recorte — do pior para o melhor.`
-              : `Os ${derivado.scorePorCategoriaPublico.itens.length} públicos com clima registrado neste recorte — do pior para o melhor.`}
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-            O número é o placar de clima do público: (proativas − reativas) ÷ total de interações
-            × 100. Vai de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio ou maioria
-            neutra.
-          </p>
-        </div>
-
+      <ComFaixaDoTopo>
+      <Secao
+        titulo="Termômetro por público"
+        subtitulo="Volume de interações por público e o clima percebido em cada um"
+        ajuda="Placar de clima por categoria de público: (interações propositivas − tensas) ÷ total × 100, de −100 (só tensas) a +100 (só propositivas). Considera só interações com clima registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
+      >
         {categoriaPublicoExtras.length || categoriaPublicoDisponiveis.length ? (
           <div
             style={{
@@ -709,8 +747,10 @@ export function Painel({
           itens={derivado.scorePorCategoriaPublico.itens}
           aoAbrirAgenda={aoAbrirAgenda}
           vazio="Nenhum público com clima registrado neste recorte."
+          variante="termometro"
         />
       </Secao>
+      </ComFaixaDoTopo>
 
       {/* 3. INTERAÇÕES MAIS RECENTES, POR ÁREA — quatro tabelas fixas, 2×2
           (duas em cima, duas embaixo — `grade--2`, não `grade--3`: eram três
@@ -724,14 +764,17 @@ export function Painel({
           caberem em duas colunas sem rolagem horizontal. */}
       <div className="grade grade--2" style={{ gap: 16 }}>
         {derivado.interacoesPorAreaFixa.map(({ nome, interacoes: interacoesDaArea }) => (
-          <TabelaDeInteracoes
-            key={nome}
-            titulo={nome}
-            interacoes={interacoesDaArea}
-            catalogo={catalogo}
-            aoAbrirFicha={aoAbrirAgenda}
-            colunas="reduzidas"
-          />
+          <ComFaixaDoTopo key={nome}>
+            <TabelaDeInteracoes
+              titulo={nome}
+              subtitulo="Últimas interações registradas nesta área, da mais recente para a mais antiga"
+              ajuda="As interações mais recentes desta área, com data, instituição e pauta — clique numa linha para abrir a ficha completa."
+              interacoes={interacoesDaArea}
+              catalogo={catalogo}
+              aoAbrirFicha={aoAbrirAgenda}
+              colunas="reduzidas"
+            />
+          </ComFaixaDoTopo>
         ))}
       </div>
 
@@ -748,9 +791,11 @@ export function Painel({
           lado dela respirar. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="grade grade--2" style={{ gap: 16 }}>
+          <ComFaixaDoTopo>
           <Secao
             titulo="% Interações por tier e Top instituições"
             subtitulo="Volume de agendas pela relevância da instituição de contato"
+            ajuda="A rosca soma as interações do recorte por Tier de relevância da instituição (1 a 4, do dicionário Relevância). O ranking ao lado lista as 5 instituições com mais interações; passe o mouse numa fatia para ver as instituições daquele tier."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
           >
             {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
@@ -787,31 +832,39 @@ export function Painel({
                   ativo={recorte.entidade}
                   aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
                   vazio="Nenhuma instituição neste recorte."
+                  // CINZA ESCURO, não o azul-mar padrão — por pedido: o azul
+                  // já é a cor do Tier 1 na rosca ao lado, e as duas barras
+                  // do mesmo tom confundiam "isto é sobre tier" com "isto é
+                  // o ranking de instituições", que são dimensões diferentes.
+                  cor="var(--cinza-4)"
                 />
               </div>
             </div>
           </Secao>
+          </ComFaixaDoTopo>
 
+          <ComFaixaDoTopo>
           <Secao
             titulo="Clima por Instituições"
             subtitulo="Placar de clima das instituições mais presentes no recorte"
+            ajuda="Cada barra é (interações propositivas − tensas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
           >
             <BarraDivergentePorItem
               itens={derivado.climaPorPublico}
               ativo={recorte.entidade}
               aoClicar={(chave) => definirRecorte(alternar(recorte, 'entidade', chave))}
+              variante="termometro"
             />
-            <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-              [Proativas − Reativas] ÷ Total × 100 — de −100 (só reativas) a +100 (só
-              proativas), 0 é equilíbrio ou maioria neutra.
-            </p>
           </Secao>
+          </ComFaixaDoTopo>
         </div>
 
+        <ComFaixaDoTopo>
         <Secao
           titulo="% de Interações por Temas"
           subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
+          ajuda="Cada retângulo é um tema, com a área proporcional ao total de interações com aquele tema no recorte — quanto maior o bloco, mais interações. A cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
         >
           {/* GRÁFICO DE ÁRVORE (treemap), não rosca — por pedido: a área de
@@ -849,7 +902,7 @@ export function Painel({
                 Top 5 temas
               </div>
               <Ranking
-                itens={derivado.temas}
+                itens={comEscalaDeCor(derivado.temas, ESCALA_AZUL_TOP5)}
                 ativo={recorte.tags?.[0]}
                 aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
                 vazio="Nenhum tema neste recorte."
@@ -860,7 +913,7 @@ export function Painel({
                 Top 5 público
               </div>
               <Ranking
-                itens={derivado.categoriasPublico}
+                itens={comEscalaDeCor(derivado.categoriasPublico, ESCALA_VERDE_TOP5)}
                 ativo={
                   recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
                 }
@@ -870,11 +923,14 @@ export function Painel({
             </div>
           </div>
         </Secao>
+        </ComFaixaDoTopo>
       </div>
 
       {/* 5. INTERAÇÕES MAIS RECENTES — reaproveita o mesmo cartão de cima,
           agora sem filtro de área nenhum: todo o recorte, colunas completas. */}
-      <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} aoAbrirFicha={aoAbrirAgenda} />
+      <ComFaixaDoTopo>
+        <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} aoAbrirFicha={aoAbrirAgenda} />
+      </ComFaixaDoTopo>
 
       {/* BLOCO: SÉRIES TEMPORAIS — volumetria, clima e temas compartilham o
           mesmo seletor de granularidade e respondem juntos "o que aconteceu
@@ -884,9 +940,11 @@ export function Painel({
           Séries temporais
         </div>
 
+        <ComFaixaDoTopo>
         <Secao
           titulo="Volumetria total por Público"
           subtitulo="Distribuição temporal das agendas acumuladas pelas categorias da taxonomia de público"
+          ajuda="Total de interações por período (mês, semana ou semestre — ver o seletor de granularidade), empilhadas pela categoria de público da instituição. A altura da coluna é o volume total daquele período."
           acao={
             <SeletorDeGranularidade
               valor={granularidade}
@@ -919,12 +977,16 @@ export function Painel({
               recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
             }
             aoClicar={(chave) => definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))}
+            centralizada
           />
         </Secao>
+        </ComFaixaDoTopo>
 
+        <ComFaixaDoTopo>
         <Secao
           titulo="Clima das interações no tempo"
           subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
+          ajuda="Cada coluna soma 100% das interações com clima registrado naquele período, divididas entre Propositivo, Neutro e Tenso — mostra como a PROPORÇÃO de clima muda no tempo, não o volume total de interações."
         >
           {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
               que varia é a fatia de cada clima — a pergunta aqui é "como o
@@ -945,10 +1007,13 @@ export function Painel({
             centralizada
           />
         </Secao>
+        </ComFaixaDoTopo>
 
+        <ComFaixaDoTopo>
         <Secao
           titulo="Temas no tempo"
           subtitulo="Recorrência das pautas institucionais mais debatidas ao longo do tempo"
+          ajuda="Interações por período para os 5 temas mais recorrentes do recorte (mesmos do ranking Top 5 temas). Uma interação com mais de um tema conta em cada um deles."
         >
           <BarrasEmpilhadas
             colunas={derivado.porTema}
@@ -961,35 +1026,16 @@ export function Painel({
             aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
             centralizada
           />
-          <p style={{ fontSize: 11, color: 'var(--cinza-2)', marginTop: 10 }}>
-            Uma interação com três temas conta nos três.
-          </p>
         </Secao>
+        </ComFaixaDoTopo>
       </div>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Barra divergente por tema"
         subtitulo="Desempenho comparativo de clima por pauta (do pior ao melhor placar)"
+        ajuda="Cada barra é (interações propositivas − tensas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista os temas com mais interações no recorte, do pior para o melhor placar."
       >
-        <div
-          style={{
-            marginBottom: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-          }}
-        >
-          <p style={{ fontSize: 12, color: 'var(--cinza-3)', margin: 0 }}>
-            {derivado.scorePorTema.totalDeTemas > derivado.scorePorTema.itens.length
-              ? `Os ${derivado.scorePorTema.itens.length} temas mais discutidos, de ${derivado.scorePorTema.totalDeTemas} com clima registrado neste recorte — do pior para o melhor.`
-              : `Os ${derivado.scorePorTema.itens.length} temas com clima registrado neste recorte — do pior para o melhor.`}
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: 0 }}>
-            Placar de clima: (proativas − reativas) ÷ total × 100.
-            Varia de −100 (só reativas) a +100 (só proativas); 0 é equilíbrio.
-          </p>
-        </div>
-
         {temasExtras.length || temasDisponiveis.length ? (
           <div
             style={{
@@ -1041,8 +1087,13 @@ export function Painel({
           </div>
         ) : null}
 
-        <BarraDivergente itens={derivado.scorePorTema.itens} aoAbrirAgenda={aoAbrirAgenda} />
+        <BarraDivergente
+          itens={derivado.scorePorTema.itens}
+          aoAbrirAgenda={aoAbrirAgenda}
+          variante="termometro"
+        />
       </Secao>
+      </ComFaixaDoTopo>
 
       {/* BLOCO: DISTRIBUIÇÃO E RANKINGS — mapa + três rankings respondem juntos
           "onde está e com quem". Gap interno de 12px mostra que são do mesmo grupo. */}
@@ -1051,9 +1102,11 @@ export function Painel({
           Distribuição e rankings
         </div>
 
+        <ComFaixaDoTopo>
         <Secao
           titulo="Distribuição geográfica das Interações e Porta-vozes"
           subtitulo="Concentração de presença física e impacto institucional por Estado (UF)"
+          ajuda="O mapa soma as interações por UF da instituição, com uma bolha à parte para as On-line (sem localização física). O ranking ao lado lista os porta-vozes da Aegea com mais participações no recorte."
         >
           <div className="grade grade--mapa" style={{ gap: 24 }}>
             <MapaUf
@@ -1086,21 +1139,39 @@ export function Painel({
             </div>
           </div>
         </Secao>
+        </ComFaixaDoTopo>
 
         <div className="grade grade--3" style={{ gap: 12 }}>
-          <Secao titulo="Instituições" subtitulo="Principais entidades e parceiras">
+          <ComFaixaDoTopo>
+          <Secao
+            titulo="Instituições"
+            subtitulo="Principais entidades e parceiras"
+            ajuda="Ranking das instituições com mais interações registradas no recorte atual, da maior para a menor."
+          >
             <Ranking
               itens={derivado.instituicoes}
               ativo={recorte.entidade}
               aoClicar={(nome) => definirRecorte(alternar(recorte, 'entidade', nome))}
             />
           </Secao>
+          </ComFaixaDoTopo>
 
-          <Secao titulo="Esfera e abrangência" subtitulo="Divisão por nível de governo">
+          <ComFaixaDoTopo>
+          <Secao
+            titulo="Esfera e abrangência"
+            subtitulo="Divisão por nível de governo"
+            ajuda="Interações agrupadas pelo nível de governo da instituição (Federal, Estadual, Municipal etc.), do maior para o menor volume."
+          >
             <Ranking itens={derivado.esferas} cor="var(--turquesa-rio)" />
           </Secao>
+          </ComFaixaDoTopo>
 
-          <Secao titulo="Unidades de negócio" subtitulo="Volume por unidade operacional Aegea">
+          <ComFaixaDoTopo>
+          <Secao
+            titulo="Unidades de negócio"
+            subtitulo="Volume por unidade operacional Aegea"
+            ajuda="Interações agrupadas pela unidade de negócio operacional da Aegea envolvida no recorte, da maior para a menor."
+          >
             <Ranking
               itens={derivado.unidades}
               ativo={recorte.unidade}
@@ -1108,6 +1179,7 @@ export function Painel({
               cor="var(--roxo-acai)"
             />
           </Secao>
+          </ComFaixaDoTopo>
         </div>
       </div>
         </>

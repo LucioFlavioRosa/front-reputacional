@@ -24,11 +24,17 @@ export function BarraDivergentePorItem({
   ativo,
   aoClicar,
   vazio = 'Nenhum item com clima registrado neste recorte.',
+  variante = 'padrao',
 }: {
   itens: ItemDivergente[];
   ativo?: string;
   aoClicar?: (chave: string) => void;
   vazio?: string;
+  /** MESMA IDEIA de `BarraDivergente` (ver o comentário lá) — `'termometro'`
+   *  escurece o trilho e troca o número na coluna à direita por um pino
+   *  (seta + número) preso na ponta da barra colorida, com linhas mais
+   *  próximas umas das outras. */
+  variante?: 'padrao' | 'termometro';
 }) {
   if (!itens.length) {
     return (
@@ -39,7 +45,13 @@ export function BarraDivergentePorItem({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: variante === 'termometro' ? 1 : 4,
+      }}
+    >
       {itens.map((item) => {
         const positivo = item.score >= 0;
         const largura = Math.min(50, Math.abs(item.score) / 2);
@@ -66,10 +78,13 @@ export function BarraDivergentePorItem({
             }
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
+              gridTemplateColumns:
+                variante === 'termometro'
+                  ? 'minmax(0, 1fr) minmax(0, 2.6fr)'
+                  : 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
               alignItems: 'center',
               gap: 14,
-              padding: '5px 6px',
+              padding: variante === 'termometro' ? '15px 6px 4px' : '5px 6px',
               margin: '0 -6px',
               borderRadius: 'var(--r-btn)',
               cursor: aoClicar ? 'pointer' : undefined,
@@ -99,7 +114,7 @@ export function BarraDivergentePorItem({
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'var(--bg-trilho)',
+                  background: variante === 'termometro' ? 'var(--cinza-1)' : 'var(--bg-trilho)',
                   borderRadius: 3,
                 }}
               />
@@ -127,15 +142,56 @@ export function BarraDivergentePorItem({
                   }}
                 />
               ) : null}
+
+              {variante === 'termometro' ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: `${item.score !== 0 ? (positivo ? 50 + largura : 50 - largura) : 50}%`,
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span
+                    className="tabular"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--azul-mar)',
+                      whiteSpace: 'nowrap',
+                      marginBottom: 1,
+                    }}
+                  >
+                    {item.score > 0 ? '+' : ''}
+                    {item.score}
+                  </span>
+                  <span
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderLeft: '4px solid transparent',
+                      borderRight: '4px solid transparent',
+                      borderTop: '5px solid var(--azul-mar)',
+                    }}
+                  />
+                </div>
+              ) : null}
             </div>
 
-            <div
-              className="tabular"
-              style={{ textAlign: 'right', fontSize: 14, fontWeight: 700, color: 'var(--azul-mar)' }}
-            >
-              {item.score > 0 ? '+' : ''}
-              {item.score}
-            </div>
+            {variante === 'termometro' ? null : (
+              <div
+                className="tabular"
+                style={{ textAlign: 'right', fontSize: 14, fontWeight: 700, color: 'var(--azul-mar)' }}
+              >
+                {item.score > 0 ? '+' : ''}
+                {item.score}
+              </div>
+            )}
           </div>
         );
       })}
