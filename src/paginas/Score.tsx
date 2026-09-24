@@ -16,7 +16,7 @@
  *  Especificação: `docs/handoff/SCORE.md` no back-reputacional.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   gravarCalibracao,
@@ -306,17 +306,17 @@ function VisaoGeral({
       >
         <div className="grade grade--3" style={{ gap: 14 }}>
           {indice.lentes.map((lente) => (
-            <Cartao key={lente.codigo} estilo={{ padding: 16 }}>
-              <button
-                type="button"
-                onClick={() => aoAbrirLente(lente.codigo)}
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  display: 'block',
-                  width: '100%',
-                }}
-              >
+            // `Cartao` clicável, e não um `<button>` com `all: unset` por
+            // dentro: o `unset` apagava junto o anel de foco, e o cartão
+            // inteiro ficava inalcançável por teclado. O componente da casa já
+            // trata `role`, `tabIndex` e Enter/Espaço.
+            <Cartao
+              key={lente.codigo}
+              estilo={{ padding: 16 }}
+              aoClicar={() => aoAbrirLente(lente.codigo)}
+              titulo={`Abrir a lente ${lente.nome}`}
+            >
+              <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span
                     className="tabular"
@@ -347,7 +347,7 @@ function VisaoGeral({
                     {lente.ausencia}
                   </p>
                 ) : null}
-              </button>
+              </div>
             </Cartao>
           ))}
         </div>
@@ -802,6 +802,10 @@ function CalibracaoDoScore({
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [importando, definirImportando] = useState<string | null>(null);
+  const entradaDePlanilha = useRef<HTMLInputElement>(null);
+  //: Qual fonte pediu o arquivo. Em `ref`, e não em estado: ele é lido no
+  //: `change` do input e não precisa redesenhar nada ao mudar.
+  const fonteEscolhida = useRef<string | null>(null);
   const [importado, definirImportado] = useState<ImportacaoDoScore[] | null>(null);
 
   useEffect(() => {
@@ -830,6 +834,11 @@ function CalibracaoDoScore({
     } finally {
       definirSalvando(false);
     }
+  }
+
+  function escolherPlanilha(codigo: string) {
+    fonteEscolhida.current = codigo;
+    entradaDePlanilha.current?.click();
   }
 
   async function importar(codigo: string, arquivo: File) {
@@ -1000,6 +1009,30 @@ function CalibracaoDoScore({
         subtitulo="Importar substitui os meses que a planilha traz — o mês que ela não traz fica intacto. Desligar uma fonte tira o dado dela do índice sem apagar o histórico; com todas as fontes de uma lente desligadas, a lente sai do cálculo e os pesos redistribuem."
       >
         <Cartao>
+          {/* UM `<input type="file">` PARA A SEÇÃO, acionado pelo botão da
+              linha. Antes era um por fonte, escondido com `display: none`
+              dentro de um `<label>` — o que tira o elemento da ordem de foco e
+              deixava "Importar planilha" inalcançável por teclado. Um `Botao`
+              de verdade resolve isso e ainda usa o estilo da casa; o input
+              fica só como mecanismo, sem receber foco. */}
+          <input
+            ref={entradaDePlanilha}
+            type="file"
+            accept=".xlsx"
+            tabIndex={-1}
+            aria-hidden
+            style={{ display: 'none' }}
+            onChange={(evento) => {
+              const arquivo = evento.target.files?.[0];
+              // O input é limpo SEMPRE: sem isto, escolher o mesmo arquivo de
+              // novo (depois de corrigi-lo) não dispara `change`, e a tela
+              // parece travada.
+              evento.target.value = '';
+              const codigo = fonteEscolhida.current;
+              if (arquivo && codigo) void importar(codigo, arquivo);
+            }}
+          />
+
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {fontes.map((fonte) => (
               <li
@@ -1037,30 +1070,13 @@ function CalibracaoDoScore({
                     banco, e oferecer o upload sugeriria que existe uma
                     planilha dele em algum lugar. */}
                 {fonte.interna ? null : (
-                  <label
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--azul-mar)',
-                      cursor: importando ? 'progress' : 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
+                  <Botao
+                    variante="fantasma"
+                    aoClicar={() => escolherPlanilha(fonte.codigo)}
+                    desabilitado={importando !== null}
                   >
                     {importando === fonte.codigo ? 'Lendo…' : 'Importar planilha'}
-                    <input
-                      type="file"
-                      accept=".xlsx"
-                      style={{ display: 'none' }}
-                      disabled={importando !== null}
-                      onChange={(evento) => {
-                        const arquivo = evento.target.files?.[0];
-                        // O input é limpo SEMPRE: sem isto, escolher o mesmo
-                        // arquivo de novo (depois de corrigi-lo) não dispara
-                        // `change`, e a tela parece travada.
-                        evento.target.value = '';
-                        if (arquivo) void importar(fonte.codigo, arquivo);
-                      }}
-                    />
-                  </label>
+                  </Botao>
                 )}
                 <Botao
                   variante="fantasma"

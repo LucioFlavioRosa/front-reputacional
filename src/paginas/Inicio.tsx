@@ -40,8 +40,8 @@ const ONDA_1: {
     // O TERCEIRO MÓDULO FICA COM O SCORE porque ele EXISTE: a tela está de pé,
     // lendo as planilhas dos quatro fornecedores. O main renomeou este cartão
     // para "Inteligência de Mercado" e o marcou como não pronto — decisão de
-    // nomenclatura tomada enquanto este branch estava aberto, e que apagaria o
-    // acesso à única das três telas que já funciona.
+    // nomenclatura tomada enquanto este branch estava aberto, e que apagaria a
+    // porta de entrada da tela sem colocar outra no lugar.
     view: 'score',
     titulo: 'Score Executivo',
     descricao:

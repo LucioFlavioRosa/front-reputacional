@@ -31,7 +31,7 @@ const SSO_LIGADO = true;
 const MODULOS = [
   { nome: 'CRM dos Stakeholders', estado: 'Disponível' },
   { nome: 'Síntese Executiva', estado: 'Em construção' },
-  { nome: 'Score Executivo', estado: 'Em construção' },
+  { nome: 'Score Executivo', estado: 'Disponível' },
 ];
 
 export function Login({

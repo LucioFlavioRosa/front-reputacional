@@ -201,7 +201,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             <Inicio irPara={irParaDestino} portais={portaisDe(eu?.papel ?? null)} />
           ) : null}
 
-          {/* A ÚNICA TELA QUE ALGUÉM PRECISA ABRIR TODO DIA. */}
 
           {/* O PANORAMA: o recorte visto de uma vez. Clicar num indicador
               FILTRA a própria tela, como todo gráfico dela. */}

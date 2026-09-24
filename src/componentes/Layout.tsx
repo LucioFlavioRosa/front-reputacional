@@ -55,6 +55,7 @@ const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'base', rotulo: 'Base' },
   { view: 'preparar', rotulo: 'Preparar agenda' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
+  { view: 'score', rotulo: 'Score Executivo' },
 ];
 
 /**
@@ -299,7 +300,13 @@ export function Layout({
             ponto. Uma condição que não pode ser falsa é uma regra que parece
             existir e não existe. */}
         {/* O RECORTE SAIU DA GAVETA. Ver `BarraDeRecorte`. */}
-        {view !== 'cadastro' ? (
+        {/* O SCORE NÃO TEM RECORTE, e é a única tela de análise assim. Ele é
+            mensal e da organização inteira: um "ISR filtrado por imprensa"
+            teria peso de lente sem significado. Oferecer a barra ali seria
+            pior que inútil — quem mexesse nela veria o número não mudar e
+            concluiria que a tela está quebrada. O que o Score escolhe é o MÊS,
+            e isso mora no cabeçalho da própria página. */}
+        {view !== 'cadastro' && view !== 'score' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
@@ -317,7 +324,7 @@ export function Layout({
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
       {/* FORA da Administração também: a tela lista contas e permissões, não
           agendas — o Recorte não tem nada ali para filtrar. */}
-      {!naCapa && view !== 'cadastro' && view !== 'admin' ? (
+      {!naCapa && view !== 'cadastro' && view !== 'admin' && view !== 'score' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco
