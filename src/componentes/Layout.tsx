@@ -45,11 +45,15 @@ import type { Destino } from '@/navegacao/rota';
 //: e-mail ou apresentação. Diferente do Painel (números, gráficos) e da Base
 //: (tabela para filtrar/exportar): aqui não tem filtro próprio nenhum, só a
 //: escolha de semana ou mês. Ver `paginas/RelatoriosExecutivos.tsx`.
+//: "SINAIS DE MERCADO" SAIU DA NAVEGAÇÃO em 24/09/2026, por pedido — a aba
+//: vai passar por uma melhoria antes de voltar a aparecer. A `view` continua
+//: registrada em `navegacao/rota.ts`, a página em `SinaisDeMercado.tsx` e o
+//: backend intacto: quem já tinha o link (`/sinais`) ainda abre a tela, só
+//: não há mais porta de entrada pelo menu.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'base', rotulo: 'Base' },
   { view: 'preparar', rotulo: 'Preparar agenda' },
-  { view: 'sinais', rotulo: 'Sinais de mercado' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 

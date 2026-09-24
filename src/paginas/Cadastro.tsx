@@ -263,6 +263,15 @@ export function Cadastro({
         (categoria) => categoria.id === instituicaoSelecionada.categoria_publico_id,
       )
     : undefined;
+  //: A SUBCATEGORIA SÓ EXISTE PARA QUEM TEM SUBDIVISÃO DE VERDADE — nula
+  //: sempre que a categoria for `sem_quebra` (ver `0036_categoria_de_
+  //: publico.sql`). Mesma leitura, mesmo lugar: o campo "Público" mostra as
+  //: duas juntas quando a subcategoria existir.
+  const subcategoriaPublicoDaInstituicao = instituicaoSelecionada?.subcategoria_publico_id
+    ? catalogo.dicionarios.subcategorias_publico.find(
+        (subcategoria) => subcategoria.id === instituicaoSelecionada.subcategoria_publico_id,
+      )
+    : undefined;
 
   //: O campo muda de nome no Legislativo, e a mensagem da lista de
   //: participantes fala DELE. Duas escritas do mesmo rotulo divergiriam — e ja
@@ -683,7 +692,9 @@ export function Cadastro({
               }}
             >
               {categoriaPublicoDaInstituicao
-                ? categoriaPublicoDaInstituicao.nome
+                ? subcategoriaPublicoDaInstituicao
+                  ? `${categoriaPublicoDaInstituicao.nome} — ${subcategoriaPublicoDaInstituicao.nome}`
+                  : categoriaPublicoDaInstituicao.nome
                 : instituicaoSelecionada
                   ? 'Não classificada'
                   : '—'}
@@ -760,16 +771,83 @@ export function Cadastro({
         </div>
       </Secao>
 
+      {/* QUEM PARTICIPA, LOGO APÓS IDENTIFICAR A INSTITUIÇÃO — por pedido:
+          depois de saber com quem se fala, faz mais sentido dizer quem senta
+          na mesa do que onde a mesa fica. "Onde" e "Situação e expectativa"
+          vêm depois, na mesma ordem de antes entre si.
+
+          OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
+          A pergunta é uma só — quem senta nesta reunião — e responder cada
+          metade num canto distante da tela faz a metade Aegea ser esquecida.
+
+          O MESMO GESTO NOS DOIS LADOS: linha a linha, com presença nos dois.
+          Gramáticas diferentes para a mesma pergunta deixariam um dos lados
+          sem onde registrar quem faltou à reunião.
+
+          O que difere é só a coluna do meio, porque as duas coisas são
+          diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
+          pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
+          um com bandeirinha. */}
+      <Secao titulo="4. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
+            o que diz que são partes distintas da mesma mesa: num cartão só, as
+            duas listas leriam como uma lista longa com dois títulos, e é
+            exatamente a distinção que importa aqui. */}
+        <div className="grade grade--mesa" style={{ gap: 16 }}>
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela Aegea
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Porta-voz conta no painel de exposição; equipe, não.
+            </p>
+            <ListaDaAegea
+              participantes={form.aegea}
+              pessoas={[...catalogo.pessoas.values()]}
+              aoMudar={(aegea) => alterar('aegea', aegea)}
+            />
+          </Cartao>
+
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela outra parte
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Quem representa a instituição. Depois da reunião, marque quem
+              compareceu.
+            </p>
+            {/* QUEM PODE REPRESENTAR ESTA INSTITUICAO, e nao as 55 pessoas da
+                base. Escolher a instituicao ja disse com quem se conversa;
+                oferecer o resto convida a registrar alguem do orgao errado, e
+                esse erro nao tem como ser percebido depois — o nome fica la,
+                plausivel.
+
+                Sem instituicao escolhida a lista fica vazia de proposito: e a
+                ordem em que se preenche. */}
+            <ListaDeParticipantes
+              participantes={form.outraParte}
+              rotuloEsperado={rotuloDaInstituicao.toLowerCase()}
+              interlocutores={interlocutoresDaInstituicao(
+                [...catalogo.interlocutores.values()],
+                form.instituicao_id,
+                form.outraParte.map((p) => p.interlocutor_id),
+                instituicaoSelecionada?.ativo ?? true,
+              )}
+              aoMudar={(outraParte) => alterar('outraParte', outraParte)}
+            />
+          </Cartao>
+        </div>
+      </Secao>
+
       {/* ONDE A AGENDA ACONTECE.
-          Entre a identificacao e a expectativa porque e nessa ordem que se
-          sabe: com quem e quando primeiro, onde em seguida, o que se espera
-          por ultimo.
+          Depois de "Quem participou": já se sabe com quem se fala e quem
+          senta na mesa, falta dizer onde ela fica.
 
           A MODALIDADE E CAMPO PROPRIO, e nao deducao do endereco. Ela se agrega
           — "quantas foram presenciais neste trimestre?" — e o endereco nao;
           ler "Teams" e concluir online funcionaria ate alguem escrever "sala
           4". */}
-      <Secao titulo="4. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao titulo="5. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
@@ -815,16 +893,17 @@ export function Cadastro({
       </Secao>
 
       {/* O QUE SE SABE ANTES DE A AGENDA ACONTECER.
-          Vem logo depois da identificação porque é nesta ordem que se pensa
-          uma agenda: quem pediu, em que pé está, o quanto importa, e o que se
-          espera dela. O que houve fica em "Desfecho da interação"; o relato, em
-          "Conteúdo" — ambos depois de "Quem participa" e "Materiais", que são
-          o que se resolve entre marcar e realizar.
+          Vem depois de "Quem participou" e "Onde": já se sabe com quem se
+          fala, quem senta na mesa e onde ela fica — falta dizer em que pé
+          está o convite, o quanto importa e o que se espera dele. O que
+          houve fica em "Desfecho da interação"; o relato, em "Conteúdo" —
+          ambos depois de "Materiais", que é o que se resolve entre marcar e
+          realizar.
 
           Três comentários se acumularam aqui, de reorganizações sucessivas, e
           dois falavam de campos que já tinham saído desta seção. Comentário
           que descreve uma tela anterior é pior que comentário nenhum. */}
-      <Secao titulo="5. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao titulo="6. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
@@ -1044,69 +1123,6 @@ export function Cadastro({
           </Campo>
           </div>
         </Cartao>
-      </Secao>
-
-      {/* OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
-          A pergunta é uma só — quem senta nesta reunião — e responder cada
-          metade num canto distante da tela faz a metade Aegea ser esquecida.
-
-          O MESMO GESTO NOS DOIS LADOS: linha a linha, com presença nos dois.
-          Gramáticas diferentes para a mesma pergunta deixariam um dos lados
-          sem onde registrar quem faltou à reunião.
-
-          O que difere é só a coluna do meio, porque as duas coisas são
-          diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
-          pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
-          um com bandeirinha. */}
-      <Secao titulo="6. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
-        {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
-            o que diz que são partes distintas da mesma mesa: num cartão só, as
-            duas listas leriam como uma lista longa com dois títulos, e é
-            exatamente a distinção que importa aqui. */}
-        <div className="grade grade--mesa" style={{ gap: 16 }}>
-          <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
-              Pela Aegea
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-              Porta-voz conta no painel de exposição; equipe, não.
-            </p>
-            <ListaDaAegea
-              participantes={form.aegea}
-              pessoas={[...catalogo.pessoas.values()]}
-              aoMudar={(aegea) => alterar('aegea', aegea)}
-            />
-          </Cartao>
-
-          <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
-              Pela outra parte
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-              Quem representa a instituição. Depois da reunião, marque quem
-              compareceu.
-            </p>
-            {/* QUEM PODE REPRESENTAR ESTA INSTITUICAO, e nao as 55 pessoas da
-                base. Escolher a instituicao ja disse com quem se conversa;
-                oferecer o resto convida a registrar alguem do orgao errado, e
-                esse erro nao tem como ser percebido depois — o nome fica la,
-                plausivel.
-
-                Sem instituicao escolhida a lista fica vazia de proposito: e a
-                ordem em que se preenche. */}
-            <ListaDeParticipantes
-              participantes={form.outraParte}
-              rotuloEsperado={rotuloDaInstituicao.toLowerCase()}
-              interlocutores={interlocutoresDaInstituicao(
-                [...catalogo.interlocutores.values()],
-                form.instituicao_id,
-                form.outraParte.map((p) => p.interlocutor_id),
-                instituicaoSelecionada?.ativo ?? true,
-              )}
-              aoMudar={(outraParte) => alterar('outraParte', outraParte)}
-            />
-          </Cartao>
-        </div>
       </Secao>
 
       {/* MATERIAIS --------------------------------------------------------- */}
