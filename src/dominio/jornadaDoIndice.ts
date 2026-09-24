@@ -258,12 +258,27 @@ export function jornadaDoIndice(
   if (!total) return vazia;
 
   const notas = medidos.map((ponto) => ponto.isr as number);
+  // OS MESES QUE A LENTE TEM, e não todos — cada um guardando o seu índice na
+  // série, que é o que a põe no x certo.
+  //
+  // EXIGIR A SÉRIE INTEIRA ERA UM ERRO, e um erro mudo: basta um mês sem a
+  // lente para a curva não aparecer, e na base real só a institucional cobre
+  // todos os meses. Selecionar qualquer outra não desenhava nada, sem dizer por
+  // quê. Uma curva que começa depois ou termina antes mostra na hora até onde a
+  // lente foi medida.
   const daLente = comparada
-    ? medidos.map((ponto) => ponto.notas_das_lentes[comparada])
+    ? medidos
+        .map((ponto, i) => ({ i, nota: ponto.notas_das_lentes[comparada] }))
+        .filter((par): par is { i: number; nota: number } => par.nota !== undefined)
     : [];
-  const temLente = Boolean(comparada) && daLente.every((nota) => nota !== undefined);
+  // DOIS PONTOS É O MÍNIMO para existir curva. Com um só, o traço seria um
+  // ponto solto que ninguém liga a lente nenhuma.
+  const temLente = daLente.length >= 2;
 
-  const { piso, teto } = dominioDe([...notas, ...(temLente ? daLente : [])]);
+  const { piso, teto } = dominioDe([
+    ...notas,
+    ...(temLente ? daLente.map((par) => par.nota) : []),
+  ]);
   const alturaUtil = VB.altura - PAD_TOPO - PAD_BASE;
   const y = (valor: number) => PAD_TOPO + alturaUtil * (1 - (valor - piso) / (teto - piso));
   // O CENTRO DA COLUNA, e não a borda: é o que faz o ponto cair exatamente
@@ -349,13 +364,17 @@ export function jornadaDoIndice(
     curva: curvaPor(notas.map((nota, i) => [x(i), y(nota)])),
     pontos,
     colunas,
-    curvaDaLente: temLente ? curvaPor(daLente.map((nota, i) => [x(i), y(nota)])) : '',
-    pontosDaLente: temLente ? daLente.map((nota, i) => ({ cx: x(i), cy: y(nota) })) : [],
+    curvaDaLente: temLente
+      ? curvaPor(daLente.map((par) => [x(par.i), y(par.nota)]))
+      : '',
+    pontosDaLente: temLente
+      ? daLente.map((par) => ({ cx: x(par.i), cy: y(par.nota) }))
+      : [],
     fimDaLente: temLente
       ? {
-          esquerda: (x(total - 1) / VB.largura) * 100,
-          topo: (y(daLente[total - 1]) / VB.altura) * 100,
-          texto: String(daLente[total - 1]),
+          esquerda: (x(daLente[daLente.length - 1].i) / VB.largura) * 100,
+          topo: (y(daLente[daLente.length - 1].nota) / VB.altura) * 100,
+          texto: String(daLente[daLente.length - 1].nota),
         }
       : null,
   };

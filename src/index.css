@@ -481,3 +481,11 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   .jornada__mes-longo { display: none; }
   .jornada__mes-curto { display: inline; }
 }
+
+/* A curva da lente comparada entra e sai inteira: a forma não interpola entre
+   uma lente e outra, e animar de uma para a outra desenharia valores que não
+   existiram. Desligado junto com o resto em `prefers-reduced-motion`. */
+@keyframes jornada-entra {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

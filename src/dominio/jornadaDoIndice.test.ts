@@ -284,13 +284,54 @@ describe('jornadaDoIndice', () => {
     expect(jornada.faixas.map((f) => f.rotulo)).toContain('Sólido');
   });
 
-  it('ignora a comparação quando algum mês não tem a lente', () => {
-    // Uma curva com buracos mentiria sobre a continuidade da série.
-    const incompleta = SEMESTRE.map((p, i) => ({
+  it('desenha a lente nos meses que ela tem, e não exige a série inteira', () => {
+    // EXIGIR TODOS OS MESES era um erro mudo: na base real só a institucional
+    // cobre o período inteiro, e selecionar qualquer outra lente não desenhava
+    // nada — sem dizer por quê.
+    const soNoMeio = SEMESTRE.map((p, i) => ({
       ...p,
-      notas_das_lentes: (i === 2 ? {} : { imprensa: 70 }) as Record<string, number>,
+      notas_das_lentes: (i >= 1 && i <= 4 ? { imprensa: 70 + i } : {}) as Record<
+        string,
+        number
+      >,
     }));
-    expect(jornadaDoIndice(incompleta, '2026-06', 'imprensa').curvaDaLente).toBe('');
+    const jornada = jornadaDoIndice(soNoMeio, '2026-06', 'imprensa');
+
+    expect(jornada.curvaDaLente).not.toBe('');
+    expect(jornada.pontosDaLente).toHaveLength(4);
+    // O último ponto da lente é o de maio, e não o de junho.
+    expect(jornada.fimDaLente?.texto).toBe('74');
+  });
+
+  it('a lente fica no x do mês dela, e não no começo do gráfico', () => {
+    // Uma curva que começa depois precisa começar NO MÊS em que a medição
+    // começou; empurrá-la para a esquerda alinharia a lente com o mês errado.
+    const soNoFim = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: (i >= 4 ? { imprensa: 70 } : {}) as Record<string, number>,
+    }));
+    const jornada = jornadaDoIndice(soNoFim, '2026-06', 'imprensa');
+    const doIndice = jornada.pontos[4];
+
+    expect(jornada.pontosDaLente[0].cx).toBeCloseTo(doIndice.cx, 5);
+  });
+
+  it('um mês só de lente não vira curva', () => {
+    // O traço seria um ponto solto que ninguém liga a lente nenhuma.
+    const umMes = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: (i === 3 ? { imprensa: 70 } : {}) as Record<string, number>,
+    }));
+    expect(jornadaDoIndice(umMes, '2026-06', 'imprensa').curvaDaLente).toBe('');
+  });
+
+  it('a lente entra no domínio mesmo cobrindo poucos meses', () => {
+    const alta = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: (i >= 4 ? { imprensa: 92 } : {}) as Record<string, number>,
+    }));
+    const jornada = jornadaDoIndice(alta, '2026-06', 'imprensa');
+    expect(jornada.faixas.map((f) => f.rotulo)).toContain('Referência');
   });
 
   it('série vazia não estoura', () => {

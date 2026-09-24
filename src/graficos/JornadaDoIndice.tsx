@@ -10,6 +10,15 @@
  *  fariam a terceira coluna apontar para o segundo ponto, e o leitor atribuiria
  *  o fato ao mês errado. As três medidas vêm da mesma variável, em `index.css`.
  *
+ *  O DESTAQUE É COMPARTILHADO entre a coluna e o ponto do mesmo mês, e é o que
+ *  liga um ao outro: com dez colunas estreitas, ninguém descobre sozinho que a
+ *  terceira coluna fala do terceiro ponto. Passar o mouse em qualquer um dos
+ *  dois acende os dois e baixa uma guia até o eixo.
+ *
+ *  A TRANSIÇÃO É CURTA E EXISTE PARA MOSTRAR O QUE MUDOU, não para enfeitar:
+ *  trocar de mês sem ela troca o ponto grande de lugar sem que o olho perceba.
+ *  `prefers-reduced-motion` já desliga tudo isto no `index.css`, para quem pede.
+ *
  *  O SVG DESENHA SÓ O QUE TOLERA SER ESTICADO — as faixas de fundo e os dois
  *  traços de curva, que têm `non-scaling-stroke`. Ponto, rótulo, marca de eixo
  *  e nome de faixa são HTML posicionado por porcentagem: com
@@ -17,6 +26,8 @@
  *  do cartão deixa de ser proporcional ao viewBox — e era o que acontecia em
  *  toda tela que não fosse a do desenho.
  */
+
+import { useState } from 'react';
 
 import { VB, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
 import type { ColunaDoMes, FaixaDeFundo, PontoDaJornada } from '@/dominio/jornadaDoIndice';
@@ -35,6 +46,7 @@ export function JornadaDoIndice({
   aoEscolherMes: (mes: string) => void;
 }) {
   const jornada = jornadaDoIndice(serie, mes, comparada);
+  const [destacado, definirDestacado] = useState<string | null>(null);
   if (!jornada.pontos.length) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
@@ -53,7 +65,13 @@ export function JornadaDoIndice({
     >
       <div className="jornada__margens jornada__colunas">
         {jornada.colunas.map((coluna) => (
-          <Coluna key={coluna.mes} coluna={coluna} aoEscolher={aoEscolherMes} />
+          <Coluna
+            key={coluna.mes}
+            coluna={coluna}
+            destacada={destacado === coluna.mes}
+            aoDestacar={definirDestacado}
+            aoEscolher={aoEscolherMes}
+          />
         ))}
       </div>
 
@@ -78,12 +96,17 @@ export function JornadaDoIndice({
 
           {jornada.curvaDaLente ? (
             <path
+              // A FORMA NÃO INTERPOLA entre uma lente e outra — dois caminhos
+              // com o mesmo número de pontos ainda são duas curvas diferentes,
+              // e animar de uma para a outra desenharia valores que não
+              // existiram. O que aparece e some é a curva inteira.
               d={jornada.curvaDaLente}
               fill="none"
               stroke="var(--cinza-2)"
               strokeWidth={2}
               strokeDasharray="6 6"
               vectorEffect="non-scaling-stroke"
+              style={{ animation: 'jornada-entra 220ms ease' }}
             />
           ) : null}
 
@@ -108,6 +131,27 @@ export function JornadaDoIndice({
           />
         </svg>
 
+        {/* A GUIA liga o ponto ao mês lá embaixo. É o gesto que um gráfico de
+            linha precisa e que nenhum rótulo substitui: com a curva subindo, o
+            olho perde a vertical entre o valor e a data. */}
+        {jornada.pontos.map((ponto) => (
+          <span
+            key={`guia-${ponto.mes}`}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: `${ponto.esquerda}%`,
+              top: 0,
+              bottom: 0,
+              width: 0,
+              borderLeft: '1px dashed var(--cinza-2)',
+              opacity: destacado === ponto.mes ? 0.6 : 0,
+              transition: 'opacity 140ms ease',
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+
         {jornada.pontosDaLente.map((ponto) => (
           <span
             key={`${ponto.cx}-${ponto.cy}`}
@@ -128,7 +172,13 @@ export function JornadaDoIndice({
         ))}
 
         {jornada.pontos.map((ponto) => (
-          <Ponto key={ponto.mes} ponto={ponto} aoEscolher={aoEscolherMes} />
+          <Ponto
+            key={ponto.mes}
+            ponto={ponto}
+            destacado={destacado === ponto.mes}
+            aoDestacar={definirDestacado}
+            aoEscolher={aoEscolherMes}
+          />
         ))}
 
         {jornada.marcas.map((marca) => (
@@ -200,8 +250,12 @@ export function JornadaDoIndice({
             className="kicker"
             style={{
               textAlign: 'center',
-              color: ponto.selecionado ? 'var(--azul-mar)' : 'var(--cinza-2)',
+              color:
+                ponto.selecionado || destacado === ponto.mes
+                  ? 'var(--azul-mar)'
+                  : 'var(--cinza-2)',
               fontWeight: ponto.selecionado ? 700 : 500,
+              transition: 'color 140ms ease',
             }}
           >
             <span className="jornada__mes-longo">{mesCurto(ponto.mes)}</span>
@@ -235,20 +289,30 @@ export function JornadaDoIndice({
 function Coluna({
   coluna,
   aoEscolher,
+  destacada = false,
+  aoDestacar,
   sozinha = false,
 }: {
   coluna: ColunaDoMes;
   aoEscolher: (mes: string) => void;
+  destacada?: boolean;
+  aoDestacar?: (mes: string | null) => void;
   sozinha?: boolean;
 }) {
+  const acesa = (coluna.selecionada && !sozinha) || destacada;
   return (
     <button
       type="button"
       onClick={() => aoEscolher(coluna.mes)}
+      onMouseEnter={() => aoDestacar?.(coluna.mes)}
+      onMouseLeave={() => aoDestacar?.(null)}
+      onFocus={() => aoDestacar?.(coluna.mes)}
+      onBlur={() => aoDestacar?.(null)}
       title={`Ver ${coluna.nome}`}
       style={{
         textAlign: 'left',
-        background: coluna.selecionada && !sozinha ? 'var(--bg-trilho)' : 'transparent',
+        background: acesa ? 'var(--bg-trilho)' : 'transparent',
+        transition: 'background 140ms ease',
         border: sozinha ? '1px solid var(--borda)' : 'none',
         borderTop: `3px solid ${coluna.filete}`,
         borderRadius: sozinha ? 'var(--r-card-int)' : 0,
@@ -285,16 +349,24 @@ function Coluna({
  *  qualquer tela, e ainda ganha de graça o foco do navegador. */
 function Ponto({
   ponto,
+  destacado,
+  aoDestacar,
   aoEscolher,
 }: {
   ponto: PontoDaJornada;
+  destacado: boolean;
+  aoDestacar: (mes: string | null) => void;
   aoEscolher: (mes: string) => void;
 }) {
-  const raio = ponto.selecionado ? 22 : 16;
+  const raio = ponto.selecionado ? 22 : destacado ? 20 : 16;
   return (
     <button
       type="button"
       onClick={() => aoEscolher(ponto.mes)}
+      onMouseEnter={() => aoDestacar(ponto.mes)}
+      onMouseLeave={() => aoDestacar(null)}
+      onFocus={() => aoDestacar(ponto.mes)}
+      onBlur={() => aoDestacar(null)}
       aria-label={ponto.descricao}
       aria-current={ponto.selecionado ? 'true' : undefined}
       style={{
@@ -307,8 +379,13 @@ function Ponto({
         borderRadius: '50%',
         background: ponto.cor,
         border: `2.5px solid ${ponto.selecionado ? 'var(--cinza-4)' : 'var(--branco)'}`,
+        // O ANEL SÓ APARECE NO DESTAQUE, e some junto: um contorno permanente
+        // em dez pontos vira poluição, e o mês escolhido deixa de se distinguir
+        // dos outros.
+        boxShadow: destacado ? '0 0 0 4px rgba(0, 39, 189, 0.16)' : 'none',
         padding: 0,
         cursor: 'pointer',
+        transition: 'width 140ms ease, height 140ms ease, box-shadow 140ms ease',
       }}
     >
       <span
