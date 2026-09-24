@@ -297,7 +297,7 @@ export function Base({
       ) : (
         <Tabela
           colunas={visiveis}
-          altura="calc(100vh - 400px)"
+          altura="calc(100vh - 320px)"
           colunasOrdenaveis={COLUNAS_ORDENAVEIS.filter((coluna) => visiveis.includes(coluna))}
           ordenacao={ordenacao}
           aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
