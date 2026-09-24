@@ -145,11 +145,27 @@ export interface IndiceDoScore {
   leitura: string;
 }
 
-/** O que explica o degrau do mês, na coluna dele. */
+/** O que explica o degrau do mês, na coluna dele. Escrito por gente. */
 export interface FatoDoPonto {
+  id: string;
   texto: string;
   /** `sustenta` | `pressiona` | `misto` */
   efeito: string;
+}
+
+/** Um tema que mexeu no índice do mês — derivado da base, não cadastrado.
+ *
+ *  A OUTRA METADE DA PERGUNTA. O fato diz o que aconteceu no mundo; este diz
+ *  por onde aquilo entrou no número, e quanto custou ou rendeu em pontos. */
+export interface TemaDoMes {
+  tema: string;
+  lente: string;
+  /** Pontos do índice, com sinal. */
+  pontos: number;
+  /** `sustenta` | `pressiona` — o mesmo vocabulário do fato. */
+  efeito: string;
+  positivas: number;
+  negativas: number;
 }
 
 /** Quem mais se mexeu no mês — a lente, e quanto.
@@ -170,7 +186,14 @@ export interface PontoDaSerie {
   /** Contra o mês anterior da série. Nulo no primeiro ponto — que é ponto de
    *  partida, e não variação zero. */
   delta: number | null;
-  fato: FatoDoPonto | null;
+  /** TODOS os fatos do mês, do mais antigo ao mais novo. */
+  fatos: FatoDoPonto[];
+  /** O tema que mais segurou o índice, e o que mais puxou. */
+  sustentou: TemaDoMes | null;
+  pressionou: TemaDoMes | null;
+  /** Pontos que NENHUM tema explica — menções sem tema, ou lente estimada.
+   *  Dizer isto é o que impede a coluna de afirmar mais do que sabe. */
+  pontos_sem_tema: number;
   maior_movimento: MovimentoDaLente | null;
   /** A nota de cada lente medida no mês, por código — é o que desenha a curva
    *  de comparação sem uma segunda chamada por lente. */

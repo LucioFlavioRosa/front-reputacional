@@ -24,7 +24,7 @@
  *  falsa segurança, que é pior do que não ter teste.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -100,9 +100,22 @@ describe('o "?" dentro do campo', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('o guia diz o que muda no resultado, e não só o que o campo é', () => {
+  it('o guia diz o que muda no resultado, e não só o que o campo é', async () => {
+    // ESTE TESTE PASSAVA SEM ABRIR O MODAL: ele procurava o título, que já
+    // está no rótulo do campo, e passaria mesmo se `GuiaDoParametro` não
+    // renderizasse conteúdo nenhum. Agora ele abre e procura a seção que é a
+    // razão de o guia existir.
+    const pessoa = userEvent.setup();
     campoComGuia();
-    expect(screen.getByText('Virada · pontos de nota')).toBeInTheDocument();
+
+    await pessoa.click(screen.getByRole('button', { name: /O que faz/ }));
+
+    const guia = screen.getByRole('dialog');
+    expect(within(guia).getByText('O que é')).toBeInTheDocument();
+    expect(within(guia).getByText('O que muda no resultado')).toBeInTheDocument();
+    // Uma frase que SÓ existe no verbete, e não no rótulo nem na dica do
+    // campo: é o que separa "o modal abriu" de "o modal tem conteúdo".
+    expect(within(guia).getByText(/precedência sobre todo o resto/)).toBeInTheDocument();
   });
 
   it('uma chave sem verbete não desenha "?" nenhum', () => {

@@ -102,17 +102,37 @@ export interface PontoDaJornada {
 /** Quantas lentes um mês precisa ter para reger a escala. */
 const LENTES_PARA_SER_COMPLETO = 4;
 
+/** Uma linha da coluna do mês: escrita por gente, ou derivada da base.
+ *
+ *  AS DUAS NA MESMA LISTA, e a procedência dita: o fato diz o que aconteceu no
+ *  mundo, o tema diz por onde aquilo entrou no número. Separá-las em dois
+ *  blocos faria a pessoa ler duas listas para entender um mês. */
+export interface LinhaDoMes {
+  texto: string;
+  /** `sustenta` | `pressiona` | `misto`, ou vazio. */
+  efeito: string;
+  /** De onde veio — é o que a tela marca, e não decora. */
+  origem: 'cadastro' | 'base';
+  /** "−1,9 pt" para o tema; vazio para o fato, que não tem número. */
+  evidencia: string;
+}
+
 export interface ColunaDoMes {
   mes: string;
   /** "JUNHO" — o nome por extenso, em caixa alta. */
   nome: string;
   /** "+3 no mês" · "−15 no mês" · "ponto de partida". */
   variacao: string;
-  fato: string;
+  /** Fatos cadastrados e temas derivados, na ordem em que se lê. */
+  linhas: LinhaDoMes[];
+  /** O texto que aparece quando não há nem fato nem tema. */
+  vazio: string;
   /** A cor do filete de 3px no topo da coluna. */
   filete: string;
   /** "Maior movimento: Clientes −12", ou vazio. */
   movimento: string;
+  /** "−1,5 pt sem tema", quando parte do mês não se explica. */
+  semTema: string;
   selecionada: boolean;
 }
 
@@ -172,6 +192,40 @@ const TAG_DO_EFEITO: Record<string, string> = {
   sustenta: 'reforço',
   misto: 'misto',
 };
+
+/** "−1,9 pt" — com vírgula, e com o sinal explícito.
+ *
+ *  O SINAL É O QUE FAZ O NÚMERO SER LIDO COMO CONTRIBUIÇÃO, e não como valor.
+ *  "1,9 pt" ao lado de um tema não diz se ele ajudou ou atrapalhou. */
+export function emPontos(pontos: number): string {
+  const sinal = pontos > 0 ? '+' : '−';
+  return `${sinal}${Math.abs(pontos).toFixed(1).replace('.', ',')} pt`;
+}
+
+/** As linhas da coluna de um mês: o que se escreveu e o que a base derivou.
+ *
+ *  OS FATOS VÊM PRIMEIRO porque são o que alguém achou digno de registrar; o
+ *  tema vem depois e explica por onde aquilo entrou no número. Um mês com
+ *  os dois lê-se de cima para baixo como uma frase só. */
+function linhasDoMes(ponto: PontoDaSerie): LinhaDoMes[] {
+  const doCadastro: LinhaDoMes[] = ponto.fatos.map((fato) => ({
+    texto: fato.texto,
+    efeito: fato.efeito,
+    origem: 'cadastro',
+    evidencia: '',
+  }));
+
+  const daBase: LinhaDoMes[] = [ponto.sustentou, ponto.pressionou]
+    .filter((tema) => tema !== null)
+    .map((tema) => ({
+      texto: tema.tema,
+      efeito: tema.efeito,
+      origem: 'base' as const,
+      evidencia: emPontos(tema.pontos),
+    }));
+
+  return [...doCadastro, ...daBase];
+}
 
 const FILETE_DO_EFEITO: Record<string, string> = {
   pressiona: 'var(--erro-fg)',
@@ -358,7 +412,10 @@ export function jornadaDoIndice(
           : isr >= (anterior + seguinte) / 2;
     const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE;
     const cabeAcima = y(isr) - ALTURA_DO_ROTULO >= 0;
-    const efeito = ponto.fato?.efeito ?? '';
+    // O FILETE E A ETIQUETA SEGUEM O PRIMEIRO FATO CADASTRADO. Com vários, é
+    // o mais antigo que abre a coluna, e é ele que dá a cor: o destaque do mês
+    // não pode mudar quando alguém acrescenta uma nota de rodapé depois.
+    const efeito = ponto.fatos[0]?.efeito ?? '';
     const parcial = ponto.lentes < LENTES_PARA_SER_COMPLETO;
     const alturaCrua = (y(isr) / VB.altura) * 100;
     return {
@@ -385,7 +442,9 @@ export function jornadaDoIndice(
       descricao:
         `${mesPorExtenso(ponto.mes)}: índice ${isr}, faixa ${rotuloDaFaixa(isr)}` +
         (parcial ? `, medido por ${ponto.lentes} de 5 lentes` : '') +
-        (ponto.fato ? `. ${ponto.fato.texto}` : '. Sem fato de destaque registrado.'),
+        (ponto.fatos.length
+          ? `. ${ponto.fatos.map((f) => f.texto).join('. ')}`
+          : '. Sem fato de destaque registrado.'),
     };
   });
 
@@ -400,8 +459,12 @@ export function jornadaDoIndice(
         i === 0 || ponto.delta === null
           ? 'ponto de partida'
           : `${ponto.delta > 0 ? '+' : '−'}${Math.abs(ponto.delta)} no mês`,
-      fato: ponto.fato?.texto ?? 'Sem fato de destaque registrado.',
-      filete: FILETE_DO_EFEITO[ponto.fato?.efeito ?? ''] ?? 'var(--borda)',
+      linhas: linhasDoMes(ponto),
+      vazio: 'Sem fato de destaque registrado.',
+      filete: FILETE_DO_EFEITO[ponto.fatos[0]?.efeito ?? ''] ?? 'var(--borda)',
+      semTema: ponto.pontos_sem_tema
+        ? `${emPontos(ponto.pontos_sem_tema)} sem tema`
+        : '',
       movimento: movimento
         ? `Maior movimento: ${movimento.lente} ${movimento.delta > 0 ? '+' : '−'}${Math.abs(movimento.delta)}`
         : '',

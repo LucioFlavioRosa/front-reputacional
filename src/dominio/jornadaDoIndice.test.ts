@@ -25,7 +25,10 @@ function ponto(parcial: Partial<PontoDaSerie>): PontoDaSerie {
     lentes: 5,
     tem_estimativa: false,
     delta: null,
-    fato: null,
+    fatos: [],
+    sustentou: null,
+    pressionou: null,
+    pontos_sem_tema: 0,
     maior_movimento: null,
     notas_das_lentes: {},
     ...parcial,
@@ -284,21 +287,89 @@ describe('jornadaDoIndice', () => {
     expect(jornada.colunas[3].variacao).toBe('+9 no mês');
   });
 
-  it('o mês sem fato tem filete neutro e texto padrão', () => {
+  it('o mês sem fato nem tema tem filete neutro e texto padrão', () => {
     const jornada = jornadaDoIndice(SEMESTRE, '2026-06');
-    expect(jornada.colunas[0].fato).toBe('Sem fato de destaque registrado.');
+    expect(jornada.colunas[0].linhas).toEqual([]);
+    expect(jornada.colunas[0].vazio).toBe('Sem fato de destaque registrado.');
     expect(jornada.colunas[0].filete).toBe('var(--borda)');
     expect(jornada.pontos[0].tag).toBe('');
   });
 
   it('o mês com fato leva o filete do efeito e a tag no ponto', () => {
     const comFato = SEMESTRE.map((p, i) =>
-      i === 2 ? { ...p, fato: { texto: 'Rebaixamentos de rating', efeito: 'pressiona' } } : p,
+      i === 2
+        ? {
+            ...p,
+            fatos: [
+              { id: '1', texto: 'Rebaixamentos de rating', efeito: 'pressiona' },
+            ],
+          }
+        : p,
     );
     const jornada = jornadaDoIndice(comFato, '2026-06');
     expect(jornada.colunas[2].filete).toBe('var(--erro-fg)');
-    expect(jornada.colunas[2].fato).toBe('Rebaixamentos de rating');
+    expect(jornada.colunas[2].linhas[0].texto).toBe('Rebaixamentos de rating');
     expect(jornada.pontos[2].tag).toBe('pressão');
+  });
+
+  it('TODOS os fatos do mês entram na coluna', () => {
+    // Escolher um faria o segundo motivo sumir do painel, e é justamente o
+    // segundo que costuma explicar o resto do degrau.
+    const comDois = SEMESTRE.map((p, i) =>
+      i === 2
+        ? {
+            ...p,
+            fatos: [
+              { id: '1', texto: 'Atraso das DFs', efeito: 'pressiona' },
+              { id: '2', texto: 'Aporte anunciado', efeito: 'sustenta' },
+            ],
+          }
+        : p,
+    );
+    const linhas = jornadaDoIndice(comDois, '2026-06').colunas[2].linhas;
+    expect(linhas.map((l) => l.texto)).toEqual(['Atraso das DFs', 'Aporte anunciado']);
+    // O FILETE SEGUE O PRIMEIRO: o destaque do mês não pode mudar quando
+    // alguém acrescenta uma nota de rodapé depois.
+    expect(jornadaDoIndice(comDois, '2026-06').colunas[2].filete).toBe('var(--erro-fg)');
+  });
+
+  it('o tema derivado entra junto, marcado como da base', () => {
+    const comAssunto = SEMESTRE.map((p, i) =>
+      i === 2
+        ? {
+            ...p,
+            fatos: [{ id: '1', texto: 'Atraso das DFs', efeito: 'pressiona' }],
+            pressionou: {
+              tema: 'Saneamento básico',
+              lente: 'sociedade',
+              pontos: -1.9,
+              efeito: 'pressiona',
+              positivas: 125,
+              negativas: 759,
+            },
+          }
+        : p,
+    );
+    const linhas = jornadaDoIndice(comAssunto, '2026-06').colunas[2].linhas;
+
+    // O fato primeiro — é o que alguém achou digno de registrar.
+    expect(linhas.map((l) => l.origem)).toEqual(['cadastro', 'base']);
+    expect(linhas[1].texto).toBe('Saneamento básico');
+    // E o tema traz o número; o fato não tem número a trazer.
+    expect(linhas[1].evidencia).toBe('−1,9 pt');
+    expect(linhas[0].evidencia).toBe('');
+  });
+
+  it('o que nenhum tema explica é dito, e não calado', () => {
+    // Mostrar os temas e calar sobre o pedaço que sobra faria a coluna
+    // afirmar mais do que sabe.
+    const comLacuna = SEMESTRE.map((p, i) =>
+      i === 2 ? { ...p, pontos_sem_tema: -1.5 } : p,
+    );
+    expect(jornadaDoIndice(comLacuna, '2026-06').colunas[2].semTema).toBe(
+      '−1,5 pt sem tema',
+    );
+    expect(jornadaDoIndice(SEMESTRE, '2026-06').colunas[2].semTema).toBe('');
   });
 
   it('escreve o maior movimento do mês, com sinal', () => {
@@ -318,7 +389,9 @@ describe('jornadaDoIndice', () => {
 
   it('a descrição do ponto diz o mês, o índice e o fato', () => {
     const comFato = SEMESTRE.map((p, i) =>
-      i === 2 ? { ...p, fato: { texto: 'Atraso das DFs', efeito: 'pressiona' } } : p,
+      i === 2
+        ? { ...p, fatos: [{ id: '1', texto: 'Atraso das DFs', efeito: 'pressiona' }] }
+        : p,
     );
     const jornada = jornadaDoIndice(comFato, '2026-06');
     expect(jornada.pontos[2].descricao).toBe(

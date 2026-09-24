@@ -30,7 +30,13 @@
 import { useState } from 'react';
 
 import { VB, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
-import type { ColunaDoMes, FaixaDeFundo, PontoDaJornada } from '@/dominio/jornadaDoIndice';
+import type {
+  ColunaDoMes,
+  FaixaDeFundo,
+  LinhaDoMes,
+  PontoDaJornada,
+} from '@/dominio/jornadaDoIndice';
+import { COR_DO_EFEITO } from '@/dominio/score';
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
 
@@ -333,13 +339,63 @@ function Coluna({
       <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
         {coluna.variacao}
       </span>
-      <span style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--cinza-3)' }}>
-        {coluna.fato}
-      </span>
+      {coluna.linhas.length ? (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {coluna.linhas.map((linha) => (
+            <LinhaDaColuna key={`${linha.origem}-${linha.texto}`} linha={linha} />
+          ))}
+        </span>
+      ) : (
+        <span style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--cinza-2)' }}>
+          {coluna.vazio}
+        </span>
+      )}
+      {coluna.semTema ? (
+        <span style={{ fontSize: 10.5, color: 'var(--cinza-2)' }} title="Menções que moveram o índice sem tema classificado, ou lente estimada">
+          {coluna.semTema}
+        </span>
+      ) : null}
       {coluna.movimento ? (
         <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>{coluna.movimento}</span>
       ) : null}
     </button>
+  );
+}
+
+/** Uma linha da coluna: o que alguém escreveu, ou o que a base derivou.
+ *
+ *  A PROCEDÊNCIA É MARCADA, e não decorada. O ponto cheio é fato cadastrado —
+ *  alguém decidiu que aquilo merecia registro; o contorno vazado é tema
+ *  derivado, com os pontos que ele custou ou rendeu ao lado. Sem a distinção,
+ *  a coluna misturaria o que a companhia afirma com o que a conta calculou. */
+function LinhaDaColuna({ linha }: { linha: LinhaDoMes }) {
+  const cor = COR_DO_EFEITO[linha.efeito] ?? 'var(--cinza-2)';
+  return (
+    <span style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+      <span
+        aria-hidden
+        style={{
+          width: 6,
+          height: 6,
+          marginTop: 4,
+          flexShrink: 0,
+          borderRadius: '50%',
+          background: linha.origem === 'cadastro' ? cor : 'transparent',
+          border: linha.origem === 'cadastro' ? 'none' : `1.5px solid ${cor}`,
+        }}
+      />
+      <span style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--cinza-3)', flex: 1 }}>
+        {linha.texto}
+      </span>
+      {linha.evidencia ? (
+        <span
+          className="tabular"
+          style={{ fontSize: 11, fontWeight: 700, color: cor, whiteSpace: 'nowrap' }}
+        >
+          {linha.evidencia}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
