@@ -189,6 +189,9 @@ export interface OpcoesDoScore {
   reguas_de_engajamento: string[];
   lentes: { codigo: string; nome: string; stakeholder: string; peso_padrao: number }[];
   meses: string[];
+  /** Em que mês abrir — o de mais lentes medidas, e não o último. Nulo quando
+   *  não há mês nenhum com dado. */
+  mes_sugerido: string | null;
 }
 
 /** As faixas do índice, da pior para a melhor.

@@ -101,9 +101,17 @@ export function Score() {
       .then((carregadas) => {
         if (!ativo) return;
         definirOpcoes(carregadas);
-        // O mês mais recente com dado: abrir num mês vazio faria a tela
-        // parecer quebrada.
-        definirMes((atual) => atual ?? carregadas.meses[carregadas.meses.length - 1] ?? null);
+        // O MÊS MAIS COMPLETO, que o servidor escolhe — e não o mais
+        // recente. O CRM põe um mês na lista a cada interação registrada, e
+        // as planilhas dos fornecedores chegam com atraso: abrir no último
+        // mostrava quatro lentes vazias e um ISR que era o score de uma só.
+        definirMes(
+          (atual) =>
+            atual ??
+            carregadas.mes_sugerido ??
+            carregadas.meses[carregadas.meses.length - 1] ??
+            null,
+        );
       })
       .catch((falha: unknown) => {
         if (!ativo) return;
