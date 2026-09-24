@@ -84,6 +84,14 @@ describe('comoLimite', () => {
     expect(comoLimite('   ', 'decimal')).toBeNull();
   });
 
+  it('recusa o que ARREDONDA para zero num campo inteiro', () => {
+    // Validando antes de arredondar, "0,4" passaria daqui como 0,4, viraria 0
+    // e o servidor o recusaria — deixando o campo preso num erro que a tela
+    // tinha como evitar.
+    expect(comoLimite('0,4', 'inteiro')).toBeNull();
+    expect(comoLimite('0,4', 'decimal')).toBe(0.4);
+  });
+
   it('recusa o zero e o negativo', () => {
     // TODO CORTE É DIVISOR de alguma intensidade: um zero gravado estouraria
     // horas depois, na tela de outra pessoa abrindo uma lente.

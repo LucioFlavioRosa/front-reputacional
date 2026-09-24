@@ -123,9 +123,12 @@ export function Score() {
     };
   }, []);
 
+  // DEVOLVE A PROMESSA, e quem grava a espera: sem isso, quem edita dois
+  // campos em seguida manda o segundo com a régua ANTERIOR — e a primeira
+  // alteração some sem aviso, porque o payload é montado das props.
   const recarregar = useCallback(() => {
-    if (!mes) return;
-    Promise.all([obterScore(mes), obterSerieDoScore()])
+    if (!mes) return Promise.resolve();
+    return Promise.all([obterScore(mes), obterSerieDoScore()])
       .then(([carregado, carregada]) => {
         definirIndice(carregado);
         definirSerie(carregada);
@@ -654,7 +657,7 @@ function CalibracaoDoScore({
   mes: string;
   opcoes: OpcoesDoScore;
   calibracao: Calibracao;
-  aoMudar: () => void;
+  aoMudar: () => Promise<void>;
 }) {
   const [fontes, definirFontes] = useState<FonteDoScore[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
@@ -691,7 +694,10 @@ function CalibracaoDoScore({
         fontes_desligadas: mudanca.fontes_desligadas ?? calibracao.fontes_desligadas,
         limites: mudanca.limites ?? limitesAjustados(calibracao.limites),
       });
-      aoMudar();
+      // ESPERA A RÉGUA NOVA CHEGAR antes de liberar os campos: eles montam o
+      // payload a partir das props, e liberar antes abriria uma janela em que
+      // a segunda edição desfaz a primeira.
+      await aoMudar();
     } catch (falha) {
       definirErro(falha instanceof Error ? falha.message : 'Não foi possível gravar.');
     } finally {
@@ -748,7 +754,7 @@ function CalibracaoDoScore({
             variante="secundario"
             aoClicar={() =>
               restaurarCalibracaoPadrao()
-                .then(aoMudar)
+                .then(() => aoMudar())
                 .catch((falha: unknown) =>
                   definirErro(
                     falha instanceof Error ? falha.message : 'Não foi possível restaurar.',

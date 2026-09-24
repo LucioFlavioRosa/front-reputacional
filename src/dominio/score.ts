@@ -115,9 +115,15 @@ export function comLimiteAjustado(
 export function comoLimite(texto: string, formato: 'decimal' | 'inteiro'): number | null {
   const limpo = texto.trim().replace(',', '.');
   if (!limpo) return null;
-  const numero = Number(limpo);
-  if (!Number.isFinite(numero) || numero <= 0) return null;
-  return formato === 'inteiro' ? Math.round(numero) : numero;
+  const bruto = Number(limpo);
+  if (!Number.isFinite(bruto)) return null;
+  // ARREDONDA ANTES DE RECUSAR O ZERO, e não depois: "0,4" num campo inteiro
+  // vira 0, que é um divisor inválido. Validando primeiro, ele passaria daqui
+  // como 0,4, seria arredondado para 0, e o servidor o recusaria — deixando o
+  // campo preso num erro que a tela tinha como evitar.
+  const numero = formato === 'inteiro' ? Math.round(bruto) : bruto;
+  if (numero <= 0) return null;
+  return numero;
 }
 
 export interface IndiceDoScore {
