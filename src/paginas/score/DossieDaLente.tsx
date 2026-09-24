@@ -32,7 +32,6 @@ import { BotaoDeProcedencia, CabecalhoDoBloco } from '@/componentes/Procedencia'
 import {
   COR_DO_EFEITO,
   ROTULO_DO_EFEITO,
-  ROTULO_DO_STATUS,
   colunasDaTabela,
   comoNumero,
   comoTexto,
@@ -127,64 +126,18 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
         ))}
       </div>
 
-      {dossie.curadoria.revela.length ? (
-        <Secao
-          titulo="O que isto revela"
-          acao={
-            <BotaoDeProcedencia
-              ficha={dossie.curadoria.ficha}
-              titulo="O que isto revela"
-            />
-          }
-        >
-          <div className="grade grade--2" style={{ gap: 16 }}>
-            {dossie.curadoria.revela.map((item, indice) => (
-              <Cartao key={`${indice}-${item.titulo}`}>
-                <span
-                  className="tabular"
-                  style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-2)' }}
-                >
-                  {String(indice + 1).padStart(2, '0')}
-                </span>
-                <div style={{ fontSize: 15, fontWeight: 700, margin: '4px 0 6px' }}>
-                  {item.titulo}
-                </div>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)', lineHeight: 1.6 }}>
-                  {item.texto}
-                </p>
-              </Cartao>
-            ))}
-          </div>
-        </Secao>
-      ) : null}
-
-      <Encaminhamentos dossie={dossie} />
     </>
   );
 }
 
 /** O que desta lente é ilustração, pelo nome.
  *
- *  Duas mensagens diferentes, porque são dois problemas diferentes: um gráfico
- *  ilustrativo compromete a leitura dos números; um texto transcrito é só o
- *  texto de outro mês esperando o deste. */
+ *  Dizer só que "há" ilustração manda a pessoa abrir um "?" atrás do outro —
+ *  e, quando não há gráfico ilustrativo nenhum, a faz desconfiar de números
+ *  que estão certos. */
 function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
   const aviso = avisoDeExemplo(dossie);
-  if (!aviso) return null;
-
-  if (!aviso.graficos.length) {
-    return (
-      <FaixaDeAtencao
-        mensagem={
-          <>
-            Os números desta lente são <strong>medidos</strong>. O que veio transcrito do
-            relatório do cliente é o <strong>texto</strong> — manchete, leitura e insights —,
-            até a curadoria deste mês ser escrita.
-          </>
-        }
-      />
-    );
-  }
+  if (!aviso?.graficos.length) return null;
 
   return (
     <FaixaDeAtencao
@@ -197,7 +150,6 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
           </strong>{' '}
           conteúdo de ilustração — transcrito do relatório do cliente, não medido por esta
           ferramenta. O <strong>?</strong> de cada um explica por quê.
-          {aviso.texto ? ' O texto da lente também veio do relatório.' : ''}
         </>
       }
     />
@@ -258,7 +210,6 @@ function Destaque({ dossie }: { dossie: Dossie }) {
               <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                 <Chip rotulo={`peso ${dossie.peso}`} />
                 {dossie.estimado ? <Chip rotulo="estimado" /> : null}
-                {dossie.curadoria.automatica ? <Chip rotulo="texto automático" /> : null}
               </div>
             </div>
           </div>
@@ -269,9 +220,9 @@ function Destaque({ dossie }: { dossie: Dossie }) {
             </p>
           ) : null}
 
-          {dossie.curadoria.manchete ? (
+          {dossie.manchete ? (
             <p style={{ margin: '14px 0 0', fontSize: 15, lineHeight: 1.55 }}>
-              {dossie.curadoria.manchete}
+              {dossie.manchete}
             </p>
           ) : null}
 
@@ -343,21 +294,6 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           </ul>
         ) : null}
 
-        {dossie.curadoria.leitura.length ? (
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
-            <p className="kicker" style={{ marginBottom: 8 }}>
-              Leitura
-              {dossie.curadoria.automatica ? (
-                <Chip rotulo="gerada dos números" estilo={{ marginLeft: 8 }} />
-              ) : null}
-            </p>
-            {dossie.curadoria.leitura.map((paragrafo) => (
-              <p key={paragrafo} style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.7 }}>
-                {paragrafo}
-              </p>
-            ))}
-          </div>
-        ) : null}
       </Cartao>
     </Secao>
   );
@@ -516,62 +452,5 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     <p style={{ fontSize: 13, color: 'var(--atencao-fg)', margin: 0 }}>
       Esta versão da tela não sabe desenhar &ldquo;{bloco.tipo}&rdquo;.
     </p>
-  );
-}
-
-/* -- 5. os encaminhamentos ------------------------------------------------------ */
-
-function Encaminhamentos({ dossie }: { dossie: Dossie }) {
-  if (!dossie.encaminhamentos.length) return null;
-
-  return (
-    <Secao
-      titulo="Encaminhamentos"
-      subtitulo="O que está aberto continua aqui, venha do mês que vier — some por conclusão, nunca por passagem do tempo."
-      acao={
-        <BotaoDeProcedencia
-          ficha={dossie.ficha_dos_encaminhamentos}
-          titulo="Encaminhamentos"
-        />
-      }
-    >
-      <Cartao>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {dossie.encaminhamentos.map((item) => (
-            <li
-              key={item.id}
-              style={{
-                display: 'flex',
-                gap: 12,
-                alignItems: 'baseline',
-                padding: '10px 0',
-                borderTop: '1px solid var(--borda)',
-                opacity: item.status === 'concluido' ? 0.55 : 1,
-              }}
-            >
-              <span style={{ fontSize: 13, flex: 1 }}>{item.acao}</span>
-              {item.responsavel ? (
-                <span style={{ fontSize: 11.5, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
-                  {item.responsavel}
-                </span>
-              ) : null}
-              {item.prazo ? <Chip rotulo={item.prazo} /> : null}
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: item.status === 'concluido' ? 'var(--ok-fg)' : 'var(--cinza-2)',
-                  whiteSpace: 'nowrap',
-                  minWidth: 88,
-                  textAlign: 'right',
-                }}
-              >
-                {ROTULO_DO_STATUS[item.status] ?? item.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Cartao>
-    </Secao>
   );
 }

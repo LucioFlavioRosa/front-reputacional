@@ -209,28 +209,16 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     formula: '',
     kpis: [],
     ficha_do_destaque: FICHA,
+    manchete: null,
     evolucao: bloco({ tipo: 'barras_empilhadas' }),
     fatos: [],
     paineis: [],
-    curadoria: {
-      manchete: null,
-      leitura: [],
-      revela: [],
-      status: 'publicado',
-      automatica: false,
-      exemplo: false,
-      ficha: FICHA,
-    },
-    encaminhamentos: [],
-    ficha_dos_encaminhamentos: FICHA,
     ...parcial,
   };
 }
 
 describe('temExemplo', () => {
-  it('acusa exemplo em qualquer bloco, não só na curadoria', () => {
-    // O aviso aparece ANTES dos números: quem vê o gráfico primeiro já tirou a
-    // conclusão quando chega no rodapé.
+  it('acusa exemplo em qualquer gráfico da lente', () => {
     const comPainelDeExemplo = dossie({
       paineis: [bloco({ ficha: { ...FICHA, exemplo: true } })],
     });
@@ -266,32 +254,15 @@ describe('avisoDeExemplo', () => {
       ],
     });
 
-    expect(avisoDeExemplo(comMatriz)).toEqual({
-      graficos: ['Matriz de jornalistas'],
-      texto: false,
-    });
+    expect(avisoDeExemplo(comMatriz)).toEqual({ graficos: ['Matriz de jornalistas'] });
   });
 
-  it('separa TEXTO transcrito de GRÁFICO ilustrativo', () => {
-    // Em Sociedade e Institucional todos os gráficos são medidos e só o texto
-    // veio do relatório. O aviso antigo dizia "ilustração em pelo menos um
-    // bloco — o ? de cada gráfico diz qual é qual", e a pessoa abria um "?"
-    // atrás do outro atrás de algo que não existe. Pior: passava a desconfiar
-    // de números que estão certos.
-    const soOTexto = dossie({
-      curadoria: {
-        manchete: null,
-        leitura: [],
-        revela: [],
-        status: 'publicado',
-        automatica: false,
-        exemplo: true,
-        ficha: FICHA,
-      },
-      paineis: [bloco({}), bloco({})],
-    });
-
-    expect(avisoDeExemplo(soOTexto)).toEqual({ graficos: [], texto: true });
+  it('NÃO acusa nada quando todos os gráficos são medidos', () => {
+    // Desde que as frases passaram a ser calculadas dos dados, não existe mais
+    // "texto de exemplo": ou o gráfico mostra ilustração, ou não mostra. Antes
+    // este caso disparava um aviso sobre gráficos que não havia — e a pessoa
+    // passava a desconfiar de números certos.
+    expect(avisoDeExemplo(dossie({ paineis: [bloco({}), bloco({})] }))).toBeNull();
   });
 
   it('nada a avisar quando tudo é medido', () => {

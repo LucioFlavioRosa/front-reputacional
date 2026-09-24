@@ -68,27 +68,6 @@ export interface FatoDoDossie {
   efeito: string;
 }
 
-export interface EncaminhamentoDoDossie {
-  id: string;
-  acao: string;
-  responsavel: string | null;
-  prazo: string | null;
-  status: string;
-  mes_origem: string;
-  exemplo: boolean;
-}
-
-export interface CuradoriaDoDossie {
-  manchete: string | null;
-  leitura: string[];
-  revela: { titulo: string; texto: string }[];
-  status: string;
-  /** O texto foi gerado dos números, e ninguém o escreveu. */
-  automatica: boolean;
-  exemplo: boolean;
-  ficha: Ficha;
-}
-
 export interface Dossie {
   codigo: string;
   nome: string;
@@ -104,12 +83,11 @@ export interface Dossie {
   formula: string;
   kpis: KpiDoDossie[];
   ficha_do_destaque: Ficha;
+  /** A frase que abre a lente — calculada dos dados, nunca salva. */
+  manchete: string | null;
   evolucao: Bloco;
   fatos: FatoDoDossie[];
   paineis: Bloco[];
-  curadoria: CuradoriaDoDossie;
-  encaminhamentos: EncaminhamentoDoDossie[];
-  ficha_dos_encaminhamentos: Ficha;
 }
 
 /** Como cada origem se apresenta no "?".
@@ -156,12 +134,6 @@ export const ROTULO_DO_EFEITO: Record<string, string> = {
   misto: 'Misto',
 };
 
-export const ROTULO_DO_STATUS: Record<string, string> = {
-  aberto: 'Aberto',
-  em_andamento: 'Em andamento',
-  concluido: 'Concluído',
-};
-
 /** A cor de uma prioridade da matriz de jornalistas.
  *
  *  SÓ A P1 É SÓLIDA. Quatro níveis com quatro cores fortes viram um arco-íris
@@ -193,17 +165,12 @@ export function lacunasDoDossie(dossie: Dossie): string[] {
 
 /** Se algum bloco do dossiê mostra conteúdo de exemplo. */
 export function temExemplo(dossie: Dossie): boolean {
-  return (
-    dossie.curadoria.exemplo ||
-    [dossie.evolucao, ...dossie.paineis].some((bloco) => bloco.ficha.exemplo)
-  );
+  return [dossie.evolucao, ...dossie.paineis].some((bloco) => bloco.ficha.exemplo);
 }
 
 export interface AvisoDeExemplo {
   /** Os gráficos que mostram ilustração, pelo nome. */
   graficos: string[];
-  /** O texto editorial veio transcrito do relatório. */
-  texto: boolean;
 }
 
 /** O que exatamente é ilustração nesta lente.
@@ -215,17 +182,14 @@ export interface AvisoDeExemplo {
  *  A pessoa abria um "?" atrás do outro atrás de uma ilustração que não existe
  *  — e, pior, passava a desconfiar de números que estão certos.
  *
- *  NÚMERO E TEXTO SÃO COISAS DIFERENTES. Um gráfico ilustrativo compromete a
- *  leitura; uma manchete transcrita do relatório do cliente é exatamente o que
- *  se espera de uma manchete antes de alguém escrever a deste mês. Juntar os
- *  dois no mesmo aviso desperdiça o aviso.
+ *  Desde que as frases passaram a ser calculadas, texto não é mais exemplo de
+ *  nada: ou o gráfico mostra ilustração, ou não mostra.
  */
 export function avisoDeExemplo(dossie: Dossie): AvisoDeExemplo | null {
   const graficos = [dossie.evolucao, ...dossie.paineis]
     .filter((bloco) => bloco.ficha.exemplo)
     .map((bloco) => bloco.titulo);
-  const texto = dossie.curadoria.exemplo;
-  return graficos.length || texto ? { graficos, texto } : null;
+  return graficos.length ? { graficos } : null;
 }
 
 /** O valor de uma célula, sem fingir que o payload é tipado.
