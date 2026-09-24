@@ -23,7 +23,6 @@ import {
   importarPlanilhaDoScore,
   obterDriversDoScore,
   listarFontesDoScore,
-  obterLenteDoScore,
   obterOpcoesDoScore,
   obterScore,
   obterSerieDoScore,
@@ -42,10 +41,9 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
-import { Legenda } from '@/graficos/BarrasEmpilhadas';
 import { Ranking } from '@/graficos/Ranking';
-import { Rosca } from '@/graficos/Rosca';
 import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
@@ -59,7 +57,6 @@ import {
   corDaFaixa,
   corDoDelta,
   lentesOrdenadas,
-  segmentosDaComposicao,
 } from '@/dominio/score';
 import type {
   Calibracao,
@@ -67,7 +64,6 @@ import type {
   FonteDoScore,
   ImportacaoDoScore,
   IndiceDoScore,
-  LenteDetalhada,
   OpcoesDoScore,
   PontoDaSerie,
 } from '@/dominio/score';
@@ -199,11 +195,10 @@ export function Score() {
       ) : null}
 
       {aba === 'lentes' ? (
-        <Lentes
-          indice={indice}
+        <DossieDaLente
           mes={mes}
-          aberta={lenteAberta}
-          aoTrocar={definirLenteAberta}
+          lente={lenteAberta}
+          aoTrocarLente={definirLenteAberta}
         />
       ) : null}
 
@@ -476,156 +471,6 @@ function Variacao({ rotulo, delta }: { rotulo: string; delta: number | null }) {
       >
         {comoDelta(delta)}
       </div>
-    </div>
-  );
-}
-
-/* -- aba 2: as lentes por dentro ---------------------------------------------- */
-
-function Lentes({
-  indice,
-  mes,
-  aberta,
-  aoTrocar,
-}: {
-  indice: IndiceDoScore;
-  mes: string;
-  aberta: string;
-  aoTrocar: (codigo: string) => void;
-}) {
-  const [detalhe, definirDetalhe] = useState<LenteDetalhada | null>(null);
-  const [erro, definirErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    let ativo = true;
-    definirDetalhe(null);
-    obterLenteDoScore(aberta, mes)
-      .then((carregado) => ativo && definirDetalhe(carregado))
-      .catch((falha: unknown) => {
-        if (!ativo) return;
-        definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [aberta, mes]);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Abas
-        abas={indice.lentes.map((lente) => ({ id: lente.codigo, rotulo: lente.nome }))}
-        ativa={aberta}
-        aoTrocar={aoTrocar}
-        rotulo="Qual lente"
-        prefixo="lente"
-      />
-
-      {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      {!detalhe ? (
-        <Carregando rotulo="Abrindo a lente…" />
-      ) : (
-        <Secao
-          titulo={`${detalhe.nome} · ${detalhe.stakeholder}`}
-          subtitulo={detalhe.formula}
-        >
-          <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
-            <Cartao>
-              <p className="kicker" style={{ marginBottom: 10 }}>
-                Composição do mês, já ponderada
-              </p>
-              <Rosca
-                itens={segmentosDaComposicao(detalhe.composicao)}
-                rotuloCentral={detalhe.score !== null ? 'score' : undefined}
-                vazio="Sem menção classificada neste mês."
-              />
-              <Legenda itens={segmentosDaComposicao(detalhe.composicao)} centralizada />
-              {detalhe.ausencia ? (
-                <p style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '10px 0 0' }}>
-                  {detalhe.ausencia}
-                </p>
-              ) : null}
-            </Cartao>
-
-            <Cartao>
-              <p className="kicker" style={{ marginBottom: 10 }}>
-                Fontes desta lente
-              </p>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {detalhe.fontes.map((fonte) => (
-                  <li
-                    key={fonte.codigo}
-                    style={{
-                      padding: '8px 0',
-                      borderTop: '1px solid var(--borda)',
-                      opacity: fonte.ligada ? 1 : 0.5,
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
-                        {fonte.nome}
-                      </span>
-                      <span className="tabular" style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                        {fonte.ns === null ? 'sem dado' : `NS ${fonte.ns.toFixed(2)}`}
-                        {fonte.mencoes ? ` · ${numero(fonte.mencoes)}` : ''}
-                      </span>
-                    </div>
-                    {!fonte.ligada ? (
-                      <span style={{ fontSize: 11.5, color: 'var(--atencao-fg)' }}>
-                        desligada na calibração
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-              <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-                Com mais de uma fonte, a lente é a <strong>média simples dos NS</strong> — e
-                não a soma das contagens: a fonte que classifica mais posts decidiria a lente
-                sozinha.
-              </p>
-            </Cartao>
-          </div>
-
-          <div style={{ marginTop: 16 }}>
-            <Cartao>
-              <p className="kicker" style={{ marginBottom: 10 }}>
-                Temas mais falados
-              </p>
-              {detalhe.temas.length ? (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                  {detalhe.temas.map((tema) => (
-                    <li
-                      key={tema.nome}
-                      style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}
-                    >
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
-                          {tema.nome}
-                        </span>
-                        {tema.tipo ? (
-                          <Chip
-                            rotulo={tema.tipo === 'estruturante' ? 'Estruturante' : 'Operacional'}
-                          />
-                        ) : null}
-                        <span className="tabular" style={{ fontSize: 12 }}>
-                          <span style={{ color: 'var(--ok-fg)' }}>+{tema.positivo}</span>
-                          {' · '}
-                          <span style={{ color: 'var(--erro-fg)' }}>−{tema.negativo}</span>
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-                  Os temas saem das menções, uma a uma — e elas chegam com a ingestão das
-                  planilhas dos fornecedores. O índice já funciona sem elas, porque lê os
-                  totais do mês; a leitura por tema é o que ainda falta.
-                </p>
-              )}
-            </Cartao>
-          </div>
-        </Secao>
-      )}
     </div>
   );
 }

@@ -551,6 +551,13 @@ export interface ColunaMensal {
   mes: string;
   total: number;
   segmentos: Segmento[];
+  /** O período NÃO TEM BASE — e isso não é zero.
+   *
+   *  Um mês sem export do fornecedor e um mês em que nada aconteceu se
+   *  desenhariam iguais: coluna rente ao chão. A barra hachurada e o "—" no
+   *  topo separam os dois, e é a diferença entre "o mês foi tranquilo" e "o
+   *  dado não chegou". */
+  semBase?: boolean;
 }
 
 export type Granularidade = 'semana' | 'mes' | 'semestre';

@@ -3,6 +3,7 @@
 import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
+import type { Dossie } from '@/dominio/dossie';
 import type { Recorte } from '@/dominio/recorte';
 import type {
   Calibracao,
@@ -760,6 +761,14 @@ export function importarPlanilhaDoScore(
 /** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */
 export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
+}
+
+/** O dossiê de uma lente: a tela inteira num pedido só.
+ *
+ *  UM ENDPOINT, UMA TELA — o front não calcula nada disto. Cada bloco vem com
+ *  a ficha de procedência junto, que é o conteúdo do "?". */
+export function obterDossieDaLente(codigo: string, mes: string): Promise<Dossie> {
+  return requisitar<Dossie>(`/api/score/lentes/${codigo}/dossie?mes=${mes}`);
 }
 
 export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {
