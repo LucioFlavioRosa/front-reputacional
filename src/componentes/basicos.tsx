@@ -4,7 +4,7 @@
  *  escreve hex diretamente — cor nova entra no token, não na tela.
  */
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 
 /* -- ajuda ---------------------------------------------------------------- */
@@ -954,6 +954,56 @@ export function Modal({
   //: nome. `useId` porque pode haver mais de um modal montado, e dois `id`
   //: iguais fazem o segundo apontar para o cabecalho do primeiro.
   const idDoTitulo = useId();
+  const caixa = useRef<HTMLDivElement>(null);
+
+  //: O TECLADO PRECISA CONSEGUIR SAIR, E NÃO PODE VAZAR.
+  //:
+  //: Um diálogo que abre e deixa o foco no botão que o abriu é um diálogo que
+  //: quem navega por teclado não alcança: a pessoa continua tabulando pela
+  //: página ATRÁS do overlay, lendo uma tela que ela não está vendo. Três
+  //: coisas resolvem isso, e nenhuma delas é opcional num `aria-modal`:
+  //:
+  //:   foco entra      no próprio diálogo, ao montar
+  //:   foco fica       Tab no último elemento volta ao primeiro, e vice-versa
+  //:   foco volta      ao elemento que abriu, ao fechar
+  //:
+  //: Escape fecha porque é o gesto que todo mundo já tenta primeiro.
+  useEffect(() => {
+    const quemAbriu = document.activeElement as HTMLElement | null;
+    caixa.current?.focus();
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === 'Escape') {
+        evento.stopPropagation();
+        aoFechar();
+        return;
+      }
+      if (evento.key !== 'Tab' || !caixa.current) return;
+
+      const focaveis = caixa.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focaveis.length) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      const atual = document.activeElement;
+
+      if (evento.shiftKey && (atual === primeiro || atual === caixa.current)) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && atual === ultimo) {
+        evento.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    document.addEventListener('keydown', aoTeclar, true);
+    return () => {
+      document.removeEventListener('keydown', aoTeclar, true);
+      // `?.` porque o elemento pode ter saído do DOM junto com o que o abriu.
+      quemAbriu?.focus?.();
+    };
+  }, [aoFechar]);
 
   return (
     <div
@@ -973,10 +1023,16 @@ export function Modal({
       }}
     >
       <div
+        ref={caixa}
+        // `-1` e não `0`: o diálogo recebe o foco ao abrir, mas não entra na
+        // ordem de tabulação da página — quem tabula passa pelos controles
+        // DENTRO dele, não por ele.
+        tabIndex={-1}
         onClick={(evento) => evento.stopPropagation()}
         style={{
           background: 'var(--branco)',
           borderRadius: 'var(--r-destaque)',
+          outline: 'none',
           width: '100%',
           maxWidth: largura,
           maxHeight: '100%',

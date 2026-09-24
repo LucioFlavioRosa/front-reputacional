@@ -7,6 +7,8 @@
  *  lê um mês.
  */
 
+import { numero as numeroBR } from '@/dominio/formato';
+
 /** De onde o número veio. A distinção não é técnica, é de confiança. */
 export type OrigemDoDado = 'planilha' | 'crm' | 'relatorio' | 'cadastro' | 'calculo';
 
@@ -28,8 +30,19 @@ export interface Ficha {
   conceitos: Conceito[];
 }
 
+export interface ColunaDoBloco {
+  chave: string;
+  titulo: string;
+  alinhamento: 'esquerda' | 'direita';
+}
+
 export interface Bloco {
   tipo: string;
+  /** Distingue duas tabelas que se desenham igual e se leem diferente:
+   *  `rating` destaca rebaixamento, `teor` destaca reclamação acima de metade.
+   *  Antes a tela decidia isso lendo o TÍTULO do bloco — e um título reescrito
+   *  pela curadoria trocaria o schema da tabela em silêncio. */
+  subtipo: string | null;
   titulo: string;
   /** A frase que o gráfico prova, escrita pela curadoria. */
   conclusao: string | null;
@@ -38,6 +51,8 @@ export interface Bloco {
    *  clima (propositivo/neutro/tenso) e as outras medem sentimento. Vem do
    *  servidor porque a tela não pode descobrir isso adivinhando pelo título. */
   legenda: string[];
+  /** Só nas tabelas: quais colunas mostrar, na ordem em que se lê. */
+  colunas: ColunaDoBloco[];
   ficha: Ficha;
 }
 
@@ -71,6 +86,7 @@ export interface CuradoriaDoDossie {
   /** O texto foi gerado dos números, e ninguém o escreveu. */
   automatica: boolean;
   exemplo: boolean;
+  ficha: Ficha;
 }
 
 export interface Dossie {
@@ -87,11 +103,13 @@ export interface Dossie {
   fontes: string[];
   formula: string;
   kpis: KpiDoDossie[];
+  ficha_do_destaque: Ficha;
   evolucao: Bloco;
   fatos: FatoDoDossie[];
   paineis: Bloco[];
   curadoria: CuradoriaDoDossie;
   encaminhamentos: EncaminhamentoDoDossie[];
+  ficha_dos_encaminhamentos: Ficha;
 }
 
 /** Como cada origem se apresenta no "?".
@@ -179,4 +197,101 @@ export function temExemplo(dossie: Dossie): boolean {
     dossie.curadoria.exemplo ||
     [dossie.evolucao, ...dossie.paineis].some((bloco) => bloco.ficha.exemplo)
   );
+}
+
+/** O valor de uma célula, sem fingir que o payload é tipado.
+ *
+ *  Os blocos chegam como `Record<string, unknown>` porque cada tipo de gráfico
+ *  tem um formato — e a alternativa honesta a uma união discriminada de oito
+ *  membros é converter na fronteira, uma vez, com o padrão à vista. Um `as
+ *  Record<string, never>` seria pior: diria ao TypeScript que campo nenhum
+ *  existe, e ele pararia de conferir qualquer coisa. */
+export function comoNumero(valor: unknown, padrao = 0): number {
+  // `null` e `''` ANTES da conversão: `Number(null)` é 0 e `Number('')` também,
+  // os dois finitos — e um campo ausente entraria como zero medido, que é a
+  // confusão que este arquivo inteiro existe para evitar.
+  if (valor === null || valor === undefined || valor === '') return padrao;
+  const convertido = Number(valor);
+  return Number.isFinite(convertido) ? convertido : padrao;
+}
+
+export function comoTexto(valor: unknown, padrao = ''): string {
+  return valor === null || valor === undefined ? padrao : String(valor);
+}
+
+/* -- as colunas de uma tabela do dossiê --------------------------------------- */
+
+export interface ColunaMontada {
+  chave: string;
+  titulo: string;
+  alinhamento: 'esquerda' | 'direita';
+  formatar?: (valor: unknown, linha: Record<string, unknown>) => string;
+  destaque?: (linha: Record<string, unknown>) => 'alerta' | 'bom' | null;
+}
+
+/** As colunas que o servidor mandou, com a regra de destaque desta leitura.
+ *
+ *  O QUE MOSTRAR É DO SERVIDOR; COMO DESTACAR é da tela. A primeira versão
+ *  decidia as duas coisas aqui, e escolhia o schema procurando a palavra
+ *  "rating" no título do bloco — um título reescrito pela curadoria trocaria a
+ *  tabela inteira em silêncio. Agora o `subtipo` diz qual leitura é, e ele não
+ *  muda quando alguém melhora um texto.
+ */
+export function colunasDaTabela(bloco: Bloco): ColunaMontada[] {
+  return bloco.colunas.map((coluna) => ({
+    chave: coluna.chave,
+    titulo: coluna.titulo,
+    alinhamento: coluna.alinhamento,
+    formatar: formatadorDa(bloco, coluna.chave),
+    destaque: destaqueDe(bloco, coluna.chave),
+  }));
+}
+
+function formatadorDa(bloco: Bloco, chave: string) {
+  if (chave === 'mes' || chave === 'data') {
+    return (valor: unknown) => mesCurto(comoTexto(valor));
+  }
+  if (bloco.subtipo !== 'teor') return undefined;
+  if (chave === 'acionaveis') {
+    return (valor: unknown, linha: Record<string, unknown>) => {
+      const total = comoNumero(linha.total);
+      return total ? `${numeroBR(comoNumero(valor))} de ${numeroBR(total)}` : '—';
+    };
+  }
+  if (chave === 'sem_classificacao') {
+    return (valor: unknown) => (comoNumero(valor) ? numeroBR(comoNumero(valor)) : '—');
+  }
+  // As categorias de teor mostram volume E proporção: 288 reclamações num mês
+  // de 886 e num de 400 são situações diferentes.
+  return (valor: unknown, linha: Record<string, unknown>) => {
+    const total = comoNumero(linha.total);
+    const celula = comoNumero(valor);
+    if (!total) return String(celula);
+    return `${numeroBR(celula)} · ${Math.round((celula / total) * 100)}%`;
+  };
+}
+
+function destaqueDe(bloco: Bloco, chave: string) {
+  if (bloco.subtipo === 'rating') {
+    if (chave === 'para') {
+      // O efeito já vem classificado do servidor; repetir a regra de "piorou"
+      // aqui criaria uma segunda definição, livre para divergir.
+      return (linha: Record<string, unknown>) =>
+        linha.efeito === 'pressiona' ? ('alerta' as const) : null;
+    }
+    if (chave === 'perspectiva') {
+      return (linha: Record<string, unknown>) =>
+        linha.perspectiva === 'negativa' ? ('alerta' as const) : null;
+    }
+    return undefined;
+  }
+  if (bloco.subtipo === 'teor' && chave === 'Reclamação') {
+    return (linha: Record<string, unknown>) => {
+      const total = comoNumero(linha.total);
+      return total && comoNumero(linha['Reclamação']) / total >= 0.5
+        ? ('alerta' as const)
+        : null;
+    };
+  }
+  return undefined;
 }

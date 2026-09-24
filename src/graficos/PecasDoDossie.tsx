@@ -30,6 +30,8 @@ const COR = {
   negativo: 'var(--erro-fg)',
   recebidas: 'var(--azul-claro, #C3CDF7)',
   respondidas: 'var(--azul-mar)',
+  //: Distinto do neutro de propósito: neutro é leitura, isto é ausência dela.
+  semClassificacao: 'var(--cinza-2)',
 };
 
 /** O "—" que ocupa o lugar de um número que não existe. */
@@ -48,6 +50,9 @@ export interface ItemDeComposicao {
   positivo: number;
   neutro: number;
   negativo: number;
+  /** Volume que chegou sem ninguém classificar — a §2 o desenha em cinza
+   *  único, e NÃO como neutro: neutro é leitura, isto é ausência de leitura. */
+  sem_classificacao?: number;
   sem_base?: boolean;
 }
 
@@ -68,22 +73,34 @@ export function BarrasCemPorCento({
     <div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {itens.map((item) => {
-          const total = item.positivo + item.neutro + item.negativo;
+          const classificadas = item.positivo + item.neutro + item.negativo;
+          const semClassificacao = item.sem_classificacao ?? 0;
+          const total = classificadas + semClassificacao;
+          // TRÊS ESTADOS, e não dois. "Sem base" é nada ter passado por ali;
+          // "sem classificação" é ter passado e ninguém ter lido. Tratar os
+          // dois como barra vazia apagaria justamente a diferença entre um mês
+          // tranquilo e um mês não analisado.
+          const semBase = item.sem_base || !total;
+          const soSemClassificacao = !semBase && !classificadas;
           const dominante =
             item.negativo > item.positivo
-              ? `${Math.round((item.negativo / total) * 100)}% negativo`
-              : `${Math.round((item.positivo / total) * 100)}% positivo`;
+              ? `${Math.round((item.negativo / classificadas) * 100)}% negativo`
+              : `${Math.round((item.positivo / classificadas) * 100)}% positivo`;
 
           return (
             <li key={item.rotulo} style={{ padding: '9px 0' }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.rotulo}</span>
                 <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
-                  {item.sem_base || !total ? 'sem base' : `${numero(total)} · ${dominante}`}
+                  {semBase
+                    ? 'sem base'
+                    : soSemClassificacao
+                      ? `${numero(total)} · sentimento a integrar`
+                      : `${numero(total)} · ${dominante}`}
                 </span>
               </div>
 
-              {item.sem_base || !total ? (
+              {semBase ? (
                 <div
                   title="sem base neste mês"
                   style={{
@@ -95,12 +112,21 @@ export function BarrasCemPorCento({
                   }}
                 />
               ) : (
-                <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', gap: 2 }}>
+                <div
+                  role="img"
+                  aria-label={
+                    soSemClassificacao
+                      ? `${item.rotulo}: ${total} menções, sentimento a integrar`
+                      : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
+                  }
+                  style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', gap: 2 }}
+                >
                   {(
                     [
                       ['positivo', item.positivo, COR.positivo, legenda[0]],
                       ['neutro', item.neutro, COR.neutro, legenda[1]],
                       ['negativo', item.negativo, COR.negativo, legenda[2]],
+                      ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
                     ] as const
                   )
                     .filter(([, valor]) => valor > 0)
@@ -117,7 +143,16 @@ export function BarrasCemPorCento({
           );
         })}
       </ul>
-      <Legenda itens={[[legenda[0], COR.positivo], [legenda[1], COR.neutro], [legenda[2], COR.negativo]]} />
+      <Legenda
+        itens={[
+          [legenda[0], COR.positivo],
+          [legenda[1], COR.neutro],
+          [legenda[2], COR.negativo],
+          ...(itens.some((item) => (item.sem_classificacao ?? 0) > 0)
+            ? ([['Sem classificação', COR.semClassificacao]] as [string, string][])
+            : []),
+        ]}
+      />
     </div>
   );
 }
@@ -149,12 +184,27 @@ export interface ParDoMes {
   sem_base?: boolean;
 }
 
-export function BarrasPareadas({ meses, altura = 150 }: { meses: ParDoMes[]; altura?: number }) {
+export function BarrasPareadas({
+  meses,
+  altura = 150,
+  fatos = {},
+}: {
+  meses: ParDoMes[];
+  altura?: number;
+  /** O fato do mês, por chave. Vira um marcador acima da coluna — a §1 pede
+   *  "marcadores de fato por mês", e uma lista embaixo do gráfico não diz QUAL
+   *  coluna o fato explica. */
+  fatos?: Record<string, { texto: string; efeito: string }>;
+}) {
   const maximo = Math.max(1, ...meses.map((m) => Math.max(m.recebidas, m.respondidas ?? 0)));
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', height: altura }}>
+      <div
+        role="img"
+        aria-label={`Recebidas e respondidas por mês, de ${meses[0]?.mes ?? ''} a ${meses[meses.length - 1]?.mes ?? ''}`}
+        style={{ display: 'flex', gap: 10, alignItems: 'flex-end', height: altura }}
+      >
         {meses.map((mes) => {
           const taxa =
             mes.respondidas !== null && mes.recebidas
@@ -164,6 +214,20 @@ export function BarrasPareadas({ meses, altura = 150 }: { meses: ParDoMes[]; alt
             <div key={mes.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{ height: 16, fontSize: 11, textAlign: 'center', color: 'var(--cinza-2)' }} className="tabular">
                 {taxa === null ? '—' : `${taxa}%`}
+              </div>
+              <div style={{ height: 6, display: 'flex', justifyContent: 'center' }}>
+                {fatos[mes.mes] ? (
+                  <span
+                    title={fatos[mes.mes].texto}
+                    aria-label={`Fato em ${mes.mes}: ${fatos[mes.mes].texto}`}
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: COR_DO_EFEITO[fatos[mes.mes].efeito] ?? 'var(--cinza-2)',
+                    }}
+                  />
+                ) : null}
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 2, justifyContent: 'center' }}>
                 {mes.sem_base ? (
@@ -237,8 +301,13 @@ export interface MesDeEventos {
 }
 
 export function LinhaDoTempo({ meses }: { meses: MesDeEventos[] }) {
+  const quantos = meses.reduce((soma, mes) => soma + mes.eventos.length, 0);
   return (
-    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+    <div
+      role="img"
+      aria-label={`Linha do tempo com ${quantos} ${quantos === 1 ? 'evento' : 'eventos'} de mercado`}
+      style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}
+    >
       {meses.map((mes) => {
         // A BORDA DO MÊS É O EFEITO PREDOMINANTE. Empate vira "misto": dizer
         // que um mês com um reforço e uma pressão foi bom seria escolher lado.
@@ -325,7 +394,11 @@ export function EscalaDeCinco({ itens, vazio }: { itens: ItemDaEscala[]; vazio: 
             <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>de 5</span>
           </div>
 
-          <div style={{ position: 'relative', height: 8, marginTop: 8, background: 'var(--cinza-0)', borderRadius: 4 }}>
+          <div
+            role="img"
+            aria-label={`${item.rotulo}: ${item.nota.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} de 5`}
+            style={{ position: 'relative', height: 8, marginTop: 8, background: 'var(--cinza-0)', borderRadius: 4 }}
+          >
             <div
               style={{
                 position: 'absolute',
@@ -414,6 +487,7 @@ export function MatrizDePrioridade({ linhas }: { linhas: LinhaDaMatriz[] }) {
                 <td style={{ padding: '9px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                   <span
                     title={`${linha.pontos} pontos · ${linha.cadencia}`}
+                    aria-label={`Prioridade ${linha.prioridade}: ${linha.pontos} pontos, ${linha.cadencia}`}
                     style={{
                       fontSize: 11,
                       fontWeight: 700,

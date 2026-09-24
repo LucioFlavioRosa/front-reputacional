@@ -28,12 +28,19 @@ import {
   Kpi,
   Secao,
 } from '@/componentes/basicos';
-import { CabecalhoDoBloco } from '@/componentes/Procedencia';
-import { COR_DO_EFEITO, ROTULO_DO_EFEITO, ROTULO_DO_STATUS, mesCurto } from '@/dominio/dossie';
+import { BotaoDeProcedencia, CabecalhoDoBloco } from '@/componentes/Procedencia';
+import {
+  COR_DO_EFEITO,
+  ROTULO_DO_EFEITO,
+  ROTULO_DO_STATUS,
+  colunasDaTabela,
+  comoNumero,
+  comoTexto,
+  mesCurto,
+} from '@/dominio/dossie';
 import type { Bloco, Dossie } from '@/dominio/dossie';
 import { temExemplo } from '@/dominio/dossie';
 import { corDaFaixa } from '@/dominio/score';
-import { numero } from '@/dominio/formato';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
 import {
   BarrasCemPorCento,
@@ -43,7 +50,6 @@ import {
   MatrizDePrioridade,
   TabelaDeLeitura,
 } from '@/graficos/PecasDoDossie';
-import type { ColunaDaTabela } from '@/graficos/PecasDoDossie';
 import { Ranking } from '@/graficos/Ranking';
 
 const LENTES = [
@@ -104,23 +110,36 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
       <Evolucao dossie={dossie} />
 
       <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
-        {dossie.paineis.map((painel) => (
-          <Cartao key={painel.titulo}>
+        {dossie.paineis.map((painel, posicao) => (
+          // A CHAVE INCLUI A POSIÇÃO: dois painéis com o mesmo título são
+          // improváveis, mas `key` duplicada faz o React reaproveitar o estado
+          // do componente errado — e o erro aparece como gráfico que não
+          // atualiza, não como aviso.
+          <Cartao key={`${posicao}-${painel.titulo}`}>
             <CabecalhoDoBloco
               titulo={painel.titulo}
               conclusao={painel.conclusao}
               ficha={painel.ficha}
             />
             <Painel bloco={painel} />
+            <NotaDeFonte ficha={painel.ficha} />
           </Cartao>
         ))}
       </div>
 
       {dossie.curadoria.revela.length ? (
-        <Secao titulo="O que isto revela">
+        <Secao
+          titulo="O que isto revela"
+          acao={
+            <BotaoDeProcedencia
+              ficha={dossie.curadoria.ficha}
+              titulo="O que isto revela"
+            />
+          }
+        >
           <div className="grade grade--2" style={{ gap: 16 }}>
             {dossie.curadoria.revela.map((item, indice) => (
-              <Cartao key={item.titulo}>
+              <Cartao key={`${indice}-${item.titulo}`}>
                 <span
                   className="tabular"
                   style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-2)' }}
@@ -144,6 +163,20 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
   );
 }
 
+/** A fonte do bloco, abaixo do gráfico.
+ *
+ *  VISÍVEL, e não só dentro do "?": a §1 pede nota de fonte em cada painel, e
+ *  uma fonte que só aparece a um clique de distância deixa o gráfico solto —
+ *  quem bate o olho não sabe de onde saiu, e quem não clica nunca descobre. */
+function NotaDeFonte({ ficha }: { ficha: Dossie['evolucao']['ficha'] }) {
+  return (
+    <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
+      {ficha.fonte}
+      {ficha.exemplo ? ' · conteúdo de ilustração' : ''}
+    </p>
+  );
+}
+
 /* -- 1. o destaque ------------------------------------------------------------- */
 
 function Destaque({ dossie }: { dossie: Dossie }) {
@@ -154,6 +187,12 @@ function Destaque({ dossie }: { dossie: Dossie }) {
     <Secao
       titulo={`${dossie.nome} · ${dossie.stakeholder}`}
       subtitulo={dossie.fontes.length ? `Fontes no cálculo: ${dossie.fontes.join(' · ')}` : undefined}
+      acao={
+        <BotaoDeProcedencia
+          ficha={dossie.ficha_do_destaque}
+          titulo={`Nota de ${dossie.nome}`}
+        />
+      }
     >
       {temExemplo(dossie) ? (
         // ANTES DOS NÚMEROS, e não depois: quem vê o gráfico primeiro já tirou
@@ -232,6 +271,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           ficha={evolucao.ficha}
         />
         <Painel bloco={evolucao} fatos={dossie.fatos} />
+        <NotaDeFonte ficha={evolucao.ficha} />
 
         {dossie.fatos.length ? (
           <ul style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
@@ -293,27 +333,31 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
 /* -- o roteador de tipos ------------------------------------------------------- */
 
 function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }) {
-  const dados = bloco.dados as Record<string, never>[];
+  // `unknown`, e não `never`. O payload de cada tipo de gráfico tem um formato
+  // diferente, e dizer ao TypeScript que campo nenhum existe (`never`) o faz
+  // parar de conferir qualquer coisa — um `any` com outro nome. A conversão
+  // acontece na fronteira, uma vez, com `comoNumero`/`comoTexto` à vista.
+  const dados = bloco.dados;
 
   if (bloco.tipo === 'barras_empilhadas') {
     const porMes = new Map(fatos.map((fato) => [fato.mes, fato]));
     return (
       <BarrasEmpilhadas
         colunas={dados.map((linha) => {
-          const semClassificacao = Number(linha.sem_classificacao ?? 0);
+          const semClassificacao = comoNumero(linha.sem_classificacao ?? 0);
           const classificadas =
-            Number(linha.positivo ?? 0) + Number(linha.neutro ?? 0) + Number(linha.negativo ?? 0);
+            comoNumero(linha.positivo ?? 0) + comoNumero(linha.neutro ?? 0) + comoNumero(linha.negativo ?? 0);
           const [pos, neu, neg] = bloco.legenda.length
             ? bloco.legenda
             : ['Positivo', 'Neutro', 'Negativo'];
           return {
-            mes: String(linha.mes),
+            mes: comoTexto(linha.mes),
             total: classificadas + semClassificacao,
             semBase: Boolean(linha.sem_base),
             segmentos: [
-              { chave: 'pos', rotulo: pos, total: Number(linha.positivo ?? 0), cor: 'var(--ok-fg)' },
-              { chave: 'neu', rotulo: neu, total: Number(linha.neutro ?? 0), cor: 'var(--cinza-1)' },
-              { chave: 'neg', rotulo: neg, total: Number(linha.negativo ?? 0), cor: 'var(--erro-fg)' },
+              { chave: 'pos', rotulo: pos, total: comoNumero(linha.positivo ?? 0), cor: 'var(--ok-fg)' },
+              { chave: 'neu', rotulo: neu, total: comoNumero(linha.neutro ?? 0), cor: 'var(--cinza-1)' },
+              { chave: 'neg', rotulo: neg, total: comoNumero(linha.negativo ?? 0), cor: 'var(--erro-fg)' },
               // O VOLUME QUE NINGUÉM LEU. Uma faixa cinza-azulada, distinta do
               // neutro: neutro é leitura, isto é ausência de leitura. Some
               // sozinha quando o total é zero.
@@ -339,13 +383,16 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <BarrasPareadas
         meses={dados.map((linha) => ({
-          mes: String(linha.mes),
-          recebidas: Number(linha.recebidas ?? 0),
+          mes: comoTexto(linha.mes),
+          recebidas: comoNumero(linha.recebidas ?? 0),
           respondidas: linha.respondidas === null || linha.respondidas === undefined
             ? null
-            : Number(linha.respondidas),
+            : comoNumero(linha.respondidas),
           sem_base: Boolean(linha.sem_base),
         }))}
+        fatos={Object.fromEntries(
+          fatos.map((fato) => [fato.mes, { texto: fato.texto, efeito: fato.efeito }]),
+        )}
       />
     );
   }
@@ -354,7 +401,7 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <LinhaDoTempo
         meses={dados.map((linha) => ({
-          mes: String(linha.mes),
+          mes: comoTexto(linha.mes),
           eventos: (linha.eventos ?? []) as { texto: string; efeito: string }[],
         }))}
       />
@@ -365,10 +412,11 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <BarrasCemPorCento
         itens={dados.map((linha) => ({
-          rotulo: String(linha.rotulo),
-          positivo: Number(linha.positivo ?? 0),
-          neutro: Number(linha.neutro ?? 0),
-          negativo: Number(linha.negativo ?? 0),
+          rotulo: comoTexto(linha.rotulo),
+          positivo: comoNumero(linha.positivo ?? 0),
+          neutro: comoNumero(linha.neutro ?? 0),
+          negativo: comoNumero(linha.negativo ?? 0),
+          sem_classificacao: comoNumero(linha.sem_classificacao ?? 0),
           sem_base: Boolean(linha.sem_base),
         }))}
         legenda={bloco.legenda.length ? bloco.legenda : undefined}
@@ -380,14 +428,14 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <Ranking
         itens={dados.map((linha) => ({
-          chave: String(linha.rotulo),
-          rotulo: String(linha.rotulo),
-          total: Number(linha.valor ?? 0),
+          chave: comoTexto(linha.rotulo),
+          rotulo: comoTexto(linha.rotulo),
+          total: comoNumero(linha.valor ?? 0),
           cor: 'var(--azul-mar)',
         }))}
         vazio="Nada registrado no período."
         detalheAoPassarMouse={(chave) => {
-          const linha = dados.find((item) => String(item.rotulo) === chave);
+          const linha = dados.find((item) => comoTexto(item.rotulo) === chave);
           const detalhe = linha?.detalhe as string | undefined;
           return detalhe ? [{ rotulo: 'Pico', valor: detalhe }] : [];
         }}
@@ -399,8 +447,8 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <EscalaDeCinco
         itens={dados.map((linha) => ({
-          rotulo: String(linha.rotulo),
-          nota: Number(linha.nota ?? 0),
+          rotulo: comoTexto(linha.rotulo),
+          nota: comoNumero(linha.nota ?? 0),
           detalhe: (linha.detalhe as string | null) ?? null,
         }))}
         vazio="Nenhum estudo de percepção cobre este mês."
@@ -412,14 +460,14 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     return (
       <MatrizDePrioridade
         linhas={dados.map((linha) => ({
-          nome: String(linha.nome),
+          nome: comoTexto(linha.nome),
           veiculo: (linha.veiculo as string | null) ?? null,
-          relevancia: Number(linha.relevancia ?? 0),
-          exposicao: Number(linha.exposicao ?? 0),
-          proximidade: Number(linha.proximidade ?? 0),
-          pontos: Number(linha.pontos ?? 0),
-          prioridade: Number(linha.prioridade ?? 4),
-          cadencia: String(linha.cadencia ?? ''),
+          relevancia: comoNumero(linha.relevancia ?? 0),
+          exposicao: comoNumero(linha.exposicao ?? 0),
+          proximidade: comoNumero(linha.proximidade ?? 0),
+          pontos: comoNumero(linha.pontos ?? 0),
+          prioridade: comoNumero(linha.prioridade ?? 4),
+          cadencia: comoTexto(linha.cadencia ?? ''),
         }))}
       />
     );
@@ -438,77 +486,6 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
   );
 }
 
-/** As colunas de cada tabela. O `tipo` é genérico; o que cada tabela mostra é
- *  decisão de leitura, e mora aqui. */
-function colunasDaTabela(bloco: Bloco): ColunaDaTabela[] {
-  if (bloco.titulo.toLowerCase().includes('rating')) {
-    return [
-      { chave: 'agencia', titulo: 'Agência' },
-      { chave: 'data', titulo: 'Quando', formatar: (valor) => mesCurto(String(valor)) },
-      { chave: 'de', titulo: 'De' },
-      {
-        chave: 'para',
-        titulo: 'Para',
-        // Rebaixamento em vermelho: o efeito já vem classificado do servidor,
-        // e repetir a regra aqui criaria uma segunda definição de "piorou".
-        destaque: (linha) => (linha.efeito === 'pressiona' ? 'alerta' : null),
-      },
-      {
-        chave: 'perspectiva',
-        titulo: 'Perspectiva',
-        destaque: (linha) => (linha.perspectiva === 'negativa' ? 'alerta' : null),
-      },
-    ];
-  }
-
-  // Teor das mensagens: mês × categoria, com a reclamação destacada quando
-  // passa de metade do que chegou.
-  const categorias = new Set<string>();
-  for (const linha of bloco.dados) {
-    for (const chave of Object.keys(linha)) {
-      if (!['mes', 'total', 'acionaveis'].includes(chave)) categorias.add(chave);
-    }
-  }
-  const principais = ['Reclamação', 'Dúvida', 'Elogio', 'Informação'].filter((c) =>
-    categorias.has(c),
-  );
-
-  return [
-    { chave: 'mes', titulo: 'Mês', formatar: (valor) => mesCurto(String(valor)) },
-    ...principais.map((categoria) => ({
-      chave: categoria,
-      titulo: categoria,
-      alinhamento: 'direita' as const,
-      formatar: (valor: unknown, linha: Record<string, unknown>) => {
-        const total = Number(linha.total ?? 0);
-        const numeroDaCelula = Number(valor ?? 0);
-        if (!total) return String(numeroDaCelula);
-        return `${numero(numeroDaCelula)} · ${Math.round((numeroDaCelula / total) * 100)}%`;
-      },
-      destaque: (linha: Record<string, unknown>) => {
-        if (categoria !== 'Reclamação') return null;
-        const total = Number(linha.total ?? 0);
-        return total && Number(linha[categoria] ?? 0) / total >= 0.5 ? ('alerta' as const) : null;
-      },
-    })),
-    {
-      chave: 'sem_classificacao',
-      titulo: 'Sem motivo',
-      alinhamento: 'direita' as const,
-      formatar: (valor: unknown) => (Number(valor ?? 0) ? numero(Number(valor)) : '—'),
-    },
-    {
-      chave: 'acionaveis',
-      titulo: 'Acionáveis',
-      alinhamento: 'direita' as const,
-      formatar: (valor, linha) => {
-        const total = Number(linha.total ?? 0);
-        return total ? `${numero(Number(valor ?? 0))} de ${numero(total)}` : '—';
-      },
-    },
-  ];
-}
-
 /* -- 5. os encaminhamentos ------------------------------------------------------ */
 
 function Encaminhamentos({ dossie }: { dossie: Dossie }) {
@@ -518,6 +495,12 @@ function Encaminhamentos({ dossie }: { dossie: Dossie }) {
     <Secao
       titulo="Encaminhamentos"
       subtitulo="O que está aberto continua aqui, venha do mês que vier — some por conclusão, nunca por passagem do tempo."
+      acao={
+        <BotaoDeProcedencia
+          ficha={dossie.ficha_dos_encaminhamentos}
+          titulo="Encaminhamentos"
+        />
+      }
     >
       <Cartao>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
