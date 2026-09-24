@@ -151,6 +151,9 @@ export function Biblioteca() {
   const [aberta, definirAberta] = useState<string | null>(null);
   const [versoes, definirVersoes] = useState<VersaoDaReferencia[]>([]);
   const campoDeArquivo = useRef<HTMLInputElement>(null);
+  //: Qual histórico foi pedido por último — quem decide se a resposta que
+  //: chegou ainda interessa.
+  const pedida = useRef<string | null>(null);
 
   const executar = async (acao: () => Promise<unknown>, depois: () => void) => {
     definirSalvando(true);
@@ -194,10 +197,43 @@ export function Biblioteca() {
     Boolean(nova.resumo.trim()) &&
     Boolean(conteudoNovo.trim());
 
+  /** Abre o histórico de uma referência, ou fecha o que estava aberto.
+   *
+   *  DUAS COISAS QUE FALTAVAM, e as duas se manifestavam como "não puxou as
+   *  versões":
+   *
+   *    o erro era engolido    sem `catch`, uma sessão vencida ou um 5xx
+   *                           deixavam o painel abrir vazio, sem mensagem
+   *                           nenhuma — a pessoa via um histórico em branco e
+   *                           concluía que o paper não tinha versões
+   *    a lista era de outro   `versoes` é um estado só. Entre abrir a
+   *                           referência B e a resposta chegar, o painel dela
+   *                           mostrava as versões de A — e continuava
+   *                           mostrando, se a busca falhasse. Pior que vazio:
+   *                           é o histórico do documento errado
+   */
   const abrirHistorico = async (referencia: Referencia) => {
-    if (aberta === referencia.id) return definirAberta(null);
+    if (aberta === referencia.id) {
+      pedida.current = null;
+      return definirAberta(null);
+    }
+    pedida.current = referencia.id;
     definirAberta(referencia.id);
-    definirVersoes(await listarVersoesDaReferencia(referencia.id));
+    definirVersoes([]);
+    definirErro(null);
+    try {
+      const encontradas = await listarVersoesDaReferencia(referencia.id);
+      // A PESSOA PODE TER TROCADO DE REFERÊNCIA enquanto isto vinha. Gravar
+      // assim mesmo encheria o painel aberto com o histórico do anterior. Em
+      // `ref`, e não lendo o estado: o valor capturado no closure é o de antes
+      // do clique, e um updater com efeito dentro roda duas vezes em modo
+      // estrito.
+      if (pedida.current === referencia.id) definirVersoes(encontradas);
+    } catch (e) {
+      if (pedida.current !== referencia.id) return;
+      definirErro((e as Error).message);
+      definirAberta(null);
+    }
   };
 
   return (
