@@ -38,14 +38,16 @@ export function JornadaDoIndice({
   serie,
   mes,
   comparada,
+  nomeDaComparada = '',
   aoEscolherMes,
 }: {
   serie: PontoDaSerie[];
   mes: string;
   comparada: string | null;
+  nomeDaComparada?: string;
   aoEscolherMes: (mes: string) => void;
 }) {
-  const jornada = jornadaDoIndice(serie, mes, comparada);
+  const jornada = jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
   const [destacado, definirDestacado] = useState<string | null>(null);
   if (!jornada.pontos.length) {
     return (
@@ -221,12 +223,11 @@ export function JornadaDoIndice({
 
         {jornada.fimDaLente ? (
           <span
-            className="tabular"
+            className="tabular jornada__fim-da-lente"
             style={{
               position: 'absolute',
               left: `${jornada.fimDaLente.esquerda}%`,
               top: `${jornada.fimDaLente.topo}%`,
-              transform: 'translate(12px, -50%)',
               fontSize: 12,
               fontWeight: 700,
               color: 'var(--cinza-3)',
@@ -377,8 +378,13 @@ function Ponto({
         width: raio,
         height: raio,
         borderRadius: '50%',
-        background: ponto.cor,
-        border: `2.5px solid ${ponto.selecionado ? 'var(--cinza-4)' : 'var(--branco)'}`,
+        // OCO QUANDO O MÊS É PARCIAL. Ele foi medido por menos de quatro
+        // lentes: o número é legítimo pela fórmula e não se compara com os
+        // outros, e um ponto cheio o afirmaria com a mesma força.
+        background: ponto.parcial ? 'var(--branco)' : ponto.cor,
+        border: ponto.parcial
+          ? `2.5px dashed ${ponto.cor}`
+          : `2.5px solid ${ponto.selecionado ? 'var(--cinza-4)' : 'var(--branco)'}`,
         // O ANEL SÓ APARECE NO DESTAQUE, e some junto: um contorno permanente
         // em dez pontos vira poluição, e o mês escolhido deixa de se distinguir
         // dos outros.
@@ -389,28 +395,22 @@ function Ponto({
       }}
     >
       <span
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: `translate(-50%, ${ponto.acima ? 'calc(-100% - 16px)' : 'calc(0% + 16px)'})`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 1,
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
-        }}
+        className={`jornada__rotulo jornada__rotulo--${ponto.acima ? 'acima' : 'abaixo'}`}
       >
-        <span
-          className="tabular"
-          style={{ fontSize: 15, fontWeight: 700, color: ponto.corDoTexto }}
-        >
+        <span className="tabular jornada__nota" style={{ color: ponto.corDoTexto }}>
           {ponto.isr}
         </span>
         {ponto.tag ? (
           <span className="kicker" style={{ color: ponto.corDaTag }}>
             {ponto.tag}
+          </span>
+        ) : null}
+        {/* O VALOR SAIU DO EIXO, que é regido pelos meses comparáveis. O ponto
+            fica na borda e isto diz que ele está além dela — desenhá-lo no y
+            real o jogaria por cima das colunas. */}
+        {ponto.foraDaEscala ? (
+          <span className="kicker" style={{ color: 'var(--cinza-2)' }}>
+            fora da escala
           </span>
         ) : null}
       </span>

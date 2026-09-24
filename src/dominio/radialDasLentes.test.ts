@@ -119,9 +119,15 @@ describe('fracoesDe', () => {
     expect([...fracoesDe(semPeso, true).values()].map(grau)).toEqual([72, 72, 72, 72, 72]);
   });
 
-  it('com todas as lentes fora, ninguém estoura', () => {
+  it('com todas as lentes fora, o círculo se divide INTEIRO', () => {
+    // A fatia fixa existe para uma lente ausente não sumir do meio das outras.
+    // Sem "outras", cinco fatias de 6% desenhariam um terço de círculo e o
+    // resto vazio — que se lê como gráfico quebrado, e não como "nada foi
+    // medido".
     const todasFora = JUNHO.map((l) => ({ ...l, score: null }));
-    expect([...fracoesDe(todasFora, true).values()]).toEqual([0.06, 0.06, 0.06, 0.06, 0.06]);
+    const fracoes = [...fracoesDe(todasFora, true).values()];
+    expect(fracoes).toEqual([0.2, 0.2, 0.2, 0.2, 0.2]);
+    expect(fracoes.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10);
   });
 });
 
@@ -211,9 +217,10 @@ describe('radialDasLentes', () => {
     expect(fora?.descricao).toContain('fora do cálculo');
   });
 
-  it('a descrição diz nota e peso, para quem ouve a tela', () => {
+  it('a descrição diz nota, FAIXA e peso, para quem ouve a tela', () => {
+    // A §7 pede a faixa: quem ouve não vê a cor que a diria.
     const radial = radialDasLentes(JUNHO);
-    expect(radial.setores[0].descricao).toBe('Imprensa: nota 70, peso 30%');
+    expect(radial.setores[0].descricao).toBe('Imprensa: nota 70, faixa Sólido, peso 30%');
   });
 
   it('desenha os quatro anéis e escreve só dois', () => {

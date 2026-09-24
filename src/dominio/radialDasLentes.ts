@@ -15,7 +15,7 @@
  *  servidor; este arquivo só decide onde cada um fica na tela.
  */
 
-import { corDaFaixa, corDeAreaDaFaixa } from '@/dominio/score';
+import { corDaFaixa, corDeAreaDaFaixa, rotuloDaFaixa } from '@/dominio/score';
 import type { LenteDoScore } from '@/dominio/score';
 
 /** O sistema de coordenadas do SVG, igual ao do protótipo.
@@ -162,8 +162,12 @@ export function fracoesDe(
 
   return new Map(
     lentes.map((lente) => {
+      // COM TODAS FORA, O CÍRCULO SE DIVIDE INTEIRO. A fatia fixa existe para
+      // uma lente ausente não sumir do meio das outras; sem "outras", cinco
+      // fatias de 6% desenhariam um terço de círculo e o resto vazio — que se
+      // lê como gráfico quebrado, e não como "nada foi medido".
+      if (!ativas.length) return [lente.codigo, 1 / lentes.length];
       if (lente.score === null) return [lente.codigo, FATIA_FORA];
-      if (!ativas.length) return [lente.codigo, 0];
       // SEM PESO NENHUM CAI NAS FATIAS IGUAIS, e não em divisão por zero: uma
       // calibração que zera todos os pesos é improvável, mas um gráfico que
       // some é pior do que um gráfico sem ponderação.
@@ -207,7 +211,8 @@ export function radialDasLentes(lentes: LenteDoScore[], porPeso = true): Radial 
       notaEscrita: ativa ? String(lente.score) : 'fora',
       ativa,
       descricao: ativa
-        ? `${lente.nome}: nota ${lente.score}, peso ${lente.peso_efetivo}%`
+        ? `${lente.nome}: nota ${lente.score}, faixa ${rotuloDaFaixa(lente.score)}, ` +
+          `peso ${lente.peso_efetivo}%`
         : `${lente.nome}: fora do cálculo`,
     };
   });

@@ -262,6 +262,9 @@ function VisaoGeral({
   // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
   const [comparada, definirComparada] = useState<string | null>(null);
   const jornada = jornadaDoIndice(serie, indice.mes, comparada);
+  const mesesParciais = serie.filter(
+    (ponto) => ponto.isr !== null && ponto.lentes < 4,
+  ).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -356,6 +359,9 @@ function VisaoGeral({
             serie={serie}
             mes={indice.mes}
             comparada={comparada}
+            nomeDaComparada={
+              indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
+            }
             aoEscolherMes={aoTrocarMes}
           />
           <div
@@ -380,6 +386,21 @@ function VisaoGeral({
                 {rotulo}
               </span>
             ))}
+            {mesesParciais ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span
+                  style={{
+                    width: 11,
+                    height: 11,
+                    borderRadius: '50%',
+                    border: '2px dashed var(--cinza-2)',
+                  }}
+                />
+                {mesesParciais === 1
+                  ? '1 mês medido por menos de 4 lentes — fora da escala do eixo'
+                  : `${mesesParciais} meses medidos por menos de 4 lentes — fora da escala do eixo`}
+              </span>
+            ) : null}
             <span>Clique num mês para ver a lente e o radial daquele mês.</span>
           </div>
         </Cartao>

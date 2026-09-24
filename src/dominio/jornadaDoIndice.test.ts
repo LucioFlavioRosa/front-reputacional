@@ -102,6 +102,33 @@ describe('curvaPor', () => {
     expect(caminho).toContain('50.0 20.0');
   });
 
+  it('os controles da Bézier saem da tangente do vizinho', () => {
+    // As asserções de início e fim passariam com QUALQUER fórmula que emitisse
+    // um C por trecho. O que faz a curva ser suave, e não um zigue-zague
+    // arredondado, é o controle sair a um sexto da distância entre os vizinhos
+    // do ponto — e é isso que este teste trava.
+    const caminho = curvaPor([
+      [0, 0],
+      [60, 0],
+      [120, 0],
+    ]);
+    // Numa reta horizontal todo controle fica na mesma altura, e a distância
+    // dele sai da DIFERENÇA ENTRE OS VIZINHOS do ponto — por isso o controle
+    // que olha para um extremo espelhado (10 de 60) é mais curto que o que
+    // olha para dois vizinhos reais (20 de 120).
+    expect(caminho).toBe('M0.0 0.0C10.0 0.0 40.0 0.0 60.0 0.0C80.0 0.0 110.0 0.0 120.0 0.0');
+  });
+
+  it('a ponta repete o próprio ponto, e não inventa um vizinho', () => {
+    // Sem vizinho de fora, o Catmull-Rom espelha a ponta. Inventar um ponto
+    // além dela faria a curva sair da tela antes do primeiro mês.
+    const caminho = curvaPor([
+      [0, 100],
+      [60, 0],
+    ]);
+    expect(caminho).toBe('M0.0 100.0C10.0 83.3 50.0 16.7 60.0 0.0');
+  });
+
   it('um ponto só não vira curva', () => {
     expect(curvaPor([[10, 10]])).toBe('M10.0 10.0');
   });
@@ -195,6 +222,41 @@ describe('jornadaDoIndice', () => {
     expect(jornada.pontos[1].acima).toBe(false);
   });
 
+  it('as pontas seguem a MESMA regra do meio, com um vizinho só', () => {
+    // O protótipo compara o primeiro ponto com o sinal trocado em relação ao
+    // último: lá, um primeiro ponto mais ALTO que o vizinho manda o rótulo para
+    // baixo, para dentro da curva que desce. Aqui, mais alto sobe — nas duas
+    // pontas, como no meio.
+    const comeceAlto = [
+      ponto({ mes: '2026-01', isr: 65 }),
+      ponto({ mes: '2026-02', isr: 55 }),
+      ponto({ mes: '2026-03', isr: 60 }),
+    ];
+    expect(jornadaDoIndice(comeceAlto, '2026-01').pontos[0].acima).toBe(true);
+
+    const comeceBaixo = [
+      ponto({ mes: '2026-01', isr: 55 }),
+      ponto({ mes: '2026-02', isr: 65 }),
+      ponto({ mes: '2026-03', isr: 60 }),
+    ];
+    expect(jornadaDoIndice(comeceBaixo, '2026-01').pontos[0].acima).toBe(false);
+
+    // E a última ponta, espelhada.
+    const termineBaixo = [
+      ponto({ mes: '2026-01', isr: 60 }),
+      ponto({ mes: '2026-02', isr: 65 }),
+      ponto({ mes: '2026-03', isr: 55 }),
+    ];
+    expect(jornadaDoIndice(termineBaixo, '2026-01').pontos[2].acima).toBe(false);
+  });
+
+  it('a descrição diz a faixa, e não só o número', () => {
+    // A §6 pede mês, índice, faixa e fato: quem ouve a tela não vê a cor que
+    // diria em que território aquele 36 caiu.
+    const jornada = jornadaDoIndice(SEMESTRE, '2026-06');
+    expect(jornada.pontos[5].descricao).toContain('faixa Estável');
+  });
+
   it('o vale que não cabe embaixo sobe, mesmo sendo vale', () => {
     // Março (36) é o fundo do semestre, e o rótulo dele encostaria na faixa
     // dos meses: a regra de espaço vence a do relevo.
@@ -259,7 +321,9 @@ describe('jornadaDoIndice', () => {
       i === 2 ? { ...p, fato: { texto: 'Atraso das DFs', efeito: 'pressiona' } } : p,
     );
     const jornada = jornadaDoIndice(comFato, '2026-06');
-    expect(jornada.pontos[2].descricao).toBe('março: índice 36. Atraso das DFs');
+    expect(jornada.pontos[2].descricao).toBe(
+      'março: índice 36, faixa Crítico. Atraso das DFs',
+    );
   });
 
   it('sem lente comparada não desenha a curva tracejada', () => {

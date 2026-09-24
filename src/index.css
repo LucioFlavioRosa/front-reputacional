@@ -489,3 +489,45 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* O rótulo no fim da curva da lente comparada fica FORA do último ponto, à
+   direita. Abaixo de 860px a margem direita some, e ele vazaria o cartão: aí
+   ele vira para dentro. */
+.jornada__fim-da-lente { transform: translate(12px, -50%); }
+@media (max-width: 860px) {
+  .jornada__fim-da-lente { transform: translate(calc(-100% - 12px), -50%); }
+}
+
+/* O rótulo do ponto ENCOLHE JUNTO com o gráfico, e é isso que torna válida a
+   constante de espaço do domínio (`ALTURA_DO_ROTULO`, medida no viewBox). Em
+   tamanho fixo, a mesma constante reservaria 57px no gráfico grande e 37px no
+   pequeno — e no pequeno o rótulo invadia a faixa dos meses. */
+.jornada__rotulo {
+  --jornada-afasta: 16px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.jornada__rotulo--acima { transform: translate(-50%, calc(-100% - var(--jornada-afasta))); }
+.jornada__rotulo--abaixo { transform: translate(-50%, var(--jornada-afasta)); }
+.jornada__nota { font-size: 15px; font-weight: 700; }
+
+@media (max-width: 1040px) {
+  .jornada__rotulo { --jornada-afasta: 14px; }
+  .jornada__nota { font-size: 14px; }
+}
+@media (max-width: 860px) {
+  .jornada__rotulo { --jornada-afasta: 12px; }
+  .jornada__nota { font-size: 13px; }
+  .jornada__rotulo .kicker { font-size: 9px; }
+}
+@media (max-width: 560px) {
+  .jornada__rotulo { --jornada-afasta: 10px; }
+  .jornada__nota { font-size: 12px; }
+}

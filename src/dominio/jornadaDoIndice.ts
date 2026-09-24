@@ -19,7 +19,7 @@
  *  chegam do servidor; este arquivo decide onde cada um cai na tela.
  */
 
-import { corDaFaixa, corDeAreaDaFaixa } from '@/dominio/score';
+import { corDaFaixa, corDeAreaDaFaixa, rotuloDaFaixa } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 
 /** O sistema de coordenadas do SVG, igual ao do protótipo. */
@@ -27,7 +27,18 @@ export const VB = { largura: 1000, altura: 330 } as const;
 /** Folga no topo, e a faixa de baixo onde moram os nomes dos meses. */
 const PAD_TOPO = 14;
 const PAD_BASE = 34;
-/** A altura que o rótulo de um ponto ocupa, em unidades do viewBox. */
+/** A altura que o rótulo de um ponto ocupa, em unidades do viewBox.
+ *
+ *  ESTA CONSTANTE SÓ VALE PORQUE O RÓTULO ENCOLHE JUNTO com o gráfico. Ela é
+ *  medida no viewBox, que tem 330 de altura; o gráfico é desenhado de 260 a
+ *  170px conforme a largura da tela. Com o rótulo em tamanho fixo, 72 unidades
+ *  valeriam 57px no gráfico grande e 37px no pequeno — e no pequeno o rótulo
+ *  era autorizado a descer e invadia a faixa dos meses.
+ *
+ *  Em `index.css`, `.jornada__rotulo` reduz fonte e afastamento nos mesmos
+ *  breakpoints, mantendo a proporção. REFORÇAR A CONSTANTE ERA O CONSERTO
+ *  ERRADO: com 96 quase nenhum rótulo passava a caber embaixo, e a regra de
+ *  relevo — pico acima, vale abaixo — deixava de valer em qualquer tela. */
 const ALTURA_DO_ROTULO = 72;
 
 /** A amplitude mínima do eixo.
@@ -73,8 +84,17 @@ export interface PontoDaJornada {
   /** O rótulo vai acima do ponto, ou abaixo. */
   acima: boolean;
   selecionado: boolean;
+  /** Medido por menos de quatro lentes — legítimo pela fórmula e enganoso na
+   *  curva, porque é o score de uma lente desenhado como se fosse o da
+   *  companhia. */
+  parcial: boolean;
+  /** O valor real ficou fora do eixo, que é regido pelos meses completos. */
+  foraDaEscala: boolean;
   descricao: string;
 }
+
+/** Quantas lentes um mês precisa ter para reger a escala. */
+const LENTES_PARA_SER_COMPLETO = 4;
 
 export interface ColunaDoMes {
   mes: string;
@@ -241,6 +261,7 @@ export function jornadaDoIndice(
   serie: PontoDaSerie[],
   mesSelecionado: string,
   comparada: string | null = null,
+  nomeDaComparada = '',
 ): Jornada {
   const medidos = serie.filter((ponto) => ponto.isr !== null);
   const total = medidos.length;
@@ -275,8 +296,20 @@ export function jornadaDoIndice(
   // ponto solto que ninguém liga a lente nenhuma.
   const temLente = daLente.length >= 2;
 
+  // O EIXO É REGIDO PELOS MESES COMPARÁVEIS. Um mês medido por uma lente só
+  // produz um ISR legítimo pela fórmula e enganoso na curva, e deixá-lo mandar
+  // na escala espremia o período inteiro: um janeiro de 2025 com 100 esticava o
+  // teto em vinte pontos e achatava 2026 num terço da altura.
+  //
+  // ELE CONTINUA DESENHADO, e é isso que separa esta regra de esconder o dado:
+  // o ponto aparece, marcado como parcial, e quando cai fora do eixo vai para a
+  // borda dizendo que saiu.
+  const completos = medidos.filter((ponto) => ponto.lentes >= LENTES_PARA_SER_COMPLETO);
+  const regem = (completos.length ? completos : medidos).map(
+    (ponto) => ponto.isr as number,
+  );
   const { piso, teto } = dominioDe([
-    ...notas,
+    ...regem,
     ...(temLente ? daLente.map((par) => par.nota) : []),
   ]);
   const alturaUtil = VB.altura - PAD_TOPO - PAD_BASE;
@@ -307,18 +340,38 @@ export function jornadaDoIndice(
 
   const pontos = medidos.map((ponto, i): PontoDaJornada => {
     const isr = ponto.isr as number;
-    const anterior = notas[i - 1] ?? isr;
-    const seguinte = notas[i + 1] ?? isr;
+    const anterior = notas[i - 1];
+    const seguinte = notas[i + 1];
     // PICO LOCAL VAI PARA CIMA: o rótulo acompanha o relevo, e não uma regra
     // fixa — abaixo de um pico ele cairia dentro da própria curva.
-    const preferaAcima = isr >= (anterior + seguinte) / 2;
+    //
+    // AS PONTAS OLHAM PARA O ÚNICO VIZINHO QUE TÊM: mais alto que ele, o rótulo
+    // sobe; mais baixo, desce. É a mesma regra do meio, com um vizinho só.
+    //
+    // AQUI EU DIVIRJO DA REFERÊNCIA, de propósito. O `evolVals` do protótipo usa
+    // `v <= serie[1]` no primeiro ponto e `v >= serie[n-2]` no último — as duas
+    // pontas com o sinal trocado entre si, e a primeira contra a regra do meio.
+    // Numa série que só cai, aquilo manda o rótulo do primeiro ponto para
+    // baixo, para dentro da curva que desce. Copiar o sinal invertido seria
+    // reproduzir um engano, e não obedecer a uma decisão.
+    const preferaAcima =
+      anterior === undefined
+        ? isr >= (seguinte ?? isr)
+        : seguinte === undefined
+          ? isr >= anterior
+          : isr >= (anterior + seguinte) / 2;
     const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE;
     const cabeAcima = y(isr) - ALTURA_DO_ROTULO >= 0;
     const efeito = ponto.fato?.efeito ?? '';
+    const parcial = ponto.lentes < LENTES_PARA_SER_COMPLETO;
+    const alturaCrua = (y(isr) / VB.altura) * 100;
     return {
       mes: ponto.mes,
       esquerda: (x(i) / VB.largura) * 100,
-      topo: (y(isr) / VB.altura) * 100,
+      // PRESO À BORDA quando o valor sai do eixo: o número continua escrito ao
+      // lado, e o ponto na borda diz que ele está além dela. Desenhá-lo no y
+      // real o jogaria por cima das colunas, fora do gráfico.
+      topo: Math.max(0, Math.min(100, alturaCrua)),
       cx: x(i),
       cy: y(isr),
       isr,
@@ -331,8 +384,11 @@ export function jornadaDoIndice(
       corDaTag: COR_DO_EFEITO[efeito] ?? 'transparent',
       acima: preferaAcima ? cabeAcima || !cabeAbaixo : !cabeAbaixo,
       selecionado: ponto.mes === mesSelecionado,
+      parcial,
+      foraDaEscala: alturaCrua < 0 || alturaCrua > 100,
       descricao:
-        `${mesPorExtenso(ponto.mes)}: índice ${isr}` +
+        `${mesPorExtenso(ponto.mes)}: índice ${isr}, faixa ${rotuloDaFaixa(isr)}` +
+        (parcial ? `, medido por ${ponto.lentes} de 5 lentes` : '') +
         (ponto.fato ? `. ${ponto.fato.texto}` : '. Sem fato de destaque registrado.'),
     };
   });
@@ -374,7 +430,10 @@ export function jornadaDoIndice(
       ? {
           esquerda: (x(daLente[daLente.length - 1].i) / VB.largura) * 100,
           topo: (y(daLente[daLente.length - 1].nota) / VB.altura) * 100,
-          texto: String(daLente[daLente.length - 1].nota),
+          // O NOME JUNTO DA NOTA: um número solto no fim de uma curva
+          // tracejada não diz de quem ele é, e com cinco lentes possíveis a
+          // pessoa teria de lembrar qual chip apertou.
+          texto: `${nomeDaComparada} ${daLente[daLente.length - 1].nota}`.trim(),
         }
       : null,
   };
