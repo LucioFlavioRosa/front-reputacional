@@ -19,7 +19,13 @@
  *  chegam do servidor; este arquivo decide onde cada um cai na tela.
  */
 
-import { corDaFaixa, corDeAreaDaFaixa, rotuloDaFaixa } from '@/dominio/score';
+import { nomeDoMes } from '@/dominio/calendarioMensal';
+import {
+  COR_DO_EFEITO,
+  corDaFaixa,
+  corDeAreaDaFaixa,
+  rotuloDaFaixa,
+} from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 
 /** O sistema de coordenadas do SVG, igual ao do protótipo. */
@@ -123,25 +129,14 @@ export interface Jornada {
   fimDaLente: { esquerda: number; topo: number; texto: string } | null;
 }
 
-const MES_POR_EXTENSO = [
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro',
-];
-
-/** "2026-06" → "junho". Devolve a própria chave quando não reconhece. */
+/** "2026-06" → "junho". Devolve a própria chave quando não reconhece.
+ *
+ *  A LISTA DE MESES NÃO MORA AQUI: `calendarioMensal` já a tinha, e uma segunda
+ *  cópia é como "março" vira "marco" em uma tela só. O que este embrulho
+ *  acrescenta é a saída para uma chave que não se lê — desenhar `undefined` no
+ *  eixo é pior do que desenhar a chave crua. */
 export function mesPorExtenso(chave: string): string {
-  const indice = Number(chave.split('-')[1]) - 1;
-  return MES_POR_EXTENSO[indice] ?? chave;
+  return nomeDoMes(chave) ?? chave;
 }
 
 /** As cinco faixas de fundo, com a cor clara e a escura do nome. */
@@ -165,16 +160,17 @@ const FAIXAS_DE_FUNDO: {
   { de: 85, ate: 100, fundo: 'var(--turquesa-claro)', cor: 'var(--ok-fg)', rotulo: 'Referência' },
 ];
 
-const ROTULO_DO_EFEITO: Record<string, string> = {
+/** A etiqueta curta sob o ponto — e NÃO o rótulo do chip.
+ *
+ *  São dois textos para o mesmo campo, e a diferença é de lugar: o chip do
+ *  dossiê tem largura e diz "Pressiona"; aqui cabem seis caracteres embaixo de
+ *  um ponto, e o substantivo — "pressão" — diz a mesma coisa em menos espaço.
+ *  O nome deste mapa diz isso, para ninguém o confundir com `ROTULO_DO_EFEITO`
+ *  e acabar com dois vocabulários para o mesmo dado. */
+const TAG_DO_EFEITO: Record<string, string> = {
   pressiona: 'pressão',
   sustenta: 'reforço',
   misto: 'misto',
-};
-
-const COR_DO_EFEITO: Record<string, string> = {
-  pressiona: 'var(--erro-fg)',
-  sustenta: 'var(--ok-fg)',
-  misto: 'var(--cinza-3)',
 };
 
 const FILETE_DO_EFEITO: Record<string, string> = {
@@ -380,7 +376,7 @@ export function jornadaDoIndice(
       // precisa ser lido. Ver `FAIXAS` em `dominio/score`.
       cor: corDeAreaDaFaixa(isr),
       corDoTexto: corDaFaixa(isr),
-      tag: ROTULO_DO_EFEITO[efeito] ?? '',
+      tag: TAG_DO_EFEITO[efeito] ?? '',
       corDaTag: COR_DO_EFEITO[efeito] ?? 'transparent',
       acima: preferaAcima ? cabeAcima || !cabeAbaixo : !cabeAbaixo,
       selecionado: ponto.mes === mesSelecionado,

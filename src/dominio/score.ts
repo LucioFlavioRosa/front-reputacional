@@ -356,10 +356,26 @@ export const ROTULO_DA_REGUA_DE_ENGAJAMENTO: Record<string, string> = {
   cargo: 'cargo do autor — influência institucional (só Bites)',
 };
 
+/** O EFEITO DE UM FATO sobre a reputação, num lugar só.
+ *
+ *  ESTAVA EM TRÊS. `dossie.ts` tinha uma cópia idêntica deste rótulo, e
+ *  `jornadaDoIndice.ts` tinha uma terceira com o cinza do "misto" diferente —
+ *  o mesmo conceito pintado de dois cinzas em duas telas, que ninguém
+ *  encontraria olhando uma de cada vez.
+ *
+ *  O CAMPO É O MESMO no banco: `fato_mes.efeito` e `evento_mercado.efeito`,
+ *  ambos `sustenta` | `pressiona` | `misto`. Um conceito, uma definição. */
 export const ROTULO_DO_EFEITO: Record<string, string> = {
   sustenta: 'Sustenta',
   pressiona: 'Pressiona',
   misto: 'Misto',
+};
+
+/** A cor do efeito. Para TEXTO e para filete fino; a de área é outra. */
+export const COR_DO_EFEITO: Record<string, string> = {
+  sustenta: 'var(--ok-fg)',
+  pressiona: 'var(--erro-fg)',
+  misto: 'var(--cinza-2)',
 };
 
 /** O peso de uma lente como a tela o diz.

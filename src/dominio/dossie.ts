@@ -142,18 +142,10 @@ export const ORIGEM: Record<OrigemDoDado, { rotulo: string; texto: string }> = {
   },
 };
 
-/** As cores do efeito de um fato. As mesmas do Score. */
-export const COR_DO_EFEITO: Record<string, string> = {
-  sustenta: 'var(--ok-fg)',
-  pressiona: 'var(--erro-fg)',
-  misto: 'var(--cinza-2)',
-};
-
-export const ROTULO_DO_EFEITO: Record<string, string> = {
-  sustenta: 'Sustenta',
-  pressiona: 'Pressiona',
-  misto: 'Misto',
-};
+// O EFEITO DE UM FATO mora em `dominio/score`, e não aqui: é o mesmo campo do
+// mesmo banco, e uma segunda cópia é como as duas telas passam a pintar o
+// "misto" de cinzas diferentes. Reexportado para quem já importava daqui.
+export { COR_DO_EFEITO, ROTULO_DO_EFEITO } from '@/dominio/score';
 
 /** O tipo que o servidor usa para o que FALTA, e não para o que aconteceu. */
 export const LACUNA_DE_DADO = 'Lacuna de dado';
