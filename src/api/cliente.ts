@@ -7,6 +7,7 @@ import type { Recorte } from '@/dominio/recorte';
 import type {
   Calibracao,
   CalibracaoEntrada,
+  DriversDoScore,
   FatoDoMes,
   FonteDoScore,
   ImportacaoDoScore,
@@ -754,6 +755,11 @@ export function importarPlanilhaDoScore(
     method: 'POST',
     body: corpo,
   });
+}
+
+/** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */
+export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
+  return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
 }
 
 export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {

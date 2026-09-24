@@ -15,7 +15,11 @@ import type { ItemContado, Segmento } from '@/dominio/derivacoes';
 export interface LenteDoScore {
   codigo: string;
   nome: string;
+  /** O peso gravado na calibração. */
   peso: number;
+  /** O que ele valeu de fato, em %, depois de as lentes sem dado saírem do
+   *  denominador. Com uma lente fora, Imprensa vale 30 de 70 — 43%. */
+  peso_efetivo: number;
   /** Nulo quando a lente ficou de fora do cálculo. */
   score: number | null;
   ns: number | null;
@@ -134,6 +138,62 @@ export const ROTULO_DO_AVISO: Record<string, string> = {
   tier_nao_reconhecido: 'com relevância que não é da escala da Clipei',
 };
 
+/** A aba de Drivers e riscos: o porquê do número.
+ *
+ *  As três listas vêm das menções uma a uma — não do agregado mensal, que já
+ *  perdeu o atributo, o tema e a unidade ao somar. `mencoes_no_mes` distingue
+ *  "não houve nada a dizer" de "a planilha ainda não foi importada": duas
+ *  situações que dariam a mesma tela vazia. */
+export interface DriversDoScore {
+  mes: string;
+  atributos: AtributoDoScore[];
+  unidades: UnidadeDoScore[];
+  perpetuacao: TemaEmPerpetuacao[];
+  mencoes_no_mes: number;
+}
+
+export interface AtributoDoScore {
+  nome: string;
+  positivo: number;
+  neutro: number;
+  negativo: number;
+  score: number;
+  ns: number;
+}
+
+export interface UnidadeDoScore {
+  nome: string;
+  negativas: number;
+  mencoes: number;
+  /** Quanto do negativo do mês inteiro está nesta unidade. */
+  participacao: number;
+}
+
+export interface TemaEmPerpetuacao {
+  tema: string;
+  meses: number;
+  primeiro_mes: string;
+  ultimo_mes: string;
+  negativas: number;
+  lentes: string[];
+}
+
+/** A barra divergente de um atributo: onde começa e quanto ocupa.
+ *
+ *  O EIXO É O CENTRO, e não a esquerda. Numa barra comum, "Governança" com NS
+ *  −0,3 e "Prosperidade" com +0,99 aparecem as duas crescendo para a direita, e
+ *  a diferença entre elas vira tamanho — quando ela é de SINAL. Saindo do meio,
+ *  o olho lê de que lado está antes de ler o quanto. */
+export function faixaDivergente(ns: number): { inicio: string; largura: string } {
+  const metade = Math.abs(ns) * 50;
+  return {
+    inicio: `${ns >= 0 ? 50 : 50 - metade}%`,
+    // Nunca zero: um atributo perfeitamente equilibrado sumiria da tela, e
+    // sumir é indistinguível de não ter sido medido.
+    largura: `${Math.max(1.5, metade)}%`,
+  };
+}
+
 export interface OpcoesDoScore {
   reguas_de_tier: { codigo: string; pesos: Record<string, number> }[];
   reguas_de_engajamento: string[];
@@ -183,6 +243,18 @@ export const ROTULO_DO_EFEITO: Record<string, string> = {
   pressiona: 'Pressiona',
   misto: 'Misto',
 };
+
+/** O peso de uma lente como a tela o diz.
+ *
+ *  UM NÚMERO SÓ QUANDO OS DOIS BATEM, e dois quando não batem: "30%" com as
+ *  cinco lentes medidas, "43% (de 30%)" quando uma saiu e as outras
+ *  redistribuíram. Dizer sempre os dois viraria ruído; dizer só o nominal
+ *  esconderia que a lente pesou mais do que a calibração mandou. */
+export function pesoDaLente(lente: LenteDoScore): string {
+  if (lente.score === null) return 'fora do cálculo';
+  if (lente.peso_efetivo === lente.peso) return `${lente.peso}%`;
+  return `${lente.peso_efetivo}% (de ${lente.peso}%)`;
+}
 
 /** "+3" / "−2" / "—". O sinal explícito é o que faz o número ser lido como
  *  variação, e não como valor. */

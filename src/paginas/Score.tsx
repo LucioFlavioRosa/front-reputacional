@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   gravarCalibracao,
   importarPlanilhaDoScore,
+  obterDriversDoScore,
   listarFontesDoScore,
   obterLenteDoScore,
   obterOpcoesDoScore,
@@ -48,9 +49,11 @@ import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
+  faixaDivergente,
   ROTULO_DO_AVISO,
   ROTULO_DO_DESCARTE,
   ROTULO_DO_EFEITO,
+  pesoDaLente,
   colunasDaSerie,
   comoDelta,
   corDaFaixa,
@@ -60,6 +63,7 @@ import {
 } from '@/dominio/score';
 import type {
   Calibracao,
+  DriversDoScore,
   FonteDoScore,
   ImportacaoDoScore,
   IndiceDoScore,
@@ -268,7 +272,7 @@ function VisaoGeral({
                 <>
                   <div style={{ fontSize: 22, fontWeight: 700 }}>{sustenta.nome}</div>
                   <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-                    {sustenta.score} · peso {sustenta.peso}
+                    {sustenta.score} · peso {pesoDaLente(sustenta)}
                   </div>
                 </>
               ) : (
@@ -285,7 +289,7 @@ function VisaoGeral({
                 <>
                   <div style={{ fontSize: 22, fontWeight: 700 }}>{corroi.nome}</div>
                   <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-                    {corroi.score} · peso {corroi.peso}
+                    {corroi.score} · peso {pesoDaLente(corroi)}
                   </div>
                 </>
               ) : (
@@ -326,7 +330,7 @@ function VisaoGeral({
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{lente.nome}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--cinza-2)', marginTop: 2 }}>
-                  peso {lente.peso}
+                  peso {pesoDaLente(lente)}
                   {lente.fontes.length ? ` · ${lente.fontes.join(', ')}` : ''}
                 </div>
                 {lente.estimado ? (
@@ -621,18 +625,201 @@ function Lentes({
 /* -- aba 3: drivers e riscos --------------------------------------------------- */
 
 function DriversERiscos({ mes }: { mes: string }) {
+  const [drivers, definirDrivers] = useState<DriversDoScore | null>(null);
+  const [erro, definirErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    definirDrivers(null);
+    definirErro(null);
+    obterDriversDoScore(mes)
+      .then((carregado) => ativo && definirDrivers(carregado))
+      .catch((falha) => {
+        if (ativo) {
+          definirErro(falha instanceof Error ? falha.message : 'Não foi possível ler.');
+        }
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [mes]);
+
+  if (erro) return <FaixaDeErro mensagem={erro} />;
+  if (!drivers) return <Carregando />;
+
+  // SEM MENÇÃO INDIVIDUAL, NENHUMA DAS TRÊS LEITURAS EXISTE — e o motivo não é
+  // "não houve nada": é que a planilha do mês não foi importada. Dizer isso é o
+  // que separa um mês tranquilo de um mês sem dado.
+  if (!drivers.mencoes_no_mes) {
+    return (
+      <Secao titulo="Drivers e riscos">
+        <Vazio
+          mensagem={`Sem menções individuais em ${mes}`}
+          dica="Atributo, unidade e perpetuação se calculam menção a menção. Importe a planilha do mês na aba Calibração — o índice e as lentes já funcionam com os totais, e estas três leituras acendem com o detalhe."
+        />
+      </Secao>
+    );
+  }
+
   return (
-    <Secao
-      titulo="Drivers e riscos"
-      subtitulo="O que se repete, o que a imprensa atribui à companhia e onde a pressão se concentra."
-    >
-      <Vazio
-        mensagem={`Sem menções individuais em ${mes}`}
-        dica="Temas em perpetuação, atributos reputacionais e exposição por unidade se calculam menção a menção. Eles aparecem quando as planilhas dos fornecedores forem ingeridas — o índice e as lentes já funcionam com os totais do mês."
-      />
-    </Secao>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <Secao
+        titulo="O que se repete"
+        subtitulo={`Temas negativos presentes em ${PERPETUACAO_MINIMA} meses ou mais da janela de seis, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
+      >
+        <Cartao>
+          {drivers.perpetuacao.length ? (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {drivers.perpetuacao.map((tema) => (
+                <li
+                  key={tema.tema}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 12,
+                    padding: '10px 0',
+                    borderTop: '1px solid var(--borda)',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{tema.tema}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                    {tema.lentes.join(' · ')}
+                  </span>
+                  <Chip rotulo={`${tema.meses} meses`} />
+                  <span
+                    className="tabular"
+                    style={{ fontSize: 12, color: 'var(--erro-fg)', minWidth: 72, textAlign: 'right' }}
+                  >
+                    −{numero(tema.negativas)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+              Nenhum tema negativo atravessou {PERPETUACAO_MINIMA} meses até aqui. É uma boa
+              notícia — e some da tela quando deixar de ser verdade.
+            </p>
+          )}
+        </Cartao>
+      </Secao>
+
+      <Secao
+        titulo="O que atribuem à companhia"
+        subtitulo="O atributo reputacional que a clipagem marca em cada matéria ou post. Contagem simples: aqui a pergunta é o tom, e não quanto a menção pesou no índice."
+      >
+        <Cartao>
+          {drivers.atributos.length ? (
+            <>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {drivers.atributos.map((atributo) => {
+                  const faixa = faixaDivergente(atributo.ns);
+                  return (
+                    <li key={atributo.nome} style={{ padding: '10px 0' }}>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+                          {atributo.nome}
+                        </span>
+                        <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                          {numero(atributo.positivo + atributo.neutro + atributo.negativo)}{' '}
+                          menções
+                        </span>
+                        <span
+                          className="tabular"
+                          style={{ fontSize: 13, fontWeight: 700, color: corDaFaixa(atributo.score) }}
+                        >
+                          {atributo.score}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          position: 'relative',
+                          height: 10,
+                          marginTop: 6,
+                          background: 'var(--cinza-0)',
+                          borderRadius: 5,
+                        }}
+                      >
+                        {/* o eixo: onde o saldo é zero */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: -2,
+                            bottom: -2,
+                            width: 1,
+                            background: 'var(--borda)',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: faixa.inicio,
+                            width: faixa.largura,
+                            top: 0,
+                            bottom: 0,
+                            borderRadius: 5,
+                            background: atributo.ns >= 0 ? 'var(--ok-fg)' : 'var(--erro-fg)',
+                          }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+                Só Clipei e Bites classificam atributo. As outras fontes não entram nesta
+                leitura — e não entram como zero, que seria dizer que elas acharam neutro.
+              </p>
+            </>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+              Nenhuma menção do mês traz atributo classificado.
+            </p>
+          )}
+        </Cartao>
+      </Secao>
+
+      <Secao
+        titulo="Onde a pressão se concentra"
+        subtitulo="Menções negativas por concessionária. Ordenado pelo negativo, e não pelo volume: a pergunta é onde está o problema."
+      >
+        <Cartao>
+          <Ranking
+            itens={drivers.unidades.map((unidade) => ({
+              chave: unidade.nome,
+              rotulo: unidade.nome,
+              total: unidade.negativas,
+              cor: 'var(--erro-fg)',
+            }))}
+            cor="var(--erro-fg)"
+            vazio="Nenhuma menção do mês identifica a unidade."
+            detalheAoPassarMouse={(chave) => {
+              const unidade = drivers.unidades.find((u) => u.nome === chave);
+              if (!unidade) return [];
+              return [
+                { rotulo: 'Negativas', valor: numero(unidade.negativas) },
+                { rotulo: 'Menções no mês', valor: numero(unidade.mencoes) },
+                { rotulo: 'Do negativo total', valor: `${unidade.participacao}%` },
+              ];
+            }}
+          />
+          <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+            Cada fornecedor nomeia a unidade do seu jeito; o cadastro da fonte reconcilia o
+            que dá (prefixo e apelido). Onde um fornecedor agrupa duas concessionárias e o
+            outro as separa, elas aparecem como linhas distintas — juntar seria inventar um
+            número que ninguém mediu.
+          </p>
+        </Cartao>
+      </Secao>
+    </div>
   );
 }
+
+//: O mesmo número que o servidor usa em `MESES_PARA_PERPETUAR`. Repetido aqui
+//: só como TEXTO da tela — quem decide o que é perpetuação é o servidor, e uma
+//: divergência entre os dois muda a frase, nunca a lista.
+const PERPETUACAO_MINIMA = 3;
 
 /* -- aba 4: a calibração -------------------------------------------------------- */
 
@@ -760,6 +947,13 @@ function CalibracaoDoScore({
                 ))}
               </select>
             </Campo>
+            <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+              <strong>Muito Relevante</strong> = grande imprensa nacional, econômica e trade.{' '}
+              <strong>Relevante</strong> = regionais com influência.{' '}
+              <strong>Menos Relevante</strong> = locais e blogs de nicho. A classificação é da
+              própria clipagem, e não desta tela. As lentes de redes não têm tier: nelas esta
+              régua não muda nada.
+            </p>
           </Cartao>
 
           <Cartao>
@@ -780,6 +974,11 @@ function CalibracaoDoScore({
                 ))}
               </select>
             </Campo>
+            <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+              Approach e Bites trazem o engajamento de cada menção; só a Bites traz o cargo de
+              autores políticos — nas outras fontes a régua <em>cargo</em> cai na contagem.
+              Nenhuma das duas traz alcance ou número de seguidores.
+            </p>
           </Cartao>
         </div>
       </Secao>
@@ -987,6 +1186,60 @@ function ResumoDaImportacao({ resumo }: { resumo: ImportacaoDoScore }) {
 
 /* -- aba 5: a metodologia ------------------------------------------------------- */
 
+//: A COBERTURA É DECLARADA, e não calculada: ela diz o que ESTE índice cumpre
+//: do que se espera de um índice reputacional, e quem responde por isso é quem
+//: o construiu — não uma consulta. Muda com o produto, e por isso mora na tela.
+const COBERTURA: { criterio: string; status: string; fundo: string; cor: string }[] = [
+  {
+    criterio: 'Múltiplos stakeholders — imprensa, mercado, sociedade, clientes, governo',
+    status: 'Coberto',
+    fundo: 'var(--ok-bg)',
+    cor: 'var(--ok-fg)',
+  },
+  {
+    criterio: 'Agregação de várias fontes na mesma lente',
+    status: 'Coberto',
+    fundo: 'var(--ok-bg)',
+    cor: 'var(--ok-fg)',
+  },
+  {
+    criterio: 'Série histórica comparável — a régua de hoje vale para todos os meses',
+    status: 'Coberto',
+    fundo: 'var(--ok-bg)',
+    cor: 'var(--ok-fg)',
+  },
+  {
+    criterio: 'Sentimento com drivers: atributo, tema e unidade',
+    status: 'Coberto',
+    fundo: 'var(--ok-bg)',
+    cor: 'var(--ok-fg)',
+  },
+  {
+    criterio: 'Temas em perpetuação — o risco que atravessa meses',
+    status: 'Coberto',
+    fundo: 'var(--ok-bg)',
+    cor: 'var(--ok-fg)',
+  },
+  {
+    criterio: 'Alerta automático quando um tema muda de patamar',
+    status: 'A integrar',
+    fundo: 'var(--cinza-0)',
+    cor: 'var(--cinza-2)',
+  },
+  {
+    criterio: 'Comparação com pares do setor (share of voice)',
+    status: 'A integrar',
+    fundo: 'var(--cinza-0)',
+    cor: 'var(--cinza-2)',
+  },
+  {
+    criterio: 'Ligação com resultado de negócio — rating, spread, valor',
+    status: 'A integrar',
+    fundo: 'var(--cinza-0)',
+    cor: 'var(--cinza-2)',
+  },
+];
+
 function Metodologia() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1016,6 +1269,43 @@ function Metodologia() {
               falta de medição.
             </li>
           </ol>
+        </Cartao>
+      </Secao>
+
+      <Secao
+        titulo="Cobertura do framework"
+        subtitulo="Os critérios que se espera de um índice de saúde reputacional, e onde este está."
+      >
+        <Cartao>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {COBERTURA.map((item) => (
+              <li
+                key={item.criterio}
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 12,
+                  padding: '9px 0',
+                  borderTop: '1px solid var(--borda)',
+                }}
+              >
+                <span style={{ fontSize: 13, flex: 1 }}>{item.criterio}</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 9px',
+                    borderRadius: 5,
+                    whiteSpace: 'nowrap',
+                    background: item.fundo,
+                    color: item.cor,
+                  }}
+                >
+                  {item.status}
+                </span>
+              </li>
+            ))}
+          </ul>
         </Cartao>
       </Secao>
 
