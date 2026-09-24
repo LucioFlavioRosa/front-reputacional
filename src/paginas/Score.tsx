@@ -43,18 +43,18 @@ import {
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
+import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
+import { jornadaDoIndice } from '@/dominio/jornadaDoIndice';
 import {
   FAIXAS,
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
   ROTULO_DO_AVISO,
   ROTULO_DO_DESCARTE,
-  ROTULO_DO_EFEITO,
   pesoDaLente,
-  colunasDaSerie,
   comoDelta,
   corDaFaixa,
   corDeAreaDaFaixa,
@@ -208,6 +208,7 @@ export function Score() {
             definirLenteAberta(codigo);
             definirAba('lentes');
           }}
+          aoTrocarMes={definirMes}
         />
       ) : null}
 
@@ -241,10 +242,12 @@ function VisaoGeral({
   indice,
   serie,
   aoAbrirLente,
+  aoTrocarMes,
 }: {
   indice: IndiceDoScore;
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
+  aoTrocarMes: (mes: string) => void;
 }) {
   const ordenadas = lentesOrdenadas(indice.lentes);
   const sustenta = ordenadas[0];
@@ -254,6 +257,11 @@ function VisaoGeral({
   // na lista não acender a fatia — que é o único jeito de ligar a terceira
   // linha à segunda fatia, quando as larguras são diferentes.
   const [destacada, definirDestacada] = useState<string | null>(null);
+  // A LENTE COMPARADA É ESTADO DE LEITURA, e não de calibração: ela não muda
+  // número nenhum, só sobrepõe uma segunda curva. Guardá-la no servidor faria
+  // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
+  const [comparada, definirComparada] = useState<string | null>(null);
+  const jornada = jornadaDoIndice(serie, indice.mes, comparada);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -318,58 +326,63 @@ function VisaoGeral({
       </Secao>
 
       <Secao
-        titulo="Evolução mensal"
-        subtitulo="Todos os meses com a régua de hoje — é o que torna a curva comparável. Meses medidos por menos de quatro lentes ficam esmaecidos."
+        titulo="Jornada do índice"
+        subtitulo={jornada.resumo}
+        acao={
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="kicker">Comparar com</span>
+            <Chip
+              rotulo="Só o índice"
+              ativo={comparada === null}
+              aoClicar={() => definirComparada(null)}
+            />
+            {indice.lentes
+              .filter((lente) => lente.score !== null)
+              .map((lente) => (
+                <Chip
+                  key={lente.codigo}
+                  rotulo={lente.nome}
+                  ativo={comparada === lente.codigo}
+                  aoClicar={() =>
+                    definirComparada(comparada === lente.codigo ? null : lente.codigo)
+                  }
+                />
+              ))}
+          </div>
+        }
       >
-        <div className="grade grade--mapa" style={{ gap: 16, alignItems: 'start' }}>
-          <Cartao>
-            <Ranking itens={colunasDaSerie(serie)} vazio="Sem série ainda." />
-            <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-              {serie.filter((ponto) => ponto.lentes < 4).length} de {serie.length} meses têm
-              menos de quatro lentes medidas.
-            </p>
-          </Cartao>
-
-          <Cartao>
-            <p className="kicker" style={{ marginBottom: 10 }}>
-              O que aconteceu em {indice.mes}
-            </p>
-            {indice.fatos.length ? (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {indice.fatos.map((fato) => (
-                  <li
-                    key={fato.id}
-                    style={{ padding: '8px 0', borderTop: '1px solid var(--borda)' }}
-                  >
-                    <Chip
-                      rotulo={ROTULO_DO_EFEITO[fato.efeito] ?? fato.efeito}
-                      fundo={
-                        fato.efeito === 'sustenta'
-                          ? 'var(--ok-bg)'
-                          : fato.efeito === 'pressiona'
-                            ? 'var(--erro-bg)'
-                            : 'var(--bg-trilho)'
-                      }
-                      texto={
-                        fato.efeito === 'sustenta'
-                          ? 'var(--ok-fg)'
-                          : fato.efeito === 'pressiona'
-                            ? 'var(--erro-fg)'
-                            : 'var(--cinza-3)'
-                      }
-                    />
-                    <p style={{ fontSize: 13, margin: '4px 0 0' }}>{fato.texto}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-                Nenhum fato registrado. É o que transforma a curva em explicação — "caiu em
-                março porque saíram as demonstrações financeiras".
-              </p>
-            )}
-          </Cartao>
-        </div>
+        <Cartao>
+          <JornadaDoIndice
+            serie={serie}
+            mes={indice.mes}
+            comparada={comparada}
+            aoEscolherMes={aoTrocarMes}
+          />
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginTop: 16,
+              fontSize: 11.5,
+              color: 'var(--cinza-2)',
+            }}
+          >
+            {[
+              ['Pressiona', 'var(--erro-fg)'],
+              ['Sustenta', 'var(--turquesa-rio)'],
+              ['Misto', 'var(--cinza-2)'],
+              ['Sem fato', 'var(--borda)'],
+            ].map(([rotulo, cor]) => (
+              <span key={rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 16, height: 3, borderRadius: 2, background: cor }} />
+                {rotulo}
+              </span>
+            ))}
+            <span>Clique num mês para ver a lente e o radial daquele mês.</span>
+          </div>
+        </Cartao>
       </Secao>
     </div>
   );

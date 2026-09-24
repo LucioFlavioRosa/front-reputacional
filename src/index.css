@@ -7,6 +7,9 @@
   --azul-mar: #0027BD;
   --azul-mar-sombra: #111799;
   --turquesa-rio: #17E3CB;
+  /* O fundo da faixa Referência na jornada: turquesa lavado o bastante
+     para o texto escuro por cima manter contraste. */
+  --turquesa-claro: #C8F2EA;
   --turquesa-sombra: #9DEEE7;
 
   /* Paleta secundária — detalhes, ícones e gráficos (PPT_Padrao_Aegea_V4) */

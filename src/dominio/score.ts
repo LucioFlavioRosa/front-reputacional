@@ -10,7 +10,7 @@
  *  faixa, o rótulo de uma régua, como se lê um delta.
  */
 
-import type { ItemContado, Segmento } from '@/dominio/derivacoes';
+import type { Segmento } from '@/dominio/derivacoes';
 
 export interface LenteDoScore {
   codigo: string;
@@ -145,12 +145,36 @@ export interface IndiceDoScore {
   leitura: string;
 }
 
+/** O que explica o degrau do mês, na coluna dele. */
+export interface FatoDoPonto {
+  texto: string;
+  /** `sustenta` | `pressiona` | `misto` */
+  efeito: string;
+}
+
+/** Quem mais se mexeu no mês — a lente, e quanto.
+ *
+ *  É A PERGUNTA QUE VEM DEPOIS DE "por que caiu": o fato diz o que aconteceu
+ *  no mundo, e este número diz por onde aquilo entrou no índice. */
+export interface MovimentoDaLente {
+  lente: string;
+  delta: number;
+}
+
 export interface PontoDaSerie {
   mes: string;
   isr: number | null;
   /** Quantas das cinco lentes formaram o ponto. */
   lentes: number;
   tem_estimativa: boolean;
+  /** Contra o mês anterior da série. Nulo no primeiro ponto — que é ponto de
+   *  partida, e não variação zero. */
+  delta: number | null;
+  fato: FatoDoPonto | null;
+  maior_movimento: MovimentoDaLente | null;
+  /** A nota de cada lente medida no mês, por código — é o que desenha a curva
+   *  de comparação sem uma segunda chamada por lente. */
+  notas_das_lentes: Record<string, number>;
 }
 
 export interface FonteDoScore {
@@ -384,16 +408,3 @@ export function segmentosDaComposicao(
   ];
 }
 
-/** A série mensal como colunas de barra — a evolução do índice.
- *
- *  UM PONTO PARCIAL NÃO SE DESENHA IGUAL A UM COMPLETO: um mês medido por uma
- *  lente só produz um ISR legítimo pela fórmula e enganoso na curva. A cor
- *  esmaecida e o rótulo dizem quantas lentes entraram. */
-export function colunasDaSerie(serie: PontoDaSerie[]): ItemContado[] {
-  return serie.map((ponto) => ({
-    chave: ponto.mes,
-    rotulo: ponto.mes,
-    total: ponto.isr ?? 0,
-    cor: ponto.lentes >= 4 ? corDaFaixa(ponto.isr) : 'var(--cinza-1)',
-  }));
-}
