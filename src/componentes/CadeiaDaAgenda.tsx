@@ -17,8 +17,8 @@
 
 import { useMemo, useState } from 'react';
 import { usePainel } from '@/estado/painel';
-import { Botao, Carregando, ChipDeFrente, Modal, Vazio } from '@/componentes/basicos';
-import { CORES_DE_FRENTE, ROTULOS_DE_FRENTE, rotuloDeAbrangencia } from '@/dominio/frentes';
+import { Botao, Carregando, Modal, Vazio } from '@/componentes/basicos';
+import { rotuloDeAbrangencia } from '@/dominio/frentes';
 import { cadeias, derivadasForaDaJanela, montarGrafo, temCadeia } from '@/dominio/grafo';
 import type { NoDoGrafo } from '@/dominio/grafo';
 import { dataCompleta, tituloDaAgenda } from '@/dominio/formato';
@@ -245,7 +245,6 @@ export function CadeiaDaAgenda({
               {nos.map((no) => {
                 const p = posicao.get(no.id);
                 if (!p) return null;
-                const cor = CORES_DE_FRENTE[no.interacao.frente];
                 const rotulo = titulo(no);
                 const emDestaque = no.id === foco?.id;
                 const daLinha = no.id === id;
@@ -285,11 +284,6 @@ export function CadeiaDaAgenda({
                       stroke={emDestaque ? 'var(--azul-mar)' : 'var(--borda)'}
                       strokeWidth={emDestaque ? 2 : 1}
                     />
-                    {/* A faixa da frente: a cor diz de que tipo de conversa se
-                        trata, e é o que mostra a cadeia ATRAVESSANDO frentes —
-                        imprensa levanta, governo responde, legislativo trata,
-                        banco financia. */}
-                    <rect width={6} height={ALTURA} rx={3} fill={cor} />
                     <text x={18} y={23} style={{ fontSize: 11, fill: 'var(--cinza-2)' }}>
                       {dataCompleta(no.interacao.data_interacao)}
                     </text>
@@ -307,14 +301,6 @@ export function CadeiaDaAgenda({
                     </text>
                     <text x={18} y={61} style={{ fontSize: 11, fill: 'var(--cinza-3)' }}>
                       {nomeDaInstituicao(catalogo, no.interacao.instituicao_id).slice(0, 28)}
-                    </text>
-                    <text
-                      x={LARGURA - 12}
-                      y={23}
-                      textAnchor="end"
-                      style={{ fontSize: 10, fill: cor, fontWeight: 700 }}
-                    >
-                      {ROTULOS_DE_FRENTE[no.interacao.frente]}
                     </text>
                     {/* A MARCA VAI NO NÓ, e não só no aviso do topo: saber QUE
                         existe um nó incompleto não diz QUAL. A reticência é a
@@ -358,7 +344,6 @@ export function CadeiaDaAgenda({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <ChipDeFrente frente={foco.interacao.frente} />
                 <strong style={{ fontSize: 15 }}>{titulo(foco)}</strong>
               </div>
               <div style={{ fontSize: 13, color: 'var(--cinza-3)' }}>

@@ -45,11 +45,15 @@ import type { Destino } from '@/navegacao/rota';
 //: e-mail ou apresentação. Diferente do Painel (números, gráficos) e da Base
 //: (tabela para filtrar/exportar): aqui não tem filtro próprio nenhum, só a
 //: escolha de semana ou mês. Ver `paginas/RelatoriosExecutivos.tsx`.
+//: "SINAIS DE MERCADO" SAIU DA NAVEGAÇÃO em 24/09/2026, por pedido — a aba
+//: vai passar por uma melhoria antes de voltar a aparecer. A `view` continua
+//: registrada em `navegacao/rota.ts`, a página em `SinaisDeMercado.tsx` e o
+//: backend intacto: quem já tinha o link (`/sinais`) ainda abre a tela, só
+//: não há mais porta de entrada pelo menu.
 const NAVEGACAO: { view: Destino; rotulo: string }[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'base', rotulo: 'Base' },
   { view: 'preparar', rotulo: 'Preparar agenda' },
-  { view: 'sinais', rotulo: 'Sinais de mercado' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 
@@ -211,7 +215,15 @@ export function Layout({
             </span>
           </button>
 
-          <nav className="cabecalho__nav" style={{ display: 'flex', gap: 2, flex: 1, overflowX: 'auto' }}>
+          {/* QUEBRA LINHA, e não rolagem — a rolagem horizontal escondia
+              "Administração" sem nenhuma pista visual de que havia mais
+              itens: a aba ficava cortada na borda (ex.: "Adn"), parecendo
+              truncada, sem barra de rolagem visível para avisar. Quebrar
+              linha garante que toda aba continua sempre visível; a altura do
+              cabeçalho já se ajusta sozinha (`publicarAlturaDoCabecalho`,
+              acima), o mesmo mecanismo que já existe para a `BarraDeRecorte`
+              quebrar linha conforme o número de fichas do recorte. */}
+          <nav className="cabecalho__nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
             {[
               ...NAVEGACAO,
               // A entrada administrativa entra no fim, e só para quem

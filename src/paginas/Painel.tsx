@@ -5,6 +5,7 @@ import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
+import { GraficoDeArvore } from '@/graficos/GraficoDeArvore';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -24,7 +25,6 @@ import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } fro
 import {
   CORES_DE_FRENTE,
   ROTULOS_DE_FRENTE,
-  rotuloDeAbrangencia,
 } from '@/dominio/frentes';
 import {
   alternar,
@@ -35,14 +35,12 @@ import {
   limparFormatoInteracao,
   limparTags,
 } from '@/dominio/recorte';
-import { FRENTES } from '@/dominio/tipos';
 import type { Interacao } from '@/dominio/tipos';
 import {
   categoriasDeArea,
   comReativoNaBase,
   categoriasPublicoMaisRecorrentes,
   chaveDoPeriodo,
-  climaPorTema,
   completarPeriodos,
   distribuicaoPorUf,
   idsPorCategoriaDeArea,
@@ -53,7 +51,6 @@ import {
   ranking,
   rankingDePortaVozes,
   resumoDeClimaPorFrente,
-  rotuloDeCodigo,
   scorePorCategoriaPublico,
   scorePorInstituicao,
   scorePorTema,
@@ -102,6 +99,18 @@ const PALETA_DO_HISTORICO = [
   '#8C91A4', // Cinza 2
   '#AD6547', // Marrom Claro Cacau
   '#FF8FE1', // Rosa Goiaba
+];
+
+//: TRÊS TONS DE AZUL para o `GraficoDeArvore` de "% de Interações por
+//: Temas" colorir cada célula pela classificação (`Tema.nivel`, ver
+//: `dominio/tipos.ts`) — sem agrupar as células por nível, só pintar. Do
+//: mais restrito (Sensível) ao mais aberto (Geral), o tom vai do mais
+//: escuro (mais atenção) ao mais claro — os três dentro da mesma família de
+//: matiz de `--azul-mar` (#0027BD), não uma cor nova por classe.
+const NIVEIS_DE_TEMA: { nivel: string; cor: string; rotulo: string }[] = [
+  { nivel: 'sensivel', cor: '#0027BD', rotulo: 'Sensível' }, // Azul Mar
+  { nivel: 'estrategico', cor: '#667EDA', rotulo: 'Estratégico' }, // Azul médio
+  { nivel: 'gerais', cor: '#CBD4F6', rotulo: 'Geral' }, // Azul claro
 ];
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
@@ -193,25 +202,7 @@ export function Painel({
 
     const totalInteracoes = interacoes.length || 1;
 
-    const contagemFrentes = interacoes.reduce((acc, i) => {
-      acc[i.frente] = (acc[i.frente] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const categoriasDeFrente = FRENTES.map((frente) => {
-      const tot = contagemFrentes[frente] || 0;
-      const pct = Math.round((tot / totalInteracoes) * 100);
-      return {
-        chave: frente,
-        rotulo: ROTULOS_DE_FRENTE[frente],
-        cor: CORES_DE_FRENTE[frente],
-        detalhe: `${pct}% · ${tot}`,
-        total: tot,
-        pct,
-      };
-    });
-
-    //: MESMA IDEIA DE `categoriasDeFrente`, para "Volumetria total por
+    //: TOTAL POR CATEGORIA DE PÚBLICO, para "Volumetria total por
     //: Público" — TODAS as categorias da taxonomia (`catalogo.dicionarios.
     //: categorias_publico`), não só o Top 5 de `categoriasPublicoMaisRecorrentes`
     //: (aquele corta em 5 de propósito, para o ranking; aqui a pilha
@@ -261,22 +252,42 @@ export function Painel({
     });
 
     const temas = temasMaisRecorrentes(interacoes, catalogo, 5);
+    // O GRÁFICO DE ÁRVORE quer TODOS os temas do dicionário, não só o Top 5
+    // de `temas` (que continua servindo "Top 5 temas" e "Temas no tempo",
+    // sem mudar) — por pedido, para o treemap mostrar a distribuição
+    // completa. `catalogo.dicionarios.temas.length` em vez de um número
+    // fixo: acompanha o dicionário se um tema for cadastrado ou desativado.
+    const todosOsTemas = temasMaisRecorrentes(
+      interacoes,
+      catalogo,
+      catalogo.dicionarios.temas.length,
+    );
     const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
     const geo = distribuicaoPorUf(interacoes);
 
     // Destaques para o banner analítico executivo
-    const frenteLider = [...categoriasDeFrente].sort((a, b) => b.total - a.total)[0];
     const climaLider = [...categoriasDeClima].sort((a, b) => b.total - a.total)[0];
-    const topUfPonto = geo[0];
+    // TIER E PÚBLICO, no lugar de "Maior volume" (UF) — por pedido: a
+    // síntese volta a quatro itens, e os dois novos respondem "com quem
+    // estamos falando" (relevância e público), a mesma pergunta que Frente
+    // respondia antes de sair da tela. UF continua no mapa logo abaixo.
+    const porTierCalculado = porTier(interacoes, catalogo);
+    const tierLider = [...porTierCalculado].sort((a, b) => b.total - a.total)[0];
+    const totalComTier = interacoes.filter((i) => i.tier != null).length || 1;
+    const publicoLider = [...categoriasDePublico].sort((a, b) => b.total - a.total)[0];
 
     return {
       kpis: calcularKpis(interacoes, catalogo),
       resumoExecutivo: {
         total: interacoes.length,
-        frentePrincipal: frenteLider?.total ? { rotulo: frenteLider.rotulo, pct: frenteLider.pct } : undefined,
         climaPrincipal: climaLider?.total ? { rotulo: climaLider.rotulo, pct: climaLider.pct } : undefined,
-        topUf: topUfPonto ? { rotulo: rotuloDeAbrangencia(topUfPonto.uf), total: topUfPonto.total } : undefined,
+        tierPrincipal: tierLider?.total
+          ? { rotulo: tierLider.rotulo, pct: Math.round((tierLider.total / totalComTier) * 100) }
+          : undefined,
+        publicoPrincipal: publicoLider?.total
+          ? { rotulo: publicoLider.rotulo, pct: publicoLider.pct }
+          : undefined,
       },
       resumoDeClima: {
         eventos: resumoDeClimaPorFrente(interacoes, ['eventos']),
@@ -284,9 +295,9 @@ export function Painel({
         institucionais: resumoDeClimaPorFrente(interacoes, ['governo', 'parceiros']),
         bancosCredores: resumoDeClimaPorFrente(interacoes, ['bancos_credores']),
       },
-      categoriasDeFrente,
       categoriasDeClima,
       temas,
+      todosOsTemas,
       categoriasPublico,
       categoriasDePublico,
       volumetriaPorPublico: completarPeriodos(
@@ -326,8 +337,7 @@ export function Painel({
       unidades: ranking(interacoes, catalogo, 'unidade'),
       portaVozes: rankingDePortaVozes(interacoes, catalogo),
       temasPorPortaVoz: temasPorPortaVoz(interacoes, catalogo, 3),
-      porTier: porTier(interacoes, catalogo),
-      climaPorTema: climaPorTema(interacoes, catalogo),
+      porTier: porTierCalculado,
       scorePorCategoriaPublico: scorePorCategoriaPublico(interacoes, catalogo, 5, categoriaPublicoExtras),
       // UMA LISTA DE INTERAÇÕES POR CATEGORIA DE ÁREA, e não um id — a área é
       // multivalorada (`interacao.areas`), então a mesma interação pode
@@ -382,6 +392,14 @@ export function Painel({
     (categoria) => !derivado.scorePorCategoriaPublico.itens.some((item) => item.chave === categoria.chave),
   );
 
+  //: NOME → NÍVEL (`Tema.nivel`, ver `dominio/tipos.ts`) — só para o
+  //: `GraficoDeArvore` de "% de Interações por Temas" colorir por
+  //: Sensível/Estratégico/Geral, por pedido (sem agrupar as células por
+  //: nível, só a cor muda). `temasMaisRecorrentes` devolve a chave como o
+  //: NOME do tema, então o lookup é por nome.
+  const nivelPorNomeDoTema = new Map(catalogo.dicionarios.temas.map((tema) => [tema.nome, tema.nivel]));
+  const corPorNivel = new Map(NIVEIS_DE_TEMA.map((n) => [n.nivel, n.cor]));
+
   return (
     // 24px entre blocos principais — degrau único de respiro entre seções distintas.
     // Blocos relacionados (clima + temas) usam gap menor internamente (12px).
@@ -419,7 +437,7 @@ export function Painel({
           <KpiHero
             rotulo="Demandas de imprensa"
             valor={numero(kpis.imprensa.total)}
-            selo="Frente · Imprensa"
+            selo="Imprensa"
             progresso={{
               fracao: kpis.imprensa.taxa,
               rotulo: `${percentual(kpis.imprensa.atendidas, kpis.imprensa.total)} de aproveitamento`,
@@ -505,13 +523,13 @@ export function Painel({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 8,
-                padding: '9px 20px',
+                gap: 6,
+                padding: '6px 16px',
                 background: 'var(--bg-trilho)',
                 border: 'none',
                 borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
                 cursor: 'pointer',
-                fontSize: 12.5,
+                fontSize: 11.5,
                 fontWeight: 700,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
@@ -528,7 +546,7 @@ export function Painel({
                   border: '1px solid var(--borda)',
                   borderTop: 'none',
                   borderRadius: '0 0 var(--r-card) var(--r-card)',
-                  padding: '12px 20px 16px',
+                  padding: '10px 16px 12px',
                 }}
               >
                 <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
@@ -598,9 +616,9 @@ export function Painel({
       {/* BANNER DE SÍNTESE EXECUTIVA — Fatos relevantes do recorte em destaque */}
       <ResumoExecutivoDoRecorte
         total={derivado.resumoExecutivo.total}
-        frentePrincipal={derivado.resumoExecutivo.frentePrincipal}
         climaPrincipal={derivado.resumoExecutivo.climaPrincipal}
-        topUf={derivado.resumoExecutivo.topUf}
+        tierPrincipal={derivado.resumoExecutivo.tierPrincipal}
+        publicoPrincipal={derivado.resumoExecutivo.publicoPrincipal}
       />
 
       {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
@@ -796,37 +814,34 @@ export function Painel({
           subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
           acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
         >
-          {/* MESMO LAYOUT de "Interações por tier" acima, agora com a rosca
-              MAIOR (220px, era 168 — o padrão de `Rosca` continua 168 nos
-              outros usos, só este pede mais espaço) e TRÊS colunas em vez de
-              duas: a rosca (com sua própria legenda, colorida por posição no
-              ranking — mesma paleta de `temasMaisRecorrentes`), o top 5 dos
-              mesmos temas ao lado, e o top 5 de categorias de público
-              (`categoriasPublicoMaisRecorrentes`, mesma métrica de volume —
-              não o score de clima do Termômetro por Público, que é outro
-              cálculo). Era a rosca de "Interações por áreas" (`porArea`/
-              `climaPorArea`, removidas): esta reaproveita `derivado.temas`,
-              a MESMA base do ranking ao lado e de "Temas no tempo" mais
-              abaixo — um tema em destaque aqui é o mesmo tema em destaque
-              lá. */}
+          {/* GRÁFICO DE ÁRVORE (treemap), não rosca — por pedido: a área de
+              cada retângulo entrega de cara "qual tema pesa mais", sem
+              precisar ler a legenda ao lado. USA `derivado.todosOsTemas`
+              (TODOS os temas do dicionário, não só o Top 5) — o ranking ao
+              lado e "Temas no tempo" mais abaixo continuam em
+              `derivado.temas` (Top 5), sem mudar: são leituras diferentes,
+              "os 5 mais discutidos" vs. "a distribuição completa". O CLIMA
+              POR TEMA (que a rosca mostrava no tooltip) saiu:
+              `GraficoDeArvore` não tem hover com detalhe extra ainda — ver o
+              comentário no próprio componente.
+
+              COR POR NÍVEL (`corDeItem`), sem agrupar as células — Sensível /
+              Estratégico / Geral em três tons de azul, via
+              `nivelPorNomeDoTema`/`corPorNivel` acima; a legenda embaixo do
+              gráfico (`legenda`) decodifica qual tom é qual nível. */}
           <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: '0 0 auto' }}>
-              <Rosca
-                itens={derivado.temas}
+            <div style={{ flex: '3 1 420px', minWidth: 320 }}>
+              <GraficoDeArvore
+                itens={derivado.todosOsTemas}
                 ativo={recorte.tags?.[0]}
                 aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
-                rotuloCentral="interações"
                 vazio="Nenhum tema registrado neste recorte."
-                tamanho={220}
-                espessura={30}
-                detalheAoPassarMouse={(chave) => {
-                  const clima = derivado.climaPorTema[chave] ?? { propositivo: 0, neutro: 0, tenso: 0 };
-                  return [
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'propositivo'), valor: numero(clima.propositivo) },
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'neutro'), valor: numero(clima.neutro) },
-                    { rotulo: rotuloDeCodigo(catalogo, 'climas', 'tenso'), valor: numero(clima.tenso) },
-                  ];
-                }}
+                corDeItem={(chave) => corPorNivel.get(nivelPorNomeDoTema.get(chave) ?? 'gerais') ?? NIVEIS_DE_TEMA[2].cor}
+                legenda={NIVEIS_DE_TEMA.map(({ cor, rotulo }) => ({ cor, rotulo }))}
+                // MAIS ALTO que antes (era 240): com TODOS os temas em vez
+                // do Top 5, cada célula fica menor — a altura extra é o que
+                // mantém espaço pra maioria mostrar rótulo.
+                altura={300}
               />
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>
@@ -1286,14 +1301,14 @@ function SeletorDeGranularidade({
 
 function ResumoExecutivoDoRecorte({
   total,
-  frentePrincipal,
   climaPrincipal,
-  topUf,
+  tierPrincipal,
+  publicoPrincipal,
 }: {
   total: number;
-  frentePrincipal?: { rotulo: string; pct: number };
   climaPrincipal?: { rotulo: string; pct: number };
-  topUf?: { rotulo: string; total: number };
+  tierPrincipal?: { rotulo: string; pct: number };
+  publicoPrincipal?: { rotulo: string; pct: number };
 }) {
   return (
     <div
@@ -1302,9 +1317,14 @@ function ResumoExecutivoDoRecorte({
         flexWrap: 'wrap',
         alignItems: 'center',
         // OS QUATRO ITENS DISTRIBUÍDOS pelo espaço inteiro da caixa, e não
-        // um cluster à esquerda e três à direita: sem o rótulo "Síntese
+        // um cluster à esquerda e dois à direita: sem o rótulo "Síntese
         // Executiva" (virou o título grande, fora daqui), o total sozinho à
-        // esquerda ficava desequilibrado contra os três do outro lado.
+        // esquerda ficava desequilibrado contra o resto do outro lado.
+        //
+        // TIER E PÚBLICO no lugar de "Maior volume" (UF) — por pedido: a
+        // pergunta que este banner responde é "com quem estamos falando",
+        // e relevância/público respondem isso mais diretamente que UF, que
+        // continua logo abaixo, no mapa.
         justifyContent: 'space-evenly',
         gap: 16,
         padding: '14px 18px',
@@ -1321,14 +1341,6 @@ function ResumoExecutivoDoRecorte({
         <span style={{ color: 'var(--cinza-2)' }}>interações no filtro</span>
       </div>
 
-      {frentePrincipal ? (
-        <div>
-          <span style={{ color: 'var(--cinza-2)' }}>Frente principal: </span>
-          <strong style={{ color: 'var(--cinza-4)' }}>{frentePrincipal.rotulo}</strong>{' '}
-          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({frentePrincipal.pct}%)</span>
-        </div>
-      ) : null}
-
       {climaPrincipal ? (
         <div>
           <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
@@ -1337,11 +1349,19 @@ function ResumoExecutivoDoRecorte({
         </div>
       ) : null}
 
-      {topUf ? (
+      {tierPrincipal ? (
         <div>
-          <span style={{ color: 'var(--cinza-2)' }}>Maior volume: </span>
-          <strong style={{ color: 'var(--cinza-4)' }}>{topUf.rotulo}</strong>{' '}
-          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({topUf.total} agendas)</span>
+          <span style={{ color: 'var(--cinza-2)' }}>Relevância predominante: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{tierPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({tierPrincipal.pct}%)</span>
+        </div>
+      ) : null}
+
+      {publicoPrincipal ? (
+        <div>
+          <span style={{ color: 'var(--cinza-2)' }}>Principal público: </span>
+          <strong style={{ color: 'var(--cinza-4)' }}>{publicoPrincipal.rotulo}</strong>{' '}
+          <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({publicoPrincipal.pct}%)</span>
         </div>
       ) : null}
     </div>

@@ -29,7 +29,6 @@ import {
   Carregando,
   Cartao,
   Chip,
-  ChipDeFrente,
   FaixaDeErro,
   Secao,
   estiloDeEntrada,
@@ -262,6 +261,15 @@ export function Cadastro({
   const categoriaPublicoDaInstituicao = instituicaoSelecionada?.categoria_publico_id
     ? catalogo.dicionarios.categorias_publico.find(
         (categoria) => categoria.id === instituicaoSelecionada.categoria_publico_id,
+      )
+    : undefined;
+  //: A SUBCATEGORIA SÓ EXISTE PARA QUEM TEM SUBDIVISÃO DE VERDADE — nula
+  //: sempre que a categoria for `sem_quebra` (ver `0036_categoria_de_
+  //: publico.sql`). Mesma leitura, mesmo lugar: o campo "Público" mostra as
+  //: duas juntas quando a subcategoria existir.
+  const subcategoriaPublicoDaInstituicao = instituicaoSelecionada?.subcategoria_publico_id
+    ? catalogo.dicionarios.subcategorias_publico.find(
+        (subcategoria) => subcategoria.id === instituicaoSelecionada.subcategoria_publico_id,
       )
     : undefined;
 
@@ -589,7 +597,11 @@ export function Cadastro({
           A frente é DERIVADA da instituição (seção 3) e deste formato; a
           tela mostra o resultado como leitura, junto do campo "Público", em
           vez de perguntar de novo o que a instituição já responde. */}
-      <Secao titulo="1. Tipo de interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="1. Tipo de interação"
+        ajuda="Escolha o tipo antes de preencher o resto. Ele muda o formulário: uma consulta recebida abre um bloco próprio mais abaixo, e alguns campos adicionais dependem dele."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.formatos_interacao.map((formato) => {
             const valor = String(formato.id);
@@ -662,30 +674,13 @@ export function Cadastro({
             }))}
           />
 
-          {/* A FRENTE E O PÚBLICO, LADO A LADO — os dois são leitura, os dois
-              só existem depois de escolher a instituição. A frente é o que
-              esta interação VAI VIRAR ao salvar (a tela não manda mais esse
-              campo — quem decide, de fato, é o backend, com a mesma regra);
-              o público é dado direto da instituição, informativo, e nunca
-              gravado na interação — ver `Instituicao.categoria_publico_id`. */}
-          <Campo rotulo="Frente" dica="Calculada a partir da instituição e do formato.">
-            <div
-              style={{
-                ...estiloDeEntrada,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {frenteAtual ? (
-                <ChipDeFrente frente={frenteAtual} />
-              ) : (
-                <span style={{ color: 'var(--cinza-2)' }}>
-                  {instituicaoSelecionada ? 'Não foi possível calcular' : '—'}
-                </span>
-              )}
-            </div>
-          </Campo>
-
+          {/* O PÚBLICO É LEITURA, e só existe depois de escolher a
+              instituição — é dado direto dela, informativo, e nunca gravado
+              na interação (ver `Instituicao.categoria_publico_id`). A frente
+              não aparece mais aqui: continua sendo calculada por baixo (a
+              tela não manda mais esse campo — quem decide é o backend, com
+              `frenteDerivada`/`derivar_frente`), só deixou de ser mostrada
+              nas telas. */}
           <Campo rotulo="Público" dica="Vem da classificação da instituição.">
             <div
               style={{
@@ -697,7 +692,9 @@ export function Cadastro({
               }}
             >
               {categoriaPublicoDaInstituicao
-                ? categoriaPublicoDaInstituicao.nome
+                ? subcategoriaPublicoDaInstituicao
+                  ? `${categoriaPublicoDaInstituicao.nome} — ${subcategoriaPublicoDaInstituicao.nome}`
+                  : categoriaPublicoDaInstituicao.nome
                 : instituicaoSelecionada
                   ? 'Não classificada'
                   : '—'}
@@ -729,6 +726,7 @@ export function Cadastro({
 
           <CampoQueCompleta
             rotulo="Unidade de negócio"
+            ajuda="A operação da Aegea envolvida nesta agenda. Se for um assunto da holding, sem unidade específica, deixe em Holding / corporativo."
             vazio="Holding / corporativo"
             valor={form.unidade_negocio_id}
             aoEscolher={(v) => alterar('unidade_negocio_id', v)}
@@ -738,16 +736,6 @@ export function Cadastro({
             }))}
           />
 
-          <CampoQueCompleta
-            rotulo="Esfera"
-            vazio="Não informada"
-            valor={form.esfera_id}
-            aoEscolher={(v) => alterar('esfera_id', v)}
-            opcoes={catalogo.dicionarios.esferas.map((e) => ({
-              valor: String(e.id),
-              rotulo: e.nome,
-            }))}
-          />
         </div>
 
         <div style={{ marginTop: 16 }}>
@@ -760,7 +748,10 @@ export function Cadastro({
               "TEMAS", e não "Assuntos" nem "Tags": a Administração usa esse
               nome desde que a aba de cadastro foi renomeada, e a leitura
               vale para toda a plataforma — um campo, um nome. */}
-          <Campo rotulo="Temas">
+          <Campo
+            rotulo="Temas"
+            ajuda="Escolha um dos temas disponíveis que mais se encaixa com a interação. Se nenhum estiver de acordo, você pode criar um novo na Administração, na aba Temas."
+          >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
                 const ativo = form.temas.includes(tema.id);
@@ -780,16 +771,83 @@ export function Cadastro({
         </div>
       </Secao>
 
+      {/* QUEM PARTICIPA, LOGO APÓS IDENTIFICAR A INSTITUIÇÃO — por pedido:
+          depois de saber com quem se fala, faz mais sentido dizer quem senta
+          na mesa do que onde a mesa fica. "Onde" e "Situação e expectativa"
+          vêm depois, na mesma ordem de antes entre si.
+
+          OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
+          A pergunta é uma só — quem senta nesta reunião — e responder cada
+          metade num canto distante da tela faz a metade Aegea ser esquecida.
+
+          O MESMO GESTO NOS DOIS LADOS: linha a linha, com presença nos dois.
+          Gramáticas diferentes para a mesma pergunta deixariam um dos lados
+          sem onde registrar quem faltou à reunião.
+
+          O que difere é só a coluna do meio, porque as duas coisas são
+          diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
+          pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
+          um com bandeirinha. */}
+      <Secao titulo="4. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+        {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
+            o que diz que são partes distintas da mesma mesa: num cartão só, as
+            duas listas leriam como uma lista longa com dois títulos, e é
+            exatamente a distinção que importa aqui. */}
+        <div className="grade grade--mesa" style={{ gap: 16 }}>
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela Aegea
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Porta-voz conta no painel de exposição; equipe, não.
+            </p>
+            <ListaDaAegea
+              participantes={form.aegea}
+              pessoas={[...catalogo.pessoas.values()]}
+              aoMudar={(aegea) => alterar('aegea', aegea)}
+            />
+          </Cartao>
+
+          <Cartao>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+              Pela outra parte
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
+              Quem representa a instituição. Depois da reunião, marque quem
+              compareceu.
+            </p>
+            {/* QUEM PODE REPRESENTAR ESTA INSTITUICAO, e nao as 55 pessoas da
+                base. Escolher a instituicao ja disse com quem se conversa;
+                oferecer o resto convida a registrar alguem do orgao errado, e
+                esse erro nao tem como ser percebido depois — o nome fica la,
+                plausivel.
+
+                Sem instituicao escolhida a lista fica vazia de proposito: e a
+                ordem em que se preenche. */}
+            <ListaDeParticipantes
+              participantes={form.outraParte}
+              rotuloEsperado={rotuloDaInstituicao.toLowerCase()}
+              interlocutores={interlocutoresDaInstituicao(
+                [...catalogo.interlocutores.values()],
+                form.instituicao_id,
+                form.outraParte.map((p) => p.interlocutor_id),
+                instituicaoSelecionada?.ativo ?? true,
+              )}
+              aoMudar={(outraParte) => alterar('outraParte', outraParte)}
+            />
+          </Cartao>
+        </div>
+      </Secao>
+
       {/* ONDE A AGENDA ACONTECE.
-          Entre a identificacao e a expectativa porque e nessa ordem que se
-          sabe: com quem e quando primeiro, onde em seguida, o que se espera
-          por ultimo.
+          Depois de "Quem participou": já se sabe com quem se fala e quem
+          senta na mesa, falta dizer onde ela fica.
 
           A MODALIDADE E CAMPO PROPRIO, e nao deducao do endereco. Ela se agrega
           — "quantas foram presenciais neste trimestre?" — e o endereco nao;
           ler "Teams" e concluir online funcionaria ate alguem escrever "sala
           4". */}
-      <Secao titulo="4. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao titulo="5. Onde será ou foi realizada?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             {/* "Nao informado" e o padrao. As 60 agendas da planilha nao
@@ -835,21 +893,23 @@ export function Cadastro({
       </Secao>
 
       {/* O QUE SE SABE ANTES DE A AGENDA ACONTECER.
-          Vem logo depois da identificação porque é nesta ordem que se pensa
-          uma agenda: quem pediu, em que pé está, o quanto importa, e o que se
-          espera dela. O que houve fica em "Desfecho da interação"; o relato, em
-          "Conteúdo" — ambos depois de "Quem participa" e "Materiais", que são
-          o que se resolve entre marcar e realizar.
+          Vem depois de "Quem participou" e "Onde": já se sabe com quem se
+          fala, quem senta na mesa e onde ela fica — falta dizer em que pé
+          está o convite, o quanto importa e o que se espera dele. O que
+          houve fica em "Desfecho da interação"; o relato, em "Conteúdo" —
+          ambos depois de "Materiais", que é o que se resolve entre marcar e
+          realizar.
 
           Três comentários se acumularam aqui, de reorganizações sucessivas, e
           dois falavam de campos que já tinham saído desta seção. Comentário
           que descreve uma tela anterior é pior que comentário nenhum. */}
-      <Secao titulo="5. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao titulo="6. Situação e expectativa" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <Cartao>
 
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Iniciativa"
+              ajuda="Quem pediu esta agenda: a Aegea ou a outra parte."
               vazio="Não informada"
               valor={form.iniciativa}
               aoEscolher={(v) => alterar('iniciativa', v)}
@@ -871,6 +931,7 @@ export function Cadastro({
                 silêncio — o mesmo defeito que a pauta já teve aqui. */}
             <CampoQueCompleta
               rotulo="Situação"
+              ajuda="Aqui só há três estados: Solicitado (o pedido foi feito), Aceito ou Negado. O que aconteceu na reunião se registra na aba Depois."
               obrigatorio
               valor={form.status}
               aoEscolher={(v) => alterar('status', v)}
@@ -929,6 +990,7 @@ export function Cadastro({
 
             <Campo
               rotulo="Relevância"
+              ajuda="O quanto esta instituição importa para a Aegea. Não se escolhe aqui: é definida no cadastro da instituição e vale igual para todas as interações com ela. Para mudar, altere o cadastro dela."
               dica={
                 form.instituicao_id
                   ? 'Vem do cadastro da instituição.'
@@ -969,9 +1031,10 @@ export function Cadastro({
               inteiro na ficha, onde ele é LIDO. É lá que a comparação serve
               para alguma coisa; aqui ela só pedia um dado que ainda não
               existe. */}
-          <div className="grade grade--2" style={{ gap: 16 }}>
+          <div className="grade grade--2" style={{ gap: 16, marginTop: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
+              ajuda="Como você acha que a conversa vai ser, antes de ela acontecer. O clima real é registrado depois, na aba Depois."
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}
               aoMudar={(v) => alterar('clima_esperado', v)}
@@ -983,15 +1046,20 @@ export function Cadastro({
                 existe para mostrar. */}
             <Campo
               rotulo="Veio de outras interações?"
+              ajuda="Use quando esta agenda é desdobramento de outra. Só aparecem interações que já aconteceram e que não são posteriores à data desta."
               dica="Dá para escolher mais de uma."
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher
-                  mais: o campo se lê de cima para baixo. */}
-              {form.origens.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginBottom: 8 }}>
-                  Nenhuma origem escolhida.
-                </p>
-              ) : (
+                  mais: o campo se lê de cima para baixo.
+                  VAZIO NÃO DIZ NADA, de propósito: sem isto, o botão descia
+                  uma linha só para "Clima esperado", ao lado, não ter — os
+                  dois campos ficavam desalinhados na grade de duas colunas.
+                  A pergunta do rótulo ("Veio de outras interações?") mais o
+                  botão "Escolher na base…" já dizem que nada foi escolhido
+                  ainda; a frase à parte só repetia isso, e num lugar que
+                  empurrava o botão pra fora do alinhamento com a coluna ao
+                  lado. */}
+              {form.origens.length === 0 ? null : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                   {form.origens.map((origemId) => {
                     const agenda = agendas.find((a) => a.id === origemId);
@@ -1044,6 +1112,7 @@ export function Cadastro({
               antes: quem pediu, em que pé está, o quanto importa, que clima se
               projeta, de onde a agenda veio. Escrever o que se espera antes de
               responder essas coisas é escrever no vazio. */}
+          <div style={{ marginTop: 16 }}>
           <Campo rotulo="Expectativa">
             <textarea
               style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
@@ -1052,70 +1121,8 @@ export function Cadastro({
               placeholder="O que precisa sair desta reunião para ela ter valido a pena."
             />
           </Campo>
+          </div>
         </Cartao>
-      </Secao>
-
-      {/* OS DOIS LADOS DA MESA, UM AO LADO DO OUTRO.
-          A pergunta é uma só — quem senta nesta reunião — e responder cada
-          metade num canto distante da tela faz a metade Aegea ser esquecida.
-
-          O MESMO GESTO NOS DOIS LADOS: linha a linha, com presença nos dois.
-          Gramáticas diferentes para a mesma pergunta deixariam um dos lados
-          sem onde registrar quem faltou à reunião.
-
-          O que difere é só a coluna do meio, porque as duas coisas são
-          diferentes: aqui o PAPEL (fala pela companhia ou acompanha), lá qual
-          pessoa REPRESENTA a instituição. Por isso são dois componentes, e não
-          um com bandeirinha. */}
-      <Secao titulo="6. Quem participou ou irá participar?" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
-        {/* DOIS CARTÕES, e não dois blocos dentro de um. A borda entre eles é
-            o que diz que são partes distintas da mesma mesa: num cartão só, as
-            duas listas leriam como uma lista longa com dois títulos, e é
-            exatamente a distinção que importa aqui. */}
-        <div className="grade grade--mesa" style={{ gap: 16 }}>
-          <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
-              Pela Aegea
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-              Porta-voz conta no painel de exposição; equipe, não.
-            </p>
-            <ListaDaAegea
-              participantes={form.aegea}
-              pessoas={[...catalogo.pessoas.values()]}
-              aoMudar={(aegea) => alterar('aegea', aegea)}
-            />
-          </Cartao>
-
-          <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
-              Pela outra parte
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
-              Quem representa a instituição. Depois da reunião, marque quem
-              compareceu.
-            </p>
-            {/* QUEM PODE REPRESENTAR ESTA INSTITUICAO, e nao as 55 pessoas da
-                base. Escolher a instituicao ja disse com quem se conversa;
-                oferecer o resto convida a registrar alguem do orgao errado, e
-                esse erro nao tem como ser percebido depois — o nome fica la,
-                plausivel.
-
-                Sem instituicao escolhida a lista fica vazia de proposito: e a
-                ordem em que se preenche. */}
-            <ListaDeParticipantes
-              participantes={form.outraParte}
-              rotuloEsperado={rotuloDaInstituicao.toLowerCase()}
-              interlocutores={interlocutoresDaInstituicao(
-                [...catalogo.interlocutores.values()],
-                form.instituicao_id,
-                form.outraParte.map((p) => p.interlocutor_id),
-                instituicaoSelecionada?.ativo ?? true,
-              )}
-              aoMudar={(outraParte) => alterar('outraParte', outraParte)}
-            />
-          </Cartao>
-        </div>
       </Secao>
 
       {/* MATERIAIS --------------------------------------------------------- */}
@@ -1185,7 +1192,7 @@ export function Cadastro({
 
       {frenteAtual ? (
         <Secao
-          titulo={ehConsulta ? '9. Detalhes da frente' : '8. Detalhes da frente'}
+          titulo={ehConsulta ? '9. Detalhes adicionais' : '8. Detalhes adicionais'}
           estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
         >
           <Cartao>

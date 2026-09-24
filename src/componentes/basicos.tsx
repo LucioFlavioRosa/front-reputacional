@@ -4,15 +4,97 @@
  *  escreve hex diretamente — cor nova entra no token, não na tela.
  */
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
-import type { Frente } from '@/dominio/tipos';
-import {
-  CORES_DE_FRENTE,
-  DESCRICAO_DE_FRENTE,
-  ROTULOS_DE_FRENTE,
-  textoSobreFrente,
-} from '@/dominio/frentes';
+
+/* -- ajuda ---------------------------------------------------------------- */
+
+/** O "?" que explica um campo quando o rótulo sozinho não basta.
+ *
+ *  USE POUCO. Um "?" em todo campo vira ruído e ninguém mais o lê; ele existe
+ *  para o campo que pode confundir (um valor que vem pronto, uma regra que não
+ *  está no rótulo). O que cabe numa linha curta continua sendo `dica`.
+ *
+ *  É um `span` focável, e NÃO um `button`, de propósito: dentro do `<label>` de
+ *  `Campo`, um `button` seria o primeiro controle do rótulo e roubaria o campo
+ *  ao qual o rótulo pertence. O clique também não pode chegar ao `<label>`,
+ *  senão abrir a ajuda abriria (ou focaria) o campo ao lado.
+ *
+ *  Aparece enquanto o mouse está por cima e some quando ele sai. Quem navega
+ *  pelo teclado também vê o texto enquanto o "?" está em foco.
+ */
+export function Ajuda({ texto }: { texto: string }) {
+  const id = useId();
+  const [visivel, definirVisivel] = useState(false);
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', marginLeft: 6, verticalAlign: 'middle' }}>
+      <span
+        role="img"
+        tabIndex={0}
+        aria-label="Ajuda"
+        aria-describedby={visivel ? id : undefined}
+        onMouseEnter={() => definirVisivel(true)}
+        onMouseLeave={() => definirVisivel(false)}
+        onFocus={() => definirVisivel(true)}
+        onBlur={() => definirVisivel(false)}
+        onClick={(evento) => {
+          // NÃO DEIXA O CLIQUE CHEGAR NO `<label>` que envolve o campo.
+          evento.preventDefault();
+          evento.stopPropagation();
+        }}
+        onKeyDown={(evento) => {
+          if (evento.key === 'Escape') definirVisivel(false);
+        }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          border: '1px solid var(--borda-input)',
+          background: visivel ? 'var(--bg-trilho)' : 'var(--branco)',
+          color: 'var(--cinza-3)',
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: 1,
+          cursor: 'help',
+          userSelect: 'none',
+        }}
+      >
+        ?
+      </span>
+      {visivel ? (
+        <span
+          id={id}
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            zIndex: 40,
+            top: 'calc(100% + 6px)',
+            left: -6,
+            width: 260,
+            maxWidth: '70vw',
+            padding: '9px 11px',
+            background: 'var(--branco)',
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-card-int)',
+            boxShadow: 'var(--sh-tooltip)',
+            color: 'var(--cinza-3)',
+            fontSize: 12,
+            fontWeight: 400,
+            lineHeight: 1.45,
+            textAlign: 'left',
+            whiteSpace: 'normal',
+          }}
+        >
+          {texto}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 /* -- superfícies ---------------------------------------------------------- */
 
@@ -62,6 +144,7 @@ export function Cartao({
 export function Secao({
   titulo,
   subtitulo,
+  ajuda,
   acao,
   children,
   estilo,
@@ -70,6 +153,8 @@ export function Secao({
 }: {
   titulo: string;
   subtitulo?: string;
+  /** Um "?" ao lado do título, para a seção cuja finalidade não é óbvia. */
+  ajuda?: string;
   acao?: ReactNode;
   children: ReactNode;
   estilo?: CSSProperties;
@@ -109,11 +194,14 @@ export function Secao({
         }}
       >
         <div style={{ minWidth: 0, flex: 1 }}>
-          {nivelDoTitulo === 1 ? (
-            <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
-          ) : (
-            <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {nivelDoTitulo === 1 ? (
+              <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
+            ) : (
+              <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
+            )}
+            {ajuda ? <Ajuda texto={ajuda} /> : null}
+          </div>
           {subtitulo ? (
             <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 3, fontWeight: 400 }}>
               {subtitulo}
@@ -128,32 +216,6 @@ export function Secao({
 }
 
 /* -- rótulos -------------------------------------------------------------- */
-
-export function ChipDeFrente({
-  frente,
-  ativo,
-  aoClicar,
-  estilo,
-}: {
-  frente: Frente;
-  ativo?: boolean;
-  aoClicar?: () => void;
-  /** Sobrepõe o tamanho padrão — o cadastro usa um chip maior que o resto do
-   *  produto, sem precisar de um segundo componente para isso. */
-  estilo?: CSSProperties;
-}) {
-  return (
-    <Chip
-      rotulo={ROTULOS_DE_FRENTE[frente]}
-      fundo={CORES_DE_FRENTE[frente]}
-      texto={textoSobreFrente(frente)}
-      ativo={ativo}
-      aoClicar={aoClicar}
-      titulo={DESCRICAO_DE_FRENTE[frente]}
-      estilo={estilo}
-    />
-  );
-}
 
 export function Chip({
   rotulo,
@@ -532,11 +594,16 @@ export function Campo({
   rotulo,
   children,
   dica,
+  ajuda,
   obrigatorio,
 }: {
   rotulo: string;
   children: ReactNode;
+  /** Texto curto, sempre visível, embaixo do campo. */
   dica?: string;
+  /** Explicação mais longa, num "?" ao lado do rótulo. Só para o campo que
+   *  pode confundir; o resto fica só com o rótulo (e, se couber, a `dica`). */
+  ajuda?: string;
   obrigatorio?: boolean;
 }) {
   return (
@@ -552,6 +619,7 @@ export function Campo({
       >
         {rotulo}
         {obrigatorio ? <span style={{ color: 'var(--erro-fg)' }}> *</span> : null}
+        {ajuda ? <Ajuda texto={ajuda} /> : null}
       </span>
       {children}
       {dica ? (

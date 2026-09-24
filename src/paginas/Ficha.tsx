@@ -12,7 +12,6 @@ import {
   Botao,
   Carregando,
   Chip,
-  ChipDeFrente,
   FaixaDeErro,
   Modal,
 } from '@/componentes/basicos';
@@ -20,7 +19,6 @@ import { dataCompleta, urlSegura } from '@/dominio/formato';
 import {
   CAMPOS_DE_EXTENSAO,
   ENUMERACOES_DA_EXTENSAO,
-  ROTULOS_DE_FRENTE,
   rotuloDeAbrangencia,
 } from '@/dominio/frentes';
 import type { Dicionarios, Extensao, Interacao } from '@/dominio/tipos';
@@ -108,7 +106,7 @@ export function Ficha({
       titulo={entidade}
       subtitulo={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          {ROTULOS_DE_FRENTE[interacao.frente]} · {dataCompleta(interacao.data_interacao)}
+          {dataCompleta(interacao.data_interacao)}
           {interacao.tier ? ` · ${rotuloDeRelevancia(catalogo, interacao.tier)}` : ''}
         </span>
       }
@@ -173,7 +171,6 @@ export function Ficha({
               margin: 0,
             }}
           >
-            <Metadado rotulo="Frente" valor={<ChipDeFrente frente={interacao.frente} />} />
             <Metadado
               rotulo="Interlocutor"
               valor={nomeDoInterlocutor(catalogo, interacao.interlocutor_id)}
@@ -246,7 +243,7 @@ export function Ficha({
         {detalhesDaFrente(catalogo, interacao).length ? (
           <section>
             <div className="kicker" style={{ marginBottom: 10 }}>
-              Detalhes da frente
+              Detalhes adicionais
             </div>
             <dl
               style={{
@@ -379,7 +376,7 @@ export function Ficha({
           // aqui, a informação em si ficava no contraste de "isto não é
           // conteúdo", que é o oposto do que a frase é.
           <p style={{ fontSize: 12, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
-            Sem preenchimento nesta frente: {faltando.join(', ')}.
+            Sem preenchimento: {faltando.join(', ')}.
           </p>
         ) : null}
       </div>
