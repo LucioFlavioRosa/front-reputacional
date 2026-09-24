@@ -1,7 +1,7 @@
 /** Preparar agenda — o que alguém precisa saber sobre um tema antes de
  *  entrar numa reunião, com o menor esforço possível: escolhe o tema e vê,
  *  numa tela só, o que a companhia já diz sobre ele, o que aconteceu nas
- *  últimas conversas e como elas costumam terminar.
+ *  últimas conversas e como elas terminam.
  *
  *  O TEMA É UM FILTRO DO RECORTE — o mesmo `tags` que a gaveta de filtros
  *  usa. Escolher aqui é o mesmo que marcar o tema lá, e vice-versa; e todo
@@ -96,10 +96,6 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
         subtitulo="Escolha o tema: o que a companhia diz sobre ele, o que aconteceu nas últimas conversas e como elas terminam. Os demais filtros do recorte valem aqui."
         nivelDoTitulo={1}
       >
-        {/* A MESMA FAIXA DO PAINEL, com o Tema na frente: quem aprendeu a
-            filtrar lá filtra igual aqui. Área(s), Tipo de Interação e Tipo de
-            Público seguem ao lado porque valem sobre os três blocos — ficar
-            à vista é o que evita a pergunta "por que sumiu metade das agendas?". */}
         <FaixaDeFiltros>
           <CampoSuspenso
             campo={campoDeTema(recorte, definirRecorte, catalogo)}
@@ -285,8 +281,6 @@ function BlocoDeAgendas({
   catalogo: Catalogo;
   aoAbrirAgenda: (id: string) => void;
 }) {
-  //: O contexto já vem em `-data_interacao`; a ordenação aqui é só garantia,
-  //: para a lista não depender do padrão do servidor.
   const ultimas = [...agendas]
     .sort((a, b) => b.data_interacao.localeCompare(a.data_interacao))
     .slice(0, QUANTAS_AGENDAS);
@@ -343,11 +337,6 @@ function BlocoDeAgendas({
 
 /* -- bloco 2b: o que o mercado andou perguntando sobre o tema ---------------- */
 
-//: ANTES DE ENTRAR NA REUNIÃO, saber o que o mercado perguntou sobre este
-//: tema muda o que se leva: se três bancos sondaram a mesma premissa nas
-//: últimas semanas, ela vai aparecer na sala. O bloco some quando não há
-//: consulta no recorte — a maioria dos temas não tem, e um cartão vazio em
-//: toda preparação treina a pessoa a ignorar a tela.
 function BlocoDeConsultasDoTema({
   consultas,
   alegacoes,
@@ -393,10 +382,6 @@ function BlocoDeConsultasDoTema({
           </ul>
         ) : null}
 
-        {/* OS ÚLTIMOS REGISTROS, e não só a contagem: antes de entrar na
-            reunião interessa ler o que de fato perguntaram, com as palavras
-            de quem perguntou. A lista agregada acima responde "o que está
-            circulando"; esta responde "o que chegou". */}
         <p className="kicker" style={{ margin: '0 0 8px' }}>
           Últimas consultas recebidas ({consultas.length} no recorte)
         </p>
@@ -435,7 +420,6 @@ function BlocoDeConsultasDoTema({
 
 /* -- bloco 3: como as conversas sobre o tema terminam ------------------------ */
 
-/** A legenda de UM lado do gráfico Antes × Depois, com o título do lado. */
 function LegendaDeUmLado({
   titulo,
   itens,
@@ -449,7 +433,7 @@ function LegendaDeUmLado({
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-      <span className="kicker" style={{ marginTop: 14, minWidth: 48 }}>
+      <span className="kicker" style={{ minWidth: 48, margin: 0 }}>
         {titulo}
       </span>
       <Legenda itens={itens} ativo={ativo} aoClicar={aoClicar} />
@@ -457,11 +441,6 @@ function LegendaDeUmLado({
   );
 }
 
-
-//: CLICAR NUM GRÁFICO FILTRA A PÁGINA INTEIRA — o mesmo gesto do Painel: a
-//: fatia, a coluna ou a linha clicada vira filtro do recorte, e materiais,
-//: agendas e os outros gráficos respondem. Clicar de novo desfaz
-//: (`alternar`), e o que está ativo fica marcado no gráfico.
 function BlocoDeGraficos({
   agendas,
   catalogo,
@@ -492,54 +471,75 @@ function BlocoDeGraficos({
       titulo="Como as conversas sobre o tema terminam"
       subtitulo="Desfecho, clima esperado antes e registrado depois, e com quem se falou. Clique numa fatia, coluna ou linha para filtrar a página; clique de novo para desfazer."
     >
-      <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
-        <Cartao>
+      <div className="grade grade--2" style={{ gap: 16, alignItems: 'stretch' }}>
+        <Cartao estilo={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Desfecho
           </p>
-          <Rosca
-            itens={desfechos}
-            ativo={recorte.resultado}
-            aoClicar={(chave) => filtrar('resultado', chave)}
-            vazio="Nenhuma agenda com desfecho registrado."
-          />
-          <Legenda
-            itens={desfechos}
-            ativo={recorte.resultado}
-            aoClicar={(chave) => filtrar('resultado', chave)}
-            centralizada
-          />
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px 0',
+            }}
+          >
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 200 }}>
+                <Rosca
+                  itens={desfechos}
+                  ativo={recorte.resultado}
+                  aoClicar={(chave) => filtrar('resultado', chave)}
+                  vazio="Nenhuma agenda com desfecho registrado."
+                />
+              </div>
+            </div>
+          </div>
         </Cartao>
 
-        <Cartao>
+        <Cartao estilo={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <p className="kicker" style={{ marginBottom: 10 }}>
             Clima: antes e depois
           </p>
-          {/* DOIS FILTROS, UM POR COLUNA: a faixa da coluna "Antes" filtra pelo
-              clima ESPERADO e a da coluna "Depois" pelo REGISTRADO. Com um
-              filtro só, clicar em "Antes" filtrava pelo registrado e a própria
-              coluna "Antes" sumia. Uma legenda por lado, marcando o que está
-              ativo em cada um. */}
-          <BarrasEmpilhadas
-            colunas={clima.colunas}
-            altura={150}
-            formatarRotulo={(chave) => chave}
-            aoClicarSegmento={(chave, coluna) =>
-              filtrar(coluna === COLUNA_ANTES ? 'climaEsperado' : 'clima', chave)
-            }
-          />
-          <LegendaDeUmLado
-            titulo="Antes"
-            itens={clima.esperado}
-            ativo={recorte.climaEsperado}
-            aoClicar={(chave) => filtrar('climaEsperado', chave)}
-          />
-          <LegendaDeUmLado
-            titulo="Depois"
-            itens={clima.registrado}
-            ativo={recorte.clima}
-            aoClicar={(chave) => filtrar('clima', chave)}
-          />
+
+          <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '12px 0' }}>
+            <div style={{ width: '100%' }}>
+              <BarrasEmpilhadas
+                colunas={clima.colunas}
+                altura={240}
+                formatarRotulo={(chave) => chave}
+                aoClicarSegmento={(chave, coluna) =>
+                  filtrar(coluna === COLUNA_ANTES ? 'climaEsperado' : 'clima', chave)
+                }
+              />
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 'auto',
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 16,
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+            }}
+          >
+            <LegendaDeUmLado
+              titulo="Antes"
+              itens={clima.esperado}
+              ativo={recorte.climaEsperado}
+              aoClicar={(chave) => filtrar('climaEsperado', chave)}
+            />
+            <LegendaDeUmLado
+              titulo="Depois"
+              itens={clima.registrado}
+              ativo={recorte.clima}
+              aoClicar={(chave) => filtrar('clima', chave)}
+            />
+          </div>
         </Cartao>
 
         <Cartao>

@@ -169,7 +169,8 @@ export function Rosca({
         ) : null}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+      {/* Alterado de alignItems: 'center' para 'flex-start' para alinhar a legenda à esquerda mantendo o gráfico centralizado acima */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', alignItems: 'flex-start' }}>
         {itens.map((item) => {
           const selecionado = ativo === item.chave;
           return (
@@ -196,6 +197,7 @@ export function Rosca({
                 cursor: aoClicar ? 'pointer' : 'default',
                 textAlign: 'left',
                 font: 'inherit',
+                width: '100%',
               }}
             >
               <span

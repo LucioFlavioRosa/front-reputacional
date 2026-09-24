@@ -121,6 +121,7 @@ export function BarrasEmpilhadas({
         const alturaNecessaria =
           quantidade * 2 + Math.max(0, quantidade - 1) * VAO_ENTRE_SEGMENTOS;
         const apertada = alturaDaBarra < alturaNecessaria;
+        const alturaEfetiva = Math.max(coluna.total ? 3 : 0, alturaDaBarra);
 
         // Colunas das pontas alinham o tooltip pela borda, senão ele vazaria
         // para fora do card.
@@ -167,25 +168,12 @@ export function BarrasEmpilhadas({
           >
             <div
               style={{
-                height: ALTURA_DO_ROTULO,
-                fontSize: 11,
-                fontWeight: 700,
-                textAlign: 'center',
-                color: 'var(--cinza-4)',
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {coluna.total > 0 ? coluna.total : ''}
-            </div>
-
-            <div
-              style={{
                 height: alturaDoTrilho,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'flex-end',
                 alignItems: 'center',
+                position: 'relative',
                 // A régua que faltava: sem ela, as colunas flutuavam soltas no
                 // cartão branco, sem uma base comum para o olho comparar altura
                 // contra ela. Hairline recessiva, um tom fora da superfície —
@@ -193,11 +181,30 @@ export function BarrasEmpilhadas({
                 borderBottom: '1px solid var(--borda)',
               }}
             >
+              {/* O número total agora acompanha dinamicamente a altura exata da barra */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: alturaEfetiva + 4,
+                  height: ALTURA_DO_ROTULO,
+                  width: '100%',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  color: 'var(--cinza-4)',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}
+              >
+                {coluna.total > 0 ? coluna.total : ''}
+              </div>
+
               <div
                 style={{
                   width: '100%',
                   maxWidth: ESPESSURA_MAXIMA,
-                  height: Math.max(coluna.total ? 3 : 0, alturaDaBarra),
+                  height: alturaEfetiva,
                   display: 'flex',
                   flexDirection: 'column',
                   // O vão é feito com gap na cor da superfície, não com borda.
