@@ -82,7 +82,6 @@ const ABAS = [
   { id: 'geral' as const, rotulo: 'Visão geral' },
   { id: 'lentes' as const, rotulo: 'Lentes' },
   { id: 'drivers' as const, rotulo: 'Drivers e riscos' },
-  { id: 'calibracao' as const, rotulo: 'Calibração' },
   { id: 'metodologia' as const, rotulo: 'Metodologia' },
 ];
 
@@ -222,15 +221,6 @@ export function Score() {
       ) : null}
 
       {aba === 'drivers' ? <DriversERiscos mes={mes} /> : null}
-
-      {aba === 'calibracao' ? (
-        <CalibracaoDoScore
-          mes={mes}
-          opcoes={opcoes}
-          calibracao={indice.calibracao}
-          aoMudar={recarregar}
-        />
-      ) : null}
 
       {aba === 'metodologia' ? <Metodologia /> : null}
     </div>
@@ -761,7 +751,11 @@ function DriversERiscos({ mes }: { mes: string }) {
 //: A RÉGUA É CONFIGURAÇÃO DA ORGANIZAÇÃO, e não preferência de quem olha:
 //: mudar aqui muda o número que todo mundo lê. Por isso é versionada e só
 //: quem administra cadastros grava — o servidor recusa o resto.
-function CalibracaoDoScore({
+//: EXPORTADA PORQUE A TELA DE CONFIGURAÇÕES A MONTA. Ela nasceu como aba de
+//: dentro do Score e continua morando neste arquivo, ao lado do que ela
+//: ajusta; quem a abre agora é `score/ConfiguracoesDoScore`, pela engrenagem
+//: do menu.
+export function CalibracaoDoScore({
   mes,
   opcoes,
   calibracao,

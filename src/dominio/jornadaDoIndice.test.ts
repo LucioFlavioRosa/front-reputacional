@@ -289,8 +289,9 @@ describe('jornadaDoIndice', () => {
 
   it('o mês sem fato nem tema tem filete neutro e texto padrão', () => {
     const jornada = jornadaDoIndice(SEMESTRE, '2026-06');
+    // VAZIA É VAZIA: a ausência de comentário já se vê, e uma frase dizendo
+    // isso em dez colunas ocupa o lugar do que importa.
     expect(jornada.colunas[0].linhas).toEqual([]);
-    expect(jornada.colunas[0].vazio).toBe('Sem fato de destaque registrado.');
     expect(jornada.colunas[0].filete).toBe('var(--borda)');
     expect(jornada.pontos[0].tag).toBe('');
   });
@@ -397,6 +398,8 @@ describe('jornadaDoIndice', () => {
     expect(jornada.pontos[2].descricao).toBe(
       'março: índice 36, faixa Crítico. Atraso das DFs',
     );
+    // E o mês sem comentário não anuncia a falta dele.
+    expect(jornada.pontos[0].descricao).toBe('janeiro: índice 46, faixa Atenção');
   });
 
   it('sem lente comparada não desenha a curva tracejada', () => {

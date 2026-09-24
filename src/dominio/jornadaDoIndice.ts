@@ -123,10 +123,12 @@ export interface ColunaDoMes {
   nome: string;
   /** "+3 no mês" · "−15 no mês" · "ponto de partida". */
   variacao: string;
-  /** Fatos cadastrados e temas derivados, na ordem em que se lê. */
+  /** Comentários do especialista e temas derivados, na ordem em que se lê.
+   *
+   *  VAZIA É VAZIA, e não uma frase dizendo que está vazia. "Sem fato de
+   *  destaque registrado" em dez colunas seguidas ocupa o lugar do que
+   *  importa e não informa nada: a ausência de comentário já se vê. */
   linhas: LinhaDoMes[];
-  /** O texto que aparece quando não há nem fato nem tema. */
-  vazio: string;
   /** A cor do filete de 3px no topo da coluna. */
   filete: string;
   /** "Maior movimento: Clientes −12", ou vazio. */
@@ -442,9 +444,7 @@ export function jornadaDoIndice(
       descricao:
         `${mesPorExtenso(ponto.mes)}: índice ${isr}, faixa ${rotuloDaFaixa(isr)}` +
         (parcial ? `, medido por ${ponto.lentes} de 5 lentes` : '') +
-        (ponto.fatos.length
-          ? `. ${ponto.fatos.map((f) => f.texto).join('. ')}`
-          : '. Sem fato de destaque registrado.'),
+        (ponto.fatos.length ? `. ${ponto.fatos.map((f) => f.texto).join('. ')}` : ''),
     };
   });
 
@@ -460,7 +460,6 @@ export function jornadaDoIndice(
           ? 'ponto de partida'
           : `${ponto.delta > 0 ? '+' : '−'}${Math.abs(ponto.delta)} no mês`,
       linhas: linhasDoMes(ponto),
-      vazio: 'Sem fato de destaque registrado.',
       filete: FILETE_DO_EFEITO[ponto.fatos[0]?.efeito ?? ''] ?? 'var(--borda)',
       semTema: ponto.pontos_sem_tema
         ? `${emPontos(ponto.pontos_sem_tema)} sem tema`

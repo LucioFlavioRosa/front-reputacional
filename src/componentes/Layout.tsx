@@ -50,12 +50,30 @@ import type { Destino } from '@/navegacao/rota';
 //: registrada em `navegacao/rota.ts`, a página em `SinaisDeMercado.tsx` e o
 //: backend intacto: quem já tinha o link (`/sinais`) ainda abre a tela, só
 //: não há mais porta de entrada pelo menu.
-const NAVEGACAO: { view: Destino; rotulo: string }[] = [
-  { view: 'painel', rotulo: 'Painel' },
-  { view: 'base', rotulo: 'Base' },
-  { view: 'preparar', rotulo: 'Preparar agenda' },
+//: CADA ÁREA LEVA A PRÓPRIA CONFIGURAÇÃO, na engrenagem ao lado do nome.
+//:
+//: Antes havia um botão "Administração" que juntava três naturezas: quem entra
+//: na plataforma (Acessos), os cadastros que o CRM usa (Temas, Instituições,
+//: Representantes) e os dicionários. E a régua do Score ficava noutro lugar
+//: ainda, como aba de dentro dele. Quem procurava "onde mudo isto" tinha de
+//: saber de antemão em qual dos dois lugares a resposta estava.
+//:
+//: Painel, Base e Preparar agenda apontam para a MESMA configuração porque são
+//: a mesma área — o CRM. Relatórios não tem engrenagem: não há o que ajustar
+//: nele, e uma engrenagem que abre uma tela vazia ensina a ignorar engrenagens.
+interface ItemDoMenu {
+  view: Destino;
+  rotulo: string;
+  /** A tela de configuração desta área, quando há uma. */
+  configura?: Destino;
+}
+
+const NAVEGACAO: ItemDoMenu[] = [
+  { view: 'painel', rotulo: 'Painel', configura: 'admin' },
+  { view: 'base', rotulo: 'Base', configura: 'admin' },
+  { view: 'preparar', rotulo: 'Preparar agenda', configura: 'admin' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
-  { view: 'score', rotulo: 'Score Executivo' },
+  { view: 'score', rotulo: 'Score Executivo', configura: 'config-score' },
 ];
 
 /**
@@ -73,8 +91,8 @@ const NAVEGACAO: { view: Destino; rotulo: string }[] = [
 //:
 //: A `view` continua `acessos` de propósito: é o que o histórico do navegador
 //: guarda, e trocá-la quebraria os links que alguém já tenha.
-export const NAVEGACAO_ADMINISTRATIVA: { view: Destino; rotulo: string }[] = [
-  { view: 'admin', rotulo: 'Administração' },
+export const NAVEGACAO_ADMINISTRATIVA: ItemDoMenu[] = [
+  { view: 'plataforma', rotulo: 'Plataforma' },
 ];
 
 export function Layout({
@@ -233,10 +251,11 @@ export function Layout({
               // ela todo dia sem motivo.
               ...(administraAcessos ? NAVEGACAO_ADMINISTRATIVA : []),
             ].map((item) => {
-              const ativo = view === item.view;
+              const { configura } = item;
+              const ativo = view === item.view || view === configura;
               return (
+                <span key={item.view} style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <button
-                  key={item.view}
                   type="button"
                   onClick={() => navegar(item.view)}
                   aria-current={ativo ? 'page' : undefined}
@@ -258,6 +277,40 @@ export function Layout({
                 >
                   {item.rotulo}
                 </button>
+                {/* A ENGRENAGEM ENTRA NA ORDEM DE TABULAÇÃO como controle
+                    próprio, logo depois da área que ela configura: quem navega
+                    por teclado encontra "ajustar isto" onde esperaria, e não
+                    no fim do menu. */}
+                {configura ? (
+                  <button
+                    type="button"
+                    onClick={() => navegar(configura)}
+                    aria-label={`Configurações de ${item.rotulo}`}
+                    title={`Configurações de ${item.rotulo}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 26,
+                      height: 26,
+                      marginLeft: -4,
+                      borderRadius: 'var(--r-btn)',
+                      border: 'none',
+                      background:
+                        view === configura ? 'var(--branco)' : 'transparent',
+                      color:
+                        view === configura
+                          ? 'var(--azul-mar)'
+                          : 'rgba(255,255,255,0.6)',
+                      fontSize: 14,
+                      lineHeight: 1,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚙
+                  </button>
+                ) : null}
+                </span>
               );
             })}
           </nav>

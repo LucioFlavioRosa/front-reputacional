@@ -1,8 +1,13 @@
-/** O portal de quem administra a plataforma.
+/** As configurações do CRM — o que as telas de agenda usam para existir.
+ *
+ *  ACESSOS SAIU DAQUI em 24/09/2026, e a saída é a razão de este comentário
+ *  mudar. Quem entra na plataforma não é assunto do CRM: é da plataforma
+ *  inteira, vale igualmente para o Score, e misturá-lo com os cadastros de
+ *  agenda fazia a mesma tela responder a duas perguntas de donos diferentes.
+ *  Agora mora em `PortalDaPlataforma`, no botão próprio.
  *
  *  Seis responsabilidades, e por isso seis abas — não seis entradas no menu:
  *
- *    Acessos            quem entra na plataforma, e até quando
  *    Temas              o vocabulário que o painel consegue somar
  *    Posicionamento     a biblioteca de referências
  *    Instituições       com quem se conversa, e quem fala por elas
@@ -21,12 +26,11 @@
  *  agenda, e não são.
  *
  *  A aba não é a barreira. Quem decide é o backend: os cadastros exigem
- *  `administra_dicionarios`, os acessos exigem `administra_acessos`, e as duas
- *  rotas respondem 403 a quem não tem. Esconder é conveniência de tela.
+ *  `administra_dicionarios` e a rota responde 403 a quem não tem. Esconder é
+ *  conveniência de tela.
  */
 
 import { useState } from 'react';
-import { Acessos } from '@/paginas/Acessos';
 import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
 import { Alegacoes } from '@/paginas/Alegacoes';
 import { Dicionarios } from '@/paginas/Dicionarios';
@@ -35,7 +39,6 @@ import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
 type Aba =
-  | 'acessos'
   | 'assuntos'
   | 'biblioteca'
   | 'cadastros'
@@ -50,7 +53,6 @@ type Aba =
 //: Cadastrar na ordem inversa obriga a voltar — abrir Porta-vozes, descobrir
 //: que o assunto não existe, sair, criar, voltar.
 const ABAS: { id: Aba; rotulo: string }[] = [
-  { id: 'acessos', rotulo: 'Acessos' },
   { id: 'assuntos', rotulo: 'Temas' },
   { id: 'biblioteca', rotulo: 'Posicionamento' },
   { id: 'cadastros', rotulo: 'Instituições' },
@@ -64,8 +66,8 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'dicionarios', rotulo: 'Dicionários' },
 ];
 
-export function PortalDoAdmin({ euId }: { euId: string | null }) {
-  const [aba, definirAba] = useState<Aba>('acessos');
+export function PortalDoAdmin() {
+  const [aba, definirAba] = useState<Aba>('assuntos');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -137,10 +139,9 @@ export function PortalDoAdmin({ euId }: { euId: string | null }) {
         aria-labelledby={`aba-${aba}`}
         tabIndex={-1}
       >
-        {/* MONTADA E DESMONTADA, e não escondida com `display: none`. A tela de
-            acessos carrega a lista de pessoas ao montar; mantida viva atrás da
-            outra aba, ela mostraria dados de quando foi aberta. */}
-        {aba === 'acessos' ? <Acessos euId={euId} /> : null}
+        {/* MONTADA E DESMONTADA, e não escondida com `display: none`. Cada
+            tela carrega a sua lista ao montar; mantida viva atrás da outra
+            aba, ela mostraria dados de quando foi aberta. */}
         {aba === 'biblioteca' ? <Biblioteca /> : null}
         {aba === 'cadastros' ? <CadastroDeInstituicoes /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}

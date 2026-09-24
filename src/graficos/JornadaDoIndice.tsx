@@ -339,17 +339,16 @@ function Coluna({
       <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
         {coluna.variacao}
       </span>
+      {/* SEM LINHA, SEM TEXTO. Um mês sem comentário nem tema não ganha uma
+          frase dizendo que não tem: dez colunas repetindo "sem fato
+          registrado" ocupam o lugar do que importa. */}
       {coluna.linhas.length ? (
         <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {coluna.linhas.map((linha) => (
             <LinhaDaColuna key={`${linha.origem}-${linha.texto}`} linha={linha} />
           ))}
         </span>
-      ) : (
-        <span style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--cinza-2)' }}>
-          {coluna.vazio}
-        </span>
-      )}
+      ) : null}
       {coluna.semTema ? (
         <span style={{ fontSize: 10.5, color: 'var(--cinza-2)' }} title="Menções que moveram o índice sem tema classificado, ou lente estimada">
           {coluna.semTema}

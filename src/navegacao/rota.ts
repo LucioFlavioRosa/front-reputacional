@@ -33,7 +33,9 @@ export type Destino =
   | 'sinais'
   | 'score'
   | 'cadastro'
-  | 'admin';
+  | 'admin'
+  | 'config-score'
+  | 'plataforma';
 
 export interface Rota {
   destino: Destino;
@@ -66,6 +68,11 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'sinais') return { destino: 'sinais' };
   if (primeira === 'score') return { destino: 'score' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
+  // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
+  // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está
+  // mexendo na ferramenta que o produz.
+  if (primeira === 'score-config') return { destino: 'config-score', aba: segunda };
+  if (primeira === 'plataforma') return { destino: 'plataforma', aba: segunda };
 
   if (primeira === 'agenda') {
     if (!segunda) return { destino: 'base' };
@@ -101,6 +108,10 @@ export function caminhoDe(rota: Rota): string {
       return '/score';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
+    case 'config-score':
+      return rota.aba ? `/score-config/${rota.aba}` : '/score-config';
+    case 'plataforma':
+      return rota.aba ? `/plataforma/${rota.aba}` : '/plataforma';
     case 'cadastro':
       return rota.agenda ? `/agenda/${rota.agenda}/editar` : '/agenda/nova';
     case 'base':

@@ -14,7 +14,9 @@ import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
+import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
+import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
 import { Painel } from '@/paginas/Painel';
@@ -248,7 +250,14 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {/* `euId` para a tela saber qual linha é a de quem está olhando:
               ninguém desativa a própria conta. */}
-          {rota.destino === 'admin' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
+          {rota.destino === 'admin' ? <PortalDoAdmin /> : null}
+          {/* ACESSOS SAIU DO PORTAL DO CRM: quem entra na plataforma não é
+              assunto de agenda, vale igual para o Score, e agora tem botão
+              próprio. */}
+          {rota.destino === 'plataforma' ? (
+            <PortalDaPlataforma euId={eu?.id ?? null} />
+          ) : null}
+          {rota.destino === 'config-score' ? <ConfiguracoesDoScore /> : null}
         </LimiteDeErro>
       </Layout>
 
