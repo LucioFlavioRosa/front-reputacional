@@ -7,6 +7,7 @@ import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { GraficoDeArvore } from '@/graficos/GraficoDeArvore';
+import { GraficoDeLinha } from '@/graficos/GraficoDeLinha';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
@@ -130,6 +131,39 @@ function comEscalaDeCor<T extends { cor?: string }>(itens: T[], escala: string[]
   return itens.map((item, indice) => ({ ...item, cor: escala[indice % escala.length] }));
 }
 
+//: CADA PÚBLICO ADICIONADO ao "Net Sentiment Score no tempo" ganha uma cor
+//: própria, nesta ordem — todas escuras/saturadas o bastante para o texto
+//: branco do chip (`Chip` com `texto="var(--branco)"`, mesmo padrão de
+//: `temasExtras`/`categoriaPublicoExtras`) continuar legível. Sem
+//: `--turquesa-rio` nem `--amarelo-pequi` de propósito: as duas são claras
+//: demais para texto branco em cima. Sem `--azul-mar`: essa é a linha
+//: "Geral", que já está sempre no gráfico.
+const PALETA_DE_LINHAS_EXTRAS = ['#A11FFF', '#E12379', '#FE952B', '#AD6547', '#FF5C60'];
+
+/** NSS por período — (propositivas − tensas) ÷ total com clima registrado ×
+ *  100 —, reaproveitada tanto pela linha "Geral" (todo o recorte) quanto
+ *  por cada público adicionado ao gráfico (o mesmo cálculo, só filtrando
+ *  `interacoes` antes de chamar). `null` (não 0) num período sem nenhuma
+ *  interação com clima registrado ali. */
+function calcularNssPorPeriodo(
+  interacoes: Interacao[],
+  categoriasDeClima: { chave: string; rotulo: string; cor: string }[],
+  granularidade: Granularidade,
+): { chave: string; valor: number | null }[] {
+  const porPeriodo = completarPeriodos(
+    serieMensal(interacoes, categoriasDeClima, (i) => (i.clima ? [i.clima] : []), granularidade),
+    granularidade,
+  );
+  return porPeriodo.map((coluna) => {
+    const positivas = coluna.segmentos.find((s) => s.chave === 'propositivo')?.total ?? 0;
+    const negativas = coluna.segmentos.find((s) => s.chave === 'tenso')?.total ?? 0;
+    return {
+      chave: coluna.mes,
+      valor: coluna.total > 0 ? Math.round(((positivas - negativas) / coluna.total) * 100) : null,
+    };
+  });
+}
+
 /** Envolve um `<Secao>` de gráfico com uma faixa de 3px no topo, no mesmo
  *  degradê azul→turquesa da faixa fixa de filtros (`FaixaDeFiltros`) — por
  *  pedido, para o layout de todo gráfico do Painel carregar a identidade da
@@ -224,6 +258,12 @@ export function Painel({
   //: MESMA IDEIA DE `temasExtras`, para o Termômetro por público — "mostre
   //: também esta categoria" no gráfico, não um filtro do recorte.
   const [categoriaPublicoExtras, definirCategoriaPublicoExtras] = useState<string[]>([]);
+
+  //: MESMA IDEIA, para o Net Sentiment Score no tempo — cada categoria
+  //: adicionada ganha a própria linha no gráfico (`PALETA_DE_LINHAS_EXTRAS`),
+  //: ao lado da linha "Geral". Guarda o id da categoria como string, mesmo
+  //: formato de `categoriaPublicoExtras`.
+  const [nssPublicosExtras, definirNssPublicosExtras] = useState<string[]>([]);
 
   //: A faixa fixa de filtros abre fechada — só "Filtros:" e os três
   //: gatilhos, sem a trilha de período ocupando altura de cara.
@@ -324,6 +364,37 @@ export function Painel({
     const totalComTier = interacoes.filter((i) => i.tier != null).length || 1;
     const publicoLider = [...categoriasDePublico].sort((a, b) => b.total - a.total)[0];
 
+    //: EXTRAÍDO para servir tanto `clima` (a pilha empilhada) quanto `nss`
+    //: (a linha) — os dois leem a MESMA contagem de propositivo/neutro/tenso
+    //: por período, só a leitura final é diferente.
+    const climaPorPeriodo = completarPeriodos(
+      serieMensal(interacoes, categoriasDeClima, (i) => (i.clima ? [i.clima] : []), granularidade),
+      granularidade,
+    );
+
+    //: NET SENTIMENT SCORE por período — `calcularNssPorPeriodo` (mesma
+    //: fórmula do "placar de clima" usado em Termômetro por
+    //: público/Clima por Instituições/Barra divergente por tema, só que ao
+    //: longo do tempo em vez de por item), reaproveitada aqui e por cada
+    //: público extra que o gráfico adicionar (na renderização, mais abaixo).
+    const nssPorPeriodo = calcularNssPorPeriodo(interacoes, categoriasDeClima, granularidade);
+
+    //: O MESMO NSS, mas do RECORTE INTEIRO — a linha de referência que diz
+    //: "aqui é a média geral", para comparar contra a oscilação período a
+    //: período. `categoriasDeClima` já soma o recorte inteiro (não filtra
+    //: por período), então a conta é a mesma fórmula, sem passar por
+    //: `serieMensal`.
+    const totalComClima = categoriasDeClima.reduce((soma, c) => soma + c.total, 0);
+    const nssGeral =
+      totalComClima > 0
+        ? Math.round(
+            (((categoriasDeClima.find((c) => c.chave === 'propositivo')?.total ?? 0) -
+              (categoriasDeClima.find((c) => c.chave === 'tenso')?.total ?? 0)) /
+              totalComClima) *
+              100,
+          )
+        : 0;
+
     return {
       kpis: calcularKpis(interacoes, catalogo),
       resumoExecutivo: {
@@ -359,10 +430,13 @@ export function Painel({
         ),
         granularidade,
       ),
-      clima: completarPeriodos(
-        serieMensal(interacoes, categoriasDeClima, (i) => (i.clima ? [i.clima] : []), granularidade),
-        granularidade,
-      ),
+      clima: climaPorPeriodo,
+      nss: nssPorPeriodo,
+      nssGeral,
+      // EXPOSTO para o gráfico de NSS filtrar por categoria de público
+      // extra na renderização (fora deste `useMemo`) — mesmo mapa que
+      // `volumetriaPorPublico` já usa aqui dentro.
+      categoriaPublicoDoId,
       porTema: completarPeriodos(
         serieMensal(
           interacoes,
@@ -438,6 +512,36 @@ export function Painel({
   const categoriaPublicoDisponiveis = derivado.scorePorCategoriaPublico.todos.filter(
     (categoria) => !derivado.scorePorCategoriaPublico.itens.some((item) => item.chave === categoria.chave),
   );
+
+  //: "+ ADICIONAR PÚBLICO" do Net Sentiment Score no tempo — TODA a
+  //: taxonomia (não só quem já tem clima registrado, diferente de
+  //: `categoriaPublicoDisponiveis`): aqui a pergunta é "qual público eu
+  //: quero comparar", não "quais já aparecem no ranking".
+  const nssPublicosDisponiveis = catalogo.dicionarios.categorias_publico.filter(
+    (categoria) => !nssPublicosExtras.includes(String(categoria.id)),
+  );
+
+  //: UMA SÉRIE POR LINHA DO GRÁFICO — "Geral" (todo o recorte, sempre
+  //: presente) mais uma por público adicionado, cada uma com sua cor
+  //: (`PALETA_DE_LINHAS_EXTRAS`) e filtrando `interacoes` pela categoria
+  //: antes de recalcular o NSS por período (`calcularNssPorPeriodo`, a
+  //: mesma função da linha Geral).
+  const seriesDeNss = [
+    { chave: 'Geral', cor: 'var(--azul-mar)', pontos: derivado.nss },
+    ...nssPublicosExtras.map((idComoTexto, indice) => {
+      const categoria = catalogo.dicionarios.categorias_publico.find(
+        (c) => String(c.id) === idComoTexto,
+      );
+      const interacoesDoPublico = interacoes.filter(
+        (i) => String(derivado.categoriaPublicoDoId.get(i.instituicao_id) ?? '') === idComoTexto,
+      );
+      return {
+        chave: categoria?.nome ?? idComoTexto,
+        cor: PALETA_DE_LINHAS_EXTRAS[indice % PALETA_DE_LINHAS_EXTRAS.length],
+        pontos: calcularNssPorPeriodo(interacoesDoPublico, derivado.categoriasDeClima, granularidade),
+      };
+    }),
+  ];
 
   //: NOME → NÍVEL (`Tema.nivel`, ver `dominio/tipos.ts`) — só para o
   //: `GraficoDeArvore` de "% de Interações por Temas" colorir por
@@ -1006,6 +1110,85 @@ export function Painel({
             aoClicar={(chave) => definirRecorte(alternar(recorte, 'clima', chave))}
             centralizada
           />
+        </Secao>
+        </ComFaixaDoTopo>
+
+        <ComFaixaDoTopo>
+        <Secao
+          titulo="Net Sentiment Score no tempo"
+          subtitulo="Placar de clima do recorte, período a período, contra a média geral"
+          ajuda="NSS = (interações propositivas − tensas) ÷ total com clima registrado × 100, de −100 a +100 — a mesma fórmula do placar de clima usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem clima registrado, o período fica sem ponto."
+        >
+          {nssPublicosExtras.length || nssPublicosDisponiveis.length ? (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 12,
+              }}
+            >
+              {nssPublicosExtras.map((idComoTexto, indice) => {
+                const categoria = catalogo.dicionarios.categorias_publico.find(
+                  (c) => String(c.id) === idComoTexto,
+                );
+                return (
+                  <Chip
+                    key={idComoTexto}
+                    rotulo={categoria?.nome ?? idComoTexto}
+                    ativo
+                    fundo={PALETA_DE_LINHAS_EXTRAS[indice % PALETA_DE_LINHAS_EXTRAS.length]}
+                    texto="var(--branco)"
+                    titulo={`Tirar ${categoria?.nome ?? idComoTexto} do gráfico`}
+                    aoClicar={() =>
+                      definirNssPublicosExtras(nssPublicosExtras.filter((c) => c !== idComoTexto))
+                    }
+                  />
+                );
+              })}
+              {nssPublicosDisponiveis.length ? (
+                <select
+                  value=""
+                  onChange={(evento) => {
+                    if (evento.target.value) {
+                      definirNssPublicosExtras([...nssPublicosExtras, evento.target.value]);
+                    }
+                  }}
+                  style={{
+                    height: 26,
+                    padding: '0 8px',
+                    border: '1px dashed var(--borda-input)',
+                    borderRadius: 'var(--r-chip)',
+                    background: 'transparent',
+                    color: 'var(--cinza-2)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="">+ Adicionar público…</option>
+                  {nssPublicosDisponiveis.map((categoria) => (
+                    <option key={categoria.id} value={String(categoria.id)}>
+                      {categoria.nome}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+          ) : null}
+
+          <GraficoDeLinha
+            series={seriesDeNss}
+            altura={220}
+            formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
+            linhaDeReferencia={{ valor: derivado.nssGeral, rotulo: 'NSS geral' }}
+          />
+          {seriesDeNss.length > 1 ? (
+            <Legenda
+              itens={seriesDeNss.map((serie) => ({ chave: serie.chave, rotulo: serie.chave, cor: serie.cor }))}
+              centralizada
+            />
+          ) : null}
         </Secao>
         </ComFaixaDoTopo>
 

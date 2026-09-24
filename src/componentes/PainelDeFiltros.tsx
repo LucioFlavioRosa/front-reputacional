@@ -377,11 +377,11 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '4px 14px',
+              padding: '3px 12px',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: 700,
               color: 'var(--cinza-3)',
             }}
@@ -393,11 +393,11 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           {abertoAvancados ? (
             <div
               style={{
-                padding: '4px 14px 16px',
+                padding: '4px 12px 10px',
                 borderTop: '1px solid var(--borda)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 16,
+                gap: 10,
               }}
             >
               {/* PERÍODO NO TOPO — por pedido, antes de Relevância (o
@@ -508,10 +508,10 @@ function CampoDePeriodo({
           perguntas diferentes ("o que já aconteceu" vs. "o que vem por aí"),
           e misturados numa fileira só a pessoa precisa ler o texto de cada
           pílula para saber de que lado do calendário ela está. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div>
           <div style={ESTILO_DO_SUBROTULO}>Passado</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
             {atalhosDoPassado.map(([chave, rotulo]) => (
               <button
                 key={chave}
@@ -534,7 +534,7 @@ function CampoDePeriodo({
 
         <div>
           <div style={ESTILO_DO_SUBROTULO}>Futuro</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
             {atalhosDoFuturo.map(([chave, rotulo]) => (
               <button
                 key={chave}
@@ -579,15 +579,15 @@ function CaixaDeDias({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        height: 27,
-        padding: '0 4px 0 12px',
+        gap: 5,
+        height: 24,
+        padding: '0 4px 0 10px',
         borderRadius: 'var(--r-chip)',
         border: `1px solid ${valor ? 'var(--azul-mar)' : 'var(--borda-input)'}`,
         background: valor ? 'var(--bg-hover)' : 'var(--branco)',
       }}
     >
-      <span style={{ fontSize: 12, color: 'var(--cinza-3)' }}>{rotulo}</span>
+      <span style={{ fontSize: 11, color: 'var(--cinza-3)' }}>{rotulo}</span>
       <input
         type="number"
         min={1}
@@ -604,17 +604,17 @@ function CaixaDeDias({
         placeholder="N"
         aria-label={rotuloAcessivel}
         style={{
-          width: 44,
-          height: 21,
+          width: 38,
+          height: 18,
           padding: '0 4px',
           border: 'none',
           background: 'transparent',
           color: 'var(--cinza-4)',
-          fontSize: 12.5,
+          fontSize: 11,
           textAlign: 'center',
         }}
       />
-      <span style={{ fontSize: 12, color: 'var(--cinza-3)' }}>dias</span>
+      <span style={{ fontSize: 11, color: 'var(--cinza-3)' }}>dias</span>
     </div>
   );
 }
@@ -656,12 +656,12 @@ function SetaDaAegea({ aberto }: { aberto: boolean }) {
  *  marca, e um pouco maior que o texto das pílulas abaixo, para que a lista de
  *  rótulos funcione como um índice rápido de "que filtros existem aqui". */
 const ESTILO_DO_ROTULO: CSSProperties = {
-  fontSize: 12.5,
+  fontSize: 11,
   fontWeight: 700,
   letterSpacing: '0.04em',
   textTransform: 'uppercase',
   color: 'var(--turquesa-rio)',
-  marginBottom: 8,
+  marginBottom: 5,
 };
 
 /** Mesmo rótulo, tingido com `--sobre-turquesa` — a versão `--turquesa-rio`
@@ -669,10 +669,10 @@ const ESTILO_DO_ROTULO: CSSProperties = {
 /** "Passado"/"Futuro", dentro do campo Período — mais discreto que o título
  *  do campo, senão os dois níveis de rótulo se confundem à primeira olhada. */
 const ESTILO_DO_SUBROTULO: CSSProperties = {
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 600,
   color: 'var(--cinza-2)',
-  marginBottom: 6,
+  marginBottom: 4,
 };
 
 export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
@@ -683,7 +683,7 @@ export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
   return (
     <div>
       <div style={ESTILO_DO_ROTULO}>{campo.rotulo}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {visiveis.map((item) => {
           const marcado = campo.multiplo
             ? (campo.selecionados ?? []).includes(item.valor)
@@ -715,13 +715,13 @@ export function GrupoDeCampo({ campo }: { campo: CampoDeFiltro }) {
 
 function pilulaEstilo(marcado: boolean): CSSProperties {
   return {
-    height: 27,
-    padding: '0 12px',
+    height: 24,
+    padding: '0 10px',
     borderRadius: 'var(--r-chip)',
     border: marcado ? '1px solid var(--azul-mar)' : '1px solid var(--borda-input)',
     background: marcado ? 'var(--azul-mar)' : 'var(--branco)',
     color: marcado ? 'var(--branco)' : 'var(--cinza-3)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: marcado ? 700 : 500,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
@@ -729,13 +729,13 @@ function pilulaEstilo(marcado: boolean): CSSProperties {
 }
 
 const pilulaFantasmaEstilo: CSSProperties = {
-  height: 27,
-  padding: '0 12px',
+  height: 24,
+  padding: '0 10px',
   borderRadius: 'var(--r-chip)',
   border: '1px dashed var(--borda-input)',
   background: 'transparent',
   color: 'var(--cinza-2)',
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 600,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
