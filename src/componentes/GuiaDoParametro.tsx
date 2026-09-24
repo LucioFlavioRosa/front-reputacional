@@ -9,6 +9,24 @@
  *
  *  É O MESMO GESTO DO DOSSIÊ — o "?" que abre a procedência de um bloco. Quem
  *  aprendeu lá não precisa aprender de novo aqui.
+ *
+ *  POR QUE ELE NÃO É UM `<button>`, e o modal não deixa o clique subir:
+ *
+ *  ELE MORA DENTRO DO `<label>` DE `Campo`. Um `<label>` se associa ao PRIMEIRO
+ *  elemento rotulável que houver dentro dele, e `button` é rotulável. Com um
+ *  botão aqui, o rótulo "Virada · pontos de nota" passava a rotular o "?", e
+ *  não o campo — e todo clique dentro do label era reencaminhado pelo navegador
+ *  para o "?".
+ *
+ *  O SINTOMA ERA O MODAL QUE NÃO FECHAVA. Clicar no X fechava (o estado ia a
+ *  falso) e reabria no mesmo clique, porque o evento subia até o `<label>` e
+ *  voltava para o "?" como ativação. Só o Escape funcionava, por ser tecla e
+ *  não clique.
+ *
+ *  São dois consertos, e os dois precisam existir: o "?" vira um `span`
+ *  focável — o mesmo que `Ajuda` já fazia, e pelo mesmo motivo —, e o modal
+ *  fica dentro de um envoltório que barra o clique antes do `<label>`, senão o
+ *  clique no X abriria o `select` que o rótulo de fato rotula.
  */
 
 import { useState } from 'react';
@@ -23,11 +41,16 @@ export function GuiaDoParametro({ chave }: { chave: string }) {
 
   return (
     <>
-      <button
-        type="button"
+      <span
+        role="button"
+        tabIndex={0}
         onClick={(evento) => {
-          // O "?" costuma ficar dentro do `<label>` do campo: sem isto, abrir a
-          // ajuda também focaria o controle ao lado.
+          evento.preventDefault();
+          evento.stopPropagation();
+          definirAberto(true);
+        }}
+        onKeyDown={(evento) => {
+          if (evento.key !== 'Enter' && evento.key !== ' ') return;
           evento.preventDefault();
           evento.stopPropagation();
           definirAberto(true);
@@ -35,6 +58,9 @@ export function GuiaDoParametro({ chave }: { chave: string }) {
         aria-label={`O que faz: ${verbete.titulo}`}
         title="O que este ajuste muda no resultado"
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           width: 18,
           height: 18,
           marginLeft: 6,
@@ -51,9 +77,12 @@ export function GuiaDoParametro({ chave }: { chave: string }) {
         }}
       >
         ?
-      </button>
+      </span>
 
       {aberto ? (
+        // O ENVOLTÓRIO BARRA O CLIQUE ANTES DO `<label>`: sem ele, fechar pelo
+        // X ou pelo fundo também abriria o `select` que o rótulo rotula.
+        <span onClick={(evento) => evento.stopPropagation()}>
         <Modal
           titulo={verbete.titulo}
           subtitulo="O que este ajuste muda no resultado"
@@ -79,6 +108,7 @@ export function GuiaDoParametro({ chave }: { chave: string }) {
             ) : null}
           </div>
         </Modal>
+        </span>
       ) : null}
     </>
   );
