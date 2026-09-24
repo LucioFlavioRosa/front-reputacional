@@ -40,11 +40,30 @@ export interface FatoDoMes {
   efeito: string;
 }
 
+/** Um corte de detector de sinal, como a Calibração o mostra.
+ *
+ *  O PADRÃO VEM DO SERVIDOR, e não daqui: guardá-lo na tela seria uma segunda
+ *  cópia dos números, que envelheceria na primeira vez que alguém mudasse um
+ *  padrão no back. */
+export interface LimiteDaCalibracao {
+  chave: string;
+  rotulo: string;
+  /** O que muda quando este número muda, em uma frase. */
+  explicacao: string;
+  valor: number;
+  padrao: number;
+  /** `inteiro` não aceita vírgula: "3,5 meses seguidos" não significa nada. */
+  formato: 'decimal' | 'inteiro';
+  unidade: string | null;
+}
+
 export interface Calibracao {
   pesos: Record<string, number>;
   regua_tier: string;
   regua_engajamento: string;
   fontes_desligadas: string[];
+  /** Os oito cortes dos detectores de sinal, com o de fábrica ao lado. */
+  limites: LimiteDaCalibracao[];
   /** Falso quando alguém ajustou a régua — a tela mostra o chip. */
   padrao: boolean;
 }
@@ -54,6 +73,51 @@ export interface CalibracaoEntrada {
   regua_tier?: string;
   regua_engajamento?: string;
   fontes_desligadas?: string[];
+  limites?: Record<string, number>;
+}
+
+/** O que desta régua foi mexido, e só isso.
+ *
+ *  GRAVAR OS OITO SEMPRE faria toda calibração parecer ajustada, e "voltar ao
+ *  padrão" deixaria de ser distinguível de "gravei os mesmos números" — o chip
+ *  de régua ajustada ficaria aceso para sempre. */
+export function limitesAjustados(limites: LimiteDaCalibracao[]): Record<string, number> {
+  const ajustados: Record<string, number> = {};
+  for (const limite of limites) {
+    if (limite.valor !== limite.padrao) ajustados[limite.chave] = limite.valor;
+  }
+  return ajustados;
+}
+
+/** A régua que vai para o servidor depois de mexer num campo.
+ *
+ *  VOLTAR AO VALOR DE FÁBRICA TIRA A CHAVE, em vez de gravá-la igual ao
+ *  padrão: é o que faz "restaurei este limite" e "nunca toquei nele" virarem a
+ *  mesma coisa, que é o que a pessoa quis dizer. */
+export function comLimiteAjustado(
+  limites: LimiteDaCalibracao[],
+  chave: string,
+  valor: number,
+): Record<string, number> {
+  const alvo = limites.find((limite) => limite.chave === chave);
+  const ajustados = limitesAjustados(limites);
+  if (!alvo) return ajustados;
+  if (valor === alvo.padrao) delete ajustados[chave];
+  else ajustados[chave] = valor;
+  return ajustados;
+}
+
+/** O que a pessoa digitou, virado número — ou nulo quando não é um.
+ *
+ *  O CAMPO É DE TEXTO PORQUE ELE PRECISA ACEITAR VÍRGULA: `<input
+ *  type="number">` recusa "1,5" em teclado brasileiro e devolve string vazia,
+ *  e a pessoa vê o campo apagar sozinho enquanto digita. */
+export function comoLimite(texto: string, formato: 'decimal' | 'inteiro'): number | null {
+  const limpo = texto.trim().replace(',', '.');
+  if (!limpo) return null;
+  const numero = Number(limpo);
+  if (!Number.isFinite(numero) || numero <= 0) return null;
+  return formato === 'inteiro' ? Math.round(numero) : numero;
 }
 
 export interface IndiceDoScore {

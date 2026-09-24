@@ -56,14 +56,19 @@ import {
   comoDelta,
   corDaFaixa,
   corDoDelta,
+  comLimiteAjustado,
+  comoLimite,
   lentesOrdenadas,
+  limitesAjustados,
 } from '@/dominio/score';
 import type {
   Calibracao,
+  CalibracaoEntrada,
   DriversDoScore,
   FonteDoScore,
   ImportacaoDoScore,
   IndiceDoScore,
+  LimiteDaCalibracao,
   OpcoesDoScore,
   PontoDaSerie,
 } from '@/dominio/score';
@@ -671,7 +676,11 @@ function CalibracaoDoScore({
     };
   }, [mes, calibracao]);
 
-  async function gravar(mudanca: Partial<Calibracao>) {
+  // A ENTRADA NÃO É UMA `Calibracao` PARCIAL, e a diferença não é de forma: a
+  // saída traz os oito limites com o de fábrica ao lado, e a entrada leva só
+  // o que foi mexido. Tipar os dois igual deixaria a lista inteira ser gravada
+  // como se fosse ajuste.
+  async function gravar(mudanca: CalibracaoEntrada) {
     definirSalvando(true);
     definirErro(null);
     try {
@@ -680,6 +689,7 @@ function CalibracaoDoScore({
         regua_tier: mudanca.regua_tier ?? calibracao.regua_tier,
         regua_engajamento: mudanca.regua_engajamento ?? calibracao.regua_engajamento,
         fontes_desligadas: mudanca.fontes_desligadas ?? calibracao.fontes_desligadas,
+        limites: mudanca.limites ?? limitesAjustados(calibracao.limites),
       });
       aoMudar();
     } catch (falha) {
@@ -947,7 +957,114 @@ function CalibracaoDoScore({
           ))}
         </Cartao>
       </Secao>
+
+      <LimitesDosSinais
+        limites={calibracao.limites}
+        salvando={salvando}
+        aoGravar={(limites) => gravar({ limites })}
+      />
     </div>
+  );
+}
+
+/** Os cortes de cada detector de sinal.
+ *
+ *  ISTO NÃO É CONSTANTE TÉCNICA. "O que conta como pico" depende do volume que
+ *  cada fonte costuma trazer, e quem sabe isso é quem lê o painel toda semana —
+ *  não quem escreveu o detector. Com os limites no código, ajustar um corte
+ *  exigiria deploy; aqui, a frase muda na próxima leitura da lente.
+ */
+function LimitesDosSinais({
+  limites,
+  salvando,
+  aoGravar,
+}: {
+  limites: LimiteDaCalibracao[];
+  salvando: boolean;
+  aoGravar: (limites: Record<string, number>) => void;
+}) {
+  if (!limites.length) return null;
+
+  return (
+    <Secao
+      titulo="Limites dos sinais"
+      subtitulo="O que cada detector precisa ver para escrever uma frase na lente. Mudar aqui muda o texto do dossiê na próxima leitura — sem deploy, e sem reescrever nada à mão."
+    >
+      <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
+        {limites.map((limite) => (
+          <CampoDeLimite
+            key={limite.chave}
+            limite={limite}
+            salvando={salvando}
+            aoGravar={(valor) => aoGravar(comLimiteAjustado(limites, limite.chave, valor))}
+          />
+        ))}
+      </div>
+    </Secao>
+  );
+}
+
+/** Um corte, com o de fábrica ao lado quando ele foi mexido.
+ *
+ *  GRAVA AO SAIR DO CAMPO, e não a cada tecla: a tabela da calibração só
+ *  cresce, e um PUT por caractere encheria o histórico de versões com os
+ *  estados intermediários de quem estava digitando "12". */
+function CampoDeLimite({
+  limite,
+  salvando,
+  aoGravar,
+}: {
+  limite: LimiteDaCalibracao;
+  salvando: boolean;
+  aoGravar: (valor: number) => void;
+}) {
+  const escrito = (valor: number) => String(valor).replace('.', ',');
+  const [texto, definirTexto] = useState(escrito(limite.valor));
+
+  // O servidor é quem manda: depois de gravar, o valor volta de lá, e um
+  // rascunho preso no campo faria a tela discordar do que está gravado.
+  useEffect(() => definirTexto(escrito(limite.valor)), [limite.valor]);
+
+  function confirmar() {
+    const valor = comoLimite(texto, limite.formato);
+    if (valor === null) {
+      definirTexto(escrito(limite.valor));
+      return;
+    }
+    if (valor === limite.valor) {
+      definirTexto(escrito(valor));
+      return;
+    }
+    aoGravar(valor);
+  }
+
+  const ajustado = limite.valor !== limite.padrao;
+  return (
+    <Cartao>
+      <Campo rotulo={limite.rotulo} dica={limite.explicacao}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            className="tabular"
+            inputMode="decimal"
+            value={texto}
+            disabled={salvando}
+            style={{ ...estiloDeEntrada, width: 110 }}
+            onChange={(evento) => definirTexto(evento.target.value)}
+            onBlur={confirmar}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter') evento.currentTarget.blur();
+              if (evento.key === 'Escape') definirTexto(escrito(limite.valor));
+            }}
+          />
+          {limite.unidade ? (
+            <span style={{ fontSize: 12.5, color: 'var(--cinza-2)' }}>{limite.unidade}</span>
+          ) : null}
+          {ajustado ? (
+            <Chip rotulo={`padrão ${escrito(limite.padrao)}`} titulo="Valor de fábrica" />
+          ) : null}
+        </div>
+      </Campo>
+    </Cartao>
   );
 }
 
