@@ -199,6 +199,35 @@ export function temExemplo(dossie: Dossie): boolean {
   );
 }
 
+export interface AvisoDeExemplo {
+  /** Os gráficos que mostram ilustração, pelo nome. */
+  graficos: string[];
+  /** O texto editorial veio transcrito do relatório. */
+  texto: boolean;
+}
+
+/** O que exatamente é ilustração nesta lente.
+ *
+ *  A PRIMEIRA VERSÃO DIZIA SÓ QUE HAVIA, e mandava procurar: "conteúdo de
+ *  ilustração em pelo menos um bloco — o ? de cada gráfico diz qual é qual".
+ *  Em duas das cinco lentes isso é falso de um jeito cruel: em Sociedade e
+ *  Institucional TODOS os gráficos são medidos, e só o texto veio transcrito.
+ *  A pessoa abria um "?" atrás do outro atrás de uma ilustração que não existe
+ *  — e, pior, passava a desconfiar de números que estão certos.
+ *
+ *  NÚMERO E TEXTO SÃO COISAS DIFERENTES. Um gráfico ilustrativo compromete a
+ *  leitura; uma manchete transcrita do relatório do cliente é exatamente o que
+ *  se espera de uma manchete antes de alguém escrever a deste mês. Juntar os
+ *  dois no mesmo aviso desperdiça o aviso.
+ */
+export function avisoDeExemplo(dossie: Dossie): AvisoDeExemplo | null {
+  const graficos = [dossie.evolucao, ...dossie.paineis]
+    .filter((bloco) => bloco.ficha.exemplo)
+    .map((bloco) => bloco.titulo);
+  const texto = dossie.curadoria.exemplo;
+  return graficos.length || texto ? { graficos, texto } : null;
+}
+
 /** O valor de uma célula, sem fingir que o payload é tipado.
  *
  *  Os blocos chegam como `Record<string, unknown>` porque cada tipo de gráfico

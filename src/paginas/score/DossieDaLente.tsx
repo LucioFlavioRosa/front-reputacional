@@ -39,7 +39,7 @@ import {
   mesCurto,
 } from '@/dominio/dossie';
 import type { Bloco, Dossie } from '@/dominio/dossie';
-import { temExemplo } from '@/dominio/dossie';
+import { avisoDeExemplo } from '@/dominio/dossie';
 import { corDaFaixa } from '@/dominio/score';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
 import {
@@ -163,6 +163,47 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
   );
 }
 
+/** O que desta lente é ilustração, pelo nome.
+ *
+ *  Duas mensagens diferentes, porque são dois problemas diferentes: um gráfico
+ *  ilustrativo compromete a leitura dos números; um texto transcrito é só o
+ *  texto de outro mês esperando o deste. */
+function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
+  const aviso = avisoDeExemplo(dossie);
+  if (!aviso) return null;
+
+  if (!aviso.graficos.length) {
+    return (
+      <FaixaDeAtencao
+        mensagem={
+          <>
+            Os números desta lente são <strong>medidos</strong>. O que veio transcrito do
+            relatório do cliente é o <strong>texto</strong> — manchete, leitura e insights —,
+            até a curadoria deste mês ser escrita.
+          </>
+        }
+      />
+    );
+  }
+
+  return (
+    <FaixaDeAtencao
+      mensagem={
+        <>
+          <strong>
+            {aviso.graficos.length === 1
+              ? `"${aviso.graficos[0]}" mostra`
+              : `${aviso.graficos.map((titulo) => `"${titulo}"`).join(' e ')} mostram`}
+          </strong>{' '}
+          conteúdo de ilustração — transcrito do relatório do cliente, não medido por esta
+          ferramenta. O <strong>?</strong> de cada um explica por quê.
+          {aviso.texto ? ' O texto da lente também veio do relatório.' : ''}
+        </>
+      }
+    />
+  );
+}
+
 /** A fonte do bloco, abaixo do gráfico.
  *
  *  VISÍVEL, e não só dentro do "?": a §1 pede nota de fonte em cada painel, e
@@ -194,19 +235,11 @@ function Destaque({ dossie }: { dossie: Dossie }) {
         />
       }
     >
-      {temExemplo(dossie) ? (
-        // ANTES DOS NÚMEROS, e não depois: quem vê o gráfico primeiro já tirou
-        // a conclusão quando chega no rodapé.
-        <FaixaDeAtencao
-          mensagem={
-            <>
-              Esta lente mostra <strong>conteúdo de ilustração</strong> em pelo menos um bloco —
-              transcrito do relatório do cliente, não medido por esta ferramenta. O{' '}
-              <strong>?</strong> de cada gráfico diz qual é qual.
-            </>
-          }
-        />
-      ) : null}
+      {/* ANTES DOS NÚMEROS, e não depois: quem vê o gráfico primeiro já tirou
+          a conclusão quando chega no rodapé. E NOMEANDO o que é ilustração —
+          dizer só que "há" manda a pessoa abrir um "?" atrás do outro, e em
+          duas lentes ela não acharia nada, porque ali só o texto é transcrito. */}
+      <AvisoDeIlustracao dossie={dossie} />
 
       <div className="grade grade--mapa" style={{ gap: 16, alignItems: 'start' }}>
         <Cartao>

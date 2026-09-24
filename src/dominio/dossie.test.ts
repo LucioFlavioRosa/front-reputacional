@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  avisoDeExemplo,
   colunasDaTabela,
   comoNumero,
   comoTexto,
@@ -252,5 +253,48 @@ describe('lacunasDoDossie', () => {
       'não se sabe se respondeu',
       'a clipagem não traz o autor',
     ]);
+  });
+});
+
+
+describe('avisoDeExemplo', () => {
+  it('NOMEIA o gráfico que é ilustração, em vez de mandar procurar', () => {
+    const comMatriz = dossie({
+      paineis: [
+        bloco({ titulo: 'Tier × sentimento' }),
+        bloco({ titulo: 'Matriz de jornalistas', ficha: { ...FICHA, exemplo: true } }),
+      ],
+    });
+
+    expect(avisoDeExemplo(comMatriz)).toEqual({
+      graficos: ['Matriz de jornalistas'],
+      texto: false,
+    });
+  });
+
+  it('separa TEXTO transcrito de GRÁFICO ilustrativo', () => {
+    // Em Sociedade e Institucional todos os gráficos são medidos e só o texto
+    // veio do relatório. O aviso antigo dizia "ilustração em pelo menos um
+    // bloco — o ? de cada gráfico diz qual é qual", e a pessoa abria um "?"
+    // atrás do outro atrás de algo que não existe. Pior: passava a desconfiar
+    // de números que estão certos.
+    const soOTexto = dossie({
+      curadoria: {
+        manchete: null,
+        leitura: [],
+        revela: [],
+        status: 'publicado',
+        automatica: false,
+        exemplo: true,
+        ficha: FICHA,
+      },
+      paineis: [bloco({}), bloco({})],
+    });
+
+    expect(avisoDeExemplo(soOTexto)).toEqual({ graficos: [], texto: true });
+  });
+
+  it('nada a avisar quando tudo é medido', () => {
+    expect(avisoDeExemplo(dossie({ paineis: [bloco({}), bloco({})] }))).toBeNull();
   });
 });
