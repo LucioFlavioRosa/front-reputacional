@@ -41,6 +41,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { GuiaDoParametro } from '@/componentes/GuiaDoParametro';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
@@ -885,6 +886,7 @@ function CalibracaoDoScore({
             <Campo
               rotulo="Relevância do veículo"
               dica="Quanto vale uma matéria conforme o tier do veículo. Vale para Imprensa e Mercado."
+              aoLadoDoRotulo={<GuiaDoParametro chave="regua_tier" />}
             >
               <select
                 value={calibracao.regua_tier}
@@ -912,6 +914,7 @@ function CalibracaoDoScore({
             <Campo
               rotulo="Peso de cada menção nas redes"
               dica="Vale para Sociedade digital e Clientes."
+              aoLadoDoRotulo={<GuiaDoParametro chave="regua_engajamento" />}
             >
               <select
                 value={calibracao.regua_engajamento}
@@ -938,6 +941,7 @@ function CalibracaoDoScore({
       <Secao
         titulo="Peso das lentes"
         subtitulo="De 0 a 60, de 5 em 5. Peso 0 tira a lente do índice — as outras redistribuem."
+        acao={<GuiaDoParametro chave="pesos" />}
       >
         <Cartao>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -989,6 +993,7 @@ function CalibracaoDoScore({
       <Secao
         titulo="Fontes"
         subtitulo="Importar substitui os meses que a planilha traz — o mês que ela não traz fica intacto. Desligar uma fonte tira o dado dela do índice sem apagar o histórico; com todas as fontes de uma lente desligadas, a lente sai do cálculo e os pesos redistribuem."
+        acao={<GuiaDoParametro chave="fontes" />}
       >
         <Cartao>
           {/* UM `<input type="file">` PARA A SEÇÃO, acionado pelo botão da
@@ -1091,6 +1096,7 @@ function CalibracaoDoScore({
           <Campo
             rotulo="Largura da fatia"
             dica="Fatias iguais escondem a ponderação que o índice aplicou: uma lente de peso 15 passa a parecer valer tanto quanto a de 30."
+            aoLadoDoRotulo={<GuiaDoParametro chave="radial_por_peso" />}
           >
             <select
               style={estiloDeEntrada}
@@ -1184,7 +1190,11 @@ function CampoDeLimite({
   const ajustado = limite.valor !== limite.padrao;
   return (
     <Cartao>
-      <Campo rotulo={limite.rotulo} dica={limite.explicacao}>
+      <Campo
+        rotulo={limite.rotulo}
+        dica={limite.explicacao}
+        aoLadoDoRotulo={<GuiaDoParametro chave={limite.chave} />}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input
             className="tabular"

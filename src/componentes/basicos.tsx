@@ -595,6 +595,7 @@ export function Campo({
   children,
   dica,
   ajuda,
+  aoLadoDoRotulo,
   obrigatorio,
 }: {
   rotulo: string;
@@ -604,6 +605,10 @@ export function Campo({
   /** Explicação mais longa, num "?" ao lado do rótulo. Só para o campo que
    *  pode confundir; o resto fica só com o rótulo (e, se couber, a `dica`). */
   ajuda?: string;
+  /** Um controle próprio ao lado do rótulo — hoje, o "?" da Calibração, que
+   *  abre um modal em vez de um balão. `ajuda` continua sendo o caminho de
+   *  sempre; isto existe para quem precisa de mais do que uma frase. */
+  aoLadoDoRotulo?: ReactNode;
   obrigatorio?: boolean;
 }) {
   return (
@@ -620,6 +625,7 @@ export function Campo({
         {rotulo}
         {obrigatorio ? <span style={{ color: 'var(--erro-fg)' }}> *</span> : null}
         {ajuda ? <Ajuda texto={ajuda} /> : null}
+        {aoLadoDoRotulo}
       </span>
       {children}
       {dica ? (
