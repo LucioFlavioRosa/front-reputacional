@@ -588,7 +588,11 @@ export function Cadastro({
           A frente é DERIVADA da instituição (seção 3) e deste formato; a
           tela mostra o resultado como leitura, junto do campo "Público", em
           vez de perguntar de novo o que a instituição já responde. */}
-      <Secao titulo="1. Tipo de interação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="1. Tipo de interação"
+        ajuda="Escolha o tipo antes de preencher o resto. Ele muda o formulário: uma consulta recebida abre um bloco próprio mais abaixo, e alguns campos adicionais dependem dele."
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.formatos_interacao.map((formato) => {
             const valor = String(formato.id);
@@ -711,6 +715,7 @@ export function Cadastro({
 
           <CampoQueCompleta
             rotulo="Unidade de negócio"
+            ajuda="A operação da Aegea envolvida nesta agenda. Se for um assunto da holding, sem unidade específica, deixe em Holding / corporativo."
             vazio="Holding / corporativo"
             valor={form.unidade_negocio_id}
             aoEscolher={(v) => alterar('unidade_negocio_id', v)}
@@ -732,7 +737,10 @@ export function Cadastro({
               "TEMAS", e não "Assuntos" nem "Tags": a Administração usa esse
               nome desde que a aba de cadastro foi renomeada, e a leitura
               vale para toda a plataforma — um campo, um nome. */}
-          <Campo rotulo="Temas">
+          <Campo
+            rotulo="Temas"
+            ajuda="Ao marcar um tema, os documentos da biblioteca ligados a ele entram sozinhos em Materiais de preparação. Ao desmarcar, saem só os que vieram junto; o que você adicionou à mão continua."
+          >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
                 const ativo = form.temas.includes(tema.id);
@@ -822,6 +830,7 @@ export function Cadastro({
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Iniciativa"
+              ajuda="Quem pediu esta agenda: a Aegea ou a outra parte."
               vazio="Não informada"
               valor={form.iniciativa}
               aoEscolher={(v) => alterar('iniciativa', v)}
@@ -843,6 +852,7 @@ export function Cadastro({
                 silêncio — o mesmo defeito que a pauta já teve aqui. */}
             <CampoQueCompleta
               rotulo="Situação"
+              ajuda="Aqui só há três estados: Solicitado (o pedido foi feito), Aceito ou Negado. O que aconteceu na reunião se registra na aba Depois."
               obrigatorio
               valor={form.status}
               aoEscolher={(v) => alterar('status', v)}
@@ -901,6 +911,7 @@ export function Cadastro({
 
             <Campo
               rotulo="Relevância"
+              ajuda="O quanto esta instituição importa para a Aegea. Não se escolhe aqui: é definida no cadastro da instituição e vale igual para todas as interações com ela. Para mudar, altere o cadastro dela."
               dica={
                 form.instituicao_id
                   ? 'Vem do cadastro da instituição.'
@@ -944,6 +955,7 @@ export function Cadastro({
           <div className="grade grade--2" style={{ gap: 16, marginTop: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
+              ajuda="Como você acha que a conversa vai ser, antes de ela acontecer. O clima real é registrado depois, na aba Depois."
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}
               aoMudar={(v) => alterar('clima_esperado', v)}
@@ -955,6 +967,7 @@ export function Cadastro({
                 existe para mostrar. */}
             <Campo
               rotulo="Veio de outras interações?"
+              ajuda="Use quando esta agenda é desdobramento de outra. Só aparecem interações que já aconteceram e que não são posteriores à data desta."
               dica="Dá para escolher mais de uma."
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher

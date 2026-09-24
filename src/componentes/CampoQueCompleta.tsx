@@ -36,6 +36,7 @@ export function CampoQueCompleta({
   vazio = 'Não informado',
   obrigatorio = false,
   dica,
+  ajuda,
   placeholder,
   ariaLabel,
 }: {
@@ -48,6 +49,8 @@ export function CampoQueCompleta({
   vazio?: string;
   obrigatorio?: boolean;
   dica?: string;
+  /** Explicação num "?" ao lado do rótulo; ver `Campo`. */
+  ajuda?: string;
   placeholder?: string;
   /** Quando o campo não tem rótulo visível — dentro de uma tabela, por exemplo. */
   ariaLabel?: string;
@@ -249,7 +252,7 @@ export function CampoQueCompleta({
 
   if (!rotulo) return campo;
   return (
-    <Campo rotulo={rotulo} obrigatorio={obrigatorio} dica={dica}>
+    <Campo rotulo={rotulo} obrigatorio={obrigatorio} dica={dica} ajuda={ajuda}>
       {campo}
     </Campo>
   );
