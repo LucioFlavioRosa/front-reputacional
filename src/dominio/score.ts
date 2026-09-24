@@ -15,6 +15,8 @@ import type { ItemContado, Segmento } from '@/dominio/derivacoes';
 export interface LenteDoScore {
   codigo: string;
   nome: string;
+  /** De quem é a lente — "Formadores de opinião", "Investidores e rating". */
+  stakeholder: string;
   /** O peso gravado na calibração. */
   peso: number;
   /** O que ele valeu de fato, em %, depois de as lentes sem dado saírem do
@@ -64,6 +66,8 @@ export interface Calibracao {
   fontes_desligadas: string[];
   /** Os oito cortes dos detectores de sinal, com o de fábrica ao lado. */
   limites: LimiteDaCalibracao[];
+  /** A fatia de cada lente no radial tem a largura do peso efetivo. */
+  radial_por_peso: boolean;
   /** Falso quando alguém ajustou a régua — a tela mostra o chip. */
   padrao: boolean;
 }
@@ -74,6 +78,7 @@ export interface CalibracaoEntrada {
   regua_engajamento?: string;
   fontes_desligadas?: string[];
   limites?: Record<string, number>;
+  radial_por_peso?: boolean;
 }
 
 /** O que desta régua foi mexido, e só isso.
@@ -269,17 +274,43 @@ export interface OpcoesDoScore {
  *  AS CORES SÃO AS DA PLATAFORMA, e não as do protótipo: o mesmo vermelho que
  *  marca clima Reativo e prazo vencido marca aqui o Crítico. Um verde só desta
  *  tela ensinaria uma segunda escala de cor a quem já aprendeu a primeira. */
-export const FAIXAS: { minimo: number; rotulo: string; cor: string }[] = [
-  { minimo: 85, rotulo: 'Referência', cor: 'var(--ok-fg)' },
-  { minimo: 70, rotulo: 'Sólido', cor: 'var(--ok-fg)' },
-  { minimo: 55, rotulo: 'Estável', cor: 'var(--azul-mar)' },
-  { minimo: 40, rotulo: 'Atenção', cor: 'var(--atencao-fg)' },
-  { minimo: 0, rotulo: 'Crítico', cor: 'var(--erro-fg)' },
+/** As cinco faixas, com DUAS CORES CADA — e a diferença não é capricho.
+ *
+ *  `cor` é para TEXTO: tem de ser legível sobre branco, num número de 56px que
+ *  a diretoria lê de longe. `area` é para PREENCHIMENTO: fatia do radial,
+ *  quadrado da legenda. São exigências opostas — o turquesa da marca preenche
+ *  bem e, escrito, some no fundo.
+ *
+ *  É POR ISSO QUE SÓLIDO E REFERÊNCIA COMPARTILHAM A COR DE TEXTO e não a de
+ *  área: escrever 72 e 91 em dois verdes quase iguais não ajuda ninguém, mas
+ *  duas fatias na mesma cor fariam a legenda de cinco faixas mostrar quatro. */
+export const FAIXAS: { minimo: number; rotulo: string; cor: string; area: string }[] = [
+  { minimo: 85, rotulo: 'Referência', cor: 'var(--ok-fg)', area: 'var(--ok-fg)' },
+  { minimo: 70, rotulo: 'Sólido', cor: 'var(--ok-fg)', area: 'var(--turquesa-rio)' },
+  { minimo: 55, rotulo: 'Estável', cor: 'var(--azul-mar)', area: 'var(--azul-mar)' },
+  { minimo: 40, rotulo: 'Atenção', cor: 'var(--atencao-fg)', area: 'var(--atencao-fg)' },
+  { minimo: 0, rotulo: 'Crítico', cor: 'var(--erro-fg)', area: 'var(--erro-fg)' },
 ];
+
+function faixaDe(score: number) {
+  return FAIXAS.find((faixa) => score >= faixa.minimo) ?? FAIXAS[FAIXAS.length - 1];
+}
 
 export function corDaFaixa(score: number | null): string {
   if (score === null) return 'var(--cinza-2)';
-  return (FAIXAS.find((faixa) => score >= faixa.minimo) ?? FAIXAS[FAIXAS.length - 1]).cor;
+  return faixaDe(score).cor;
+}
+
+/** A cor de PREENCHIMENTO da faixa — fatia do radial, quadrado da legenda. */
+export function corDeAreaDaFaixa(score: number | null): string {
+  if (score === null) return 'var(--cinza-1)';
+  return faixaDe(score).area;
+}
+
+/** O nome da faixa em que a nota caiu. */
+export function rotuloDaFaixa(score: number | null): string {
+  if (score === null) return '—';
+  return faixaDe(score).rotulo;
 }
 
 /** Os rótulos das réguas, em português de gente.

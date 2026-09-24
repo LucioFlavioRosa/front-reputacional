@@ -43,9 +43,11 @@ import {
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
+import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
 import {
+  FAIXAS,
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
   ROTULO_DA_REGUA_DE_TIER,
   ROTULO_DO_AVISO,
@@ -55,6 +57,7 @@ import {
   colunasDaSerie,
   comoDelta,
   corDaFaixa,
+  corDeAreaDaFaixa,
   corDoDelta,
   comLimiteAjustado,
   comoLimite,
@@ -65,6 +68,7 @@ import type {
   Calibracao,
   CalibracaoEntrada,
   DriversDoScore,
+  LenteDoScore,
   FonteDoScore,
   ImportacaoDoScore,
   IndiceDoScore,
@@ -245,127 +249,71 @@ function VisaoGeral({
   const ordenadas = lentesOrdenadas(indice.lentes);
   const sustenta = ordenadas[0];
   const corroi = ordenadas.filter((lente) => lente.score !== null).at(-1);
+  // O DESTAQUE MORA AQUI, e não em cada metade: gráfico e lista são duas
+  // vistas do mesmo conjunto, e cada um com o seu estado faria passar o mouse
+  // na lista não acender a fatia — que é o único jeito de ligar a terceira
+  // linha à segunda fatia, quando as larguras são diferentes.
+  const [destacada, definirDestacada] = useState<string | null>(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Secao titulo={`O índice em ${indice.mes}`} subtitulo={indice.leitura}>
+      <Secao
+        titulo="Cinco lentes, um índice"
+        subtitulo={`Índice de Saúde Reputacional · ${indice.mes}`}
+      >
+        <Cartao>
+          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'start' }}>
+            <div>
+              <RadialDasLentes
+                lentes={indice.lentes}
+                isr={indice.isr}
+                faixa={indice.faixa}
+                corDoIsr={corDaFaixa(indice.isr)}
+                porPeso={indice.calibracao.radial_por_peso}
+                destacada={destacada}
+                aoDestacar={definirDestacada}
+                aoAbrir={aoAbrirLente}
+              />
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  marginTop: 14,
+                }}
+              >
+                <ChipDeVariacao rotulo="vs. mês anterior" delta={indice.delta_mes} />
+                <ChipDeVariacao rotulo="vs. início da série" delta={indice.delta_inicio} />
+              </div>
+
+              <LegendaDasFaixas />
+            </div>
+
+            <ListaDasLentes
+              lentes={indice.lentes}
+              destacada={destacada}
+              aoDestacar={definirDestacada}
+              aoAbrir={aoAbrirLente}
+            />
+          </div>
+        </Cartao>
+      </Secao>
+
+      <Secao titulo="Leitura do período">
         <div className="grade grade--mapa" style={{ gap: 16, alignItems: 'start' }}>
           <Cartao>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-              <span
-                style={{
-                  fontSize: 64,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  color: corDaFaixa(indice.isr),
-                }}
-                className="tabular"
-              >
-                {indice.isr ?? '—'}
-              </span>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{indice.faixa}</div>
-                <div style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                  {indice.leitura_da_faixa}
-                </div>
-              </div>
-            </div>
-
-            <Regua score={indice.isr} />
-
-            <div style={{ display: 'flex', gap: 18, marginTop: 14 }}>
-              <Variacao rotulo="vs. mês anterior" delta={indice.delta_mes} />
-              <Variacao rotulo="vs. início da série" delta={indice.delta_inicio} />
-            </div>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>{indice.leitura}</p>
+            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
+              {indice.faixa} · {indice.leitura_da_faixa}
+            </p>
           </Cartao>
 
           <div className="grade grade--2" style={{ gap: 16 }}>
-            <Cartao>
-              <p className="kicker" style={{ marginBottom: 6 }}>
-                O que sustenta
-              </p>
-              {sustenta?.score != null ? (
-                <>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>{sustenta.nome}</div>
-                  <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-                    {sustenta.score} · peso {pesoDaLente(sustenta)}
-                  </div>
-                </>
-              ) : (
-                <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-                  Nenhuma lente medida.
-                </p>
-              )}
-            </Cartao>
-            <Cartao>
-              <p className="kicker" style={{ marginBottom: 6 }}>
-                O que corrói
-              </p>
-              {corroi?.score != null ? (
-                <>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>{corroi.nome}</div>
-                  <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-                    {corroi.score} · peso {pesoDaLente(corroi)}
-                  </div>
-                </>
-              ) : (
-                <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>—</p>
-              )}
-            </Cartao>
+            <Extremo rotulo="O que sustenta" lente={sustenta} />
+            <Extremo rotulo="O que corrói" lente={corroi} />
           </div>
-        </div>
-      </Secao>
-
-      <Secao
-        titulo="As cinco lentes"
-        subtitulo="Clique numa lente para ver a composição, a fórmula aplicada e os temas."
-      >
-        <div className="grade grade--3" style={{ gap: 14 }}>
-          {indice.lentes.map((lente) => (
-            // `Cartao` clicável, e não um `<button>` com `all: unset` por
-            // dentro: o `unset` apagava junto o anel de foco, e o cartão
-            // inteiro ficava inalcançável por teclado. O componente da casa já
-            // trata `role`, `tabIndex` e Enter/Espaço.
-            <Cartao
-              key={lente.codigo}
-              estilo={{ padding: 16 }}
-              aoClicar={() => aoAbrirLente(lente.codigo)}
-              titulo={`Abrir a lente ${lente.nome}`}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span
-                    className="tabular"
-                    style={{ fontSize: 30, fontWeight: 800, color: corDaFaixa(lente.score) }}
-                  >
-                    {lente.score ?? '—'}
-                  </span>
-                  <span style={{ fontSize: 12, color: corDoDelta(lente.delta) }}>
-                    {comoDelta(lente.delta)}
-                  </span>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{lente.nome}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--cinza-2)', marginTop: 2 }}>
-                  peso {pesoDaLente(lente)}
-                  {lente.fontes.length ? ` · ${lente.fontes.join(', ')}` : ''}
-                </div>
-                {lente.estimado ? (
-                  <Chip
-                    rotulo="estimado"
-                    fundo="var(--atencao-bg)"
-                    texto="var(--atencao-fg)"
-                    titulo="Sem export no mês: o número vem do resumo semestral."
-                    estilo={{ marginTop: 8 }}
-                  />
-                ) : null}
-                {lente.ausencia ? (
-                  <p style={{ fontSize: 11.5, color: 'var(--atencao-fg)', margin: '8px 0 0' }}>
-                    {lente.ausencia}
-                  </p>
-                ) : null}
-              </div>
-            </Cartao>
-          ))}
         </div>
       </Secao>
 
@@ -427,64 +375,189 @@ function VisaoGeral({
   );
 }
 
-/** A régua de 0 a 100 com o marcador onde o índice caiu. */
-function Regua({ score }: { score: number | null }) {
+/** A lista das cinco lentes, ao lado do gráfico.
+ *
+ *  ABRE PELO STAKEHOLDER, e não pelo nome da lente: quem lê o índice pergunta
+ *  "de quem é este 37?" antes de perguntar de que fonte ele saiu. O nome da
+ *  lente é jargão da ferramenta; "Formadores de opinião" é gente.
+ */
+function ListaDasLentes({
+  lentes,
+  destacada,
+  aoDestacar,
+  aoAbrir,
+}: {
+  lentes: LenteDoScore[];
+  destacada: string | null;
+  aoDestacar: (codigo: string | null) => void;
+  aoAbrir: (codigo: string) => void;
+}) {
   return (
-    <div style={{ marginTop: 16 }}>
-      <div
-        style={{
-          position: 'relative',
-          height: 8,
-          borderRadius: 4,
-          background:
-            'linear-gradient(90deg, var(--erro-fg) 0%, var(--atencao-fg) 40%, var(--azul-mar) 55%, var(--ok-fg) 70%)',
-        }}
-      >
-        {score === null ? null : (
-          <div
+    <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {lentes.map((lente) => (
+          <button
+            key={lente.codigo}
+            type="button"
+            onMouseEnter={() => aoDestacar(lente.codigo)}
+            onMouseLeave={() => aoDestacar(null)}
+            onFocus={() => aoDestacar(lente.codigo)}
+            onBlur={() => aoDestacar(null)}
+            onClick={() => aoAbrir(lente.codigo)}
+            title={`Abrir a lente ${lente.nome}`}
             style={{
-              position: 'absolute',
-              left: `calc(${Math.min(100, Math.max(0, score))}% - 6px)`,
-              top: -4,
-              width: 12,
-              height: 16,
-              borderRadius: 3,
-              background: 'var(--branco)',
-              border: '2px solid var(--cinza-4)',
+              display: 'grid',
+              gridTemplateColumns: '14px minmax(0, 1fr) auto',
+              gap: 14,
+              alignItems: 'center',
+              padding: '12px 14px',
+              borderRadius: 12,
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              font: 'inherit',
+              background: destacada === lente.codigo ? 'var(--bg-trilho)' : 'var(--branco)',
+              border: `1px solid ${
+                destacada === lente.codigo ? 'var(--azul-mar)' : 'var(--borda)'
+              }`,
+              opacity: lente.score === null ? 0.55 : 1,
             }}
-          />
-        )}
+          >
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 4,
+                background: corDeAreaDaFaixa(lente.score),
+              }}
+            />
+            <span style={{ minWidth: 0 }}>
+              {/* EM LINHA PRÓPRIA, e com reticências: na mesma linha da fonte
+                  ele cobria o texto ao lado quando o nome era comprido. */}
+              <span
+                className="kicker"
+                style={{
+                  display: 'block',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {lente.stakeholder}
+              </span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>
+                {lente.nome}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 11.5,
+                  color: 'var(--cinza-2)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {pesoDaLente(lente)}
+                {lente.fontes.length ? ` · ${lente.fontes.join(', ')}` : ''}
+              </span>
+            </span>
+            <span style={{ textAlign: 'right' }}>
+              <span
+                className="tabular"
+                style={{
+                  display: 'block',
+                  fontSize: 26,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  color: corDaFaixa(lente.score),
+                }}
+              >
+                {lente.score ?? '—'}
+              </span>
+              <span style={{ fontSize: 11.5, color: corDoDelta(lente.delta) }}>
+                {comoDelta(lente.delta)}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 10.5,
-          color: 'var(--cinza-2)',
-          marginTop: 4,
-        }}
-      >
-        <span>Crítico</span>
-        <span>Atenção</span>
-        <span>Estável</span>
-        <span>Sólido</span>
-        <span>Referência</span>
-      </div>
+      <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
+        Passe o mouse para destacar a fatia; clique para abrir a lente.
+      </p>
     </div>
   );
 }
 
-function Variacao({ rotulo, delta }: { rotulo: string; delta: number | null }) {
+/** A legenda das cinco faixas, com a cor da fatia e o limite de cada uma. */
+function LegendaDasFaixas() {
   return (
-    <div>
-      <div className="kicker">{rotulo}</div>
-      <div
-        className="tabular"
-        style={{ fontSize: 18, fontWeight: 700, color: corDoDelta(delta) }}
-      >
-        {comoDelta(delta)}
-      </div>
+    <div
+      style={{
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        marginTop: 12,
+      }}
+    >
+      {[...FAIXAS].reverse().map((faixa, posicao, todas) => (
+        <span
+          key={faixa.rotulo}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5 }}
+        >
+          <span
+            style={{ width: 10, height: 10, borderRadius: 3, background: faixa.area }}
+          />
+          {faixa.rotulo}
+          <span style={{ color: 'var(--cinza-2)' }}>
+            {posicao === todas.length - 1
+              ? `≥ ${faixa.minimo}`
+              : `${faixa.minimo}–${todas[posicao + 1].minimo - 1}`}
+          </span>
+        </span>
+      ))}
     </div>
+  );
+}
+
+/** A variação do índice, num chip legível sobre fundo branco.
+ *
+ *  ERA TEXTO COLORIDO SOBRE O CARTÃO AZUL. No fundo branco do bloco novo o
+ *  mesmo tom quase não aparecia — e uma variação que não se lê é uma variação
+ *  que não existe. */
+function ChipDeVariacao({ rotulo, delta }: { rotulo: string; delta: number | null }) {
+  const sobe = delta !== null && delta > 0;
+  const cai = delta !== null && delta < 0;
+  return (
+    <Chip
+      rotulo={`${comoDelta(delta)} ${rotulo}`}
+      fundo={sobe ? 'var(--ok-bg)' : cai ? 'var(--erro-bg)' : 'var(--bg-trilho)'}
+      texto={sobe ? 'var(--ok-fg)' : cai ? 'var(--erro-fg)' : 'var(--cinza-3)'}
+    />
+  );
+}
+
+/** A lente que mais sustenta, ou a que mais corrói. */
+function Extremo({ rotulo, lente }: { rotulo: string; lente: LenteDoScore | undefined }) {
+  return (
+    <Cartao>
+      <p className="kicker" style={{ marginBottom: 6 }}>
+        {rotulo}
+      </p>
+      {lente?.score != null ? (
+        <>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{lente.nome}</div>
+          <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
+            {lente.score} · peso {pesoDaLente(lente)}
+          </div>
+        </>
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+          Nenhuma lente medida.
+        </p>
+      )}
+    </Cartao>
   );
 }
 
@@ -698,6 +771,7 @@ function CalibracaoDoScore({
         regua_engajamento: mudanca.regua_engajamento ?? calibracao.regua_engajamento,
         fontes_desligadas: mudanca.fontes_desligadas ?? calibracao.fontes_desligadas,
         limites: mudanca.limites ?? limitesAjustados(calibracao.limites),
+        radial_por_peso: mudanca.radial_por_peso ?? calibracao.radial_por_peso,
       });
       // ESPERA A RÉGUA NOVA CHEGAR antes de liberar os campos: eles montam o
       // payload a partir das props, e liberar antes abriria uma janela em que
@@ -974,6 +1048,30 @@ function CalibracaoDoScore({
         salvando={salvando}
         aoGravar={(limites) => gravar({ limites })}
       />
+
+      <Secao
+        titulo="Gráfico da Visão geral"
+        subtitulo="Como as cinco lentes se desenham no radial. O comprimento da fatia é sempre a nota; o que se escolhe aqui é a largura."
+      >
+        <Cartao>
+          <Campo
+            rotulo="Largura da fatia"
+            dica="Fatias iguais escondem a ponderação que o índice aplicou: uma lente de peso 15 passa a parecer valer tanto quanto a de 30."
+          >
+            <select
+              style={estiloDeEntrada}
+              value={calibracao.radial_por_peso ? 'peso' : 'iguais'}
+              disabled={salvando}
+              onChange={(evento) =>
+                gravar({ radial_por_peso: evento.target.value === 'peso' })
+              }
+            >
+              <option value="peso">Peso da lente no índice — como a média pondera</option>
+              <option value="iguais">Fatias iguais — só a nota se compara</option>
+            </select>
+          </Campo>
+        </Cartao>
+      </Secao>
     </div>
   );
 }
