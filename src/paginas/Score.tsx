@@ -139,7 +139,12 @@ export function Score() {
       );
   }, [mes]);
 
-  useEffect(recarregar, [recarregar]);
+  // O `void` NÃO É DECORATIVO: `recarregar` agora devolve promessa, para quem
+  // grava esperar a régua nova, e um efeito que devolve promessa faz o React
+  // tratá-la como função de limpeza.
+  useEffect(() => {
+    void recarregar();
+  }, [recarregar]);
 
   if (erro && !indice) return <FaixaDeErro mensagem={erro} />;
   if (!opcoes) return <Carregando rotulo="Carregando o Score…" />;
