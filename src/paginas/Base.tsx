@@ -176,20 +176,6 @@ export function Base({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Abas
-        // "CONSULTAS RECEBIDAS" SAIU DA ABA em 24/09/2026, por pedido — vai
-        // passar por melhoria antes de voltar a aparecer (mesmo tratamento
-        // de "Sinais de mercado" no menu principal, ver `Layout.tsx`).
-        // `ABAS` continua completo: é dele que `AbaDaBase` tira o tipo, e o
-        // bloco que renderiza `aba === 'consultas'` abaixo continua de pé —
-        // só o botão da aba some.
-        abas={ABAS.filter((item) => item.id !== 'consultas')}
-        ativa={aba}
-        aoTrocar={definirAba}
-        rotulo="O que a Base mostra"
-        prefixo="base"
-      />
-
       {/* A MESMA FAIXA DO PAINEL/PREPARAR AGENDA, em 24/09/2026 — no lugar do
           "Todas as frentes" que sobrava aqui como o único canto da Base
           ainda perguntando Frente. Área(s), Tipo de Interação e Tipo de
@@ -197,7 +183,11 @@ export function Base({
           existia como `<select>` simples em `FiltrosDeAgendas` e virou
           pílula multisseleção, igual às outras telas. Só nas duas abas que
           `FiltrosDeAgendas` já cobria — "Posicionamentos e Papers" e
-          "Documentos das reuniões" filtram em memória, sem recorte. */}
+          "Documentos das reuniões" filtram em memória, sem recorte.
+          VEM ANTES DAS ABAS, e não depois — mesma posição do Painel/Preparar
+          agenda: logo abaixo do "Filtro avançado" (o acordeão global de
+          `Layout.tsx`), sem nada entre os dois. Ficar depois das abas deixava
+          esta faixa numa posição que nenhuma outra tela usa, por pedido. */}
       {aba === 'agendas' || aba === 'consultas' ? (
         <FaixaDeFiltros>
           <CampoSuspenso
@@ -218,6 +208,20 @@ export function Base({
           />
         </FaixaDeFiltros>
       ) : null}
+
+      <Abas
+        // "CONSULTAS RECEBIDAS" SAIU DA ABA em 24/09/2026, por pedido — vai
+        // passar por melhoria antes de voltar a aparecer (mesmo tratamento
+        // de "Sinais de mercado" no menu principal, ver `Layout.tsx`).
+        // `ABAS` continua completo: é dele que `AbaDaBase` tira o tipo, e o
+        // bloco que renderiza `aba === 'consultas'` abaixo continua de pé —
+        // só o botão da aba some.
+        abas={ABAS.filter((item) => item.id !== 'consultas')}
+        ativa={aba}
+        aoTrocar={definirAba}
+        rotulo="O que a Base mostra"
+        prefixo="base"
+      />
 
       {aba === 'consultas' ? (
         <Secao nivelDoTitulo={1} titulo="Consultas recebidas" estilo={{ padding: 20 }}>

@@ -205,8 +205,8 @@ export function GraficoDeArvore({
                   <text
                     x={x + 10}
                     y={y + 20}
-                    fontSize={10.5}
-                    fontWeight={700}
+                    fontSize={9}
+                    fontWeight={400}
                     fill={corDoTexto(cor)}
                     style={{ pointerEvents: 'none' }}
                   >
@@ -215,8 +215,8 @@ export function GraficoDeArvore({
                   <text
                     x={x + 10}
                     y={y + h - 12}
-                    fontSize={12}
-                    fontWeight={700}
+                    fontSize={10.5}
+                    fontWeight={400}
                     fill={corDoTexto(cor)}
                     className="tabular"
                     style={{ pointerEvents: 'none' }}

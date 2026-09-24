@@ -195,6 +195,8 @@ export function TabelaDeInteracoes({
   catalogo,
   aoAbrirFicha,
   titulo = 'Interações mais recentes',
+  subtitulo = 'Últimas interações do recorte atual, com todos os detalhes',
+  ajuda = 'As interações mais recentes do recorte atual, com todas as colunas — clique numa linha para abrir a ficha completa.',
   colunas = 'completas',
 }: {
   interacoes: Interacao[];
@@ -205,6 +207,12 @@ export function TabelaDeInteracoes({
   aoAbrirFicha: (id: string) => void;
   /** Título do cartão — as quatro tabelas de área fixa usam o nome da área. */
   titulo?: string;
+  /** A linha cinza embaixo do título — as quatro tabelas de área fixa
+   *  passam uma versão mais curta (a área já está dita no título). */
+  subtitulo?: string;
+  /** O "?" ao lado do título (ver `Ajuda` em `componentes/basicos.tsx`) —
+   *  as quatro tabelas de área fixa passam uma versão mais curta. */
+  ajuda?: string;
   /** 'reduzidas' tira Stakeholder e Relevância — usado pelas quatro tabelas
    *  de área fixa, lado a lado, onde a área já está dita no título do
    *  cartão. */
@@ -242,7 +250,7 @@ export function TabelaDeInteracoes({
   const daPagina = ordenadas.slice((paginaAtual - 1) * porPagina, paginaAtual * porPagina);
 
   return (
-    <Secao titulo={titulo}>
+    <Secao titulo={titulo} subtitulo={subtitulo} ajuda={ajuda}>
       {!ordenadas.length ? (
         <Vazio
           mensagem={`Nenhuma interação em ${titulo} neste recorte`}

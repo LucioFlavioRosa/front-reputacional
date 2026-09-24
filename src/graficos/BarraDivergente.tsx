@@ -63,6 +63,7 @@ export function BarraDivergente({
   itens,
   aoAbrirAgenda,
   vazio = 'Nenhum tema com clima registrado neste recorte.',
+  variante = 'padrao',
 }: {
   itens: ScoreDivergente[];
   /** Navega até a Ficha da agenda. Sem isto, a linha ainda abre a lista —
@@ -73,6 +74,12 @@ export function BarraDivergente({
    *  passa a própria mensagem; sem isto, "Termômetro por público" vazio
    *  falaria de tema. */
   vazio?: string;
+  /** TESTE, só no Termômetro por público por pedido — `'padrao'` continua
+   *  igual (a versão que "Barra divergente por tema" usa). `'termometro'`
+   *  escurece um pouco o trilho e troca o número na coluna à direita por um
+   *  pino (seta + número) preso na ponta da barra colorida — o número passa
+   *  a estar junto de onde a barra "chega", em vez de numa coluna à parte. */
+  variante?: 'padrao' | 'termometro';
 }) {
   //: Uma aberta por vez. Duas listas abertas ao mesmo tempo brigam por
   //: espaço vertical e confundem qual "Ver agendas" pertence a qual tema.
@@ -87,7 +94,16 @@ export function BarraDivergente({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        // MENOS ESPAÇO ENTRE LINHAS na variante `termometro`, por pedido — o
+        // pino (seta + número) já reserva sua própria folga no `padding-top`
+        // de cada linha, então o `gap` entre elas podia encolher também.
+        gap: variante === 'termometro' ? 1 : 4,
+      }}
+    >
       {itens.map((item) => {
         const positivo = item.score >= 0;
         const largura = Math.min(50, Math.abs(item.score) / 2);
@@ -112,10 +128,13 @@ export function BarraDivergente({
               }
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
+                gridTemplateColumns:
+                  variante === 'termometro'
+                    ? 'minmax(0, 1fr) minmax(0, 2.6fr)'
+                    : 'minmax(0, 1fr) minmax(0, 2.2fr) 48px',
                 alignItems: 'center',
                 gap: 14,
-                padding: '5px 6px',
+                padding: variante === 'termometro' ? '15px 6px 4px' : '5px 6px',
                 margin: '0 -6px',
                 borderRadius: 'var(--r-btn)',
                 cursor: 'pointer',
@@ -141,12 +160,14 @@ export function BarraDivergente({
               </div>
 
               <div style={{ position: 'relative', height: ALTURA_DA_FAIXA }}>
-                {/* O trilho inteiro, recessivo — é o "0 a 100" dos dois lados. */}
+                {/* O trilho inteiro, recessivo — é o "0 a 100" dos dois lados.
+                    UM POUCO MAIS ESCURO na variante `termometro`, por pedido
+                    (teste) — `--cinza-1`, não mais `--bg-trilho`. */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'var(--bg-trilho)',
+                    background: variante === 'termometro' ? 'var(--cinza-1)' : 'var(--bg-trilho)',
                     borderRadius: 3,
                   }}
                 />
@@ -175,20 +196,66 @@ export function BarraDivergente({
                     }}
                   />
                 ) : null}
+
+                {/* O PINO (seta + número), só na variante `termometro` — teste
+                    do usuário: em vez do número numa coluna à parte, ele fica
+                    preso bem em cima da PONTA da barra colorida, com uma seta
+                    apontando para ela. `positivo ? 50+largura : 50-largura` é
+                    a MESMA conta do ponto onde a barra colorida termina. */}
+                {variante === 'termometro' ? (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: `${item.score !== 0 ? (positivo ? 50 + largura : 50 - largura) : 50}%`,
+                      transform: 'translateX(-50%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <span
+                      className="tabular"
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: 'var(--azul-mar)',
+                        whiteSpace: 'nowrap',
+                        marginBottom: 1,
+                      }}
+                    >
+                      {item.score > 0 ? '+' : ''}
+                      {item.score}
+                    </span>
+                    <span
+                      style={{
+                        width: 0,
+                        height: 0,
+                        borderLeft: '4px solid transparent',
+                        borderRight: '4px solid transparent',
+                        borderTop: '5px solid var(--azul-mar)',
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
 
-              <div
-                className="tabular"
-                style={{
-                  textAlign: 'right',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: 'var(--azul-mar)',
-                }}
-              >
-                {item.score > 0 ? '+' : ''}
-                {item.score}
-              </div>
+              {variante === 'termometro' ? null : (
+                <div
+                  className="tabular"
+                  style={{
+                    textAlign: 'right',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: 'var(--azul-mar)',
+                  }}
+                >
+                  {item.score > 0 ? '+' : ''}
+                  {item.score}
+                </div>
+              )}
             </div>
 
             {expandido ? (
