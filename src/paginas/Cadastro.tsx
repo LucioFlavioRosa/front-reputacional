@@ -739,7 +739,7 @@ export function Cadastro({
               vale para toda a plataforma — um campo, um nome. */}
           <Campo
             rotulo="Temas"
-            ajuda="Escolha um dos temas disponíveis que mais se encaixa com a interação. Se nenhum estiver de acordo, você pode criar um novo na Administração, na aba Temas."
+            ajuda="Escolha um dos temas disponíveis que mais se encaixa com a interação que será feita."
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
