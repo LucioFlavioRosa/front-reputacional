@@ -20,16 +20,14 @@ import type { Destino } from '@/navegacao/rota';
 interface ItemDoMenu {
   view: Destino;
   rotulo: string;
-  /** A tela de configuração desta área, quando há uma. */
-  configura?: Destino;
   /** A aba, para as áreas cujas telas moram todas na mesma rota. */
   aba?: string;
 }
 
 const DO_CRM: ItemDoMenu[] = [
-  { view: 'painel', rotulo: 'Painel', configura: 'admin' },
-  { view: 'base', rotulo: 'Base', configura: 'admin' },
-  { view: 'preparar', rotulo: 'Preparar agenda', configura: 'admin' },
+  { view: 'painel', rotulo: 'Painel' },
+  { view: 'base', rotulo: 'Base' },
+  { view: 'preparar', rotulo: 'Preparar agenda' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 
@@ -48,9 +46,24 @@ export function areaDe(view: Destino): ItemDoMenu[] {
   return DO_CRM;
 }
 
-/** A entrada de quem administra a plataforma, fora das duas divisões. */
-export const NAVEGACAO_ADMINISTRATIVA: ItemDoMenu[] = [
-  { view: 'plataforma', rotulo: 'Plataforma' },
-];
+/** A configuração da divisão em que se está, ou `null` se ela não tem uma.
+ *
+ *  ERA UMA POR ITEM DA BARRA, e isso errava nas duas pontas: no CRM dava três
+ *  engrenagens apontando para a mesma tela, e no Score não dava nenhuma — as
+ *  quatro telas dele entraram na barra sem herdar a engrenagem que a aba antiga
+ *  carregava, e a régua do índice ficou sem porta de entrada. O cadastro de
+ *  comentários do especialista foi junto, que mora na mesma tela.
+ *
+ *  A CONFIGURAÇÃO É DA DIVISÃO, não da tela: a barra mostra uma divisão de cada
+ *  vez, então uma engrenagem no fim dela é exatamente "uma por área".
+ *
+ *  A PLATAFORMA NÃO TEM: quem entra, e com que papel, é a própria tela de
+ *  configuração — ela não se configura a si mesma.
+ */
+export function configuracaoDe(view: Destino): Destino | null {
+  if (view === 'score' || view === 'config-score') return 'config-score';
+  if (view === 'plataforma') return null;
+  return 'admin';
+}
 
 export type { ItemDoMenu };

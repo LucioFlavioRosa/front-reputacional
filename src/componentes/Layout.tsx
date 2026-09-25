@@ -21,7 +21,7 @@ import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
-import { areaDe, NAVEGACAO_ADMINISTRATIVA } from '@/navegacao/areas';
+import { areaDe, configuracaoDe } from '@/navegacao/areas';
 
 //: CADA DESTINO RESPONDE UMA PERGUNTA.
 //:
@@ -51,7 +51,7 @@ import { areaDe, NAVEGACAO_ADMINISTRATIVA } from '@/navegacao/areas';
 //: registrada em `navegacao/rota.ts`, a página em `SinaisDeMercado.tsx` e o
 //: backend intacto: quem já tinha o link (`/sinais`) ainda abre a tela, só
 //: não há mais porta de entrada pelo menu.
-//: CADA ÁREA LEVA A PRÓPRIA CONFIGURAÇÃO, na engrenagem ao lado do nome.
+//: CADA ÁREA LEVA A PRÓPRIA CONFIGURAÇÃO, na engrenagem no fim da barra.
 //:
 //: Antes havia um botão "Administração" que juntava três naturezas: quem entra
 //: na plataforma (Acessos), os cadastros que o CRM usa (Temas, Instituições,
@@ -59,9 +59,12 @@ import { areaDe, NAVEGACAO_ADMINISTRATIVA } from '@/navegacao/areas';
 //: ainda, como aba de dentro dele. Quem procurava "onde mudo isto" tinha de
 //: saber de antemão em qual dos dois lugares a resposta estava.
 //:
-//: Painel, Base e Preparar agenda apontam para a MESMA configuração porque são
-//: a mesma área — o CRM. Relatórios não tem engrenagem: não há o que ajustar
-//: nele, e uma engrenagem que abre uma tela vazia ensina a ignorar engrenagens.
+//: UMA ENGRENAGEM, E NÃO UMA POR ITEM. A barra mostra uma divisão de cada vez,
+//: então uma engrenagem no fim dela já é uma por área. Uma por item errava nas
+//: duas pontas: no CRM, Painel/Base/Preparar apontavam todos para o mesmo
+//: cadastro — três engrenagens para uma tela; no Score, as telas entraram na
+//: barra sem herdar a engrenagem da aba antiga, e a régua do índice ficou sem
+//: porta de entrada nenhuma. Quem decide para onde ela vai é `configuracaoDe`.
 
 /**
  * A aba de acessos fica fora da navegação principal.
@@ -130,6 +133,12 @@ export function Layout({
   //: ao navegar seria perder o contexto no meio da leitura. Quem quer limpar
   //: tem o botão na barra.
   const navegar = irPara;
+
+  //: Onde a engrenagem desta divisão leva, e o nome que ela diz em voz alta.
+  //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
+  //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
+  const configuracao = configuracaoDe(view);
+  const nomeDaArea = view === 'score' || view === 'config-score' ? 'Score' : 'CRM';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
@@ -230,27 +239,15 @@ export function Layout({
               acima), o mesmo mecanismo que já existe para a `BarraDeRecorte`
               quebrar linha conforme o número de fichas do recorte. */}
           <nav className="cabecalho__nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
-            {[
-              ...areaDe(view),
-              // A entrada administrativa entra no fim, e só para quem
-              // administra: é tela usada raramente, por poucas pessoas.
-              // Misturá-la com as abas de análise faria todo mundo passar por
-              // ela todo dia sem motivo.
-              ...(administraAcessos ? NAVEGACAO_ADMINISTRATIVA : []),
-            ].map((item) => {
-              const { configura } = item;
+            {areaDe(view).map((item) => {
               // A ABA ENTRA NA CONTA DO ATIVO: na divisão do Score, os quatro
               // itens apontam para a mesma `view`, e sem isto os quatro
               // acenderiam juntos.
               const ativo =
-                view === configura ||
-                (view === item.view && (!item.aba || item.aba === abaAtiva));
+                view === item.view && (!item.aba || item.aba === abaAtiva);
               return (
-                <span
-                  key={`${item.view}-${item.aba ?? ''}`}
-                  style={{ display: 'inline-flex', alignItems: 'center' }}
-                >
                 <button
+                  key={`${item.view}-${item.aba ?? ''}`}
                   type="button"
                   onClick={() => navegar(item.view, item.aba)}
                   aria-current={ativo ? 'page' : undefined}
@@ -272,42 +269,41 @@ export function Layout({
                 >
                   {item.rotulo}
                 </button>
-                {/* A ENGRENAGEM ENTRA NA ORDEM DE TABULAÇÃO como controle
-                    próprio, logo depois da área que ela configura: quem navega
-                    por teclado encontra "ajustar isto" onde esperaria, e não
-                    no fim do menu. */}
-                {configura ? (
-                  <button
-                    type="button"
-                    onClick={() => navegar(configura)}
-                    aria-label={`Configurações de ${item.rotulo}`}
-                    title={`Configurações de ${item.rotulo}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 26,
-                      height: 26,
-                      marginLeft: -4,
-                      borderRadius: 'var(--r-btn)',
-                      border: 'none',
-                      background:
-                        view === configura ? 'var(--branco)' : 'transparent',
-                      color:
-                        view === configura
-                          ? 'var(--azul-mar)'
-                          : 'rgba(255,255,255,0.6)',
-                      fontSize: 14,
-                      lineHeight: 1,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ⚙
-                  </button>
-                ) : null}
-                </span>
               );
             })}
+
+            {/* A ENGRENAGEM DA DIVISÃO, depois das telas dela e antes das ações
+                do cabeçalho: quem navega por teclado percorre "o que eu vejo" e
+                só então "o que eu ajusto". */}
+            {configuracao ? (
+              <button
+                type="button"
+                onClick={() => navegar(configuracao)}
+                aria-current={view === configuracao ? 'page' : undefined}
+                aria-label={`Configurações de ${nomeDaArea}`}
+                title={`Configurações de ${nomeDaArea}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  marginLeft: 6,
+                  borderRadius: 'var(--r-btn)',
+                  border: 'none',
+                  background: view === configuracao ? 'var(--branco)' : 'transparent',
+                  color:
+                    view === configuracao
+                      ? 'var(--azul-mar)'
+                      : 'rgba(255,255,255,0.7)',
+                  fontSize: 15,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                }}
+              >
+                ⚙
+              </button>
+            ) : null}
           </nav>
 
           <div
@@ -339,7 +335,18 @@ export function Layout({
 
             {/* Por último, e à direita de tudo: é onde a barra de todo sistema
                 põe a conta, e contrariar isso faria a pessoa procurar. */}
-            <MenuDoUsuario eu={eu} />
+            {/* A PLATAFORMA MORA NA CONTA, e não na barra. Ela não é do CRM nem
+                do Score — é quem entra e com que papel, e vale igual para as
+                duas divisões. Na barra ela aparecia como um quinto item de
+                natureza diferente dos outros quatro, e mudava de vizinho a cada
+                troca de divisão. Só é passada a quem administra acessos: é
+                conveniência de tela, e o backend recusa com 403 de todo jeito. */}
+            <MenuDoUsuario
+              eu={eu}
+              aoAbrirPlataforma={
+                administraAcessos ? () => navegar('plataforma') : undefined
+              }
+            />
           </div>
         </div>
 

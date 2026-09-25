@@ -177,7 +177,18 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           mesma coisa ensinam que há duas coisas. */}
       {naCapa ? (
         <div className="capa__conta">
-          <MenuDoUsuario eu={eu} lugar="capa" />
+          {/* A MESMA ENTRADA DA BARRA, pelo mesmo motivo que o sair está aqui:
+              quem abre o painel e quer administrar acessos não deve ter de
+              ENTRAR numa divisão para achar uma tela que não é de nenhuma. */}
+          <MenuDoUsuario
+            eu={eu}
+            lugar="capa"
+            aoAbrirPlataforma={
+              eu?.papel?.administra_acessos
+                ? () => irPara({ destino: 'plataforma' })
+                : undefined
+            }
+          />
         </div>
       ) : null}
 
