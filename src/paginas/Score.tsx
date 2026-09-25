@@ -363,7 +363,13 @@ function VisaoGeral({
                   : `${mesesParciais} meses medidos por menos de 4 lentes — fora da escala do eixo`}
               </span>
             ) : null}
-            <span>Clique num mês para ver a lente e o radial daquele mês.</span>
+            {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe
+                do mês agora se pede apontando. Sem esta linha, quem abre a tela
+                vê uma fita de cores e não descobre que há texto atrás dela. */}
+            <span>
+              Aponte um mês para ver o que aconteceu nele; clique para abrir a
+              lente e o radial daquele mês.
+            </span>
           </div>
         </Cartao>
       </Secao>

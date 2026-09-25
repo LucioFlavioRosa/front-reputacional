@@ -430,6 +430,7 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   --jornada-esquerda: 34px; /* as marcas do eixo */
   --jornada-direita: 92px;  /* os nomes das faixas */
   --jornada-altura: 260px;
+  --jornada-cartao: 320px;  /* o cartão do mês em foco */
 }
 
 .jornada__margens {
@@ -437,7 +438,9 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   margin-right: var(--jornada-direita);
 }
 
-.jornada__colunas,
+/* SEM `gap`, e é regra, não esquecimento: o vão deslocaria o centro de cada
+   célula, e o filete do mês i deixaria de cair sobre o ponto do mês i. O
+   respiro entre filetes vem de recuo POR DENTRO da célula. */
 .jornada__meses {
   display: grid;
   grid-template-columns: repeat(var(--jornada-meses), minmax(0, 1fr));
@@ -445,8 +448,75 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 
 .jornada__grafico { position: relative; height: var(--jornada-altura); }
 
-/* O cartão do mês escolhido, que só aparece quando as colunas não cabem. */
-.jornada__mes-unico { display: none; }
+/* -- a fita de meses --------------------------------------------------------
+   Cada mês é um controle de largura inteira: antes o único alvo era o ponto de
+   16px na curva, e com dez meses num cartão estreito acertá-lo era pontaria. */
+.jornada__mes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 0 6px;
+  border: none;
+  border-radius: var(--r-btn);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.jornada__filete {
+  width: calc(100% - 6px);
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* -- o cartão do mês em foco ------------------------------------------------
+   ELE DESLIZA ATÉ O MÊS APONTADO. A margem é uma conta só: o centro do mês
+   menos meia largura do cartão, presa entre as duas bordas. Perto delas o
+   cartão encosta e para — e o bico continua no mês certo, porque quando o
+   cartão encosta o mês já está dentro dele.
+
+   `margin-left` e não `transform`: numa translação as porcentagens medem a
+   LARGURA DO PRÓPRIO ELEMENTO, e a conta precisa da largura do bloco. */
+.jornada__detalhe {
+  position: relative;
+  margin-top: 12px;
+}
+
+.jornada__cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: min(var(--jornada-cartao), 100%);
+  margin-left: clamp(
+    0px,
+    calc(var(--jornada-x) - var(--jornada-cartao) / 2),
+    max(0px, calc(100% - var(--jornada-cartao)))
+  );
+  padding: 11px 13px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--r-card-int);
+  background: var(--branco);
+  box-shadow: 0 6px 18px rgba(0, 25, 120, 0.07);
+  transition: margin-left 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* O BICO É O FILETE APONTANDO PARA CIMA — mesma cor, e meio escondido atrás da
+   borda do cartão, que é pintada depois dele por ser irmã posterior. */
+.jornada__bico {
+  position: absolute;
+  top: -4px;
+  left: var(--jornada-x);
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--jornada-filete);
+  transition: left 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
 /* A legenda de faixas embaixo, que substitui os nomes na margem direita. */
 .jornada__faixas-abaixo { display: none; }
 .jornada__mes-longo { display: inline; }
@@ -465,8 +535,6 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
     --jornada-direita: 0px;
     --jornada-altura: 200px;
   }
-  .jornada__colunas { display: none; }
-  .jornada__mes-unico { display: block; }
   .jornada__nome-da-faixa { display: none; }
   .jornada__faixas-abaixo { display: flex; }
 }
@@ -475,7 +543,12 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   .jornada {
     --jornada-esquerda: 26px;
     --jornada-altura: 170px;
+    /* Ocupa a largura toda: abaixo daqui não há folga para o cartão deslizar,
+       e quem diz qual mês é o bico. */
+    --jornada-cartao: 100%;
   }
+  /* "jun" em doze células de 26px pede a letra menor. */
+  .jornada__mes { font-size: 10px; gap: 4px; }
   /* "jun/26" não cabe em 30px de coluna; "jun" cabe, e o ano está no seletor
      de mês do cabeçalho. */
   .jornada__mes-longo { display: none; }

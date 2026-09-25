@@ -1,19 +1,46 @@
-/** A jornada do índice: colunas por mês, faixas ao fundo, curva por cima.
+/** A jornada do índice: curva por cima das faixas, fita de meses, um cartão.
  *
  *  NENHUMA CONTA MORA AQUI. Domínio do eixo, faixas recortadas, caminho da
  *  curva e posição de cada rótulo saem de `dominio/jornadaDoIndice`, testado
  *  linha a linha. Este arquivo desenha.
  *
- *  COLUNAS E GRÁFICO COMPARTILHAM AS MARGENS LATERAIS, e é isso que os alinha:
+ *  ERAM DEZ COLUNAS DE TEXTO, todas abertas ao mesmo tempo, acima do gráfico.
+ *  Dez nomes de mês, dez variações, até trinta linhas de fato e tema, cada uma
+ *  quebrando em três ou quatro pedaços dentro de 90px. Tudo legítimo, tudo
+ *  visível, e por isso mesmo ilegível: a informação de um mês só se achava
+ *  varrendo o bloco inteiro, e o gráfico — que é o assunto da seção — ficava
+ *  comprimido embaixo de uma parede de letra miúda.
+ *
+ *  A INFORMAÇÃO NÃO ENCOLHEU, ela passou a ser pedida. O que fica sempre
+ *  visível é a FITA: um filete de 3px por mês, na cor do que aquele mês viveu —
+ *  o único sinal que se lê de relance e que valia estar sempre aberto, porque
+ *  comparar doze meses de uma vez é justamente o que uma cor deixa fazer e um
+ *  parágrafo não. O resto vive em UM cartão, que mostra o mês sob o mouse.
+ *
+ *  UM CARTÃO EM VEZ DE DEZ, e três vezes mais largo, é o que reorganiza: o nome
+ *  do mês e a variação cabem na mesma linha, e cada fato cabe numa linha só com
+ *  os pontos que custou alinhados à direita. A mesma informação, legível.
+ *
+ *  ELE SEGUE O MÊS, e é isso que dispensa qualquer legenda de ligação: o cartão
+ *  desliza até ficar embaixo do mês apontado, com um bico apontando para ele.
+ *  Perto das bordas ele encosta e para — o bico continua no mês certo, porque
+ *  quando o cartão encosta o mês já está dentro dele.
+ *
+ *  SEM MOUSE ELE MOSTRA O MÊS ESCOLHIDO, e não desaparece. Um cartão que só
+ *  existe sob o cursor não existe no telefone, não existe para quem navega por
+ *  teclado, e faz a legenda abaixo subir e descer a cada passada do mouse.
+ *
+ *  FITA E GRÁFICO COMPARTILHAM AS MARGENS LATERAIS, e é isso que os alinha:
  *  a grade tem uma coluna de largura igual por mês, e o ponto do mês i cai em
  *  (i + 0,5)/n da largura — o centro exato da coluna i. Margens diferentes
- *  fariam a terceira coluna apontar para o segundo ponto, e o leitor atribuiria
+ *  fariam o terceiro filete apontar para o segundo ponto, e o leitor atribuiria
  *  o fato ao mês errado. As três medidas vêm da mesma variável, em `index.css`.
+ *  É também por isso que a fita não tem `gap`: o vão deslocaria os centros, e o
+ *  respiro entre filetes vem de recuo POR DENTRO de cada célula.
  *
- *  O DESTAQUE É COMPARTILHADO entre a coluna e o ponto do mesmo mês, e é o que
- *  liga um ao outro: com dez colunas estreitas, ninguém descobre sozinho que a
- *  terceira coluna fala do terceiro ponto. Passar o mouse em qualquer um dos
- *  dois acende os dois e baixa uma guia até o eixo.
+ *  O DESTAQUE É COMPARTILHADO entre o filete, o ponto e o cartão do mesmo mês.
+ *  Passar o mouse em qualquer um dos dois primeiros acende os três e baixa uma
+ *  guia até o eixo.
  *
  *  A TRANSIÇÃO É CURTA E EXISTE PARA MOSTRAR O QUE MUDOU, não para enfeitar:
  *  trocar de mês sem ela troca o ponto grande de lugar sem que o olho perceba.
@@ -55,6 +82,14 @@ export function JornadaDoIndice({
 }) {
   const jornada = jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
   const [destacado, definirDestacado] = useState<string | null>(null);
+
+  //: SOLTAR SÓ APAGA SE AINDA FOR O MESMO MÊS.
+  //:
+  //: Entre dois meses vizinhos o navegador dispara a saída de um ANTES da
+  //: entrada do outro. Com um `null` no meio, o cartão volta ao mês escolhido e
+  //: adianta de novo — um piscar a cada mês percorrido, e a fita tem doze.
+  const soltar = (qual: string) =>
+    definirDestacado((atual) => (atual === qual ? null : atual));
   if (!jornada.pontos.length) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
@@ -63,26 +98,24 @@ export function JornadaDoIndice({
     );
   }
 
+  //: O MÊS SOB O MOUSE, OU O ESCOLHIDO. O apontado manda enquanto durar: é
+  //: prévia, e sai sozinha. O escolhido é o que fica — e é o que sobra em quem
+  //: não tem mouse nenhum.
   const escolhida =
     jornada.colunas.find((coluna) => coluna.selecionada) ?? jornada.colunas.at(-1);
+  const emFoco = jornada.colunas.find((coluna) => coluna.mes === destacado) ?? escolhida;
+
+  //: A MESMA PORCENTAGEM DO PONTO, e não uma conta nova: o centro da célula i da
+  //: fita é o centro do ponto i, porque as duas grades têm as mesmas margens.
+  //: Recalcular aqui seria uma segunda verdade, que envelhece sozinha.
+  const xDoFoco =
+    jornada.pontos.find((ponto) => ponto.mes === emFoco?.mes)?.esquerda ?? 50;
 
   return (
     <div
       className="jornada"
       style={{ ['--jornada-meses' as string]: String(jornada.colunas.length) }}
     >
-      <div className="jornada__margens jornada__colunas">
-        {jornada.colunas.map((coluna) => (
-          <Coluna
-            key={coluna.mes}
-            coluna={coluna}
-            destacada={destacado === coluna.mes}
-            aoDestacar={definirDestacado}
-            aoEscolher={aoEscolherMes}
-          />
-        ))}
-      </div>
-
       <div className="jornada__margens jornada__grafico">
         <svg
           viewBox={`0 0 ${VB.largura} ${VB.altura}`}
@@ -185,6 +218,7 @@ export function JornadaDoIndice({
             ponto={ponto}
             destacado={destacado === ponto.mes}
             aoDestacar={definirDestacado}
+            aoSoltar={soltar}
             aoEscolher={aoEscolherMes}
           />
         ))}
@@ -250,32 +284,37 @@ export function JornadaDoIndice({
         ) : null}
       </div>
 
-      <div className="jornada__margens jornada__meses" style={{ marginTop: 6 }}>
-        {jornada.pontos.map((ponto) => (
-          <span
-            key={ponto.mes}
-            className="kicker"
-            style={{
-              textAlign: 'center',
-              color:
-                ponto.selecionado || destacado === ponto.mes
-                  ? 'var(--azul-mar)'
-                  : 'var(--cinza-2)',
-              fontWeight: ponto.selecionado ? 700 : 500,
-              transition: 'color 140ms ease',
-            }}
-          >
-            <span className="jornada__mes-longo">{mesCurto(ponto.mes)}</span>
-            <span className="jornada__mes-curto">{mesCurto(ponto.mes).slice(0, 3)}</span>
-          </span>
+      {/* A FITA: um mês por célula, alinhada ao gráfico. O filete é o sinal que
+          fica sempre aberto; o texto do mês vive no cartão abaixo. Cada célula
+          é um controle de largura inteira — alvo generoso para apontar e para
+          tocar, ao contrário do ponto de 16px na curva. */}
+      <div className="jornada__margens jornada__meses" style={{ marginTop: 8 }}>
+        {jornada.colunas.map((coluna) => (
+          <MesNaFita
+            key={coluna.mes}
+            coluna={coluna}
+            destacado={destacado === coluna.mes}
+            aoDestacar={definirDestacado}
+            aoSoltar={soltar}
+            aoEscolher={aoEscolherMes}
+          />
         ))}
       </div>
 
-      {/* Só aparece quando as colunas não cabem: o detalhe do mês escolhido,
-          e os outros meses se alcançam tocando a curva. */}
-      {escolhida ? (
-        <div className="jornada__mes-unico" style={{ marginTop: 14 }}>
-          <Coluna coluna={escolhida} aoEscolher={aoEscolherMes} sozinha />
+      {/* O CARTÃO, embaixo da fita e alinhado ao mês em foco. Embaixo, e não em
+          cima: aqui a altura dele muda de um mês para outro sem mover nada do
+          que está acima — pôr o cartão sobre o gráfico faria a curva pular a
+          cada passada do mouse. */}
+      {emFoco ? (
+        <div
+          className="jornada__margens jornada__detalhe"
+          style={{
+            ['--jornada-x' as string]: `${xDoFoco}%`,
+            ['--jornada-filete' as string]: emFoco.filete,
+          }}
+        >
+          <span className="jornada__bico" aria-hidden />
+          <DetalheDoMes coluna={emFoco} aoDestacar={definirDestacado} aoSoltar={soltar} />
         </div>
       ) : null}
 
@@ -288,86 +327,157 @@ export function JornadaDoIndice({
   );
 }
 
-/** A coluna de um mês: o que aconteceu, quanto o índice andou, por qual lente.
+/** Um mês na fita: o filete com a cor do que ele viveu, e o nome embaixo.
  *
- *  `sozinha` é a versão que aparece no lugar da grade quando ela não cabe: a
- *  mesma informação, com o nome do mês em destaque — sem as vizinhas ao lado,
- *  o filete no topo perde a função de comparar e vira só cor. */
-function Coluna({
+ *  É UM CONTROLE, e não um rótulo. A célula inteira aponta e seleciona, e tem a
+ *  largura de um mês do gráfico: antes o único alvo era o ponto de 16px na
+ *  curva, e em dez meses num cartão estreito acertá-lo era pontaria.
+ *
+ *  O FILETE É O QUE FICA ABERTO desta coluna toda. É a cor do fato que pesou no
+ *  mês — vermelho pressionou, turquesa sustentou, cinza misto, borda nenhum —, e
+ *  é o único traço que se compara doze vezes de relance. O resto vai ao cartão.
+ */
+function MesNaFita({
   coluna,
-  aoEscolher,
-  destacada = false,
+  destacado,
   aoDestacar,
-  sozinha = false,
+  aoSoltar,
+  aoEscolher,
 }: {
   coluna: ColunaDoMes;
+  destacado: boolean;
+  aoDestacar: (mes: string) => void;
+  aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
-  destacada?: boolean;
-  aoDestacar?: (mes: string | null) => void;
-  sozinha?: boolean;
 }) {
-  const acesa = (coluna.selecionada && !sozinha) || destacada;
+  const aceso = coluna.selecionada || destacado;
   return (
     <button
       type="button"
       onClick={() => aoEscolher(coluna.mes)}
-      onMouseEnter={() => aoDestacar?.(coluna.mes)}
-      onMouseLeave={() => aoDestacar?.(null)}
-      onFocus={() => aoDestacar?.(coluna.mes)}
-      onBlur={() => aoDestacar?.(null)}
-      title={`Ver ${coluna.nome}`}
+      onMouseEnter={() => aoDestacar(coluna.mes)}
+      onMouseLeave={() => aoSoltar(coluna.mes)}
+      onFocus={() => aoDestacar(coluna.mes)}
+      onBlur={() => aoSoltar(coluna.mes)}
+      // O NOME ACESSÍVEL DIZ O MÊS E O QUE ELE FEZ: "jun/26" sozinho obriga
+      // quem ouve a abrir o mês para descobrir se vale abrir.
+      aria-label={`${coluna.nome}, ${coluna.variacao}`}
+      aria-current={coluna.selecionada ? 'true' : undefined}
+      className="jornada__mes"
       style={{
-        textAlign: 'left',
-        background: acesa ? 'var(--bg-trilho)' : 'transparent',
-        transition: 'background 140ms ease',
-        border: sozinha ? '1px solid var(--borda)' : 'none',
-        borderTop: `3px solid ${coluna.filete}`,
-        borderRadius: sozinha ? 'var(--r-card-int)' : 0,
-        padding: sozinha ? '12px 14px 14px' : '10px 10px 12px',
-        cursor: 'pointer',
-        font: 'inherit',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 5,
-        minWidth: 0,
-        width: '100%',
+        background: aceso ? 'var(--bg-trilho)' : 'transparent',
+        color: aceso ? 'var(--azul-mar)' : 'var(--cinza-2)',
+        fontWeight: coluna.selecionada ? 700 : 500,
       }}
     >
-      <span className="kicker">{coluna.nome}</span>
-      {/* EM LINHA PRÓPRIA, e sem quebra: com seis colunas não há largura para
-          o nome do mês e a variação lado a lado. */}
-      <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-        {coluna.variacao}
-      </span>
-      {/* SEM LINHA, SEM TEXTO. Um mês sem comentário nem tema não ganha uma
-          frase dizendo que não tem: dez colunas repetindo "sem fato
-          registrado" ocupam o lugar do que importa. */}
-      {coluna.linhas.length ? (
-        <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {coluna.linhas.map((linha) => (
-            <LinhaDaColuna key={`${linha.origem}-${linha.texto}`} linha={linha} />
-          ))}
-        </span>
-      ) : null}
-      {coluna.semTema ? (
-        <span style={{ fontSize: 10.5, color: 'var(--cinza-2)' }} title="Menções que moveram o índice sem tema classificado, ou lente estimada">
-          {coluna.semTema}
-        </span>
-      ) : null}
-      {coluna.movimento ? (
-        <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>{coluna.movimento}</span>
-      ) : null}
+      {/* O RECUO É POR DENTRO, e não `gap` na grade: o vão entre células
+          deslocaria o centro de cada uma, e o filete do mês i deixaria de cair
+          sobre o ponto do mês i. */}
+      <span
+        aria-hidden
+        className="jornada__filete"
+        style={{ background: coluna.filete }}
+      />
+      <span className="jornada__mes-longo">{mesCurto(coluna.mes)}</span>
+      <span className="jornada__mes-curto">{mesCurto(coluna.mes).slice(0, 3)}</span>
     </button>
   );
 }
 
-/** Uma linha da coluna: o que alguém escreveu, ou o que a base derivou.
+/** O cartão do mês em foco: o que aconteceu, quanto o índice andou, por onde.
+ *
+ *  ELE SE MANTÉM ABERTO QUANDO O MOUSE ENTRA NELE. Sem isto, sair da fita para
+ *  ler o cartão o apaga — e o cartão troca de conteúdo exatamente no gesto de
+ *  quem quis lê-lo.
+ *
+ *  NÃO É UM CONTROLE, de propósito. Clicar nele para escolher o mês seria um
+ *  atalho de meio pixel — a célula da fita logo acima faz isso —, e sairia caro:
+ *  um botão anuncia como nome tudo o que tem dentro, e este tem o mês, a
+ *  variação, três fatos e o rodapé. Quem ouve a tela receberia um botão só, de
+ *  duzentos caracteres, e mais uma parada de tabulação repetindo o que a fita já
+ *  disse. Aqui o texto é texto, e quem comanda é a fita. */
+function DetalheDoMes({
+  coluna,
+  aoDestacar,
+  aoSoltar,
+}: {
+  coluna: ColunaDoMes;
+  aoDestacar: (mes: string) => void;
+  aoSoltar: (mes: string) => void;
+}) {
+  return (
+    <div
+      className="jornada__cartao"
+      onMouseEnter={() => aoDestacar(coluna.mes)}
+      onMouseLeave={() => aoSoltar(coluna.mes)}
+      style={{ borderTop: `3px solid ${coluna.filete}` }}
+    >
+      {/* NA MESMA LINHA, agora que há largura: nas colunas de 90px o nome do mês
+          e a variação não caibam lado a lado, e a variação ia para baixo. */}
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 10,
+        }}
+      >
+        <span className="kicker" style={{ color: 'var(--azul-mar)' }}>
+          {coluna.nome}
+        </span>
+        <span
+          className="tabular"
+          style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}
+        >
+          {coluna.variacao}
+        </span>
+      </span>
+
+      {/* SEM LINHA, SEM TEXTO. Um mês sem comentário nem tema não ganha uma
+          frase dizendo que não tem — foi decisão de quem cuida do produto, e
+          continua valendo com um cartão: "sem fato registrado" não é fato. */}
+      {coluna.linhas.length ? (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {coluna.linhas.map((linha) => (
+            <LinhaDoDetalhe key={`${linha.origem}-${linha.texto}`} linha={linha} />
+          ))}
+        </span>
+      ) : null}
+
+      {/* O RODAPÉ é o que a conta sabe e ninguém escreveu: por qual lente o mês
+          se moveu mais, e quanto dele não se explica por tema. Separado por um
+          fio, porque é de outra natureza do que está acima. */}
+      {coluna.movimento || coluna.semTema ? (
+        <span
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '2px 10px',
+            paddingTop: 7,
+            borderTop: '1px solid var(--borda)',
+            fontSize: 11,
+            color: 'var(--cinza-2)',
+          }}
+        >
+          {coluna.movimento ? <span>{coluna.movimento}</span> : null}
+          {coluna.semTema ? (
+            <span title="Menções que moveram o índice sem tema classificado, ou lente estimada">
+              {coluna.semTema}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** Uma linha do cartão: o que alguém escreveu, ou o que a base derivou.
  *
  *  A PROCEDÊNCIA É MARCADA, e não decorada. O ponto cheio é fato cadastrado —
  *  alguém decidiu que aquilo merecia registro; o contorno vazado é tema
  *  derivado, com os pontos que ele custou ou rendeu ao lado. Sem a distinção,
- *  a coluna misturaria o que a companhia afirma com o que a conta calculou. */
-function LinhaDaColuna({ linha }: { linha: LinhaDoMes }) {
+ *  o cartão misturaria o que a companhia afirma com o que a conta calculou. */
+function LinhaDoDetalhe({ linha }: { linha: LinhaDoMes }) {
   const cor = COR_DO_EFEITO[linha.efeito] ?? 'var(--cinza-2)';
   return (
     <span style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
@@ -407,11 +517,13 @@ function Ponto({
   ponto,
   destacado,
   aoDestacar,
+  aoSoltar,
   aoEscolher,
 }: {
   ponto: PontoDaJornada;
   destacado: boolean;
-  aoDestacar: (mes: string | null) => void;
+  aoDestacar: (mes: string) => void;
+  aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
 }) {
   const raio = ponto.selecionado ? 22 : destacado ? 20 : 16;
@@ -420,9 +532,9 @@ function Ponto({
       type="button"
       onClick={() => aoEscolher(ponto.mes)}
       onMouseEnter={() => aoDestacar(ponto.mes)}
-      onMouseLeave={() => aoDestacar(null)}
+      onMouseLeave={() => aoSoltar(ponto.mes)}
       onFocus={() => aoDestacar(ponto.mes)}
-      onBlur={() => aoDestacar(null)}
+      onBlur={() => aoSoltar(ponto.mes)}
       aria-label={ponto.descricao}
       aria-current={ponto.selecionado ? 'true' : undefined}
       style={{
