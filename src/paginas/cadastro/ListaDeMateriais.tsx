@@ -10,6 +10,7 @@ import { Botao, Campo, CampoDeArquivo, estiloDeEntrada } from '@/componentes/bas
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { subirArquivoDeMaterial, urlDoArquivo } from '@/api/cliente';
 import { tamanhoLegivel } from '@/dominio/formato';
+import { novoUid } from '@/paginas/cadastro/formulario';
 import type { MaterialNoForm } from '@/paginas/cadastro/formulario';
 
 /** Os documentos de um MOMENTO da agenda.
@@ -71,6 +72,15 @@ export function ListaDeMateriais({
 
   const subir = async (indice: number, arquivo: File) => {
     if (!interacaoId) return;
+    //: A LINHA PELO NOME, E NÃO PELA POSIÇÃO.
+    //:
+    //: O índice é capturado aqui e usado lá embaixo, quando o upload volta. Se
+    //: nesse meio-tempo a lista encolheu — outra linha removida, ou um tema
+    //: desmarcado recolhendo os materiais dele —, ele passou a apontar para
+    //: outro material: o arquivo grudava no errado, ou se perdia e o byte ficava
+    //: órfão no servidor. Identidade de objeto também não serviria: digitar o
+    //: título durante o upload cria um objeto novo.
+    const uid = materiais[indice].uid;
     definirSubindo(indice);
     try {
       const salvo = await subirArquivoDeMaterial(
@@ -85,8 +95,8 @@ export function ListaDeMateriais({
       // pessoa pode ter digitado o título, e a lista capturada pela closure
       // não sabe disso. Reescrevê-la apagaria o que ela escreveu.
       aoMudar((atual) =>
-        atual.map((m, i) =>
-          i === indice
+        atual.map((m) =>
+          m.uid === uid
             ? {
                 ...m,
                 arquivo_id: salvo.id,
@@ -115,7 +125,11 @@ export function ListaDeMateriais({
 
       {materiais.map((material, indice) => (
         <div
-          key={material.id ?? indice}
+          // O `uid`, e não a posição: com o índice, remover uma linha faz a
+          // seguinte herdar o estado interno da removida — o combobox aberto, a
+          // busca digitada — porque para o React é a MESMA linha mudando de
+          // conteúdo. `id` também não serve: material novo ainda não tem.
+          key={material.uid}
           style={{
             marginBottom: 14,
             paddingBottom: 14,
@@ -358,6 +372,7 @@ export function ListaDeMateriais({
           aoMudar((atual) => [
             ...atual,
             {
+              uid: novoUid(),
               momento: momentos[0].valor,
               titulo: '',
               url: '',

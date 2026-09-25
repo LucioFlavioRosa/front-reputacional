@@ -55,6 +55,9 @@ import {
   materiaisDe,
 } from '@/paginas/cadastro/formulario';
 import type { Etapa, Formulario } from '@/paginas/cadastro/formulario';
+import { novoUid } from '@/paginas/cadastro/formulario';
+import { limpar } from '@/paginas/cadastro/limpeza';
+import { intocado, linhaDaBiblioteca } from '@/paginas/cadastro/materiaisDoTema';
 import { CampoDeDicionario, CampoDeTexto } from '@/paginas/cadastro/campos';
 import { CODIGO_DA_CONSULTA } from '@/dominio/sinais';
 import { CamposDaConsulta } from '@/paginas/cadastro/CamposDaConsulta';
@@ -94,6 +97,9 @@ export function Cadastro({
 }) {
   const { catalogo, recarregar } = usePainel();
   const [form, definirForm] = useState<Formulario>(VAZIO);
+  //: O QUE "LIMPAR" LEVOU, enquanto o desfazer ainda vale. Nulo é o estado
+  //: normal; ele só existe entre o clique em Limpar e o gesto seguinte.
+  const [limpou, definirLimpou] = useState<Formulario | null>(null);
   const [carregando, definirCarregando] = useState(Boolean(id));
   //: As agendas que podem ter dado origem a esta. Carregadas uma vez.
   const [agendas, definirAgendas] = useState<Interacao[]>([]);
@@ -300,6 +306,10 @@ export function Cadastro({
   const tierDaInstituicao = instituicaoSelecionada?.tier ?? null;
 
   const alterar = <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => {
+    //: O DESFAZER VALE POR UM GESTO. Restaurar depois que a pessoa já começou a
+    //: preencher de novo apagaria o trabalho NOVO para devolver o velho — o
+    //: mesmo dano, ao contrário, e causado pelo próprio conserto.
+    definirLimpou(null);
     definirForm((atual) => ({ ...atual, [campo]: valor }));
     definirSucesso(false);
   };
@@ -355,9 +365,25 @@ export function Cadastro({
       referencias.filter((r) => temas.some((t) => r.temas.includes(t))).map((r) => r.id),
     );
 
+    const porId = new Map(referencias.map((r) => [r.id, r]));
+
     definirForm((atual) => {
+      //: SÓ A LINHA INTOCADA SAI SOZINHA.
+      //:
+      //: Era `!m.referencia_id || doAssunto.has(m.referencia_id)` — toda linha
+      //: vinda da biblioteca voltava quando o tema saía, e o vínculo dura a vida
+      //: inteira da linha. Quem trocasse o anexo por um PDF mais novo (o upload
+      //: grava o byte na hora), escrevesse um resumo e então corrigisse o tema
+      //: perdia as três coisas sem aviso — e o arquivo ficava órfão no blob,
+      //: fora da varredura, que só alcança byte que já esteve ligado a um
+      //: material.
+      //:
+      //: O que a pessoa editou passa a ser dela, e fica.
       const preservados = atual.materiais.filter(
-        (m) => !m.referencia_id || doAssunto.has(m.referencia_id),
+        (m) =>
+          !m.referencia_id ||
+          doAssunto.has(m.referencia_id) ||
+          !intocado(m, porId.get(m.referencia_id), urlDaVersao),
       );
       const jaEstao = new Set(
         preservados.map((m) => m.referencia_id).filter(Boolean) as string[],
@@ -367,27 +393,11 @@ export function Cadastro({
         .filter(
           (r) => doAssunto.has(r.id) && !jaEstao.has(r.id) && !dispensadas.has(r.id),
         )
-        .map((r) => ({
-          momento: 'apoio',
-          titulo: r.titulo,
-          // O LINK DA VERSAO ATUAL, e nao "da referencia".
-          //
-          // Uma versao nova depois desta agenda NAO muda este endereco, e e o
-          // certo: o material registra o que circulou naquela reuniao. Quem
-          // quiser a versao de hoje abre a biblioteca.
-          url: r.versao ? urlDaVersao(r.id, r.versao.id) : '',
-          // O RESUMO VEM JUNTO. E o que a biblioteca guarda para quem esta
-          // decidindo se abre o arquivo, e chegar vazio aqui obrigaria a
-          // pessoa a abrir a Administracao para ler o que ja estava escrito.
-          observacao: r.resumo ?? '',
-          arquivo_id: null,
-          arquivo: null,
-          referencia_id: r.id,
-          // OS ASSUNTOS DA REFERENCIA, e nao os da agenda: e a biblioteca que
-          // sabe do que aquele documento trata, e ela pode cobrir assunto que
-          // esta reuniao nao trata.
-          temas: [...r.temas],
-        }));
+        //: A MESMA FUNÇÃO QUE O `intocado` usa para comparar. Se a construção
+        //: morasse aqui e a comparação lá, um campo novo na linha entraria numa
+        //: e não na outra — e o apagamento silencioso voltaria por uma porta
+        //: nova, agora só para quem editasse aquele campo.
+        .map((r) => linhaDaBiblioteca(r, urlDaVersao));
 
       return { ...atual, temas, materiais: [...preservados, ...novas] };
     });
@@ -1239,11 +1249,24 @@ export function Cadastro({
           // Sem alvo carregado não há o que desfazer, e cair no `VAZIO` seria
           // justamente o apagamento que este botão existe para evitar.
           desabilitado={Boolean(id) && !carregado}
-          aoClicar={() =>
-            definirForm(id ? (carregado ?? VAZIO) : VAZIO)
-          }
+          aoClicar={() => {
+            if (id) {
+              // NA EDIÇÃO o gesto útil é voltar ao que o servidor mandou, e
+              // isso já era seguro: `carregado` é a rede embaixo.
+              definirForm(carregado ?? VAZIO);
+              return;
+            }
+            if (limpou) {
+              definirForm(limpou);
+              definirLimpou(null);
+              return;
+            }
+            const depois = limpar(form, VAZIO);
+            definirForm(depois.form);
+            definirLimpou(depois.desfazer);
+          }}
         >
-          {id ? 'Desfazer alterações' : 'Limpar'}
+          {id ? 'Desfazer alterações' : limpou ? 'Desfazer limpeza' : 'Limpar'}
         </Botao>
         <Botao
           variante="primario"
@@ -1729,6 +1752,10 @@ function paraFormulario(interacao: Interacao): Formulario {
       principal: Boolean(p.principal),
     })),
     materiais: (interacao.materiais ?? []).map((m) => ({
+      // NOME NOVO A CADA ABERTURA, e tudo bem: o `uid` identifica a linha
+      // DENTRO desta sessão de edição, que é onde o upload precisa achá-la.
+      // Quem preserva a identidade entre salvamentos é o `id`, logo abaixo.
+      uid: novoUid(),
       // `null` do servidor vira `undefined`: no formulário, "sem id" significa
       // material NOVO, e é a ausência da chave que faz o backend criar em vez
       // de procurar. Guardar `null` mandaria `"id": null` no corpo.
