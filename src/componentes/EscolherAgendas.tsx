@@ -92,7 +92,9 @@ export function EscolherAgendas({
               ? 'Nenhuma marcada'
               : `${numero(marcadas.size)} ${marcadas.size === 1 ? 'marcada' : 'marcadas'}`}
           </span>
-          <Botao aoClicar={aoFechar}>Cancelar</Botao>
+          <Botao estilo={{ height: 40 }} aoClicar={aoFechar}>
+            Cancelar
+          </Botao>
           <Botao variante="primario" aoClicar={() => aoConfirmar([...marcadas])}>
             {/* "Usar", e não "Adicionar": o modal edita o conjunto inteiro, e
                 confirmar com nada marcado LIMPA as origens — que é o gesto de

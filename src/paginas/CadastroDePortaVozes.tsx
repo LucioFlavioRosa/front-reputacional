@@ -573,7 +573,9 @@ function EdicaoDaPessoa({
         <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
           Salvar
         </Botao>
-        <Botao aoClicar={aoCancelar}>Cancelar</Botao>
+        <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
+          Cancelar
+        </Botao>
       </div>
     </div>
   );

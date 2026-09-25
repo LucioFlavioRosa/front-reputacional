@@ -597,7 +597,7 @@ function ConfirmarDesativacao({
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Botao variante="secundario" aoClicar={aoFechar}>
+        <Botao variante="secundario" estilo={{ height: 40 }} aoClicar={aoFechar}>
           Cancelar
         </Botao>
         <Botao

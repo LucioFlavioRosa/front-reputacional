@@ -463,6 +463,7 @@ function FeedbackDoInsight() {
             </Botao>
             <Botao
               variante="fantasma"
+              estilo={{ height: 40 }}
               aoClicar={() => {
                 definirAvaliacao(null);
                 definirComentario('');

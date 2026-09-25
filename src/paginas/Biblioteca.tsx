@@ -342,7 +342,9 @@ export function Biblioteca() {
                       >
                         Salvar
                       </Botao>
-                      <Botao aoClicar={() => definirEmEdicao(null)}>Cancelar</Botao>
+                      <Botao estilo={{ height: 40 }} aoClicar={() => definirEmEdicao(null)}>
+                        Cancelar
+                      </Botao>
                     </div>
                   </div>
                 ) : (

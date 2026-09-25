@@ -432,7 +432,7 @@ function Remover({ id, aoRemover }: { id: string; aoRemover: () => void }) {
           guardados" é descrever a implementação a quem só quer tirar um
           registro da frente. A pergunta que o segundo passo faz é "tem
           certeza?", e o botão já a responde. */}
-      <Botao aoClicar={() => definirArmado(false)} desabilitado={removendo}>
+      <Botao estilo={{ height: 40 }} aoClicar={() => definirArmado(false)} desabilitado={removendo}>
         Cancelar
       </Botao>
       <Botao

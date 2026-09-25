@@ -298,7 +298,9 @@ function LinhaDoItem({
             >
               Salvar
             </Botao>
-            <Botao aoClicar={aoCancelar}>Cancelar</Botao>
+            <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
+              Cancelar
+            </Botao>
           </>
         ) : (
           <>

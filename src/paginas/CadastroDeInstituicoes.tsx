@@ -1007,7 +1007,12 @@ function LinhaDeInstituicao({
             <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
               Salvar
             </Botao>
-            <Botao aoClicar={aoCancelar}>Cancelar</Botao>
+            {/* MESMA ALTURA do Salvar (40px) — sem o `estilo`, "Cancelar"
+                herda os 36px do `secundario` padrão, e os dois lado a lado
+                ficavam com tamanhos diferentes por pedido. */}
+            <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
+              Cancelar
+            </Botao>
           </>
         ) : (
           <>
@@ -1146,7 +1151,9 @@ function LinhaDeInstituicao({
                     >
                       Salvar
                     </Botao>
-                    <Botao aoClicar={aoCancelarPessoa}>Cancelar</Botao>
+                    <Botao estilo={{ height: 40 }} aoClicar={aoCancelarPessoa}>
+                      Cancelar
+                    </Botao>
                   </div>
                 </div>
               ) : (
