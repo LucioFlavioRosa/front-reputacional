@@ -59,7 +59,21 @@ const PERMISSOES: { chave: keyof NonNullable<Eu['papel']>; rotulo: string }[] = 
  */
 export type LugarDoMenu = 'barra' | 'capa';
 
-export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: LugarDoMenu }) {
+export function MenuDoUsuario({
+  eu,
+  lugar = 'barra',
+  aoAbrirPlataforma,
+}: {
+  eu: Eu | null;
+  lugar?: LugarDoMenu;
+  /** Abre a administração da plataforma. Ausente = a entrada não aparece.
+   *
+   *  É UM CALLBACK, E NÃO UM BOOLEANO de permissão: com dois campos — "pode" e
+   *  "vai para onde" — eles podem discordar, e o menu mostraria uma entrada que
+   *  não leva a lugar nenhum. Aqui existir é poder, e quem chama decide.
+   */
+  aoAbrirPlataforma?: () => void;
+}) {
   const [aberto, definirAberto] = useState(false);
   const [saindo, definirSaindo] = useState(false);
   const [falhaAoSair, definirFalhaAoSair] = useState<string | null>(null);
@@ -350,13 +364,47 @@ export function MenuDoUsuario({ eu, lugar = 'barra' }: { eu: Eu | null; lugar?: 
             </>
           ) : null}
 
+          {/* A PLATAFORMA ENTRA AQUI, com o sair — as duas coisas que se FAZEM
+              num painel que no resto se LÊ. Ficava na barra de cima, onde era
+              um quinto item de natureza diferente dos outros quatro e trocava
+              de vizinho a cada divisão. Ela não é do CRM nem do Score: é quem
+              entra na plataforma, e isso vale igual para as duas.
+
+              Acima do sair, e não abaixo: sair é a última coisa que se faz, e
+              um controle depois dele convida ao clique errado. */}
+          {aoAbrirPlataforma ? (
+            <button
+              type="button"
+              onClick={() => {
+                definirAberto(false);
+                aoAbrirPlataforma();
+              }}
+              style={{
+                width: '100%',
+                marginTop: 14,
+                height: 38,
+                borderRadius: 'var(--r-btn)',
+                border: '1px solid var(--borda-input)',
+                background: 'var(--branco)',
+                color: 'var(--azul-mar)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Plataforma
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={encerrar}
             disabled={saindo}
             style={{
               width: '100%',
-              marginTop: 14,
+              // Colado na Plataforma quando ela existe: são o mesmo grupo de
+              // ações, e 14px entre os dois os separaria em dois grupos.
+              marginTop: aoAbrirPlataforma ? 8 : 14,
               height: 38,
               borderRadius: 'var(--r-btn)',
               border: '1px solid var(--borda-input)',

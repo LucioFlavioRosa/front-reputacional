@@ -42,7 +42,11 @@ export function Ranking({
             key={item.chave}
             onClick={() => aoClicar?.(item.chave)}
             role={aoClicar ? 'button' : undefined}
-            tabIndex={aoClicar ? 0 : undefined}
+            // FOCÁVEL TAMBÉM QUANDO SÓ HÁ DETALHE. O tooltip aparece no
+            // `focus`, e prendê-lo ao `aoClicar` escondia o conteúdo de quem
+            // navega por teclado — num ranking sem clique, o detalhe era a
+            // única forma de saber o total e a participação de cada item.
+            tabIndex={aoClicar || detalheAoPassarMouse ? 0 : undefined}
             onKeyDown={(evento) => {
               if (!aoClicar) return;
               if (evento.key === 'Enter' || evento.key === ' ') {
@@ -144,50 +148,6 @@ function TooltipDoItem({ detalhe }: { detalhe: { rotulo: string; valor: string }
           <span className="tabular">{linha.valor}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-/** Barra empilhada horizontal — usada em resolutividade e resultado. */
-export function BarraDeComposicao({
-  segmentos,
-  altura = 14,
-  aoClicar,
-}: {
-  segmentos: { chave: string; rotulo: string; total: number; cor: string }[];
-  altura?: number;
-  aoClicar?: (chave: string) => void;
-}) {
-  const total = segmentos.reduce((soma, s) => soma + s.total, 0);
-  if (!total) {
-    return <div style={{ height: altura, background: 'var(--bg-trilho)', borderRadius: altura / 2 }} />;
-  }
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        height: altura,
-        borderRadius: 2,
-        background: 'var(--bg-trilho)',
-        gap: 2,
-      }}
-    >
-      {segmentos
-        .filter((segmento) => segmento.total > 0)
-        .map((segmento) => (
-          <div
-            key={segmento.chave}
-            onClick={() => aoClicar?.(segmento.chave)}
-            title={`${segmento.rotulo}: ${segmento.total}`}
-            style={{
-              width: `${(segmento.total / total) * 100}%`,
-              background: segmento.cor,
-              borderRadius: 2,
-              cursor: aoClicar ? 'pointer' : undefined,
-            }}
-          />
-        ))}
     </div>
   );
 }

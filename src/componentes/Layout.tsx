@@ -21,6 +21,7 @@ import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
+import { areaDe, configuracaoDe } from '@/navegacao/areas';
 
 //: CADA DESTINO RESPONDE UMA PERGUNTA.
 //:
@@ -50,12 +51,20 @@ import type { Destino } from '@/navegacao/rota';
 //: registrada em `navegacao/rota.ts`, a página em `SinaisDeMercado.tsx` e o
 //: backend intacto: quem já tinha o link (`/sinais`) ainda abre a tela, só
 //: não há mais porta de entrada pelo menu.
-const NAVEGACAO: { view: Destino; rotulo: string }[] = [
-  { view: 'painel', rotulo: 'Painel' },
-  { view: 'base', rotulo: 'Base' },
-  { view: 'preparar', rotulo: 'Preparar agenda' },
-  { view: 'relatorios', rotulo: 'Relatórios Executivos' },
-];
+//: CADA ÁREA LEVA A PRÓPRIA CONFIGURAÇÃO, na engrenagem no fim da barra.
+//:
+//: Antes havia um botão "Administração" que juntava três naturezas: quem entra
+//: na plataforma (Acessos), os cadastros que o CRM usa (Temas, Instituições,
+//: Representantes) e os dicionários. E a régua do Score ficava noutro lugar
+//: ainda, como aba de dentro dele. Quem procurava "onde mudo isto" tinha de
+//: saber de antemão em qual dos dois lugares a resposta estava.
+//:
+//: UMA ENGRENAGEM, E NÃO UMA POR ITEM. A barra mostra uma divisão de cada vez,
+//: então uma engrenagem no fim dela já é uma por área. Uma por item errava nas
+//: duas pontas: no CRM, Painel/Base/Preparar apontavam todos para o mesmo
+//: cadastro — três engrenagens para uma tela; no Score, as telas entraram na
+//: barra sem herdar a engrenagem da aba antiga, e a régua do índice ficou sem
+//: porta de entrada nenhuma. Quem decide para onde ela vai é `configuracaoDe`.
 
 /**
  * A aba de acessos fica fora da navegação principal.
@@ -72,12 +81,10 @@ const NAVEGACAO: { view: Destino; rotulo: string }[] = [
 //:
 //: A `view` continua `acessos` de propósito: é o que o histórico do navegador
 //: guarda, e trocá-la quebraria os links que alguém já tenha.
-export const NAVEGACAO_ADMINISTRATIVA: { view: Destino; rotulo: string }[] = [
-  { view: 'admin', rotulo: 'Administração' },
-];
 
 export function Layout({
   view,
+  abaAtiva,
   irPara,
   eu,
   podeCriar,
@@ -85,7 +92,9 @@ export function Layout({
   children,
 }: {
   view: Destino;
-  irPara: (view: Destino) => void;
+  /** A aba em vigor, para as divisões cujas telas dividem a mesma rota. */
+  abaAtiva?: string;
+  irPara: (view: Destino, aba?: string) => void;
   /**
    * Mostra a entrada de administração de acessos.
    *
@@ -124,6 +133,12 @@ export function Layout({
   //: ao navegar seria perder o contexto no meio da leitura. Quem quer limpar
   //: tem o botão na barra.
   const navegar = irPara;
+
+  //: Onde a engrenagem desta divisão leva, e o nome que ela diz em voz alta.
+  //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
+  //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
+  const configuracao = configuracaoDe(view);
+  const nomeDaArea = view === 'score' || view === 'config-score' ? 'Score' : 'CRM';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
@@ -224,20 +239,17 @@ export function Layout({
               acima), o mesmo mecanismo que já existe para a `BarraDeRecorte`
               quebrar linha conforme o número de fichas do recorte. */}
           <nav className="cabecalho__nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
-            {[
-              ...NAVEGACAO,
-              // A entrada administrativa entra no fim, e só para quem
-              // administra: é tela usada raramente, por poucas pessoas.
-              // Misturá-la com as abas de análise faria todo mundo passar por
-              // ela todo dia sem motivo.
-              ...(administraAcessos ? NAVEGACAO_ADMINISTRATIVA : []),
-            ].map((item) => {
-              const ativo = view === item.view;
+            {areaDe(view).map((item) => {
+              // A ABA ENTRA NA CONTA DO ATIVO: na divisão do Score, os quatro
+              // itens apontam para a mesma `view`, e sem isto os quatro
+              // acenderiam juntos.
+              const ativo =
+                view === item.view && (!item.aba || item.aba === abaAtiva);
               return (
                 <button
-                  key={item.view}
+                  key={`${item.view}-${item.aba ?? ''}`}
                   type="button"
-                  onClick={() => navegar(item.view)}
+                  onClick={() => navegar(item.view, item.aba)}
                   aria-current={ativo ? 'page' : undefined}
                   style={{
                     padding: '7px 12px',
@@ -259,6 +271,39 @@ export function Layout({
                 </button>
               );
             })}
+
+            {/* A ENGRENAGEM DA DIVISÃO, depois das telas dela e antes das ações
+                do cabeçalho: quem navega por teclado percorre "o que eu vejo" e
+                só então "o que eu ajusto". */}
+            {configuracao ? (
+              <button
+                type="button"
+                onClick={() => navegar(configuracao)}
+                aria-current={view === configuracao ? 'page' : undefined}
+                aria-label={`Configurações de ${nomeDaArea}`}
+                title={`Configurações de ${nomeDaArea}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  marginLeft: 6,
+                  borderRadius: 'var(--r-btn)',
+                  border: 'none',
+                  background: view === configuracao ? 'var(--branco)' : 'transparent',
+                  color:
+                    view === configuracao
+                      ? 'var(--azul-mar)'
+                      : 'rgba(255,255,255,0.7)',
+                  fontSize: 15,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                }}
+              >
+                ⚙
+              </button>
+            ) : null}
           </nav>
 
           <div
@@ -290,7 +335,18 @@ export function Layout({
 
             {/* Por último, e à direita de tudo: é onde a barra de todo sistema
                 põe a conta, e contrariar isso faria a pessoa procurar. */}
-            <MenuDoUsuario eu={eu} />
+            {/* A PLATAFORMA MORA NA CONTA, e não na barra. Ela não é do CRM nem
+                do Score — é quem entra e com que papel, e vale igual para as
+                duas divisões. Na barra ela aparecia como um quinto item de
+                natureza diferente dos outros quatro, e mudava de vizinho a cada
+                troca de divisão. Só é passada a quem administra acessos: é
+                conveniência de tela, e o backend recusa com 403 de todo jeito. */}
+            <MenuDoUsuario
+              eu={eu}
+              aoAbrirPlataforma={
+                administraAcessos ? () => navegar('plataforma') : undefined
+              }
+            />
           </div>
         </div>
 
@@ -299,7 +355,13 @@ export function Layout({
             ponto. Uma condição que não pode ser falsa é uma regra que parece
             existir e não existe. */}
         {/* O RECORTE SAIU DA GAVETA. Ver `BarraDeRecorte`. */}
-        {view !== 'cadastro' ? (
+        {/* O SCORE NÃO TEM RECORTE, e é a única tela de análise assim. Ele é
+            mensal e da organização inteira: um "ISR filtrado por imprensa"
+            teria peso de lente sem significado. Oferecer a barra ali seria
+            pior que inútil — quem mexesse nela veria o número não mudar e
+            concluiria que a tela está quebrada. O que o Score escolhe é o MÊS,
+            e isso mora no cabeçalho da própria página. */}
+        {view !== 'cadastro' && view !== 'score' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
@@ -317,7 +379,7 @@ export function Layout({
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
       {/* FORA da Administração também: a tela lista contas e permissões, não
           agendas — o Recorte não tem nada ali para filtrar. */}
-      {!naCapa && view !== 'cadastro' && view !== 'admin' ? (
+      {!naCapa && view !== 'cadastro' && view !== 'admin' && view !== 'score' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco

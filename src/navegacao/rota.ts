@@ -21,7 +21,7 @@
 
 import type { Recorte } from '@/dominio/recorte';
 import type { AtalhoDePeriodo } from '@/dominio/recorte';
-import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
+import type { GrupoDeStatus } from '@/dominio/tipos';
 
 /** As telas que têm endereço próprio. */
 export type Destino =
@@ -31,8 +31,11 @@ export type Destino =
   | 'relatorios'
   | 'preparar'
   | 'sinais'
+  | 'score'
   | 'cadastro'
-  | 'admin';
+  | 'admin'
+  | 'config-score'
+  | 'plataforma';
 
 export interface Rota {
   destino: Destino;
@@ -43,8 +46,6 @@ export interface Rota {
   /** A aba da administração. */
   aba?: string;
 }
-
-export const ROTA_INICIAL: Rota = { destino: 'inicio' };
 
 /** O caminho vira rota.
  *
@@ -63,7 +64,16 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
+  // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
+  // barra de cima daquela divisão, e uma barra cujos itens não são links não
+  // se compartilha, não volta no histórico e não recarrega onde estava.
+  if (primeira === 'score') return { destino: 'score', aba: segunda };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
+  // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
+  // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está
+  // mexendo na ferramenta que o produz.
+  if (primeira === 'score-config') return { destino: 'config-score', aba: segunda };
+  if (primeira === 'plataforma') return { destino: 'plataforma', aba: segunda };
 
   if (primeira === 'agenda') {
     if (!segunda) return { destino: 'base' };
@@ -95,8 +105,14 @@ export function caminhoDe(rota: Rota): string {
       return '/preparar';
     case 'sinais':
       return '/sinais';
+    case 'score':
+      return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
+    case 'config-score':
+      return rota.aba ? `/score-config/${rota.aba}` : '/score-config';
+    case 'plataforma':
+      return rota.aba ? `/plataforma/${rota.aba}` : '/plataforma';
     case 'cadastro':
       return rota.agenda ? `/agenda/${rota.agenda}/editar` : '/agenda/nova';
     case 'base':
@@ -169,12 +185,6 @@ export function nomeDaTela(rota: Rota): string {
   if (rota.sobre) return `${rota.destino}:${rota.sobre}`;
   if (rota.destino === 'admin' && rota.aba) return `admin:${rota.aba}`;
   return rota.destino;
-}
-
-/** Frente e grupo chegam da URL como texto livre. Validar aqui evita que um
- *  link torto vire um filtro que o backend recusa com 422. */
-export function frenteValida(valor: string | undefined, validas: readonly string[]): Frente | undefined {
-  return valor && validas.includes(valor) ? (valor as Frente) : undefined;
 }
 
 export type { AtalhoDePeriodo, GrupoDeStatus };

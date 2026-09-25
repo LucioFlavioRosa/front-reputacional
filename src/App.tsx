@@ -14,13 +14,16 @@ import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import { LimiteDeErro } from '@/observabilidade/LimiteDeErro';
 import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
+import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
+import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
 import { Painel } from '@/paginas/Painel';
 import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
 import { PrepararAgenda } from '@/paginas/PrepararAgenda';
+import { Score } from '@/paginas/Score';
 import { SinaisDeMercado } from '@/paginas/SinaisDeMercado';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
@@ -146,7 +149,10 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   const { rota, irPara } = useNavegacao();
   const naCapa = rota.destino === 'inicio';
 
-  const irParaDestino = (destino: Destino) => irPara({ destino });
+  //: A ABA ENTRA NA ROTA porque as telas do Score viraram a barra de cima
+  //: daquela divisão: uma barra cujos itens não são endereços não se
+  //: compartilha, não volta no histórico e não recarrega onde estava.
+  const irParaDestino = (destino: Destino, aba?: string) => irPara({ destino, aba });
   const abrirAgenda = (id: string) =>
     irPara({ destino: 'base', agenda: id, sobre: 'ficha' });
 
@@ -171,13 +177,25 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           mesma coisa ensinam que há duas coisas. */}
       {naCapa ? (
         <div className="capa__conta">
-          <MenuDoUsuario eu={eu} lugar="capa" />
+          {/* A MESMA ENTRADA DA BARRA, pelo mesmo motivo que o sair está aqui:
+              quem abre o painel e quer administrar acessos não deve ter de
+              ENTRAR numa divisão para achar uma tela que não é de nenhuma. */}
+          <MenuDoUsuario
+            eu={eu}
+            lugar="capa"
+            aoAbrirPlataforma={
+              eu?.papel?.administra_acessos
+                ? () => irPara({ destino: 'plataforma' })
+                : undefined
+            }
+          />
         </div>
       ) : null}
 
       <Layout
         view={rota.destino}
         irPara={irParaDestino}
+        abaAtiva={rota.aba}
         eu={eu}
         podeCriar={eu?.papel?.pode_criar ?? false}
         // Esconder a entrada de quem não administra acessos é conveniência de
@@ -200,7 +218,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             <Inicio irPara={irParaDestino} portais={portaisDe(eu?.papel ?? null)} />
           ) : null}
 
-          {/* A ÚNICA TELA QUE ALGUÉM PRECISA ABRIR TODO DIA. */}
 
           {/* O PANORAMA: o recorte visto de uma vez. Clicar num indicador
               FILTRA a própria tela, como todo gráfico dela. */}
@@ -222,6 +239,13 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {rota.destino === 'preparar' ? <PrepararAgenda aoAbrirAgenda={abrirAgenda} /> : null}
 
           {rota.destino === 'sinais' ? <SinaisDeMercado aoAbrirAgenda={abrirAgenda} /> : null}
+
+          {rota.destino === 'score' ? (
+            <Score
+              aba={rota.aba}
+              aoTrocarAba={(aba) => irPara({ destino: 'score', aba })}
+            />
+          ) : null}
 
 
           {/* A TELA também recusa, e não só o botão.
@@ -246,7 +270,14 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {/* `euId` para a tela saber qual linha é a de quem está olhando:
               ninguém desativa a própria conta. */}
-          {rota.destino === 'admin' ? <PortalDoAdmin euId={eu?.id ?? null} /> : null}
+          {rota.destino === 'admin' ? <PortalDoAdmin /> : null}
+          {/* ACESSOS SAIU DO PORTAL DO CRM: quem entra na plataforma não é
+              assunto de agenda, vale igual para o Score, e agora tem botão
+              próprio. */}
+          {rota.destino === 'plataforma' ? (
+            <PortalDaPlataforma euId={eu?.id ?? null} />
+          ) : null}
+          {rota.destino === 'config-score' ? <ConfiguracoesDoScore /> : null}
         </LimiteDeErro>
       </Layout>
 

@@ -104,10 +104,6 @@ export function quantidadeDeFiltros(recorte: Recorte): number {
   return ativos;
 }
 
-export function estaVazio(recorte: Recorte): boolean {
-  return quantidadeDeFiltros(recorte) === 0;
-}
-
 /** Liga ou desliga um filtro. Clicar de novo no mesmo item remove o filtro —
  *  é o comportamento de toda barra, chip, bolha do mapa e item de ranking. */
 export function alternar<C extends keyof Recorte>(

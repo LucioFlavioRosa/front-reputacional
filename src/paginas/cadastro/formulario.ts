@@ -113,6 +113,17 @@ export interface ParticipanteNoForm {
 
 /** Um documento da agenda. */
 export interface MaterialNoForm {
+  //: O NOME DA LINHA DENTRO DESTA TELA, e só dela — nunca viaja no corpo.
+  //:
+  //: Existe porque o upload de arquivo guarda a POSIÇÃO da linha e, ao voltar,
+  //: escreve nela por índice. Se nesse meio-tempo a lista encolheu — outra
+  //: linha removida, ou um tema desmarcado recolhendo os materiais dele — o
+  //: índice passou a apontar para outro material: o arquivo grudava no errado,
+  //: ou se perdia e o byte ficava órfão no servidor.
+  //:
+  //: `id` NÃO SERVE PARA ISSO: material novo ainda não tem. Identidade de
+  //: objeto também não: digitar na linha durante o upload cria um objeto novo.
+  uid: string;
   //: Volta no PATCH para o backend NAO recriar o material — e o que preserva
   //: a identidade entre salvamentos. Material novo nao tem.
   id?: string;
@@ -223,6 +234,14 @@ export const MOMENTOS_POS_REUNIAO: { valor: string; rotulo: string }[] = [
  *  isto, salvar pela secao de preparacao mandaria uma lista sem os materiais
  *  pos-reuniao — e o repositorio, que remonta tudo, os apagaria.
  */
+/** Um nome novo para uma linha desta tela.
+ *
+ *  `crypto.randomUUID` existe em todo navegador que este painel suporta; o
+ *  desvio cobre o jsdom antigo de um teste, e não um navegador real. */
+export function novoUid(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `m-${Math.random().toString(36).slice(2)}`;
+}
+
 export function materiaisDe(
   materiais: MaterialNoForm[],
   momentos: { valor: string }[],

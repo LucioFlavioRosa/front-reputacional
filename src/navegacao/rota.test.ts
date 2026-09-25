@@ -20,6 +20,7 @@ describe('ler e escrever o caminho', () => {
     ['/painel', { destino: 'painel' }],
     ['/base', { destino: 'base' }],
     ['/relatorios', { destino: 'relatorios' }],
+  ['/score', { destino: 'score' }],
     ['/preparar', { destino: 'preparar' }],
     ['/admin', { destino: 'admin', aba: undefined }],
     ['/admin/porta-vozes', { destino: 'admin', aba: 'porta-vozes' }],
