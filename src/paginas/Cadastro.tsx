@@ -1487,7 +1487,18 @@ function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = false) {
     // como principal na lista. Mandar os dois abriria a porta para eles
     // discordarem, e é isso que o servidor recusa com 422.
     unidade_negocio_id: numeroOpcional(form.unidade_negocio_id),
-    esfera_id: numeroOpcional(form.esfera_id),
+    // `esfera_id` NAO VIAJA MAIS, e e o MESMO defeito da `pauta` descrito quatro
+    // linhas acima — uma linha adiante no mesmo objeto.
+    //
+    // O campo saiu da tela e continuou aqui como `numeroOpcional(form.esfera_id)`,
+    // que numa EDICAO vale `null`, e `null` no PATCH quer dizer APAGUE. Com o
+    // servidor agora derivando a esfera da instituicao ao criar, toda edicao de
+    // agenda mandaria `null` e limparia o valor que a criacao acabara de
+    // derivar: o campo voltaria a ficar vazio, agora por outro caminho.
+    //
+    // Quem decide a esfera e `casos_de_uso/derivar_esfera.py`, a partir de
+    // `Instituicao.esfera_id`. Uma tela que nao edita um campo nao deve ter
+    // opiniao sobre ele.
     formato_interacao_id: numeroOpcional(form.formato_interacao_id),
     tier: numeroOpcional(form.tier),
     clima: opcional(form.clima),
