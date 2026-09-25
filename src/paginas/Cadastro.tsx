@@ -613,7 +613,6 @@ export function Cadastro({
           vez de perguntar de novo o que a instituição já responde. */}
       <Secao
         titulo="1. Tipo de interação"
-        ajuda="Escolha o tipo antes de preencher o resto. Ele muda o formulário: uma consulta recebida abre um bloco próprio mais abaixo, e alguns campos adicionais dependem dele."
         acao={<GuiaDosFormatos formatos={catalogo.dicionarios.formatos_interacao} />}
         estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
       >
@@ -661,11 +660,7 @@ export function Cadastro({
 
       <Secao titulo="3. Identificação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div className="grade grade--2" style={{ gap: 16 }}>
-          <Campo
-            rotulo="Data da interação"
-            obrigatorio
-            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.data_interacao} />}
-          >
+          <Campo rotulo="Data da interação" obrigatorio>
             <input
               type="date"
               style={estiloDeEntrada}
