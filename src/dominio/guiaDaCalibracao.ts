@@ -39,7 +39,7 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     oQueE:
       'Quanto vale uma matéria conforme o porte do veículo que a publicou. Cada menção de imprensa entra na conta multiplicada por este peso, e não como uma unidade.',
     comoAfeta:
-      'Quanto mais forte a régua, mais o índice responde ao que sai nos grandes veículos e menos ao volume de publicações pequenas. Vale para Imprensa e Mercado; as outras três lentes não usam tier e não mudam.',
+      'Quanto mais forte a régua, mais o índice responde ao que sai nos grandes veículos e menos ao volume de publicações pequenas. Vale para Imprensa e Mercado; as outras três lentes não usam tier e não mudam. E só move o número quando a fonte MISTURA tiers: se as matérias do mês são todas do mesmo tier, o multiplicador aparece em cima e embaixo da razão e se cancela.',
     exemplo:
       'Com 10 · 5 · 1, uma negativa no Valor pesa dez vezes uma de blog local. Com 1 · 1 · 1, as duas valem igual — e um mês de muitas notas pequenas passa a mover o índice tanto quanto uma capa.',
     aviso:
@@ -50,9 +50,11 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     oQueE:
       'O que se soma de cada menção de rede social: uma unidade, o engajamento bruto, o logaritmo dele, ou o peso do cargo de quem postou.',
     comoAfeta:
-      'Decide se um post que viralizou conta como um ou como dez mil. No bruto, um único post grande pode definir o mês sozinho; no logaritmo, ele pesa mais que os outros sem apagá-los; em "cada menção vale 1", só o número de vozes conta. Vale para Sociedade digital e Clientes.',
+      'Decide se um post que viralizou conta como um ou como dez mil. No bruto, um único post grande pode definir o mês sozinho; no logaritmo, ele pesa mais que os outros sem apagá-los; em "cada menção vale 1", só o número de vozes conta. Vale para Sociedade digital e Clientes: onde a fonte não tem engajamento — clipping de imprensa, interação de CRM — cada menção vale 1, e a lente continua no índice como estava.',
     exemplo:
       'Um post com 50 mil interações vale 1 na régua simples, cerca de 5,7 no logaritmo, e 50 mil no bruto — onde ele passa a valer mais que todo o resto do mês somado.',
+    aviso:
+      'A escolha é por fonte e por mês: uma fonte que não registrou engajamento naquele mês é contada por menções, e não zerada. Sem isso, escolher o bruto tirava quatro das cinco lentes do índice em junho de 2026 — e o número que sobrava era a Sociedade digital sozinha.',
   },
   pesos: {
     titulo: 'Peso de cada lente',
