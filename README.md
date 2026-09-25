@@ -68,6 +68,44 @@ o que está ali é função pura, testável sem montar componente, e é onde mor
 15 dos 20 arquivos de teste. Se um arquivo de `dominio/` precisar de `useState`,
 ele está na pasta errada.
 
+### Quando uma parte precisa sair da página
+
+A regra acima diz ONDE as coisas moram. Esta diz QUANDO mover — e ela existe
+porque a outra, sozinha, não bastou: das dez seções do formulário de agenda,
+sete foram para `paginas/cadastro/` e três ficaram, sem que nada escrito
+dissesse por quê.
+
+**O gatilho não é o tamanho do arquivo.** `Painel.tsx` tem 1.600 linhas e é o
+MENOS urgente dos dois maiores, porque as contas dele já moram em
+`dominio/derivacoes.ts`, com 950 linhas de teste. O que a página faz é montar.
+
+**O gatilho é a pergunta "o que acontece se isto estiver errado?"** Se a
+resposta for "alguém perde o que digitou", "um número sai errado na tela" ou
+"um campo some do que foi salvo", então aquilo precisa de teste — e um teste
+não alcança função que mora dentro de um componente e não é exportada. É esse
+o momento de mover: quando você quer escrever o teste e não tem como.
+
+Foi exatamente o que aconteceu aqui. `Cadastro.tsx` guardava 450 linhas de
+regra pura sem um único teste, e o comentário dentro dele registra a conta:
+"é a terceira vez que um campo declarado na tela e não enviado no corpo se
+perde em silêncio — a lição não pega sozinha". Três incidentes do mesmo tipo,
+e o que faltava não era atenção, era um teste de ida e volta — que só passou a
+ser possível depois de a função sair da página.
+
+**Na prática, três perguntas:**
+
+1. Esta função precisa de React? Se não precisa, ela é de `dominio/` (regra do
+   produto) ou de `paginas/<tela>/` (regra daquela tela) — nunca do componente.
+2. Eu consigo escrever um teste para ela hoje? Se a resposta é "só montando a
+   tela inteira", ela está no lugar errado.
+3. Este bloco de JSX tem estado e decisões próprias? Então é um componente em
+   `paginas/<tela>/`, com as props que ele de fato usa — o que torna visível o
+   que ele depende, e é metade da revisão.
+
+**O que NÃO é motivo para mover:** o arquivo ser grande, o bloco ser longo, ou
+haver muitos deles. Dividir por contagem espalha a mesma dificuldade em mais
+arquivos e acrescenta o custo de pular entre eles.
+
 **Hook começa com `use`, mesmo em código português.** `usePainel`, e não
 `usarPainel`. O prefixo é como o React IDENTIFICA um hook: a regra
 `react/rules-of-hooks` (marcada como `error` no `.oxlintrc.json`) e o React
