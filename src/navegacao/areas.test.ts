@@ -20,7 +20,7 @@ describe('a divisão do CRM', () => {
       expect(rotulos(view)).toEqual([
         'Painel',
         'Base',
-        'Preparação de agenda',
+        'Briefing',
         'Relatórios Executivos',
       ]);
     },

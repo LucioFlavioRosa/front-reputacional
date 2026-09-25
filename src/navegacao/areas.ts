@@ -27,7 +27,7 @@ interface ItemDoMenu {
 const DO_CRM: ItemDoMenu[] = [
   { view: 'painel', rotulo: 'Painel' },
   { view: 'base', rotulo: 'Base' },
-  { view: 'preparar', rotulo: 'Preparação de agenda' },
+  { view: 'preparar', rotulo: 'Briefing' },
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 

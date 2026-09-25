@@ -120,8 +120,8 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Secao
-        titulo="Preparação de agenda"
-        subtitulo="Prepare por tema (o que a companhia diz sobre ele, o que aconteceu nas últimas conversas) ou consulte uma instituição específica. Os demais filtros do recorte valem nas duas abas."
+        titulo="Briefing"
+        subtitulo="Duas formas de chegar preparado: pelo tema da reunião ou pela instituição com quem ela é."
         nivelDoTitulo={1}
       >
         {/* A MESMA FAIXA DO PAINEL, com o Tema na frente: quem aprendeu a
@@ -131,8 +131,17 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
             agendas?". Vale para as duas abas — a Consulta dinâmica também
             lê `interacoes` já filtradas por eles, só some o Tema como
             filtro do recorte (ele não pinta a Consulta dinâmica, que
-            escolhe a instituição por conta própria). */}
-        <FaixaDeFiltros>
+            escolhe a instituição por conta própria).
+
+            O `marginTop: -28` de `FaixaDeFiltros` foi calibrado para colar
+            direto no acordeão "Filtro avançado" do `Layout.tsx`, sem nada
+            entre os dois (é assim no Painel). Aqui a faixa mora DENTRO de
+            uma `Secao` com título e um traço embaixo dele — a mesma
+            margem negativa colava a faixa perto demais desse traço. Este
+            `paddingTop` (soma, não some com o negativo) é só para esta
+            tela, por pedido. */}
+        <div style={{ paddingTop: 18 }}>
+          <FaixaDeFiltros>
           <CampoSuspenso
             campo={campoDeTema(recorte, definirRecorte, catalogo)}
             aoLimpar={() => definirRecorte(limparTags(recorte))}
@@ -149,7 +158,8 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
             campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
             aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
           />
-        </FaixaDeFiltros>
+          </FaixaDeFiltros>
+        </div>
       </Secao>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
@@ -324,6 +334,13 @@ function montarConsultaDaInstituicao(
  *  A INSTITUIÇÃO É UM CAMPO PRÓPRIO desta caixa, e não um filtro do
  *  recorte — escolher aqui NÃO filtra a página inteira (diferente do tema,
  *  da área…): é só o assunto do texto que se lê dentro da caixa. */
+
+//: FONTE MAIOR que `ESTILO_DO_PARAGRAFO` padrão — por pedido, só aqui: esta
+//: caixa é a aba inteira (não divide espaço com mais nada, diferente da
+//: Síntese Executiva no Painel), então sobra folga para um texto mais fácil
+//: de ler à distância.
+const ESTILO_DO_PARAGRAFO_DA_CONSULTA = { ...ESTILO_DO_PARAGRAFO, fontSize: 15 };
+
 function ConsultaDinamicaDeInstituicao({
   interacoes,
   catalogo,
@@ -367,7 +384,7 @@ function ConsultaDinamicaDeInstituicao({
       >
         <span
           style={{
-            fontSize: 15,
+            fontSize: 18,
             fontWeight: 800,
             backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
             WebkitBackgroundClip: 'text',
@@ -406,18 +423,18 @@ function ConsultaDinamicaDeInstituicao({
         }}
       >
         {!instituicaoId ? (
-            <p style={{ ...ESTILO_DO_PARAGRAFO, color: 'var(--cinza-2)' }}>
+            <p style={{ ...ESTILO_DO_PARAGRAFO_DA_CONSULTA, color: 'var(--cinza-2)' }}>
               Escolha uma instituição acima para montar o resumo.
             </p>
           ) : !consulta ? (
-            <p style={{ ...ESTILO_DO_PARAGRAFO, color: 'var(--cinza-2)' }}>
+            <p style={{ ...ESTILO_DO_PARAGRAFO_DA_CONSULTA, color: 'var(--cinza-2)' }}>
               Nenhuma interação registrada com esta instituição no recorte atual — ajuste os filtros
               (período, área…) ou confirme se ela já teve alguma agenda.
             </p>
           ) : (
             <>
               <Bloco titulo="Visão geral">
-                <p style={ESTILO_DO_PARAGRAFO}>
+                <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
                   <strong>{consulta.nome}</strong>
                   {consulta.tier ? <> é <Num>{consulta.tier}</Num></> : null} e soma{' '}
                   <Num>{numero(consulta.total)}</Num>{' '}
@@ -452,8 +469,8 @@ function ConsultaDinamicaDeInstituicao({
                         key={tema.nome}
                         className="tabular"
                         style={{
-                          fontSize: 12,
-                          padding: '3px 10px',
+                          fontSize: 13.5,
+                          padding: '4px 11px',
                           borderRadius: 'var(--r-chip)',
                           background: 'color-mix(in srgb, var(--turquesa-rio) 12%, var(--branco))',
                           color: 'var(--sobre-turquesa)',
@@ -464,7 +481,9 @@ function ConsultaDinamicaDeInstituicao({
                     ))}
                   </div>
                 ) : (
-                  <p style={ESTILO_DO_PARAGRAFO}>Nenhuma interação com tema classificado ainda.</p>
+                  <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
+                    Nenhuma interação com tema classificado ainda.
+                  </p>
                 )}
               </Bloco>
 
@@ -481,7 +500,10 @@ function ConsultaDinamicaDeInstituicao({
                     {consulta.pessoasDoLadoDeles.length ? (
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                         {consulta.pessoasDoLadoDeles.map((pessoa) => (
-                          <li key={pessoa.nome} style={{ ...ESTILO_DO_PARAGRAFO, fontSize: 12.5 }}>
+                          <li
+                            key={pessoa.nome}
+                            style={{ ...ESTILO_DO_PARAGRAFO_DA_CONSULTA, padding: '2px 0' }}
+                          >
                             {pessoa.nome}{' '}
                             <span className="tabular" style={{ color: 'var(--cinza-2)' }}>
                               · {pessoa.total}
@@ -490,7 +512,7 @@ function ConsultaDinamicaDeInstituicao({
                         ))}
                       </ul>
                     ) : (
-                      <p style={{ ...ESTILO_DO_PARAGRAFO, fontSize: 12.5 }}>
+                      <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
                         Nenhum interlocutor registrado ainda.
                       </p>
                     )}
@@ -503,7 +525,10 @@ function ConsultaDinamicaDeInstituicao({
                     {consulta.areasEnvolvidas.length ? (
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                         {consulta.areasEnvolvidas.map((area) => (
-                          <li key={area.rotulo} style={{ ...ESTILO_DO_PARAGRAFO, fontSize: 12.5 }}>
+                          <li
+                            key={area.rotulo}
+                            style={{ ...ESTILO_DO_PARAGRAFO_DA_CONSULTA, padding: '2px 0' }}
+                          >
                             {area.rotulo}{' '}
                             <span className="tabular" style={{ color: 'var(--cinza-2)' }}>
                               · {area.total}
@@ -512,7 +537,7 @@ function ConsultaDinamicaDeInstituicao({
                         ))}
                       </ul>
                     ) : (
-                      <p style={{ ...ESTILO_DO_PARAGRAFO, fontSize: 12.5 }}>
+                      <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
                         Nenhuma área classificada ainda.
                       </p>
                     )}
@@ -521,7 +546,7 @@ function ConsultaDinamicaDeInstituicao({
               </Bloco>
 
               <Bloco titulo="Temperatura da relação">
-                <p style={ESTILO_DO_PARAGRAFO}>
+                <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
                   {consulta.comClima > 0 ? (
                     <>
                       Das <Num>{numero(consulta.comClima)}</Num> interações com clima registrado,{' '}
@@ -555,18 +580,18 @@ function ConsultaDinamicaDeInstituicao({
                             flexWrap: 'wrap',
                           }}
                         >
-                          <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                          <span className="tabular" style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
                             {dataCompleta(agenda.data_interacao)}
                           </span>
-                          <span style={{ fontSize: 12.5, flex: 1, minWidth: 160 }}>
+                          <span style={{ fontSize: 14, flex: 1, minWidth: 160 }}>
                             {tituloDaAgenda(agenda, (ids) => nomesDosTemas(catalogo, ids))}
                           </span>
-                          <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                          <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
                             {rotuloDeCodigo(catalogo, 'climas', agenda.clima)}
                           </span>
                           <Botao
                             variante="fantasma"
-                            estilo={{ height: 26, fontSize: 12 }}
+                            estilo={{ height: 28, fontSize: 13 }}
                             aoClicar={() => aoAbrirAgenda(agenda.id)}
                           >
                             Ficha
