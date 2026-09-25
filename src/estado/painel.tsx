@@ -239,9 +239,3 @@ export function usePainel(): EstadoDoPainel {
   }
   return contexto;
 }
-
-/** O catálogo só fica pronto depois do primeiro carregamento; as telas que
- *  dependem dele usam este atalho para não repetir a checagem de null. */
-export function useCatalogo(): Catalogo | null {
-  return usePainel().catalogo;
-}

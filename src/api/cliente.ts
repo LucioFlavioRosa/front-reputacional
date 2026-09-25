@@ -3,7 +3,19 @@
 import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
+import type { Dossie } from '@/dominio/dossie';
 import type { Recorte } from '@/dominio/recorte';
+import type {
+  Calibracao,
+  CalibracaoEntrada,
+  DriversDoScore,
+  FatoDoMes,
+  FonteDoScore,
+  ImportacaoDoScore,
+  IndiceDoScore,
+  OpcoesDoScore,
+  PontoDaSerie,
+} from '@/dominio/score';
 import { paraParametros } from '@/dominio/recorte';
 import type {
   Acesso,
@@ -700,6 +712,91 @@ export function editarAlegacao(id: string, entrada: AlegacaoEntrada): Promise<Al
     method: 'PUT',
     body: JSON.stringify(entrada),
   });
+}
+
+/* ---------------------------------------------------------------- score */
+
+/** O índice do mês, com as lentes que o formaram.
+ *
+ *  O CÁLCULO É DO SERVIDOR: o ISR é citado em reunião, e precisa ser o mesmo
+ *  para todo mundo — calculado uma vez, com a régua que a coordenação gravou,
+ *  e não recomputado em cada navegador. */
+export function obterScore(mes: string): Promise<IndiceDoScore> {
+  return requisitar<IndiceDoScore>(`/api/score?mes=${mes}`);
+}
+
+export function obterSerieDoScore(): Promise<PontoDaSerie[]> {
+  return requisitar<PontoDaSerie[]>('/api/score/serie');
+}
+
+export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
+  return requisitar<FonteDoScore[]>(`/api/score/fontes?mes=${mes}`);
+}
+
+/** Sobe o export do fornecedor. SUBSTITUI os meses que o arquivo traz — o
+ *  fornecedor reenvia a planilha quando corrige uma classificação, e somar
+ *  contaria o mesmo post duas vezes.
+ *
+ *  DEVOLVE UMA LINHA POR FONTE: um arquivo alimenta mais de uma. O export da
+ *  Clipei atende Imprensa e, recortado por público investidor, Mercado; o da
+ *  Approach traz Social Listening e Community Management em abas diferentes.
+ *  Quem escolhe "Importar" numa das linhas alimenta todas as irmãs. */
+export function importarPlanilhaDoScore(
+  codigo: string,
+  arquivo: File,
+): Promise<ImportacaoDoScore[]> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ImportacaoDoScore[]>(`/api/score/fontes/${codigo}/planilha`, {
+    method: 'POST',
+    body: corpo,
+  });
+}
+
+/** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */
+export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
+  return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
+}
+
+/** O dossiê de uma lente: a tela inteira num pedido só.
+ *
+ *  UM ENDPOINT, UMA TELA — o front não calcula nada disto. Cada bloco vem com
+ *  a ficha de procedência junto, que é o conteúdo do "?". */
+export function obterDossieDaLente(codigo: string, mes: string): Promise<Dossie> {
+  return requisitar<Dossie>(`/api/score/lentes/${codigo}/dossie?mes=${mes}`);
+}
+
+export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {
+  return requisitar<OpcoesDoScore>('/api/score/opcoes');
+}
+
+/** Grava uma VERSÃO NOVA da régua — a tabela só cresce, para saber com que
+ *  critério um número foi lido no mês passado. */
+export function gravarCalibracao(entrada: CalibracaoEntrada): Promise<Calibracao> {
+  return requisitar<Calibracao>('/api/score/calibracao', {
+    method: 'PUT',
+    body: JSON.stringify(entrada),
+  });
+}
+
+/** "Restaurar padrão": volta à régua de fábrica GRAVANDO, e não apagando. */
+export function restaurarCalibracaoPadrao(): Promise<Calibracao> {
+  return requisitar<Calibracao>('/api/score/calibracao', { method: 'DELETE' });
+}
+
+export function criarFatoDoScore(entrada: {
+  mes: string;
+  texto: string;
+  efeito: string;
+}): Promise<FatoDoMes> {
+  return requisitar<FatoDoMes>('/api/score/fatos', {
+    method: 'POST',
+    body: JSON.stringify(entrada),
+  });
+}
+
+export function removerFatoDoScore(id: string): Promise<void> {
+  return requisitar<void>(`/api/score/fatos/${id}`, { method: 'DELETE' });
 }
 
 export function listarTemas(): Promise<TemaCadastrado[]> {

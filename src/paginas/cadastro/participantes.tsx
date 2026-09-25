@@ -14,6 +14,16 @@ import type {
   ParticipanteNoForm,
 } from '@/paginas/cadastro/formulario';
 
+/** Quem da Aegea senta nesta agenda.
+ *
+ *  Espelha `ListaDeParticipantes` de propósito: acrescentar alguém é o mesmo
+ *  gesto dos dois lados da mesa, e os dois lados registram presença. Duas
+ *  gramáticas para a mesma pergunta deixariam uma das metades sem isso.
+ *
+ *  A coluna do meio é o que difere: aqui é o PAPEL (fala pela companhia ou
+ *  acompanha), lá é qual pessoa REPRESENTA a instituição. Não são a mesma
+ *  ideia, e por isso os dois lados não viraram um componente só.
+ */
 export function ListaDaAegea({
   participantes,
   pessoas,
@@ -109,6 +119,16 @@ export function ListaDaAegea({
   );
 }
 
+/** Os participantes da outra parte, com presença e um principal.
+ *
+ *  UMA LISTA, e não um campo de interlocutor mais uma lista de "demais".
+ *  Todos moram na mesma tabela do backend, e é isso que dá ao principal — a
+ *  pessoa mais importante da reunião — um lugar para ter presença.
+ *
+ *  A marca de principal é um `radio`, e não um `checkbox`: só um representa a
+ *  outra parte, e o rádio diz isso pela forma. Com caixas de seleção alguém
+ *  marcaria duas e só descobriria no erro do servidor.
+ */
 export function ListaDeParticipantes({
   participantes,
   interlocutores,

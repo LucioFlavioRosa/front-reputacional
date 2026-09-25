@@ -37,11 +37,16 @@ const ONDA_1: {
   },
   {
     portal: 'score',
-    view: null,
-    titulo: 'Inteligência de Mercado',
+    // O TERCEIRO MÓDULO FICA COM O SCORE porque ele EXISTE: a tela está de pé,
+    // lendo as planilhas dos quatro fornecedores. O main renomeou este cartão
+    // para "Inteligência de Mercado" e o marcou como não pronto — decisão de
+    // nomenclatura tomada enquanto este branch estava aberto, e que apagaria a
+    // porta de entrada da tela sem colocar outra no lugar.
+    view: 'score',
+    titulo: 'Score Executivo',
     descricao:
-      'Os indicadores que movimentam o mercado, e onde a Aegea está posicionada neles.',
-    pronto: false,
+      'O Índice de Saúde Reputacional: uma nota por mês, de cinco lentes.',
+    pronto: true,
   },
 ];
 

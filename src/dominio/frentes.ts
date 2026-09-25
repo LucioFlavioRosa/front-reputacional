@@ -228,19 +228,6 @@ export const CORES_DE_CLIMA: Record<string, string> = {
   tenso: '#FF5C60',
 };
 
-export const CORES_DE_RESULTADO: Record<string, string> = {
-  avancou: '#17E3CB',
-  mantido: '#0027BD',
-  recuou: '#FF5C60',
-  sem_definicao: '#D5DAEA',
-};
-
-export const CORES_DE_GRUPO: Record<GrupoDeStatus, string> = {
-  resolvido: '#17E3CB',
-  aberto: '#FE952B',
-  declinado: '#FF5C60',
-};
-
 export const ROTULOS_DE_GRUPO: Record<GrupoDeStatus, string> = {
   resolvido: 'Resolvidos',
   aberto: 'Em aberto',
@@ -255,24 +242,6 @@ export function faixaDeRisco(dias: number): FaixaDeRisco {
   if (dias > 30) return 'atencao';
   return 'no-prazo';
 }
-
-export const ROTULOS_DE_RISCO: Record<FaixaDeRisco, string> = {
-  'no-prazo': 'No prazo',
-  atencao: 'Atenção',
-  critico: 'Crítico',
-};
-
-export const CORES_DE_RISCO: Record<FaixaDeRisco, { fundo: string; texto: string }> = {
-  'no-prazo': { fundo: '#DFFAF6', texto: '#0A6B60' },
-  atencao: { fundo: '#FFF1DC', texto: '#8A4E00' },
-  critico: { fundo: '#FFE7E8', texto: '#B32328' },
-};
-
-export const CORES_DE_TIER: Record<number, string> = {
-  1: '#0027BD',
-  2: '#8C91A4',
-  3: '#D5DAEA',
-};
 
 /** Rótulo humano da abrangência.
  *

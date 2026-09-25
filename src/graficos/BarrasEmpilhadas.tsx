@@ -163,7 +163,11 @@ export function BarrasEmpilhadas({
             tabIndex={0}
             role={aoClicarMes ? 'button' : undefined}
             aria-pressed={aoClicarMes ? mesAtivo === coluna.mes : undefined}
-            aria-label={`${formatarRotulo(coluna.mes)}: ${coluna.total}`}
+            aria-label={
+              coluna.semBase
+                ? `${formatarRotulo(coluna.mes)}: sem base`
+                : `${formatarRotulo(coluna.mes)}: ${coluna.total}`
+            }
           >
             <div
               style={{
@@ -176,7 +180,7 @@ export function BarrasEmpilhadas({
                 whiteSpace: 'nowrap',
               }}
             >
-              {coluna.total > 0 ? coluna.total : ''}
+              {coluna.semBase ? '—' : coluna.total > 0 ? coluna.total : ''}
             </div>
 
             <div
@@ -193,6 +197,25 @@ export function BarrasEmpilhadas({
                 borderBottom: '1px solid var(--borda)',
               }}
             >
+              {/* SEM BASE NÃO É ZERO. Um mês que o fornecedor não entregou e
+                  um mês em que nada aconteceu se desenhariam iguais — coluna
+                  rente ao chão —, e são coisas opostas: a primeira é dado que
+                  falta, a segunda é dado que diz algo. A hachura ocupa o lugar
+                  da barra sem afirmar altura nenhuma. */}
+              {coluna.semBase ? (
+                <div
+                  title="sem base neste período"
+                  style={{
+                    width: '100%',
+                    maxWidth: ESPESSURA_MAXIMA,
+                    height: '30%',
+                    borderRadius: 3,
+                    border: '1px dashed var(--borda)',
+                    background:
+                      'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
+                  }}
+                />
+              ) : (
               <div
                 style={{
                   width: '100%',
@@ -244,6 +267,7 @@ export function BarrasEmpilhadas({
                   />
                 ))}
               </div>
+              )}
             </div>
 
             <div

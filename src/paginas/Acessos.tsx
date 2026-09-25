@@ -466,16 +466,26 @@ function FormularioDeConcessao({
 
 function Historico({ pessoa, aoFechar }: { pessoa: Acesso; aoFechar: () => void }) {
   const [linhas, definirLinhas] = useState<TrilhaDeAcesso[] | null>(null);
+  const [erro, definirErro] = useState<string | null>(null);
 
+  //: FALHA NÃO É VAZIO. Antes o `catch` chamava `definirLinhas([])`, e a tela
+  //: dizia "Nenhuma alteração registrada" — uma afirmação sobre a trilha de
+  //: auditoria de uma pessoa, feita a partir de uma requisição que não voltou.
+  //: Num histórico de acesso, "não houve mudança" e "não consegui ler" são
+  //: respostas opostas.
   useEffect(function carregarHistoricoDaPessoa() {
+    definirErro(null);
     historicoDeAcesso(pessoa.id)
       .then(definirLinhas)
-      .catch(() => definirLinhas([]));
+      .catch((falha: unknown) =>
+        definirErro(falha instanceof Error ? falha.message : 'Não foi possível ler.'),
+      );
   }, [pessoa.id]);
 
   return (
     <Modal titulo={`Histórico de ${pessoa.nome}`} aoFechar={aoFechar}>
-      {!linhas && <Carregando />}
+      {erro && <FaixaDeErro mensagem={erro} />}
+      {!linhas && !erro && <Carregando />}
       {linhas?.length === 0 && <Vazio mensagem="Nenhuma alteração registrada." />}
       {linhas && linhas.length > 0 && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
