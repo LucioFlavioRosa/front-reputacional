@@ -286,8 +286,8 @@ export function Layout({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 30,
-                  height: 30,
+                  width: 36,
+                  height: 36,
                   marginLeft: 6,
                   borderRadius: 'var(--r-btn)',
                   border: 'none',
@@ -296,7 +296,7 @@ export function Layout({
                     view === configuracao
                       ? 'var(--azul-mar)'
                       : 'rgba(255,255,255,0.7)',
-                  fontSize: 15,
+                  fontSize: 21,
                   lineHeight: 1,
                   cursor: 'pointer',
                 }}

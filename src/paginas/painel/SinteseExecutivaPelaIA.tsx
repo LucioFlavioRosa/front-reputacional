@@ -14,6 +14,12 @@
  *  O BOTÃO BOM/RUIM já pede o "porquê" em texto — não é telemetria muda. É
  *  este texto, e não o clique isolado, que vira exemplo de treino quando o
  *  agente entrar de verdade: um "ruim" sem explicação não ensina nada.
+ *
+ *  `Num`/`Bloco`/`ESTILO_DO_PARAGRAFO`/`SetaTurquesa`/`FeedbackDoInsight`
+ *  saem EXPORTADOS — a "Consulta dinâmica" da Preparar agenda
+ *  (`PrepararAgenda.tsx`) é a mesma caixa turquesa, com outro dado por trás
+ *  (uma instituição, não um mês), e reaproveita as mesmas peças em vez de
+ *  duplicá-las.
  */
 
 import { useMemo, useState } from 'react';
@@ -25,7 +31,7 @@ import { gerarSinteseExecutivaIA, mesesDisponiveis, rotuloDoMesComAno } from '@/
 import type { JanelaDaSinteseIA } from '@/dominio/sinteseIA';
 import type { Interacao } from '@/dominio/tipos';
 
-function Num({ children }: { children: ReactNode }) {
+export function Num({ children }: { children: ReactNode }) {
   return (
     <strong className="tabular" style={{ color: 'var(--cinza-4)' }}>
       {children}
@@ -294,14 +300,14 @@ export function SinteseExecutivaPelaIA({
   );
 }
 
-const ESTILO_DO_PARAGRAFO: CSSProperties = {
+export const ESTILO_DO_PARAGRAFO: CSSProperties = {
   fontSize: 13.5,
   lineHeight: 1.6,
   color: 'var(--cinza-3)',
   margin: 0,
 };
 
-function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+export function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div>
       <div className="kicker" style={{ color: 'var(--turquesa-rio)', marginBottom: 8 }}>
@@ -358,8 +364,10 @@ function SeletorDeMes({
 }
 
 /** Mesma seta de `PainelDeFiltros` (círculo + chevron que gira 180°), em
- *  turquesa — a única diferença de propósito entre as duas caixas. */
-function SetaTurquesa({ aberto }: { aberto: boolean }) {
+ *  turquesa — a única diferença de propósito entre as duas caixas.
+ *  EXPORTADA: a "Consulta dinâmica" da Preparar agenda (`PrepararAgenda.tsx`)
+ *  usa a mesma caixa turquesa, e por isso a mesma seta. */
+export function SetaTurquesa({ aberto }: { aberto: boolean }) {
   return (
     <span
       aria-hidden
@@ -394,7 +402,7 @@ function SetaTurquesa({ aberto }: { aberto: boolean }) {
  *  próprio bloco por um agradecimento. Quando o agente existir no backend,
  *  o `aoClicar` do botão "Enviar" troca de um `console.log` por um POST —
  *  a caixa em volta não muda. */
-function FeedbackDoInsight() {
+export function FeedbackDoInsight() {
   const [avaliacao, definirAvaliacao] = useState<'bom' | 'ruim' | null>(null);
   const [comentario, definirComentario] = useState('');
   const [enviado, definirEnviado] = useState(false);
