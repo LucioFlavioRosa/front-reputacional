@@ -215,6 +215,43 @@ export function Secao({
   );
 }
 
+/** Envolve um `<Secao>`/card com uma faixa de 3px no topo, no mesmo degradê
+ *  azul→turquesa da faixa fixa de filtros (`FaixaDeFiltros`) — para o
+ *  layout do Painel e da Preparar agenda carregar a identidade da marca, não
+ *  só a faixa de filtros lá em cima.
+ *
+ *  `border` não aceita gradiente como cor, então em vez de um `borderTop`
+ *  (que só pinta sólido) isto desenha a faixa como uma barra absoluta colada
+ *  no topo, com raio PRÓPRIO nos dois cantos de cima (`var(--r-card)`) — e
+ *  não um `overflow: hidden` no contêiner, que cortaria qualquer coisa que
+ *  estourasse a borda do card (o balão do "?" de `Ajuda`, por exemplo).
+ *
+ *  `height: 100%` no contêiner — sem isto, cartões lado a lado numa grade
+ *  CSS (Grid já estica o ITEM até a linha inteira por padrão, mas o `Cartao`
+ *  por dentro não herdava essa altura) tinham a MESMA largura mas alturas
+ *  diferentes, cada um do tamanho do próprio conteúdo. Só faz efeito dentro
+ *  de um item de grid esticado — em qualquer outro lugar (um só nesta
+ *  linha, fora de grade) equivale a `auto`, sem mudar nada. */
+export function ComFaixaDoTopo({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ position: 'relative', height: '100%' }}>
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          borderRadius: 'var(--r-card) var(--r-card) 0 0',
+          background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
 /* -- rótulos -------------------------------------------------------------- */
 
 export function Chip({

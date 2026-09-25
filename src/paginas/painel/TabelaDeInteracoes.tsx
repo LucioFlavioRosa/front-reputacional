@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   Botao,
   Chip,
@@ -198,6 +198,7 @@ export function TabelaDeInteracoes({
   subtitulo = 'Últimas interações do recorte atual, com todos os detalhes',
   ajuda = 'As interações mais recentes do recorte atual, com todas as colunas — clique numa linha para abrir a ficha completa.',
   colunas = 'completas',
+  estilo,
 }: {
   interacoes: Interacao[];
   catalogo: Catalogo;
@@ -217,6 +218,10 @@ export function TabelaDeInteracoes({
    *  de área fixa, lado a lado, onde a área já está dita no título do
    *  cartão. */
   colunas?: 'completas' | 'reduzidas';
+  /** Repassado ao `Secao` de dentro — as quatro tabelas de área fixa
+   *  passam `{ height: '100%' }`, para todas ficarem do mesmo tamanho
+   *  lado a lado (ver `ComFaixaDoTopo` em `Painel.tsx`). */
+  estilo?: CSSProperties;
 }) {
   const reduzida = colunas === 'reduzidas';
   const colunasDaTabela = reduzida ? COLUNAS_REDUZIDAS : COLUNAS_COMPLETAS;
@@ -250,7 +255,7 @@ export function TabelaDeInteracoes({
   const daPagina = ordenadas.slice((paginaAtual - 1) * porPagina, paginaAtual * porPagina);
 
   return (
-    <Secao titulo={titulo} subtitulo={subtitulo} ajuda={ajuda}>
+    <Secao titulo={titulo} subtitulo={subtitulo} ajuda={ajuda} estilo={estilo}>
       {!ordenadas.length ? (
         <Vazio
           mensagem={`Nenhuma interação em ${titulo} neste recorte`}
@@ -527,7 +532,7 @@ function PopupDaInteracao({
                 (natureza da contraparte) foi substituído pela categoria de
                 público da instituição, que a Administração cadastra — o
                 campo antigo nunca foi preenchido por tela nenhuma. */}
-            <Metadado rotulo="Público" valor={nomeDoPublico(catalogo, interacao.instituicao_id)} />
+            <Metadado rotulo="Categoria do Público" valor={nomeDoPublico(catalogo, interacao.instituicao_id)} />
             <Metadado rotulo="Relevância" valor={rotuloDeRelevancia(catalogo, interacao.tier)} />
             <Metadado rotulo="Clima" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
             <Metadado rotulo="UF" valor={rotuloDeAbrangencia(interacao.uf)} />

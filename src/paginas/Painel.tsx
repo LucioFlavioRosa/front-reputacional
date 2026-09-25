@@ -1,7 +1,6 @@
 /** Painel — a visão consolidada do recorte. */
 
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { usePainel } from '@/estado/painel';
 import { BarraDivergente } from '@/graficos/BarraDivergente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -11,7 +10,19 @@ import { GraficoDeLinha } from '@/graficos/GraficoDeLinha';
 import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
-import { Botao, Carregando, Chip, FaixaDeAtencao, FaixaDeErro, Kpi, KpiHero, Modal, Secao, Vazio } from '@/componentes/basicos';
+import {
+  Botao,
+  Carregando,
+  Chip,
+  ComFaixaDoTopo,
+  FaixaDeAtencao,
+  FaixaDeErro,
+  Kpi,
+  KpiHero,
+  Modal,
+  Secao,
+  Vazio,
+} from '@/componentes/basicos';
 import {
   campoDeAreaPorCategoria,
   campoDeCategoriaPublico,
@@ -24,7 +35,7 @@ import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastav
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import {
-  dataCurta,
+  dataCompleta,
   numero,
   paraIso,
   percentual,
@@ -171,41 +182,6 @@ function calcularNssPorPeriodo(
       valor: coluna.total > 0 ? Math.round(((positivas - negativas) / coluna.total) * 100) : null,
     };
   });
-}
-
-/** Envolve um `<Secao>` de gráfico com uma faixa de 3px no topo, no mesmo
- *  degradê azul→turquesa da faixa fixa de filtros (`FaixaDeFiltros`) — por
- *  pedido, para o layout de todo gráfico do Painel carregar a identidade da
- *  marca, não só a faixa de filtros lá em cima.
- *
- *  `border` não aceita gradiente como cor, então em vez de um `borderTop`
- *  (que só pinta sólido) isto embrulha o card num `div` que RECORTA
- *  (`overflow: hidden`) no mesmo raio de canto do `Cartao` por baixo
- *  (`var(--r-card)`) e desenha a faixa como uma barra absoluta colada no
- *  topo — os cantos da barra saem arredondados porque o recorte do
- *  contêiner os corta, não porque a barra em si tem raio próprio. */
-function ComFaixaDoTopo({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ position: 'relative' }}>
-      {/* SEM `overflow: hidden` no contêiner — cortava o balão do "?" (Ajuda)
-          toda vez que ele estourava a borda do card. O arredondado dos
-          cantos da faixa agora é raio PRÓPRIO da faixa, não recorte do
-          contêiner por cima dela. */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          borderRadius: 'var(--r-card) var(--r-card) 0 0',
-          background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
-        }}
-      />
-      {children}
-    </div>
-  );
 }
 
 /** Um pequeno botão-âncora, sempre no canto do card, para abrir o histórico
@@ -536,7 +512,7 @@ export function Painel({
   const { de: inicioDoPeriodo, ate: fimDoPeriodo } = intervalo(recorte);
   const resumoDoPeriodo =
     temFiltroDePeriodo && inicioDoPeriodo && fimDoPeriodo
-      ? `${dataCurta(paraIso(inicioDoPeriodo))} – ${dataCurta(paraIso(fimDoPeriodo))}`
+      ? `${dataCompleta(paraIso(inicioDoPeriodo))} – ${dataCompleta(paraIso(fimDoPeriodo))}`
       : null;
 
   //: "+ ADICIONAR PÚBLICO" do Net Sentiment Score no tempo — TODA a
@@ -916,6 +892,7 @@ export function Painel({
               catalogo={catalogo}
               aoAbrirFicha={aoAbrirAgenda}
               colunas="reduzidas"
+              estilo={{ height: '100%' }}
             />
           </ComFaixaDoTopo>
         ))}
@@ -940,6 +917,7 @@ export function Painel({
             subtitulo="Volume de agendas pela relevância da instituição de contato"
             ajuda="A rosca soma as interações do recorte por Tier de relevância da instituição (1 a 4, do dicionário Relevância). O ranking ao lado lista as 5 instituições com mais interações; passe o mouse numa fatia para ver as instituições daquele tier."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
+            estilo={{ height: '100%' }}
           >
             {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
                 coluna de fatias+legenda não usa toda a largura do cartão, e o
@@ -992,6 +970,7 @@ export function Painel({
             subtitulo="Placar de clima das instituições mais presentes no recorte"
             ajuda="Cada barra é (interações propositivas − tensas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
+            estilo={{ height: '100%' }}
           >
             <BarraDivergentePorItem
               itens={derivado.climaPorPublico}
@@ -1369,6 +1348,7 @@ export function Painel({
             titulo="Instituições"
             subtitulo="Principais entidades e parceiras"
             ajuda="Ranking das instituições com mais interações registradas no recorte atual, da maior para a menor."
+            estilo={{ height: '100%' }}
           >
             <Ranking
               itens={derivado.instituicoes}
@@ -1383,6 +1363,7 @@ export function Painel({
             titulo="Esfera e abrangência"
             subtitulo="Divisão por nível de governo"
             ajuda="Interações agrupadas pelo nível de governo da instituição (Federal, Estadual, Municipal etc.), do maior para o menor volume."
+            estilo={{ height: '100%' }}
           >
             <Ranking itens={derivado.esferas} cor="var(--turquesa-rio)" />
           </Secao>
@@ -1393,6 +1374,7 @@ export function Painel({
             titulo="Unidades de negócio"
             subtitulo="Volume por unidade operacional Aegea"
             ajuda="Interações agrupadas pela unidade de negócio operacional da Aegea envolvida no recorte, da maior para a menor."
+            estilo={{ height: '100%' }}
           >
             <Ranking
               itens={derivado.unidades}

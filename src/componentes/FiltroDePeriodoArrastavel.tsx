@@ -22,7 +22,7 @@
 
 import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { dataCompleta, dataCurta, paraIso } from '@/dominio/formato';
+import { dataCompleta, paraIso } from '@/dominio/formato';
 import { intervalo } from '@/dominio/recorte';
 import type { Recorte } from '@/dominio/recorte';
 
@@ -254,8 +254,8 @@ export function FiltroDePeriodoArrastavel({
           color: 'var(--sobre-turquesa)',
         }}
       >
-        <span>{dataCurta(deHaDias(-inicio))} · {Math.abs(inicio)} {Math.abs(inicio) === 1 ? 'dia atrás' : 'dias atrás'}</span>
-        <span>{dataCurta(ateEmDias(fim))} · {fim === 0 ? 'hoje' : `${fim} ${fim === 1 ? 'dia à frente' : 'dias à frente'}`}</span>
+        <span>{dataCompleta(deHaDias(-inicio))} · {Math.abs(inicio)} {Math.abs(inicio) === 1 ? 'dia atrás' : 'dias atrás'}</span>
+        <span>{dataCompleta(ateEmDias(fim))} · {fim === 0 ? 'hoje' : `${fim} ${fim === 1 ? 'dia à frente' : 'dias à frente'}`}</span>
       </div>
     </div>
   );
