@@ -572,12 +572,22 @@ function Ponto({
             {ponto.tag}
           </span>
         ) : null}
-        {/* O VALOR SAIU DO EIXO, que é regido pelos meses comparáveis. O ponto
-            fica na borda e isto diz que ele está além dela — desenhá-lo no y
-            real o jogaria por cima das colunas. */}
-        {ponto.foraDaEscala ? (
+        {/* POR QUANTAS LENTES O MÊS FOI MEDIDO, quando foram poucas — e junto,
+            na mesma linha, o aviso de que o valor saiu do eixo.
+
+            NA MESMA LINHA DE PROPÓSITO: a etiqueta do ponto já pode ter o
+            número e a tag do fato, e `ALTURA_DO_ROTULO` reserva espaço no
+            viewBox para ela caber acima ou abaixo da curva. Uma quarta linha
+            estouraria essa reserva justamente nos meses em que ela é mais
+            necessária.
+
+            O AVISO DE ESCALA SOZINHO CONTINUA POSSÍVEL: um mês completo pode
+            sair do eixo quando a lente comparada estica o domínio. */}
+        {ponto.cobertura || ponto.foraDaEscala ? (
           <span className="kicker" style={{ color: 'var(--cinza-2)' }}>
-            fora da escala
+            {[ponto.cobertura, ponto.foraDaEscala ? 'fora da escala' : '']
+              .filter(Boolean)
+              .join(' · ')}
           </span>
         ) : null}
       </span>

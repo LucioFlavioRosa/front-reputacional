@@ -12,6 +12,7 @@ import {
   VB,
   curvaPor,
   dominioDe,
+  coberturaDoMes,
   jornadaDoIndice,
   mesPorExtenso,
   resumoDa,
@@ -484,5 +485,127 @@ describe('jornadaDoIndice', () => {
   it('série só com meses sem índice não estoura', () => {
     const jornada = jornadaDoIndice([ponto({ isr: null })], '2026-06');
     expect(jornada.pontos).toEqual([]);
+  });
+});
+
+/* -- o mês parcial diz o que é ------------------------------------------------
+ *
+ * NENHUMA DESTAS REGRAS TINHA TESTE. O fixture `ponto()` sempre disse cinco
+ * lentes, então `parcial`, `foraDaEscala`, a exclusão do eixo e o que acontece
+ * quando TODOS os meses são parciais nunca foram exercitados — justamente as
+ * regras que a reescrita do gráfico introduziu.
+ *
+ * E o que está em jogo é concreto: no banco de desenvolvimento, quatro dos dez
+ * pontos da curva vêm de UMA lente, e janeiro de 2025 sai como ISR 100, faixa
+ * "Referência", a partir de uma única reunião de CRM registrada naquele mês. */
+
+/** Seis meses completos entre 55 e 70 — domínio 45..80 por `dominioDe`. */
+const COMPLETOS = [
+  ponto({ mes: '2026-01', isr: 55 }),
+  ponto({ mes: '2026-02', isr: 58 }),
+  ponto({ mes: '2026-03', isr: 60 }),
+  ponto({ mes: '2026-04', isr: 62 }),
+  ponto({ mes: '2026-05', isr: 65 }),
+  ponto({ mes: '2026-06', isr: 70 }),
+];
+
+describe('coberturaDoMes', () => {
+  it('nomeia quantas lentes mediram, quando foram poucas', () => {
+    expect(coberturaDoMes(1)).toBe('1 de 5 lentes');
+    expect(coberturaDoMes(3)).toBe('3 de 5 lentes');
+  });
+
+  it('cala quando o mês é comparável', () => {
+    // Quatro já é comparável — é o corte de `LENTES_PARA_SER_COMPLETO`. Um
+    // rótulo em todo mês vira ruído e deixa de avisar.
+    expect(coberturaDoMes(4)).toBe('');
+    expect(coberturaDoMes(5)).toBe('');
+  });
+
+  it('é a MESMA frase que o ponto da curva carrega', () => {
+    // O QUE ESTE TESTE TRAVA: duas telas dizendo a mesma coisa com palavras
+    // diferentes, ou com cortes diferentes. A Visão geral e a Jornada mostram o
+    // mesmo mês; se uma chamá-lo de parcial e a outra não, quem lê as duas
+    // conclui que uma delas está errada — e estará.
+    const serie = [ponto({ mes: '2026-01', isr: 80, lentes: 2 })];
+    const unico = jornadaDoIndice(serie, '2026-01', null).pontos[0];
+
+    expect(unico.cobertura).toBe(coberturaDoMes(2));
+  });
+});
+
+describe('o mês medido por poucas lentes', () => {
+  it('diz quantas lentes o mediram, para ler junto do número', () => {
+    // A decisão do dono do produto: o número aparece, com o rótulo ao lado.
+    // Sem ele, 100 se lê como "Referência: reputação é ativo de valor".
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-07', null).pontos.at(-1);
+
+    expect(julho?.cobertura).toBe('1 de 5 lentes');
+  });
+
+  it('o mês completo não carrega rótulo nenhum', () => {
+    // O contrapeso: um rótulo em todo mês vira ruído e deixa de avisar.
+    const junho = jornadaDoIndice(COMPLETOS, '2026-06', null).pontos.at(-1);
+
+    expect(junho?.cobertura).toBe('');
+  });
+
+  it('não manda na escala do eixo', () => {
+    // Um janeiro de 2025 com 100 esticava o teto em vinte pontos e achatava o
+    // ano inteiro num terço da altura.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    const { marcas } = jornadaDoIndice(serie, '2026-06', null);
+
+    // O teto para em 80 porque o 100 do mês parcial não entrou na conta do
+    // domínio. Se entrasse, `dominioDe` subiria o teto a 100 e a régua toda
+    // mudaria — que é o achatamento que esta regra existe para evitar.
+    expect(Math.max(...marcas.map((m) => m.valor))).toBe(80);
+  });
+
+  it('está FORA DA ESCALA quando passa do teto, e não quando passa do desenho', () => {
+    // O DEFEITO: `foraDaEscala` era medido em pixel do viewBox, e o desenho tem
+    // 14px de folga no topo. Um valor acima do teto cabia nessa folga — ficava
+    // desenhado acima da última faixa, rotulado como qualquer outro mês, e o
+    // aviso não aparecia. Com domínio 45..80, só a partir de 82 o pixel saía.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 81, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+
+    expect(julho?.foraDaEscala).toBe(true);
+  });
+
+  it('está dentro da escala quando cabe no domínio', () => {
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 72, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+
+    expect(julho?.foraDaEscala).toBe(false);
+    expect(julho?.parcial).toBe(true);
+  });
+
+  it('quando TODOS os meses são parciais, o eixo diz que foi regido por eles', () => {
+    // O eixo cai nos parciais porque não há outra coisa — é melhor que um
+    // domínio vazio. Mas aí a tela não pode seguir afirmando que eles estão
+    // "fora da escala do eixo": eles SÃO o eixo. É a primeira configuração que
+    // um cliente novo vê.
+    const serie = [
+      ponto({ mes: '2026-01', isr: 40, lentes: 2 }),
+      ponto({ mes: '2026-02', isr: 45, lentes: 2 }),
+      ponto({ mes: '2026-03', isr: 50, lentes: 2 }),
+    ];
+
+    const jornada = jornadaDoIndice(serie, '2026-03', null);
+
+    expect(jornada.eixoRegidoPorParciais).toBe(true);
+    expect(jornada.pontos.every((p) => !p.foraDaEscala)).toBe(true);
+  });
+
+  it('com meses completos na série, o eixo NÃO é regido por parciais', () => {
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    expect(jornadaDoIndice(serie, '2026-06', null).eixoRegidoPorParciais).toBe(false);
   });
 });

@@ -94,6 +94,20 @@ export interface PontoDaJornada {
    *  curva, porque é o score de uma lente desenhado como se fosse o da
    *  companhia. */
   parcial: boolean;
+  /** "1 de 5 lentes" quando o mês foi medido por poucas; vazio quando não.
+   *
+   *  O NÚMERO FICA, E O RÓTULO VAI JUNTO — decisão de quem cuida do produto,
+   *  tomada olhando a curva de desenvolvimento: quatro dos dez pontos vêm de
+   *  UMA lente, e janeiro de 2025 sai como 100, faixa "Referência", a partir de
+   *  uma única reunião de CRM. Sem o rótulo ao lado, "Referência: reputação é
+   *  ativo de valor" é uma afirmação sobre a companhia que uma reunião não
+   *  sustenta. Tirar o ponto da curva seria a outra saída, e foi recusada: o
+   *  mês existe e o número é legítimo pela fórmula.
+   *
+   *  O TEXTO É O MESMO QUE `descricao` já dizia ao leitor de tela. Ele estava
+   *  certo no nome acessível e ausente na tela — quem enxerga via só uma
+   *  bolinha vazada e uma nota de rodapé no fim do cartão. */
+  cobertura: string;
   /** O valor real ficou fora do eixo, que é regido pelos meses completos. */
   foraDaEscala: boolean;
   descricao: string;
@@ -101,6 +115,30 @@ export interface PontoDaJornada {
 
 /** Quantas lentes um mês precisa ter para reger a escala. */
 const LENTES_PARA_SER_COMPLETO = 4;
+//: QUANTAS LENTES O MODELO TEM. Fechada por desenho — uma lente nova é mudança
+//: de modelo, não de cadastro —, e escrita aqui para o rótulo não repetir o 5
+//: à mão ao lado de uma regra que fala de 4.
+const LENTES_NO_MODELO = 5;
+
+/** "1 de 5 lentes" — ou vazio, quando o mês é comparável.
+ *
+ *  UMA FRASE, DUAS TELAS. A Jornada põe isto na etiqueta do ponto e a Visão
+ *  geral ao lado da faixa, e as duas mostram o MESMO mês: se uma o chamasse de
+ *  parcial e a outra não, quem lê as duas concluiria que uma está errada — e
+ *  estaria. O corte também é um só; reescrever o `4` na página é como duas
+ *  definições de "parcial" nascem.
+ *
+ *  POR QUE ELE EXISTE. O índice redistribui o peso das lentes que faltam, e
+ *  isso foi desenhado para UMA faltando. Com quatro faltando, o número continua
+ *  legítimo pela fórmula e passa a descrever outra coisa: no banco de
+ *  desenvolvimento, janeiro de 2025 sai como 100 — faixa "Referência: reputação
+ *  é ativo de valor" — a partir de uma única reunião de CRM registrada no mês.
+ *  Tirar o ponto da curva seria a outra saída, e foi recusada por quem cuida do
+ *  produto: o mês existe, e o que faltava era dizer do que ele é feito. */
+export function coberturaDoMes(lentes: number): string {
+  if (lentes >= LENTES_PARA_SER_COMPLETO) return '';
+  return `${lentes} de ${LENTES_NO_MODELO} lentes`;
+}
 
 /** Uma linha da coluna do mês: escrita por gente, ou derivada da base.
  *
@@ -140,6 +178,14 @@ export interface ColunaDoMes {
 
 export interface Jornada {
   resumo: string;
+  /** O eixo foi regido por meses PARCIAIS, por não haver completos.
+   *
+   *  A tela precisa saber para parar de afirmar o contrário. A legenda dizia
+   *  "medidos por menos de 4 lentes — fora da escala do eixo" sobre todo mês
+   *  parcial, e numa base nova — três meses, duas lentes cada, que é
+   *  exatamente o que um cliente vê primeiro — os três REGEM o eixo e caem
+   *  dentro dele. A frase afirmava o oposto do desenho. */
+  eixoRegidoPorParciais: boolean;
   faixas: FaixaDeFundo[];
   marcas: MarcaDoEixo[];
   curva: string;
@@ -319,6 +365,9 @@ export function jornadaDoIndice(
   const total = medidos.length;
   const vazia: Jornada = {
     resumo: resumoDa(serie),
+    // Sem mês nenhum não há eixo para ser regido: `false` é a ausência da
+    // afirmação, e não a afirmação contrária.
+    eixoRegidoPorParciais: false,
     faixas: [],
     marcas: [],
     curva: '',
@@ -357,6 +406,10 @@ export function jornadaDoIndice(
   // o ponto aparece, marcado como parcial, e quando cai fora do eixo vai para a
   // borda dizendo que saiu.
   const completos = medidos.filter((ponto) => ponto.lentes >= LENTES_PARA_SER_COMPLETO);
+  //: SEM NENHUM COMPLETO, os parciais regem — um domínio vazio seria pior. Mas
+  //: o fato viaja no payload, porque a tela conta outra história quando ele é
+  //: verdade: eles não estão fora do eixo, eles SÃO o eixo.
+  const eixoRegidoPorParciais = completos.length === 0 && medidos.length > 0;
   const regem = (completos.length ? completos : medidos).map(
     (ponto) => ponto.isr as number,
   );
@@ -440,7 +493,15 @@ export function jornadaDoIndice(
       acima: preferaAcima ? cabeAcima || !cabeAbaixo : !cabeAbaixo,
       selecionado: ponto.mes === mesSelecionado,
       parcial,
-      foraDaEscala: alturaCrua < 0 || alturaCrua > 100,
+      cobertura: coberturaDoMes(ponto.lentes),
+      //: CONTRA O DOMÍNIO, e não contra o pixel. Media-se `alturaCrua`, que é a
+      //: posição no viewBox — e o desenho tem 14px de folga no topo e 34 na
+      //: base. Um valor ACIMA do teto cabia nessa folga: com domínio 45..80, um
+      //: 81 caía em 1,8% da altura, desenhado acima da última faixa e da marca
+      //: de 80, rotulado como qualquer outro mês, sem o aviso. Só a partir de
+      //: 82 o pixel saía e a tela avisava. A pergunta é sobre a ESCALA, e a
+      //: escala é `piso`..`teto`.
+      foraDaEscala: isr < piso || isr > teto,
       descricao:
         `${mesPorExtenso(ponto.mes)}: índice ${isr}, faixa ${rotuloDaFaixa(isr)}` +
         (parcial ? `, medido por ${ponto.lentes} de 5 lentes` : '') +
@@ -473,6 +534,7 @@ export function jornadaDoIndice(
 
   return {
     resumo: resumoDa(serie),
+    eixoRegidoPorParciais,
     faixas,
     marcas,
     curva: curvaPor(notas.map((nota, i) => [x(i), y(nota)])),

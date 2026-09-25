@@ -39,7 +39,7 @@ import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
-import { jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { coberturaDoMes, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
 import {
   FAIXAS,
   comoDelta,
@@ -224,9 +224,27 @@ function VisaoGeral({
   // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
   const [comparada, definirComparada] = useState<string | null>(null);
   const jornada = jornadaDoIndice(serie, indice.mes, comparada);
-  const mesesParciais = serie.filter(
-    (ponto) => ponto.isr !== null && ponto.lentes < 4,
-  ).length;
+  //: DUAS CONTAS, E NÃO UMA. "Medido por poucas lentes" e "fora da escala do
+  //: eixo" eram ditos como se fossem a mesma coisa, e não são: um mês parcial
+  //: costuma cair DENTRO do eixo, e quando não há nenhum mês completo são os
+  //: parciais que REGEM o eixo. A frase antiga afirmava o oposto do desenho
+  //: justamente na base nova — três meses, duas lentes cada —, que é a primeira
+  //: coisa que um cliente vê.
+  //:
+  //: A CONTAGEM VEM DA JORNADA, e não de uma releitura da série com o `4`
+  //: escrito à mão aqui: dois lugares decidindo o que é "parcial" é um a mais
+  //: do que se consegue manter de acordo.
+  const mesesParciais = jornada.pontos.filter((ponto) => ponto.parcial).length;
+  const mesesForaDaEscala = jornada.pontos.filter((ponto) => ponto.foraDaEscala).length;
+  //: O MESMO AVISO ONDE O NÚMERO É MAIOR. A Jornada já o carrega na etiqueta do
+  //: ponto; aqui ele qualifica a faixa, que é a frase mais forte da tela —
+  //: "Referência · reputação é ativo de valor" é uma afirmação sobre a
+  //: companhia, e com quatro lentes sem medir ela descreve outra coisa.
+  //: `coberturaDoMes` é a regra, e não um `< 4` reescrito: duas telas com
+  //: cortes diferentes para o mesmo mês seria uma delas mentindo.
+  const coberturaDoMesEmTela = coberturaDoMes(
+    indice.lentes.filter((lente) => lente.score !== null).length,
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -281,6 +299,12 @@ function VisaoGeral({
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
               {indice.faixa} · {indice.leitura_da_faixa}
             </p>
+            {coberturaDoMesEmTela ? (
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--atencao-fg)' }}>
+                Medido por {coberturaDoMesEmTela} — a faixa acima descreve um mês
+                que as outras não mediram.
+              </p>
+            ) : null}
           </Cartao>
 
           <div className="grade grade--2" style={{ gap: 16 }}>
@@ -359,8 +383,15 @@ function VisaoGeral({
                   }}
                 />
                 {mesesParciais === 1
-                  ? '1 mês medido por menos de 4 lentes — fora da escala do eixo'
-                  : `${mesesParciais} meses medidos por menos de 4 lentes — fora da escala do eixo`}
+                  ? '1 mês medido por menos de 4 lentes'
+                  : `${mesesParciais} meses medidos por menos de 4 lentes`}
+                {jornada.eixoRegidoPorParciais
+                  ? ' — são eles que regem o eixo, por não haver mês completo'
+                  : mesesForaDaEscala === 1
+                    ? ' — 1 deles está fora da escala do eixo'
+                    : mesesForaDaEscala
+                      ? ` — ${mesesForaDaEscala} deles estão fora da escala do eixo`
+                      : ''}
               </span>
             ) : null}
             {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe
