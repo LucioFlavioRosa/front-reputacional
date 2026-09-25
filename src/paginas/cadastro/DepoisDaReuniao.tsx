@@ -10,14 +10,15 @@
  *  cada campo novo mexeria na assinatura.
  */
 
-import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Cartao, Secao, estiloDeEntrada } from '@/componentes/basicos';
+import { Campo, Cartao, Secao, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { AjudaDoCampo } from '@/componentes/AjudaDoCampo';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { MOMENTOS_DE_PREPARACAO, MOMENTOS_POS_REUNIAO, materiaisDe } from '@/paginas/cadastro/formulario';
 import type { Formulario } from '@/paginas/cadastro/formulario';
 import type { Catalogo } from '@/dominio/derivacoes';
+import { GUIA_DO_CADASTRO } from '@/dominio/guiaDoCadastro';
 
 //: MESMO TAMANHO USADO EM `Cadastro.tsx` — as duas metades do mesmo
 //: formulário, "Antes" e "Depois", precisam do mesmo peso de título.
@@ -27,127 +28,29 @@ const ESTILO_DO_TITULO_DO_CADASTRO: CSSProperties = { fontSize: 24 };
 //: é UM formulário só, em duas abas. Acrescentar ou remover uma seção em
 //: qualquer um dos dois arquivos exige renumerar as duas pontas à mão.
 
-//: UM SCRIPT POR CAMPO, e não um só para os quatro: quem cola a transcrição
-//: para tirar só as pendências não quer reler a resposta inteira procurando
-//: o pedaço certo — cada prompt já pede exatamente aquele recorte.
-const SCRIPTS_DE_TRANSCRICAO: Record<
-  'relato' | 'encaminhamentos' | 'pendencias' | 'observacoes',
-  string
-> = {
-  relato:
-    'A partir da transcrição da reunião abaixo, escreva um RELATO objetivo do que foi discutido: os principais pontos abordados, o que cada parte disse e o tom geral da conversa. Sem opinião — só o que de fato foi dito.\n\nTranscrição:\n[colar aqui]',
-  encaminhamentos:
-    'A partir da transcrição da reunião abaixo, liste os ENCAMINHAMENTOS combinados: o que ficou definido como próximo passo, quem ficou responsável por cada ação e até quando. Inclua também qualquer repercussão relevante (reações, compromissos assumidos).\n\nTranscrição:\n[colar aqui]',
-  pendencias:
-    'A partir da transcrição da reunião abaixo, liste as PENDÊNCIAS: o que ficou em aberto, sem resposta definitiva, ou que depende de uma ação futura de qualquer uma das partes.\n\nTranscrição:\n[colar aqui]',
-  observacoes:
-    'A partir da transcrição da reunião abaixo, escreva OBSERVAÇÕES gerais que não caibam num relato formal: contexto informal, sinais do clima da conversa, alertas para quem for ler o registro depois.\n\nTranscrição:\n[colar aqui]',
-};
-
-/** O campo de texto + o balão com o script sugerido, ao passar o mouse no "?".
- *
- *  POR QUE UM BOTÃO DE COPIAR DENTRO DO BALÃO, e não um link "ver script":
- *  o script é longo e ninguém quer selecionar à mão dentro de um balão que
- *  some se o mouse escorregar. Copiar de um clique é o que faz "todos
- *  possam copiar esse script e jogar numa transcrição" valer de verdade. */
+/** O campo de texto + o "?" com o que preencher, um exemplo, e o script
+ *  sugerido para extrair aquele recorte de uma transcrição — o mesmo
+ *  `AjudaDoCampo` do resto do Cadastro, com o script vindo junto no mesmo
+ *  balão porque só estes quatro campos têm um. */
 function CampoComScript({
   campo,
   rotulo,
   valor,
   aoAlterar,
 }: {
-  campo: keyof typeof SCRIPTS_DE_TRANSCRICAO;
+  campo: 'relato' | 'encaminhamentos' | 'pendencias' | 'observacoes';
   rotulo: string;
   valor: string;
   aoAlterar: (valor: string) => void;
 }) {
-  const [copiado, definirCopiado] = useState(false);
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(SCRIPTS_DE_TRANSCRICAO[campo]);
-      definirCopiado(true);
-      window.setTimeout(() => definirCopiado(false), 2000);
-    } catch {
-      /* área de transferência negada pelo navegador — o texto do balão
-         continua visível e selecionável à mão */
-    }
-  }
-
   return (
-    <label style={{ display: 'block' }}>
-      <span
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 12,
-          fontWeight: 500,
-          color: 'var(--cinza-3)',
-          marginBottom: 5,
-        }}
-      >
-        {rotulo}
-        <span className="dica-flutuante">
-          <span
-            aria-hidden
-            tabIndex={0}
-            title="Ver script sugerido para extrair este campo de uma transcrição"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              border: '1px solid var(--cinza-2)',
-              color: 'var(--cinza-2)',
-              fontSize: 10,
-              fontWeight: 700,
-              cursor: 'help',
-            }}
-          >
-            ?
-          </span>
-          <span className="dica-flutuante__balao" role="tooltip" style={{ width: 280, maxWidth: 280 }}>
-            <span
-              style={{
-                display: 'block',
-                fontWeight: 700,
-                color: 'var(--cinza-4)',
-                marginBottom: 6,
-              }}
-            >
-              Script sugerido — cole numa IA junto com a transcrição
-            </span>
-            <span style={{ display: 'block', marginBottom: 8, whiteSpace: 'pre-line' }}>
-              {SCRIPTS_DE_TRANSCRICAO[campo]}
-            </span>
-            <button
-              type="button"
-              onClick={copiar}
-              style={{
-                border: 'none',
-                background: 'var(--azul-mar)',
-                color: 'var(--branco)',
-                borderRadius: 'var(--r-btn)',
-                padding: '5px 10px',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {copiado ? 'Copiado!' : 'Copiar script'}
-            </button>
-          </span>
-        </span>
-      </span>
+    <Campo rotulo={rotulo} aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO[campo]} />}>
       <textarea
         style={{ ...estiloDeEntrada, height: 62, padding: 11, resize: 'vertical' }}
         value={valor}
         onChange={(evento) => aoAlterar(evento.target.value)}
       />
-    </label>
+    </Campo>
   );
 }
 
@@ -209,6 +112,7 @@ export function DepoisDaReuniao({
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Clima"
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.clima_desfecho} />}
               valor={form.clima}
               aoEscolher={(v) => alterar('clima', v)}
               opcoes={catalogo.dicionarios.climas.map((c) => ({
@@ -221,6 +125,7 @@ export function DepoisDaReuniao({
               rotulo="Desfecho"
               dica="Em relação ao objetivo da interação."
               vazio="Sem definição"
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.desfecho_resultado} />}
               valor={form.resultado}
               aoEscolher={(v) => alterar('resultado', v)}
               opcoes={catalogo.dicionarios.resultados.map((r) => ({
@@ -234,6 +139,7 @@ export function DepoisDaReuniao({
                 reduzir. */}
             <CampoQueCompleta
               rotulo="Desdobra em outra interação?"
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.desdobramento} />}
               valor={form.preve_desdobramento}
               aoEscolher={(v) =>
                 alterar('preve_desdobramento', v as Formulario['preve_desdobramento'])
@@ -247,7 +153,11 @@ export function DepoisDaReuniao({
         </Cartao>
       </Secao>
 
-      <Secao titulo="10. Materiais pós-reunião" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="10. Materiais pós-reunião"
+        acao={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.materiais_pos} />}
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             O que saiu da reunião. <strong>Obtido</strong> é o que a outra parte

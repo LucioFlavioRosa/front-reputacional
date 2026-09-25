@@ -4,6 +4,7 @@
  *  já é longa o bastante sem eles.
  */
 
+import type { ReactNode } from 'react';
 import { Campo, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 
@@ -14,6 +15,7 @@ export function CampoDeTexto({
   tipo = 'text',
   dica,
   ajuda,
+  aoLadoDoRotulo,
 }: {
   rotulo: string;
   valor: string | undefined;
@@ -21,9 +23,10 @@ export function CampoDeTexto({
   tipo?: string;
   dica?: string;
   ajuda?: string;
+  aoLadoDoRotulo?: ReactNode;
 }) {
   return (
-    <Campo rotulo={rotulo} dica={dica} ajuda={ajuda}>
+    <Campo rotulo={rotulo} dica={dica} ajuda={ajuda} aoLadoDoRotulo={aoLadoDoRotulo}>
       <input
         type={tipo}
         style={estiloDeEntrada}
@@ -40,17 +43,20 @@ export function CampoDeDicionario({
   valor,
   aoMudar,
   ajuda,
+  aoLadoDoRotulo,
 }: {
   rotulo: string;
   itens: { codigo: string; nome: string }[];
   valor: string | undefined;
   aoMudar: (valor: string) => void;
   ajuda?: string;
+  aoLadoDoRotulo?: ReactNode;
 }) {
   return (
     <CampoQueCompleta
       rotulo={rotulo}
       ajuda={ajuda}
+      aoLadoDoRotulo={aoLadoDoRotulo}
       valor={valor ?? ''}
       aoEscolher={aoMudar}
       opcoes={itens.map((item) => ({ valor: item.codigo, rotulo: item.nome }))}

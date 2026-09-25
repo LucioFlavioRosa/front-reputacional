@@ -16,6 +16,8 @@ import { criarAlegacao } from '@/api/cliente';
 import { Botao, Campo, Chip, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { CampoDeTexto } from '@/paginas/cadastro/campos';
+import { AjudaDoCampo } from '@/componentes/AjudaDoCampo';
+import { GUIA_DO_CADASTRO } from '@/dominio/guiaDoCadastro';
 import type { Alegacao, Dicionarios } from '@/dominio/tipos';
 
 export function CamposDaConsulta({
@@ -89,6 +91,7 @@ export function CamposDaConsulta({
         {/* Pelo ID, como esfera e unidade: é o id que o corpo leva. */}
         <CampoQueCompleta
           rotulo="Por onde chegou"
+          aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_canal} />}
           valor={canalId}
           aoEscolher={(valor) => aoMudar('canal_id', valor)}
           opcoes={dicionarios.canais_consulta.map((canal) => ({
@@ -96,7 +99,10 @@ export function CamposDaConsulta({
             rotulo: canal.nome,
           }))}
         />
-        <Campo rotulo="Prazo para responder">
+        <Campo
+          rotulo="Prazo para responder"
+          aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_prazo} />}
+        >
           <input
             type="date"
             value={prazoResposta}
@@ -104,7 +110,10 @@ export function CamposDaConsulta({
             style={estiloDeEntrada}
           />
         </Campo>
-        <Campo rotulo="Respondida em">
+        <Campo
+          rotulo="Respondida em"
+          aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_respondida} />}
+        >
           <input
             type="date"
             value={respondidaEm}
@@ -119,9 +128,13 @@ export function CamposDaConsulta({
         valor={remetente}
         aoMudar={(valor) => aoMudar('remetente', valor)}
         dica="Nome ou e-mail de quem mandou, quando não é um contato cadastrado."
+        aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_remetente} />}
       />
 
-      <Campo rotulo="O que perguntaram">
+      <Campo
+        rotulo="O que perguntaram"
+        aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_teor} />}
+      >
         <textarea
           value={teor}
           onChange={(evento) => aoMudar('teor', evento.target.value)}
@@ -135,7 +148,10 @@ export function CamposDaConsulta({
           a alegação é o que a pergunta DIZ e é o que a aba conta; o motivo é a
           intenção que se supõe. Juntá-los faria suposição ser apresentada com
           a mesma autoridade de um fato registrado. */}
-      <Campo rotulo="Por que você acha que perguntaram">
+      <Campo
+        rotulo="Por que você acha que perguntaram"
+        aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_motivo} />}
+      >
         <textarea
           value={motivo}
           onChange={(evento) => aoMudar('motivo', evento.target.value)}
@@ -146,8 +162,9 @@ export function CamposDaConsulta({
       </Campo>
 
       <div>
-        <p className="kicker" style={{ marginBottom: 6 }}>
+        <p className="kicker" style={{ marginBottom: 6, display: 'flex', alignItems: 'center' }}>
           O que a pergunta dá como fato
+          <AjudaDoCampo verbete={GUIA_DO_CADASTRO.consulta_alegacao} />
         </p>
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
           A premissa, em uma frase, na voz de quem alega — é ela que se repete de

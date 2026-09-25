@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { Campo, estiloDeEntrada } from '@/componentes/basicos';
 import { escolhaAoFechar, filtrar, type Opcao } from '@/dominio/completar';
@@ -37,6 +38,7 @@ export function CampoQueCompleta({
   obrigatorio = false,
   dica,
   ajuda,
+  aoLadoDoRotulo,
   placeholder,
   ariaLabel,
 }: {
@@ -51,6 +53,8 @@ export function CampoQueCompleta({
   dica?: string;
   /** Explicação num "?" ao lado do rótulo; ver `Campo`. */
   ajuda?: string;
+  /** Um controle próprio ao lado do rótulo; ver `Campo`. */
+  aoLadoDoRotulo?: ReactNode;
   placeholder?: string;
   /** Quando o campo não tem rótulo visível — dentro de uma tabela, por exemplo. */
   ariaLabel?: string;
@@ -252,7 +256,13 @@ export function CampoQueCompleta({
 
   if (!rotulo) return campo;
   return (
-    <Campo rotulo={rotulo} obrigatorio={obrigatorio} dica={dica} ajuda={ajuda}>
+    <Campo
+      rotulo={rotulo}
+      obrigatorio={obrigatorio}
+      dica={dica}
+      ajuda={ajuda}
+      aoLadoDoRotulo={aoLadoDoRotulo}
+    >
       {campo}
     </Campo>
   );

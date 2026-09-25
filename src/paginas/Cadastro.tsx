@@ -67,6 +67,9 @@ import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
 import { ListaDaAegea, ListaDeParticipantes } from '@/paginas/cadastro/participantes';
+import { AjudaDoCampo } from '@/componentes/AjudaDoCampo';
+import { GuiaDosFormatos } from '@/componentes/GuiaDosFormatos';
+import { GUIA_DO_CADASTRO } from '@/dominio/guiaDoCadastro';
 
 //: TÍTULO MAIOR NESTA TELA, de propósito — "Antes"/"Depois" são as únicas
 //: onde alguém passa vários minutos preenchendo, e não só lendo; o padrão de
@@ -611,6 +614,7 @@ export function Cadastro({
       <Secao
         titulo="1. Tipo de interação"
         ajuda="Escolha o tipo antes de preencher o resto. Ele muda o formulário: uma consulta recebida abre um bloco próprio mais abaixo, e alguns campos adicionais dependem dele."
+        acao={<GuiaDosFormatos formatos={catalogo.dicionarios.formatos_interacao} />}
         estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -632,7 +636,11 @@ export function Cadastro({
         </div>
       </Secao>
 
-      <Secao titulo="2. Área(s)" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="2. Área(s)"
+        acao={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.area} />}
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {catalogo.dicionarios.areas_pessoa.map((area) => {
             const ativo = form.areas.includes(area.id);
@@ -653,7 +661,11 @@ export function Cadastro({
 
       <Secao titulo="3. Identificação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
         <div className="grade grade--2" style={{ gap: 16 }}>
-          <Campo rotulo="Data da interação" obrigatorio>
+          <Campo
+            rotulo="Data da interação"
+            obrigatorio
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.data_interacao} />}
+          >
             <input
               type="date"
               style={estiloDeEntrada}
@@ -669,6 +681,7 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo={rotuloDaInstituicao}
             obrigatorio
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.instituicao} />}
             valor={form.instituicao_id}
             aoEscolher={escolherInstituicao}
             opcoes={[...catalogo.instituicoes.values()]
@@ -754,7 +767,7 @@ export function Cadastro({
 
           <CampoQueCompleta
             rotulo="Unidade de negócio"
-            ajuda="A operação da Aegea envolvida nesta agenda. Se for um assunto da holding, sem unidade específica, deixe em Holding / corporativo."
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.unidade_negocio} />}
             vazio="Holding / corporativo"
             valor={form.unidade_negocio_id}
             aoEscolher={(v) => alterar('unidade_negocio_id', v)}
@@ -771,6 +784,7 @@ export function Cadastro({
             rotulo="UF da interação"
             obrigatorio
             dica="UF, NA (nacional) ou IN (internacional)."
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.uf_interacao} />}
             valor={form.uf}
             aoEscolher={(v) => alterar('uf', v)}
             opcoes={(catalogo?.dicionarios.ufs ?? []).map((a) => ({
@@ -795,7 +809,7 @@ export function Cadastro({
               vale para toda a plataforma — um campo, um nome. */}
           <Campo
             rotulo="Temas"
-            ajuda="Escolha um dos temas disponíveis que mais se encaixa com a interação. Se nenhum estiver de acordo, você pode criar um novo na Administração, na aba Temas."
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.temas} />}
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               {catalogo.dicionarios.temas.map((tema) => {
@@ -840,8 +854,9 @@ export function Cadastro({
             exatamente a distinção que importa aqui. */}
         <div className="grade grade--mesa" style={{ gap: 16 }}>
           <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center' }}>
               Pela Aegea
+              <AjudaDoCampo verbete={GUIA_DO_CADASTRO.participantes_aegea} />
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
               Porta-voz conta no painel de exposição; equipe, não.
@@ -854,8 +869,9 @@ export function Cadastro({
           </Cartao>
 
           <Cartao>
-            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center' }}>
               Pela outra parte
+              <AjudaDoCampo verbete={GUIA_DO_CADASTRO.participantes_outra_parte} />
             </p>
             <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 14px' }}>
               Quem representa a instituição. Depois da reunião, marque quem
@@ -903,6 +919,7 @@ export function Cadastro({
                 afirmar algo falso. */}
             <CampoQueCompleta
               rotulo="Modalidade"
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.modalidade} />}
               valor={form.modalidade}
               aoEscolher={(v) => alterar('modalidade', v)}
               opcoes={[
@@ -920,6 +937,7 @@ export function Cadastro({
                     ? 'O link da chamada, ou a plataforma.'
                     : 'Endereço e sala. Na híbrida, onde fica quem vai presencialmente.'
                 }
+                aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.local} />}
               >
                 <input
                   style={estiloDeEntrada}
@@ -954,7 +972,7 @@ export function Cadastro({
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
               rotulo="Iniciativa"
-              ajuda="Quem pediu esta agenda: a Aegea ou a outra parte."
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.iniciativa} />}
               vazio="Não informada"
               valor={form.iniciativa}
               aoEscolher={(v) => alterar('iniciativa', v)}
@@ -976,7 +994,7 @@ export function Cadastro({
                 silêncio — o mesmo defeito que a pauta já teve aqui. */}
             <CampoQueCompleta
               rotulo="Situação"
-              ajuda="Aqui só há três estados: Solicitado (o pedido foi feito), Aceito ou Negado. O que aconteceu na reunião se registra na aba Depois."
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.situacao} />}
               obrigatorio
               valor={form.status}
               aoEscolher={(v) => alterar('status', v)}
@@ -1011,6 +1029,7 @@ export function Cadastro({
                 valor={form.nota_situacao}
                 aoMudar={(v) => alterar('nota_situacao', v)}
                 dica="Em que termos. Ex.: “só para março”, “com o diretor”."
+                aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.nota_aceite} />}
               />
             ) : null}
 
@@ -1018,6 +1037,7 @@ export function Cadastro({
               <>
                 <CampoQueCompleta
                   rotulo="Quem negou"
+                  aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.quem_negou} />}
                   valor={form.declinado_por}
                   aoEscolher={(v) => alterar('declinado_por', v)}
                   opcoes={[
@@ -1029,13 +1049,14 @@ export function Cadastro({
                   rotulo="Por que foi negado"
                   valor={form.motivo_declinio}
                   aoMudar={(v) => alterar('motivo_declinio', v)}
+                  aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.motivo_declinio} />}
                 />
               </>
             ) : null}
 
             <Campo
               rotulo="Relevância"
-              ajuda="O quanto esta instituição importa para a Aegea. Não se escolhe aqui: é definida no cadastro da instituição e vale igual para todas as interações com ela. Para mudar, altere o cadastro dela."
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.relevancia} />}
               dica={
                 form.instituicao_id
                   ? 'Vem do cadastro da instituição.'
@@ -1079,7 +1100,7 @@ export function Cadastro({
           <div className="grade grade--2" style={{ gap: 16, marginTop: 16 }}>
             <CampoDeDicionario
               rotulo="Clima esperado"
-              ajuda="Como você acha que a conversa vai ser, antes de ela acontecer. O clima real é registrado depois, na aba Depois."
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.clima_esperado} />}
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}
               aoMudar={(v) => alterar('clima_esperado', v)}
@@ -1091,8 +1112,8 @@ export function Cadastro({
                 existe para mostrar. */}
             <Campo
               rotulo="Veio de outras interações?"
-              ajuda="Use quando esta agenda é desdobramento de outra. Só aparecem interações que já aconteceram e que não são posteriores à data desta."
-              dica="Dá para escolher mais de uma."
+              dica="Dá para escolher mais de uma. Só aparecem interações que já aconteceram e que não são posteriores à data desta."
+              aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.origens} />}
             >
               {/* O QUE JÁ ESTÁ ESCOLHIDO VEM PRIMEIRO, e depois como escolher
                   mais: o campo se lê de cima para baixo.
@@ -1158,7 +1179,10 @@ export function Cadastro({
               projeta, de onde a agenda veio. Escrever o que se espera antes de
               responder essas coisas é escrever no vazio. */}
           <div style={{ marginTop: 16 }}>
-          <Campo rotulo="Expectativa">
+          <Campo
+            rotulo="Expectativa"
+            aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.expectativa} />}
+          >
             <textarea
               style={{ ...estiloDeEntrada, minHeight: 74, resize: 'vertical' }}
               value={form.expectativa}
@@ -1176,7 +1200,11 @@ export function Cadastro({
           se leva se junta antes, o que se traz chega depois. Separadas, cada
           instante tem o seu lugar, e a lista de preparacao nao cresce com o
           que so vai existir depois da reuniao. */}
-      <Secao titulo="7. Materiais de preparação" estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}>
+      <Secao
+        titulo="7. Materiais de preparação"
+        acao={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.materiais_preparacao} />}
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
         <Cartao>
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '0 0 16px' }}>
             Suba o arquivo, ou informe o link se ele já mora em outro lugar.
