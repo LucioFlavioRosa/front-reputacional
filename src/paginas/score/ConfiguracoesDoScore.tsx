@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react';
 import { obterOpcoesDoScore, obterScore } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { Carregando, FaixaDeErro, Secao } from '@/componentes/basicos';
-import { CalibracaoDoScore } from '@/paginas/Score';
+import { CalibracaoDoScore } from '@/paginas/score/CalibracaoDoScore';
 import { ComentarioDoEspecialista } from '@/paginas/score/ComentarioDoEspecialista';
 import type { IndiceDoScore, OpcoesDoScore } from '@/dominio/score';
 
