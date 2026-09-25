@@ -457,7 +457,7 @@ export function CadastroDeInstituicoes() {
             </Campo>
 
             {categoriaDaNova && categoriaDaNova.padrao_de_quebra !== 'sem_quebra' ? (
-              <Campo rotulo="Subcategoria" obrigatorio>
+              <Campo rotulo="Esfera" obrigatorio>
                 <select
                   style={estiloDeEntrada}
                   value={nova.subcategoria_publico_id}
@@ -947,7 +947,7 @@ function LinhaDeInstituicao({
             </select>
           </Campo>
           {categoriaDoRascunho && categoriaDoRascunho.padrao_de_quebra !== 'sem_quebra' ? (
-            <Campo rotulo="Subcategoria">
+            <Campo rotulo="Esfera">
               <select
                 style={estiloDeEntrada}
                 value={rascunho.subcategoria_publico_id}

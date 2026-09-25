@@ -691,8 +691,15 @@ export function Cadastro({
               não aparece mais aqui: continua sendo calculada por baixo (a
               tela não manda mais esse campo — quem decide é o backend, com
               `frenteDerivada`/`derivar_frente`), só deixou de ser mostrada
-              nas telas. */}
-          <Campo rotulo="Público" dica="Vem da classificação da instituição.">
+              nas telas.
+
+              SÓ A CATEGORIA aqui — a subcategoria (Esfera, Posição de
+              capital... o eixo varia por categoria, ver `padrao_de_quebra`
+              em `dominio/tipos.ts`) ganhou o card próprio ao lado, por
+              pedido: as duas juntas num campo só (como era antes, "Categoria
+              — Subcategoria") escondiam a subcategoria dentro do texto de um
+              campo que já respondia outra pergunta. */}
+          <Campo rotulo="Categoria do Público" dica="Vem da classificação da instituição.">
             <div
               style={{
                 ...estiloDeEntrada,
@@ -703,12 +710,37 @@ export function Cadastro({
               }}
             >
               {categoriaPublicoDaInstituicao
-                ? subcategoriaPublicoDaInstituicao
-                  ? `${categoriaPublicoDaInstituicao.nome} — ${subcategoriaPublicoDaInstituicao.nome}`
-                  : categoriaPublicoDaInstituicao.nome
+                ? categoriaPublicoDaInstituicao.nome
                 : instituicaoSelecionada
                   ? 'Não classificada'
                   : '—'}
+            </div>
+          </Campo>
+
+          {/* MESMA IDEIA DE "Público" (leitura, nunca gravada na interação) —
+              só a subcategoria, no lugar onde "UF da interação" estava (ela
+              desceu para o fim da grade, ver o comentário lá embaixo).
+              "Não se aplica" quando a categoria não se subdivide
+              (`padrao_de_quebra === 'sem_quebra'`) — diferente de "Não
+              classificada", que diz que DEVERIA ter uma subcategoria e
+              ninguém a escolheu ainda na Administração. */}
+          <Campo rotulo="Subcategoria do Público" dica="Vem da classificação da instituição.">
+            <div
+              style={{
+                ...estiloDeEntrada,
+                display: 'flex',
+                alignItems: 'center',
+                background: 'var(--bg-trilho)',
+                color: subcategoriaPublicoDaInstituicao ? 'var(--cinza-4)' : 'var(--cinza-2)',
+              }}
+            >
+              {subcategoriaPublicoDaInstituicao
+                ? subcategoriaPublicoDaInstituicao.nome
+                : !categoriaPublicoDaInstituicao
+                  ? '—'
+                  : categoriaPublicoDaInstituicao.padrao_de_quebra === 'sem_quebra'
+                    ? 'Não se aplica'
+                    : 'Não classificada'}
             </div>
           </Campo>
 
@@ -720,6 +752,21 @@ export function Cadastro({
               Mantê-lo aqui deixaria duas telas para o mesmo fato, capazes de
               discordar entre si. */}
 
+          <CampoQueCompleta
+            rotulo="Unidade de negócio"
+            ajuda="A operação da Aegea envolvida nesta agenda. Se for um assunto da holding, sem unidade específica, deixe em Holding / corporativo."
+            vazio="Holding / corporativo"
+            valor={form.unidade_negocio_id}
+            aoEscolher={(v) => alterar('unidade_negocio_id', v)}
+            opcoes={catalogo.dicionarios.unidades_negocio.map((u) => ({
+              valor: String(u.id),
+              rotulo: u.nome,
+            }))}
+          />
+
+          {/* UF DA INTERAÇÃO DESCEU PARA O FIM DA GRADE — por pedido, para o
+              card automático de "Subcategoria do Público" (acima) ficar ao
+              lado de "Público". */}
           <CampoQueCompleta
             rotulo="UF da interação"
             obrigatorio
@@ -734,19 +781,6 @@ export function Cadastro({
               detalhe: a.codigo,
             }))}
           />
-
-          <CampoQueCompleta
-            rotulo="Unidade de negócio"
-            ajuda="A operação da Aegea envolvida nesta agenda. Se for um assunto da holding, sem unidade específica, deixe em Holding / corporativo."
-            vazio="Holding / corporativo"
-            valor={form.unidade_negocio_id}
-            aoEscolher={(v) => alterar('unidade_negocio_id', v)}
-            opcoes={catalogo.dicionarios.unidades_negocio.map((u) => ({
-              valor: String(u.id),
-              rotulo: u.nome,
-            }))}
-          />
-
         </div>
 
         <div style={{ marginTop: 16 }}>
