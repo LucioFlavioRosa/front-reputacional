@@ -66,7 +66,10 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
-  if (primeira === 'score') return { destino: 'score' };
+  // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
+  // barra de cima daquela divisão, e uma barra cujos itens não são links não
+  // se compartilha, não volta no histórico e não recarrega onde estava.
+  if (primeira === 'score') return { destino: 'score', aba: segunda };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
   // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
   // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está
@@ -105,7 +108,7 @@ export function caminhoDe(rota: Rota): string {
     case 'sinais':
       return '/sinais';
     case 'score':
-      return '/score';
+      return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'config-score':

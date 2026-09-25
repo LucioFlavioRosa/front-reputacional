@@ -149,7 +149,10 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   const { rota, irPara } = useNavegacao();
   const naCapa = rota.destino === 'inicio';
 
-  const irParaDestino = (destino: Destino) => irPara({ destino });
+  //: A ABA ENTRA NA ROTA porque as telas do Score viraram a barra de cima
+  //: daquela divisão: uma barra cujos itens não são endereços não se
+  //: compartilha, não volta no histórico e não recarrega onde estava.
+  const irParaDestino = (destino: Destino, aba?: string) => irPara({ destino, aba });
   const abrirAgenda = (id: string) =>
     irPara({ destino: 'base', agenda: id, sobre: 'ficha' });
 
@@ -181,6 +184,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
       <Layout
         view={rota.destino}
         irPara={irParaDestino}
+        abaAtiva={rota.aba}
         eu={eu}
         podeCriar={eu?.papel?.pode_criar ?? false}
         // Esconder a entrada de quem não administra acessos é conveniência de
@@ -225,7 +229,12 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {rota.destino === 'sinais' ? <SinaisDeMercado aoAbrirAgenda={abrirAgenda} /> : null}
 
-          {rota.destino === 'score' ? <Score /> : null}
+          {rota.destino === 'score' ? (
+            <Score
+              aba={rota.aba}
+              aoTrocarAba={(aba) => irPara({ destino: 'score', aba })}
+            />
+          ) : null}
 
 
           {/* A TELA também recusa, e não só o botão.

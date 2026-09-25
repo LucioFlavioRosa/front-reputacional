@@ -21,6 +21,7 @@ import { Botao } from '@/componentes/basicos';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
+import { areaDe, NAVEGACAO_ADMINISTRATIVA } from '@/navegacao/areas';
 
 //: CADA DESTINO RESPONDE UMA PERGUNTA.
 //:
@@ -61,20 +62,6 @@ import type { Destino } from '@/navegacao/rota';
 //: Painel, Base e Preparar agenda apontam para a MESMA configuração porque são
 //: a mesma área — o CRM. Relatórios não tem engrenagem: não há o que ajustar
 //: nele, e uma engrenagem que abre uma tela vazia ensina a ignorar engrenagens.
-interface ItemDoMenu {
-  view: Destino;
-  rotulo: string;
-  /** A tela de configuração desta área, quando há uma. */
-  configura?: Destino;
-}
-
-const NAVEGACAO: ItemDoMenu[] = [
-  { view: 'painel', rotulo: 'Painel', configura: 'admin' },
-  { view: 'base', rotulo: 'Base', configura: 'admin' },
-  { view: 'preparar', rotulo: 'Preparar agenda', configura: 'admin' },
-  { view: 'relatorios', rotulo: 'Relatórios Executivos' },
-  { view: 'score', rotulo: 'Score Executivo', configura: 'config-score' },
-];
 
 /**
  * A aba de acessos fica fora da navegação principal.
@@ -91,12 +78,10 @@ const NAVEGACAO: ItemDoMenu[] = [
 //:
 //: A `view` continua `acessos` de propósito: é o que o histórico do navegador
 //: guarda, e trocá-la quebraria os links que alguém já tenha.
-export const NAVEGACAO_ADMINISTRATIVA: ItemDoMenu[] = [
-  { view: 'plataforma', rotulo: 'Plataforma' },
-];
 
 export function Layout({
   view,
+  abaAtiva,
   irPara,
   eu,
   podeCriar,
@@ -104,7 +89,9 @@ export function Layout({
   children,
 }: {
   view: Destino;
-  irPara: (view: Destino) => void;
+  /** A aba em vigor, para as divisões cujas telas dividem a mesma rota. */
+  abaAtiva?: string;
+  irPara: (view: Destino, aba?: string) => void;
   /**
    * Mostra a entrada de administração de acessos.
    *
@@ -244,7 +231,7 @@ export function Layout({
               quebrar linha conforme o número de fichas do recorte. */}
           <nav className="cabecalho__nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
             {[
-              ...NAVEGACAO,
+              ...areaDe(view),
               // A entrada administrativa entra no fim, e só para quem
               // administra: é tela usada raramente, por poucas pessoas.
               // Misturá-la com as abas de análise faria todo mundo passar por
@@ -252,12 +239,20 @@ export function Layout({
               ...(administraAcessos ? NAVEGACAO_ADMINISTRATIVA : []),
             ].map((item) => {
               const { configura } = item;
-              const ativo = view === item.view || view === configura;
+              // A ABA ENTRA NA CONTA DO ATIVO: na divisão do Score, os quatro
+              // itens apontam para a mesma `view`, e sem isto os quatro
+              // acenderiam juntos.
+              const ativo =
+                view === configura ||
+                (view === item.view && (!item.aba || item.aba === abaAtiva));
               return (
-                <span key={item.view} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <span
+                  key={`${item.view}-${item.aba ?? ''}`}
+                  style={{ display: 'inline-flex', alignItems: 'center' }}
+                >
                 <button
                   type="button"
-                  onClick={() => navegar(item.view)}
+                  onClick={() => navegar(item.view, item.aba)}
                   aria-current={ativo ? 'page' : undefined}
                   style={{
                     padding: '7px 12px',

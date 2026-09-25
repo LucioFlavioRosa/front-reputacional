@@ -28,7 +28,6 @@ import {
   obterSerieDoScore,
   restaurarCalibracaoPadrao,
 } from '@/api/cliente';
-import { Abas } from '@/componentes/Abas';
 import {
   Botao,
   Campo,
@@ -78,18 +77,16 @@ import type {
   PontoDaSerie,
 } from '@/dominio/score';
 
-const ABAS = [
-  { id: 'geral' as const, rotulo: 'Visão geral' },
-  { id: 'lentes' as const, rotulo: 'Lentes' },
-  { id: 'drivers' as const, rotulo: 'Drivers e riscos' },
-  { id: 'metodologia' as const, rotulo: 'Metodologia' },
-];
 
-type AbaDoScore = (typeof ABAS)[number]['id'];
-
-export function Score() {
+export function Score({
+  aba = 'geral',
+  aoTrocarAba,
+}: {
+  /** Vem do endereço: as telas do Score são a barra de cima da divisão. */
+  aba?: string;
+  aoTrocarAba: (aba: string) => void;
+}) {
   const [mes, definirMes] = useState<string | null>(null);
-  const [aba, definirAba] = useState<AbaDoScore>('geral');
   const [lenteAberta, definirLenteAberta] = useState<string>('imprensa');
 
   const [opcoes, definirOpcoes] = useState<OpcoesDoScore | null>(null);
@@ -168,34 +165,28 @@ export function Score() {
         titulo="Score Executivo"
         subtitulo="O Índice de Saúde Reputacional: uma nota por mês, média ponderada de cinco lentes. Vale para a companhia inteira — não segue os filtros do Painel."
         nivelDoTitulo={1}
-        acao={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {!indice.calibracao.padrao ? (
-              <Chip
-                rotulo="calibração ajustada"
-                fundo="var(--atencao-bg)"
-                texto="var(--atencao-fg)"
-                titulo="A régua em vigor é diferente da de fábrica — ver a aba Calibração."
-              />
-            ) : null}
-            <div style={{ minWidth: 150 }}>
-              <CampoQueCompleta
-                rotulo="Mês"
-                valor={mes}
-                aoEscolher={(valor) => valor && definirMes(valor)}
-                opcoes={[...opcoes.meses].reverse().map((m) => ({ valor: m, rotulo: m }))}
-              />
-            </div>
-          </div>
-        }
       >
-        <Abas
-          abas={ABAS}
-          ativa={aba}
-          aoTrocar={definirAba}
-          rotulo="O que o Score mostra"
-          prefixo="score"
-        />
+        {/* O SELETOR DE MÊS DESCEU DE `acao` PARA O CORPO. A tira de abas que
+            ficava aqui subiu para a barra do cabeçalho — sem ela, a seção
+            ficaria com cabeçalho e nada embaixo. */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 150 }}>
+            <CampoQueCompleta
+              rotulo="Mês"
+              valor={mes}
+              aoEscolher={(valor) => valor && definirMes(valor)}
+              opcoes={[...opcoes.meses].reverse().map((m) => ({ valor: m, rotulo: m }))}
+            />
+          </div>
+          {!indice.calibracao.padrao ? (
+            <Chip
+              rotulo="calibração ajustada"
+              fundo="var(--atencao-bg)"
+              texto="var(--atencao-fg)"
+              titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
+            />
+          ) : null}
+        </div>
       </Secao>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
@@ -206,7 +197,7 @@ export function Score() {
           serie={serie}
           aoAbrirLente={(codigo) => {
             definirLenteAberta(codigo);
-            definirAba('lentes');
+            aoTrocarAba('lentes');
           }}
           aoTrocarMes={definirMes}
         />
