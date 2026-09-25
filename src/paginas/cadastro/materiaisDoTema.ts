@@ -83,6 +83,23 @@ export function intocado(
     material.titulo === original.titulo &&
     material.url === original.url &&
     material.observacao === original.observacao &&
-    !material.arquivo_id
+    !material.arquivo_id &&
+    mesmosTemas(material.temas, original.temas)
   );
+}
+
+/** Os temas do documento são um CONJUNTO, e não uma lista ordenada.
+ *
+ *  A linha tem o campo "Temas do documento", com chips que se marcam e
+ *  desmarcam, e o valor viaja no corpo — eu o tinha deixado fora da comparação,
+ *  e uma linha em que a pessoa só corrigiu os temas ainda contava como intocada:
+ *  sumia ao desmarcar o tema da agenda, levando a correção junto.
+ *
+ *  Comparar POSIÇÃO inventaria uma edição que ninguém fez: marcar 9 depois de 7
+ *  e marcar 7 depois de 9 deixam a mesma linha, e a diferença de ordem faria a
+ *  linha deixar de ser recolhida quando deveria. */
+function mesmosTemas(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  const conjunto = new Set(b);
+  return a.every((id) => conjunto.has(id));
 }

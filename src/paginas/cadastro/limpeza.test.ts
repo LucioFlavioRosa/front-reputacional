@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { VAZIO } from '@/paginas/cadastro/formulario';
-import { desfazerLimpeza, limpar } from '@/paginas/cadastro/limpeza';
+import { desfazerDisponivel, desfazerLimpeza, limpar } from '@/paginas/cadastro/limpeza';
 
 const PREENCHIDO = { ...VAZIO, pauta: 'Reajuste tarifário', uf: 'SP' };
 
@@ -60,5 +60,34 @@ describe('a validade do desfazer', () => {
     const aoEscrever = { ...limpo, form: { ...limpo.form, uf: 'RJ' }, desfazer: null };
 
     expect(desfazerLimpeza(aoEscrever)).toBeNull();
+  });
+});
+
+describe('desfazerDisponivel', () => {
+  it('vale enquanto o formulário continua sendo o vazio que a limpeza deixou', () => {
+    const { desfazer, form } = limpar(PREENCHIDO, VAZIO);
+
+    expect(desfazerDisponivel(desfazer, form, VAZIO)).toBe(true);
+  });
+
+  it('CAI SOZINHO assim que qualquer coisa muda o formulário', () => {
+    // O DEFEITO QUE ISTO CONSERTA: eu retirava o desfazer numa linha dentro de
+    // `alterar` — e `alterar` é UM dos mutadores. Trocar a data, marcar um
+    // tema, marcar uma área, mexer na lista de participantes ou na de materiais
+    // passam por outros caminhos, e nenhum deles avisava. Depois de limpar e
+    // marcar um tema, o botão continuava "Desfazer limpeza", e clicar nele
+    // destruía o trabalho novo — o dano inverso, causado pelo conserto.
+    //
+    // A resposta não é acrescentar a linha nos outros seis: é o sétimo que
+    // alguém escrever amanhã. A validade passa a ser DERIVADA do formulário —
+    // qualquer mutação cria um objeto novo, e a comparação é por identidade.
+    const { desfazer } = limpar(PREENCHIDO, VAZIO);
+    const depoisDeMexer = { ...VAZIO, uf: 'RJ' };
+
+    expect(desfazerDisponivel(desfazer, depoisDeMexer, VAZIO)).toBe(false);
+  });
+
+  it('sem nada guardado, não há o que oferecer', () => {
+    expect(desfazerDisponivel(null, VAZIO, VAZIO)).toBe(false);
   });
 });

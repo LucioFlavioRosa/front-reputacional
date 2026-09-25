@@ -56,7 +56,7 @@ import {
 } from '@/paginas/cadastro/formulario';
 import type { Etapa, Formulario } from '@/paginas/cadastro/formulario';
 import { novoUid } from '@/paginas/cadastro/formulario';
-import { limpar } from '@/paginas/cadastro/limpeza';
+import { desfazerDisponivel, limpar } from '@/paginas/cadastro/limpeza';
 import { intocado, linhaDaBiblioteca } from '@/paginas/cadastro/materiaisDoTema';
 import { CampoDeDicionario, CampoDeTexto } from '@/paginas/cadastro/campos';
 import { CODIGO_DA_CONSULTA } from '@/dominio/sinais';
@@ -97,9 +97,13 @@ export function Cadastro({
 }) {
   const { catalogo, recarregar } = usePainel();
   const [form, definirForm] = useState<Formulario>(VAZIO);
-  //: O QUE "LIMPAR" LEVOU, enquanto o desfazer ainda vale. Nulo é o estado
-  //: normal; ele só existe entre o clique em Limpar e o gesto seguinte.
+  //: O QUE "LIMPAR" LEVOU. Nulo é o estado normal.
+  //:
+  //: QUEM DIZ SE ELE AINDA VALE É `desfazerDisponivel`, e não este estado: a
+  //: validade é DERIVADA do formulário, porque avisá-la a partir dos mutadores
+  //: cobriria os que existem hoje e não o próximo. Ver o comentário lá.
   const [limpou, definirLimpou] = useState<Formulario | null>(null);
+  const podeDesfazer = desfazerDisponivel(limpou, form, VAZIO);
   const [carregando, definirCarregando] = useState(Boolean(id));
   //: As agendas que podem ter dado origem a esta. Carregadas uma vez.
   const [agendas, definirAgendas] = useState<Interacao[]>([]);
@@ -306,10 +310,6 @@ export function Cadastro({
   const tierDaInstituicao = instituicaoSelecionada?.tier ?? null;
 
   const alterar = <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => {
-    //: O DESFAZER VALE POR UM GESTO. Restaurar depois que a pessoa já começou a
-    //: preencher de novo apagaria o trabalho NOVO para devolver o velho — o
-    //: mesmo dano, ao contrário, e causado pelo próprio conserto.
-    definirLimpou(null);
     definirForm((atual) => ({ ...atual, [campo]: valor }));
     definirSucesso(false);
   };
@@ -1256,7 +1256,7 @@ export function Cadastro({
               definirForm(carregado ?? VAZIO);
               return;
             }
-            if (limpou) {
+            if (podeDesfazer && limpou) {
               definirForm(limpou);
               definirLimpou(null);
               return;
@@ -1266,7 +1266,7 @@ export function Cadastro({
             definirLimpou(depois.desfazer);
           }}
         >
-          {id ? 'Desfazer alterações' : limpou ? 'Desfazer limpeza' : 'Limpar'}
+          {id ? 'Desfazer alterações' : podeDesfazer ? 'Desfazer limpeza' : 'Limpar'}
         </Botao>
         <Botao
           variante="primario"

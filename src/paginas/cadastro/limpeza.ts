@@ -46,3 +46,27 @@ export function limpar(form: Formulario, vazio: Formulario): Limpeza {
 export function desfazerLimpeza(limpeza: Limpeza): Formulario | null {
   return limpeza.desfazer;
 }
+
+/** O desfazer ainda pode ser oferecido?
+ *
+ *  DERIVADA DO FORMULÁRIO, E NÃO AVISADA PELOS MUTADORES — e a diferença é o
+ *  conserto inteiro. A primeira versão retirava o desfazer numa linha dentro de
+ *  `alterar`, e `alterar` é UM dos mutadores: trocar a data, marcar um tema ou
+ *  uma área, mexer na lista de participantes ou na de materiais passam por
+ *  outros caminhos, e nenhum avisava. Depois de limpar e marcar um tema o botão
+ *  continuava "Desfazer limpeza", e clicar nele destruía o trabalho novo — o
+ *  dano inverso, causado pelo próprio conserto.
+ *
+ *  A resposta não era acrescentar a linha nos outros seis: seria o sétimo que
+ *  alguém escrevesse amanhã. Aqui a pergunta se responde sozinha — a limpeza
+ *  deixa o formulário SENDO o objeto `vazio`, e toda mutação deste formulário
+ *  cria um objeto novo. Identidade, e não igualdade: é o que torna a regra
+ *  impossível de esquecer, porque ela não depende de ninguém lembrar.
+ */
+export function desfazerDisponivel(
+  desfazer: Formulario | null,
+  formAtual: Formulario,
+  vazio: Formulario,
+): boolean {
+  return desfazer !== null && formAtual === vazio;
+}

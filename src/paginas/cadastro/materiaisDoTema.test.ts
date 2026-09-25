@@ -117,3 +117,28 @@ describe('a identidade da linha', () => {
     expect(intocado(linha, REFERENCIA, url)).toBe(true);
   });
 });
+
+describe('os temas do documento', () => {
+  it('mexer neles é edição — a linha deixa de ser da biblioteca', () => {
+    // `temas` É CAMPO EDITÁVEL: a linha do material tem "Temas do documento",
+    // com os chips que se marcam e desmarcam, e o valor viaja no corpo. Eu
+    // tinha deixado ele fora da comparação, então uma linha em que a pessoa só
+    // corrigiu os temas ainda contava como "intocada" — e sumia ao desmarcar o
+    // tema da agenda, levando a correção junto.
+    const linha = { ...linhaDaBiblioteca(REFERENCIA, url), temas: [7, 9] };
+
+    expect(intocado(linha, REFERENCIA, url)).toBe(false);
+  });
+
+  it('a mesma lista em outra ordem não é edição', () => {
+    // Os chips são um conjunto: marcar 9 depois de 7 e marcar 7 depois de 9
+    // deixam a mesma linha. Comparar posição inventaria uma edição que ninguém
+    // fez, e a linha deixaria de ser recolhida quando deveria.
+    const linha = {
+      ...linhaDaBiblioteca({ ...REFERENCIA, temas: [7, 9] }, url),
+      temas: [9, 7],
+    };
+
+    expect(intocado(linha, { ...REFERENCIA, temas: [7, 9] }, url)).toBe(true);
+  });
+});
