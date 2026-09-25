@@ -231,7 +231,15 @@ export function GraficoDeArvore({
       </svg>
 
       {legenda?.length ? (
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10, paddingLeft: 2 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            marginTop: 10,
+          }}
+        >
           {legenda.map(({ cor, rotulo }) => (
             <div key={rotulo} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span aria-hidden style={{ width: 11, height: 11, background: cor, flexShrink: 0 }} />

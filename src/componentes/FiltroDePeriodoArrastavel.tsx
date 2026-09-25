@@ -77,9 +77,14 @@ function descreverDias(dias: number): string {
 export function FiltroDePeriodoArrastavel({
   recorte,
   definirRecorte,
+  aoConcluir,
 }: {
   recorte: Recorte;
   definirRecorte: (recorte: Recorte) => void;
+  /** Chamado depois de soltar QUALQUER um dos dois cabos — por pedido, para
+   *  quem chama poder recolher o painel de "Período" assim que uma seleção
+   *  termina, em vez de esperar um clique manual na seta. */
+  aoConcluir?: () => void;
 }) {
   const refDaTrilha = useRef<HTMLDivElement>(null);
   //: UMA VEZ SÓ POR MONTAGEM — a tela não fica aberta dias a fio, e recalcular
@@ -123,12 +128,14 @@ export function FiltroDePeriodoArrastavel({
     const proximo = { ...recorte, de: deHaDias(-offset) };
     delete proximo.periodoPassado;
     definirRecorte(proximo);
+    aoConcluir?.();
   }
 
   function commitFim(offset: number) {
     const proximo = { ...recorte, ate: ateEmDias(offset) };
     delete proximo.periodoFuturo;
     definirRecorte(proximo);
+    aoConcluir?.();
   }
 
   const percentualInicio = ((inicio + LIMITE_EM_DIAS) / (2 * LIMITE_EM_DIAS)) * 100;
@@ -156,8 +163,8 @@ export function FiltroDePeriodoArrastavel({
         ref={refDaTrilha}
         style={{
           position: 'relative',
-          height: 32,
-          margin: '4px 10px 0',
+          height: 24,
+          margin: '4px 8px 0',
         }}
       >
         {/* A TRILHA — fina, atrás dos cabos. */}
@@ -194,7 +201,7 @@ export function FiltroDePeriodoArrastavel({
             top: '50%',
             left: `${percentualDeHoje}%`,
             width: 2,
-            height: 14,
+            height: 11,
             background: 'var(--sobre-turquesa)',
             opacity: 0.5,
             transform: 'translate(-50%, -50%)',
@@ -315,8 +322,8 @@ function CaboDaTrilha({
         position: 'absolute',
         top: '50%',
         left: `${posicaoPercentual}%`,
-        width: 18,
-        height: 16,
+        width: 15,
+        height: 13,
         clipPath: 'polygon(0% 0%, 100% 0%, 50% 100%)',
         background: 'var(--azul-mar)',
         filter: 'drop-shadow(0 1px 3px rgba(0,25,120,0.4))',

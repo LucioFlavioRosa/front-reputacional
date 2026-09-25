@@ -23,7 +23,15 @@ import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
-import { numero, percentual, rotuloDaSemana, rotuloDoMes, rotuloDoSemestre } from '@/dominio/formato';
+import {
+  dataCurta,
+  numero,
+  paraIso,
+  percentual,
+  rotuloDaSemana,
+  rotuloDoMes,
+  rotuloDoSemestre,
+} from '@/dominio/formato';
 import {
   CORES_DE_FRENTE,
   ROTULOS_DE_FRENTE,
@@ -32,6 +40,7 @@ import {
   alternar,
   alternarCategoriaPublico,
   alternarTag,
+  intervalo,
   limparAreas,
   limparCategoriaPublico,
   limparFormatoInteracao,
@@ -177,7 +186,11 @@ function calcularNssPorPeriodo(
  *  contêiner os corta, não porque a barra em si tem raio próprio. */
 function ComFaixaDoTopo({ children }: { children: ReactNode }) {
   return (
-    <div style={{ position: 'relative', borderRadius: 'var(--r-card)', overflow: 'hidden' }}>
+    <div style={{ position: 'relative' }}>
+      {/* SEM `overflow: hidden` no contêiner — cortava o balão do "?" (Ajuda)
+          toda vez que ele estourava a borda do card. O arredondado dos
+          cantos da faixa agora é raio PRÓPRIO da faixa, não recorte do
+          contêiner por cima dela. */}
       <div
         aria-hidden
         style={{
@@ -186,6 +199,7 @@ function ComFaixaDoTopo({ children }: { children: ReactNode }) {
           left: 0,
           right: 0,
           height: 3,
+          borderRadius: 'var(--r-card) var(--r-card) 0 0',
           background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
         }}
       />
@@ -513,6 +527,18 @@ export function Painel({
     (categoria) => !derivado.scorePorCategoriaPublico.itens.some((item) => item.chave === categoria.chave),
   );
 
+  //: O RESUMO AO LADO DE "Período", quando o painel está fechado — por
+  //: pedido. `null` sem NENHUM filtro de período ativo (recorte inteiro,
+  //: sem data/atalho nenhum): "Período" sozinho já diz isso.
+  const temFiltroDePeriodo = Boolean(
+    recorte.de || recorte.ate || recorte.periodoPassado || recorte.periodoFuturo,
+  );
+  const { de: inicioDoPeriodo, ate: fimDoPeriodo } = intervalo(recorte);
+  const resumoDoPeriodo =
+    temFiltroDePeriodo && inicioDoPeriodo && fimDoPeriodo
+      ? `${dataCurta(paraIso(inicioDoPeriodo))} – ${dataCurta(paraIso(fimDoPeriodo))}`
+      : null;
+
   //: "+ ADICIONAR PÚBLICO" do Net Sentiment Score no tempo — TODA a
   //: taxonomia (não só quem já tem clima registrado, diferente de
   //: `categoriaPublicoDisponiveis`): aqui a pergunta é "qual público eu
@@ -687,7 +713,13 @@ export function Painel({
                 color: 'var(--cinza-3)',
               }}
             >
-              <span>Período</span>
+              {/* O INTERVALO SELECIONADO aparece aqui só FECHADO — por pedido,
+                  para não repetir a mesma informação que já está por extenso
+                  dentro do painel aberto (`FiltroDePeriodoArrastavel`). */}
+              <span>
+                Período
+                {!periodoAberto && resumoDoPeriodo ? ` · ${resumoDoPeriodo}` : ''}
+              </span>
               <SetaSuspensa aberto={periodoAberto} />
             </button>
             {periodoAberto ? (
@@ -697,10 +729,17 @@ export function Painel({
                   border: '1px solid var(--borda)',
                   borderTop: 'none',
                   borderRadius: '0 0 var(--r-card) var(--r-card)',
-                  padding: '10px 16px 12px',
+                  padding: '8px 14px 10px',
                 }}
               >
-                <FiltroDePeriodoArrastavel recorte={recorte} definirRecorte={definirRecorte} />
+                {/* RECOLHE SOZINHO ao soltar qualquer um dos dois cabos — por
+                    pedido. O intervalo escolhido continua visível depois,
+                    escrito ao lado de "Período" (acima). */}
+                <FiltroDePeriodoArrastavel
+                  recorte={recorte}
+                  definirRecorte={definirRecorte}
+                  aoConcluir={() => definirPeriodoAberto(false)}
+                />
               </div>
             ) : null}
           </>
