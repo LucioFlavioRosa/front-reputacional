@@ -1375,21 +1375,6 @@ export function temasPorPortaVoz(
   return resultado;
 }
 
-/** Fora do escopo: registro cujo tema não está entre os temas autorizados do
- *  porta-voz que o conduziu. Depende de `pessoa_aegea_tema`, que ainda não é
- *  exposto pela API — por isso a função recebe os temas autorizados de fora. */
-export function aderenciaAoEscopo(
-  exposicao: ExposicaoDePortaVoz,
-  temasAutorizados: string[] | undefined,
-): { dentro: number; fora: number; semCadastro: boolean } {
-  if (!temasAutorizados?.length) {
-    return { dentro: 0, fora: 0, semCadastro: true };
-  }
-  const autorizados = new Set(temasAutorizados);
-  const dentro = exposicao.temas.filter((t) => autorizados.has(t)).length;
-  return { dentro, fora: exposicao.temas.length - dentro, semCadastro: false };
-}
-
 /* -- interlocutores ------------------------------------------------------- */
 
 export interface PanoramaDeInterlocutor {
@@ -1436,12 +1421,6 @@ export function panoramaDeInterlocutores(
 
 export type Janela = 'semestre' | 'trimestre' | '90d';
 
-export const ROTULOS_DE_JANELA: Record<Janela, string> = {
-  semestre: 'Semestres',
-  trimestre: 'Trimestres',
-  '90d': 'Últimos 90 dias',
-};
-
 export interface Comparativo<T> {
   atual: T[];
   anterior: T[];
@@ -1480,12 +1459,6 @@ export function novosContatos(comparativo: Comparativo<Interacao>): number {
   const antes = new Set(comparativo.anterior.map((i) => i.interlocutor_id).filter(Boolean));
   const agora = new Set(comparativo.atual.map((i) => i.interlocutor_id).filter(Boolean));
   return [...agora].filter((id) => !antes.has(id)).length;
-}
-
-export function semContatoNoPeriodo(comparativo: Comparativo<Interacao>): number {
-  const antes = new Set(comparativo.anterior.map((i) => i.interlocutor_id).filter(Boolean));
-  const agora = new Set(comparativo.atual.map((i) => i.interlocutor_id).filter(Boolean));
-  return [...antes].filter((id) => !agora.has(id)).length;
 }
 
 /** A agenda já aconteceu?

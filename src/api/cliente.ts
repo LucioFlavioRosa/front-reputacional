@@ -13,7 +13,6 @@ import type {
   FonteDoScore,
   ImportacaoDoScore,
   IndiceDoScore,
-  LenteDetalhada,
   OpcoesDoScore,
   PontoDaSerie,
 } from '@/dominio/score';
@@ -728,10 +727,6 @@ export function obterScore(mes: string): Promise<IndiceDoScore> {
 
 export function obterSerieDoScore(): Promise<PontoDaSerie[]> {
   return requisitar<PontoDaSerie[]>('/api/score/serie');
-}
-
-export function obterLenteDoScore(codigo: string, mes: string): Promise<LenteDetalhada> {
-  return requisitar<LenteDetalhada>(`/api/score/lentes/${codigo}?mes=${mes}`);
 }
 
 export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {

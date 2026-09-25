@@ -10,8 +10,6 @@
  *  faixa, o rótulo de uma régua, como se lê um delta.
  */
 
-import type { Segmento } from '@/dominio/derivacoes';
-
 export interface LenteDoScore {
   codigo: string;
   nome: string;
@@ -434,16 +432,5 @@ export function lentesOrdenadas(lentes: LenteDoScore[]): LenteDoScore[] {
   const comDado = lentes.filter((lente) => lente.score !== null);
   const sem = lentes.filter((lente) => lente.score === null);
   return [...comDado.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)), ...sem];
-}
-
-/** A composição de uma lente como os segmentos que a barra desenha. */
-export function segmentosDaComposicao(
-  composicao: { positivo: number; neutro: number; negativo: number },
-): Segmento[] {
-  return [
-    { chave: 'pos', rotulo: 'Positivo', total: composicao.positivo, cor: 'var(--ok-fg)' },
-    { chave: 'neu', rotulo: 'Neutro', total: composicao.neutro, cor: 'var(--cinza-2)' },
-    { chave: 'neg', rotulo: 'Negativo', total: composicao.negativo, cor: 'var(--erro-fg)' },
-  ];
 }
 

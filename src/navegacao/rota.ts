@@ -21,7 +21,7 @@
 
 import type { Recorte } from '@/dominio/recorte';
 import type { AtalhoDePeriodo } from '@/dominio/recorte';
-import type { Frente, GrupoDeStatus } from '@/dominio/tipos';
+import type { GrupoDeStatus } from '@/dominio/tipos';
 
 /** As telas que têm endereço próprio. */
 export type Destino =
@@ -46,8 +46,6 @@ export interface Rota {
   /** A aba da administração. */
   aba?: string;
 }
-
-export const ROTA_INICIAL: Rota = { destino: 'inicio' };
 
 /** O caminho vira rota.
  *
@@ -187,12 +185,6 @@ export function nomeDaTela(rota: Rota): string {
   if (rota.sobre) return `${rota.destino}:${rota.sobre}`;
   if (rota.destino === 'admin' && rota.aba) return `admin:${rota.aba}`;
   return rota.destino;
-}
-
-/** Frente e grupo chegam da URL como texto livre. Validar aqui evita que um
- *  link torto vire um filtro que o backend recusa com 422. */
-export function frenteValida(valor: string | undefined, validas: readonly string[]): Frente | undefined {
-  return valor && validas.includes(valor) ? (valor as Frente) : undefined;
 }
 
 export type { AtalhoDePeriodo, GrupoDeStatus };
