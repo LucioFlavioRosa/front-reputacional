@@ -13,6 +13,7 @@ import {
   curvaPor,
   dominioDe,
   coberturaDoMes,
+  fraseDosParciais,
   jornadaDoIndice,
   mesPorExtenso,
   resumoDa,
@@ -607,5 +608,75 @@ describe('o mês medido por poucas lentes', () => {
     const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
 
     expect(jornadaDoIndice(serie, '2026-06', null).eixoRegidoPorParciais).toBe(false);
+  });
+});
+
+describe('o ponto que sai do eixo', () => {
+  it('é PRESO À BORDA DA FAIXA, e não à borda do desenho', () => {
+    // O DEFEITO QUE EU INTRODUZI: mudei o critério de `foraDaEscala` para o
+    // domínio e deixei o `topo` preso em 0..100% do viewBox. Mas a faixa
+    // desenhada vai de PAD_TOPO a altura−PAD_BASE — sobra folga em cima. Um 81
+    // com domínio 45..80 era marcado como fora da escala E desenhado dentro do
+    // gráfico, flutuando acima da marca de 80: o aviso dizia uma coisa e o
+    // desenho outra.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 81, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+    const topoDaFaixa = (14 / 330) * 100;
+
+    expect(julho?.foraDaEscala).toBe(true);
+    expect(julho?.topo).toBeCloseTo(topoDaFaixa, 2);
+  });
+
+  it('o que cabe no domínio continua no lugar exato', () => {
+    // O contrapeso: prender na borda não pode arrastar quem está dentro.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 80, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+
+    // 80 é o teto: cai exatamente na borda de cima, por cálculo e não por corte.
+    expect(julho?.foraDaEscala).toBe(false);
+    expect(julho?.topo).toBeCloseTo((14 / 330) * 100, 2);
+  });
+
+  it('abaixo do piso, encosta embaixo', () => {
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 10, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+    const baseDaFaixa = ((330 - 34) / 330) * 100;
+
+    expect(julho?.foraDaEscala).toBe(true);
+    expect(julho?.topo).toBeCloseTo(baseDaFaixa, 2);
+  });
+});
+
+describe('fraseDosParciais', () => {
+  it('no singular, não diz "deles"', () => {
+    // "1 mês medido por menos de 4 lentes — 1 deles está fora" tem antecedente
+    // singular e pronome plural. A frase estava montada em três ramificações
+    // dentro do JSX, que é onde esse tipo de coisa se esconde.
+    expect(fraseDosParciais(1, 1, false)).toBe(
+      '1 mês medido por menos de 4 lentes — e ele está fora da escala do eixo',
+    );
+  });
+
+  it('no plural, concorda', () => {
+    expect(fraseDosParciais(3, 2, false)).toBe(
+      '3 meses medidos por menos de 4 lentes — 2 deles estão fora da escala do eixo',
+    );
+  });
+
+  it('sem nenhum fora da escala, não inventa a segunda metade', () => {
+    expect(fraseDosParciais(3, 0, false)).toBe('3 meses medidos por menos de 4 lentes');
+  });
+
+  it('quando os parciais regem o eixo, diz isso em vez de "fora dele"', () => {
+    expect(fraseDosParciais(3, 0, true)).toBe(
+      '3 meses medidos por menos de 4 lentes — são eles que regem o eixo, por não haver mês completo',
+    );
+  });
+
+  it('sem mês parcial nenhum, não há frase', () => {
+    expect(fraseDosParciais(0, 0, false)).toBe('');
   });
 });

@@ -33,6 +33,11 @@ export const VB = { largura: 1000, altura: 330 } as const;
 /** Folga no topo, e a faixa de baixo onde moram os nomes dos meses. */
 const PAD_TOPO = 14;
 const PAD_BASE = 34;
+//: AS BORDAS DA FAIXA DESENHADA, em porcentagem da altura — que é a unidade em
+//: que o ponto é posicionado em HTML sobre o SVG. É contra elas que um valor
+//: fora do eixo encosta; contra as bordas do viewBox ele flutuaria na folga.
+const TOPO_DA_FAIXA = (PAD_TOPO / VB.altura) * 100;
+const BASE_DA_FAIXA = ((VB.altura - PAD_BASE) / VB.altura) * 100;
 /** A altura que o rótulo de um ponto ocupa, em unidades do viewBox.
  *
  *  ESTA CONSTANTE SÓ VALE PORQUE O RÓTULO ENCOLHE JUNTO com o gráfico. Ela é
@@ -135,6 +140,42 @@ const LENTES_NO_MODELO = 5;
  *  é ativo de valor" — a partir de uma única reunião de CRM registrada no mês.
  *  Tirar o ponto da curva seria a outra saída, e foi recusada por quem cuida do
  *  produto: o mês existe, e o que faltava era dizer do que ele é feito. */
+/** A frase da legenda sobre os meses parciais — ou vazia, quando não há nenhum.
+ *
+ *  SAIU DO JSX porque ela tem três ramificações e uma concordância, e isso é
+ *  exatamente o que não se revisa dentro de um ternário aninhado no meio de um
+ *  `<span>`. A versão anterior dizia "1 mês medido por menos de 4 lentes — 1
+ *  DELES está fora da escala": antecedente singular, pronome plural.
+ *
+ *  SÃO DUAS CONTAS, e não uma. "Medido por poucas lentes" e "fora da escala do
+ *  eixo" eram ditos como se fossem a mesma coisa; um mês parcial costuma cair
+ *  DENTRO do eixo, e quando não há nenhum mês completo são os parciais que
+ *  REGEM o eixo — aí eles não estão fora dele, eles SÃO ele. */
+export function fraseDosParciais(
+  parciais: number,
+  foraDaEscala: number,
+  eixoRegidoPorParciais: boolean,
+): string {
+  if (!parciais) return '';
+  const base =
+    parciais === 1
+      ? `1 mês medido por menos de ${LENTES_PARA_SER_COMPLETO} lentes`
+      : `${parciais} meses medidos por menos de ${LENTES_PARA_SER_COMPLETO} lentes`;
+
+  if (eixoRegidoPorParciais) {
+    return `${base} — são eles que regem o eixo, por não haver mês completo`;
+  }
+  if (!foraDaEscala) return base;
+
+  const segunda =
+    parciais === 1
+      ? 'e ele está fora da escala do eixo'
+      : foraDaEscala === 1
+        ? '1 deles está fora da escala do eixo'
+        : `${foraDaEscala} deles estão fora da escala do eixo`;
+  return `${base} — ${segunda}`;
+}
+
 export function coberturaDoMes(lentes: number): string {
   if (lentes >= LENTES_PARA_SER_COMPLETO) return '';
   return `${lentes} de ${LENTES_NO_MODELO} lentes`;
@@ -476,10 +517,16 @@ export function jornadaDoIndice(
     return {
       mes: ponto.mes,
       esquerda: (x(i) / VB.largura) * 100,
-      // PRESO À BORDA quando o valor sai do eixo: o número continua escrito ao
-      // lado, e o ponto na borda diz que ele está além dela. Desenhá-lo no y
-      // real o jogaria por cima das colunas, fora do gráfico.
-      topo: Math.max(0, Math.min(100, alturaCrua)),
+      // PRESO À BORDA DA FAIXA quando o valor sai do eixo: o número continua
+      // escrito ao lado, e o ponto encostado na borda diz que ele está além
+      // dela. Desenhá-lo no y real o jogaria por cima das colunas.
+      //
+      // CONTRA A FAIXA, E NÃO CONTRA O DESENHO. O corte era 0..100% do viewBox,
+      // e a faixa desenhada vai de PAD_TOPO a altura−PAD_BASE: sobra folga em
+      // cima e embaixo. Um 81 com domínio 45..80 era marcado como fora da
+      // escala E desenhado dentro do gráfico, flutuando acima da marca de 80 —
+      // o aviso dizia uma coisa e o desenho dizia outra.
+      topo: Math.min(Math.max(alturaCrua, TOPO_DA_FAIXA), BASE_DA_FAIXA),
       cx: x(i),
       cy: y(isr),
       isr,

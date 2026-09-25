@@ -39,7 +39,11 @@ import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
-import { coberturaDoMes, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import {
+  coberturaDoMes,
+  fraseDosParciais,
+  jornadaDoIndice,
+} from '@/dominio/jornadaDoIndice';
 import {
   FAIXAS,
   comoDelta,
@@ -382,16 +386,11 @@ function VisaoGeral({
                     border: '2px dashed var(--cinza-2)',
                   }}
                 />
-                {mesesParciais === 1
-                  ? '1 mês medido por menos de 4 lentes'
-                  : `${mesesParciais} meses medidos por menos de 4 lentes`}
-                {jornada.eixoRegidoPorParciais
-                  ? ' — são eles que regem o eixo, por não haver mês completo'
-                  : mesesForaDaEscala === 1
-                    ? ' — 1 deles está fora da escala do eixo'
-                    : mesesForaDaEscala
-                      ? ` — ${mesesForaDaEscala} deles estão fora da escala do eixo`
-                      : ''}
+                {fraseDosParciais(
+                  mesesParciais,
+                  mesesForaDaEscala,
+                  jornada.eixoRegidoPorParciais,
+                )}
               </span>
             ) : null}
             {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe

@@ -600,7 +600,13 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   .jornada__nota { font-size: 13px; }
   .jornada__rotulo .kicker { font-size: 9px; }
 }
+/* A COBERTURA SAI ONDE NÃO CABE. "1 de 5 lentes" é mais largo que uma coluna de
+   mês num celular com dez meses, e a etiqueta é `nowrap` — ela invadiria a
+   vizinha. O aviso não se perde: ele continua no cartão do mês, na legenda
+   abaixo do gráfico e no nome acessível do ponto, que é onde ele sempre esteve
+   para quem usa leitor de tela. */
 @media (max-width: 560px) {
   .jornada__rotulo { --jornada-afasta: 10px; }
   .jornada__nota { font-size: 12px; }
+  .jornada__cobertura { display: none; }
 }

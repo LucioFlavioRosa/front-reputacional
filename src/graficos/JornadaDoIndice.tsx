@@ -584,10 +584,8 @@ function Ponto({
             O AVISO DE ESCALA SOZINHO CONTINUA POSSÍVEL: um mês completo pode
             sair do eixo quando a lente comparada estica o domínio. */}
         {ponto.cobertura || ponto.foraDaEscala ? (
-          <span className="kicker" style={{ color: 'var(--cinza-2)' }}>
-            {[ponto.cobertura, ponto.foraDaEscala ? 'fora da escala' : '']
-              .filter(Boolean)
-              .join(' · ')}
+          <span className="kicker jornada__cobertura" style={{ color: 'var(--cinza-2)' }}>
+            {ponto.cobertura || 'fora da escala'}
           </span>
         ) : null}
       </span>
