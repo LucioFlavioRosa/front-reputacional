@@ -4,6 +4,7 @@ import { registrarErro } from '@/observabilidade/telemetria';
 import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Dossie } from '@/dominio/dossie';
+import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
   Calibracao,
@@ -79,7 +80,22 @@ export function guardarTokenAntiCsrf(token: string): void {
 /** `GET`, `HEAD` e `OPTIONS` não alteram estado e não levam token. */
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+/** Opções que não são do `fetch`: mudam como a RESPOSTA é lida, não o pedido. */
+interface ComoLer {
+  /** Devolve o corpo como `Blob`, para download de arquivo.
+   *
+   *  ESTÁ AQUI E NÃO NUM SEGUNDO `fetch` porque `requisitar` é o único lugar que
+   *  avisa — erro de rede, 5xx na telemetria, mudança de catálogo. Um `fetch`
+   *  paralelo seria um caminho que falha sem ninguém saber, e o teste que conta
+   *  as chamadas a `fetch` neste arquivo existe justamente para impedir isso. */
+  comoBlob?: boolean;
+}
+
+async function requisitar<T>(
+  caminho: string,
+  opcoes: RequestInit = {},
+  como: ComoLer = {},
+): Promise<T> {
   let resposta: Response;
   const metodo = (opcoes.method ?? 'GET').toUpperCase();
 
@@ -125,6 +141,15 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
   if (resposta.status === 204) {
     avisarSeMudouOCatalogo(metodo, caminho);
     return undefined as T;
+  }
+
+  // O BINÁRIO SAI ANTES DA LEITURA COMO TEXTO, porque um `.xlsx` lido como
+  // texto e passado ao `JSON.parse` estoura — e o erro falaria de sintaxe JSON
+  // sobre um arquivo perfeitamente válido. O caminho de erro continua o mesmo:
+  // um 4xx/5xx aqui ainda traz corpo de texto, e é ele que explica o problema.
+  if (como.comoBlob && resposta.ok) {
+    avisarSeMudouOCatalogo(metodo, caminho);
+    return (await resposta.blob()) as T;
   }
 
   const corpo = await resposta.text();
@@ -927,4 +952,98 @@ export function urlDaVersao(referenciaId: string, versaoId: string): string {
 export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDaReuniao[]> {
   const parametros = paraParametros(recorte).toString();
   return requisitar<DocumentoDaReuniao[]>(`/api/materiais?${parametros}`);
+}
+
+// -- importação de agendas por planilha ---------------------------------------
+
+/** Uma linha do arquivo, como a conferência a mostra. */
+export interface LinhaDaImportacao {
+  id: number;
+  aba: string;
+  linha_origem: number;
+  decisao: string;
+  interacao_id: string | null;
+  dados_brutos: Record<string, unknown>;
+  proposta: Record<string, unknown> | null;
+  divergencias: {
+    campo: string;
+    valor: string;
+    mensagem: string;
+    trava: boolean;
+    sugestoes: string[];
+    acao: string | null;
+    alvo: string | null;
+  }[];
+}
+
+export interface Importacao {
+  id: string;
+  arquivo_nome: string;
+  situacao: string;
+  criado_em: string;
+  confirmado_em: string | null;
+  grupos: Grupo[];
+  a_criar: ACriar[];
+  /** Quantas LINHAS seguram a confirmação. */
+  pendencias: number;
+  /** Quantas decisões resolvem essas linhas. */
+  decisoes_pendentes: number;
+  linhas: LinhaDaImportacao[];
+}
+
+export interface ConfirmacaoDaImportacao {
+  criadas: number;
+  cadastros: number;
+  situacao: string;
+}
+
+/** Baixa o modelo `.xlsx` com o cadastro atual nas listas suspensas.
+ *
+ *  PASSA POR `requisitar` como todo o resto, com `comoBlob`. Um `fetch` próprio
+ *  seria um caminho de rede que falha sem avisar ninguém — sem telemetria de
+ *  5xx, sem a tradução de erro de rede —, e há um teste neste projeto contando
+ *  as chamadas a `fetch` exatamente para impedir que apareça um segundo.
+ */
+export async function baixarModeloDeImportacao(): Promise<Blob> {
+  return requisitar<Blob>('/api/importacoes/modelo', { method: 'GET' }, { comoBlob: true });
+}
+
+/** Sobe a planilha preenchida e recebe a conferência.
+ *
+ *  O CORPO É `FormData` e o `Content-Type` fica para o navegador escrever — ele
+ *  acrescenta o `boundary` que separa as partes, e escrevê-lo à mão faz o
+ *  servidor receber um multipart que não consegue separar.
+ */
+export async function subirPlanilhaDeAgendas(arquivo: File): Promise<Importacao> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<Importacao>('/api/importacoes', { method: 'POST', body: corpo });
+}
+
+/** A conferência de onde ela parou. */
+export async function obterImportacao(id: string): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}`);
+}
+
+/** Uma decisão, todas as linhas que aquele valor segurava. */
+export async function resolverDivergencia(
+  id: string,
+  decisao: { campo: string; valor: string; decisao: string; alvo?: string },
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/resolucoes`, {
+    method: 'PATCH',
+    body: JSON.stringify(decisao),
+  });
+}
+
+/** Cria os cadastros e as agendas — tudo, ou nada. */
+export async function confirmarImportacao(id: string): Promise<ConfirmacaoDaImportacao> {
+  return requisitar<ConfirmacaoDaImportacao>(`/api/importacoes/${id}/confirmacao`, {
+    method: 'POST',
+  });
+}
+
+/** Desiste da importação. Nada foi criado, então nada há para desfazer. */
+export async function cancelarImportacao(id: string): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/cancelamento`, { method: 'POST' });
 }

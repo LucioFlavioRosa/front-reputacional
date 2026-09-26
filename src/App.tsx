@@ -16,6 +16,7 @@ import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
+import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
@@ -225,6 +226,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {rota.destino === 'base' ? (
             <Base
+              podeImportar={eu?.papel?.administra_dicionarios ?? false}
               aoAbrirFicha={abrirAgenda}
               aoAbrirCadeia={(id) =>
                 irPara({ destino: 'base', agenda: id, sobre: 'cadeia' })
@@ -278,6 +280,14 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             <PortalDaPlataforma euId={eu?.id ?? null} />
           ) : null}
           {rota.destino === 'config-score' ? <ConfiguracoesDoScore /> : null}
+          {/* A CONFERÊNCIA DA IMPORTAÇÃO TEM ENDEREÇO PRÓPRIO, com o id dentro:
+              54 agendas não se conferem numa sentada, e sem endereço fechar a
+              aba custaria subir o arquivo de novo. Com endereço, a pessoa volta
+              de onde parou e pode mandar o link a quem for decidir uma pendência
+              que não é dela. */}
+          {rota.destino === 'importacao' && rota.importacao ? (
+            <ConferirImportacao id={rota.importacao} />
+          ) : null}
         </LimiteDeErro>
       </Layout>
 

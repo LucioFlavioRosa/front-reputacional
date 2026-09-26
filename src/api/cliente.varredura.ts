@@ -11,8 +11,9 @@
  *  que não reconhece — e "não reconheci" tem de ser falha, e não silêncio.
  *
  *  A REGRA: toda menção a `requisitar` no fonte é a definição ou uma chamada
- *  na FORMA CANÔNICA — caminho literal começando em `/api/`, e `method` literal
- *  ou nenhum. Alias, verbo em variável, rota em constante: a varredura não
+ *  na FORMA CANÔNICA — caminho literal começando em `/api/`, `method` literal ou
+ *  nenhum, e um terceiro argumento opcional (objeto literal) que diz como LER a
+ *  resposta. Alias, verbo em variável, rota em constante: a varredura não
  *  classifica, e devolve o problema com o nome da função. É a forma canônica
  *  que faz o fonte legível para pessoas e para esta varredura ao mesmo tempo.
  */
@@ -163,6 +164,21 @@ export function varrerChamadas(fonteBruto: string): Varredura {
       metodo = verbos[0];
       i = pularEspaco(fonte, opcoes.fim);
       if (fonte[i] === ',') i = pularEspaco(fonte, i + 1);
+
+      // O TERCEIRO ARGUMENTO diz como LER a resposta, não o que pedir — hoje só
+      // `comoBlob`, para download de arquivo. Aceitá-lo aqui é o que permite o
+      // download passar por `requisitar` em vez de abrir um segundo `fetch`, que
+      // seria um caminho de rede falhando sem avisar ninguém. Continua tendo de
+      // ser objeto literal: a varredura não classifica o que não entende.
+      if (fonte[i] === '{') {
+        const comoLer = lerObjeto(fonte, i);
+        if (!comoLer) {
+          problema('o terceiro argumento não é um objeto literal');
+          continue;
+        }
+        i = pularEspaco(fonte, comoLer.fim);
+        if (fonte[i] === ',') i = pularEspaco(fonte, i + 1);
+      }
     }
     if (fonte[i] !== ')') {
       problema('a chamada não fecha logo depois do caminho ou das opções');
