@@ -22,7 +22,8 @@ const TRAVA: Grupo = {
   valor: 'Prefeitura de Campinas',
   linhas: [2, 3],
   trava: true,
-  sugestoes: ['Prefeitura Municipal de Campinas'],
+  sugestoes: [{ nome: 'Prefeitura Municipal de Campinas', alvo: 'id-da-prefeitura' }],
+  pode_criar: true,
 };
 
 /** A duplicata possível vem sob o campo `duplicata`, e não `data_interacao`:
@@ -34,6 +35,8 @@ const AVISA: Grupo = {
   linhas: [4],
   trava: false,
   sugestoes: [],
+  // Duplicata não tem cadastro a criar: é aviso, não pendência de cadastro.
+  pode_criar: false,
 };
 
 describe('podeConfirmar', () => {

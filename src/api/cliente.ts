@@ -964,6 +964,12 @@ export interface LinhaDaImportacao {
   decisao: string;
   interacao_id: string | null;
   dados_brutos: Record<string, unknown>;
+  /** O que esta linha herdou da de cima por `idem`, coluna → valor.
+   *
+   *  A TELA MOSTRA ISTO porque a herança é invisível na planilha: a célula fica
+   *  vazia, e sem ver o herdado a pessoa confirmaria 54 agendas confiando na
+   *  memória do que havia acima. */
+  herdado: Record<string, unknown>;
   proposta: Record<string, unknown> | null;
   divergencias: {
     campo: string;

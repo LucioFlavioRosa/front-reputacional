@@ -15,8 +15,22 @@ export interface Grupo {
   linhas: number[];
   /** `true` segura a confirmação; `false` apenas avisa. */
   trava: boolean;
-  /** Nomes parecidos já cadastrados, para oferecer num clique. */
-  sugestoes: string[];
+  /** Nomes parecidos já cadastrados, para oferecer num clique.
+   *
+   *  CARREGA O ALVO junto do nome. O nome sozinho não servia: a tela o mandava
+   *  como `alvo` e o servidor valida `alvo` como id — o atalho principal da
+   *  conferência devolvia 422. */
+  sugestoes: Sugestao[];
+  /** Se a importação sabe criar cadastro para este campo. Quando `false`, o botão
+   *  de cadastrar não aparece: oferecer o que o servidor recusa é pior que não
+   *  oferecer. */
+  pode_criar: boolean;
+}
+
+export interface Sugestao {
+  nome: string;
+  /** O id (ou código) que `apontar` aceita. */
+  alvo: string;
 }
 
 /** Uma decisão já tomada — o bloco "o que vou criar". */

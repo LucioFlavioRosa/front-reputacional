@@ -178,27 +178,36 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
                       confiar na sugestão. */}
                   {grupo.sugestoes.length > 0 ? (
                     <div className="linha linha--quebra">
-                      {grupo.sugestoes.map((nome) => (
+                      {grupo.sugestoes.map((sugestao) => (
                         <Botao
-                          key={nome}
+                          key={sugestao.alvo}
                           variante="secundario"
                           desabilitado={ocupado || fechada}
-                          aoClicar={() => void decidir(grupo, 'apontar', nome)}
+                          // MANDA O `alvo`, e não o nome: o servidor valida o alvo
+                          // como id. Mandar o nome fazia este atalho — o principal
+                          // da conferência — devolver 422.
+                          aoClicar={() => void decidir(grupo, 'apontar', sugestao.alvo)}
                         >
-                          É “{nome}”
+                          É “{sugestao.nome}”
                         </Botao>
                       ))}
                     </div>
                   ) : null}
 
                   <div className="linha linha--quebra">
-                    <Botao
-                      variante="secundario"
-                      desabilitado={ocupado || fechada}
-                      aoClicar={() => void decidir(grupo, 'criar')}
-                    >
-                      Cadastrar como novo
-                    </Botao>
+                    {/* SÓ ONDE A IMPORTAÇÃO CRIA. Dicionário administrado e campo
+                        sem vocabulário não têm cadastro a criar, e oferecer o botão
+                        fazia a pendência sumir da tela para voltar como conflito na
+                        confirmação, depois de a pessoa ter conferido tudo. */}
+                    {grupo.pode_criar ? (
+                      <Botao
+                        variante="secundario"
+                        desabilitado={ocupado || fechada}
+                        aoClicar={() => void decidir(grupo, 'criar')}
+                      >
+                        Cadastrar como novo
+                      </Botao>
+                    ) : null}
                     <Botao
                       variante="secundario"
                       desabilitado={ocupado || fechada}
@@ -247,6 +256,7 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
               <th>Linha</th>
               <th>Aba</th>
               <th>Situação</th>
+              <th>Herdado da linha de cima</th>
               <th>O que falta</th>
             </tr>
           </thead>
@@ -258,6 +268,18 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
                   <td>{linha.linha_origem}</td>
                   <td>{linha.aba}</td>
                   <td>{linha.decisao}</td>
+                  {/* O QUE A HERANÇA FEZ, e é o único lugar onde ela aparece: na
+                      planilha a célula fica vazia, e sem isto a pessoa confirmaria
+                      54 agendas confiando na memória do que havia acima. */}
+                  <td>
+                    {Object.keys(linha.herdado).length === 0 ? (
+                      <span className="texto--secundario">—</span>
+                    ) : (
+                      Object.entries(linha.herdado)
+                        .map(([coluna, valor]) => `${coluna}: ${String(valor)}`)
+                        .join(' · ')
+                    )}
+                  </td>
                   <td>
                     {linha.divergencias.length === 0 ? (
                       <span className="texto--secundario">nada</span>
