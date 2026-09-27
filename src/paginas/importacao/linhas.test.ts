@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { celulasEditaveis, resumoDaLinha } from '@/paginas/importacao/linhas';
+import { celulasEditaveis } from '@/paginas/importacao/linhas';
 import type { LinhaDaImportacao } from '@/api/cliente';
 
 function linha(parcial: Partial<LinhaDaImportacao> = {}): LinhaDaImportacao {
@@ -66,35 +66,5 @@ describe('celulasEditaveis', () => {
     expect(
       celulasEditaveis(linha({ divergencias: [divergencia({ trava: false })] })),
     ).toEqual([]);
-  });
-});
-
-describe('resumoDaLinha', () => {
-  it('identifica a agenda pelas colunas que a pessoa reconhece', () => {
-    const resumo = resumoDaLinha(
-      linha({
-        dados_brutos: {
-          'Código': 'A2',
-          Data: null,
-          'Instituição': 'ABDIB',
-          UF: 'SP',
-          'Interlocutor 1': 'Nilton Prado',
-        },
-      }),
-    );
-
-    // NA ORDEM DA PLANILHA, e só o que identifica: a linha tem 59 colunas, e
-    // despejar todas na tabela é a mesma coisa que não mostrar nenhuma.
-    expect(resumo).toEqual([
-      { coluna: 'Código', valor: 'A2' },
-      { coluna: 'Data', valor: '—' },
-      { coluna: 'Instituição', valor: 'ABDIB' },
-      { coluna: 'Interlocutor 1', valor: 'Nilton Prado' },
-    ]);
-  });
-
-  it('mostra o travessão no lugar do vazio, e não a palavra null', () => {
-    const resumo = resumoDaLinha(linha({ dados_brutos: { 'Código': null } }));
-    expect(resumo[0]).toEqual({ coluna: 'Código', valor: '—' });
   });
 });

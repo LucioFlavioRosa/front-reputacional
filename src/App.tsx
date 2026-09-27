@@ -280,14 +280,6 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
             <PortalDaPlataforma euId={eu?.id ?? null} />
           ) : null}
           {rota.destino === 'config-score' ? <ConfiguracoesDoScore /> : null}
-          {/* A CONFERÊNCIA DA IMPORTAÇÃO TEM ENDEREÇO PRÓPRIO, com o id dentro:
-              54 agendas não se conferem numa sentada, e sem endereço fechar a
-              aba custaria subir o arquivo de novo. Com endereço, a pessoa volta
-              de onde parou e pode mandar o link a quem for decidir uma pendência
-              que não é dela. */}
-          {rota.destino === 'importacao' && rota.importacao ? (
-            <ConferirImportacao id={rota.importacao} />
-          ) : null}
         </LimiteDeErro>
       </Layout>
 
@@ -309,6 +301,22 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
                 : undefined
             }
           />
+        </LimiteDeErro>
+      ) : null}
+
+      {/* A CONFERÊNCIA DA IMPORTAÇÃO ABRE POR CIMA, como a ficha e a cadeia, e
+          pelo mesmo motivo: ela é um passo sobre o que a pessoa estava fazendo, e
+          não um lugar para onde ela foi. "Ao subir a planilha tem que abrir um
+          modal com a planilha preenchida e pedir para verificar" — é o pedido, e
+          é o padrão que esta tela já usa duas vezes.
+
+          COM ENDEREÇO PRÓPRIO, porque 54 agendas não se conferem numa sentada:
+          sem endereço, fechar a aba custaria subir o arquivo de novo. Com ele, a
+          pessoa volta de onde parou e pode mandar o link a quem for decidir uma
+          pendência que não é dela. */}
+      {rota.destino === 'importacao' && rota.importacao ? (
+        <LimiteDeErro key={`importacao-${rota.importacao}`} aoFechar={fechandoParaBase}>
+          <ConferirImportacao id={rota.importacao} aoFechar={fechandoParaBase} />
         </LimiteDeErro>
       ) : null}
 

@@ -23,6 +23,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   cancelarImportacao,
@@ -32,18 +33,21 @@ import {
   resolverDivergencia,
 } from '@/api/cliente';
 import type { Importacao } from '@/api/cliente';
-import { Botao, Cartao, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
+import { Botao, Cartao, FaixaDeErro, Modal, Secao, Vazio } from '@/componentes/basicos';
 import { cabecalho, podeConfirmar, porUrgencia } from '@/paginas/importacao/grupos';
 import type { Grupo } from '@/paginas/importacao/grupos';
-import { celulasEditaveis, resumoDaLinha } from '@/paginas/importacao/linhas';
+import { corDaCelula, linhaTemPendencia, resumoDeCores } from '@/paginas/importacao/grade';
+import { celulasEditaveis } from '@/paginas/importacao/linhas';
 
 interface Props {
   id: string;
   /** Chamado depois de confirmar, para a tela de origem recarregar. */
   aoConfirmar?: (criadas: number) => void;
+  /** Fecha a conferência e volta para a tela de trás. */
+  aoFechar?: () => void;
 }
 
-export function ConferirImportacao({ id, aoConfirmar }: Props) {
+export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const [importacao, setImportacao] = useState<Importacao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -114,8 +118,22 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
     [carregar],
   );
 
-  if (erro && !importacao) return <FaixaDeErro mensagem={erro} />;
-  if (!importacao) return <Vazio mensagem="Abrindo a conferência…" />;
+  //: O MODAL É A MOLDURA, e o conteúdo é o mesmo de antes. Envolver aqui e não
+  //: no `App` mantém junto o estado de carregando e de erro: um modal vazio
+  //: enquanto a conferência abre é melhor que a tela de trás piscando.
+  const moldura = (conteudo: ReactNode) => (
+    <Modal
+      titulo="Confira a planilha"
+      subtitulo="Nada foi criado ainda. Corrija o que está em vermelho e confirme."
+      aoFechar={aoFechar ?? (() => {})}
+      largura={1240}
+    >
+      {conteudo}
+    </Modal>
+  );
+
+  if (erro && !importacao) return moldura(<FaixaDeErro mensagem={erro} />);
+  if (!importacao) return moldura(<Vazio mensagem="Abrindo a conferência…" />);
 
   const numeros = cabecalho({
     agendas: importacao.linhas.filter((linha) => linha.aba === 'Agendas').length,
@@ -124,6 +142,14 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
     aCriar: importacao.a_criar,
   });
   const grupos = porUrgencia(importacao.grupos);
+  const cores = resumoDeCores(importacao.linhas);
+  const visiveis = importacao.linhas.filter(
+    (linha) => !soPendentes || linhaTemPendencia(linha),
+  );
+  //: As células editáveis por linha, uma vez: chamar `celulasEditaveis` dentro do
+  //: laço das colunas a recalcularia 22 vezes por linha.
+  const editaveisPorLinha: Record<number, string[]> = {};
+  for (const linha of importacao.linhas) editaveisPorLinha[linha.id] = celulasEditaveis(linha);
   const fechada = importacao.situacao === 'confirmada' || importacao.situacao === 'cancelada';
 
   const decidir = (grupo: Grupo, decisao: string, alvo?: string) =>
@@ -131,7 +157,7 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
       resolverDivergencia(id, { campo: grupo.campo, valor: grupo.valor, decisao, alvo }),
     );
 
-  return (
+  return moldura(
     <div className="pilha">
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -275,103 +301,123 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
         </Secao>
       ) : null}
 
-      {/* -- as linhas do arquivo -------------------------------------------- */}
-      <Secao titulo="As linhas do arquivo">
-        <Botao variante="secundario" aoClicar={() => setSoPendentes(!soPendentes)}>
-          {soPendentes ? 'Ver todas as linhas' : 'Só as que têm pendência'}
-        </Botao>
-        <table className="tabela">
-          <thead>
-            <tr>
-              <th>Linha</th>
-              {/* O CONTEÚDO DA LINHA, e ele faltava: sem estas colunas a pessoa
-                  lia "linha 3 · falta a Data" sem saber de que agenda se tratava —
-                  e a planilha tem 500 linhas para procurar à mão. */}
-              <th>A agenda</th>
-              <th>Situação</th>
-              <th>Herdado da linha de cima</th>
-              <th>O que falta</th>
-            </tr>
-          </thead>
-          <tbody>
-            {importacao.linhas
-              .filter((linha) => !soPendentes || linha.divergencias.some((d) => d.trava))
-              .map((linha) => {
-                const editaveis = celulasEditaveis(linha);
-                return (
-                <tr key={linha.id}>
-                  <td>{linha.linha_origem}</td>
-                  <td>
-                    <div className="pilha pilha--curta">
-                      {resumoDaLinha(linha).map((celula) => (
-                        <span key={celula.coluna}>
-                          <span className="texto--secundario">{celula.coluna}: </span>
-                          {celula.valor}
-                          {/* A MARCA DO QUE FOI EDITADO AQUI: dali em diante o
-                              registro difere da planilha que a pessoa guardou. */}
-                          {celula.coluna in linha.corrigido ? (
-                            <span className="etiqueta"> editado na conferência</span>
-                          ) : null}
-                        </span>
-                      ))}
-                    </div>
+      {/* -- a planilha como a pessoa a preencheu ---------------------------- */}
+      <Secao titulo="Confira a planilha">
+        {/* O CABEÇALHO RESPONDE "TENHO TEMPO DE CONFERIR AGORA?" antes de a pessoa
+            rolar 500 linhas. Contar CÉLULAS e não linhas: uma linha com três
+            buracos dá três coisas a preencher, e dizer "1 linha" a subestima. */}
+        <div className="linha linha--entre">
+          <p className="texto--secundario">
+            {cores.trava > 0
+              ? `${cores.trava} ${cores.trava === 1 ? 'célula' : 'células'} a preencher`
+              : 'nenhuma célula a preencher'}
+            {cores.aviso > 0 ? ` · ${cores.aviso} com aviso` : ''}
+          </p>
+          <Botao variante="secundario" aoClicar={() => setSoPendentes(!soPendentes)}>
+            {soPendentes ? 'Ver todas as linhas' : 'Só as que têm pendência'}
+          </Botao>
+        </div>
+
+        {/* A ROLAGEM É HORIZONTAL E FICA AQUI, não na página: são 22 ou 58
+            colunas, e deixar a página inteira rolar para os lados tira o
+            cabeçalho e os botões de confirmar do alcance. */}
+        <div style={{ overflowX: 'auto', maxHeight: '60vh', overflowY: 'auto' }}>
+          <table className="tabela">
+            <thead>
+              <tr>
+                <th style={{ position: 'sticky', left: 0, background: 'var(--fundo, #fff)' }}>
+                  Linha
+                </th>
+                {importacao.colunas.map((coluna) => (
+                  <th key={coluna} style={{ whiteSpace: 'nowrap' }}>
+                    {coluna}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((linha) => (
+                <tr
+                  key={linha.id}
+                  /* O DESTAQUE NA LINHA, além do da célula: com 22 colunas a
+                     célula vermelha pode estar fora da tela, e é ele que faz a
+                     pessoa rolar até ela. */
+                  style={
+                    linhaTemPendencia(linha)
+                      ? { outline: '2px solid var(--erro, #c0392b)' }
+                      : undefined
+                  }
+                >
+                  <td
+                    style={{
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--fundo, #fff)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {linha.linha_origem}
+                    {linha.decisao === 'descartada' ? (
+                      <span className="etiqueta"> descartada</span>
+                    ) : null}
                   </td>
-                  <td>{linha.decisao}</td>
-                  {/* O QUE A HERANÇA FEZ, e é o único lugar onde ela aparece: na
-                      planilha a célula fica vazia, e sem isto a pessoa confirmaria
-                      54 agendas confiando na memória do que havia acima. */}
-                  <td>
-                    {Object.keys(linha.herdado).length === 0 ? (
-                      <span className="texto--secundario">—</span>
-                    ) : (
-                      Object.entries(linha.herdado)
-                        .map(([coluna, valor]) => `${coluna}: ${String(valor)}`)
-                        .join(' · ')
-                    )}
-                  </td>
-                  <td>
-                    {linha.divergencias.length === 0 ? (
-                      <span className="texto--secundario">nada</span>
-                    ) : (
-                      <div className="pilha pilha--curta">
-                        <span>{linha.divergencias.map((d) => d.mensagem).join(' · ')}</span>
-                        {/* ONDE SE COMPLETA. A ausência não tem valor para
-                            apontar nem cadastro para criar: o único conserto é
-                            escrever o que falta, e antes disto era preciso
-                            corrigir a planilha e subir tudo de novo. */}
-                        {editaveis.length > 0 && !fechada ? (
-                          <div className="linha linha--quebra">
-                            {editaveis.map((coluna) => (
-                              <label key={coluna} className="campo">
-                                <span className="texto--secundario">{coluna}</span>
-                                <input
-                                  className="entrada"
-                                  value={rascunho[`${linha.id}|${coluna}`] ?? ''}
-                                  placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : ''}
-                                  onChange={(evento) =>
-                                    escrever(linha.id, coluna, evento.target.value)
-                                  }
-                                />
-                              </label>
-                            ))}
-                            <Botao
-                              variante="secundario"
-                              desabilitado={ocupado}
-                              aoClicar={() => salvarLinha(linha.id, editaveis)}
-                            >
-                              Salvar
-                            </Botao>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </td>
+                  {importacao.colunas.map((coluna) => {
+                    const cor = corDaCelula(linha, coluna);
+                    const editavel = editaveisPorLinha[linha.id]?.includes(coluna);
+                    const valor = linha.dados_brutos[coluna];
+                    return (
+                      <td
+                        key={coluna}
+                        title={linha.divergencias
+                          .filter((d) => d.coluna === coluna)
+                          .map((d) => d.mensagem)
+                          .join(' · ')}
+                        style={{
+                          background:
+                            cor === 'trava'
+                              ? 'var(--erro-fundo, #fdecea)'
+                              : cor === 'aviso'
+                                ? 'var(--atencao-fundo, #fdf6e3)'
+                                : undefined,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {editavel && !fechada ? (
+                          <input
+                            className="entrada"
+                            style={{ minWidth: 120 }}
+                            value={rascunho[`${linha.id}|${coluna}`] ?? ''}
+                            placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : 'preencher'}
+                            onChange={(evento) =>
+                              escrever(linha.id, coluna, evento.target.value)
+                            }
+                            onBlur={() => salvarLinha(linha.id, [coluna])}
+                          />
+                        ) : (
+                          <>
+                            {valor === null || valor === undefined || valor === ''
+                              ? '—'
+                              : String(valor)}
+                            {/* O QUE FOI HERDADO da linha de cima: na planilha a
+                                célula está vazia, e sem isto a pessoa confirmaria
+                                54 agendas confiando na memória. */}
+                            {coluna in linha.herdado ? (
+                              <span className="texto--secundario"> (repetido)</span>
+                            ) : null}
+                            {coluna in linha.corrigido ? (
+                              <span className="etiqueta"> editado aqui</span>
+                            ) : null}
+                          </>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
-                );
-              })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Secao>
-    </div>
+    </div>,
   );
 }

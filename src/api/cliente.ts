@@ -956,6 +956,13 @@ export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDa
 
 // -- importação de agendas por planilha ---------------------------------------
 
+/** Os dois recortes do MESMO formato que o download oferece.
+ *
+ *  Os nomes sao os do servidor (`MODELOS`, no dominio): um terceiro nome aqui
+ *  viraria 422 no download, e a pessoa veria "nao consegui baixar o modelo" sem
+ *  ninguem saber por que. */
+export type ModeloDePlanilha = 'completo' | 'simplificado';
+
 /** Uma linha do arquivo, como a conferência a mostra. */
 export interface LinhaDaImportacao {
   id: number;
@@ -999,6 +1006,13 @@ export interface Importacao {
   situacao: string;
   criado_em: string;
   confirmado_em: string | null;
+  /** As colunas daquele arquivo, NA ORDEM — o cabecalho da grade.
+   *
+   *  Quem subiu o modelo simplificado ve as 22 dele, nao as 58 do completo. A
+   *  ordem vem do servidor porque depender da ordem de um objeto JSON para
+   *  montar o cabecalho de uma tabela e depender de algo que nenhum contrato
+   *  promete. */
+  colunas: string[];
   grupos: Grupo[];
   a_criar: ACriar[];
   /** Quantas LINHAS seguram a confirmação. */
@@ -1021,8 +1035,12 @@ export interface ConfirmacaoDaImportacao {
  *  5xx, sem a tradução de erro de rede —, e há um teste neste projeto contando
  *  as chamadas a `fetch` exatamente para impedir que apareça um segundo.
  */
-export async function baixarModeloDeImportacao(): Promise<Blob> {
-  return requisitar<Blob>('/api/importacoes/modelo', { method: 'GET' }, { comoBlob: true });
+export async function baixarModeloDeImportacao(modelo: ModeloDePlanilha): Promise<Blob> {
+  return requisitar<Blob>(
+    `/api/importacoes/modelo?modelo=${modelo}`,
+    { method: 'GET' },
+    { comoBlob: true },
+  );
 }
 
 /** Sobe a planilha preenchida e recebe a conferência.

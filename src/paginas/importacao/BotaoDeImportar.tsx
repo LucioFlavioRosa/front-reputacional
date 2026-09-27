@@ -17,34 +17,64 @@
 import { useRef, useState } from 'react';
 
 import { baixarModeloDeImportacao, subirPlanilhaDeAgendas } from '@/api/cliente';
-import { Botao, FaixaDeErro } from '@/componentes/basicos';
+import type { ModeloDePlanilha } from '@/api/cliente';
+import { Botao, Cartao, FaixaDeErro, Modal } from '@/componentes/basicos';
 import { useNavegacao } from '@/navegacao/useNavegacao';
 
-/** O nome que o arquivo baixado recebe na pasta de downloads. */
-const NOME_DO_MODELO = 'modelo-de-agendas.xlsx';
+/** Os dois modelos, como a pessoa os escolhe.
+ *
+ *  O PEDIDO: "quando eu clicar em importar a planilha eu quero ter um modal com
+ *  opções de fazer o download de dois modelos distintos". A razão é o EVENTO —
+ *  54 agendas num mesmo dia são muitas conversas curtas, e as 58 colunas do
+ *  completo viram rolagem horizontal para preencher quatro coisas por linha.
+ *
+ *  CADA UM DIZ PARA QUEM SERVE, e não só o nome: "completo" e "simplificado"
+ *  sozinhos fazem a pessoa escolher pelo que soa mais seguro, que é sempre o
+ *  primeiro — e ela baixa 58 colunas para registrar um evento. */
+const MODELOS: {
+  chave: ModeloDePlanilha;
+  titulo: string;
+  para: string;
+  colunas: string;
+}[] = [
+  {
+    chave: 'completo',
+    titulo: 'Completo',
+    para: 'A agenda que merece registro inteiro: o antes e o depois da reunião, até quatro interlocutores e três materiais.',
+    colunas: '58 colunas',
+  },
+  {
+    chave: 'simplificado',
+    titulo: 'Simplificado',
+    para: 'O evento com muitas conversas curtas — 54 agendas no mesmo dia. Sem os campos de aceite, expectativa e materiais.',
+    colunas: '22 colunas',
+  },
+];
 
 export function BotaoDeImportar({ podeAdministrar }: { podeAdministrar: boolean }) {
   const { irPara } = useNavegacao();
   const entrada = useRef<HTMLInputElement>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [escolhendo, setEscolhendo] = useState(false);
 
   if (!podeAdministrar) return null;
 
-  const baixar = async () => {
+  const baixar = async (modelo: ModeloDePlanilha) => {
     setOcupado(true);
     setErro(null);
     try {
-      const arquivo = await baixarModeloDeImportacao();
+      const arquivo = await baixarModeloDeImportacao(modelo);
       // O download por link temporário, e não `window.open`: a rota exige
       // cookie de sessão, e abrir numa aba nova perderia o cabeçalho de CSRF
       // no dia em que a rota deixar de ser um GET simples.
       const endereco = URL.createObjectURL(arquivo);
       const link = document.createElement('a');
       link.href = endereco;
-      link.download = NOME_DO_MODELO;
+      link.download = `modelo-de-agendas-${modelo}.xlsx`;
       link.click();
       URL.revokeObjectURL(endereco);
+      setEscolhendo(false);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não consegui baixar o modelo.');
     } finally {
@@ -74,9 +104,39 @@ export function BotaoDeImportar({ podeAdministrar }: { podeAdministrar: boolean 
   return (
     <>
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      <Botao variante="secundario" desabilitado={ocupado} aoClicar={() => void baixar()}>
+      <Botao variante="secundario" desabilitado={ocupado} aoClicar={() => setEscolhendo(true)}>
         Baixar modelo de planilha
       </Botao>
+      {escolhendo ? (
+        <Modal
+          titulo="Qual modelo você quer?"
+          subtitulo="Os dois geram a mesma agenda. O simplificado só pede menos colunas."
+          aoFechar={() => setEscolhendo(false)}
+          largura={640}
+        >
+          <div className="pilha">
+            {MODELOS.map((modelo) => (
+              <Cartao key={modelo.chave}>
+                <div className="pilha pilha--curta">
+                  <div className="linha linha--entre">
+                    <strong>{modelo.titulo}</strong>
+                    <span className="texto--secundario">{modelo.colunas}</span>
+                  </div>
+                  <p className="texto--secundario">{modelo.para}</p>
+                  <div>
+                    <Botao
+                      desabilitado={ocupado}
+                      aoClicar={() => void baixar(modelo.chave)}
+                    >
+                      Baixar o {modelo.titulo.toLowerCase()}
+                    </Botao>
+                  </div>
+                </div>
+              </Cartao>
+            ))}
+          </div>
+        </Modal>
+      ) : null}
       <Botao
         variante="secundario"
         desabilitado={ocupado}
