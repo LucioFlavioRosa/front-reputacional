@@ -368,10 +368,23 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                     return (
                       <td
                         key={coluna}
-                        title={linha.divergencias
-                          .filter((d) => d.coluna === coluna)
-                          .map((d) => d.mensagem)
-                          .join(' · ')}
+                        /* O HOVER CARREGA O QUE NÃO CABE NA CÉLULA: as
+                           mensagens de divergência e o fato de o valor ter sido
+                           repetido da linha de cima.
+                           O "(repetido)" era texto na célula e o dono do produto
+                           pediu para sair — com 22 colunas, uma palavra a mais por
+                           célula herdada polui a grade inteira. A informação não
+                           podia simplesmente desaparecer: a herança é invisível na
+                           planilha (a célula está vazia lá), e foi ele mesmo quem
+                           pediu para poder vê-la antes de confirmar. No hover ela
+                           continua ao alcance de quem tiver dúvida sobre uma
+                           célula, sem cobrar nada de quem não tiver. */
+                        title={[
+                          ...linha.divergencias
+                            .filter((d) => d.coluna === coluna)
+                            .map((d) => d.mensagem),
+                          ...(coluna in linha.herdado ? ['Repetido da linha de cima.'] : []),
+                        ].join(' · ')}
                         style={{
                           background:
                             cor === 'trava'
@@ -398,12 +411,6 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             {valor === null || valor === undefined || valor === ''
                               ? '—'
                               : String(valor)}
-                            {/* O QUE FOI HERDADO da linha de cima: na planilha a
-                                célula está vazia, e sem isto a pessoa confirmaria
-                                54 agendas confiando na memória. */}
-                            {coluna in linha.herdado ? (
-                              <span className="texto--secundario"> (repetido)</span>
-                            ) : null}
                             {coluna in linha.corrigido ? (
                               <span className="etiqueta"> editado aqui</span>
                             ) : null}
