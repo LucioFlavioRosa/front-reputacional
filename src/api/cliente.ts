@@ -1,7 +1,12 @@
 /** Acesso ao backend. Um lugar só monta URL, envia credencial e traduz erro. */
 
 import { registrarErro } from '@/observabilidade/telemetria';
-import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
+import {
+  agendasMudaram,
+  catalogoMudou,
+  escreveAgendas,
+  escreveNoCatalogo,
+} from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Dossie } from '@/dominio/dossie';
 import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
@@ -186,6 +191,10 @@ async function requisitar<T>(
  *  por um cadastro que não aconteceu. */
 function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
   if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
+  // AS AGENDAS TÊM O SEU PRÓPRIO AVISO: confirmar uma importação ou salvar uma
+  // interação recarrega a Base sozinho, em todas as abas abertas. Antes disto a
+  // pessoa confirmava 54 agendas e precisava de um F5 para vê-las.
+  if (escreveAgendas(metodo, caminho)) agendasMudaram.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */

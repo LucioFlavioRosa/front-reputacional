@@ -145,6 +145,7 @@ export function Base({
   aoAbrirFicha,
   aoAbrirCadeia,
   podeImportar = false,
+  aoImportar = () => {},
 }: {
   aoAbrirFicha: (id: string) => void;
   /** Se a pessoa administra cadastros — quem importa planilha de agendas.
@@ -153,6 +154,8 @@ export function Base({
    *  para mais nada. Esconder o botão é conveniência: o servidor recusa 403 a
    *  quem não administra, com ou sem botão na tela. */
   podeImportar?: boolean;
+  /** Abre a conferência da importação que acabou de subir. */
+  aoImportar?: (importacaoId: string) => void;
   /** A cadeia tem ENDEREÇO PRÓPRIO (`/agenda/<id>/cadeia`), então quem a abre
    *  navega em vez de guardar estado. Duas formas de abrir o mesmo modal — uma
    *  por estado, outra por endereço — divergiriam no primeiro ajuste. */
@@ -278,7 +281,7 @@ export function Base({
         {/* A IMPORTAÇÃO FICA AQUI, junto do que exporta: é a mesma barra de
             "levar dado daqui para fora e trazer de volta", e quem chega com 54
             reuniões para registrar está olhando a Base. */}
-        <BotaoDeImportar podeAdministrar={podeImportar} />
+        <BotaoDeImportar podeAdministrar={podeImportar} aoSubir={aoImportar} />
         <Botao
           variante="primario"
           aoClicar={async () => {

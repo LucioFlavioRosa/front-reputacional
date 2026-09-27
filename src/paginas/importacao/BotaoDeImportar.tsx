@@ -19,7 +19,6 @@ import { useRef, useState } from 'react';
 import { baixarModeloDeImportacao, subirPlanilhaDeAgendas } from '@/api/cliente';
 import type { ModeloDePlanilha } from '@/api/cliente';
 import { Botao, Cartao, FaixaDeErro, Modal } from '@/componentes/basicos';
-import { useNavegacao } from '@/navegacao/useNavegacao';
 
 /** Os dois modelos, como a pessoa os escolhe.
  *
@@ -51,8 +50,25 @@ const MODELOS: {
   },
 ];
 
-export function BotaoDeImportar({ podeAdministrar }: { podeAdministrar: boolean }) {
-  const { irPara } = useNavegacao();
+export function BotaoDeImportar({
+  podeAdministrar,
+  aoSubir,
+}: {
+  podeAdministrar: boolean;
+  /** Chamado com o id da importação depois do upload, para a tela abrir a
+   *  conferência.
+   *
+   *  ELE RECEBE E NÃO NAVEGA, e é a correção de um defeito que a pessoa sentia
+   *  assim: subia a planilha, nada acontecia, e a conferência só aparecia se ela
+   *  atualizasse a página.
+   *
+   *  A CAUSA: este componente chamava `useNavegacao()` por conta própria, e o hook
+   *  guarda o lugar num `useState` PRÓPRIO de cada chamador. `irPara` empurrava a
+   *  URL, atualizava o estado deste botão — que ninguém lê — e o `App`, com a sua
+   *  própria instância do hook, nunca sabia que a rota tinha mudado. Todo o resto
+   *  da tela recebe `irPara` de cima; este era o único lugar que fugia do padrão. */
+  aoSubir: (importacaoId: string) => void;
+}) {
   const entrada = useRef<HTMLInputElement>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -90,7 +106,7 @@ export function BotaoDeImportar({ podeAdministrar }: { podeAdministrar: boolean 
       // VAI DIRETO PARA A CONFERÊNCIA. Nada foi criado ainda — o upload só
       // propõe —, e mandar a pessoa procurar a conferência depois seria
       // esconder o único passo que falta.
-      irPara({ destino: 'importacao', importacao: importacao.id });
+      aoSubir(importacao.id);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não consegui ler a planilha.');
     } finally {

@@ -23,7 +23,7 @@ import {
   listarReferencias,
   obterDicionarios,
 } from '@/api/cliente';
-import { catalogoMudou } from '@/dominio/sincronizacao';
+import { agendasMudaram, catalogoMudou } from '@/dominio/sincronizacao';
 import type { Catalogo } from '@/dominio/derivacoes';
 import { divergenciasDoCatalogo, montarCatalogo } from '@/dominio/derivacoes';
 import { registrarEvento } from '@/observabilidade/telemetria';
@@ -118,6 +118,11 @@ export function ProvedorDoPainel({
     () => catalogoMudou.assinar(() => definirVersaoDoCatalogo((v) => v + 1)),
     [],
   );
+
+  // O MESMO PARA AS AGENDAS, e por isso são dois barramentos: cadastrar um tema não
+  // precisa rebuscar a base, e confirmar uma importação não precisa rebuscar os
+  // dicionários. Um barramento só faria cada escrita pagar as duas cargas.
+  useEffect(() => agendasMudaram.assinar(() => definirVersaoDasAgendas((v) => v + 1)), []);
 
   // Os diretórios mudam raramente: carregam uma vez e servem todas as telas.
   useEffect(function carregarCatalogo() {
