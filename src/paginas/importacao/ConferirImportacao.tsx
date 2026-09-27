@@ -35,10 +35,11 @@ import {
   obterImportacao,
   resolverDivergencia,
 } from '@/api/cliente';
-import type { Importacao, LinhaDaImportacao } from '@/api/cliente';
+import type { ColunaDaImportacao, Importacao, LinhaDaImportacao } from '@/api/cliente';
 import { Botao, FaixaDeErro, Modal, Vazio } from '@/componentes/basicos';
 import { decisaoDaCelula } from '@/paginas/importacao/celula';
 import { corDaCelula, linhaTemPendencia, resumoDeCores } from '@/paginas/importacao/grade';
+import { medidaDaColuna } from '@/paginas/importacao/medidas';
 import { porUrgencia } from '@/paginas/importacao/grupos';
 
 interface Props {
@@ -49,18 +50,63 @@ interface Props {
   aoFechar?: () => void;
 }
 
+/** A régua entre as células. UM PIXEL do cinza do sistema, e não uma cor nova: a
+ *  divisão é o que transforma 22 colunas numa planilha legível em vez de um
+ *  parágrafo largo, e ela tem de desaparecer quando a pessoa não está procurando por
+ *  ela. */
+const REGUA = '1px solid var(--borda)';
+
+/** O recheio de toda célula, cabeçalho incluído. Um número só, num lugar só:
+ *  cabeçalho e corpo com recheios diferentes desalinham a coluna inteira. */
+const RECHEIO = '6px 10px';
+
+/** O cabeçalho: fixo no topo da rolagem, no azul da marca sobre o trilho. É a mesma
+ *  linguagem das outras tabelas do produto (`componentes/Tabela.tsx`) — inventar
+ *  outra aqui faria esta tela parecer de outro sistema. */
+const CABECALHO = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 3,
+  background: 'var(--bg-trilho)',
+  color: 'var(--azul-mar-sombra)',
+  textAlign: 'left' as const,
+  padding: RECHEIO,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.02em',
+  textTransform: 'uppercase' as const,
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  borderBottom: REGUA,
+  borderRight: REGUA,
+};
+
+/** A célula de dados: a régua à direita é o que divide as colunas, e o recheio é o
+ *  mesmo do cabeçalho — recheios diferentes desalinham a coluna inteira. */
+const CELULA = {
+  padding: RECHEIO,
+  borderBottom: REGUA,
+  borderRight: REGUA,
+  verticalAlign: 'top' as const,
+};
+
 /** A primeira coluna congelada: a grade rola para os lados, e sem isto a pessoa
  *  perde de vista de qual linha da planilha ela está falando. */
 const CONGELADA = {
   position: 'sticky' as const,
   left: 0,
-  background: 'var(--fundo, #fff)',
-  whiteSpace: 'nowrap' as const,
+  zIndex: 2,
+  background: 'var(--branco)',
+  borderRight: REGUA,
 };
 
+/** O fundo da célula com problema. OS TOKENS DO PRODUTO — e isto era um defeito meu:
+ *  eu havia escrito `--erro-fundo` e `--atencao-fundo`, que não existem no sistema, e
+ *  as células vinham caindo nos hex que eu inventei no fallback, fora da paleta. */
 const FUNDO_DA_CELULA: Record<string, string | undefined> = {
-  trava: 'var(--erro-fundo, #fdecea)',
-  aviso: 'var(--atencao-fundo, #fdf6e3)',
+  trava: 'var(--erro-bg)',
+  aviso: 'var(--atencao-bg)',
 };
 
 export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
@@ -98,31 +144,30 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     }
   };
 
-  const abrirEdicao = (linha: LinhaDaImportacao, colunas: string[]) => {
+  const abrirEdicao = (linha: LinhaDaImportacao, colunas: ColunaDaImportacao[]) => {
     setEditando(linha.id);
     //: O RASCUNHO COMEÇA COM O QUE ESTÁ NA CÉLULA, e não vazio: a pessoa clicou em
     //: editar para CORRIGIR um valor, e um campo vazio a obrigaria a redigitar o que
     //: já estava certo.
     const inicial: Record<string, string> = {};
-    for (const coluna of colunas) {
-      const valor = linha.dados_brutos[coluna];
-      inicial[`${linha.id}|${coluna}`] =
-        valor === null || valor === undefined ? '' : String(valor);
+    for (const { nome } of colunas) {
+      const valor = linha.dados_brutos[nome];
+      inicial[`${linha.id}|${nome}`] = valor === null || valor === undefined ? '' : String(valor);
     }
     setRascunho((atual) => ({ ...atual, ...inicial }));
   };
 
   const fecharEdicao = () => setEditando(null);
 
-  const salvarLinha = (linha: LinhaDaImportacao, colunas: string[]) => {
+  const salvarLinha = (linha: LinhaDaImportacao, colunas: ColunaDaImportacao[]) => {
     const celulas: Record<string, string> = {};
-    for (const coluna of colunas) {
-      const escrito = rascunho[`${linha.id}|${coluna}`] ?? '';
-      const antes = linha.dados_brutos[coluna];
-      const eraVazio = antes === null || antes === undefined ? '' : String(antes);
+    for (const { nome } of colunas) {
+      const escrito = rascunho[`${linha.id}|${nome}`] ?? '';
+      const antes = linha.dados_brutos[nome];
+      const comoEstava = antes === null || antes === undefined ? '' : String(antes);
       //: SÓ O QUE MUDOU vai para o servidor: mandar a linha inteira marcaria como
       //: "editado na conferência" toda célula que a pessoa nem tocou.
-      if (escrito !== eraVazio) celulas[coluna] = escrito;
+      if (escrito !== comoEstava) celulas[nome] = escrito;
     }
     if (Object.keys(celulas).length === 0) {
       fecharEdicao();
@@ -222,17 +267,42 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
         </Botao>
       </div>
 
-      <div style={{ overflowX: 'auto', maxHeight: '62vh', overflowY: 'auto' }}>
-        <table className="tabela">
+      <div className="rolagem-interna" style={{ maxHeight: '62vh', overflowX: 'auto' }}>
+        <table
+          style={{
+            borderCollapse: 'collapse',
+            fontSize: 12,
+            // FIXO, e é o que faz a largura por tipo valer: em `auto` o navegador
+            // redistribui tudo pelo conteúdo, e um relato comprido numa linha
+            // esticaria a coluna em TODAS as outras.
+            tableLayout: 'fixed',
+          }}
+        >
+          {/* A LARGURA DE CADA COLUNA VEM DO TIPO DO DADO, que o servidor manda.
+              Ver `medidas.ts`: a sigla do estado tem 64px e o relato tem 288. */}
+          <colgroup>
+            <col style={{ width: 64 }} />
+            {importacao.colunas.map((coluna) => (
+              <col key={coluna.nome} style={{ width: medidaDaColuna(coluna.tipo).largura }} />
+            ))}
+            <col style={{ width: 168 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={CONGELADA}>Linha</th>
+              <th style={{ ...CABECALHO, ...CONGELADA, top: 0 }}>Linha</th>
               {importacao.colunas.map((coluna) => (
-                <th key={coluna} style={{ whiteSpace: 'nowrap' }}>
-                  {coluna}
+                <th
+                  key={coluna.nome}
+                  title={coluna.nome}
+                  style={{
+                    ...CABECALHO,
+                    textAlign: medidaDaColuna(coluna.tipo).alinhamento,
+                  }}
+                >
+                  {coluna.nome}
                 </th>
               ))}
-              <th style={{ whiteSpace: 'nowrap' }}>Ações</th>
+              <th style={CABECALHO}>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -250,11 +320,14 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                         : undefined,
                   }}
                 >
-                  <td style={CONGELADA}>{linha.linha_origem}</td>
-                  {importacao.colunas.map((coluna) => {
+                  <td style={{ ...CONGELADA, ...CELULA, textAlign: 'center' }}>
+                    {linha.linha_origem}
+                  </td>
+                  {importacao.colunas.map(({ nome: coluna, tipo }) => {
                     const cor = corDaCelula(linha, coluna);
                     const valor = linha.dados_brutos[coluna];
                     const decisao = decisaoDaCelula(linha, coluna, grupos);
+                    const medida = medidaDaColuna(tipo);
                     return (
                       <td
                         key={coluna}
@@ -263,18 +336,40 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             .filter((d) => d.coluna === coluna)
                             .map((d) => d.mensagem),
                           ...(coluna in linha.herdado ? ['Repetido da linha de cima.'] : []),
-                        ].join(' · ')}
+                          ...(medida.quebra ? [] : [String(valor ?? '')]),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                         style={{
+                          ...CELULA,
+                          textAlign: medida.alinhamento,
                           background: excluida ? undefined : FUNDO_DA_CELULA[cor ?? ''],
-                          whiteSpace: 'nowrap',
+                          // SÓ A PROSA QUEBRA. O resto corta com reticências: um
+                          // nome de instituição partido no meio é mais difícil de
+                          // reconhecer do que um nome cortado no fim, e o valor
+                          // inteiro está no `title`.
+                          whiteSpace: medida.quebra ? 'normal' : 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
                         }}
                       >
                         {emEdicao ? (
+                          /* O CAMPO CABE NA CÉLULA, e isto era um pedido: editar não
+                             pode abrir espaço nem empurrar a tabela. Com a largura
+                             fixa da coluna e `width: 100%`, a linha em edição ocupa
+                             exatamente o mesmo lugar que ocupava antes — a pessoa
+                             digita onde estava lendo. */
                           <input
                             className="entrada"
-                            style={{ minWidth: 130 }}
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '2px 4px',
+                              fontSize: 12,
+                              textAlign: medida.alinhamento,
+                            }}
                             value={rascunho[`${linha.id}|${coluna}`] ?? ''}
-                            placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : ''}
+                            placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
                             onChange={(evento) =>
                               setRascunho((atual) => ({
                                 ...atual,
@@ -341,7 +436,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                     );
                   })}
 
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td style={{ ...CELULA, whiteSpace: 'nowrap' }}>
                     {fechada ? null : excluida ? (
                       <Botao
                         variante="secundario"

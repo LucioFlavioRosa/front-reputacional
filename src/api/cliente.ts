@@ -972,6 +972,17 @@ export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDa
  *  ninguem saber por que. */
 export type ModeloDePlanilha = 'completo' | 'simplificado';
 
+/** Uma coluna do arquivo, com o que a tela precisa para desenha-la.
+ *
+ *  O TIPO VEM DO SERVIDOR e nao de uma lista aqui: 59 nomes com o tipo de cada um,
+ *  escritos deste lado, envelheceriam na primeira coluna nova — e o erro seria
+ *  silencioso, porque a coluna sem tipo receberia a largura padrao. */
+export interface ColunaDaImportacao {
+  nome: string;
+  /** `marca`, `data`, `sigla`, `lista`, `prosa` ou `texto`. Ver `medidas.ts`. */
+  tipo: string;
+}
+
 /** Uma linha do arquivo, como a conferência a mostra. */
 export interface LinhaDaImportacao {
   id: number;
@@ -1021,7 +1032,7 @@ export interface Importacao {
    *  ordem vem do servidor porque depender da ordem de um objeto JSON para
    *  montar o cabecalho de uma tabela e depender de algo que nenhum contrato
    *  promete. */
-  colunas: string[];
+  colunas: ColunaDaImportacao[];
   grupos: Grupo[];
   a_criar: ACriar[];
   /** Quantas LINHAS seguram a confirmação. */
