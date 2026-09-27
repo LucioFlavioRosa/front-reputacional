@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   cancelarImportacao,
   confirmarImportacao,
+  corrigirLinhaDaImportacao,
   obterImportacao,
   resolverDivergencia,
 } from '@/api/cliente';
@@ -34,6 +35,7 @@ import type { Importacao } from '@/api/cliente';
 import { Botao, Cartao, FaixaDeErro, Secao, Vazio } from '@/componentes/basicos';
 import { cabecalho, podeConfirmar, porUrgencia } from '@/paginas/importacao/grupos';
 import type { Grupo } from '@/paginas/importacao/grupos';
+import { celulasEditaveis, resumoDaLinha } from '@/paginas/importacao/linhas';
 
 interface Props {
   id: string;
@@ -47,6 +49,34 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
   const [ocupado, setOcupado] = useState(false);
   const [soPendentes, setSoPendentes] = useState(true);
   const [mostrarACriar, setMostrarACriar] = useState(false);
+  //: O que a pessoa está digitando, por linha e por coluna, antes de salvar.
+  //:
+  //: RASCUNHO LOCAL de propósito: salvar a cada tecla mandaria uma reproposição
+  //: por caractere, e cada uma devolve a conferência inteira — a tela piscaria
+  //: enquanto ela digita a data.
+  const [rascunho, setRascunho] = useState<Record<string, string>>({});
+
+  const escrever = (linhaId: number, coluna: string, valor: string) =>
+    setRascunho((atual) => ({ ...atual, [`${linhaId}|${coluna}`]: valor }));
+
+  const salvarLinha = (linhaId: number, colunas: string[]) => {
+    const celulas: Record<string, string> = {};
+    for (const coluna of colunas) {
+      const escrito = rascunho[`${linhaId}|${coluna}`];
+      if (escrito !== undefined && escrito !== '') celulas[coluna] = escrito;
+    }
+    if (Object.keys(celulas).length === 0) return;
+    void agir(async () => {
+      setImportacao(await corrigirLinhaDaImportacao(id, linhaId, celulas));
+      //: O rascunho SAI depois de salvo: mantê-lo faria a caixa continuar
+      //: mostrando o texto antigo ao lado do valor que o servidor já aceitou.
+      setRascunho((atual) => {
+        const limpo = { ...atual };
+        for (const coluna of colunas) delete limpo[`${linhaId}|${coluna}`];
+        return limpo;
+      });
+    });
+  };
 
   const carregar = useCallback(async () => {
     try {
@@ -254,7 +284,10 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
           <thead>
             <tr>
               <th>Linha</th>
-              <th>Aba</th>
+              {/* O CONTEÚDO DA LINHA, e ele faltava: sem estas colunas a pessoa
+                  lia "linha 3 · falta a Data" sem saber de que agenda se tratava —
+                  e a planilha tem 500 linhas para procurar à mão. */}
+              <th>A agenda</th>
               <th>Situação</th>
               <th>Herdado da linha de cima</th>
               <th>O que falta</th>
@@ -263,10 +296,26 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
           <tbody>
             {importacao.linhas
               .filter((linha) => !soPendentes || linha.divergencias.some((d) => d.trava))
-              .map((linha) => (
+              .map((linha) => {
+                const editaveis = celulasEditaveis(linha);
+                return (
                 <tr key={linha.id}>
                   <td>{linha.linha_origem}</td>
-                  <td>{linha.aba}</td>
+                  <td>
+                    <div className="pilha pilha--curta">
+                      {resumoDaLinha(linha).map((celula) => (
+                        <span key={celula.coluna}>
+                          <span className="texto--secundario">{celula.coluna}: </span>
+                          {celula.valor}
+                          {/* A MARCA DO QUE FOI EDITADO AQUI: dali em diante o
+                              registro difere da planilha que a pessoa guardou. */}
+                          {celula.coluna in linha.corrigido ? (
+                            <span className="etiqueta"> editado na conferência</span>
+                          ) : null}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                   <td>{linha.decisao}</td>
                   {/* O QUE A HERANÇA FEZ, e é o único lugar onde ela aparece: na
                       planilha a célula fica vazia, e sem isto a pessoa confirmaria
@@ -284,11 +333,42 @@ export function ConferirImportacao({ id, aoConfirmar }: Props) {
                     {linha.divergencias.length === 0 ? (
                       <span className="texto--secundario">nada</span>
                     ) : (
-                      linha.divergencias.map((d) => d.mensagem).join(' · ')
+                      <div className="pilha pilha--curta">
+                        <span>{linha.divergencias.map((d) => d.mensagem).join(' · ')}</span>
+                        {/* ONDE SE COMPLETA. A ausência não tem valor para
+                            apontar nem cadastro para criar: o único conserto é
+                            escrever o que falta, e antes disto era preciso
+                            corrigir a planilha e subir tudo de novo. */}
+                        {editaveis.length > 0 && !fechada ? (
+                          <div className="linha linha--quebra">
+                            {editaveis.map((coluna) => (
+                              <label key={coluna} className="campo">
+                                <span className="texto--secundario">{coluna}</span>
+                                <input
+                                  className="entrada"
+                                  value={rascunho[`${linha.id}|${coluna}`] ?? ''}
+                                  placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : ''}
+                                  onChange={(evento) =>
+                                    escrever(linha.id, coluna, evento.target.value)
+                                  }
+                                />
+                              </label>
+                            ))}
+                            <Botao
+                              variante="secundario"
+                              desabilitado={ocupado}
+                              aoClicar={() => salvarLinha(linha.id, editaveis)}
+                            >
+                              Salvar
+                            </Botao>
+                          </div>
+                        ) : null}
+                      </div>
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
           </tbody>
         </table>
       </Secao>

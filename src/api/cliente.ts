@@ -970,12 +970,23 @@ export interface LinhaDaImportacao {
    *  vazia, e sem ver o herdado a pessoa confirmaria 54 agendas confiando na
    *  memória do que havia acima. */
   herdado: Record<string, unknown>;
+  /** O que a pessoa COMPLETOU nesta tela, coluna -> valor.
+   *
+   *  A TELA MARCA A CELULA, e e a contrapartida honesta de editar aqui: dali em
+   *  diante o registro difere da planilha que ela guardou. Sem a marca, abrir o
+   *  arquivo meses depois mostraria a celula vazia, sem nada explicando de onde
+   *  veio o valor que esta no painel. */
+  corrigido: Record<string, unknown>;
   proposta: Record<string, unknown> | null;
   divergencias: {
     campo: string;
     valor: string;
     mensagem: string;
     trava: boolean;
+    /** A COLUNA DA PLANILHA de onde isto veio, quando ha uma. E por ela que a
+     *  tela sabe onde oferecer o campo: `campo` e nome interno
+     *  (`data_interacao`), e um campo de grupo corresponde a quatro colunas. */
+    coluna: string;
     sugestoes: string[];
     acao: string | null;
     alvo: string | null;
@@ -1039,6 +1050,23 @@ export async function resolverDivergencia(
   return requisitar<Importacao>(`/api/importacoes/${id}/resolucoes`, {
     method: 'PATCH',
     body: JSON.stringify(decisao),
+  });
+}
+
+/** Completa celulas de UMA linha e recebe a conferencia reproposta.
+ *
+ *  A CONFERENCIA SABIA RESOLVER O VALOR ERRADO e nao o AUSENTE: "este orgao nao
+ *  existe" vem com apontar e criar, mas a data em branco vinha com um grupo sem
+ *  valor nenhum, sem nada para clicar.
+ */
+export async function corrigirLinhaDaImportacao(
+  id: string,
+  linhaId: number,
+  celulas: Record<string, string>,
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/linhas/${linhaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ celulas }),
   });
 }
 
