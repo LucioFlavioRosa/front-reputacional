@@ -70,6 +70,22 @@ const VAO = '2px';
  *  `min-height: 100vh`. O campo estava recebendo altura mínima de uma tela inteira. */
 const ALTURA_DA_LINHA = 30;
 
+/** Quantas linhas a grade monta por vez.
+ *
+ *  MEDIDO, NÃO CHUTADO: montar o teto de 500 agendas por 58 colunas — 29 mil células —
+ *  levava ~12 segundos num ambiente que nem faz layout nem pintura. A pessoa veria o
+ *  modal congelado depois de subir o arquivo, que é o pior momento possível para a tela
+ *  parar de responder.
+ *
+ *  OITENTA cobre a primeira tela com folga em qualquer monitor (são 2400px de linhas), e
+ *  o resto entra conforme ela rola. Ninguém precisa pedir para ver: a grade cresce
+ *  sozinha ao chegar perto do fim. */
+const LINHAS_POR_BLOCO = 80;
+
+/** A que distância do fim da rolagem o próximo bloco entra. Um bloco de folga, para a
+ *  linha seguinte já existir quando o olho chegar nela. */
+const MARGEM_DE_ROLAGEM = ALTURA_DA_LINHA * 10;
+
 /** O recheio de toda célula, cabeçalho incluído. Um número só, num lugar só:
  *  cabeçalho e corpo com recheios diferentes desalinham a coluna inteira. */
 const RECHEIO = '6px 10px';
@@ -150,15 +166,40 @@ const FUNDO_DA_CELULA: Record<string, string | undefined> = {
   aviso: 'var(--atencao-bg)',
 };
 
+/** O MARCADOR DA CÉLULA: uma forma e um nome, além da cor.
+ *
+ *  ACHADO DA REVISÃO DE UI/UX, severidade alta: informação não pode ser transmitida
+ *  por cor sozinha. A grade pintava a célula e mais nada — quem não distingue vermelho
+ *  de amarelo via 500 linhas uniformes, sem pista de onde mexer.
+ *
+ *  DUAS FORMAS DIFERENTES, e não a mesma em duas cores: `!` é "está errado, conserte",
+ *  `?` é "confira, talvez esteja certo". O nome vai no `aria-label`, que é o que quem
+ *  ouve a tela recebe. */
+const MARCADOR: Record<string, { sinal: string; nome: string; cor: string }> = {
+  trava: { sinal: '!', nome: 'Precisa de atenção', cor: 'var(--erro-fg)' },
+  aviso: { sinal: '?', nome: 'Confira este valor', cor: 'var(--atencao-fg)' },
+};
+
 export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const [importacao, setImportacao] = useState<Importacao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [soPendentes, setSoPendentes] = useState(true);
+  //: ABRE MOSTRANDO A PLANILHA INTEIRA, e não filtrada nas pendências.
+  //:
+  //: Quem acabou de subir 54 agendas quer ver as 54: a primeira pergunta dela é
+  //: "chegou tudo?", e uma lista filtrada não responde isso — ela precisaria pedir
+  //: para ver o que ela mesma acabou de mandar. A COR é o que aponta o que precisa de
+  //: atenção, e ela funciona melhor tendo o resto para contrastar.
+  //:
+  //: O filtro continua como OPÇÃO, porque 500 linhas com três pendências no fim são
+  //: um caso real — mas quem decide é ela, não a tela.
+  const [soPendentes, setSoPendentes] = useState(false);
   //: A LINHA EM EDIÇÃO, uma de cada vez. Duas linhas abertas ao mesmo tempo
   //: convidariam a pessoa a preencher uma e salvar a outra sem perceber.
   const [editando, setEditando] = useState<number | null>(null);
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
+  //: Quantas linhas estão montadas. Ver `LINHAS_POR_BLOCO`.
+  const [montadas, setMontadas] = useState(LINHAS_POR_BLOCO);
 
   const carregar = useCallback(async () => {
     try {
@@ -252,9 +293,31 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const daPlanilha = importacao.linhas.filter((linha) => linha.aba === 'Agendas');
   const aCriar = daPlanilha.filter((linha) => linha.decisao !== 'descartada').length;
   const excluidas = daPlanilha.length - aCriar;
-  const visiveis = daPlanilha.filter(
+  const candidatas = daPlanilha.filter(
     (linha) => !soPendentes || linhaTemPendencia(linha) || linha.decisao === 'descartada',
   );
+  const visiveis = candidatas.slice(0, montadas);
+  const faltamMontar = candidatas.length - visiveis.length;
+
+  //: O PRÓXIMO BLOCO ENTRA AO CHEGAR PERTO DO FIM. Sem isto, a pessoa rolaria até o
+  //: fim de 80 linhas e concluiria que o arquivo tem 80.
+  const aoRolar = (evento: React.UIEvent<HTMLDivElement>) => {
+    if (faltamMontar <= 0) return;
+    const { scrollTop, clientHeight, scrollHeight } = evento.currentTarget;
+    if (scrollHeight - (scrollTop + clientHeight) < MARGEM_DE_ROLAGEM) {
+      setMontadas((quantas) => quantas + LINHAS_POR_BLOCO);
+    }
+  };
+  //: As mensagens distintas do que trava, com em quantas linhas cada uma aparece.
+  const porMensagem = new Map<string, number>();
+  for (const linha of daPlanilha) {
+    if (linha.decisao === 'descartada') continue;
+    for (const divergencia of linha.divergencias) {
+      if (!divergencia.trava) continue;
+      porMensagem.set(divergencia.mensagem, (porMensagem.get(divergencia.mensagem) ?? 0) + 1);
+    }
+  }
+  const mensagens = [...porMensagem].map(([texto, linhas]) => ({ texto, linhas }));
 
   const rodape = fechada ? (
     <span className="etiqueta">{importacao.situacao}</span>
@@ -292,6 +355,25 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     <div className="pilha pilha--curta">
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+      {/* O QUE FALTA, EM TEXTO E FORA DO HOVER.
+          Achado da revisão de UI/UX: a mensagem morava só no `title` da célula, que é
+          hover — quem usa teclado ou toque nunca a alcançava.
+
+          UMA VEZ CADA, com a conta de linhas: "Falta Data" repetido 500 vezes é a
+          parede de texto que a crítica de espaço desperdiçado queria evitar. São
+          poucas mensagens distintas mesmo num arquivo grande, porque é o mesmo
+          agrupamento que o servidor já faz. */}
+      {mensagens.length > 0 ? (
+        <ul className="pilha pilha--curta" style={{ margin: 0, paddingLeft: 18 }}>
+          {mensagens.map(({ texto, linhas }) => (
+            <li key={texto} className="texto--secundario">
+              {texto}
+              {linhas > 1 ? ` (${linhas} linhas)` : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {/* O CABEÇALHO EM UMA LINHA: contar CÉLULAS e não linhas, porque uma linha com
           três buracos dá três coisas a preencher. */}
       <div className="linha linha--entre">
@@ -302,13 +384,22 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
             : ' · nada a preencher'}
           {cores.aviso > 0 ? ` · ${cores.aviso} com aviso` : ''}
           {excluidas > 0 ? ` · ${excluidas} excluída${excluidas === 1 ? '' : 's'}` : ''}
+          {/* A CONTRAPARTIDA HONESTA de montar por blocos: sem isto, quem subiu 500
+              agendas e vê 80 linhas conclui que o arquivo perdeu 420. */}
+          {faltamMontar > 0
+            ? ` · mostrando ${visiveis.length} de ${candidatas.length} linhas (role para ver o resto)`
+            : ''}
         </p>
         <Botao variante="secundario" aoClicar={() => setSoPendentes(!soPendentes)}>
           {soPendentes ? 'Ver todas as linhas' : 'Só as que precisam de você'}
         </Botao>
       </div>
 
-      <div className="rolagem-interna" style={{ maxHeight: '62vh', overflowX: 'auto' }}>
+      <div
+        className="rolagem-interna"
+        style={{ maxHeight: '62vh', overflowX: 'auto' }}
+        onScroll={aoRolar}
+      >
         <table
           style={{
             //: SEPARADO E NÃO COLAPSADO: é o que permite canto arredondado por
@@ -357,6 +448,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
               return (
                 <tr
                   key={linha.id}
+                  data-linha={linha.linha_origem}
                   style={{ opacity: excluida ? 0.45 : undefined }}
                 >
                   {/* A PENDÊNCIA MARCA A PEÇA DO NÚMERO, e não um contorno em
@@ -403,6 +495,20 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             : (FUNDO_DA_CELULA[cor ?? ''] ?? 'var(--branco)'),
                         }}
                       >
+                        {cor && !excluida ? (
+                          <span
+                            aria-label={MARCADOR[cor].nome}
+                            title={MARCADOR[cor].nome}
+                            style={{
+                              display: 'inline-block',
+                              marginRight: 4,
+                              fontWeight: 700,
+                              color: MARCADOR[cor].cor,
+                            }}
+                          >
+                            {MARCADOR[cor].sinal}
+                          </span>
+                        ) : null}
                         {emEdicao ? (
                           /* O CAMPO CABE NA CÉLULA, e isto era um pedido: editar não
                              pode abrir espaço nem empurrar a tabela. Com a largura
@@ -479,7 +585,11 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                     );
                   })}
 
-                  <td style={{ ...CELULA, padding: '3px 6px' }}>
+                  {/* 24 CSS px é o mínimo da WCAG 2.2 AA para alvo de ponteiro, e
+                      numa linha de 30px os botões passavam por baixo disso. A célula
+                      de ações é a única que não segue a altura fixa: ela cresce para
+                      caber o alvo, e é ela que define a altura da linha quando cresce. */}
+                  <td style={{ ...CELULA, height: 'auto', padding: 3, minWidth: 0 }}>
                     {fechada ? null : excluida ? (
                       <Botao
                         variante="secundario"
