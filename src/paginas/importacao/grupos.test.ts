@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { cabecalho, pendencias, podeConfirmar, porUrgencia } from '@/paginas/importacao/grupos';
+import { porUrgencia } from '@/paginas/importacao/grupos';
 import type { Grupo } from '@/paginas/importacao/grupos';
 
 const TRAVA: Grupo = {
@@ -39,34 +39,7 @@ const AVISA: Grupo = {
   pode_criar: false,
 };
 
-describe('podeConfirmar', () => {
-  it('não confirma com divergência que trava', () => {
-    expect(podeConfirmar([TRAVA, AVISA])).toBe(false);
-  });
 
-  it('confirma com apenas avisos', () => {
-    // A duplicata possível avisa e não impede: duas reuniões com o mesmo órgão
-    // no mesmo dia acontecem, e travar por isso ensinaria a ignorar o aviso.
-    expect(podeConfirmar([AVISA])).toBe(true);
-  });
-
-  it('confirma sem divergência nenhuma', () => {
-    expect(podeConfirmar([])).toBe(true);
-  });
-});
-
-describe('pendencias', () => {
-  it('conta só o que trava', () => {
-    expect(pendencias([TRAVA, AVISA])).toBe(1);
-  });
-
-  it('conta grupos e não linhas — quem conta linhas é o servidor', () => {
-    // O servidor manda `pendencias` em LINHAS, e a tela mostra os dois números.
-    // Esta função conta as DECISÕES que a pessoa tem pela frente; confundir os
-    // dois faria o cabeçalho dizer "2 pendências" para 12 linhas presas.
-    expect(pendencias([TRAVA])).toBe(1);
-  });
-});
 
 describe('porUrgencia', () => {
   it('põe o que trava antes do que só avisa', () => {
@@ -96,40 +69,3 @@ describe('porUrgencia', () => {
   });
 });
 
-describe('cabecalho', () => {
-  it('responde "quanto falta" com os três números', () => {
-    // É a primeira coisa que a pessoa lê para decidir se tem tempo de conferir
-    // agora. Os três saem daqui e não do JSX, pelo mesmo motivo que
-    // `podeConfirmar` saiu.
-    expect(
-      cabecalho({
-        agendas: 54,
-        pendencias: 12,
-        decisoesPendentes: 2,
-        aCriar: [{ campo: 'instituicao_id', valor: 'A', acao: 'criar', alvo: null, linhas: [1] }],
-      }),
-    ).toEqual({
-      agendas: 54,
-      pendencias: 12,
-      decisoes: 2,
-      cadastrosNovos: 1,
-    });
-  });
-
-  it('conta como cadastro novo só o que vai ser CRIADO', () => {
-    // Apontar para um cadastro existente é decisão tomada, e aparece no mesmo
-    // bloco — mas não cria nada, e somá-lo diria à pessoa que a importação vai
-    // criar registros que ela justamente escolheu não criar.
-    expect(
-      cabecalho({
-        agendas: 2,
-        pendencias: 0,
-        decisoesPendentes: 0,
-        aCriar: [
-          { campo: 'instituicao_id', valor: 'A', acao: 'criar', alvo: null, linhas: [2] },
-          { campo: 'instituicao_id', valor: 'B', acao: 'apontar', alvo: 'id-1', linhas: [3] },
-        ],
-      }).cadastrosNovos,
-    ).toBe(1);
-  });
-});

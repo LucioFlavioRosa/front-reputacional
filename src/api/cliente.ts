@@ -1097,6 +1097,23 @@ export async function corrigirLinhaDaImportacao(
   });
 }
 
+/** Exclui uma linha da importacao, ou a restaura.
+ *
+ *  REVERSIVEL ATE A CONFIRMACAO, e precisa ser: errar numa tela de 54 linhas e
+ *  facil, e a planilha nao e o caminho de volta — o arquivo nao fica guardado. A
+ *  linha continua na grade, marcada, e volta com um clique.
+ */
+export async function excluirLinhaDaImportacao(
+  id: string,
+  linhaId: number,
+  excluir: boolean,
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/linhas/${linhaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ descartada: excluir }),
+  });
+}
+
 /** Cria os cadastros e as agendas — tudo, ou nada. */
 export async function confirmarImportacao(id: string): Promise<ConfirmacaoDaImportacao> {
   return requisitar<ConfirmacaoDaImportacao>(`/api/importacoes/${id}/confirmacao`, {

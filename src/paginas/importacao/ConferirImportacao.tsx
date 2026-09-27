@@ -1,25 +1,27 @@
-/** A conferência de uma importação de agendas.
+/** A conferência da importação: o modal É a planilha que acabou de subir.
  *
- *  POR QUE ESTA TELA EXISTE
- *  ------------------------
- *  O cliente tem dias com 54 reuniões, e preenchê-las uma a uma no formulário é
- *  inviável. A planilha resolve o volume e cria um problema novo: importar sem
- *  conferência humana cria duplicata de instituição em massa, e desfazer isso
- *  depois é pior do que digitar tudo de novo.
+ *  ERAM TRÊS BLOCOS — as pendências agrupadas, "o que já está decidido" e a grade
+ *  das linhas. O dono do produto olhou e disse o que é verdade: espaço demais para
+ *  pouca informação, e três lugares olhando as mesmas 54 linhas obrigavam a pessoa a
+ *  cruzar as três para entender uma pendência.
  *
- *  UMA DECISÃO, MUITAS LINHAS. A tela agrupa as divergências por valor, e não
- *  por linha: "Instituição não encontrada: 'Prefeitura de Campinas' — em 12
- *  linhas" é um clique, não doze. É o que faz a conferência escalar com o volume
- *  em vez de crescer junto com ele — sem o agrupamento, a pessoa pararia de
- *  conferir e passaria a clicar.
+ *  UMA SUPERFÍCIE SÓ, e ela é a planilha. O que os blocos diziam foi para onde é
+ *  verdade:
  *
- *  A TELA NÃO É A BARREIRA. O botão de confirmar apagado é conveniência: o
- *  servidor recusa a confirmação com pendência aberta por conta própria, e
- *  recusa a importação inteira a quem não administra cadastros. Esconder o que
- *  não se pode usar poupa a tentativa, não substitui o controle.
+ *  - a CONTAGEM subiu para o cabeçalho, numa linha — é o que responde "tenho tempo
+ *    de conferir isto agora?" antes de rolar;
+ *  - a DECISÃO desceu para a célula vermelha, dizendo quantas linhas ela resolve.
+ *    Era a única coisa que o bloco agrupado tinha de insubstituível: "este órgão não
+ *    existe" em doze linhas é um clique, não doze, e é isso que faz a conferência
+ *    escalar com um dia de evento. Ver `celula.ts`;
+ *  - o "o que já está decidido" não voltou em lugar nenhum. Era um painel de
+ *    prestação de contas que ninguém pediu: o que ele listava está dito na própria
+ *    frase do botão de subir.
  *
- *  TRÊS BLOCOS, EM ORDEM DE URGÊNCIA: o que precisa de você, o que vou criar
- *  (recolhido, porque não pede nada), e as linhas do arquivo.
+ *  DOIS BOTÕES POR LINHA e dois no modal, como pedido. Excluir é reversível até a
+ *  confirmação — a linha fica marcada e volta com um clique —, porque errar numa tela
+ *  de 54 linhas é fácil e a planilha não é o caminho de volta: o arquivo não é
+ *  guardado.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -29,15 +31,15 @@ import {
   cancelarImportacao,
   confirmarImportacao,
   corrigirLinhaDaImportacao,
+  excluirLinhaDaImportacao,
   obterImportacao,
   resolverDivergencia,
 } from '@/api/cliente';
-import type { Importacao } from '@/api/cliente';
-import { Botao, Cartao, FaixaDeErro, Modal, Secao, Vazio } from '@/componentes/basicos';
-import { cabecalho, podeConfirmar, porUrgencia } from '@/paginas/importacao/grupos';
-import type { Grupo } from '@/paginas/importacao/grupos';
+import type { Importacao, LinhaDaImportacao } from '@/api/cliente';
+import { Botao, FaixaDeErro, Modal, Vazio } from '@/componentes/basicos';
+import { decisaoDaCelula } from '@/paginas/importacao/celula';
 import { corDaCelula, linhaTemPendencia, resumoDeCores } from '@/paginas/importacao/grade';
-import { celulasEditaveis } from '@/paginas/importacao/linhas';
+import { porUrgencia } from '@/paginas/importacao/grupos';
 
 interface Props {
   id: string;
@@ -47,40 +49,29 @@ interface Props {
   aoFechar?: () => void;
 }
 
+/** A primeira coluna congelada: a grade rola para os lados, e sem isto a pessoa
+ *  perde de vista de qual linha da planilha ela está falando. */
+const CONGELADA = {
+  position: 'sticky' as const,
+  left: 0,
+  background: 'var(--fundo, #fff)',
+  whiteSpace: 'nowrap' as const,
+};
+
+const FUNDO_DA_CELULA: Record<string, string | undefined> = {
+  trava: 'var(--erro-fundo, #fdecea)',
+  aviso: 'var(--atencao-fundo, #fdf6e3)',
+};
+
 export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const [importacao, setImportacao] = useState<Importacao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [soPendentes, setSoPendentes] = useState(true);
-  const [mostrarACriar, setMostrarACriar] = useState(false);
-  //: O que a pessoa está digitando, por linha e por coluna, antes de salvar.
-  //:
-  //: RASCUNHO LOCAL de propósito: salvar a cada tecla mandaria uma reproposição
-  //: por caractere, e cada uma devolve a conferência inteira — a tela piscaria
-  //: enquanto ela digita a data.
+  //: A LINHA EM EDIÇÃO, uma de cada vez. Duas linhas abertas ao mesmo tempo
+  //: convidariam a pessoa a preencher uma e salvar a outra sem perceber.
+  const [editando, setEditando] = useState<number | null>(null);
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
-
-  const escrever = (linhaId: number, coluna: string, valor: string) =>
-    setRascunho((atual) => ({ ...atual, [`${linhaId}|${coluna}`]: valor }));
-
-  const salvarLinha = (linhaId: number, colunas: string[]) => {
-    const celulas: Record<string, string> = {};
-    for (const coluna of colunas) {
-      const escrito = rascunho[`${linhaId}|${coluna}`];
-      if (escrito !== undefined && escrito !== '') celulas[coluna] = escrito;
-    }
-    if (Object.keys(celulas).length === 0) return;
-    void agir(async () => {
-      setImportacao(await corrigirLinhaDaImportacao(id, linhaId, celulas));
-      //: O rascunho SAI depois de salvo: mantê-lo faria a caixa continuar
-      //: mostrando o texto antigo ao lado do valor que o servidor já aceitou.
-      setRascunho((atual) => {
-        const limpo = { ...atual };
-        for (const coluna of colunas) delete limpo[`${linhaId}|${coluna}`];
-        return limpo;
-      });
-    });
-  };
 
   const carregar = useCallback(async () => {
     try {
@@ -95,38 +86,72 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     void carregar();
   }, [carregar]);
 
-  /** Toda ação passa por aqui: o servidor devolve o estado inteiro, então a tela
-   *  não tenta adivinhar o efeito da decisão — ela mostra o que voltou.
-   *
-   *  ISSO IMPORTA na reconferência: a confirmação pode recusar com 409 porque o
-   *  cadastro mudou desde que a tela abriu, e nesse caso o que a pessoa vê tem
-   *  de ser o estado NOVO, não o que ela tinha na frente. */
-  const agir = useCallback(
-    async (acao: () => Promise<unknown>) => {
-      setOcupado(true);
-      setErro(null);
-      try {
-        await acao();
-        await carregar();
-      } catch (falha) {
-        setErro(falha instanceof Error ? falha.message : 'Não consegui aplicar a decisão.');
-        await carregar();
-      } finally {
-        setOcupado(false);
-      }
-    },
-    [carregar],
-  );
+  const agir = async (gesto: () => Promise<void>) => {
+    setOcupado(true);
+    setErro(null);
+    try {
+      await gesto();
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Não consegui completar a ação.');
+    } finally {
+      setOcupado(false);
+    }
+  };
 
-  //: O MODAL É A MOLDURA, e o conteúdo é o mesmo de antes. Envolver aqui e não
-  //: no `App` mantém junto o estado de carregando e de erro: um modal vazio
-  //: enquanto a conferência abre é melhor que a tela de trás piscando.
-  const moldura = (conteudo: ReactNode) => (
+  const abrirEdicao = (linha: LinhaDaImportacao, colunas: string[]) => {
+    setEditando(linha.id);
+    //: O RASCUNHO COMEÇA COM O QUE ESTÁ NA CÉLULA, e não vazio: a pessoa clicou em
+    //: editar para CORRIGIR um valor, e um campo vazio a obrigaria a redigitar o que
+    //: já estava certo.
+    const inicial: Record<string, string> = {};
+    for (const coluna of colunas) {
+      const valor = linha.dados_brutos[coluna];
+      inicial[`${linha.id}|${coluna}`] =
+        valor === null || valor === undefined ? '' : String(valor);
+    }
+    setRascunho((atual) => ({ ...atual, ...inicial }));
+  };
+
+  const fecharEdicao = () => setEditando(null);
+
+  const salvarLinha = (linha: LinhaDaImportacao, colunas: string[]) => {
+    const celulas: Record<string, string> = {};
+    for (const coluna of colunas) {
+      const escrito = rascunho[`${linha.id}|${coluna}`] ?? '';
+      const antes = linha.dados_brutos[coluna];
+      const eraVazio = antes === null || antes === undefined ? '' : String(antes);
+      //: SÓ O QUE MUDOU vai para o servidor: mandar a linha inteira marcaria como
+      //: "editado na conferência" toda célula que a pessoa nem tocou.
+      if (escrito !== eraVazio) celulas[coluna] = escrito;
+    }
+    if (Object.keys(celulas).length === 0) {
+      fecharEdicao();
+      return;
+    }
+    void agir(async () => {
+      setImportacao(await corrigirLinhaDaImportacao(id, linha.id, celulas));
+      fecharEdicao();
+    });
+  };
+
+  const excluirLinha = (linha: LinhaDaImportacao, excluir: boolean) =>
+    void agir(async () => {
+      setImportacao(await excluirLinhaDaImportacao(id, linha.id, excluir));
+      if (editando === linha.id) fecharEdicao();
+    });
+
+  const decidir = (campo: string, valor: string, decisao: string, alvo?: string) =>
+    void agir(async () => {
+      setImportacao(await resolverDivergencia(id, { campo, valor, decisao, alvo }));
+    });
+
+  const moldura = (conteudo: ReactNode, rodape?: ReactNode) => (
     <Modal
-      titulo="Confira a planilha"
-      subtitulo="Nada foi criado ainda. Corrija o que está em vermelho e confirme."
+      titulo={importacao?.arquivo_nome ?? 'Confira a planilha'}
+      subtitulo="Nada foi criado ainda. Confira as linhas e suba quando estiver certo."
       aoFechar={aoFechar ?? (() => {})}
       largura={1240}
+      rodape={rodape}
     >
       {conteudo}
     </Modal>
@@ -135,250 +160,104 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   if (erro && !importacao) return moldura(<FaixaDeErro mensagem={erro} />);
   if (!importacao) return moldura(<Vazio mensagem="Abrindo a conferência…" />);
 
-  const numeros = cabecalho({
-    agendas: importacao.linhas.filter((linha) => linha.aba === 'Agendas').length,
-    pendencias: importacao.pendencias,
-    decisoesPendentes: importacao.decisoes_pendentes,
-    aCriar: importacao.a_criar,
-  });
+  const fechada = importacao.situacao !== 'aguardando_conferencia';
   const grupos = porUrgencia(importacao.grupos);
   const cores = resumoDeCores(importacao.linhas);
-  const visiveis = importacao.linhas.filter(
-    (linha) => !soPendentes || linhaTemPendencia(linha),
+  const daPlanilha = importacao.linhas.filter((linha) => linha.aba === 'Agendas');
+  const aCriar = daPlanilha.filter((linha) => linha.decisao !== 'descartada').length;
+  const excluidas = daPlanilha.length - aCriar;
+  const visiveis = daPlanilha.filter(
+    (linha) => !soPendentes || linhaTemPendencia(linha) || linha.decisao === 'descartada',
   );
-  //: As células editáveis por linha, uma vez: chamar `celulasEditaveis` dentro do
-  //: laço das colunas a recalcularia 22 vezes por linha.
-  const editaveisPorLinha: Record<number, string[]> = {};
-  for (const linha of importacao.linhas) editaveisPorLinha[linha.id] = celulasEditaveis(linha);
-  const fechada = importacao.situacao === 'confirmada' || importacao.situacao === 'cancelada';
 
-  const decidir = (grupo: Grupo, decisao: string, alvo?: string) =>
-    agir(() =>
-      resolverDivergencia(id, { campo: grupo.campo, valor: grupo.valor, decisao, alvo }),
-    );
+  const rodape = fechada ? (
+    <span className="etiqueta">{importacao.situacao}</span>
+  ) : (
+    <div className="linha linha--entre">
+      <Botao
+        variante="secundario"
+        desabilitado={ocupado}
+        aoClicar={() => void agir(async () => setImportacao(await cancelarImportacao(id)))}
+      >
+        Cancelar a importação
+      </Botao>
+      {/* A FRASE DO BOTÃO É A PRESTAÇÃO DE CONTAS que o bloco recolhido dava: ela
+          diz quantas agendas entram, e é a última coisa que a pessoa lê antes de
+          decidir. "Subir" é a palavra que o dono usa para este gesto. */}
+      <Botao
+        desabilitado={ocupado || importacao.pendencias > 0 || aCriar === 0}
+        aoClicar={() =>
+          void agir(async () => {
+            const feito = await confirmarImportacao(id);
+            aoConfirmar?.(feito.criadas);
+          })
+        }
+      >
+        {importacao.pendencias > 0
+          ? `Resolva ${importacao.pendencias} ${
+              importacao.pendencias === 1 ? 'linha' : 'linhas'
+            } para subir`
+          : `Subir ${aCriar} ${aCriar === 1 ? 'agenda' : 'agendas'}`}
+      </Botao>
+    </div>
+  );
 
   return moldura(
-    <div className="pilha">
+    <div className="pilha pilha--curta">
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-      <Cartao>
-        <div className="linha linha--entre">
-          <div>
-            <h2>{importacao.arquivo_nome}</h2>
-            {/* O CABEÇALHO RESPONDE "QUANTO FALTA", e é a primeira coisa que a
-                pessoa lê para decidir se tem tempo de conferir agora. Os dois
-                números de pendência vão juntos porque cada um sozinho engana:
-                "12 linhas" não diz quantos cliques, "2 decisões" não diz o
-                tamanho do estrago. */}
-            <p className="texto--secundario">
-              {numeros.agendas} agendas
-              {numeros.pendencias > 0
-                ? ` · ${numeros.pendencias} linhas presas por ${numeros.decisoes} ${
-                    numeros.decisoes === 1 ? 'decisão' : 'decisões'
-                  }`
-                : ' · nada pendente'}
-              {numeros.cadastrosNovos > 0
-                ? ` · ${numeros.cadastrosNovos} ${
-                    numeros.cadastrosNovos === 1 ? 'cadastro novo' : 'cadastros novos'
-                  }`
-                : ''}
-            </p>
-          </div>
-          {fechada ? (
-            <span className="etiqueta">{importacao.situacao}</span>
-          ) : (
-            <div className="linha">
-              <Botao
-                variante="secundario"
-                desabilitado={ocupado}
-                aoClicar={() => void agir(() => cancelarImportacao(id))}
-              >
-                Cancelar importação
-              </Botao>
-              <Botao
-                desabilitado={ocupado || !podeConfirmar(importacao.grupos)}
-                aoClicar={() =>
-                  void agir(async () => {
-                    const feito = await confirmarImportacao(id);
-                    aoConfirmar?.(feito.criadas);
-                  })
-                }
-              >
-                Confirmar e criar {numeros.agendas} agendas
-              </Botao>
-            </div>
-          )}
-        </div>
-      </Cartao>
+      {/* O CABEÇALHO EM UMA LINHA: contar CÉLULAS e não linhas, porque uma linha com
+          três buracos dá três coisas a preencher. */}
+      <div className="linha linha--entre">
+        <p className="texto--secundario">
+          {aCriar} {aCriar === 1 ? 'agenda' : 'agendas'}
+          {cores.trava > 0
+            ? ` · ${cores.trava} ${cores.trava === 1 ? 'célula' : 'células'} a preencher`
+            : ' · nada a preencher'}
+          {cores.aviso > 0 ? ` · ${cores.aviso} com aviso` : ''}
+          {excluidas > 0 ? ` · ${excluidas} excluída${excluidas === 1 ? '' : 's'}` : ''}
+        </p>
+        <Botao variante="secundario" aoClicar={() => setSoPendentes(!soPendentes)}>
+          {soPendentes ? 'Ver todas as linhas' : 'Só as que precisam de você'}
+        </Botao>
+      </div>
 
-      {/* -- o que precisa de você ------------------------------------------- */}
-      {grupos.length > 0 ? (
-        <Secao titulo="O que precisa de você">
-          <div className="pilha">
-            {grupos.map((grupo) => (
-              <Cartao key={`${grupo.campo}|${grupo.valor}`}>
-                <div className="pilha pilha--curta">
-                  <div className="linha linha--entre">
-                    <strong>{grupo.valor}</strong>
-                    <span className="texto--secundario">
-                      em {grupo.linhas.length}{' '}
-                      {grupo.linhas.length === 1 ? 'linha' : 'linhas'}
-                      {grupo.trava ? '' : ' · só aviso'}
-                    </span>
-                  </div>
-                  <p className="texto--secundario">linhas {grupo.linhas.join(', ')}</p>
-
-                  {/* AS SUGESTÕES SÃO O ATALHO: transformam "não existe" num
-                      clique. Vazias quando não há nada parecido — oferecer o
-                      menos-ruim faria a pessoa apontar para o errado por
-                      confiar na sugestão. */}
-                  {grupo.sugestoes.length > 0 ? (
-                    <div className="linha linha--quebra">
-                      {grupo.sugestoes.map((sugestao) => (
-                        <Botao
-                          key={sugestao.alvo}
-                          variante="secundario"
-                          desabilitado={ocupado || fechada}
-                          // MANDA O `alvo`, e não o nome: o servidor valida o alvo
-                          // como id. Mandar o nome fazia este atalho — o principal
-                          // da conferência — devolver 422.
-                          aoClicar={() => void decidir(grupo, 'apontar', sugestao.alvo)}
-                        >
-                          É “{sugestao.nome}”
-                        </Botao>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="linha linha--quebra">
-                    {/* SÓ ONDE A IMPORTAÇÃO CRIA. Dicionário administrado e campo
-                        sem vocabulário não têm cadastro a criar, e oferecer o botão
-                        fazia a pendência sumir da tela para voltar como conflito na
-                        confirmação, depois de a pessoa ter conferido tudo. */}
-                    {grupo.pode_criar ? (
-                      <Botao
-                        variante="secundario"
-                        desabilitado={ocupado || fechada}
-                        aoClicar={() => void decidir(grupo, 'criar')}
-                      >
-                        Cadastrar como novo
-                      </Botao>
-                    ) : null}
-                    <Botao
-                      variante="secundario"
-                      desabilitado={ocupado || fechada}
-                      aoClicar={() => void decidir(grupo, 'descartar')}
-                    >
-                      Descartar {grupo.linhas.length}{' '}
-                      {grupo.linhas.length === 1 ? 'linha' : 'linhas'}
-                    </Botao>
-                  </div>
-                </div>
-              </Cartao>
-            ))}
-          </div>
-        </Secao>
-      ) : null}
-
-      {/* -- o que vou criar: recolhido, porque não pede nada ---------------- */}
-      {importacao.a_criar.length > 0 ? (
-        <Secao titulo={`O que vou criar (${importacao.a_criar.length})`}>
-          <Botao variante="secundario" aoClicar={() => setMostrarACriar(!mostrarACriar)}>
-            {mostrarACriar ? 'Recolher' : 'Ver o que já está decidido'}
-          </Botao>
-          {mostrarACriar ? (
-            <ul>
-              {importacao.a_criar.map((item) => (
-                <li key={`${item.campo}|${item.valor}|${item.acao}`}>
-                  {item.acao === 'criar' ? 'Cadastrar' : 'Apontar'} <strong>{item.valor}</strong>{' '}
-                  <span className="texto--secundario">
-                    ({item.linhas.length} {item.linhas.length === 1 ? 'linha' : 'linhas'})
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Secao>
-      ) : null}
-
-      {/* -- a planilha como a pessoa a preencheu ---------------------------- */}
-      <Secao titulo="Confira a planilha">
-        {/* O CABEÇALHO RESPONDE "TENHO TEMPO DE CONFERIR AGORA?" antes de a pessoa
-            rolar 500 linhas. Contar CÉLULAS e não linhas: uma linha com três
-            buracos dá três coisas a preencher, e dizer "1 linha" a subestima. */}
-        <div className="linha linha--entre">
-          <p className="texto--secundario">
-            {cores.trava > 0
-              ? `${cores.trava} ${cores.trava === 1 ? 'célula' : 'células'} a preencher`
-              : 'nenhuma célula a preencher'}
-            {cores.aviso > 0 ? ` · ${cores.aviso} com aviso` : ''}
-          </p>
-          <Botao variante="secundario" aoClicar={() => setSoPendentes(!soPendentes)}>
-            {soPendentes ? 'Ver todas as linhas' : 'Só as que têm pendência'}
-          </Botao>
-        </div>
-
-        {/* A ROLAGEM É HORIZONTAL E FICA AQUI, não na página: são 22 ou 58
-            colunas, e deixar a página inteira rolar para os lados tira o
-            cabeçalho e os botões de confirmar do alcance. */}
-        <div style={{ overflowX: 'auto', maxHeight: '60vh', overflowY: 'auto' }}>
-          <table className="tabela">
-            <thead>
-              <tr>
-                <th style={{ position: 'sticky', left: 0, background: 'var(--fundo, #fff)' }}>
-                  Linha
+      <div style={{ overflowX: 'auto', maxHeight: '62vh', overflowY: 'auto' }}>
+        <table className="tabela">
+          <thead>
+            <tr>
+              <th style={CONGELADA}>Linha</th>
+              {importacao.colunas.map((coluna) => (
+                <th key={coluna} style={{ whiteSpace: 'nowrap' }}>
+                  {coluna}
                 </th>
-                {importacao.colunas.map((coluna) => (
-                  <th key={coluna} style={{ whiteSpace: 'nowrap' }}>
-                    {coluna}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visiveis.map((linha) => (
+              ))}
+              <th style={{ whiteSpace: 'nowrap' }}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiveis.map((linha) => {
+              const excluida = linha.decisao === 'descartada';
+              const emEdicao = editando === linha.id;
+              return (
                 <tr
                   key={linha.id}
-                  /* O DESTAQUE NA LINHA, além do da célula: com 22 colunas a
-                     célula vermelha pode estar fora da tela, e é ele que faz a
-                     pessoa rolar até ela. */
-                  style={
-                    linhaTemPendencia(linha)
-                      ? { outline: '2px solid var(--erro, #c0392b)' }
-                      : undefined
-                  }
+                  style={{
+                    opacity: excluida ? 0.45 : undefined,
+                    outline:
+                      !excluida && linhaTemPendencia(linha)
+                        ? '2px solid var(--erro, #c0392b)'
+                        : undefined,
+                  }}
                 >
-                  <td
-                    style={{
-                      position: 'sticky',
-                      left: 0,
-                      background: 'var(--fundo, #fff)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {linha.linha_origem}
-                    {linha.decisao === 'descartada' ? (
-                      <span className="etiqueta"> descartada</span>
-                    ) : null}
-                  </td>
+                  <td style={CONGELADA}>{linha.linha_origem}</td>
                   {importacao.colunas.map((coluna) => {
                     const cor = corDaCelula(linha, coluna);
-                    const editavel = editaveisPorLinha[linha.id]?.includes(coluna);
                     const valor = linha.dados_brutos[coluna];
+                    const decisao = decisaoDaCelula(linha, coluna, grupos);
                     return (
                       <td
                         key={coluna}
-                        /* O HOVER CARREGA O QUE NÃO CABE NA CÉLULA: as
-                           mensagens de divergência e o fato de o valor ter sido
-                           repetido da linha de cima.
-                           O "(repetido)" era texto na célula e o dono do produto
-                           pediu para sair — com 22 colunas, uma palavra a mais por
-                           célula herdada polui a grade inteira. A informação não
-                           podia simplesmente desaparecer: a herança é invisível na
-                           planilha (a célula está vazia lá), e foi ele mesmo quem
-                           pediu para poder vê-la antes de confirmar. No hover ela
-                           continua ao alcance de quem tiver dúvida sobre uma
-                           célula, sem cobrar nada de quem não tiver. */
                         title={[
                           ...linha.divergencias
                             .filter((d) => d.coluna === coluna)
@@ -386,25 +265,22 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                           ...(coluna in linha.herdado ? ['Repetido da linha de cima.'] : []),
                         ].join(' · ')}
                         style={{
-                          background:
-                            cor === 'trava'
-                              ? 'var(--erro-fundo, #fdecea)'
-                              : cor === 'aviso'
-                                ? 'var(--atencao-fundo, #fdf6e3)'
-                                : undefined,
+                          background: excluida ? undefined : FUNDO_DA_CELULA[cor ?? ''],
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {editavel && !fechada ? (
+                        {emEdicao ? (
                           <input
                             className="entrada"
-                            style={{ minWidth: 120 }}
+                            style={{ minWidth: 130 }}
                             value={rascunho[`${linha.id}|${coluna}`] ?? ''}
-                            placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : 'preencher'}
+                            placeholder={coluna === 'Data' ? 'dd/mm/aaaa' : ''}
                             onChange={(evento) =>
-                              escrever(linha.id, coluna, evento.target.value)
+                              setRascunho((atual) => ({
+                                ...atual,
+                                [`${linha.id}|${coluna}`]: evento.target.value,
+                              }))
                             }
-                            onBlur={() => salvarLinha(linha.id, [coluna])}
                           />
                         ) : (
                           <>
@@ -416,15 +292,105 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             ) : null}
                           </>
                         )}
+
+                        {/* A DECISÃO NA CÉLULA, e o número que justifica o clique.
+                            É o que substituiu o bloco de pendências agrupadas: sem
+                            ele, consertar um órgão errado em doze linhas seriam doze
+                            consertos iguais. */}
+                        {decisao && !excluida && !fechada ? (
+                          <div className="pilha pilha--curta" style={{ marginTop: 4 }}>
+                            {decisao.outrasLinhas > 0 ? (
+                              <span className="texto--secundario">
+                                e em {decisao.outrasLinhas}{' '}
+                                {decisao.outrasLinhas === 1 ? 'outra linha' : 'outras linhas'}
+                              </span>
+                            ) : null}
+                            <div className="linha linha--quebra">
+                              {decisao.grupo.sugestoes.map((sugestao) => (
+                                <Botao
+                                  key={sugestao.alvo}
+                                  variante="secundario"
+                                  desabilitado={ocupado}
+                                  aoClicar={() =>
+                                    decidir(
+                                      decisao.grupo.campo,
+                                      decisao.grupo.valor,
+                                      'apontar',
+                                      sugestao.alvo,
+                                    )
+                                  }
+                                >
+                                  É “{sugestao.nome}”
+                                </Botao>
+                              ))}
+                              {decisao.grupo.pode_criar ? (
+                                <Botao
+                                  variante="secundario"
+                                  desabilitado={ocupado}
+                                  aoClicar={() =>
+                                    decidir(decisao.grupo.campo, decisao.grupo.valor, 'criar')
+                                  }
+                                >
+                                  Cadastrar como novo
+                                </Botao>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
                       </td>
                     );
                   })}
+
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {fechada ? null : excluida ? (
+                      <Botao
+                        variante="secundario"
+                        desabilitado={ocupado}
+                        aoClicar={() => excluirLinha(linha, false)}
+                      >
+                        Restaurar
+                      </Botao>
+                    ) : emEdicao ? (
+                      <div className="linha">
+                        <Botao
+                          desabilitado={ocupado}
+                          aoClicar={() => salvarLinha(linha, importacao.colunas)}
+                        >
+                          Salvar
+                        </Botao>
+                        <Botao variante="secundario" aoClicar={fecharEdicao}>
+                          Cancelar
+                        </Botao>
+                      </div>
+                    ) : (
+                      <div className="linha">
+                        <Botao
+                          variante="secundario"
+                          desabilitado={ocupado}
+                          aoClicar={() => abrirEdicao(linha, importacao.colunas)}
+                        >
+                          Editar
+                        </Botao>
+                        <Botao
+                          variante="secundario"
+                          desabilitado={ocupado}
+                          aoClicar={() => excluirLinha(linha, true)}
+                        >
+                          Excluir
+                        </Botao>
+                      </div>
+                    )}
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Secao>
+              );
+            })}
+          </tbody>
+        </table>
+        {visiveis.length === 0 ? (
+          <Vazio mensagem="Nenhuma linha precisa de você. Pode subir." />
+        ) : null}
+      </div>
     </div>,
+    rodape,
   );
 }
