@@ -19,13 +19,22 @@ describe('medidaDaColuna', () => {
     expect(sigla.alinhamento).toBe('center');
   });
 
-  it('a prosa é a mais larga, e é a única que quebra em várias linhas', () => {
+  it('a prosa é a coluna mais larga de todas', () => {
     const prosa = medidaDaColuna('prosa');
 
-    expect(prosa.quebra).toBe(true);
     for (const outro of ['marca', 'data', 'sigla', 'lista', 'texto']) {
-      expect(medidaDaColuna(outro).quebra).toBe(false);
       expect(prosa.largura).toBeGreaterThan(medidaDaColuna(outro).largura);
+    }
+  });
+
+  it('nenhuma medida manda quebrar linha — a grade tem altura uniforme', () => {
+    /** DECISÃO REVISTA: a prosa quebrava. Com 54 linhas de alturas diferentes a
+     *  varredura com o olho para de funcionar, e a altura variável torna impossível
+     *  a promessa de a célula não mudar de tamanho ao entrar em edição. A prosa
+     *  ganha a coluna mais larga, corta com reticências, e o hover tem o valor
+     *  inteiro — é o que uma planilha faz. */
+    for (const tipo of ['marca', 'data', 'sigla', 'lista', 'prosa', 'texto']) {
+      expect('quebra' in medidaDaColuna(tipo)).toBe(false);
     }
   });
 

@@ -10,9 +10,12 @@
  *  faz a borda esquerda brigar com o texto. Tudo o que é nome ou frase fica à
  *  esquerda, onde o olho sempre começa.
  *
- *  A PROSA QUEBRA, o resto não. Um relato de três linhas numa célula que não quebra
- *  empurra a tabela para 2000px de largura; um nome de instituição quebrado no meio
- *  é mais difícil de reconhecer do que um nome cortado no fim.
+ *  NADA QUEBRA EM VÁRIAS LINHAS, e isto é uma decisão que eu revi: a prosa quebrava
+ *  antes. Com 54 linhas de alturas diferentes, a varredura com o olho para de
+ *  funcionar — e a altura variável torna impossível a promessa de a célula não mudar
+ *  de tamanho ao entrar em edição, que é o que o dono do produto pediu. A prosa
+ *  continua ganhando a coluna mais LARGA, corta com reticências, e o valor inteiro
+ *  fica no hover. É o que uma planilha faz.
  */
 
 /** Como uma coluna se desenha na grade. */
@@ -20,8 +23,6 @@ export interface Medida {
   /** A largura da coluna, em pixels. Entra no `colgroup`. */
   largura: number;
   alinhamento: 'left' | 'center';
-  /** `true` deixa o texto quebrar em várias linhas. */
-  quebra: boolean;
 }
 
 /** Tipo de coluna → medida. As larguras são múltiplos de 4 e sobem com o conteúdo.
@@ -30,16 +31,16 @@ export interface Medida {
  *  um parágrafo. */
 const POR_TIPO: Record<string, Medida> = {
   // "sim" ou vazio. Estreita e centralizada — é uma marca, não um valor.
-  marca: { largura: 92, alinhamento: 'center', quebra: false },
+  marca: { largura: 92, alinhamento: 'center' },
   // 25/09/2026 — dez caracteres, sempre os mesmos.
-  data: { largura: 108, alinhamento: 'center', quebra: false },
+  data: { largura: 108, alinhamento: 'center' },
   // Duas letras.
-  sigla: { largura: 64, alinhamento: 'center', quebra: false },
+  sigla: { largura: 64, alinhamento: 'center' },
   // Nome vindo de uma lista: "Prefeitura Municipal de Campinas" é o caso real.
-  lista: { largura: 208, alinhamento: 'left', quebra: false },
-  // Um parágrafo. A única que quebra.
-  prosa: { largura: 288, alinhamento: 'left', quebra: true },
-  texto: { largura: 168, alinhamento: 'left', quebra: false },
+  lista: { largura: 208, alinhamento: 'left' },
+  // Um parágrafo: a coluna mais larga, e ainda assim cortada. Ver o cabeçalho.
+  prosa: { largura: 288, alinhamento: 'left' },
+  texto: { largura: 168, alinhamento: 'left' },
 };
 
 /** O padrão de quem não declarou tipo. Igual a `texto`: uma coluna nova aparece

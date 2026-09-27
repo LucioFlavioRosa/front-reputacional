@@ -50,11 +50,25 @@ interface Props {
   aoFechar?: () => void;
 }
 
-/** A régua entre as células. UM PIXEL do cinza do sistema, e não uma cor nova: a
- *  divisão é o que transforma 22 colunas numa planilha legível em vez de um
- *  parágrafo largo, e ela tem de desaparecer quando a pessoa não está procurando por
- *  ela. */
+/** A borda de cada peça. UM PIXEL do cinza do sistema, e não uma cor nova. */
 const REGUA = '1px solid var(--borda)';
+
+/** O espaço ENTRE as peças. É ele que divide as colunas agora: com cantos
+ *  arredondados não há régua compartilhada, e o vão faz o mesmo trabalho com menos
+ *  tinta. Dois pixels — o suficiente para separar, pouco para não afrouxar a grade. */
+const VAO = '2px';
+
+/** A ALTURA DE TODA LINHA, e ela não muda nunca.
+ *
+ *  É o pedido, e é o que faz a grade ser varrível: 54 linhas de alturas diferentes
+ *  não se leem de cima a baixo. Ao entrar em edição o campo ocupa exatamente esta
+ *  altura, com `box-sizing: border-box`, então a borda dele cabe DENTRO do espaço que
+ *  o texto ocupava — a linha não se move um pixel.
+ *
+ *  ERA AQUI O DEFEITO que expandia a célula: o campo levava `className="entrada"`, e
+ *  essa classe existe no projeto — é o layout da tela de LOGIN, com
+ *  `min-height: 100vh`. O campo estava recebendo altura mínima de uma tela inteira. */
+const ALTURA_DA_LINHA = 30;
 
 /** O recheio de toda célula, cabeçalho incluído. Um número só, num lugar só:
  *  cabeçalho e corpo com recheios diferentes desalinham a coluna inteira. */
@@ -78,17 +92,45 @@ const CABECALHO = {
   whiteSpace: 'nowrap' as const,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  borderBottom: REGUA,
-  borderRight: REGUA,
+  border: REGUA,
+  borderRadius: 'var(--r-destaque)',
 };
 
 /** A célula de dados: a régua à direita é o que divide as colunas, e o recheio é o
  *  mesmo do cabeçalho — recheios diferentes desalinham a coluna inteira. */
 const CELULA = {
   padding: RECHEIO,
-  borderBottom: REGUA,
-  borderRight: REGUA,
-  verticalAlign: 'top' as const,
+  border: REGUA,
+  borderRadius: 'var(--r-destaque)',
+  background: 'var(--branco)',
+  height: ALTURA_DA_LINHA,
+  //: `middle` e não `top`: com altura fixa, o texto centrado verticalmente é o que
+  //: faz a peça parecer uma célula e não um bloco com o conteúdo empurrado para cima.
+  verticalAlign: 'middle' as const,
+  //: NADA CRESCE. O valor comprido corta com reticências e o inteiro está no hover —
+  //: é o que uma planilha faz, e é o que mantém a linha na mesma altura.
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+
+/** O campo de edição, que ocupa a célula sem mudá-la de tamanho.
+ *
+ *  `height: 100%` com `box-sizing: border-box` é o par que faz a borda do campo caber
+ *  DENTRO da altura da célula. Sem o `box-sizing`, a borda somaria dois pixels e a
+ *  linha inteira desceria. */
+const CAMPO = {
+  width: '100%',
+  height: '100%',
+  boxSizing: 'border-box' as const,
+  margin: 0,
+  padding: '0 6px',
+  border: '1px solid var(--azul-mar)',
+  borderRadius: 'var(--r-btn)',
+  background: 'var(--branco)',
+  color: 'var(--cinza-4)',
+  font: 'inherit',
+  fontSize: 12,
 };
 
 /** A primeira coluna congelada: a grade rola para os lados, e sem isto a pessoa
@@ -98,7 +140,6 @@ const CONGELADA = {
   left: 0,
   zIndex: 2,
   background: 'var(--branco)',
-  borderRight: REGUA,
 };
 
 /** O fundo da célula com problema. OS TOKENS DO PRODUTO — e isto era um defeito meu:
@@ -270,7 +311,11 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
       <div className="rolagem-interna" style={{ maxHeight: '62vh', overflowX: 'auto' }}>
         <table
           style={{
-            borderCollapse: 'collapse',
+            //: SEPARADO E NÃO COLAPSADO: é o que permite canto arredondado por
+            //: célula. Com as bordas colapsadas, duas células vizinhas dividem a
+            //: mesma linha e o raio não tem onde existir.
+            borderCollapse: 'separate',
+            borderSpacing: VAO,
             fontSize: 12,
             // FIXO, e é o que faz a largura por tipo valer: em `auto` o navegador
             // redistribui tudo pelo conteúdo, e um relato comprido numa linha
@@ -312,15 +357,25 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
               return (
                 <tr
                   key={linha.id}
-                  style={{
-                    opacity: excluida ? 0.45 : undefined,
-                    outline:
-                      !excluida && linhaTemPendencia(linha)
-                        ? '2px solid var(--erro, #c0392b)'
-                        : undefined,
-                  }}
+                  style={{ opacity: excluida ? 0.45 : undefined }}
                 >
-                  <td style={{ ...CONGELADA, ...CELULA, textAlign: 'center' }}>
+                  {/* A PENDÊNCIA MARCA A PEÇA DO NÚMERO, e não um contorno em
+                      volta da linha: com as peças separadas, um contorno na linha
+                      cortaria os vãos e brigaria com os cantos. Aqui ele vira uma
+                      faixa na primeira peça — que é justamente a que fica congelada
+                      quando a grade rola para os lados, então continua visível. */}
+                  <td
+                    style={{
+                      ...CELULA,
+                      ...CONGELADA,
+                      textAlign: 'center',
+                      fontWeight: 600,
+                      borderLeft:
+                        !excluida && linhaTemPendencia(linha)
+                          ? '4px solid var(--erro-fg)'
+                          : REGUA,
+                    }}
+                  >
                     {linha.linha_origem}
                   </td>
                   {importacao.colunas.map(({ nome: coluna, tipo }) => {
@@ -336,21 +391,16 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             .filter((d) => d.coluna === coluna)
                             .map((d) => d.mensagem),
                           ...(coluna in linha.herdado ? ['Repetido da linha de cima.'] : []),
-                          ...(medida.quebra ? [] : [String(valor ?? '')]),
+                          String(valor ?? ''),
                         ]
                           .filter(Boolean)
                           .join(' · ')}
                         style={{
                           ...CELULA,
                           textAlign: medida.alinhamento,
-                          background: excluida ? undefined : FUNDO_DA_CELULA[cor ?? ''],
-                          // SÓ A PROSA QUEBRA. O resto corta com reticências: um
-                          // nome de instituição partido no meio é mais difícil de
-                          // reconhecer do que um nome cortado no fim, e o valor
-                          // inteiro está no `title`.
-                          whiteSpace: medida.quebra ? 'normal' : 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          background: excluida
+                            ? undefined
+                            : (FUNDO_DA_CELULA[cor ?? ''] ?? 'var(--branco)'),
                         }}
                       >
                         {emEdicao ? (
@@ -360,14 +410,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                              exatamente o mesmo lugar que ocupava antes — a pessoa
                              digita onde estava lendo. */
                           <input
-                            className="entrada"
-                            style={{
-                              width: '100%',
-                              boxSizing: 'border-box',
-                              padding: '2px 4px',
-                              fontSize: 12,
-                              textAlign: medida.alinhamento,
-                            }}
+                            style={{ ...CAMPO, textAlign: medida.alinhamento }}
                             value={rascunho[`${linha.id}|${coluna}`] ?? ''}
                             placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
                             onChange={(evento) =>
@@ -436,7 +479,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                     );
                   })}
 
-                  <td style={{ ...CELULA, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...CELULA, padding: '3px 6px' }}>
                     {fechada ? null : excluida ? (
                       <Botao
                         variante="secundario"
