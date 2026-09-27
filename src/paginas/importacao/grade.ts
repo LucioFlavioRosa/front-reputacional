@@ -38,9 +38,20 @@ export function corDaCelula(linha: LinhaDaImportacao, coluna: string): Cor {
 /** Se a linha inteira deve se destacar.
  *
  *  O PEDIDO FALA DE LINHAS E DE COLUNAS, e com 22 colunas a célula vermelha pode
- *  estar fora da tela: o destaque na linha é o que faz a pessoa rolar até ela. */
+ *  estar fora da tela: o destaque na linha é o que faz a pessoa rolar até ela.
+ *
+ *  OLHA TODAS AS DIVERGÊNCIAS, e não só as que apontam coluna — foi um achado da
+ *  revisão. "Esta linha está presa?" é pergunta sobre a LINHA, e a resposta é
+ *  `trava`; em qual célula pintar é outra pergunta, e essa sim depende da coluna.
+ *
+ *  O ESTRAGO DE CONFUNDIR AS DUAS: uma importação criada antes de as divergências
+ *  ganharem `coluna` está no banco sem essa chave, e a conferência dela continua
+ *  aberta. Com o filtro inicial mostrando só as linhas com pendência, a linha
+ *  DESAPARECIA da grade enquanto o cabeçalho anunciava a pendência — e a pessoa não
+ *  tinha onde mexer. O servidor agora deriva a coluna que falta, e isto aqui é a
+ *  segunda rede: vale para qualquer divergência que seja da linha e não da célula. */
 export function linhaTemPendencia(linha: LinhaDaImportacao): boolean {
-  return apontadas(linha).some((divergencia) => divergencia.trava);
+  return linha.divergencias.some((divergencia) => divergencia.trava);
 }
 
 /** Quantas células travam e quantas avisam, no arquivo todo.

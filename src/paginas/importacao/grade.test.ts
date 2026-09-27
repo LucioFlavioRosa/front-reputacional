@@ -99,3 +99,26 @@ describe('resumoDeCores', () => {
     });
   });
 });
+
+describe('linhaTemPendencia, quando a divergência não aponta coluna', () => {
+  it('a linha AINDA se destaca — achado Médio da revisão', () => {
+    /** O cenário: uma importação criada ANTES de as divergências ganharem
+     *  `coluna` fica no banco com o JSONB sem essa chave. A conferência dela
+     *  continua aberta, e a API devolve o que está gravado.
+     *
+     *  O efeito era grave e silencioso: o cabeçalho dizia "1 célula a preencher",
+     *  os grupos mostravam a decisão — e a LINHA não aparecia na grade, porque o
+     *  filtro inicial mostra só as que têm pendência e `linhaTemPendencia` só
+     *  olhava as divergências com coluna. A pessoa via a pendência anunciada e
+     *  não tinha onde mexer.
+     *
+     *  "ESTA LINHA ESTÁ PRESA?" é pergunta sobre a LINHA, e a resposta é `trava`.
+     *  Saber em qual célula pintar é outra pergunta — essa sim depende da coluna. */
+    expect(linhaTemPendencia(linha([divergencia({ coluna: '' })]))).toBe(true);
+  });
+
+  it('e o aviso brando sem coluna continua não destacando', () => {
+    // A duplicata de agenda é o caso real disto: é da linha inteira, e só avisa.
+    expect(linhaTemPendencia(linha([divergencia({ coluna: '', trava: false })]))).toBe(false);
+  });
+});
