@@ -37,7 +37,34 @@ export const ROTAS_DO_CATALOGO = [
   '/api/alegacoes',
 ] as const;
 
+/** As rotas cujas escritas criam ou alteram AGENDAS.
+ *
+ *  SEPARADAS DAS DO CATÁLOGO de propósito, e é o mesmo motivo de o estado do painel
+ *  ter duas versões: um barramento só faria cada tema cadastrado rebuscar a base
+ *  inteira, e cada agenda salva rebuscar todos os dicionários.
+ *
+ *  A CONFIRMAÇÃO DA IMPORTAÇÃO É O CASO DIFÍCIL, e está aqui porque é o único passo
+ *  daquele fluxo que cria agenda — o upload propõe, a conferência decide, e só a
+ *  confirmação grava. Ela não é um prefixo: o id fica no MEIO do endereço. */
 const METODOS_QUE_LEEM = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** Prefixos de caminho cujas escritas mudam as agendas. */
+export const ROTAS_DE_AGENDAS = ['/api/interacoes'] as const;
+
+/** Esta requisição, se der certo, muda alguma agenda? */
+export function escreveAgendas(metodo: string, caminho: string): boolean {
+  if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
+  const soOCaminho = caminho.split('?')[0];
+  if (
+    soOCaminho.startsWith('/api/importacoes/') &&
+    soOCaminho.endsWith('/confirmacao')
+  ) {
+    return true;
+  }
+  return ROTAS_DE_AGENDAS.some(
+    (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
+  );
+}
 
 /** Esta requisição, se der certo, muda o catálogo? */
 export function escreveNoCatalogo(metodo: string, caminho: string): boolean {
@@ -65,14 +92,16 @@ export const MENSAGEM_DO_CATALOGO = 'catalogo-mudou';
 export class Sincronizador {
   private readonly ouvintes = new Set<Ouvinte>();
   private readonly canal: CanalEntreAbas | null;
+  private readonly mensagem: string;
 
-  constructor(canal: CanalEntreAbas | null = null) {
+  constructor(canal: CanalEntreAbas | null = null, mensagem: string = MENSAGEM_DO_CATALOGO) {
     this.canal = canal;
+    this.mensagem = mensagem;
     if (canal) {
       // O que vem de outra aba é aviso, e não é repassado: repassar faria as
       // abas trocarem o mesmo aviso para sempre.
       canal.onmessage = (evento) => {
-        if (evento.data === MENSAGEM_DO_CATALOGO) this.espalhar();
+        if (evento.data === this.mensagem) this.espalhar();
       };
     }
   }
@@ -85,10 +114,10 @@ export class Sincronizador {
     };
   }
 
-  /** O catálogo mudou aqui: avisa esta aba e as outras. */
+  /** Mudou aqui: avisa esta aba e as outras. */
   avisar(): void {
     this.espalhar();
-    this.canal?.postMessage(MENSAGEM_DO_CATALOGO);
+    this.canal?.postMessage(this.mensagem);
   }
 
   private espalhar(): void {
@@ -98,11 +127,25 @@ export class Sincronizador {
 
 /** O canal do navegador, quando existe. Fora dele (testes, SSR) não há outra
  *  aba para avisar. */
-function canalDoNavegador(): CanalEntreAbas | null {
+function canalDoNavegador(nome: string): CanalEntreAbas | null {
   if (typeof window === 'undefined' || typeof window.BroadcastChannel !== 'function') return null;
-  return new window.BroadcastChannel('painel-reputacional:catalogo');
+  return new window.BroadcastChannel(`painel-reputacional:${nome}`);
 }
 
 /** O único sincronizador da aplicação: o cliente da API avisa aqui, e o
  *  estado do painel escuta aqui. */
-export const catalogoMudou = new Sincronizador(canalDoNavegador());
+export const catalogoMudou = new Sincronizador(canalDoNavegador('catalogo'));
+
+/** A mensagem do canal das agendas. */
+export const MENSAGEM_DAS_AGENDAS = 'agendas-mudaram';
+
+/** Alguma agenda foi criada ou alterada — nesta aba ou em outra.
+ *
+ *  ATRAVESSA AS ABAS como o do catálogo: quem confirma uma importação numa aba e
+ *  tem a Base aberta em outra vê as 54 agendas aparecerem lá também. Sem isto a
+ *  segunda aba mostra a lista de antes até um F5 — e ela não tem como saber que
+ *  está velha. */
+export const agendasMudaram = new Sincronizador(
+  canalDoNavegador('agendas'),
+  MENSAGEM_DAS_AGENDAS,
+);

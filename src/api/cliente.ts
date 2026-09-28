@@ -1,9 +1,15 @@
 /** Acesso ao backend. Um lugar só monta URL, envia credencial e traduz erro. */
 
 import { registrarErro } from '@/observabilidade/telemetria';
-import { catalogoMudou, escreveNoCatalogo } from '@/dominio/sincronizacao';
+import {
+  agendasMudaram,
+  catalogoMudou,
+  escreveAgendas,
+  escreveNoCatalogo,
+} from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Dossie } from '@/dominio/dossie';
+import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
   Calibracao,
@@ -79,7 +85,22 @@ export function guardarTokenAntiCsrf(token: string): void {
 /** `GET`, `HEAD` e `OPTIONS` não alteram estado e não levam token. */
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+/** Opções que não são do `fetch`: mudam como a RESPOSTA é lida, não o pedido. */
+interface ComoLer {
+  /** Devolve o corpo como `Blob`, para download de arquivo.
+   *
+   *  ESTÁ AQUI E NÃO NUM SEGUNDO `fetch` porque `requisitar` é o único lugar que
+   *  avisa — erro de rede, 5xx na telemetria, mudança de catálogo. Um `fetch`
+   *  paralelo seria um caminho que falha sem ninguém saber, e o teste que conta
+   *  as chamadas a `fetch` neste arquivo existe justamente para impedir isso. */
+  comoBlob?: boolean;
+}
+
+async function requisitar<T>(
+  caminho: string,
+  opcoes: RequestInit = {},
+  como: ComoLer = {},
+): Promise<T> {
   let resposta: Response;
   const metodo = (opcoes.method ?? 'GET').toUpperCase();
 
@@ -127,6 +148,15 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
     return undefined as T;
   }
 
+  // O BINÁRIO SAI ANTES DA LEITURA COMO TEXTO, porque um `.xlsx` lido como
+  // texto e passado ao `JSON.parse` estoura — e o erro falaria de sintaxe JSON
+  // sobre um arquivo perfeitamente válido. O caminho de erro continua o mesmo:
+  // um 4xx/5xx aqui ainda traz corpo de texto, e é ele que explica o problema.
+  if (como.comoBlob && resposta.ok) {
+    avisarSeMudouOCatalogo(metodo, caminho);
+    return (await resposta.blob()) as T;
+  }
+
   const corpo = await resposta.text();
   const dados = corpo ? JSON.parse(corpo) : null;
 
@@ -161,6 +191,10 @@ async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise
  *  por um cadastro que não aconteceu. */
 function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
   if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
+  // AS AGENDAS TÊM O SEU PRÓPRIO AVISO: confirmar uma importação ou salvar uma
+  // interação recarrega a Base sozinho, em todas as abas abertas. Antes disto a
+  // pessoa confirmava 54 agendas e precisava de um F5 para vê-las.
+  if (escreveAgendas(metodo, caminho)) agendasMudaram.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */
@@ -927,4 +961,178 @@ export function urlDaVersao(referenciaId: string, versaoId: string): string {
 export function listarDocumentosDaReuniao(recorte: Recorte): Promise<DocumentoDaReuniao[]> {
   const parametros = paraParametros(recorte).toString();
   return requisitar<DocumentoDaReuniao[]>(`/api/materiais?${parametros}`);
+}
+
+// -- importação de agendas por planilha ---------------------------------------
+
+/** Os dois recortes do MESMO formato que o download oferece.
+ *
+ *  Os nomes sao os do servidor (`MODELOS`, no dominio): um terceiro nome aqui
+ *  viraria 422 no download, e a pessoa veria "nao consegui baixar o modelo" sem
+ *  ninguem saber por que. */
+export type ModeloDePlanilha = 'completo' | 'simplificado';
+
+/** Uma coluna do arquivo, com o que a tela precisa para desenha-la.
+ *
+ *  O TIPO VEM DO SERVIDOR e nao de uma lista aqui: 59 nomes com o tipo de cada um,
+ *  escritos deste lado, envelheceriam na primeira coluna nova — e o erro seria
+ *  silencioso, porque a coluna sem tipo receberia a largura padrao. */
+export interface ColunaDaImportacao {
+  nome: string;
+  /** `marca`, `data`, `sigla`, `lista`, `prosa` ou `texto`. Ver `medidas.ts`. */
+  tipo: string;
+}
+
+/** Uma linha do arquivo, como a conferência a mostra. */
+export interface LinhaDaImportacao {
+  id: number;
+  aba: string;
+  linha_origem: number;
+  decisao: string;
+  interacao_id: string | null;
+  dados_brutos: Record<string, unknown>;
+  /** O que esta linha herdou da de cima por `idem`, coluna → valor.
+   *
+   *  A TELA MOSTRA ISTO porque a herança é invisível na planilha: a célula fica
+   *  vazia, e sem ver o herdado a pessoa confirmaria 54 agendas confiando na
+   *  memória do que havia acima. */
+  herdado: Record<string, unknown>;
+  /** O que a pessoa COMPLETOU nesta tela, coluna -> valor.
+   *
+   *  A TELA MARCA A CELULA, e e a contrapartida honesta de editar aqui: dali em
+   *  diante o registro difere da planilha que ela guardou. Sem a marca, abrir o
+   *  arquivo meses depois mostraria a celula vazia, sem nada explicando de onde
+   *  veio o valor que esta no painel. */
+  corrigido: Record<string, unknown>;
+  proposta: Record<string, unknown> | null;
+  divergencias: {
+    campo: string;
+    valor: string;
+    mensagem: string;
+    trava: boolean;
+    /** A COLUNA DA PLANILHA de onde isto veio, quando ha uma. E por ela que a
+     *  tela sabe onde oferecer o campo: `campo` e nome interno
+     *  (`data_interacao`), e um campo de grupo corresponde a quatro colunas. */
+    coluna: string;
+    sugestoes: string[];
+    acao: string | null;
+    alvo: string | null;
+  }[];
+}
+
+export interface Importacao {
+  id: string;
+  arquivo_nome: string;
+  situacao: string;
+  criado_em: string;
+  confirmado_em: string | null;
+  /** As colunas daquele arquivo, NA ORDEM — o cabecalho da grade.
+   *
+   *  Quem subiu o modelo simplificado ve as 22 dele, nao as 58 do completo. A
+   *  ordem vem do servidor porque depender da ordem de um objeto JSON para
+   *  montar o cabecalho de uma tabela e depender de algo que nenhum contrato
+   *  promete. */
+  colunas: ColunaDaImportacao[];
+  grupos: Grupo[];
+  a_criar: ACriar[];
+  /** Quantas LINHAS seguram a confirmação. */
+  pendencias: number;
+  /** Quantas decisões resolvem essas linhas. */
+  decisoes_pendentes: number;
+  linhas: LinhaDaImportacao[];
+}
+
+export interface ConfirmacaoDaImportacao {
+  criadas: number;
+  cadastros: number;
+  situacao: string;
+}
+
+/** Baixa o modelo `.xlsx` com o cadastro atual nas listas suspensas.
+ *
+ *  PASSA POR `requisitar` como todo o resto, com `comoBlob`. Um `fetch` próprio
+ *  seria um caminho de rede que falha sem avisar ninguém — sem telemetria de
+ *  5xx, sem a tradução de erro de rede —, e há um teste neste projeto contando
+ *  as chamadas a `fetch` exatamente para impedir que apareça um segundo.
+ */
+export async function baixarModeloDeImportacao(modelo: ModeloDePlanilha): Promise<Blob> {
+  return requisitar<Blob>(
+    `/api/importacoes/modelo?modelo=${modelo}`,
+    { method: 'GET' },
+    { comoBlob: true },
+  );
+}
+
+/** Sobe a planilha preenchida e recebe a conferência.
+ *
+ *  O CORPO É `FormData` e o `Content-Type` fica para o navegador escrever — ele
+ *  acrescenta o `boundary` que separa as partes, e escrevê-lo à mão faz o
+ *  servidor receber um multipart que não consegue separar.
+ */
+export async function subirPlanilhaDeAgendas(arquivo: File): Promise<Importacao> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<Importacao>('/api/importacoes', { method: 'POST', body: corpo });
+}
+
+/** A conferência de onde ela parou. */
+export async function obterImportacao(id: string): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}`);
+}
+
+/** Uma decisão, todas as linhas que aquele valor segurava. */
+export async function resolverDivergencia(
+  id: string,
+  decisao: { campo: string; valor: string; decisao: string; alvo?: string },
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/resolucoes`, {
+    method: 'PATCH',
+    body: JSON.stringify(decisao),
+  });
+}
+
+/** Completa celulas de UMA linha e recebe a conferencia reproposta.
+ *
+ *  A CONFERENCIA SABIA RESOLVER O VALOR ERRADO e nao o AUSENTE: "este orgao nao
+ *  existe" vem com apontar e criar, mas a data em branco vinha com um grupo sem
+ *  valor nenhum, sem nada para clicar.
+ */
+export async function corrigirLinhaDaImportacao(
+  id: string,
+  linhaId: number,
+  celulas: Record<string, string>,
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/linhas/${linhaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ celulas }),
+  });
+}
+
+/** Exclui uma linha da importacao, ou a restaura.
+ *
+ *  REVERSIVEL ATE A CONFIRMACAO, e precisa ser: errar numa tela de 54 linhas e
+ *  facil, e a planilha nao e o caminho de volta — o arquivo nao fica guardado. A
+ *  linha continua na grade, marcada, e volta com um clique.
+ */
+export async function excluirLinhaDaImportacao(
+  id: string,
+  linhaId: number,
+  excluir: boolean,
+): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/linhas/${linhaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ descartada: excluir }),
+  });
+}
+
+/** Cria os cadastros e as agendas — tudo, ou nada. */
+export async function confirmarImportacao(id: string): Promise<ConfirmacaoDaImportacao> {
+  return requisitar<ConfirmacaoDaImportacao>(`/api/importacoes/${id}/confirmacao`, {
+    method: 'POST',
+  });
+}
+
+/** Desiste da importação. Nada foi criado, então nada há para desfazer. */
+export async function cancelarImportacao(id: string): Promise<Importacao> {
+  return requisitar<Importacao>(`/api/importacoes/${id}/cancelamento`, { method: 'POST' });
 }

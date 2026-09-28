@@ -35,6 +35,7 @@ export type Destino =
   | 'cadastro'
   | 'admin'
   | 'config-score'
+  | 'importacao'
   | 'plataforma';
 
 export interface Rota {
@@ -45,6 +46,8 @@ export interface Rota {
   sobre?: 'ficha' | 'cadeia' | 'editar' | 'nova';
   /** A aba da administração. */
   aba?: string;
+  /** A importação que a conferência está mostrando. */
+  importacao?: string;
 }
 
 /** O caminho vira rota.
@@ -74,6 +77,12 @@ export function lerCaminho(caminho: string): Rota {
   // mexendo na ferramenta que o produz.
   if (primeira === 'score-config') return { destino: 'config-score', aba: segunda };
   if (primeira === 'plataforma') return { destino: 'plataforma', aba: segunda };
+  // A CONFERÊNCIA GANHA ENDEREÇO PRÓPRIO, com o id dentro. 54 agendas não se
+  // conferem numa sentada, e sem endereço fechar a aba custaria subir o arquivo
+  // de novo — que é justamente o que a tabela da migration 0008 existe para
+  // evitar. Com endereço, a pessoa volta de onde parou, e pode mandar o link a
+  // quem for decidir uma pendência que não é dela.
+  if (primeira === 'importacao') return { destino: 'importacao', importacao: segunda };
 
   if (primeira === 'agenda') {
     if (!segunda) return { destino: 'base' };
@@ -113,6 +122,8 @@ export function caminhoDe(rota: Rota): string {
       return rota.aba ? `/score-config/${rota.aba}` : '/score-config';
     case 'plataforma':
       return rota.aba ? `/plataforma/${rota.aba}` : '/plataforma';
+    case 'importacao':
+      return rota.importacao ? `/importacao/${rota.importacao}` : '/importacao';
     case 'cadastro':
       return rota.agenda ? `/agenda/${rota.agenda}/editar` : '/agenda/nova';
     case 'base':

@@ -16,6 +16,7 @@ import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
+import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
@@ -225,6 +226,13 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {rota.destino === 'base' ? (
             <Base
+              podeImportar={eu?.papel?.administra_dicionarios ?? false}
+              /* O UPLOAD ABRE A CONFERÊNCIA DAQUI, e não de dentro do botão: o
+                 hook de navegação guarda o lugar num estado próprio de cada
+                 chamador, então navegar lá dentro empurrava a URL sem ninguém
+                 aqui saber — a pessoa subia a planilha e precisava atualizar a
+                 página para ver a conferência. */
+              aoImportar={(id) => irPara({ destino: 'importacao', importacao: id })}
               aoAbrirFicha={abrirAgenda}
               aoAbrirCadeia={(id) =>
                 irPara({ destino: 'base', agenda: id, sobre: 'cadeia' })
@@ -298,6 +306,32 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
                 ? (id) => irPara({ destino: 'cadastro', agenda: id, sobre: 'editar' })
                 : undefined
             }
+          />
+        </LimiteDeErro>
+      ) : null}
+
+      {/* A CONFERÊNCIA DA IMPORTAÇÃO ABRE POR CIMA, como a ficha e a cadeia, e
+          pelo mesmo motivo: ela é um passo sobre o que a pessoa estava fazendo, e
+          não um lugar para onde ela foi. "Ao subir a planilha tem que abrir um
+          modal com a planilha preenchida e pedir para verificar" — é o pedido, e
+          é o padrão que esta tela já usa duas vezes.
+
+          COM ENDEREÇO PRÓPRIO, porque 54 agendas não se conferem numa sentada:
+          sem endereço, fechar a aba custaria subir o arquivo de novo. Com ele, a
+          pessoa volta de onde parou e pode mandar o link a quem for decidir uma
+          pendência que não é dela. */}
+      {rota.destino === 'importacao' && rota.importacao ? (
+        <LimiteDeErro key={`importacao-${rota.importacao}`} aoFechar={fechandoParaBase}>
+          <ConferirImportacao
+            id={rota.importacao}
+            aoFechar={fechandoParaBase}
+            /* DEPOIS DE CONFIRMAR, A CONFERÊNCIA FECHA — e nada mais.
+               A recarga da Base NÃO vem daqui: o cliente da API avisa
+               `agendasMudaram` na confirmação, e o painel recarrega sozinho, nesta
+               aba e nas outras. Chamar `recarregar()` aqui também faria duas
+               cargas para o mesmo fato, e criaria uma segunda verdade sobre quando
+               os dados ficaram velhos. */
+            aoConfirmar={fechandoParaBase}
           />
         </LimiteDeErro>
       ) : null}
