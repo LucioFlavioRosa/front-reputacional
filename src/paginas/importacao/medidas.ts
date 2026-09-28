@@ -61,6 +61,74 @@ const POR_TIPO: Record<string, Medida> = {
  *  legível, e não invisível nem gigante. */
 const PADRAO: Medida = POR_TIPO.texto;
 
+/** Até onde uma coluna pode crescer para caber o conteúdo dela, por tipo.
+ *
+ *  O PISO É `POR_TIPO` E O TETO É AQUI, e os dois existem por razões opostas: sem piso,
+ *  uma coluna cujo arquivo veio todo vazio ficaria fina demais para a pessoa clicar e
+ *  digitar; sem teto, um relato de 900 caracteres daria uma coluna de seis mil pixels e
+ *  a rolagem horizontal deixaria de ter fim.
+ *
+ *  A DATA E A SIGLA TÊM TETO PRÓXIMO DO PISO de propósito: o conteúdo delas tem tamanho
+ *  conhecido — dez caracteres e duas letras —, e o que elas precisam é caber o CAMPO de
+ *  edição em volta desse conteúdo, não crescer. */
+export const TETO_POR_TIPO: Record<string, number> = {
+  marca: 128,
+  data: 152,
+  sigla: 104,
+  lista: 360,
+  prosa: 328,
+  texto: 300,
+};
+
+/** Quanto ocupa um caractere, em pixels, na fonte da grade (12px).
+ *
+ *  MEDIDA GROSSEIRA E DE PROPÓSITO: a alternativa é medir o texto no navegador com
+ *  `canvas.measureText`, e isso custa uma medição por célula — 29 mil delas no arquivo
+ *  cheio — para ganhar precisão que a grade não usa. Sete pixels é a largura de um
+ *  dígito com folga; letras minúsculas são mais estreitas, então a conta erra para o
+ *  lado seguro. */
+const PIXEIS_POR_CARACTERE = 7;
+
+/** A moldura que o conteúdo NÃO usa: o recheio da célula (10px de cada lado), a borda
+ *  dela, e o recheio e a borda do campo de edição por dentro.
+ *
+ *  ELA É O MOTIVO DE A DATA NÃO SER LEGÍVEL com a largura do texto puro: `2026-09-30`
+ *  tem 70px de texto, mas dentro de um campo de edição são 70 mais esta moldura. */
+const MOLDURA = 44;
+
+/** A medida de uma coluna daquele tipo, ajustada ao conteúdo que ela tem.
+ *
+ *  O PEDIDO DO DONO DO PRODUTO: "a largura da célula com o dado nunca deve ser menor
+ *  que o conteúdo (...) deve ter um ajuste dinâmico até um valor máximo, mas pelo menos
+ *  data e UF temos que ser capazes de ler completamente".
+ *
+ *  O TIPO NÃO SABE O SUFICIENTE. Ele diz que "lista" cabe um nome de órgão; não sabe
+ *  que NESTE arquivo o nome mais longo tem sessenta caracteres, nem que aquela coluna
+ *  veio inteira vazia. Quem sabe é o conteúdo, e é ele que decide entre o piso e o teto.
+ *
+ *  O CABEÇALHO CONTA porque também é lido — uma coluna estreita com o nome cortado
+ *  obriga a pessoa a adivinhar o que está preenchendo. */
+export function medidaPeloConteudo(
+  tipo: string,
+  valores: readonly (string | null | undefined)[],
+  cabecalho = '',
+): Medida {
+  const base = medidaDaColuna(tipo);
+  const teto = TETO_POR_TIPO[tipo] ?? TETO_POR_TIPO.texto;
+
+  let maior = cabecalho.length;
+  for (const valor of valores) {
+    if (!valor) continue;
+    //: O TETO CORTA A CONTA ANTES DE ELA CRESCER: um relato de 900 caracteres e um de
+    //: 9000 dão a mesma coluna, e percorrer o texto inteiro para descobrir isso seria
+    //: trabalho jogado fora em 500 linhas.
+    if (valor.length >= maior) maior = Math.min(valor.length, 80);
+  }
+
+  const pedida = maior * PIXEIS_POR_CARACTERE + MOLDURA;
+  return { ...base, largura: Math.min(Math.max(base.largura, pedida), teto) };
+}
+
 /** A medida de uma coluna daquele tipo. */
 export function medidaDaColuna(tipo: string): Medida {
   return POR_TIPO[tipo] ?? PADRAO;
@@ -69,4 +137,20 @@ export function medidaDaColuna(tipo: string): Medida {
 /** A largura total das colunas de dados, para a grade saber se precisa rolar. */
 export function larguraTotal(tipos: string[]): number {
   return tipos.reduce((soma, tipo) => soma + medidaDaColuna(tipo).largura, 0);
+}
+
+/** A soma de um conjunto de medidas já calculadas — é a largura que a TABELA declara.
+ *
+ *  SEM ESTA DECLARAÇÃO NADA DISTO VALE, e era o defeito que o dono do produto viu como
+ *  "não consigo ler a data nem a UF": com `table-layout: fixed` e sem `width`, a tabela
+ *  assume a largura do container e REDUZ PROPORCIONALMENTE todas as colunas para caber.
+ *  Cinquenta e nove colunas pedindo onze mil pixels dentro de 1200 dão cada coluna com
+ *  um vigésimo do que pediu — a Data de 120px vira 13px, e aumentar a largura por tipo
+ *  não muda nada, porque o vigésimo continua o mesmo.
+ *
+ *  DECLARADA, a tabela transborda o container e a rolagem horizontal mostra cada coluna
+ *  no tamanho que ela pediu. */
+export function larguraDaGrade(medidas: readonly Medida[], extras: readonly number[] = []): number {
+  const colunas = medidas.reduce((soma, medida) => soma + medida.largura, 0);
+  return colunas + extras.reduce((soma, largura) => soma + largura, 0);
 }

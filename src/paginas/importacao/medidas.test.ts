@@ -7,7 +7,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { larguraTotal, medidaDaColuna } from '@/paginas/importacao/medidas';
+import {
+  TETO_POR_TIPO,
+  larguraTotal,
+  medidaDaColuna,
+  medidaPeloConteudo,
+} from '@/paginas/importacao/medidas';
 
 describe('medidaDaColuna', () => {
   it('a sigla do estado é a mais estreita — são duas letras', () => {
@@ -80,5 +85,52 @@ describe('larguraTotal', () => {
 
   it('sem colunas, zero', () => {
     expect(larguraTotal([])).toBe(0);
+  });
+});
+
+
+describe('medidaPeloConteudo', () => {
+  /** O PEDIDO: "a largura da célula com o dado nunca deve ser menor que o conteúdo em
+   *  nenhum momento (...) deve ter um ajuste dinâmico até um valor máximo, mas pelo
+   *  menos data e UF temos que ser capazes de ler completamente".
+   *
+   *  A LARGURA POR TIPO É UM PISO, e não a resposta final: o tipo diz que "lista" cabe
+   *  um nome de órgão, mas não sabe que NESTE arquivo o nome mais longo tem 60
+   *  caracteres. Medir o conteúdo é o que faz a coluna caber o que ela tem. */
+
+  it('a coluna cresce com o conteúdo mais longo que ela tem', () => {
+    const curta = medidaPeloConteudo('texto', ['Sede']);
+    const longa = medidaPeloConteudo('texto', ['Sede', 'Auditório da sede administrativa']);
+
+    expect(longa.largura).toBeGreaterThan(curta.largura);
+  });
+
+  it('nunca desce abaixo do piso do tipo — a data cabe o campo de edição', () => {
+    /** A data guarda dez caracteres, mas o campo de edição mostra `dd/mm/aaaa` dentro de
+     *  uma borda com recheio: o piso é o que garante que ela seja LEGÍVEL enquanto a
+     *  pessoa digita, que é justamente onde o dono do produto não conseguia ler. */
+    const vazia = medidaPeloConteudo('data', []);
+
+    expect(vazia.largura).toBe(medidaDaColuna('data').largura);
+    expect(medidaPeloConteudo('sigla', []).largura).toBe(medidaDaColuna('sigla').largura);
+  });
+
+  it('para no teto do tipo — uma célula não empurra a tabela para fora da tela', () => {
+    const enorme = medidaPeloConteudo('lista', ['x'.repeat(300)]);
+
+    expect(enorme.largura).toBeLessThanOrEqual(TETO_POR_TIPO.lista);
+    expect(enorme.largura).toBeGreaterThan(medidaDaColuna('lista').largura);
+  });
+
+  it('conta o CABEÇALHO também, que também precisa ser lido', () => {
+    const comCabecalhoLongo = medidaPeloConteudo('texto', ['ok'], 'Unidade de negócio');
+    const semCabecalho = medidaPeloConteudo('texto', ['ok']);
+
+    expect(comCabecalhoLongo.largura).toBeGreaterThanOrEqual(semCabecalho.largura);
+  });
+
+  it('mantém o alinhamento e a quebra do tipo', () => {
+    expect(medidaPeloConteudo('data', ['2026-09-30']).alinhamento).toBe('center');
+    expect(medidaPeloConteudo('prosa', ['um relato']).quebra).toBe(true);
   });
 });

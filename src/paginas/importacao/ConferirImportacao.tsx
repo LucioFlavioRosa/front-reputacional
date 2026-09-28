@@ -24,7 +24,7 @@
  *  guardado.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import {
@@ -39,7 +39,12 @@ import type { ColunaDaImportacao, Importacao, LinhaDaImportacao } from '@/api/cl
 import { Botao, FaixaDeErro, Modal, Vazio } from '@/componentes/basicos';
 import { decisaoDaCelula } from '@/paginas/importacao/celula';
 import { corDaCelula, linhaTemPendencia, resumoDeCores } from '@/paginas/importacao/grade';
-import { medidaDaColuna } from '@/paginas/importacao/medidas';
+import type { Medida } from '@/paginas/importacao/medidas';
+import {
+  larguraDaGrade,
+  medidaDaColuna,
+  medidaPeloConteudo,
+} from '@/paginas/importacao/medidas';
 import { porUrgencia } from '@/paginas/importacao/grupos';
 
 interface Props {
@@ -80,6 +85,14 @@ const ALTURA_DA_LINHA = 48;
  *  a grade de 54 agendas ter a altura de quatro telas. O que passa disso está no campo
  *  de edição, que abre com o texto inteiro. */
 const LINHAS_DE_TEXTO = 2;
+
+/** A largura da primeira coluna, a do número da linha na planilha. Três dígitos e o
+ *  cabeçalho "LINHA" — o teto de 500 agendas não passa de três. */
+const LARGURA_DO_NUMERO = 64;
+
+/** A largura da última coluna, a dos dois botões da linha. "Editar" e "Excluir" lado a
+ *  lado, e é o que decide se eles ficam na mesma linha ou empilhados. */
+const LARGURA_DAS_ACOES = 168;
 
 /** Quantas linhas a grade monta por vez.
  *
@@ -245,6 +258,26 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
   //: Quantas linhas estão montadas. Ver `LINHAS_POR_BLOCO`.
   const [montadas, setMontadas] = useState(LINHAS_POR_BLOCO);
+
+  //: A MEDIDA DE CADA COLUNA, PELO CONTEÚDO DAQUELE ARQUIVO. Uma vez por carga e não
+  //: por render: são até 500 linhas por 58 colunas para percorrer, e refazer isso a cada
+  //: tecla digitada na edição travaria a digitação.
+  const medidas = useMemo<Map<string, Medida>>(() => {
+    if (!importacao) return new Map();
+    return new Map(
+      importacao.colunas.map(({ nome, tipo }) => [
+        nome,
+        medidaPeloConteudo(
+          tipo,
+          importacao.linhas.map((linha) => {
+            const valor = linha.dados_brutos[nome];
+            return valor === null || valor === undefined ? '' : String(valor);
+          }),
+          nome,
+        ),
+      ]),
+    );
+  }, [importacao]);
 
   const carregar = useCallback(async () => {
     try {
@@ -457,16 +490,34 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
             // redistribui tudo pelo conteúdo, e um relato comprido numa linha
             // esticaria a coluna em TODAS as outras.
             tableLayout: 'fixed',
+            // A LARGURA DECLARADA, e sem ela nada do resto vale: `fixed` sem `width`
+            // faz a tabela assumir a largura do container e REDUZIR proporcionalmente
+            // todas as colunas para caber nela. Cinquenta e nove colunas pedindo onze
+            // mil pixels dentro de 1200 ficam com um vigésimo cada — a Data de 120px
+            // vira 13px, e foi exatamente isto que o dono do produto viu ao tentar ler
+            // a data e a UF enquanto editava. Declarada, a tabela transborda e a
+            // rolagem horizontal (que já existe) mostra cada coluna no seu tamanho.
+            width: larguraDaGrade(
+              importacao.colunas.map(
+                ({ nome, tipo }) => medidas.get(nome) ?? medidaDaColuna(tipo),
+              ),
+              [LARGURA_DO_NUMERO, LARGURA_DAS_ACOES],
+            ),
           }}
         >
-          {/* A LARGURA DE CADA COLUNA VEM DO TIPO DO DADO, que o servidor manda.
-              Ver `medidas.ts`: a sigla do estado tem 64px e o relato tem 288. */}
+          {/* A LARGURA DE CADA COLUNA VEM DO TIPO DO DADO E DO CONTEÚDO DELA: o tipo
+              dá o piso e o teto, o conteúdo decide entre os dois. Ver `medidas.ts`. */}
           <colgroup>
-            <col style={{ width: 64 }} />
+            <col style={{ width: LARGURA_DO_NUMERO }} />
             {importacao.colunas.map((coluna) => (
-              <col key={coluna.nome} style={{ width: medidaDaColuna(coluna.tipo).largura }} />
+              <col
+                key={coluna.nome}
+                style={{
+                  width: (medidas.get(coluna.nome) ?? medidaDaColuna(coluna.tipo)).largura,
+                }}
+              />
             ))}
-            <col style={{ width: 168 }} />
+            <col style={{ width: LARGURA_DAS_ACOES }} />
           </colgroup>
           <thead>
             <tr>
@@ -519,7 +570,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                     const cor = corDaCelula(linha, coluna);
                     const valor = linha.dados_brutos[coluna];
                     const decisao = decisaoDaCelula(linha, coluna, grupos);
-                    const medida = medidaDaColuna(tipo);
+                    const medida = medidas.get(coluna) ?? medidaDaColuna(tipo);
                     return (
                       <td
                         key={coluna}

@@ -152,6 +152,31 @@ describe('o que a grade sinaliza sem depender de cor', () => {
     expect((daData as HTMLInputElement).value).toBe('');
   });
 
+  it('a tabela DECLARA a largura somada das colunas — senão o navegador encolhe todas', async () => {
+    /** A CAUSA RAIZ DO RELATO "não consigo ler a data nem a UF enquanto edito", e ela
+     *  não estava nas larguras: estava na tabela.
+     *
+     *  COM `table-layout: fixed` E SEM `width`, a tabela assume a largura do container
+     *  — 1200px do modal — e REDUZ PROPORCIONALMENTE as colunas para caber. Cinquenta e
+     *  nove colunas somando onze mil pixels dentro de 1200 significa cada coluna com um
+     *  vigésimo do que pedi: a Data de 120px vira 13px. As larguras por tipo existiam e
+     *  não valiam nada, e aumentá-las não mudava nada — era sempre o mesmo vigésimo.
+     *
+     *  DECLARANDO A LARGURA, a tabela passa a transbordar o container e a rolagem
+     *  horizontal — que já existe — mostra as colunas no tamanho que elas pediram. */
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Órgão 2')).toBeTruthy());
+
+    const tabela = document.querySelector('table') as HTMLTableElement;
+    const somaDasColunas = [...document.querySelectorAll('colgroup col')].reduce(
+      (soma, coluna) => soma + Number.parseInt((coluna as HTMLElement).style.width, 10),
+      0,
+    );
+
+    expect(somaDasColunas).toBeGreaterThan(0);
+    expect(Number.parseInt(tabela.style.width, 10)).toBeGreaterThanOrEqual(somaDasColunas);
+  });
+
   it('marca a célula que trava com um sinal que não é cor', async () => {
     render(<ConferirImportacao id="imp-1" aoFechar={() => {}} />);
 
