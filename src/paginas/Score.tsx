@@ -639,6 +639,7 @@ function DriversERiscos({ mes }: { mes: string }) {
     // já está no banco faria a pessoa procurar o problema no lugar errado.
     const tudoDesligado = drivers.fontes_ligadas === 0;
     return (
+      <ComFaixaDoTopo>
       <Secao titulo="Drivers e riscos">
         <Vazio
           mensagem={
@@ -653,11 +654,13 @@ function DriversERiscos({ mes }: { mes: string }) {
           }
         />
       </Secao>
+      </ComFaixaDoTopo>
     );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <ComFaixaDoTopo>
       <Secao
         titulo="O que se repete"
         subtitulo={`Temas negativos presentes em ${drivers.regra_da_perpetuacao.meses_para_perpetuar} meses ou mais da janela de ${drivers.regra_da_perpetuacao.meses_da_janela}, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
@@ -699,7 +702,9 @@ function DriversERiscos({ mes }: { mes: string }) {
           )}
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="O que atribuem à companhia"
         subtitulo="O atributo reputacional que a clipagem marca em cada matéria ou post. Contagem simples: aqui a pergunta é o tom, e não quanto a menção pesou no índice."
@@ -725,7 +730,9 @@ function DriversERiscos({ mes }: { mes: string }) {
           </p>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Onde a pressão se concentra"
         subtitulo="Menções negativas por concessionária. Ordenado pelo negativo, e não pelo volume: a pergunta é onde está o problema."
@@ -761,6 +768,7 @@ function DriversERiscos({ mes }: { mes: string }) {
           </p>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
     </div>
   );
 }

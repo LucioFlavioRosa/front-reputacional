@@ -35,6 +35,7 @@ import {
   Cartao,
   Carregando,
   Chip,
+  ComFaixaDoTopo,
   FaixaDeErro,
   Secao,
   Vazio,
@@ -90,6 +91,7 @@ export function ComentarioDoEspecialista({ mes }: { mes: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Escrever um comentário"
         subtitulo="O que explica o mês, e que o número sozinho não conta. Ele aparece na coluna daquele mês, na Jornada do índice."
@@ -162,7 +164,9 @@ export function ComentarioDoEspecialista({ mes }: { mes: string }) {
           </div>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Comentários já escritos"
         subtitulo="Do mês mais recente para o mais antigo. Um mês pode ter vários."
@@ -216,6 +220,7 @@ export function ComentarioDoEspecialista({ mes }: { mes: string }) {
           />
         )}
       </Secao>
+      </ComFaixaDoTopo>
     </div>
   );
 }

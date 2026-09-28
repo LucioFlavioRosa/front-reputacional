@@ -22,6 +22,7 @@ import {
   Campo,
   Cartao,
   Chip,
+  ComFaixaDoTopo,
   FaixaDeErro,
   Secao,
   estiloDeEntrada,
@@ -148,6 +149,7 @@ export function CalibracaoDoScore({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Régua de ponderação"
         subtitulo="Mudar aqui recalcula o índice inteiro, de todos os meses — e fica gravado como uma versão nova, com autor e data."
@@ -169,8 +171,11 @@ export function CalibracaoDoScore({
           </Botao>
         }
       >
-        <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
-          <Cartao>
+        {/* `alignItems: 'stretch'` (o padrão do grid): os dois cartões têm
+            textos de tamanhos diferentes, e com `'start'` o mais curto
+            ("Peso de cada menção nas redes") parava mais baixo que o outro. */}
+        <div className="grade grade--2" style={{ gap: 16 }}>
+          <Cartao estilo={{ height: '100%' }}>
             <Campo
               rotulo="Relevância do veículo"
               dica="Quanto vale uma matéria conforme o tier do veículo. Vale para Imprensa e Mercado."
@@ -198,7 +203,7 @@ export function CalibracaoDoScore({
             </p>
           </Cartao>
 
-          <Cartao>
+          <Cartao estilo={{ height: '100%' }}>
             <Campo
               rotulo="Peso de cada menção nas redes"
               dica="Vale para Sociedade digital e Clientes."
@@ -225,7 +230,9 @@ export function CalibracaoDoScore({
           </Cartao>
         </div>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Peso das lentes"
         subtitulo="De 0 a 60, de 5 em 5. Peso 0 tira a lente do índice — as outras redistribuem."
@@ -277,7 +284,9 @@ export function CalibracaoDoScore({
           </ul>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Fontes"
         subtitulo="Importar substitui os meses que a planilha traz — o mês que ela não traz fica intacto. Desligar uma fonte tira o dado dela do índice sem apagar o histórico; com todas as fontes de uma lente desligadas, a lente sai do cálculo e os pesos redistribuem."
@@ -369,6 +378,7 @@ export function CalibracaoDoScore({
           ))}
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
       <LimitesDosSinais
         limites={calibracao.limites}
@@ -376,6 +386,7 @@ export function CalibracaoDoScore({
         aoGravar={(limites) => gravar({ limites })}
       />
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Gráfico da Visão geral"
         subtitulo="Como as cinco lentes se desenham no radial. O comprimento da fatia é sempre a nota; o que se escolhe aqui é a largura."
@@ -400,6 +411,7 @@ export function CalibracaoDoScore({
           </Campo>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
     </div>
   );
 }
@@ -423,11 +435,12 @@ function LimitesDosSinais({
   if (!limites.length) return null;
 
   return (
+    <ComFaixaDoTopo>
     <Secao
       titulo="Limites dos sinais"
       subtitulo="O que cada detector precisa ver para escrever uma frase na lente. Mudar aqui muda o texto do dossiê na próxima leitura — sem deploy, e sem reescrever nada à mão."
     >
-      <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
+      <div className="grade grade--2" style={{ gap: 16 }}>
         {limites.map((limite) => (
           <CampoDeLimite
             key={limite.chave}
@@ -438,6 +451,7 @@ function LimitesDosSinais({
         ))}
       </div>
     </Secao>
+    </ComFaixaDoTopo>
   );
 }
 
@@ -477,7 +491,7 @@ function CampoDeLimite({
 
   const ajustado = limite.valor !== limite.padrao;
   return (
-    <Cartao>
+    <Cartao estilo={{ height: '100%' }}>
       <Campo
         rotulo={limite.rotulo}
         dica={limite.explicacao}
