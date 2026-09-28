@@ -13,7 +13,7 @@
  *  quando há o resto para contrastar.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
@@ -112,6 +112,45 @@ describe('o que a grade sinaliza sem depender de cor', () => {
    *  as duas cores — 8% dos homens — via uma tabela uniforme com 500 linhas e nenhuma
    *  pista de onde mexer. E a mensagem morava só no `title`, que é hover: quem usa
    *  teclado ou toque não alcança. */
+
+  it('a célula que precisa de atenção, em edição, tem SÓ o campo — o sinal sai', async () => {
+    /** O DEFEITO QUE O DONO DO PRODUTO ACHOU USANDO: ele subiu uma agenda sem data e
+     *  sem UF, clicou em editar, e não conseguiu editar justamente esses dois campos.
+     *
+     *  A CAUSA ERA MECÂNICA, e só aparece com layout: o sinal `!` fica no mesmo fluxo
+     *  do campo, a célula é `nowrap` com `overflow: hidden`, e o campo tem
+     *  `width: 100%`. Nas colunas estreitas — a UF tem 64px, a Data 108px — o sinal
+     *  empurra o campo, e o que sobra dele é CORTADO pela célula. Ele ficava com uma
+     *  lasca de campo, ou com nenhuma.
+     *
+     *  O TESTE OLHA A CAUSA e não o pixel, porque jsdom não faz layout: em edição, a
+     *  célula marcada não desenha o sinal. A cor de fundo continua dizendo que ali há
+     *  um problema, e o campo ganha a célula inteira. */
+    const aoFechar = vi.fn();
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={aoFechar} />);
+    await waitFor(() => expect(screen.getByText('Órgão 3')).toBeTruthy());
+
+    const linhaComFalta = document.querySelector('tr[data-linha="3"]') as HTMLElement;
+    fireEvent.click(within(linhaComFalta).getByRole('button', { name: 'Editar' }));
+
+    const campos = within(linhaComFalta).getAllByRole('textbox');
+    expect(campos).toHaveLength(2);
+    expect(within(linhaComFalta).queryByLabelText('Precisa de atenção')).toBeNull();
+  });
+
+  it('o campo da coluna vazia abre pronto para receber a data', async () => {
+    /** A OUTRA METADE DO MESMO RELATO: a célula está vazia porque a planilha não tinha
+     *  o valor, e é exatamente essa que ela precisa preencher. O campo tem de existir,
+     *  estar vazio, e dizer o formato — sem ele a pessoa digita 09/30/2026. */
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Órgão 3')).toBeTruthy());
+
+    const linhaComFalta = document.querySelector('tr[data-linha="3"]') as HTMLElement;
+    fireEvent.click(within(linhaComFalta).getByRole('button', { name: 'Editar' }));
+
+    const daData = within(linhaComFalta).getByPlaceholderText('dd/mm/aaaa');
+    expect((daData as HTMLInputElement).value).toBe('');
+  });
 
   it('marca a célula que trava com um sinal que não é cor', async () => {
     render(<ConferirImportacao id="imp-1" aoFechar={() => {}} />);

@@ -65,10 +65,21 @@ const VAO = '2px';
  *  altura, com `box-sizing: border-box`, então a borda dele cabe DENTRO do espaço que
  *  o texto ocupava — a linha não se move um pixel.
  *
+ *  DUAS LINHAS DE TEXTO E NÃO UMA, desde que o campo aberto passou a quebrar em vez de
+ *  cortar (ver `medidas.ts`). A altura cresceu uma vez, para todas as linhas de uma
+ *  vez, e continua sendo a MESMA em todas — que é o que a uniformidade significa.
+ *
  *  ERA AQUI O DEFEITO que expandia a célula: o campo levava `className="entrada"`, e
  *  essa classe existe no projeto — é o layout da tela de LOGIN, com
  *  `min-height: 100vh`. O campo estava recebendo altura mínima de uma tela inteira. */
-const ALTURA_DA_LINHA = 30;
+const ALTURA_DA_LINHA = 48;
+
+/** Quantas linhas de texto uma célula de campo aberto mostra antes de cortar.
+ *
+ *  DUAS, e o número é o compromisso: uma não mostra nada de um relato, e cinco fariam
+ *  a grade de 54 agendas ter a altura de quatro telas. O que passa disso está no campo
+ *  de edição, que abre com o texto inteiro. */
+const LINHAS_DE_TEXTO = 2;
 
 /** Quantas linhas a grade monta por vez.
  *
@@ -123,11 +134,39 @@ const CELULA = {
   //: `middle` e não `top`: com altura fixa, o texto centrado verticalmente é o que
   //: faz a peça parecer uma célula e não um bloco com o conteúdo empurrado para cima.
   verticalAlign: 'middle' as const,
-  //: NADA CRESCE. O valor comprido corta com reticências e o inteiro está no hover —
-  //: é o que uma planilha faz, e é o que mantém a linha na mesma altura.
+  //: A CÉLULA NÃO CRESCE, e o que não cabe nela é cortado. O que muda por tipo de
+  //: coluna é COMO não cabe: a sigla e a data cortam com reticências numa linha só, e
+  //: o campo aberto quebra em `LINHAS_DE_TEXTO` linhas antes de cortar (ver `RECORTE`).
   whiteSpace: 'nowrap' as const,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
+};
+
+/** Como o VALOR se recorta dentro da célula, por tipo de coluna.
+ *
+ *  UM `span` E NÃO O `td`: a célula também carrega o sinal de atenção e os botões de
+ *  decisão, e um recorte de duas linhas aplicado nela contaria esses pedaços como
+ *  texto — o valor perderia linha para um botão. O recorte é do valor.
+ *
+ *  `-webkit-line-clamp` É O QUE CORTA NA SEGUNDA LINHA com reticências. O
+ *  `maxHeight` ao lado dele é a rede: onde o clamp não valer, o corte ainda acontece
+ *  na altura certa, sem vazar para cima da linha de baixo. */
+const RECORTE = {
+  quebra: {
+    display: '-webkit-box' as const,
+    WebkitLineClamp: LINHAS_DE_TEXTO,
+    WebkitBoxOrient: 'vertical' as const,
+    whiteSpace: 'normal' as const,
+    overflow: 'hidden',
+    maxHeight: `calc(${LINHAS_DE_TEXTO} * 1.35em)`,
+    lineHeight: 1.35,
+  },
+  linhaUnica: {
+    display: 'block' as const,
+    whiteSpace: 'nowrap' as const,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis' as const,
+  },
 };
 
 /** O campo de edição, que ocupa a célula sem mudá-la de tamanho.
@@ -136,6 +175,12 @@ const CELULA = {
  *  DENTRO da altura da célula. Sem o `box-sizing`, a borda somaria dois pixels e a
  *  linha inteira desceria. */
 const CAMPO = {
+  //: `display: block` COM `width: 100%`, e não um campo inline: era aqui o defeito que
+  //: o dono do produto achou usando. Um campo inline compartilha a linha com o sinal de
+  //: atenção, e numa coluna estreita — a UF tem 76px — o sinal empurra o campo para
+  //: fora do `overflow: hidden` da célula. Ele clicava em editar e não achava o campo
+  //: da Data nem o da UF: as duas colunas estreitas E marcadas.
+  display: 'block' as const,
   width: '100%',
   height: '100%',
   boxSizing: 'border-box' as const,
@@ -495,7 +540,16 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             : (FUNDO_DA_CELULA[cor ?? ''] ?? 'var(--branco)'),
                         }}
                       >
-                        {cor && !excluida ? (
+                        {/* O SINAL SAI QUANDO A LINHA ENTRA EM EDIÇÃO, e isto era o
+                            defeito: ele divide a linha com o campo, e numa coluna
+                            estreita e marcada — a Data e a UF de uma agenda sem data
+                            nem UF — empurrava o campo para fora do `overflow: hidden`
+                            da célula. A pessoa clicava em editar e não achava o campo.
+
+                            O FUNDO CONTINUA VERMELHO enquanto ela edita, então a
+                            informação não se perde: ela está justamente consertando
+                            aquela célula, e o campo aberto ali já diz o que fazer. */}
+                        {cor && !excluida && !emEdicao ? (
                           <span
                             aria-label={MARCADOR[cor].nome}
                             title={MARCADOR[cor].nome}
@@ -514,23 +568,53 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                              pode abrir espaço nem empurrar a tabela. Com a largura
                              fixa da coluna e `width: 100%`, a linha em edição ocupa
                              exatamente o mesmo lugar que ocupava antes — a pessoa
-                             digita onde estava lendo. */
-                          <input
-                            style={{ ...CAMPO, textAlign: medida.alinhamento }}
-                            value={rascunho[`${linha.id}|${coluna}`] ?? ''}
-                            placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
-                            onChange={(evento) =>
-                              setRascunho((atual) => ({
-                                ...atual,
-                                [`${linha.id}|${coluna}`]: evento.target.value,
-                              }))
-                            }
-                          />
+                             digita onde estava lendo.
+
+                             O CAMPO ABERTO GANHA VÁRIAS LINHAS, porque é onde mora o
+                             parágrafo: um campo de uma linha obrigaria a pessoa a
+                             percorrer o relato com a seta do teclado para conferi-lo.
+                             A altura é a mesma da célula, e o resto rola dentro. */
+                          medida.quebra ? (
+                            <textarea
+                              style={{
+                                ...CAMPO,
+                                padding: '2px 6px',
+                                lineHeight: 1.35,
+                                resize: 'none' as const,
+                              }}
+                              value={rascunho[`${linha.id}|${coluna}`] ?? ''}
+                              onChange={(evento) =>
+                                setRascunho((atual) => ({
+                                  ...atual,
+                                  [`${linha.id}|${coluna}`]: evento.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <input
+                              style={{ ...CAMPO, textAlign: medida.alinhamento }}
+                              value={rascunho[`${linha.id}|${coluna}`] ?? ''}
+                              placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
+                              onChange={(evento) =>
+                                setRascunho((atual) => ({
+                                  ...atual,
+                                  [`${linha.id}|${coluna}`]: evento.target.value,
+                                }))
+                              }
+                            />
+                          )
                         ) : (
                           <>
-                            {valor === null || valor === undefined || valor === ''
-                              ? '—'
-                              : String(valor)}
+                            {/* O VALOR VAI DENTRO DO RECORTE DO TIPO DELE: o campo
+                                aberto quebra em duas linhas, o resto corta com
+                                reticências numa linha só. */}
+                            <span
+                              style={medida.quebra ? RECORTE.quebra : RECORTE.linhaUnica}
+                            >
+                              {valor === null || valor === undefined || valor === ''
+                                ? '—'
+                                : String(valor)}
+                            </span>
                             {coluna in linha.corrigido ? (
                               <span className="etiqueta"> editado aqui</span>
                             ) : null}

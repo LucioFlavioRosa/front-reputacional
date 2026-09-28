@@ -27,15 +27,31 @@ describe('medidaDaColuna', () => {
     }
   });
 
-  it('nenhuma medida manda quebrar linha — a grade tem altura uniforme', () => {
-    /** DECISÃO REVISTA: a prosa quebrava. Com 54 linhas de alturas diferentes a
-     *  varredura com o olho para de funcionar, e a altura variável torna impossível
-     *  a promessa de a célula não mudar de tamanho ao entrar em edição. A prosa
-     *  ganha a coluna mais larga, corta com reticências, e o hover tem o valor
-     *  inteiro — é o que uma planilha faz. */
-    for (const tipo of ['marca', 'data', 'sigla', 'lista', 'prosa', 'texto']) {
-      expect('quebra' in medidaDaColuna(tipo)).toBe(false);
+  it('só o campo aberto quebra o texto — o resto vive numa linha', () => {
+    /** DECISÃO DO DONO DO PRODUTO: "campo aberto deve ter uma largura máxima e depois o
+     *  texto ir quebrando, para que possamos ler tudo". Antes nada quebrava, e o relato
+     *  inteiro existia só no hover — passar o mouse em 54 linhas para ler o relato de
+     *  cada uma não é ler.
+     *
+     *  A QUEBRA É SÓ DELE. Uma sigla ou uma data em duas linhas seria ruído: têm
+     *  tamanho conhecido, e a coluna já cabe. E a altura da linha continua a MESMA em
+     *  toda a grade — a quebra tem teto de duas linhas, não altura livre. */
+    expect(medidaDaColuna('prosa').quebra).toBe(true);
+
+    for (const tipo of ['marca', 'data', 'sigla', 'lista', 'texto']) {
+      expect(medidaDaColuna(tipo).quebra).toBeFalsy();
     }
+  });
+
+  it('a coluna cabe o conteúdo dela, campo de edição incluído', () => {
+    /** O OUTRO PEDIDO DO MESMO RELATO: "a largura das colunas deve ser compatível com o
+     *  conteúdo para que seja possível ler". A largura tem de caber o CAMPO e não só o
+     *  texto — a Data guarda dez caracteres, mas em edição mostra `dd/mm/aaaa` dentro de
+     *  um campo com borda e recheio, e era aí que ela ficava apertada. */
+    expect(medidaDaColuna('data').largura).toBeGreaterThanOrEqual(120);
+    expect(medidaDaColuna('sigla').largura).toBeGreaterThanOrEqual(72);
+    // "Prefeitura Municipal de Campinas" tem 32 caracteres: ~7px por caractere.
+    expect(medidaDaColuna('lista').largura).toBeGreaterThanOrEqual(224);
   });
 
   it('a data é centralizada e tem largura fixa — são sempre dez caracteres', () => {

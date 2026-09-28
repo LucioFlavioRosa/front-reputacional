@@ -10,12 +10,16 @@
  *  faz a borda esquerda brigar com o texto. Tudo o que é nome ou frase fica à
  *  esquerda, onde o olho sempre começa.
  *
- *  NADA QUEBRA EM VÁRIAS LINHAS, e isto é uma decisão que eu revi: a prosa quebrava
- *  antes. Com 54 linhas de alturas diferentes, a varredura com o olho para de
- *  funcionar — e a altura variável torna impossível a promessa de a célula não mudar
- *  de tamanho ao entrar em edição, que é o que o dono do produto pediu. A prosa
- *  continua ganhando a coluna mais LARGA, corta com reticências, e o valor inteiro
- *  fica no hover. É o que uma planilha faz.
+ *  A PROSA QUEBRA, E ISTO É O PEDIDO DO DONO DO PRODUTO: "campo aberto deve ter uma
+ *  largura máxima e depois o texto ir quebrando, para que possamos ler tudo". Antes ela
+ *  cortava com reticências e o valor inteiro só existia no hover — passar o mouse em 54
+ *  linhas para ler o relato de cada uma não é ler, é garimpar.
+ *
+ *  A QUEBRA TEM TETO, e é o que preserva a grade: duas linhas de texto, iguais em toda
+ *  a tabela. A altura continua uniforme — é ela que faz a varredura com o olho
+ *  funcionar, e é ela que sustenta a promessa de a célula não mudar de tamanho ao
+ *  entrar em edição. O que passa de duas linhas corta, e a edição abre um campo de
+ *  várias linhas com o texto inteiro dentro.
  */
 
 /** Como uma coluna se desenha na grade. */
@@ -23,6 +27,12 @@ export interface Medida {
   /** A largura da coluna, em pixels. Entra no `colgroup`. */
   largura: number;
   alinhamento: 'left' | 'center';
+  /** Se o texto quebra em mais de uma linha dentro da célula.
+   *
+   *  SÓ A PROSA QUEBRA. Uma sigla ou uma data quebrada em duas linhas seria ruído: elas
+   *  têm tamanho conhecido e a coluna já cabe. Quem quebra é o campo aberto — Relato,
+   *  Repercussão, Observações —, que é onde a pessoa escreve um parágrafo. */
+  quebra?: boolean;
 }
 
 /** Tipo de coluna → medida. As larguras são múltiplos de 4 e sobem com o conteúdo.
@@ -31,16 +41,20 @@ export interface Medida {
  *  um parágrafo. */
 const POR_TIPO: Record<string, Medida> = {
   // "sim" ou vazio. Estreita e centralizada — é uma marca, não um valor.
-  marca: { largura: 92, alinhamento: 'center' },
-  // 25/09/2026 — dez caracteres, sempre os mesmos.
-  data: { largura: 108, alinhamento: 'center' },
-  // Duas letras.
-  sigla: { largura: 64, alinhamento: 'center' },
-  // Nome vindo de uma lista: "Prefeitura Municipal de Campinas" é o caso real.
-  lista: { largura: 208, alinhamento: 'left' },
-  // Um parágrafo: a coluna mais larga, e ainda assim cortada. Ver o cabeçalho.
-  prosa: { largura: 288, alinhamento: 'left' },
-  texto: { largura: 168, alinhamento: 'left' },
+  marca: { largura: 96, alinhamento: 'center' },
+  // 25/09/2026, e o campo de edição mostra "dd/mm/aaaa" — dez caracteres nos dois, e a
+  // largura tem de caber o CAMPO e não só o texto: foi onde a data ficou apertada.
+  data: { largura: 120, alinhamento: 'center' },
+  // Duas letras, mais o campo de edição em volta delas.
+  sigla: { largura: 76, alinhamento: 'center' },
+  // Nome vindo de uma lista: "Prefeitura Municipal de Campinas" tem 32 caracteres, e é
+  // o caso real — a coluna cabe ele inteiro em vez de cortar no meio do nome.
+  lista: { largura: 232, alinhamento: 'left' },
+  // O campo aberto: a coluna mais larga, e o único tipo que QUEBRA o texto. A largura é
+  // o máximo — daí em diante o texto desce de linha em vez de a coluna crescer, porque
+  // uma coluna de 600px empurraria todas as outras para fora da tela.
+  prosa: { largura: 328, alinhamento: 'left', quebra: true },
+  texto: { largura: 184, alinhamento: 'left' },
 };
 
 /** O padrão de quem não declarou tipo. Igual a `texto`: uma coluna nova aparece
