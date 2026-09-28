@@ -22,8 +22,8 @@ import type { Eu, Portal } from '@/dominio/tipos';
 /** O nome de cada portal, na ordem em que a capa os apresenta. */
 const NOME_DO_PORTAL: Record<Portal, string> = {
   crm: 'CRM dos Stakeholders',
-  sintese: 'Síntese Executiva',
-  score: 'Score Executivo',
+  sintese: 'Painel de Inteligência de Mercado',
+  score: 'KPIs Reputacionais',
 };
 
 /** As bandeiras de `papel`, ditas em português.

@@ -1,4 +1,4 @@
-/** Score Executivo — o Índice de Saúde Reputacional.
+/** KPIs Reputacionais — o Índice de Saúde Reputacional.
  *
  *  UMA NOTA DE 0 A 100 POR MÊS, média ponderada de cinco lentes: imprensa,
  *  mercado, sociedade digital, clientes e institucional. Cada lente lê o
@@ -146,7 +146,7 @@ export function Score({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <Secao
-        titulo="Score Executivo"
+        titulo="KPIs Reputacionais"
         subtitulo="O Índice de Saúde Reputacional: uma nota por mês, média ponderada de cinco lentes. Vale para a companhia inteira — não segue os filtros do Painel."
         nivelDoTitulo={1}
       >

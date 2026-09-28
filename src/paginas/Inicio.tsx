@@ -28,25 +28,26 @@ const ONDA_1: {
     pronto: true,
   },
   {
-    portal: 'sintese',
-    view: null,
-    titulo: 'KPIs Reputacionais',
-    descricao:
-      'O tracking da saúde reputacional da Aegea, traduzido em indicadores para decisão estratégica.',
-    pronto: false,
-  },
-  {
     portal: 'score',
-    // O TERCEIRO MÓDULO FICA COM O SCORE porque ele EXISTE: a tela está de pé,
-    // lendo as planilhas dos quatro fornecedores. O main renomeou este cartão
-    // para "Inteligência de Mercado" e o marcou como não pronto — decisão de
-    // nomenclatura tomada enquanto este branch estava aberto, e que apagaria a
-    // porta de entrada da tela sem colocar outra no lugar.
+    // O SEGUNDO MÓDULO FICA COM O SCORE porque ele EXISTE: a tela está de pé,
+    // lendo as planilhas dos quatro fornecedores — só o rótulo do cartão virou
+    // "KPIs Reputacionais" (pedido do Jones), enquanto "Painel de Inteligência
+    // de Mercado" foi para o cartão de 'sintese', ainda não pronto. A ordem
+    // aqui segue o que está pronto: os dois disponíveis primeiro, o "em
+    // construção" por último.
     view: 'score',
-    titulo: 'Score Executivo',
+    titulo: 'KPIs Reputacionais',
     descricao:
       'O Índice de Saúde Reputacional: uma nota por mês, de cinco lentes.',
     pronto: true,
+  },
+  {
+    portal: 'sintese',
+    view: null,
+    titulo: 'Painel de Inteligência de Mercado',
+    descricao:
+      'O tracking da saúde reputacional da Aegea, traduzido em indicadores para decisão estratégica.',
+    pronto: false,
   },
 ];
 

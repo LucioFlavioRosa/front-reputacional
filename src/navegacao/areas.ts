@@ -6,9 +6,9 @@
  *  escondidas numa tira de abas por baixo.
  *
  *  A CAPA É QUEM TROCA DE DIVISÃO, e ela já existia: a marca no canto leva de
- *  volta a ela, e lá estão CRM dos Stakeholders, KPIs Reputacionais e Score
- *  Executivo. Não precisou de controle novo — precisou de a barra parar de
- *  fazer o trabalho da capa.
+ *  volta a ela, e lá estão CRM dos Stakeholders, KPIs Reputacionais e o
+ *  Painel de Inteligência de Mercado. Não precisou de controle novo —
+ *  precisou de a barra parar de fazer o trabalho da capa.
  *
  *  POR QUE ISTO NÃO MORA NO `Layout`: o componente depende do contexto do
  *  painel e não se monta sem ele, e esta é a regra que mais erra em silêncio —

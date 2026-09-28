@@ -138,7 +138,13 @@ export function Layout({
   //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
   //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
   const configuracao = configuracaoDe(view);
-  const nomeDaArea = view === 'score' || view === 'config-score' ? 'Score' : 'CRM';
+  const nomeDaArea = view === 'score' || view === 'config-score' ? 'KPIs Reputacionais' : 'CRM';
+  //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
+  //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
+  //: `Inicio.tsx`. Só duas divisões têm cabeçalho hoje (a terceira, `sintese`,
+  //: ainda não tem tela).
+  const nomeDoPainel =
+    view === 'score' || view === 'config-score' ? 'KPIs Reputacionais' : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
@@ -225,7 +231,7 @@ export function Layout({
             />
             <span style={{ textAlign: 'left', lineHeight: 1.2 }}>
               <span style={{ display: 'block', fontSize: 23, fontWeight: 700, color: 'var(--branco)' }}>
-                CRM dos Stakeholders
+                {nomeDoPainel}
               </span>
             </span>
           </button>
