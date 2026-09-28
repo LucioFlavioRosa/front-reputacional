@@ -85,3 +85,44 @@ describe('paraTelaBr', () => {
     expect(paraTelaBr('')).toBe('');
   });
 });
+
+describe('a máscara, digitada tecla por tecla', () => {
+  /** O DEFEITO QUE ESTE BLOCO EXISTE PARA PEGAR, e o dono do produto o achou em dois
+   *  minutos de uso: "na coluna data não está aceitando eu digitar o ano; digito o dia e
+   *  o mês, mas o ano não aparece".
+   *
+   *  MEUS TESTES PASSAVAM TODOS, e nenhum deles digitava: eu chamava a máscara com
+   *  valores isolados — `'30092026'` de uma vez —, e ninguém digita assim. Tecla por
+   *  tecla, o campo já tem `30/09` quando o quinto dígito chega, e o texto que entra na
+   *  máscara é `30/092`: o ramo que trata a barra cortava o dígito que passava do mês em
+   *  vez de deixá-lo transbordar para o ano. O ano nunca começava.
+   *
+   *  A LIÇÃO É SOBRE O TESTE, não sobre a máscara: uma máscara se usa em sequência, e
+   *  testá-la fora de sequência é testar outra coisa. */
+
+  function digitando(teclas: string): string {
+    let campo = '';
+    for (const tecla of teclas) campo = mascaraDeData(campo + tecla);
+    return campo;
+  }
+
+  it('oito dígitos seguidos dão a data inteira', () => {
+    expect(digitando('30092026')).toBe('30/09/2026');
+    expect(digitando('01012026')).toBe('01/01/2026');
+  });
+
+  it('mostra o progresso a cada tecla, sem perder nenhuma', () => {
+    expect(digitando('3')).toBe('3');
+    expect(digitando('30')).toBe('30');
+    expect(digitando('300')).toBe('30/0');
+    expect(digitando('3009')).toBe('30/09');
+    expect(digitando('30092')).toBe('30/09/2');
+    expect(digitando('300920')).toBe('30/09/20');
+    expect(digitando('3009202')).toBe('30/09/202');
+  });
+
+  it('quem digita as barras chega no mesmo lugar', () => {
+    expect(digitando('30/09/2026')).toBe('30/09/2026');
+    expect(digitando('1/2/2026')).toBe('01/02/2026');
+  });
+});

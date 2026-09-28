@@ -63,13 +63,33 @@ export function mascaraDeData(digitado: string): string {
 
   if (texto.includes('/')) {
     const partes = texto.split('/');
-    dia = digitos(partes[0] ?? '').slice(0, 2);
-    mes = digitos(partes[1] ?? '').slice(0, 2);
-    ano = digitos(partes.slice(2).join('')).slice(0, 4);
+    dia = digitos(partes[0] ?? '');
+    mes = digitos(partes[1] ?? '');
+    ano = digitos(partes.slice(2).join(''));
+
+    //: O QUE PASSA DE UM CAMPO TRANSBORDA PARA O SEGUINTE, e era aqui o defeito que o
+    //: dono do produto achou em dois minutos de uso: "digito o dia e o mês, mas o ano
+    //: não aparece".
+    //:
+    //: NINGUÉM DIGITA A DATA DE UMA VEZ. Tecla por tecla, o campo já mostra `30/09`
+    //: quando o quinto dígito chega, e o texto que entra aqui é `30/092` — o `2` é o
+    //: começo do ANO, morando no pedaço do mês porque a barra ainda não foi escrita.
+    //: Cortar em dois dígitos, como eu fazia, jogava fora cada tecla do ano: o campo
+    //: ficava parado em `30/09` para sempre.
+    if (dia.length > 2) {
+      mes = dia.slice(2) + mes;
+      dia = dia.slice(0, 2);
+    }
+    if (mes.length > 2) {
+      ano = mes.slice(2) + ano;
+      mes = mes.slice(0, 2);
+    }
+    ano = ano.slice(0, 4);
+
     //: A BARRA FECHA O CAMPO ANTERIOR, e é o que permite o zero à esquerda: `1/` é dia
     //: 01, e não um dia pela metade.
     diaFechado = true;
-    mesFechado = partes.length > 2;
+    mesFechado = partes.length > 2 || ano.length > 0;
     if (dia.length === 1) dia = `0${dia}`;
     if (mesFechado && mes.length === 1) mes = `0${mes}`;
   } else {

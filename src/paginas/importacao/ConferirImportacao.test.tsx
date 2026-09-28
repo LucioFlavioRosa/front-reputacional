@@ -17,6 +17,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 
 import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
+import { obterImportacao } from '@/api/cliente';
 import type { Importacao, LinhaDaImportacao } from '@/api/cliente';
 
 function linha(numero: number, parcial: Partial<LinhaDaImportacao> = {}): LinhaDaImportacao {
@@ -189,7 +190,15 @@ describe('o que a grade sinaliza sem depender de cor', () => {
     fireEvent.click(within(linhaComFalta).getByRole('button', { name: 'Editar' }));
     const daData = within(linhaComFalta).getByPlaceholderText('dd/mm/aaaa');
 
-    fireEvent.change(daData, { target: { value: '30092026' } });
+    //: TECLA POR TECLA, e não o valor inteiro de uma vez: foi assim que o defeito do ano
+    //: passou por mim. O campo mostra `30/09` quando o quinto dígito chega, e é o texto
+    //: JÁ FORMATADO que volta para a máscara — quem testa com o valor pronto testa um
+    //: caminho que a pessoa nunca percorre.
+    for (const tecla of '30092026') {
+      fireEvent.change(daData, {
+        target: { value: (daData as HTMLInputElement).value + tecla },
+      });
+    }
 
     expect((daData as HTMLInputElement).value).toBe('30/09/2026');
   });
@@ -205,6 +214,87 @@ describe('o que a grade sinaliza sem depender de cor', () => {
 
     expect(within(linhaComIso).getByText('30/09/2026')).toBeTruthy();
     expect(within(linhaComIso).queryByText('2026-09-30')).toBeNull();
+  });
+
+  it('o campo em edição diz que o valor está inválido, e não só pela cor', async () => {
+    /** ACHADO DA REVISÃO, severidade média. Eu tirei o sinal `!` da célula em edição —
+     *  ele empurrava o campo para fora das colunas estreitas —, e com isso o estado da
+     *  célula passou a ser transmitido SÓ pelo fundo colorido. Quem não distingue bem
+     *  vermelho, ou navega por leitor de tela, perdeu a informação exatamente no momento
+     *  em que está consertando aquela célula.
+     *
+     *  `aria-invalid` É O CANAL CERTO AQUI, e é melhor que o sinal: um campo de
+     *  formulário inválido tem um jeito próprio de se anunciar, que o leitor de tela lê
+     *  ao entrar nele. A borda mais grossa é a pista visual que não depende de cor. */
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Órgão 3')).toBeTruthy());
+
+    const linhaComFalta = document.querySelector('tr[data-linha="3"]') as HTMLElement;
+    fireEvent.click(within(linhaComFalta).getByRole('button', { name: 'Editar' }));
+
+    const daData = within(linhaComFalta).getByPlaceholderText('dd/mm/aaaa');
+    expect(daData.getAttribute('aria-invalid')).toBe('true');
+    //: A célula sem problema nenhum NÃO se anuncia inválida — senão o aviso perde o
+    //: significado e a pessoa aprende a ignorá-lo.
+    const daInstituicao = within(linhaComFalta)
+      .getAllByRole('textbox')
+      .find((campo) => campo !== daData) as HTMLElement;
+    expect(daInstituicao.getAttribute('aria-invalid')).not.toBe('true');
+  });
+
+  it('os botões de decisão saem da célula enquanto ela está sendo editada', async () => {
+    /** ACHADO DA REVISÃO, severidade média. A célula tem altura fixa e corta o que não
+     *  cabe: com o campo de edição dentro, os botões de decisão ficavam recortados —
+     *  visíveis pela metade, ou invisíveis e ainda alcançáveis pelo Tab.
+     *
+     *  SÃO DOIS CAMINHOS PARA A MESMA CORREÇÃO, e um de cada vez: ou ela escolhe um
+     *  cadastro que já existe, ou ela digita o valor certo. Oferecer os dois na mesma
+     *  célula apertada não dá escolha, dá confusão. */
+    const comDecisao: Importacao = {
+      ...IMPORTACAO,
+      linhas: [
+        linha(7, {
+          dados_brutos: { Data: '25/09/2026', 'Instituição': 'Prefeitura de Campinas' },
+          divergencias: [
+            {
+              campo: 'instituicao_id',
+              valor: 'Prefeitura de Campinas',
+              mensagem: "'Prefeitura de Campinas' não existe no cadastro.",
+              trava: true,
+              coluna: 'Instituição',
+              sugestoes: [],
+              acao: null,
+              alvo: null,
+            },
+          ],
+        }),
+      ],
+      grupos: [
+        {
+          campo: 'instituicao_id',
+          valor: 'Prefeitura de Campinas',
+          trava: true,
+          linhas: [7],
+          sugestoes: [{ nome: 'Prefeitura Municipal de Campinas', alvo: '1' }],
+          pode_criar: false,
+        },
+      ],
+    };
+    vi.mocked(obterImportacao).mockResolvedValueOnce(comDecisao);
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Prefeitura de Campinas')).toBeTruthy());
+
+    const linhaDela = document.querySelector('tr[data-linha="7"]') as HTMLElement;
+    //: Antes de editar, a decisão está lá — é ela que resolve doze linhas num clique.
+    expect(
+      within(linhaDela).getByRole('button', { name: 'É “Prefeitura Municipal de Campinas”' }),
+    ).toBeTruthy();
+
+    fireEvent.click(within(linhaDela).getByRole('button', { name: 'Editar' }));
+
+    expect(
+      within(linhaDela).queryByRole('button', { name: 'É “Prefeitura Municipal de Campinas”' }),
+    ).toBeNull();
   });
 
   it('marca a célula que trava com um sinal que não é cor', async () => {

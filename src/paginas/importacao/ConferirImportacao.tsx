@@ -225,6 +225,21 @@ const FUNDO_DA_CELULA: Record<string, string | undefined> = {
   aviso: 'var(--atencao-bg)',
 };
 
+/** Como o CAMPO DE EDIÇÃO mostra o estado da célula que ele está consertando.
+ *
+ *  ACHADO DA REVISÃO: eu tirei o sinal `!` da célula em edição — ele empurrava o campo
+ *  para fora das colunas estreitas —, e com isso o estado passou a ser transmitido só
+ *  pelo fundo colorido, que é justamente o que o sinal existia para não ser.
+ *
+ *  A BORDA MAIS GROSSA É A PISTA QUE NÃO DEPENDE DE COR: dois pixels contra um, visível
+ *  em tons de cinza e em qualquer daltonismo. O canal principal, porém, é o
+ *  `aria-invalid` no campo — um campo inválido se anuncia ao ser focado, que é o momento
+ *  exato em que a pessoa precisa saber. */
+const ANUNCIO_DO_CAMPO: Record<string, { borderWidth: number; borderColor: string }> = {
+  trava: { borderWidth: 2, borderColor: 'var(--erro-fg)' },
+  aviso: { borderWidth: 2, borderColor: 'var(--atencao-fg)' },
+};
+
 /** O MARCADOR DA CÉLULA: uma forma e um nome, além da cor.
  *
  *  ACHADO DA REVISÃO DE UI/UX, severidade alta: informação não pode ser transmitida
@@ -637,8 +652,15 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                              A altura é a mesma da célula, e o resto rola dentro. */
                           medida.quebra ? (
                             <textarea
+                              /* DIZ QUE ESTÁ INVÁLIDO, e não só pela cor: era o achado
+                                 da revisão sobre eu ter tirado o sinal `!` da célula em
+                                 edição. `aria-invalid` é o canal que o leitor de tela lê
+                                 ao entrar no campo, e é melhor que o sinal — ele fala no
+                                 momento em que a pessoa vai digitar. */
+                              aria-invalid={cor === 'trava' ? true : undefined}
                               style={{
                                 ...CAMPO,
+                                ...(cor ? ANUNCIO_DO_CAMPO[cor] : {}),
                                 padding: '2px 6px',
                                 lineHeight: 1.35,
                                 resize: 'none' as const,
@@ -653,7 +675,15 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             />
                           ) : (
                             <input
-                              style={{ ...CAMPO, textAlign: medida.alinhamento }}
+                              /* Ver o `aria-invalid` do campo de várias linhas: mesma
+                                 razão, e é a célula estreita e marcada — a Data, a UF —
+                                 que mais precisa dele. */
+                              aria-invalid={cor === 'trava' ? true : undefined}
+                              style={{
+                                ...CAMPO,
+                                ...(cor ? ANUNCIO_DO_CAMPO[cor] : {}),
+                                textAlign: medida.alinhamento,
+                              }}
                               value={rascunho[`${linha.id}|${coluna}`] ?? ''}
                               placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
                               /* A DATA SE DIGITA SÓ COM NÚMEROS e a tela põe as barras
@@ -697,7 +727,17 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             É o que substituiu o bloco de pendências agrupadas: sem
                             ele, consertar um órgão errado em doze linhas seriam doze
                             consertos iguais. */}
-                        {decisao && !excluida && !fechada ? (
+                        {/* A DECISÃO SAI ENQUANTO ELA DIGITA, e era o outro achado da
+                            revisão: a célula tem altura fixa e corta o que não cabe, então
+                            os botões ficavam recortados atrás do campo — invisíveis e
+                            ainda alcançáveis pelo Tab.
+
+                            SÃO DOIS CAMINHOS PARA O MESMO CONSERTO, e um de cada vez: ou
+                            ela aponta para um cadastro que já existe, ou ela digita o
+                            valor certo. Oferecer os dois na mesma célula apertada não dá
+                            escolha, dá confusão — e o botão Cancelar devolve o outro
+                            caminho num clique. */}
+                        {decisao && !excluida && !fechada && !emEdicao ? (
                           <div className="pilha pilha--curta" style={{ marginTop: 4 }}>
                             {decisao.outrasLinhas > 0 ? (
                               <span className="texto--secundario">
