@@ -38,6 +38,7 @@ import {
 import type { ColunaDaImportacao, Importacao, LinhaDaImportacao } from '@/api/cliente';
 import { Botao, FaixaDeErro, Modal, Vazio } from '@/componentes/basicos';
 import { decisaoDaCelula } from '@/paginas/importacao/celula';
+import { mascaraDeData, paraTelaBr } from '@/paginas/importacao/dataNaTela';
 import { corDaCelula, linhaTemPendencia, resumoDeCores } from '@/paginas/importacao/grade';
 import type { Medida } from '@/paginas/importacao/medidas';
 import {
@@ -309,10 +310,15 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     //: O RASCUNHO COMEÇA COM O QUE ESTÁ NA CÉLULA, e não vazio: a pessoa clicou em
     //: editar para CORRIGIR um valor, e um campo vazio a obrigaria a redigitar o que
     //: já estava certo.
+    //:
+    //: A DATA ENTRA EM PORTUGUÊS. O servidor a guarda em ISO, e abrir a edição com
+    //: `2026-09-30` num campo cujo exemplo é `dd/mm/aaaa` faria a pessoa apagar tudo
+    //: para digitar de novo no formato certo.
     const inicial: Record<string, string> = {};
     for (const { nome } of colunas) {
       const valor = linha.dados_brutos[nome];
-      inicial[`${linha.id}|${nome}`] = valor === null || valor === undefined ? '' : String(valor);
+      inicial[`${linha.id}|${nome}`] =
+        valor === null || valor === undefined ? '' : paraTelaBr(String(valor));
     }
     setRascunho((atual) => ({ ...atual, ...inicial }));
   };
@@ -324,7 +330,11 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     for (const { nome } of colunas) {
       const escrito = rascunho[`${linha.id}|${nome}`] ?? '';
       const antes = linha.dados_brutos[nome];
-      const comoEstava = antes === null || antes === undefined ? '' : String(antes);
+      //: COMPARA NO FORMATO DA TELA, senão toda data viajaria como alteração: o campo
+      //: mostra `30/09/2026` e o servidor guardou `2026-09-30`, e uma comparação crua
+      //: marcaria "editado aqui" numa célula que a pessoa só olhou.
+      const comoEstava =
+        antes === null || antes === undefined ? '' : paraTelaBr(String(antes));
       //: SÓ O QUE MUDOU vai para o servidor: mandar a linha inteira marcaria como
       //: "editado na conferência" toda célula que a pessoa nem tocou.
       if (escrito !== comoEstava) celulas[nome] = escrito;
@@ -646,10 +656,21 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                               style={{ ...CAMPO, textAlign: medida.alinhamento }}
                               value={rascunho[`${linha.id}|${coluna}`] ?? ''}
                               placeholder={tipo === 'data' ? 'dd/mm/aaaa' : ''}
+                              /* A DATA SE DIGITA SÓ COM NÚMEROS e a tela põe as barras
+                                 — são 54 datas num dia de evento, e cada barra é uma
+                                 tecla a mais. `inputMode` traz o teclado numérico no
+                                 celular, e o limite de dez impede a data de onze
+                                 dígitos que ninguém consegue ler. Ver
+                                 `dataNaTela.ts`. */
+                              inputMode={tipo === 'data' ? 'numeric' : undefined}
+                              maxLength={tipo === 'data' ? 10 : undefined}
                               onChange={(evento) =>
                                 setRascunho((atual) => ({
                                   ...atual,
-                                  [`${linha.id}|${coluna}`]: evento.target.value,
+                                  [`${linha.id}|${coluna}`]:
+                                    tipo === 'data'
+                                      ? mascaraDeData(evento.target.value)
+                                      : evento.target.value,
                                 }))
                               }
                             />
@@ -664,7 +685,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             >
                               {valor === null || valor === undefined || valor === ''
                                 ? '—'
-                                : String(valor)}
+                                : paraTelaBr(String(valor))}
                             </span>
                             {coluna in linha.corrigido ? (
                               <span className="etiqueta"> editado aqui</span>

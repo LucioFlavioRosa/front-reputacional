@@ -67,6 +67,8 @@ const IMPORTACAO: Importacao = {
       ],
     }),
     linha(4),
+    //: COMO O SERVIDOR GUARDA: em ISO. A grade tem de mostrá-la em português.
+    linha(5, { dados_brutos: { Data: '2026-09-30', 'Instituição': 'Órgão 5' } }),
   ],
 };
 
@@ -175,6 +177,34 @@ describe('o que a grade sinaliza sem depender de cor', () => {
 
     expect(somaDasColunas).toBeGreaterThan(0);
     expect(Number.parseInt(tabela.style.width, 10)).toBeGreaterThanOrEqual(somaDasColunas);
+  });
+
+  it('a data se digita só com números — a tela põe as barras', async () => {
+    /** O PEDIDO: "não gostaria de ficar digitando `/` na data; se eu digitar apenas os
+     *  números a formatação viria automaticamente". São 54 datas num dia de evento. */
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Órgão 3')).toBeTruthy());
+
+    const linhaComFalta = document.querySelector('tr[data-linha="3"]') as HTMLElement;
+    fireEvent.click(within(linhaComFalta).getByRole('button', { name: 'Editar' }));
+    const daData = within(linhaComFalta).getByPlaceholderText('dd/mm/aaaa');
+
+    fireEvent.change(daData, { target: { value: '30092026' } });
+
+    expect((daData as HTMLInputElement).value).toBe('30/09/2026');
+  });
+
+  it('a grade mostra a data em português, e não como o servidor a guarda', async () => {
+    /** Três formatos para a mesma data na mesma tela — a coluna da planilha pede
+     *  `dd/mm/aaaa`, o campo de edição oferece `dd/mm/aaaa`, e a grade mostrava
+     *  `2026-09-30`. Quem confere 54 linhas não deveria traduzir nenhuma. */
+    render(<ConferirImportacao id="imp-1" aoConfirmar={vi.fn()} aoFechar={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Órgão 5')).toBeTruthy());
+
+    const linhaComIso = document.querySelector('tr[data-linha="5"]') as HTMLElement;
+
+    expect(within(linhaComIso).getByText('30/09/2026')).toBeTruthy();
+    expect(within(linhaComIso).queryByText('2026-09-30')).toBeNull();
   });
 
   it('marca a célula que trava com um sinal que não é cor', async () => {
