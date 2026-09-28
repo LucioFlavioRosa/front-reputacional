@@ -833,6 +833,7 @@ const COBERTURA: { criterio: string; status: string; fundo: string; cor: string 
 function Metodologia() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <ComFaixaDoTopo>
       <Secao titulo="Como o índice é calculado">
         <Cartao>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
@@ -861,7 +862,9 @@ function Metodologia() {
           </ol>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Cobertura do framework"
         subtitulo="Os critérios que se espera de um índice de saúde reputacional, e onde este está."
@@ -898,7 +901,9 @@ function Metodologia() {
           </ul>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="O que ainda não está integrado"
         subtitulo="Declarado na tela de propósito: um índice que esconde as próprias lacunas é pior do que um índice incompleto."
@@ -925,6 +930,7 @@ function Metodologia() {
           </ul>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
     </div>
   );
 }
