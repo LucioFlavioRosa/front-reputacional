@@ -28,6 +28,7 @@ import {
   Cartao,
   Carregando,
   Chip,
+  ComFaixaDoTopo,
   FaixaDeAtencao,
   FaixaDeErro,
   Kpi,
@@ -115,21 +116,28 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
       <Destaque dossie={dossie} />
       <Evolucao dossie={dossie} />
 
-      <div className="grade grade--2" style={{ gap: 16, alignItems: 'start' }}>
+      {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
+          declarar): os dois painéis crescem para a mesma altura, a do mais
+          alto — sem isto, o cartão mais curto para no fim do próprio
+          conteúdo e desalinha com o vizinho sempre que os dois tipos de
+          gráfico não renderizam com a mesma altura por item. */}
+      <div className="grade grade--2" style={{ gap: 16 }}>
         {dossie.paineis.map((painel, posicao) => (
           // A CHAVE INCLUI A POSIÇÃO: dois painéis com o mesmo título são
           // improváveis, mas `key` duplicada faz o React reaproveitar o estado
           // do componente errado — e o erro aparece como gráfico que não
           // atualiza, não como aviso.
-          <Cartao key={`${posicao}-${painel.titulo}`}>
-            <CabecalhoDoBloco
-              titulo={painel.titulo}
-              conclusao={painel.conclusao}
-              ficha={painel.ficha}
-            />
-            <Painel bloco={painel} />
-            <NotaDeFonte ficha={painel.ficha} />
-          </Cartao>
+          <ComFaixaDoTopo key={`${posicao}-${painel.titulo}`}>
+            <Cartao estilo={{ height: '100%' }}>
+              <CabecalhoDoBloco
+                titulo={painel.titulo}
+                conclusao={painel.conclusao}
+                ficha={painel.ficha}
+              />
+              <Painel bloco={painel} />
+              <NotaDeFonte ficha={painel.ficha} />
+            </Cartao>
+          </ComFaixaDoTopo>
         ))}
       </div>
 
@@ -185,6 +193,7 @@ function Destaque({ dossie }: { dossie: Dossie }) {
     dossie.delta === null ? '—' : dossie.delta > 0 ? `+${dossie.delta}` : `${dossie.delta}`;
 
   return (
+    <ComFaixaDoTopo>
     <Secao
       titulo={`${dossie.nome} · ${dossie.stakeholder}`}
       subtitulo={dossie.fontes.length ? `Fontes no cálculo: ${dossie.fontes.join(' · ')}` : undefined}
@@ -246,6 +255,7 @@ function Destaque({ dossie }: { dossie: Dossie }) {
         </div>
       </div>
     </Secao>
+    </ComFaixaDoTopo>
   );
 }
 
@@ -255,6 +265,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
   const { evolucao } = dossie;
 
   return (
+    <ComFaixaDoTopo>
     <Secao titulo="Evolução">
       <Cartao>
         <CabecalhoDoBloco
@@ -305,6 +316,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
 
       </Cartao>
     </Secao>
+    </ComFaixaDoTopo>
   );
 }
 
@@ -328,14 +340,21 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
           const [pos, neu, neg] = bloco.legenda.length
             ? bloco.legenda
             : ['Positivo', 'Neutro', 'Negativo'];
+          // A COR, QUANDO O SERVIDOR MANDA (hoje só a institucional, com o
+          // mesmo cor_hex do dicionário de clima que pinta o Painel), VENCE o
+          // tom genérico — ver `BlocoSaida.cores` em `app/api/lentes.py`. Sem
+          // ela, cai nos tons de positivo/neutro/negativo do design system.
+          const [corPos, corNeu, corNeg] = bloco.cores.length
+            ? bloco.cores
+            : ['var(--ok-fg)', 'var(--cinza-1)', 'var(--erro-fg)'];
           return {
             mes: comoTexto(linha.mes),
             total: classificadas + semClassificacao,
             semBase: Boolean(linha.sem_base),
             segmentos: [
-              { chave: 'pos', rotulo: pos, total: comoNumero(linha.positivo ?? 0), cor: 'var(--ok-fg)' },
-              { chave: 'neu', rotulo: neu, total: comoNumero(linha.neutro ?? 0), cor: 'var(--cinza-1)' },
-              { chave: 'neg', rotulo: neg, total: comoNumero(linha.negativo ?? 0), cor: 'var(--erro-fg)' },
+              { chave: 'pos', rotulo: pos, total: comoNumero(linha.positivo ?? 0), cor: corPos },
+              { chave: 'neu', rotulo: neu, total: comoNumero(linha.neutro ?? 0), cor: corNeu },
+              { chave: 'neg', rotulo: neg, total: comoNumero(linha.negativo ?? 0), cor: corNeg },
               // O VOLUME QUE NINGUÉM LEU. Uma faixa cinza-azulada, distinta do
               // neutro: neutro é leitura, isto é ausência de leitura. Some
               // sozinha quando o total é zero.
@@ -398,6 +417,7 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
           sem_base: Boolean(linha.sem_base),
         }))}
         legenda={bloco.legenda.length ? bloco.legenda : undefined}
+        cores={bloco.cores.length ? bloco.cores : undefined}
       />
     );
   }
@@ -518,6 +538,7 @@ function SinaisDoPeriodo({ dossie }: { dossie: Dossie }) {
   const lacunas = dossie.sinais.length - reais;
 
   return (
+    <ComFaixaDoTopo>
     <Secao
       titulo="Sinais do período"
       subtitulo={
@@ -550,6 +571,7 @@ function SinaisDoPeriodo({ dossie }: { dossie: Dossie }) {
         )}
       </Cartao>
     </Secao>
+    </ComFaixaDoTopo>
   );
 }
 

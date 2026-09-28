@@ -28,6 +28,7 @@ import {
   Carregando,
   Cartao,
   Chip,
+  ComFaixaDoTopo,
   FaixaDeErro,
   Secao,
   Vazio,
@@ -145,6 +146,7 @@ export function Score({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <ComFaixaDoTopo>
       <Secao
         titulo="KPIs Reputacionais"
         subtitulo="O Índice de Saúde Reputacional: uma nota por mês, média ponderada de cinco lentes. Vale para a companhia inteira — não segue os filtros do Painel."
@@ -172,6 +174,7 @@ export function Score({
           ) : null}
         </div>
       </Secao>
+      </ComFaixaDoTopo>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 

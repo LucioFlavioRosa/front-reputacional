@@ -121,7 +121,7 @@ export const GUIA_DO_CADASTRO: Record<string, VerbeteDoCampo> = {
   },
   clima_esperado: {
     oQuePreencher: 'Como você acha que a conversa vai ser, antes dela acontecer.',
-    exemplo: 'Positivo, se a pauta é favorável à instituição; tenso, se envolve uma cobrança.',
+    exemplo: 'Positivo, se a pauta é favorável à instituição; negativo, se envolve uma cobrança.',
     porQue:
       'É a previsão — o clima real, depois de a reunião acontecer, se registra na aba "Depois". Comparar os dois mostra se a expectativa bateu com o resultado.',
   },

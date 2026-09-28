@@ -804,7 +804,7 @@ export function Painel({
       <Secao
         titulo="Termômetro por público"
         subtitulo="Volume de interações por público e o clima percebido em cada um"
-        ajuda="Placar de clima por categoria de público: (interações propositivas − tensas) ÷ total × 100, de −100 (só tensas) a +100 (só propositivas). Considera só interações com clima registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
+        ajuda="Placar de clima por categoria de público: (interações positivas − negativas) ÷ total × 100, de −100 (só negativas) a +100 (só positivas). Considera só interações com clima registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
       >
         {categoriaPublicoExtras.length || categoriaPublicoDisponiveis.length ? (
           <div
@@ -968,7 +968,7 @@ export function Painel({
           <Secao
             titulo="Clima por Instituições"
             subtitulo="Placar de clima das instituições mais presentes no recorte"
-            ajuda="Cada barra é (interações propositivas − tensas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
+            ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
             estilo={{ height: '100%' }}
           >
@@ -1107,8 +1107,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="Clima das interações no tempo"
-          subtitulo="Evolução da classificação de clima (Propositivo, Neutro e Tenso) no período"
-          ajuda="Cada coluna soma 100% das interações com clima registrado naquele período, divididas entre Propositivo, Neutro e Tenso — mostra como a PROPORÇÃO de clima muda no tempo, não o volume total de interações."
+          subtitulo="Evolução da classificação de clima (Positivo, Neutro e Negativo) no período"
+          ajuda="Cada coluna soma 100% das interações com clima registrado naquele período, divididas entre Positivo, Neutro e Negativo — mostra como a PROPORÇÃO de clima muda no tempo, não o volume total de interações."
         >
           {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
               que varia é a fatia de cada clima — a pergunta aqui é "como o
@@ -1135,7 +1135,7 @@ export function Painel({
         <Secao
           titulo="Net Sentiment Score no tempo"
           subtitulo="Placar de clima do recorte, período a período, contra a média geral"
-          ajuda="NSS = (interações propositivas − tensas) ÷ total com clima registrado × 100, de −100 a +100 — a mesma fórmula do placar de clima usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem clima registrado, o período fica sem ponto."
+          ajuda="NSS = (interações positivas − negativas) ÷ total com clima registrado × 100, de −100 a +100 — a mesma fórmula do placar de clima usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem clima registrado, o período fica sem ponto."
         >
           {nssPublicosExtras.length || nssPublicosDisponiveis.length ? (
             <div
@@ -1235,7 +1235,7 @@ export function Painel({
       <Secao
         titulo="Barra divergente por tema"
         subtitulo="Desempenho comparativo de clima por pauta (do pior ao melhor placar)"
-        ajuda="Cada barra é (interações propositivas − tensas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista os temas com mais interações no recorte, do pior para o melhor placar."
       >
         {temasExtras.length || temasDisponiveis.length ? (
           <div
