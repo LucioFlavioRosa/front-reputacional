@@ -59,10 +59,15 @@ export interface ItemDeComposicao {
 export function BarrasCemPorCento({
   itens,
   legenda = ['Positivo', 'Neutro', 'Negativo'],
+  // A COR, QUANDO O SERVIDOR MANDA (a lente institucional, com o cor_hex do
+  // dicionário de clima que também pinta o Painel), VENCE o tom genérico —
+  // mesmo contrato de `BarrasEmpilhadas`/`DossieDaLente.tsx`.
+  cores = [COR.positivo, COR.neutro, COR.negativo],
   vazio = 'Sem dado no mês.',
 }: {
   itens: ItemDeComposicao[];
   legenda?: [string, string, string] | string[];
+  cores?: [string, string, string] | string[];
   vazio?: string;
 }) {
   if (!itens.length) {
@@ -71,7 +76,11 @@ export function BarrasCemPorCento({
 
   return (
     <div>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {/* MESMO RITMO VERTICAL DE `Ranking` (graficos/Ranking.tsx): `gap: 11`
+          entre itens, e não padding igual em cima e embaixo de cada um — o
+          `Ranking` ao lado usa esse padrão, e um espaçamento diferente aqui
+          desalinhava a altura das duas colunas do dossiê. */}
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
         {itens.map((item) => {
           const classificadas = item.positivo + item.neutro + item.negativo;
           const semClassificacao = item.sem_classificacao ?? 0;
@@ -88,7 +97,7 @@ export function BarrasCemPorCento({
               : `${Math.round((item.positivo / classificadas) * 100)}% positivo`;
 
           return (
-            <li key={item.rotulo} style={{ padding: '9px 0' }}>
+            <li key={item.rotulo} style={{ padding: '3px 0' }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.rotulo}</span>
                 <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
@@ -104,8 +113,12 @@ export function BarrasCemPorCento({
                 <div
                   title="sem base neste mês"
                   style={{
-                    height: 12,
-                    borderRadius: 3,
+                    // MESMA ESPESSURA DE `Barra` (componentes/basicos.tsx): o
+                    // `Ranking` ao lado usa 7px, e um valor diferente aqui
+                    // desalinhava a altura das duas colunas do dossiê que
+                    // ficam lado a lado.
+                    height: 7,
+                    borderRadius: 2,
                     border: '1px dashed var(--borda)',
                     background:
                       'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
@@ -119,13 +132,13 @@ export function BarrasCemPorCento({
                       ? `${item.rotulo}: ${total} menções, sentimento a integrar`
                       : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
                   }
-                  style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', gap: 2 }}
+                  style={{ display: 'flex', height: 7, borderRadius: 2, overflow: 'hidden', gap: 2 }}
                 >
                   {(
                     [
-                      ['positivo', item.positivo, COR.positivo, legenda[0]],
-                      ['neutro', item.neutro, COR.neutro, legenda[1]],
-                      ['negativo', item.negativo, COR.negativo, legenda[2]],
+                      ['positivo', item.positivo, cores[0], legenda[0]],
+                      ['neutro', item.neutro, cores[1], legenda[1]],
+                      ['negativo', item.negativo, cores[2], legenda[2]],
                       ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
                     ] as const
                   )
@@ -145,9 +158,9 @@ export function BarrasCemPorCento({
       </ul>
       <Legenda
         itens={[
-          [legenda[0], COR.positivo],
-          [legenda[1], COR.neutro],
-          [legenda[2], COR.negativo],
+          [legenda[0], cores[0]],
+          [legenda[1], cores[1]],
+          [legenda[2], cores[2]],
           ...(itens.some((item) => (item.sem_classificacao ?? 0) > 0)
             ? ([['Sem classificação', COR.semClassificacao]] as [string, string][])
             : []),

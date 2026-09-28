@@ -45,6 +45,7 @@ function bloco(parcial: Partial<Bloco>): Bloco {
     conclusao: null,
     dados: [],
     legenda: [],
+    cores: [],
     colunas: [],
     ficha: FICHA,
     ...parcial,

@@ -51,6 +51,11 @@ export interface Bloco {
    *  clima (propositivo/neutro/tenso) e as outras medem sentimento. Vem do
    *  servidor porque a tela não pode descobrir isso adivinhando pelo título. */
   legenda: string[];
+  /** A cor de cada faixa de `legenda`, na mesma ordem — só a lente
+   *  institucional manda hoje, com a mesma cor do dicionário de clima que
+   *  pinta o Painel. Vazio quando ausente: a tela cai nos tons genéricos de
+   *  positivo/neutro/negativo. */
+  cores: string[];
   /** Só nas tabelas: quais colunas mostrar, na ordem em que se lê. */
   colunas: ColunaDoBloco[];
   ficha: Ficha;
