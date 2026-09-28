@@ -30,8 +30,8 @@ const SSO_LIGADO = true;
 /** Os três módulos da plataforma, na ordem em que a capa os apresenta. */
 const MODULOS = [
   { nome: 'CRM dos Stakeholders', estado: 'Disponível' },
-  { nome: 'Síntese Executiva', estado: 'Em construção' },
-  { nome: 'Score Executivo', estado: 'Disponível' },
+  { nome: 'KPIs Reputacionais', estado: 'Disponível' },
+  { nome: 'Painel de Inteligência de Mercado', estado: 'Em construção' },
 ];
 
 export function Login({
