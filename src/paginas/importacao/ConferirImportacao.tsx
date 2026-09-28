@@ -330,10 +330,16 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
     //: `2026-09-30` num campo cujo exemplo é `dd/mm/aaaa` faria a pessoa apagar tudo
     //: para digitar de novo no formato certo.
     const inicial: Record<string, string> = {};
-    for (const { nome } of colunas) {
+    for (const { nome, tipo } of colunas) {
       const valor = linha.dados_brutos[nome];
+      //: SÓ A COLUNA DE DATA É TRADUZIDA, e era um achado da revisão: rodar a tradução
+      //: em toda célula fazia um texto que começa com data perder o resto da frase.
       inicial[`${linha.id}|${nome}`] =
-        valor === null || valor === undefined ? '' : paraTelaBr(String(valor));
+        valor === null || valor === undefined
+          ? ''
+          : tipo === 'data'
+            ? paraTelaBr(String(valor))
+            : String(valor);
     }
     setRascunho((atual) => ({ ...atual, ...inicial }));
   };
@@ -342,14 +348,21 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
 
   const salvarLinha = (linha: LinhaDaImportacao, colunas: ColunaDaImportacao[]) => {
     const celulas: Record<string, string> = {};
-    for (const { nome } of colunas) {
+    for (const { nome, tipo } of colunas) {
       const escrito = rascunho[`${linha.id}|${nome}`] ?? '';
       const antes = linha.dados_brutos[nome];
       //: COMPARA NO FORMATO DA TELA, senão toda data viajaria como alteração: o campo
       //: mostra `30/09/2026` e o servidor guardou `2026-09-30`, e uma comparação crua
       //: marcaria "editado aqui" numa célula que a pessoa só olhou.
+      //:
+      //: SÓ NA COLUNA DE DATA, pelo mesmo motivo da abertura: numa coluna de texto, a
+      //: tradução podia igualar dois valores diferentes e engolir uma alteração real.
       const comoEstava =
-        antes === null || antes === undefined ? '' : paraTelaBr(String(antes));
+        antes === null || antes === undefined
+          ? ''
+          : tipo === 'data'
+            ? paraTelaBr(String(antes))
+            : String(antes);
       //: SÓ O QUE MUDOU vai para o servidor: mandar a linha inteira marcaria como
       //: "editado na conferência" toda célula que a pessoa nem tocou.
       if (escrito !== comoEstava) celulas[nome] = escrito;
@@ -594,6 +607,15 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                   {importacao.colunas.map(({ nome: coluna, tipo }) => {
                     const cor = corDaCelula(linha, coluna);
                     const valor = linha.dados_brutos[coluna];
+                    //: O QUE ESTÁ ERRADO NESTA CÉLULA, em texto. O `title` do `td` não
+                    //: alcança quem está com o campo aberto — o campo cobre a célula —,
+                    //: e o aviso amarelo não é "inválido": `aria-invalid` seria mentira
+                    //: nele. A mensagem no próprio campo serve aos dois, e foi o achado
+                    //: da revisão sobre o amarelo ficar só na cor durante a edição.
+                    const aviso = linha.divergencias
+                      .filter((divergencia) => divergencia.coluna === coluna)
+                      .map((divergencia) => divergencia.mensagem)
+                      .join(' · ');
                     const decisao = decisaoDaCelula(linha, coluna, grupos);
                     const medida = medidas.get(coluna) ?? medidaDaColuna(tipo);
                     return (
@@ -658,6 +680,8 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                                  ao entrar no campo, e é melhor que o sinal — ele fala no
                                  momento em que a pessoa vai digitar. */
                               aria-invalid={cor === 'trava' ? true : undefined}
+                              aria-label={aviso || undefined}
+                              title={aviso || undefined}
                               style={{
                                 ...CAMPO,
                                 ...(cor ? ANUNCIO_DO_CAMPO[cor] : {}),
@@ -679,6 +703,8 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                                  razão, e é a célula estreita e marcada — a Data, a UF —
                                  que mais precisa dele. */
                               aria-invalid={cor === 'trava' ? true : undefined}
+                              aria-label={aviso || undefined}
+                              title={aviso || undefined}
                               style={{
                                 ...CAMPO,
                                 ...(cor ? ANUNCIO_DO_CAMPO[cor] : {}),
@@ -715,7 +741,9 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                             >
                               {valor === null || valor === undefined || valor === ''
                                 ? '—'
-                                : paraTelaBr(String(valor))}
+                                : tipo === 'data'
+                                  ? paraTelaBr(String(valor))
+                                  : String(valor)}
                             </span>
                             {coluna in linha.corrigido ? (
                               <span className="etiqueta"> editado aqui</span>

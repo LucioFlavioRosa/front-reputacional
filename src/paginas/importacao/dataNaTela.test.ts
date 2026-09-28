@@ -56,12 +56,23 @@ describe('mascaraDeData', () => {
     expect(mascaraDeData('30132026')).toBe('30/132026');
   });
 
-  it('aceita a barra digitada por hábito, e completa o zero que falta', () => {
+  it('aceita a barra digitada por hábito, e completa o zero de quem está digitando', () => {
     //: Quem tem o hábito não vai parar de digitar a barra por causa da máscara. `1/`
     //: significa "o dia acabou": é primeiro, e vira `01/`.
     expect(mascaraDeData('1/')).toBe('01/');
-    expect(mascaraDeData('1/2/2026')).toBe('01/02/2026');
     expect(mascaraDeData('30/09/2026')).toBe('30/09/2026');
+
+    //: UMA DATA JÁ ESCRITA NÃO É REESCRITA, e é o preço de deixar a edição no meio
+    //: funcionar: `1/2/2026` colado de algum lugar fica como está, em vez de virar
+    //: `01/02/2026`. Textualmente ele é idêntico a `30/9/2026` — uma data da qual a
+    //: pessoa acabou de apagar um dígito para trocar o mês —, e não há como distinguir
+    //: os dois sem saber de onde o texto veio.
+    //:
+    //: O PREÇO É ZERO, e isso decidiu a escolha: o servidor lê `1/2/2026`, `30/9/2026` e
+    //: `3/09/2026` como as datas que são (conferido em `data_de_celula`). O zero à
+    //: esquerda é conforto de leitura, não requisito — e quem DIGITA continua recebendo
+    //: ele, porque aí o campo seguinte está vazio (ver o bloco de digitação).
+    expect(mascaraDeData('1/2/2026')).toBe('1/2/2026');
   });
 
   it('descarta letra e pontuação — o campo é numérico', () => {
@@ -124,5 +135,37 @@ describe('a máscara, digitada tecla por tecla', () => {
   it('quem digita as barras chega no mesmo lugar', () => {
     expect(digitando('30/09/2026')).toBe('30/09/2026');
     expect(digitando('1/2/2026')).toBe('01/02/2026');
+  });
+});
+
+describe('os achados da revisão', () => {
+  it('NÃO traduz um texto que só COMEÇA com data — esconderia o resto', () => {
+    /** ACHADO DA REVISÃO, e é perda de informação visível: `paraTelaBr` roda em toda
+     *  célula da grade, e o meu regex não exigia o fim do texto. Uma observação escrita
+     *  como `2026-09-30 - reunião com a prefeitura` aparecia na tela como `30/09/2026`
+     *  — o resto da frase desaparecia, e a comparação de salvar ainda a considerava
+     *  igual ao original. */
+    expect(paraTelaBr('2026-09-30 - reunião com a prefeitura')).toBe(
+      '2026-09-30 - reunião com a prefeitura',
+    );
+    expect(paraTelaBr('2026-09-30, sede')).toBe('2026-09-30, sede');
+    //: A data pura, com ou sem hora, continua traduzida.
+    expect(paraTelaBr('2026-09-30')).toBe('30/09/2026');
+    expect(paraTelaBr('2026-09-30T00:00:00')).toBe('30/09/2026');
+  });
+
+  it('apagar um dígito no MEIO da data não o traz de volta', () => {
+    /** ACHADO DA REVISÃO. O zero à esquerda é o que faz `1/` virar `01/`, e eu o punha
+     *  sempre que havia uma barra: apagar o `0` de `30/09/2026` devolvia `30/9/2026` ao
+     *  navegador, e a máscara reescrevia `30/09/2026`. O dígito voltava, e a pessoa não
+     *  conseguia trocar o mês sem apagar o campo inteiro.
+     *
+     *  O ZERO SÓ ENTRA QUANDO O CAMPO SEGUINTE ESTÁ VAZIO — que é o caso de quem está
+     *  digitando (`1/` é o fim do dia) e não o de quem está corrigindo o meio. */
+    expect(mascaraDeData('30/9/2026')).toBe('30/9/2026');
+    expect(mascaraDeData('3/09/2026')).toBe('3/09/2026');
+    //: E continua completando quem está digitando agora.
+    expect(mascaraDeData('1/')).toBe('01/');
+    expect(mascaraDeData('01/2/')).toBe('01/02/');
   });
 });
