@@ -16,22 +16,43 @@
  *  payload.
  */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { Chip, Modal } from '@/componentes/basicos';
 import { ORIGEM } from '@/dominio/dossie';
 import type { Ficha } from '@/dominio/dossie';
 
-export function BotaoDeProcedencia({ ficha, titulo }: { ficha: Ficha; titulo: string }) {
+export function BotaoDeProcedencia({
+  ficha,
+  titulo,
+  ajuda,
+}: {
+  ficha: Ficha;
+  titulo: string;
+  /** O que este gráfico mostra, no hover — o "?" já existia; isto só troca o
+   *  balão genérico pelo verbete certo de `dominio/guiaDoDossie.ts`, no
+   *  mesmo balão estreito e com quebra de linha que `Ajuda` (basicos.tsx) já
+   *  usa — um `title` nativo não dá conta de um parágrafo, só de uma linha.
+   *  O clique continua abrindo a procedência (de onde vem o dado), sem
+   *  mudança. Sem verbete ainda escrito, cai de volta no `title` simples. */
+  ajuda?: string;
+}) {
   const [aberto, definirAberto] = useState(false);
+  const [emFoco, definirEmFoco] = useState(false);
+  const id = useId();
 
   return (
-    <>
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
       <button
         type="button"
         onClick={() => definirAberto(true)}
+        onMouseEnter={ajuda ? () => definirEmFoco(true) : undefined}
+        onMouseLeave={ajuda ? () => definirEmFoco(false) : undefined}
+        onFocus={ajuda ? () => definirEmFoco(true) : undefined}
+        onBlur={ajuda ? () => definirEmFoco(false) : undefined}
         aria-label={`De onde vem: ${titulo}`}
-        title="De onde vem este dado"
+        aria-describedby={ajuda && emFoco ? id : undefined}
+        title={ajuda ? undefined : 'De onde vem este dado'}
         style={{
           width: 20,
           height: 20,
@@ -49,6 +70,37 @@ export function BotaoDeProcedencia({ ficha, titulo }: { ficha: Ficha; titulo: st
         ?
       </button>
 
+      {/* MESMO BALÃO DE `Ajuda` (basicos.tsx): largura fixa e quebra de
+          linha, em vez do `title` nativo — que vira uma faixa horizontal
+          enorme quando o texto passa de poucas palavras. */}
+      {ajuda && emFoco ? (
+        <span
+          id={id}
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            zIndex: 40,
+            top: 'calc(100% + 6px)',
+            left: -6,
+            width: 260,
+            maxWidth: '70vw',
+            padding: '9px 11px',
+            background: 'var(--branco)',
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-card-int)',
+            boxShadow: 'var(--sh-tooltip)',
+            color: 'var(--cinza-3)',
+            fontSize: 12,
+            fontWeight: 400,
+            lineHeight: 1.45,
+            textAlign: 'left',
+            whiteSpace: 'normal',
+          }}
+        >
+          {ajuda}
+        </span>
+      ) : null}
+
       {aberto ? (
         <Modal
           titulo={titulo}
@@ -59,7 +111,7 @@ export function BotaoDeProcedencia({ ficha, titulo }: { ficha: Ficha; titulo: st
           <Conteudo ficha={ficha} />
         </Modal>
       ) : null}
-    </>
+    </span>
   );
 }
 
@@ -159,10 +211,15 @@ export function CabecalhoDoBloco({
   titulo,
   conclusao,
   ficha,
+  ajuda,
 }: {
   titulo: string;
   conclusao: string | null;
   ficha: Ficha;
+  /** O que este gráfico mostra, no hover do "?" que já existe — não é um
+   *  ícone novo. Vem de `dominio/guiaDoDossie.ts`, texto fixo e não do
+   *  servidor: o significado do gráfico não muda de mês para mês. */
+  ajuda?: string;
 }) {
   return (
     <header style={{ marginBottom: 12 }}>
@@ -170,7 +227,7 @@ export function CabecalhoDoBloco({
         <p className="kicker" style={{ margin: 0 }}>
           {titulo}
         </p>
-        <BotaoDeProcedencia ficha={ficha} titulo={titulo} />
+        <BotaoDeProcedencia ficha={ficha} titulo={titulo} ajuda={ajuda} />
         {ficha.exemplo ? <Chip rotulo="exemplo" /> : null}
       </div>
       {conclusao ? (

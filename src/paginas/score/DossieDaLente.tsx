@@ -47,6 +47,7 @@ import {
 } from '@/dominio/dossie';
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
+import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { corDaFaixa } from '@/dominio/score';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
 import {
@@ -133,6 +134,7 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
                 titulo={painel.titulo}
                 conclusao={painel.conclusao}
                 ficha={painel.ficha}
+                ajuda={GUIA_DO_BLOCO[painel.titulo]}
               />
               <Painel bloco={painel} />
               <NotaDeFonte ficha={painel.ficha} />
@@ -201,6 +203,7 @@ function Destaque({ dossie }: { dossie: Dossie }) {
         <BotaoDeProcedencia
           ficha={dossie.ficha_do_destaque}
           titulo={`Nota de ${dossie.nome}`}
+          ajuda={GUIA_DO_DESTAQUE[dossie.codigo]}
         />
       }
     >
@@ -272,6 +275,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           titulo={evolucao.titulo}
           conclusao={evolucao.conclusao}
           ficha={evolucao.ficha}
+          ajuda={GUIA_DO_BLOCO[evolucao.titulo]}
         />
         <Painel bloco={evolucao} fatos={dossie.fatos} />
         <QuadroDaEvolucao linhas={dossie.sinais_da_evolucao} />
