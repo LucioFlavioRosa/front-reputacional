@@ -70,7 +70,13 @@ export function lerCaminho(caminho: string): Rota {
   // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
   // barra de cima daquela divisão, e uma barra cujos itens não são links não
   // se compartilha, não volta no histórico e não recarrega onde estava.
-  if (primeira === 'score') return { destino: 'score', aba: segunda };
+  // `?? 'geral'`, E NÃO `segunda` CRU: `caminhoDe` já omite "geral" do
+  // caminho (é a aba padrão), então sem o default aqui a volta perde a
+  // informação — `rota.aba` virava `undefined`, e a barra de cima (que
+  // compara `item.aba === abaAtiva` em `Layout.tsx`) nunca marcava "Visão
+  // geral" como a aba ativa, nem entrando direto pela navegação principal
+  // nem clicando nela — só as outras abas, que têm segmento próprio na URL.
+  if (primeira === 'score') return { destino: 'score', aba: segunda ?? 'geral' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
   // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
   // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está

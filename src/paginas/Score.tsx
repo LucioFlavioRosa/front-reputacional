@@ -255,6 +255,7 @@ function VisaoGeral({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <ComFaixaDoTopo>
       <Secao
         titulo="Cinco lentes, um índice"
         subtitulo={`Índice de Saúde Reputacional · ${indice.mes}`}
@@ -298,10 +299,16 @@ function VisaoGeral({
           </div>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao titulo="Leitura do período">
-        <div className="grade grade--mapa" style={{ gap: 16, alignItems: 'start' }}>
-          <Cartao>
+        {/* `alignItems: 'stretch'` (o padrão do grid): o texto da leitura à
+            esquerda costuma ser mais alto que "O que sustenta"/"O que corrói"
+            à direita, e com `'start'` os dois cartões da direita paravam
+            mais baixos que o da esquerda. */}
+        <div className="grade grade--mapa" style={{ gap: 16 }}>
+          <Cartao estilo={{ height: '100%' }}>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>{indice.leitura}</p>
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
               {indice.faixa} · {indice.leitura_da_faixa}
@@ -320,7 +327,9 @@ function VisaoGeral({
           </div>
         </div>
       </Secao>
+      </ComFaixaDoTopo>
 
+      <ComFaixaDoTopo>
       <Secao
         titulo="Jornada do índice"
         subtitulo={jornada.resumo}
@@ -406,6 +415,7 @@ function VisaoGeral({
           </div>
         </Cartao>
       </Secao>
+      </ComFaixaDoTopo>
     </div>
   );
 }
@@ -576,7 +586,7 @@ function ChipDeVariacao({ rotulo, delta }: { rotulo: string; delta: number | nul
 /** A lente que mais sustenta, ou a que mais corrói. */
 function Extremo({ rotulo, lente }: { rotulo: string; lente: LenteDoScore | undefined }) {
   return (
-    <Cartao>
+    <Cartao estilo={{ height: '100%' }}>
       <p className="kicker" style={{ marginBottom: 6 }}>
         {rotulo}
       </p>
