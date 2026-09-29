@@ -173,20 +173,21 @@ describe('radialDasLentes', () => {
     ]);
   });
 
-  it('a fatia é pintada com a cor de ÁREA, e a nota com a de texto', () => {
-    // São exigências opostas: a fatia preenche, o número se lê sobre branco.
-    // Sólido pinta em turquesa e escreve em verde escuro — escrever em
-    // turquesa sumiria no fundo.
-    const solido = radialDasLentes([lente({ score: 72 })]).setores[0];
-    expect(solido.cor).toBe('var(--turquesa-rio)');
+  it('a fatia é pintada pela LENTE, e a nota pela FAIXA de desempenho', () => {
+    // São perguntas diferentes: a fatia diz qual lente é esta (identidade,
+    // não muda com o mês); a nota ao lado diz como ela está indo (a faixa,
+    // que muda conforme o score). Duas lentes na mesma faixa — Imprensa e
+    // Mercado, ambas Sólido — não podem sair pintadas iguais.
+    const solido = radialDasLentes([lente({ codigo: 'imprensa', score: 72 })]).setores[0];
+    expect(solido.cor).toBe('#17E3CB');
     expect(solido.corDoTexto).toBe('var(--ok-fg)');
   });
 
-  it('cada faixa tem a sua cor de fatia, e a legenda mostra cinco', () => {
-    // Com Sólido e Referência na mesma cor, a legenda de cinco faixas
-    // desenharia quatro quadrados distintos e um repetido.
-    const cores = [95, 72, 60, 45, 20].map(
-      (nota) => radialDasLentes([lente({ score: nota })]).setores[0].cor,
+  it('cada lente tem a sua própria cor de fatia, e nenhuma se repete', () => {
+    // Antes a cor vinha da FAIXA da nota: duas lentes na mesma faixa saíam
+    // pintadas iguais, e só o rótulo distinguia uma da outra.
+    const cores = ['imprensa', 'mercado', 'sociedade', 'clientes', 'institucional'].map(
+      (codigo) => radialDasLentes([lente({ codigo, score: 72 })]).setores[0].cor,
     );
     expect(new Set(cores).size).toBe(5);
   });

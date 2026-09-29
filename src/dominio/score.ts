@@ -358,6 +358,29 @@ export function rotuloDaFaixa(score: number | null): string {
   return faixaDe(score).rotulo;
 }
 
+/** A cor de cada lente — identidade, não desempenho.
+ *
+ *  ANTES A FATIA DO RADIAL USAVA `corDeAreaDaFaixa(score)`: duas lentes na
+ *  mesma faixa (Sólido, por exemplo) saíam pintadas iguais, e a pessoa não
+ *  distinguia Imprensa de Mercado sem ler o rótulo. Cor de desempenho já tem
+ *  lugar certo — a nota escrita, via `corDaFaixa` — então a fatia passa a
+ *  responder outra pergunta: QUAL lente é esta, não o quão bem ela vai.
+ *
+ *  Só as cores da paleta oficial da Aegea (ver `feedback-brand-colors-only`
+ *  na memória do projeto) — nunca um hex inventado para preencher a quinta
+ *  posição. */
+export const CORES_DA_LENTE: Record<string, string> = {
+  imprensa: '#17E3CB', // Turquesa Rio
+  mercado: '#0027BD', // Azul Mar
+  sociedade: '#FE952B', // Laranja-da-Baía
+  clientes: '#E12379', // Magenta Pitaia
+  institucional: '#A11FFF', // Roxo Açaí
+};
+
+export function corDaLente(codigo: string): string {
+  return CORES_DA_LENTE[codigo] ?? 'var(--cinza-2)';
+}
+
 /** Os rótulos das réguas, em português de gente.
  *
  *  O servidor manda o CÓDIGO (`so_tier1`), porque é ele que se grava; o nome

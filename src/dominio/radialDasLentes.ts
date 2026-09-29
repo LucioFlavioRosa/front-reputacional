@@ -15,7 +15,7 @@
  *  servidor; este arquivo só decide onde cada um fica na tela.
  */
 
-import { corDaFaixa, corDeAreaDaFaixa, rotuloDaFaixa } from '@/dominio/score';
+import { corDaFaixa, corDaLente, rotuloDaFaixa } from '@/dominio/score';
 import type { LenteDoScore } from '@/dominio/score';
 
 /** O sistema de coordenadas do SVG, igual ao do protótipo.
@@ -204,7 +204,9 @@ export function radialDasLentes(lentes: LenteDoScore[], porPeso = true): Radial 
       stakeholder: lente.stakeholder,
       fundo: arco(R0, RMAX, de, ate),
       fatia: ativa ? arco(R0, raioDa(lente.score ?? 0), de, ate) : '',
-      cor: corDeAreaDaFaixa(lente.score),
+      // A FATIA IDENTIFICA A LENTE; a nota escrita ao lado (`corDoTexto`)
+      // continua dizendo o desempenho, pela faixa — são perguntas diferentes.
+      cor: corDaLente(lente.codigo),
       corDoTexto: corDaFaixa(lente.score),
       rotulo: naTela(x, y),
       ancora: ancoraDe(meio),
