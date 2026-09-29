@@ -22,7 +22,7 @@
 import { useId, useState } from 'react';
 
 import { numero } from '@/dominio/formato';
-import { COR_DO_EFEITO, corDaPrioridade, mesCurto } from '@/dominio/dossie';
+import { COR_DO_EFEITO, ROTULO_DO_EFEITO, corDaPrioridade, mesCurto } from '@/dominio/dossie';
 
 const COR = {
   positivo: 'var(--ok-fg)',
@@ -316,59 +316,68 @@ export interface MesDeEventos {
 export function LinhaDoTempo({ meses }: { meses: MesDeEventos[] }) {
   const quantos = meses.reduce((soma, mes) => soma + mes.eventos.length, 0);
   return (
-    <div
-      role="img"
-      aria-label={`Linha do tempo com ${quantos} ${quantos === 1 ? 'evento' : 'eventos'} de mercado`}
-      style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}
-    >
-      {meses.map((mes) => {
-        // A BORDA DO MÊS É O EFEITO PREDOMINANTE. Empate vira "misto": dizer
-        // que um mês com um reforço e uma pressão foi bom seria escolher lado.
-        const pressiona = mes.eventos.filter((e) => e.efeito === 'pressiona').length;
-        const sustenta = mes.eventos.filter((e) => e.efeito === 'sustenta').length;
-        const cor = !mes.eventos.length
-          ? 'var(--borda)'
-          : pressiona > sustenta
-            ? COR_DO_EFEITO.pressiona
-            : sustenta > pressiona
-              ? COR_DO_EFEITO.sustenta
-              : COR_DO_EFEITO.misto;
+    <div>
+      <div
+        role="img"
+        aria-label={`Linha do tempo com ${quantos} ${quantos === 1 ? 'evento' : 'eventos'} de mercado`}
+        style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}
+      >
+        {meses.map((mes) => {
+          // A BORDA DO MÊS É O EFEITO PREDOMINANTE. Empate vira "misto": dizer
+          // que um mês com um reforço e uma pressão foi bom seria escolher lado.
+          const pressiona = mes.eventos.filter((e) => e.efeito === 'pressiona').length;
+          const sustenta = mes.eventos.filter((e) => e.efeito === 'sustenta').length;
+          const cor = !mes.eventos.length
+            ? 'var(--borda)'
+            : pressiona > sustenta
+              ? COR_DO_EFEITO.pressiona
+              : sustenta > pressiona
+                ? COR_DO_EFEITO.sustenta
+                : COR_DO_EFEITO.misto;
 
-        return (
-          <div key={mes.mes} style={{ flex: '1 0 108px', minWidth: 108 }}>
-            <div style={{ height: 3, background: cor, borderRadius: 2, marginBottom: 8 }} />
-            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--cinza-2)' }}>
-              {mesCurto(mes.mes)}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {mes.eventos.length ? (
-                mes.eventos.map((evento) => (
-                  <span
-                    key={evento.texto}
-                    style={{
-                      fontSize: 11,
-                      lineHeight: 1.35,
-                      padding: '6px 7px',
-                      borderRadius: 6,
-                      overflowWrap: 'anywhere',
-                      background:
-                        evento.efeito === 'pressiona'
-                          ? 'var(--erro-bg)'
-                          : evento.efeito === 'sustenta'
-                            ? 'var(--ok-bg)'
-                            : 'var(--cinza-0)',
-                    }}
-                  >
-                    {evento.texto}
-                  </span>
-                ))
-              ) : (
-                <span style={{ fontSize: 11, color: 'var(--cinza-1)' }}>—</span>
-              )}
+          return (
+            <div key={mes.mes} style={{ flex: '1 0 108px', minWidth: 108 }}>
+              <div style={{ height: 3, background: cor, borderRadius: 2, marginBottom: 8 }} />
+              <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--cinza-2)' }}>
+                {mesCurto(mes.mes)}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {mes.eventos.length ? (
+                  mes.eventos.map((evento) => (
+                    <span
+                      key={evento.texto}
+                      style={{
+                        fontSize: 11,
+                        lineHeight: 1.35,
+                        padding: '6px 7px',
+                        borderRadius: 6,
+                        overflowWrap: 'anywhere',
+                        background:
+                          evento.efeito === 'pressiona'
+                            ? 'var(--erro-bg)'
+                            : evento.efeito === 'sustenta'
+                              ? 'var(--ok-bg)'
+                              : 'var(--cinza-0)',
+                      }}
+                    >
+                      {evento.texto}
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ fontSize: 11, color: 'var(--cinza-1)' }}>—</span>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <Legenda
+        itens={[
+          [ROTULO_DO_EFEITO.sustenta, COR_DO_EFEITO.sustenta],
+          [ROTULO_DO_EFEITO.pressiona, COR_DO_EFEITO.pressiona],
+          [ROTULO_DO_EFEITO.misto, COR_DO_EFEITO.misto],
+        ]}
+      />
     </div>
   );
 }
