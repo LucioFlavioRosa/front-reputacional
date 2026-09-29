@@ -49,7 +49,7 @@ import {
   FAIXAS,
   comoDelta,
   corDaFaixa,
-  corDeAreaDaFaixa,
+  corDaLente,
   corDoDelta,
   lentesOrdenadas,
   pesoDaLente,
@@ -473,7 +473,7 @@ function ListaDasLentes({
                 width: 14,
                 height: 14,
                 borderRadius: 4,
-                background: corDeAreaDaFaixa(lente.score),
+                background: corDaLente(lente.codigo),
               }}
             />
             <span style={{ minWidth: 0 }}>
