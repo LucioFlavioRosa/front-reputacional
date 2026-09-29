@@ -153,7 +153,14 @@ function Conteudo({ dossie }: { dossie: Dossie }) {
  *  Dizer só que "há" ilustração manda a pessoa abrir um "?" atrás do outro —
  *  e, quando não há gráfico ilustrativo nenhum, a faz desconfiar de números
  *  que estão certos. */
+// DESLIGADO A PEDIDO DO JONES (2026-09-29): o banner confundia mais do que
+// explicava. Fica fora da tela, sem tirar do código, até decidirmos uma
+// forma mais clara de avisar sobre conteúdo transcrito do relatório.
+const AVISO_DE_ILUSTRACAO_HABILITADO = false;
+
 function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
+  if (!AVISO_DE_ILUSTRACAO_HABILITADO) return null;
+
   const aviso = avisoDeExemplo(dossie);
   if (!aviso?.graficos.length) return null;
 
