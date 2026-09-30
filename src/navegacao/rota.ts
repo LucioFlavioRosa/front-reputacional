@@ -34,7 +34,7 @@ export type Destino =
   | 'score'
   | 'cadastro'
   | 'admin'
-  | 'instituicoes'
+  | 'compartilhado'
   | 'config-score'
   | 'importacao'
   | 'plataforma';
@@ -79,10 +79,10 @@ export function lerCaminho(caminho: string): Rota {
   // nem clicando nela — só as outras abas, que têm segmento próprio na URL.
   if (primeira === 'score') return { destino: 'score', aba: segunda ?? 'geral' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
-  // FORA DO PORTAL DO ADMIN DE PROPÓSITO: é o único cadastro que ganhou
-  // cartão próprio na Início, então precisa de endereço próprio também — ver
-  // `Inicio.tsx`.
-  if (primeira === 'instituicoes') return { destino: 'instituicoes' };
+  // FORA DO PORTAL DO ADMIN DE PROPÓSITO: é o cadastro que ganhou cartão
+  // próprio na Início (Instituições e Contatos, Temas, Representantes
+  // Aegea), então precisa de endereço próprio também — ver `Inicio.tsx`.
+  if (primeira === 'compartilhado') return { destino: 'compartilhado' };
   // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
   // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está
   // mexendo na ferramenta que o produz.
@@ -129,8 +129,8 @@ export function caminhoDe(rota: Rota): string {
       return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
-    case 'instituicoes':
-      return '/instituicoes';
+    case 'compartilhado':
+      return '/compartilhado';
     case 'config-score':
       return rota.aba ? `/score-config/${rota.aba}` : '/score-config';
     case 'plataforma':

@@ -1,34 +1,15 @@
-/** As configurações do CRM — o que as telas de agenda usam para existir.
+/** O cadastro que o CRM, o Score e o futuro Painel de Inteligência de Mercado
+ *  leem igualmente — fora do portal do CRM de propósito.
  *
- *  ACESSOS SAIU DAQUI em 24/09/2026, e a saída é a razão de este comentário
- *  mudar. Quem entra na plataforma não é assunto do CRM: é da plataforma
- *  inteira, vale igualmente para o Score, e misturá-lo com os cadastros de
- *  agenda fazia a mesma tela responder a duas perguntas de donos diferentes.
- *  Agora mora em `PortalDaPlataforma`, no botão próprio.
+ *  NASCEU EM 30/09/2026, puxando três abas de dentro de `PortalDoAdmin`:
+ *  Instituições e Contatos, Temas e Representantes Aegea. As três são dado
+ *  mestre, não cadastro de agenda — ficar dentro do portal do CRM fazia
+ *  parecer dono delas, que não é. Cartão próprio na Início, endereço próprio
+ *  (`/compartilhado`) — ver `Inicio.tsx` e `App.tsx`.
  *
- *  INSTITUIÇÕES E CONTATOS, TEMAS E REPRESENTANTES AEGEA SAÍRAM DAQUI em
- *  30/09/2026, pela mesma razão: não são cadastro do CRM, são dado mestre que
- *  o CRM, o Score e o futuro Painel de Inteligência de Mercado leem
- *  igualmente — ficar só aqui dentro fazia parecer dono do CRM, que não é.
- *  Moraram juntos em `PortalDoCadastroCompartilhado`, com cartão próprio na
- *  Início — ver `Inicio.tsx` e `App.tsx`. Os componentes (`CadastroDeAssuntos`,
- *  `CadastroDePortaVozes`) continuam os mesmos, só mudaram de casa.
- *
- *  DICIONÁRIOS ESTÁ ESCONDIDO (a pedido do Jones, 30/09/2026), e não saiu:
- *  diferente dos três acima, não ganhou casa nova — só parou de aparecer
- *  aqui por enquanto. O componente, a aba e a rota continuam no código.
- *
- *  Duas responsabilidades visíveis, e por isso duas abas:
- *
- *    Posicionamento     a biblioteca de referências
- *    Consultas e alegações  o que se apura, e contra qual posicionamento
- *
- *  Posicionamento vem antes, e é a ordem da dependência: apurar uma alegação
- *  é amarrá-la ao posicionamento que responde, e ele precisa existir antes.
- *
- *  Juntas num portal porque quem faz uma faz as outras, e porque a navegação do
- *  painel é sobre o CRM — quatro entradas lá teriam a mesma cara das telas de
- *  agenda, e não são.
+ *  MESMO PADRÃO DE `PortalDoAdmin`: abas, e não entradas de menu, porque quem
+ *  cadastra uma faz as outras, e a navegação principal (CRM ou Score) não é
+ *  dona de nenhuma das três.
  *
  *  A aba não é a barreira. Quem decide é o backend: os cadastros exigem
  *  `administra_dicionarios` e a rota responde 403 a quem não tem. Esconder é
@@ -36,32 +17,34 @@
  */
 
 import { useState } from 'react';
-import { Alegacoes } from '@/paginas/Alegacoes';
-import { Dicionarios } from '@/paginas/Dicionarios';
-import { Biblioteca } from '@/paginas/Biblioteca';
+import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
+import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
+import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
-//: 'dicionarios' CONTINUA AQUI, sem entrada em `ABAS` — ver o comentário
-//: acima sobre por que ele está escondido, e não removido.
-type Aba = 'biblioteca' | 'alegacoes' | 'dicionarios';
+type Aba = 'instituicoes' | 'assuntos' | 'porta_vozes';
 
+//: A ORDEM SEGUE A DEPENDÊNCIA, e não o tamanho da tela.
+//:
+//: Assunto vem antes de porta-voz porque o segundo APONTA para o primeiro: o
+//: porta-voz é autorizado por assunto. Cadastrar na ordem inversa obriga a
+//: voltar — abrir Porta-vozes, descobrir que o assunto não existe, sair,
+//: criar, voltar.
 const ABAS: { id: Aba; rotulo: string }[] = [
-  { id: 'biblioteca', rotulo: 'Posicionamento' },
-  //: Depois de Posicionamento, e é a ordem da dependência: apurar uma
-  //: alegação é amarrá-la ao posicionamento que responde, e ele precisa
-  //: existir antes.
-  { id: 'alegacoes', rotulo: 'Consultas e alegações' },
+  { id: 'instituicoes', rotulo: 'Instituições e Contatos' },
+  { id: 'assuntos', rotulo: 'Temas' },
+  { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
 ];
 
-export function PortalDoAdmin() {
-  const [aba, definirAba] = useState<Aba>('biblioteca');
+export function PortalDoCadastroCompartilhado() {
+  const [aba, definirAba] = useState<Aba>('instituicoes');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: 26 }}>Administração</h1>
+        <h1 style={{ fontSize: 26 }}>Cadastro compartilhado</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
-          Configurações do CRM — a biblioteca de posicionamento e as consultas e
-          alegações apuradas contra ela.
+          Com quem a Aegea se relaciona, os temas que o painel consegue somar e
+          quem fala pela Aegea — uma base só, lida pelo CRM e pelo Score.
         </p>
       </div>
 
@@ -70,7 +53,7 @@ export function PortalDoAdmin() {
           não descobre que existe uma segunda aba sem tabular por ela. */}
       <div
         role="tablist"
-        aria-label="Seções da administração"
+        aria-label="Seções do cadastro compartilhado"
         style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -127,9 +110,9 @@ export function PortalDoAdmin() {
         {/* MONTADA E DESMONTADA, e não escondida com `display: none`. Cada
             tela carrega a sua lista ao montar; mantida viva atrás da outra
             aba, ela mostraria dados de quando foi aberta. */}
-        {aba === 'biblioteca' ? <Biblioteca /> : null}
-        {aba === 'alegacoes' ? <Alegacoes /> : null}
-        {aba === 'dicionarios' ? <Dicionarios /> : null}
+        {aba === 'instituicoes' ? <CadastroDeInstituicoes /> : null}
+        {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
+        {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
       </div>
     </div>
   );

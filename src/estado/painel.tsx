@@ -75,9 +75,10 @@ export function ProvedorDoPainel({
    *
    * TEM DOIS DONOS, e por isso é um gate à parte de `alcancaOCrm`: quem abre
    * o CRM lê o catálogo pelas telas de agenda, e quem só administra os
-   * cadastros (`administra_dicionarios`) o lê pelo cartão de Instituições e
-   * Contatos, fora do CRM. Um só gate faria um administrador de cadastros
-   * sem CRM também pedir a base de interações — que o backend negaria.
+   * cadastros (`administra_dicionarios`) o lê pelo cartão de Cadastro
+   * compartilhado, fora do CRM. Um só gate faria um administrador de
+   * cadastros sem CRM também pedir a base de interações — que o backend
+   * negaria.
    */
   carregaCatalogo: boolean;
 }) {

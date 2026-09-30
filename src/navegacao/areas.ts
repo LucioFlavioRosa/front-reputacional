@@ -44,7 +44,7 @@ export function areaDe(view: Destino): ItemDoMenu[] {
   if (view === 'score' || view === 'config-score') return DO_SCORE;
   // NEM CRM NEM SCORE: ganhou cartão próprio na Início exatamente para não
   // parecer dono de nenhum dos dois — ver `Inicio.tsx`.
-  if (view === 'plataforma' || view === 'instituicoes') return [];
+  if (view === 'plataforma' || view === 'compartilhado') return [];
   return DO_CRM;
 }
 
@@ -64,7 +64,7 @@ export function areaDe(view: Destino): ItemDoMenu[] {
  */
 export function configuracaoDe(view: Destino): Destino | null {
   if (view === 'score' || view === 'config-score') return 'config-score';
-  if (view === 'plataforma' || view === 'instituicoes') return null;
+  if (view === 'plataforma' || view === 'compartilhado') return null;
   return 'admin';
 }
 

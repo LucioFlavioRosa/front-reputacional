@@ -141,8 +141,8 @@ export function Layout({
   const nomeDaArea =
     view === 'score' || view === 'config-score'
       ? 'KPIs Reputacionais'
-      : view === 'instituicoes'
-        ? 'Instituições e Contatos'
+      : view === 'compartilhado'
+        ? 'Cadastro compartilhado'
         : 'CRM';
   //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
@@ -151,8 +151,8 @@ export function Layout({
   const nomeDoPainel =
     view === 'score' || view === 'config-score'
       ? 'KPIs Reputacionais'
-      : view === 'instituicoes'
-        ? 'Instituições e Contatos'
+      : view === 'compartilhado'
+        ? 'Cadastro compartilhado'
         : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
@@ -376,11 +376,12 @@ export function Layout({
             pior que inútil — quem mexesse nela veria o número não mudar e
             concluiria que a tela está quebrada. O que o Score escolhe é o MÊS,
             e isso mora no cabeçalho da própria página. */}
-        {/* INSTITUIÇÕES E CONTATOS TAMBÉM NÃO: é cadastro, não agenda — filtrar
-            por frente ou período não faz sentido para quem está cadastrando
-            uma instituição. Fazia sentido só enquanto a tela vivia dentro do
-            CRM; fora dele, sobrou sem função. */}
-        {view !== 'cadastro' && view !== 'score' && view !== 'instituicoes' ? (
+        {/* O CADASTRO COMPARTILHADO TAMBÉM NÃO: é cadastro, não agenda —
+            filtrar por frente ou período não faz sentido para quem está
+            cadastrando uma instituição, um tema ou um representante. Fazia
+            sentido só enquanto essas telas viviam dentro do CRM; fora dele,
+            sobrou sem função. */}
+        {view !== 'cadastro' && view !== 'score' && view !== 'compartilhado' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
@@ -396,13 +397,13 @@ export function Layout({
           de um elemento fixo no topo infla o cabeçalho inteiro — empurrando
           ou cobrindo a tela abaixo dele. Aqui, no fluxo normal da página, ele
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
-      {/* FORA da Administração e de Instituições e Contatos também: são
+      {/* FORA da Administração e do Cadastro compartilhado também: são
           cadastro, não agenda — o Recorte não tem nada ali para filtrar. */}
       {!naCapa &&
       view !== 'cadastro' &&
       view !== 'admin' &&
       view !== 'score' &&
-      view !== 'instituicoes' ? (
+      view !== 'compartilhado' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco
