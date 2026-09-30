@@ -54,20 +54,32 @@ const Contexto = createContext<EstadoDoPainel | null>(null);
 export function ProvedorDoPainel({
   children,
   alcancaOCrm,
+  carregaCatalogo,
 }: {
   children: ReactNode;
   /**
    * Se quem está logado abre o CRM dos Stakeholders.
    *
-   * Este provedor busca dicionários, diretórios e a base inteira — tudo do
-   * CRM. Para quem não abre aquele portal, o backend responde 403 em todas
-   * essas chamadas, e a tela mostrava erro logo ao entrar: um erro correto,
-   * numa tela que nem oferece o módulo.
+   * Só gate da BASE DE INTERAÇÕES — o recorte que `painel`/`base`/etc. leem.
+   * Para quem não abre aquele portal, o backend responde 403, e a tela
+   * mostrava erro logo ao entrar: um erro correto, numa tela que nem
+   * oferece o módulo.
    *
    * NÃO é controle de acesso. Quem decide é o backend, e ele decide bem — o
    * que se evita aqui é PEDIR o que se sabe que será negado.
    */
   alcancaOCrm: boolean;
+  /**
+   * Se deve buscar o catálogo (temas, instituições, interlocutores, pessoas
+   * da Aegea, referências, dicionários).
+   *
+   * TEM DOIS DONOS, e por isso é um gate à parte de `alcancaOCrm`: quem abre
+   * o CRM lê o catálogo pelas telas de agenda, e quem só administra os
+   * cadastros (`administra_dicionarios`) o lê pelo cartão de Instituições e
+   * Contatos, fora do CRM. Um só gate faria um administrador de cadastros
+   * sem CRM também pedir a base de interações — que o backend negaria.
+   */
+  carregaCatalogo: boolean;
 }) {
   //: O RECORTE MORA NA URL.
   //:
@@ -126,8 +138,9 @@ export function ProvedorDoPainel({
 
   // Os diretórios mudam raramente: carregam uma vez e servem todas as telas.
   useEffect(function carregarCatalogo() {
-    if (!alcancaOCrm) {
-      // Sem o portal, não há o que carregar — e pedir renderia 403.
+    if (!carregaCatalogo) {
+      // Nem o CRM nem a administração de cadastros — não há o que carregar,
+      // e pedir renderia 403.
       definirCarregando(false);
       return;
     }
@@ -163,7 +176,7 @@ export function ProvedorDoPainel({
     return function cancelarCargaDoCatalogo() {
       ativo = false;
     };
-  }, [versaoDoCatalogo, alcancaOCrm]);
+  }, [versaoDoCatalogo, carregaCatalogo]);
 
   // O recorte muda: rebusca o conjunto inteiro.
   //

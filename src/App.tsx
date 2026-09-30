@@ -16,6 +16,7 @@ import { registrarView } from '@/observabilidade/telemetria';
 import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
+import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
@@ -134,8 +135,19 @@ export function App() {
   // O provedor busca dicionários, diretórios e a base — tudo do CRM.
   // Quem não abre aquele portal receberia 403 em todas essas chamadas, e
   // veria erro ao entrar numa tela que nem oferece o módulo.
+  //
+  // O CATÁLOGO TEM UM SEGUNDO DONO desde que Instituições e Contatos ganhou
+  // cartão próprio, fora do CRM: quem administra os cadastros
+  // (`administra_dicionarios`) também lê o catálogo por lá, mesmo sem abrir o
+  // CRM. Só o catálogo, não a base de interações — essa continua só de quem
+  // tem `acessa_crm`, ou pediria o que o backend negaria.
   return (
-    <ProvedorDoPainel alcancaOCrm={portaisDe(eu?.papel ?? null).has('crm')}>
+    <ProvedorDoPainel
+      alcancaOCrm={portaisDe(eu?.papel ?? null).has('crm')}
+      carregaCatalogo={
+        portaisDe(eu?.papel ?? null).has('crm') || (eu?.papel?.administra_dicionarios ?? false)
+      }
+    >
       <Aplicativo eu={eu} />
     </ProvedorDoPainel>
   );
@@ -216,7 +228,11 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           }
         >
           {rota.destino === 'inicio' ? (
-            <Inicio irPara={irParaDestino} portais={portaisDe(eu?.papel ?? null)} />
+            <Inicio
+              irPara={irParaDestino}
+              portais={portaisDe(eu?.papel ?? null)}
+              administraCadastros={eu?.papel?.administra_dicionarios ?? false}
+            />
           ) : null}
 
 
@@ -279,6 +295,12 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {/* `euId` para a tela saber qual linha é a de quem está olhando:
               ninguém desativa a própria conta. */}
           {rota.destino === 'admin' ? <PortalDoAdmin /> : null}
+          {/* FORA DO PORTAL DO ADMIN, com cartão próprio na Início — ver
+              `Inicio.tsx`. A TELA também recusa, e não só o cartão: o
+              endereço é público, e quem digitar `/instituicoes` sem
+              `administra_dicionarios` chega aqui e recebe 403 do backend ao
+              tentar salvar. */}
+          {rota.destino === 'instituicoes' ? <CadastroDeInstituicoes /> : null}
           {/* ACESSOS SAIU DO PORTAL DO CRM: quem entra na plataforma não é
               assunto de agenda, vale igual para o Score, e agora tem botão
               próprio. */}

@@ -6,18 +6,24 @@
  *  agenda fazia a mesma tela responder a duas perguntas de donos diferentes.
  *  Agora mora em `PortalDaPlataforma`, no botão próprio.
  *
- *  Seis responsabilidades, e por isso seis abas — não seis entradas no menu:
+ *  INSTITUIÇÕES E CONTATOS SAIU DAQUI em 30/09/2026, pela mesma razão: não é
+ *  cadastro do CRM, é dado mestre que o CRM, o Score e o futuro Painel de
+ *  Inteligência de Mercado leem igualmente — ficar só aqui dentro fazia
+ *  parecer dono do CRM, que não é. Agora tem cartão próprio na Início, e
+ *  endereço próprio (`/instituicoes`) — ver `Inicio.tsx` e `App.tsx`. O
+ *  componente (`CadastroDeInstituicoes`) continua o mesmo, só mudou de casa.
+ *
+ *  Cinco responsabilidades, e por isso cinco abas — não cinco entradas no menu:
  *
  *    Temas              o vocabulário que o painel consegue somar
  *    Posicionamento     a biblioteca de referências
- *    Instituições       com quem se conversa, e quem fala por elas
  *    Representantes Aegea  quem fala pela Aegea, e sobre o quê
+ *    Consultas e alegações  o que se apura, e contra qual posicionamento
  *    Dicionários        todo o resto do vocabulário — o que se edita e o
  *                       que é estrutura do modelo, com o motivo
  *
- *  Temas, Instituições e Representantes se encadeiam: o tema define o que um
- *  porta-voz pode falar, e a instituição define quem pode representar a outra
- *  parte. Separadas em telas distintas, essa cadeia ficaria invisível. A regra
+ *  Temas e Representantes se encadeiam: o tema define o que um porta-voz pode
+ *  falar. Separados em telas distintas, o vínculo ficaria invisível. A regra
  *  da plataforma — tudo que se mostra tem onde ser cadastrado — é o que
  *  fecha com a aba Dicionários.
  *
@@ -35,27 +41,24 @@ import { CadastroDeAssuntos } from '@/paginas/CadastroDeAssuntos';
 import { Alegacoes } from '@/paginas/Alegacoes';
 import { Dicionarios } from '@/paginas/Dicionarios';
 import { Biblioteca } from '@/paginas/Biblioteca';
-import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import { CadastroDePortaVozes } from '@/paginas/CadastroDePortaVozes';
 
 type Aba =
   | 'assuntos'
   | 'biblioteca'
-  | 'cadastros'
   | 'porta_vozes'
   | 'alegacoes'
   | 'dicionarios';
 
 //: A ORDEM SEGUE A DEPENDÊNCIA, e não o tamanho da tela.
 //:
-//: Assunto vem antes de instituição e de porta-voz porque os dois APONTAM para
-//: ele: o porta-voz é autorizado por assunto, e a agenda é somada por assunto.
-//: Cadastrar na ordem inversa obriga a voltar — abrir Porta-vozes, descobrir
-//: que o assunto não existe, sair, criar, voltar.
+//: Assunto vem antes de porta-voz porque o segundo APONTA para o primeiro: o
+//: porta-voz é autorizado por assunto. Cadastrar na ordem inversa obriga a
+//: voltar — abrir Porta-vozes, descobrir que o assunto não existe, sair,
+//: criar, voltar.
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'assuntos', rotulo: 'Temas' },
   { id: 'biblioteca', rotulo: 'Posicionamento' },
-  { id: 'cadastros', rotulo: 'Instituições' },
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
   //: Depois de Posicionamento, e é a ordem da dependência de novo: apurar uma
   //: alegação é amarrá-la ao posicionamento que responde, e ele precisa
@@ -143,7 +146,6 @@ export function PortalDoAdmin() {
             tela carrega a sua lista ao montar; mantida viva atrás da outra
             aba, ela mostraria dados de quando foi aberta. */}
         {aba === 'biblioteca' ? <Biblioteca /> : null}
-        {aba === 'cadastros' ? <CadastroDeInstituicoes /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
         {aba === 'alegacoes' ? <Alegacoes /> : null}

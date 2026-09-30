@@ -51,6 +51,22 @@ const ONDA_1: {
   },
 ];
 
+/** O cartão de Instituições e Contatos — fora de `ONDA_1` de propósito.
+ *
+ *  NÃO É UM QUARTO PAINEL. É cadastro: a base de instituições e contatos que
+ *  o CRM, o Score e o futuro Painel de Inteligência de Mercado leem
+ *  igualmente. Misturá-lo na mesma grade dos três painéis o apresentaria
+ *  como um painel a mais — e a permissão que abre esta porta também é outra:
+ *  `administra_dicionarios`, não um portal (`acessa_crm`/`acessa_score`/
+ *  `acessa_sintese`) como os três acima.
+ */
+const CADASTRO_COMPARTILHADO = {
+  view: 'instituicoes' as const,
+  titulo: 'Instituições e Contatos',
+  descricao:
+    'Com quem a Aegea se relaciona — uma base só, usada pelo CRM, pelo Score e por quem vier depois.',
+};
+
 //: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
 //: os dados que sustentam os três painéis executivos acima, o projeto
 //: atual; as próximas cinco descrevem para onde a plataforma vai, uma
@@ -67,15 +83,19 @@ const ONDAS = [
 export function Inicio({
   irPara,
   portais,
+  administraCadastros,
 }: {
   irPara: (view: Destino) => void;
   /** Os portais que o papel de quem está logado abre. */
   portais: Set<Portal>;
+  /** Se administra Instituições e Contatos — não é portal, é `administra_dicionarios`. */
+  administraCadastros: boolean;
 }) {
   // Esconder um portal é conveniência de tela, NUNCA controle: quem decide é o
   // backend, que responde 403 a quem forçar a navegação. O que se evita aqui é
   // oferecer uma porta que não abre — pior do que não mostrá-la, porque nesse
-  // caso o convite partiu de nós.
+  // caso o convite partiu de nós. A mesma regra vale para o cartão de
+  // cadastro, só que pela permissão dele (`administraCadastros`), não por portal.
   const meus = ONDA_1.filter((modulo) => portais.has(modulo.portal));
 
   return (
@@ -179,6 +199,44 @@ export function Inicio({
           ))}
         </div>
       </section>
+
+      {/* FORA DA GRADE DOS TRÊS PAINÉIS DE PROPÓSITO — ver o comentário de
+          `CADASTRO_COMPARTILHADO`: é a base que os três leem, não um painel a
+          mais. `administraCadastros` decide a visibilidade, não um portal. */}
+      {administraCadastros ? (
+        <section>
+          <div className="kicker" style={{ marginBottom: 12 }}>
+            Cadastro compartilhado
+          </div>
+          <Cartao
+            aoClicar={() => irPara(CADASTRO_COMPARTILHADO.view)}
+            estilo={{ padding: 24, maxWidth: 420 }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '3px 8px',
+                borderRadius: 'var(--r-chip)',
+                background: 'var(--amarelo-pequi)',
+                color: '#332727',
+              }}
+            >
+              Disponível
+            </span>
+            <h2 style={{ fontSize: 17, marginTop: 12 }}>{CADASTRO_COMPARTILHADO.titulo}</h2>
+            <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 8, lineHeight: 1.6 }}>
+              {CADASTRO_COMPARTILHADO.descricao}
+            </p>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--azul-mar)', marginTop: 14 }}>
+              Abrir o cadastro →
+            </div>
+          </Cartao>
+        </section>
+      ) : null}
 
       <section>
         <div className="kicker" style={{ marginBottom: 12 }}>

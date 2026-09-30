@@ -42,7 +42,9 @@ const DO_SCORE: ItemDoMenu[] = [
  *  configura: quem ajusta a régua do Score continua no Score. */
 export function areaDe(view: Destino): ItemDoMenu[] {
   if (view === 'score' || view === 'config-score') return DO_SCORE;
-  if (view === 'plataforma') return [];
+  // NEM CRM NEM SCORE: ganhou cartão próprio na Início exatamente para não
+  // parecer dono de nenhum dos dois — ver `Inicio.tsx`.
+  if (view === 'plataforma' || view === 'instituicoes') return [];
   return DO_CRM;
 }
 
@@ -62,7 +64,7 @@ export function areaDe(view: Destino): ItemDoMenu[] {
  */
 export function configuracaoDe(view: Destino): Destino | null {
   if (view === 'score' || view === 'config-score') return 'config-score';
-  if (view === 'plataforma') return null;
+  if (view === 'plataforma' || view === 'instituicoes') return null;
   return 'admin';
 }
 
