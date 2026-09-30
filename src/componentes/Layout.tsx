@@ -138,13 +138,22 @@ export function Layout({
   //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
   //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
   const configuracao = configuracaoDe(view);
-  const nomeDaArea = view === 'score' || view === 'config-score' ? 'KPIs Reputacionais' : 'CRM';
+  const nomeDaArea =
+    view === 'score' || view === 'config-score'
+      ? 'KPIs Reputacionais'
+      : view === 'instituicoes'
+        ? 'Instituições e Contatos'
+        : 'CRM';
   //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
-  //: `Inicio.tsx`. Só duas divisões têm cabeçalho hoje (a terceira, `sintese`,
-  //: ainda não tem tela).
+  //: `Inicio.tsx`. Faltam `admin` e `plataforma` aqui ainda: caem no CRM por
+  //: enquanto, dívida de antes desta tela existir.
   const nomeDoPainel =
-    view === 'score' || view === 'config-score' ? 'KPIs Reputacionais' : 'CRM dos Stakeholders';
+    view === 'score' || view === 'config-score'
+      ? 'KPIs Reputacionais'
+      : view === 'instituicoes'
+        ? 'Instituições e Contatos'
+        : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
@@ -367,7 +376,11 @@ export function Layout({
             pior que inútil — quem mexesse nela veria o número não mudar e
             concluiria que a tela está quebrada. O que o Score escolhe é o MÊS,
             e isso mora no cabeçalho da própria página. */}
-        {view !== 'cadastro' && view !== 'score' ? (
+        {/* INSTITUIÇÕES E CONTATOS TAMBÉM NÃO: é cadastro, não agenda — filtrar
+            por frente ou período não faz sentido para quem está cadastrando
+            uma instituição. Fazia sentido só enquanto a tela vivia dentro do
+            CRM; fora dele, sobrou sem função. */}
+        {view !== 'cadastro' && view !== 'score' && view !== 'instituicoes' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
@@ -383,9 +396,13 @@ export function Layout({
           de um elemento fixo no topo infla o cabeçalho inteiro — empurrando
           ou cobrindo a tela abaixo dele. Aqui, no fluxo normal da página, ele
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
-      {/* FORA da Administração também: a tela lista contas e permissões, não
-          agendas — o Recorte não tem nada ali para filtrar. */}
-      {!naCapa && view !== 'cadastro' && view !== 'admin' && view !== 'score' ? (
+      {/* FORA da Administração e de Instituições e Contatos também: são
+          cadastro, não agenda — o Recorte não tem nada ali para filtrar. */}
+      {!naCapa &&
+      view !== 'cadastro' &&
+      view !== 'admin' &&
+      view !== 'score' &&
+      view !== 'instituicoes' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco
