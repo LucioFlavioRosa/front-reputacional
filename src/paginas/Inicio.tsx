@@ -51,21 +51,44 @@ const ONDA_1: {
   },
 ];
 
-/** O cartão de Instituições e Contatos — fora de `ONDA_1` de propósito.
+/** O cartão do Cadastro compartilhado — fora de `ONDA_1` de propósito.
  *
- *  NÃO É UM QUARTO PAINEL. É cadastro: a base de instituições e contatos que
- *  o CRM, o Score e o futuro Painel de Inteligência de Mercado leem
- *  igualmente. Misturá-lo na mesma grade dos três painéis o apresentaria
- *  como um painel a mais — e a permissão que abre esta porta também é outra:
- *  `administra_dicionarios`, não um portal (`acessa_crm`/`acessa_score`/
- *  `acessa_sintese`) como os três acima.
+ *  NÃO É UM QUARTO PAINEL. É cadastro: instituições e contatos, temas e
+ *  representantes Aegea — o dado mestre que o CRM, o Score e o futuro Painel
+ *  de Inteligência de Mercado leem igualmente. Misturá-lo na mesma grade dos
+ *  três painéis o apresentaria como um painel a mais — e a permissão que abre
+ *  esta porta também é outra: `administra_dicionarios`, não um portal
+ *  (`acessa_crm`/`acessa_score`/`acessa_sintese`) como os três acima.
+ *
+ *  UM CARTÃO SÓ PARA OS TRÊS, e não três cartões: quem cadastra uma faz as
+ *  outras (ver `PortalDoCadastroCompartilhado`), e três cartões repetiriam o
+ *  aviso "não é um painel" três vezes em vez de uma.
  */
 const CADASTRO_COMPARTILHADO = {
-  view: 'instituicoes' as const,
-  titulo: 'Instituições e Contatos',
+  view: 'compartilhado' as const,
+  //: DIFERENTE DO RÓTULO DA SEÇÃO ("Cadastro compartilhado", no JSX abaixo)
+  //: de propósito: repetir o mesmo texto no rótulo e no título do cartão, um
+  //: em cima do outro, leria como erro de cópia, não como reforço.
+  titulo: 'Instituições, Temas e Representantes Aegea',
   descricao:
-    'Com quem a Aegea se relaciona — uma base só, usada pelo CRM, pelo Score e por quem vier depois.',
+    'Com quem a Aegea se relaciona, os temas que o painel consegue somar e quem fala pela Aegea — uma base só, usada pelo CRM, pelo Score e por quem vier depois.',
 };
+
+/** Uma gaveta de arquivo — o glifo do cadastro. Uma forma simples, e não um
+ *  ícone de biblioteca: a única cor que ele veste é `currentColor`, herdada
+ *  do fundo que o envolve. Mesmo padrão de `IconeDeAnexo`, em `basicos.tsx`. */
+function IconeDeCadastro() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden focusable="false">
+      <path
+        d="M2 4a1 1 0 0 1 1-1h3l1.4 1.4H13a1 1 0 0 1 1 1v6.6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 //: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
 //: os dados que sustentam os três painéis executivos acima, o projeto
@@ -202,38 +225,60 @@ export function Inicio({
 
       {/* FORA DA GRADE DOS TRÊS PAINÉIS DE PROPÓSITO — ver o comentário de
           `CADASTRO_COMPARTILHADO`: é a base que os três leem, não um painel a
-          mais. `administraCadastros` decide a visibilidade, não um portal. */}
+          mais. `administraCadastros` decide a visibilidade, não um portal.
+          O TRATAMENTO VISUAL TAMBÉM DIZ ISSO: uma faixa baixa e horizontal, com
+          borda tracejada e fundo acinzentado, em vez de um `Cartao` branco do
+          mesmo porte dos três painéis — e sem o selo "Disponível", que é
+          exatamente o que igualava a leitura dos quatro. */}
       {administraCadastros ? (
         <section>
-          <div className="kicker" style={{ marginBottom: 12 }}>
+          <div className="kicker" style={{ marginBottom: 10 }}>
             Cadastro compartilhado
           </div>
           <Cartao
             aoClicar={() => irPara(CADASTRO_COMPARTILHADO.view)}
-            estilo={{ padding: 24, maxWidth: 420 }}
+            estilo={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: '13px 18px',
+              maxWidth: 560,
+              background: 'var(--cinza-0)',
+              // SÓLIDA, e não tracejada: tracejado neste app é o vocabulário
+              // de "falta dado" (mês sem base, ponto parcial da Jornada,
+              // chip fantasma de filtro) — herdar isso aqui diria "incompleto"
+              // sobre uma área que está pronta e funcionando.
+              border: '1px solid var(--borda)',
+              // SEM `boxShadow` AQUI: sobrescrever para 'none' mataria o
+              // hover que `.cartao--clicavel:hover` já dá de graça (inline
+              // sempre vence classe) — o padrão do `Cartao` já é sutil o
+              // bastante para não competir com os painéis.
+            }}
           >
             <span
               style={{
-                display: 'inline-block',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                padding: '3px 8px',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
                 borderRadius: 'var(--r-chip)',
-                background: 'var(--amarelo-pequi)',
-                color: '#332727',
+                background: 'var(--cinza-1)',
+                color: 'var(--cinza-3)',
               }}
             >
-              Disponível
+              <IconeDeCadastro />
             </span>
-            <h2 style={{ fontSize: 17, marginTop: 12 }}>{CADASTRO_COMPARTILHADO.titulo}</h2>
-            <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 8, lineHeight: 1.6 }}>
-              {CADASTRO_COMPARTILHADO.descricao}
-            </p>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--azul-mar)', marginTop: 14 }}>
-              Abrir o cadastro →
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 14 }}>{CADASTRO_COMPARTILHADO.titulo}</h2>
+              <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2, lineHeight: 1.5 }}>
+                {CADASTRO_COMPARTILHADO.descricao}
+              </p>
             </div>
+            <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--azul-mar)' }}>
+              Abrir →
+            </span>
           </Cartao>
         </section>
       ) : null}

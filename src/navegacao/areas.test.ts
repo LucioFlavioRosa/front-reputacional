@@ -107,11 +107,11 @@ describe('a plataforma', () => {
   });
 });
 
-describe('instituições e contatos', () => {
+describe('cadastro compartilhado', () => {
   it('não empresta a barra de divisão nenhuma', () => {
     // MESMA RAZÃO DA PLATAFORMA: cadastro compartilhado não é do CRM nem do
     // Score, e herdar a barra de um dos dois voltaria a parecer dono dele.
-    expect(areaDe('instituicoes')).toEqual([]);
+    expect(areaDe('compartilhado')).toEqual([]);
   });
 
   it('não aparece na barra de divisão nenhuma', () => {
@@ -121,6 +121,6 @@ describe('instituições e contatos', () => {
 
   it('não tem engrenagem própria', () => {
     // Tem cartão próprio na Início; não precisa de porta de configuração.
-    expect(configuracaoDe('instituicoes')).toBeNull();
+    expect(configuracaoDe('compartilhado')).toBeNull();
   });
 });
