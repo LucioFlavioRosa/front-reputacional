@@ -28,9 +28,9 @@ import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 
 const ROTULO_DO_TIER: Record<string, string> = {
-  muito_relevante: 'Muito Relevante',
-  relevante: 'Relevante',
-  menos_relevante: 'Menos Relevante',
+  muito_relevante: 'Tier 1',
+  relevante: 'Tier 2',
+  menos_relevante: 'Tier 3',
 };
 
 function comoItens(valores: string[], rotulos?: Record<string, string>) {

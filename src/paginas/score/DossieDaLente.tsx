@@ -559,7 +559,7 @@ function VolumeETopVeiculos({
               rotulo: comoTexto(linha.rotulo),
               total: comoNumero(linha.valor ?? 0),
               // CINZA ESCURO, não azul-mar — mesmo ajuste do Painel (CRM): o
-              // azul já é a cor do tier Muito Relevante na rosca ao lado, e
+              // azul já é a cor do Tier 1 na rosca ao lado, e
               // as duas barras do mesmo tom confundiam "isto é sobre tier"
               // com "isto é o ranking de veículos".
               cor: 'var(--cinza-4)',
