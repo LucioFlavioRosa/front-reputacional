@@ -98,6 +98,13 @@ export interface Dossie {
   nota: number | null;
   ns: number | null;
   delta: number | null;
+  /** `'mes_anterior'` no estado normal; `'sem_filtro'` com um recorte ativo —
+   *  aí `delta` compara a nota filtrada com a nota do mês inteiro, não com o
+   *  mês passado (que não tem o mesmo filtro). */
+  delta_versus: 'mes_anterior' | 'sem_filtro';
+  /** Verdadeiro quando a chamada veio com tier/veículo/atributo/tema. A nota
+   *  deste payload NÃO é a nota oficial do mês — é só o que o recorte mostra. */
+  recorte_filtrado: boolean;
   peso: number;
   estimado: boolean;
   ausencia: string | null;
@@ -110,6 +117,26 @@ export interface Dossie {
   evolucao: Bloco;
   /** O quadro ao lado da evolução: até três sinais da série, mais as lacunas. */
   sinais_da_evolucao: string[];
+  /** Volume de matérias por tier, para a rosca ao lado do Top 5 veículos —
+   *  mesmo desenho de "% Interações por tier" do Painel (CRM), por veículo
+   *  em vez de instituição. Vazio na Institucional. */
+  volume_por_tier: Bloco;
+  /** Os veículos com mais matérias no mês — o Top 5 ao lado da rosca acima.
+   *  Vazio na Institucional. */
+  top_veiculos: Bloco;
+  /** O placar de clima por veículo: (positivas − negativas) ÷ total × 100,
+   *  de −100 a 100 — mesmo cálculo de "Clima por Instituições" do Painel
+   *  (CRM), por veículo. Vazio na Institucional. */
+  clima_por_veiculos: Bloco;
+  /** O que está puxando a lente pra cima ou pra baixo, por atributo
+   *  reputacional. Vazio na Institucional — ela lê o CRM, não vem de clipping. */
+  drivers_e_riscos: Bloco;
+  /** Os temas (Subcategoria da Clipei) mais falados do mês. Vazio na
+   *  Institucional, que tem seu próprio bloco de temas lido do CRM. */
+  temas_mais_falados: Bloco;
+  /** O drill-down até a linha: as matérias mais recentes por trás da nota.
+   *  Vazio na Institucional — ela lê o CRM, não vem de clipping. */
+  materias_recentes: Bloco;
   fatos: FatoDoDossie[];
   paineis: Bloco[];
   /** O bloco do fim da tela, já ordenado pelo servidor. */
@@ -305,6 +332,17 @@ function formatadorDa(bloco: Bloco, chave: string) {
 }
 
 function destaqueDe(bloco: Bloco, chave: string) {
+  if (bloco.subtipo === 'materias' && chave === 'sentimento') {
+    // O rótulo já vem pronto do servidor ("Positivo"/"Negativo"/"Neutro") —
+    // é a mesma régua de pos/neg/neu do resto do dossiê, só traduzida para a
+    // coluna da tabela em vez de virar faixa de gráfico.
+    return (linha: Record<string, unknown>) =>
+      linha.sentimento === 'Negativo'
+        ? ('alerta' as const)
+        : linha.sentimento === 'Positivo'
+          ? ('bom' as const)
+          : null;
+  }
   if (bloco.subtipo === 'rating') {
     if (chave === 'para') {
       // O efeito já vem classificado do servidor; repetir a regra de "piorou"

@@ -57,4 +57,14 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Ranking dos órgãos e entidades com mais agendas registradas no período. Essa visão mostra com quem a Aegea mais interagiu.',
   'Concessionárias com maior repercussão':
     'Ranking das concessionárias/unidades com mais menções no período, somando positivas, neutras e negativas. Essa visão mostra onde a repercussão se concentra.',
+  'Volume por tier':
+    'Rosca com o volume de matérias do mês por tier do veículo (Muito Relevante, Relevante, Menos Relevante). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
+  'Clima por veículos':
+    'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar de clima por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
+  'Drivers e riscos':
+    'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume positivo, neutro e negativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
+  'Temas mais falados':
+    'Ranking dos temas mais frequentes nas matérias do mês, no vocabulário da própria Clipei, com o volume positivo, neutro e negativo de cada um. Essa visão mostra sobre o que a imprensa mais falou e se o tom predominante foi favorável ou desfavorável.',
+  'Últimas matérias':
+    'As matérias mais recentes do mês, com veículo, data, classificação, tier, atributo e tema de cada uma. Essa visão é o drill-down até a linha: o detalhe concreto por trás dos números de cima.',
 };

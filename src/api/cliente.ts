@@ -792,12 +792,55 @@ export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
 }
 
+/** O recorte de tela que a aba Lentes oferece — tier, veículo, atributo,
+ *  tema. Nenhum dos quatro é obrigatório; o campo some da URL quando vazio. */
+export interface FiltroDaLente {
+  tier?: string;
+  veiculo?: string;
+  atributo?: string;
+  tema?: string;
+}
+
+/** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
+ *  lente — não é dicionário fechado, é o que `GET .../opcoes-de-filtro`
+ *  encontrou em `mencao`. */
+export interface OpcoesDeFiltroDaLente {
+  tiers: string[];
+  veiculos: string[];
+  atributos: string[];
+  temas: string[];
+}
+
+function paraConsultaDoFiltro(mes: string, filtro?: FiltroDaLente): string {
+  const parametros = new URLSearchParams({ mes });
+  if (filtro?.tier) parametros.set('tier', filtro.tier);
+  if (filtro?.veiculo) parametros.set('veiculo', filtro.veiculo);
+  if (filtro?.atributo) parametros.set('atributo', filtro.atributo);
+  if (filtro?.tema) parametros.set('tema', filtro.tema);
+  return parametros.toString();
+}
+
 /** O dossiê de uma lente: a tela inteira num pedido só.
  *
  *  UM ENDPOINT, UMA TELA — o front não calcula nada disto. Cada bloco vem com
- *  a ficha de procedência junto, que é o conteúdo do "?". */
-export function obterDossieDaLente(codigo: string, mes: string): Promise<Dossie> {
-  return requisitar<Dossie>(`/api/score/lentes/${codigo}/dossie?mes=${mes}`);
+ *  a ficha de procedência junto, que é o conteúdo do "?". `filtro` é o
+ *  recorte da barra acima do destaque — ver `FiltroDaLente`. */
+export function obterDossieDaLente(
+  codigo: string,
+  mes: string,
+  filtro?: FiltroDaLente,
+): Promise<Dossie> {
+  return requisitar<Dossie>(`/api/score/lentes/${codigo}/dossie?${paraConsultaDoFiltro(mes, filtro)}`);
+}
+
+/** As opções que o filtro desta lente pode oferecer neste mês. */
+export function obterOpcoesDeFiltroDaLente(
+  codigo: string,
+  mes: string,
+): Promise<OpcoesDeFiltroDaLente> {
+  return requisitar<OpcoesDeFiltroDaLente>(
+    `/api/score/lentes/${codigo}/dossie/opcoes-de-filtro?mes=${mes}`,
+  );
 }
 
 export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {

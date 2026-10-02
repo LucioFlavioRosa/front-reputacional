@@ -105,9 +105,17 @@ export function Ranking({
             </div>
             <Barra valor={item.total} maximo={maximo} cor={item.cor ?? cor} />
 
-            {emFoco === item.chave && detalheAoPassarMouse ? (
-              <TooltipDoItem detalhe={detalheAoPassarMouse(item.chave)} />
-            ) : null}
+            {(() => {
+              // SÓ RENDERIZA COM CONTEÚDO. `detalheAoPassarMouse` pode
+              // devolver `[]` para um item sem o dado extra (ex.: "pico em
+              // tal mês" quando não há pico) — sem este corte, o tooltip
+              // aparecia vazio: uma caixa escura e arredondada sem uma
+              // linha dentro, que se lê como um bug visual, não como
+              // "nada a mostrar aqui".
+              if (emFoco !== item.chave || !detalheAoPassarMouse) return null;
+              const detalhe = detalheAoPassarMouse(item.chave);
+              return detalhe.length ? <TooltipDoItem detalhe={detalhe} /> : null;
+            })()}
           </div>
         );
       })}

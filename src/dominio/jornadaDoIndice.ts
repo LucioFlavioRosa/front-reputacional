@@ -30,14 +30,20 @@ import type { PontoDaSerie } from '@/dominio/score';
 
 /** O sistema de coordenadas do SVG, igual ao do protótipo. */
 export const VB = { largura: 1000, altura: 330 } as const;
-/** Folga no topo, e a faixa de baixo onde moram os nomes dos meses. */
-const PAD_TOPO = 14;
-const PAD_BASE = 34;
+/** Folga no topo, e a faixa de baixo onde moram os nomes dos meses.
+ *
+ *  EXPORTADAS (com `ALTURA_DO_ROTULO`/`FAIXAS_DE_FUNDO` abaixo) para
+ *  `dominio/jornadaDaLente.ts` — a jornada de UMA lente usa o mesmo sistema
+ *  de coordenadas e as mesmas cinco faixas, e duas réguas diferentes para o
+ *  mesmo desenho é o tipo de divergência que só aparece quando alguém já
+ *  está comparando prints. */
+export const PAD_TOPO = 14;
+export const PAD_BASE = 34;
 //: AS BORDAS DA FAIXA DESENHADA, em porcentagem da altura — que é a unidade em
 //: que o ponto é posicionado em HTML sobre o SVG. É contra elas que um valor
 //: fora do eixo encosta; contra as bordas do viewBox ele flutuaria na folga.
-const TOPO_DA_FAIXA = (PAD_TOPO / VB.altura) * 100;
-const BASE_DA_FAIXA = ((VB.altura - PAD_BASE) / VB.altura) * 100;
+export const TOPO_DA_FAIXA = (PAD_TOPO / VB.altura) * 100;
+export const BASE_DA_FAIXA = ((VB.altura - PAD_BASE) / VB.altura) * 100;
 /** A altura que o rótulo de um ponto ocupa, em unidades do viewBox.
  *
  *  ESTA CONSTANTE SÓ VALE PORQUE O RÓTULO ENCOLHE JUNTO com o gráfico. Ela é
@@ -50,7 +56,7 @@ const BASE_DA_FAIXA = ((VB.altura - PAD_BASE) / VB.altura) * 100;
  *  breakpoints, mantendo a proporção. REFORÇAR A CONSTANTE ERA O CONSERTO
  *  ERRADO: com 96 quase nenhum rótulo passava a caber embaixo, e a regra de
  *  relevo — pico acima, vale abaixo — deixava de valer em qualquer tela. */
-const ALTURA_DO_ROTULO = 72;
+export const ALTURA_DO_ROTULO = 72;
 
 /** A amplitude mínima do eixo.
  *
@@ -249,7 +255,7 @@ export function mesPorExtenso(chave: string): string {
 }
 
 /** As cinco faixas de fundo, com a cor clara e a escura do nome. */
-const FAIXAS_DE_FUNDO: {
+export const FAIXAS_DE_FUNDO: {
   de: number;
   ate: number;
   fundo: string;

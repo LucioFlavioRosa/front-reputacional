@@ -22,8 +22,10 @@
 
 import { useEffect, useState } from 'react';
 
-import { obterDossieDaLente } from '@/api/cliente';
+import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
+import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
+import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
 import {
   Cartao,
   Carregando,
@@ -33,6 +35,7 @@ import {
   FaixaDeErro,
   Kpi,
   Secao,
+  Selo,
 } from '@/componentes/basicos';
 import { BotaoDeProcedencia, CabecalhoDoBloco } from '@/componentes/Procedencia';
 import {
@@ -48,8 +51,12 @@ import {
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
+import { jornadaDaLente } from '@/dominio/jornadaDaLente';
 import { corDaFaixa } from '@/dominio/score';
+import type { PontoDaSerie } from '@/dominio/score';
+import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
+import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import {
   BarrasCemPorCento,
   BarrasPareadas,
@@ -59,6 +66,7 @@ import {
   TabelaDeLeitura,
 } from '@/graficos/PecasDoDossie';
 import { Ranking } from '@/graficos/Ranking';
+import { Rosca } from '@/graficos/Rosca';
 
 const LENTES = [
   { id: 'imprensa', rotulo: 'Imprensa' },
@@ -72,19 +80,59 @@ export function DossieDaLente({
   mes,
   lente,
   aoTrocarLente,
+  serie,
+  aoTrocarMes,
 }: {
   mes: string;
   lente: string;
   aoTrocarLente: (codigo: string) => void;
+  /** A mesma série que alimenta a Jornada do índice na Visão geral — aqui só
+   *  lida de outro jeito (a nota de UMA lente, não o ISR). Mesmo dado, sem
+   *  segunda chamada de rede. */
+  serie: PontoDaSerie[];
+  aoTrocarMes: (mes: string) => void;
 }) {
   const [dossie, definirDossie] = useState<Dossie | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
+  const [filtro, definirFiltro] = useState<FiltroDaLente>({});
+  const [opcoes, definirOpcoes] = useState<OpcoesDeFiltroDaLente | null>(null);
+
+  // TROCAR DE LENTE OU DE MÊS ZERA O RECORTE E O DOSSIÊ: um veículo escolhido
+  // na Imprensa não existe no vocabulário do Mercado, e um filtro que
+  // sobrevive à troca calado deixaria a tela nova parecer sem dado por um
+  // motivo que não é o que a pessoa vê. Zerar `dossie` aqui também — e só
+  // aqui — é o que evita mostrar, por um instante, o número da lente ANTERIOR
+  // como se já fosse da nova.
+  useEffect(() => {
+    definirFiltro({});
+    definirDossie(null);
+  }, [lente, mes]);
+
+  useEffect(() => {
+    // SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): mesma
+    // restrição da tela logo abaixo. Buscar opções que a tela nem desenha
+    // seria uma chamada de rede sem efeito nenhum.
+    if (lente !== 'imprensa') return;
+    let ativo = true;
+    obterOpcoesDeFiltroDaLente(lente, mes)
+      .then((carregadas) => ativo && definirOpcoes(carregadas))
+      .catch(() => ativo && definirOpcoes(null));
+    return () => {
+      ativo = false;
+    };
+  }, [lente, mes]);
 
   useEffect(() => {
     let ativo = true;
-    definirDossie(null);
     definirErro(null);
-    obterDossieDaLente(lente, mes)
+    // NÃO ZERA `dossie` AQUI. Clicar numa fatia da rosca ou num veículo do
+    // placar de clima muda `filtro`, que cai nesta mesma dependência — se a
+    // tela sumisse inteira (virasse um `<Carregando />`) a cada clique, a
+    // página encolheria de repente e o navegador perderia a posição de
+    // rolagem, voltando pro topo. Mantendo o dossiê ANTERIOR na tela até o
+    // novo chegar, a altura não muda e quem clicou continua vendo o mesmo
+    // trecho da página — só os números é que trocam, no lugar.
+    obterDossieDaLente(lente, mes, filtro)
       .then((carregado) => ativo && definirDossie(carregado))
       .catch((falha) => {
         if (ativo) definirErro(falha instanceof Error ? falha.message : 'Não foi possível ler.');
@@ -92,7 +140,7 @@ export function DossieDaLente({
     return () => {
       ativo = false;
     };
-  }, [lente, mes]);
+  }, [lente, mes, filtro]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -104,18 +152,76 @@ export function DossieDaLente({
         prefixo="lente"
       />
 
+      {/* SÓ NA IMPRENSA — POR HORA: tier/veículo/atributo são vocabulário da
+          clipagem de imprensa (ver as restrições de `_volume_por_tier` e
+          companhia em `app/api/lentes.py`) — filtrar por eles nas outras
+          lentes não tem o que filtrar. */}
+      {lente === 'imprensa' ? (
+        <BarraDeFiltroDaLente filtro={filtro} definirFiltro={definirFiltro} opcoes={opcoes} />
+      ) : null}
+
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
       {!dossie && !erro ? <Carregando /> : null}
-      {dossie ? <Conteudo dossie={dossie} /> : null}
+      {dossie ? (
+        <Conteudo
+          dossie={dossie}
+          filtro={filtro}
+          definirFiltro={definirFiltro}
+          serie={serie}
+          mes={mes}
+          aoTrocarMes={aoTrocarMes}
+        />
+      ) : null}
     </div>
   );
 }
 
-function Conteudo({ dossie }: { dossie: Dossie }) {
+function Conteudo({
+  dossie,
+  filtro,
+  definirFiltro,
+  serie,
+  mes,
+  aoTrocarMes,
+}: {
+  dossie: Dossie;
+  filtro: FiltroDaLente;
+  definirFiltro: (filtro: FiltroDaLente) => void;
+  serie: PontoDaSerie[];
+  mes: string;
+  aoTrocarMes: (mes: string) => void;
+}) {
   return (
     <>
       <Destaque dossie={dossie} />
       <Evolucao dossie={dossie} />
+      <JornadaDaLente dossie={dossie} serie={serie} mes={mes} aoTrocarMes={aoTrocarMes} />
+
+      {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
+          devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
+          para as outras lentes (ver `_volume_por_tier`/`_veiculos` em
+          `app/api/lentes.py`), mas um card vazio ainda É um card — a tela
+          também precisa não desenhar a moldura, e não só o conteúdo. */}
+      {dossie.codigo === 'imprensa' ? (
+        <div className="grade grade--2" style={{ gap: 16 }}>
+          <VolumeETopVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
+          <ClimaPorVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
+        </div>
+      ) : null}
+
+      {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, e não lá embaixo depois de
+          Drivers/Temas: quem acabou de ver "InfoMoney tem 9 matérias e saldo
+          +56" quer a lista dessas matérias na sequência da leitura, não
+          depois de outros dois blocos no meio do caminho.
+
+          SÓ NA IMPRENSA — mesma restrição de tela de cima: "matéria" com
+          veículo e tier é um conceito de clipagem de imprensa. */}
+      {dossie.codigo === 'imprensa' ? (
+        <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
+      ) : null}
+
+      <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
+      <BlocoAmplo titulo="Temas mais falados" bloco={dossie.temas_mais_falados} />
 
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
           declarar): os dois painéis crescem para a mesma altura, a do mais
@@ -200,6 +306,12 @@ function NotaDeFonte({ ficha }: { ficha: Dossie['evolucao']['ficha'] }) {
 function Destaque({ dossie }: { dossie: Dossie }) {
   const delta =
     dossie.delta === null ? '—' : dossie.delta > 0 ? `+${dossie.delta}` : `${dossie.delta}`;
+  // "VS. MÊS ANTERIOR" SÓ FAZ SENTIDO SEM RECORTE: com um filtro ativo, o mês
+  // passado não tem o mesmo tier/veículo/atributo/tema, e comparar os dois
+  // seria maçã com laranja — por isso o servidor já manda outra base de
+  // comparação (`sem_filtro`, a nota do mês inteiro) junto com outra legenda.
+  const legendaDoDelta =
+    dossie.delta_versus === 'sem_filtro' ? 'vs. sem recorte' : 'vs. mês anterior';
 
   return (
     <ComFaixaDoTopo>
@@ -231,7 +343,7 @@ function Destaque({ dossie }: { dossie: Dossie }) {
             </span>
             <div>
               <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-                {mesCurto(dossie.mes)} · vs. mês anterior{' '}
+                {mesCurto(dossie.mes)} · {legendaDoDelta}{' '}
                 <strong className="tabular">{delta}</strong>
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -240,6 +352,16 @@ function Destaque({ dossie }: { dossie: Dossie }) {
               </div>
             </div>
           </div>
+
+          {dossie.recorte_filtrado ? (
+            <div style={{ margin: '12px 0 0' }}>
+              <Selo
+                rotulo="Recorte filtrado — não é a nota oficial do mês"
+                fundo="var(--atencao-bg)"
+                texto="var(--atencao-fg)"
+              />
+            </div>
+          ) : null}
 
           {dossie.ausencia ? (
             <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--atencao-fg)' }}>
@@ -325,6 +447,207 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           </ul>
         ) : null}
 
+      </Cartao>
+    </Secao>
+    </ComFaixaDoTopo>
+  );
+}
+
+/* -- 1.4b. a jornada desta lente ------------------------------------------------ */
+
+/** A nota desta lente, 0 a 100, mês a mês — mesmo desenho da "Jornada do
+ *  índice" da Visão geral, só que a curva principal é a da própria lente,
+ *  não o ISR. Reaproveita o MESMO componente de desenho
+ *  (`graficos/JornadaDoIndice`) e a MESMA série já carregada pela tela —
+ *  `dominio/jornadaDaLente` só monta a geometria de outro jeito.
+ *
+ *  CLICAR NUM MÊS TROCA O MÊS DA TELA INTEIRA — o mesmo `aoTrocarMes` do
+ *  seletor "Mês" lá no topo do Score Executivo: não é um segundo jeito de
+ *  escolher mês, é o mesmo estado, alcançado de um lugar a mais. */
+function JornadaDaLente({
+  dossie,
+  serie,
+  mes,
+  aoTrocarMes,
+}: {
+  dossie: Dossie;
+  serie: PontoDaSerie[];
+  mes: string;
+  aoTrocarMes: (mes: string) => void;
+}) {
+  const jornada = jornadaDaLente(serie, dossie.codigo, dossie.nome, mes);
+
+  return (
+    <ComFaixaDoTopo>
+    <Secao titulo={`Jornada da ${dossie.nome}`} subtitulo={jornada.resumo}>
+      <Cartao>
+        <JornadaDoIndice
+          serie={serie}
+          mes={mes}
+          comparada={null}
+          aoEscolherMes={aoTrocarMes}
+          jornadaPronta={jornada}
+        />
+      </Cartao>
+    </Secao>
+    </ComFaixaDoTopo>
+  );
+}
+
+/* -- 1.5. quem é a cobertura, e como está o clima dela -------------------------- */
+
+/** Mesmo desenho de "% Interações por tier e Top instituições" do Painel
+ *  (CRM) — rosca de volume por tier ao lado do Top 5 — só que por VEÍCULO em
+ *  vez de instituição: o cadastro do CRM é da Aegea, mas um veículo de
+ *  imprensa é terceiro, sem `id`, só o nome que a Clipei manda. Por isso os
+ *  dois blocos (`volume_por_tier`, `top_veiculos`) vêm prontos do servidor,
+ *  em vez de calculados no navegador como no Painel.
+ *
+ *  A ROSCA É CLICÁVEL, E O CLIQUE É O MESMO FILTRO DA BARRA DE CIMA: clicar
+ *  numa fatia de tier chama `definirFiltro` com aquele tier — a mesma
+ *  chamada que o campo "Tier" da `BarraDeFiltroDaLente` já faz. Não existe
+ *  um segundo mecanismo de recorte: a tela inteira (nota, KPIs, evolução, o
+ *  Top 5 ao lado) já reage a `filtro.tier` porque o servidor filtra tudo por
+ *  ele — clicar na rosca só economiza abrir o campo lá em cima. */
+function VolumeETopVeiculos({
+  dossie,
+  filtro,
+  definirFiltro,
+}: {
+  dossie: Dossie;
+  filtro: FiltroDaLente;
+  definirFiltro: (filtro: FiltroDaLente) => void;
+}) {
+  const { volume_por_tier: rosca, top_veiculos: ranking } = dossie;
+  const itensDaRosca = rosca.dados.map((linha) => ({
+    chave: comoTexto(linha.chave),
+    rotulo: comoTexto(linha.rotulo),
+    total: comoNumero(linha.total ?? 0),
+    cor: linha.cor ? comoTexto(linha.cor) : undefined,
+  }));
+
+  return (
+    <ComFaixaDoTopo>
+    <Secao
+      titulo="% Matérias por tier e Top veículos"
+      subtitulo="Volume de matérias pela relevância (tier) do veículo"
+      ajuda={GUIA_DO_BLOCO[rosca.titulo]}
+      estilo={{ height: '100%' }}
+    >
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ flex: '0 0 auto' }}>
+          <Rosca
+            itens={itensDaRosca}
+            ativo={filtro.tier}
+            aoClicar={(tier) =>
+              definirFiltro({ ...filtro, tier: filtro.tier === tier ? undefined : tier })
+            }
+            rotuloCentral="matérias"
+          />
+        </div>
+        <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+          <div className="kicker" style={{ marginBottom: 12 }}>
+            Top 5 veículos
+          </div>
+          {/* CLICÁVEL PELO MESMO MOTIVO DA ROSCA: clicar num veículo filtra
+              a tela inteira por ele — inclusive "Últimas matérias" mais
+              abaixo, que vira a lista de matérias DAQUELE veículo sem
+              precisar de um modal à parte. */}
+          <Ranking
+            itens={ranking.dados.map((linha) => ({
+              chave: comoTexto(linha.rotulo),
+              rotulo: comoTexto(linha.rotulo),
+              total: comoNumero(linha.valor ?? 0),
+              // CINZA ESCURO, não azul-mar — mesmo ajuste do Painel (CRM): o
+              // azul já é a cor do tier Muito Relevante na rosca ao lado, e
+              // as duas barras do mesmo tom confundiam "isto é sobre tier"
+              // com "isto é o ranking de veículos".
+              cor: 'var(--cinza-4)',
+            }))}
+            ativo={filtro.veiculo}
+            aoClicar={(veiculo) =>
+              definirFiltro({
+                ...filtro,
+                veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
+              })
+            }
+            vazio="Nada registrado no período."
+          />
+        </div>
+      </div>
+      <NotaDeFonte ficha={rosca.ficha} />
+    </Secao>
+    </ComFaixaDoTopo>
+  );
+}
+
+/** O placar de clima por veículo — mesmo desenho de "Clima por Instituições"
+ *  do Painel (CRM), incluindo a interação: clicar num veículo (ex.:
+ *  InfoMoney) filtra a tela inteira por ele, igual à rosca e ao Top 5 ao
+ *  lado. "Ver as matérias daquele veículo" é abrir "Últimas matérias" logo
+ *  abaixo já filtrada — não um modal à parte. */
+function ClimaPorVeiculos({
+  dossie,
+  filtro,
+  definirFiltro,
+}: {
+  dossie: Dossie;
+  filtro: FiltroDaLente;
+  definirFiltro: (filtro: FiltroDaLente) => void;
+}) {
+  const bloco = dossie.clima_por_veiculos;
+
+  return (
+    <ComFaixaDoTopo>
+    <Secao titulo="Clima por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
+      <Cartao>
+        <BarraDivergentePorItem
+          itens={bloco.dados.map((linha) => ({
+            chave: comoTexto(linha.chave),
+            rotulo: comoTexto(linha.rotulo),
+            total: comoNumero(linha.total ?? 0),
+            score: comoNumero(linha.score ?? 0),
+          }))}
+          ativo={filtro.veiculo}
+          aoClicar={(veiculo) =>
+            definirFiltro({
+              ...filtro,
+              veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
+            })
+          }
+          unidade={{ singular: 'matéria', plural: 'matérias' }}
+          variante="termometro"
+        />
+        <NotaDeFonte ficha={bloco.ficha} />
+      </Cartao>
+    </Secao>
+    </ComFaixaDoTopo>
+  );
+}
+
+/* -- 1.6. do amplo ao específico: drivers, temas e matérias --------------------- */
+
+/** Um bloco autônomo abaixo da Evolução, no mesmo molde dela (faixa, seção,
+ *  cabeçalho, ficha) — mas sem o extra de fatos/sinais, que é só da Evolução.
+ *
+ *  OS TRÊS (Drivers e riscos, Temas mais falados, Últimas matérias) REAGEM
+ *  AO MESMO RECORTE da barra de filtro lá em cima: o servidor já aplica
+ *  tier/veículo/atributo/tema em cada consulta, então os três estreitam
+ *  juntos quando alguém filtra — é a mesma régua "do amplo ao específico"
+ *  levada até a linha, não três drill-downs independentes. */
+function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
+  return (
+    <ComFaixaDoTopo>
+    <Secao titulo={titulo}>
+      <Cartao>
+        <CabecalhoDoBloco
+          titulo={bloco.titulo}
+          conclusao={bloco.conclusao}
+          ficha={bloco.ficha}
+          ajuda={GUIA_DO_BLOCO[bloco.titulo]}
+        />
+        <Painel bloco={bloco} />
+        <NotaDeFonte ficha={bloco.ficha} />
       </Cartao>
     </Secao>
     </ComFaixaDoTopo>
@@ -448,6 +771,35 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
           const detalhe = linha?.detalhe as string | undefined;
           return detalhe ? [{ rotulo: 'Pico', valor: detalhe }] : [];
         }}
+      />
+    );
+  }
+
+  if (bloco.tipo === 'rosca') {
+    return (
+      <Rosca
+        itens={dados.map((linha) => ({
+          chave: comoTexto(linha.chave),
+          rotulo: comoTexto(linha.rotulo),
+          total: comoNumero(linha.total ?? 0),
+          cor: linha.cor ? comoTexto(linha.cor) : undefined,
+        }))}
+        rotuloCentral="matérias"
+      />
+    );
+  }
+
+  if (bloco.tipo === 'divergente_por_item') {
+    return (
+      <BarraDivergentePorItem
+        itens={dados.map((linha) => ({
+          chave: comoTexto(linha.chave),
+          rotulo: comoTexto(linha.rotulo),
+          total: comoNumero(linha.total ?? 0),
+          score: comoNumero(linha.score ?? 0),
+        }))}
+        unidade={{ singular: 'matéria', plural: 'matérias' }}
+        variante="termometro"
       />
     );
   }

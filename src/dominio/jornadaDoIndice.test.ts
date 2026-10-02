@@ -33,6 +33,7 @@ function ponto(parcial: Partial<PontoDaSerie>): PontoDaSerie {
     pontos_sem_tema: 0,
     maior_movimento: null,
     notas_das_lentes: {},
+    temas_das_lentes: {},
     ...parcial,
   };
 }

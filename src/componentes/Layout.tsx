@@ -138,6 +138,11 @@ export function Layout({
   //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
   //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
   const configuracao = configuracaoDe(view);
+  //: "NOVA INTERAÇÃO" É DO CRM, e não da divisão do Score: o KPI Reputacional
+  //: não tem cadastro de interação nenhum ali dentro — é outro painel, outra
+  //: pergunta. Mostrar o botão nessas duas telas abriria uma porta para um
+  //: formulário que não tem relação com o que a pessoa está vendo.
+  const estaNoScore = view === 'score' || view === 'config-score';
   const nomeDaArea =
     view === 'score' || view === 'config-score'
       ? 'KPIs Reputacionais'
@@ -334,7 +339,7 @@ export function Layout({
                 navegação leva 403 do mesmo jeito, e a própria tela de cadastro
                 também recusa. São duas camadas porque esconder o botão nunca
                 foi proteção. */}
-            {podeCriar ? (
+            {podeCriar && !estaNoScore ? (
               <Botao
                 variante="primario"
                 aoClicar={() => irPara('cadastro')}

@@ -175,6 +175,15 @@ export interface MovimentoDaLente {
   delta: number;
 }
 
+/** O que sustentou e o que pressionou UMA lente no mês — a mesma pergunta de
+ *  `sustentou`/`pressionou` do índice, respondida dentro dela só. Sem
+ *  `maior_movimento` equivalente: lá dentro não se compara lente com lente. */
+export interface TemasDaLente {
+  sustentou: TemaDoMes | null;
+  pressionou: TemaDoMes | null;
+  pontos_sem_tema: number;
+}
+
 export interface PontoDaSerie {
   mes: string;
   isr: number | null;
@@ -196,6 +205,9 @@ export interface PontoDaSerie {
   /** A nota de cada lente medida no mês, por código — é o que desenha a curva
    *  de comparação sem uma segunda chamada por lente. */
   notas_das_lentes: Record<string, number>;
+  /** O que sustentou e o que pressionou CADA lente no mês, por código — é o
+   *  que a Jornada de uma lente lê para explicar a própria coluna. */
+  temas_das_lentes: Record<string, TemasDaLente>;
 }
 
 export interface FonteDoScore {

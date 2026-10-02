@@ -115,6 +115,19 @@ describe('colunasDaTabela', () => {
     expect(coluna.destaque?.({ para: 'BB+', efeito: 'sustenta' })).toBeNull();
   });
 
+  it('nas últimas matérias, a classificação acende vermelho ou verde', () => {
+    const [coluna] = colunasDaTabela(
+      bloco({
+        subtipo: 'materias',
+        colunas: [{ chave: 'sentimento', titulo: 'Classificação', alinhamento: 'esquerda' }],
+      }),
+    );
+
+    expect(coluna.destaque?.({ sentimento: 'Negativo' })).toBe('alerta');
+    expect(coluna.destaque?.({ sentimento: 'Positivo' })).toBe('bom');
+    expect(coluna.destaque?.({ sentimento: 'Neutro' })).toBeNull();
+  });
+
   it('o teor mostra volume E proporção, porque 288 de 886 não é 288 de 400', () => {
     const [coluna] = colunasDaTabela(
       bloco({
@@ -205,6 +218,8 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     nota: 70,
     ns: 0.4,
     delta: 1,
+    delta_versus: 'mes_anterior',
+    recorte_filtrado: false,
     peso: 30,
     estimado: false,
     ausencia: null,
@@ -215,6 +230,12 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     manchete: null,
     evolucao: bloco({ tipo: 'barras_empilhadas' }),
     sinais_da_evolucao: [],
+    volume_por_tier: bloco({ tipo: 'rosca', titulo: 'Volume por tier' }),
+    top_veiculos: bloco({ tipo: 'barras_horizontais', titulo: 'Top veículos' }),
+    clima_por_veiculos: bloco({ tipo: 'divergente_por_item', titulo: 'Clima por veículos' }),
+    drivers_e_riscos: bloco({ tipo: 'barras_100', titulo: 'Drivers e riscos' }),
+    temas_mais_falados: bloco({ tipo: 'barras_100', titulo: 'Temas mais falados' }),
+    materias_recentes: bloco({ titulo: 'Últimas matérias', subtipo: 'materias' }),
     fatos: [],
     paineis: [],
     sinais: [],
