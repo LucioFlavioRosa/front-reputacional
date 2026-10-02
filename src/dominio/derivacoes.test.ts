@@ -95,8 +95,8 @@ const INSTITUICOES: Instituicao[] = [
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [
-  { id: 'p1', nome: 'Taís Hirata', instituicao_id: 'i1', cargo: null, email: null, tipo: null, ativo: true },
-  { id: 'p2', nome: 'Ana Argolo', instituicao_id: 'i2', cargo: null, email: null, tipo: null, ativo: true },
+  { id: 'p1', nome: 'Taís Hirata', instituicao_id: 'i1', cargo: null, area: null, email: null, tipo: null, ativo: true },
+  { id: 'p2', nome: 'Ana Argolo', instituicao_id: 'i2', cargo: null, area: null, email: null, tipo: null, ativo: true },
 ];
 
 const PESSOAS: PessoaAegea[] = [

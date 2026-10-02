@@ -525,6 +525,9 @@ export interface InterlocutorEntrada {
    *  "Pela outra parte". */
   instituicao_id?: string | null;
   cargo?: string | null;
+  /** A área do contato DENTRO da instituição dele (ex.: "Research") — texto
+   *  livre, não o dicionário `area_pessoa` (a área da Aegea). */
+  area?: string | null;
   /** Como se chega na pessoa para marcar a agenda. */
   email?: string | null;
   tipo?: string | null;

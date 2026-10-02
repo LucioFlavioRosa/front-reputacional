@@ -66,7 +66,7 @@ const MODOS_DE_CADASTRO: readonly Aba<'instituicao' | 'pessoa'>[] = [
   { id: 'pessoa', rotulo: 'Contatos' },
 ];
 
-const PESSOA_AVULSA_VAZIA = { instituicao_id: '', nome: '', email: '', cargo: '' };
+const PESSOA_AVULSA_VAZIA = { instituicao_id: '', nome: '', email: '', cargo: '', area: '' };
 
 //: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
 //: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
@@ -132,7 +132,7 @@ const VAZIA = {
   //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
   subcategoria_publico_id: '',
 };
-const SEM_PESSOA = { nome: '', email: '', cargo: '' };
+const SEM_PESSOA = { nome: '', email: '', cargo: '', area: '' };
 
 /** A ficha como a tela a mostra: é o rascunho de partida da edição, e também
  *  o de quem só quer inverter `ativo` sem abrir a edição. */
@@ -514,6 +514,18 @@ export function CadastroDeInstituicoes() {
                   placeholder="Diretora de Regulação"
                 />
               </Campo>
+              {/* A ÁREA DELA NA INSTITUIÇÃO — texto livre, não o dicionário
+                  de área da Aegea. Ver `InterlocutorEntrada.area`. */}
+              <Campo rotulo="Área">
+                <input
+                  style={estiloDeEntrada}
+                  value={pessoaAvulsa.area}
+                  onChange={(e) =>
+                    definirPessoaAvulsa({ ...pessoaAvulsa, area: e.target.value })
+                  }
+                  placeholder="Research"
+                />
+              </Campo>
               <Campo rotulo="E-mail">
                 <input
                   type="email"
@@ -553,6 +565,7 @@ export function CadastroDeInstituicoes() {
                           instituicao_id: pessoaAvulsa.instituicao_id,
                           email: pessoaAvulsa.email || null,
                           cargo: pessoaAvulsa.cargo || null,
+                          area: pessoaAvulsa.area || null,
                         }),
                       () => definirPessoaAvulsa(PESSOA_AVULSA_VAZIA),
                       `${pessoaAvulsa.nome} cadastrada.`,
@@ -656,6 +669,7 @@ export function CadastroDeInstituicoes() {
                       instituicao_id: instituicao.id,
                       email: pessoaNova.email || null,
                       cargo: pessoaNova.cargo || null,
+                      area: pessoaNova.area || null,
                     }),
                   () => definirPessoaNova(SEM_PESSOA),
                 )
@@ -669,6 +683,7 @@ export function CadastroDeInstituicoes() {
                   nome: pessoa.nome,
                   email: pessoa.email ?? '',
                   cargo: pessoa.cargo ?? '',
+                  area: pessoa.area ?? '',
                 });
               }}
               aoCancelarPessoa={() => definirPessoaEmEdicao(null)}
@@ -680,6 +695,7 @@ export function CadastroDeInstituicoes() {
                       instituicao_id: pessoa.instituicao_id,
                       email: rascunhoDaPessoa.email || null,
                       cargo: rascunhoDaPessoa.cargo || null,
+                      area: rascunhoDaPessoa.area || null,
                       tipo: pessoa.tipo,
                       ativo: pessoa.ativo,
                     }),
@@ -753,6 +769,7 @@ export function CadastroDeInstituicoes() {
                       instituicao_id: pessoa.instituicao_id,
                       email: pessoa.email,
                       cargo: pessoa.cargo,
+                      area: pessoa.area,
                       tipo: pessoa.tipo,
                       ativo: !pessoa.ativo,
                     }),
@@ -815,20 +832,26 @@ function LinhaDeInstituicao({
   aberta: boolean;
   salvando: boolean;
   rascunho: RascunhoDaInstituicao;
-  pessoaNova: { nome: string; email: string; cargo: string };
+  pessoaNova: { nome: string; email: string; cargo: string; area: string };
   aoRascunhar: (r: RascunhoDaInstituicao) => void;
-  aoRascunharPessoa: (p: { nome: string; email: string; cargo: string }) => void;
+  aoRascunharPessoa: (p: {
+    nome: string;
+    email: string;
+    cargo: string;
+    area: string;
+  }) => void;
   aoAbrir: () => void;
   aoEditar: () => void;
   aoCancelar: () => void;
   aoSalvar: () => void;
   aoAcrescentarPessoa: () => void;
   pessoaEmEdicao: string | null;
-  rascunhoDaPessoa: { nome: string; email: string; cargo: string };
+  rascunhoDaPessoa: { nome: string; email: string; cargo: string; area: string };
   aoRascunharEdicaoDaPessoa: (p: {
     nome: string;
     email: string;
     cargo: string;
+    area: string;
   }) => void;
   aoEditarPessoa: (pessoa: Interlocutor) => void;
   aoCancelarPessoa: () => void;
@@ -1143,6 +1166,18 @@ function LinhaDeInstituicao({
                       }
                     />
                   </Campo>
+                  <Campo rotulo="Área">
+                    <input
+                      style={estiloDeEntrada}
+                      value={rascunhoDaPessoa.area}
+                      onChange={(e) =>
+                        aoRascunharEdicaoDaPessoa({
+                          ...rascunhoDaPessoa,
+                          area: e.target.value,
+                        })
+                      }
+                    />
+                  </Campo>
                   <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
                     <Botao
                       variante="primario"
@@ -1178,6 +1213,7 @@ function LinhaDeInstituicao({
                   >
                     {pessoa.nome}
                     {pessoa.cargo ? ` · ${pessoa.cargo}` : ''}
+                    {pessoa.area ? ` · ${pessoa.area}` : ''}
                     {/* O E-MAIL E O MOTIVO DE A PESSOA ESTAR AQUI: marcar
                         agenda comeca por escrever para alguem. Como link, para
                         nao exigir copiar e colar. */}
@@ -1301,6 +1337,16 @@ function LinhaDeInstituicao({
                   aoRascunharPessoa({ ...pessoaNova, cargo: e.target.value })
                 }
                 placeholder="Secretária de Saneamento"
+              />
+            </Campo>
+            <Campo rotulo="Área">
+              <input
+                style={estiloDeEntrada}
+                value={pessoaNova.area}
+                onChange={(e) =>
+                  aoRascunharPessoa({ ...pessoaNova, area: e.target.value })
+                }
+                placeholder="Research"
               />
             </Campo>
           </div>
