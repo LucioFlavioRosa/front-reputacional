@@ -195,6 +195,8 @@ export function Score({
           mes={mes}
           lente={lenteAberta}
           aoTrocarLente={definirLenteAberta}
+          serie={serie}
+          aoTrocarMes={definirMes}
         />
       ) : null}
 

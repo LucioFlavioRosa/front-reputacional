@@ -60,6 +60,7 @@ import { VB, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
 import type {
   ColunaDoMes,
   FaixaDeFundo,
+  Jornada,
   LinhaDoMes,
   PontoDaJornada,
 } from '@/dominio/jornadaDoIndice';
@@ -73,14 +74,20 @@ export function JornadaDoIndice({
   comparada,
   nomeDaComparada = '',
   aoEscolherMes,
+  jornadaPronta,
 }: {
   serie: PontoDaSerie[];
   mes: string;
   comparada: string | null;
   nomeDaComparada?: string;
   aoEscolherMes: (mes: string) => void;
+  /** A jornada já calculada, para quem não está desenhando o ISR geral —
+   *  `dominio/jornadaDaLente.ts` monta este mesmo formato a partir da nota
+   *  de UMA lente. Presente, ela VENCE `serie`: o desenho é o mesmo dos
+   *  dois lados, só a conta de onde ele vem é que muda. */
+  jornadaPronta?: Jornada;
 }) {
-  const jornada = jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
+  const jornada = jornadaPronta ?? jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
   const [destacado, definirDestacado] = useState<string | null>(null);
 
   //: SOLTAR SÓ APAGA SE AINDA FOR O MESMO MÊS.
