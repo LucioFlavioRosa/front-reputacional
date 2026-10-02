@@ -195,11 +195,11 @@ export function CalibracaoDoScore({
               </select>
             </Campo>
             <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-              <strong>Muito Relevante</strong> = grande imprensa nacional, econômica e trade.{' '}
-              <strong>Relevante</strong> = regionais com influência.{' '}
-              <strong>Menos Relevante</strong> = locais e blogs de nicho. A classificação é da
-              própria clipagem, e não desta tela. As lentes de redes não têm tier: nelas esta
-              régua não muda nada.
+              <strong>Tier 1</strong> = grande imprensa nacional, econômica e trade.{' '}
+              <strong>Tier 2</strong> = regionais com influência.{' '}
+              <strong>Tier 3</strong> = locais e blogs de nicho. A classificação é da própria
+              clipagem, e não desta tela. As lentes de redes não têm tier: nelas esta régua não
+              muda nada.
             </p>
           </Cartao>
 

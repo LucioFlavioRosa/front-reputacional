@@ -58,7 +58,7 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
   'Concessionárias com maior repercussão':
     'Ranking das concessionárias/unidades com mais menções no período, somando positivas, neutras e negativas. Essa visão mostra onde a repercussão se concentra.',
   'Volume por tier':
-    'Rosca com o volume de matérias do mês por tier do veículo (Muito Relevante, Relevante, Menos Relevante). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
+    'Rosca com o volume de matérias do mês por tier do veículo (Tier 1, Tier 2, Tier 3). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
   'Clima por veículos':
     'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar de clima por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
   'Drivers e riscos':
