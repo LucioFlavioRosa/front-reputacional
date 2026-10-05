@@ -569,6 +569,39 @@ export interface ColunaDaTabela {
   formatar?: (valor: unknown, linha: Record<string, unknown>) => string;
 }
 
+/** O valor de uma célula: endereço vira link, o resto vira texto.
+ *
+ *  POR QUE AQUI. A lista de menções da Sociedade digital traz o LINK de cada
+ *  post — a carga do padrão Aegea trouxe o endereço de 2.208 itens —, e a célula
+ *  escrevia `String(valor)`: a URL inteira ocupava a largura de três colunas, não
+ *  se clicava, e quem quisesse abrir tinha de selecionar e copiar.
+ *
+ *  NO COMPONENTE, E NÃO NO FORMATADOR: `dominio/dossie.ts` é TypeScript puro e
+ *  devolve texto; um link é elemento, e elemento é coisa de componente. Pôr JSX
+ *  no domínio misturaria as duas camadas por causa de uma âncora.
+ *
+ *  O CRITÉRIO É O ESQUEMA DA URL, e não a presença de um ponto: `aegea.com.br`
+ *  sem `https://` pode ser o nome de um perfil, e transformá-lo em link daria um
+ *  clique para lugar nenhum. Vale para qualquer tabela do dossiê — nenhuma
+ *  precisa declarar que tem coluna de endereço.
+ */
+function ValorDaCelula({ valor }: { valor: unknown }) {
+  const texto = String(valor);
+  if (typeof valor === 'string' && /^https?:\/\//i.test(valor)) {
+    return (
+      <a
+        href={valor}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'var(--azul-mar)', fontWeight: 600, whiteSpace: 'nowrap' }}
+      >
+        Abrir ↗
+      </a>
+    );
+  }
+  return <>{texto}</>;
+}
+
 export function TabelaDeLeitura({
   colunas,
   linhas,
@@ -644,8 +677,10 @@ export function TabelaDeLeitura({
                   >
                     {vazia ? (
                       <SemDado />
+                    ) : coluna.formatar ? (
+                      coluna.formatar(bruto, linha)
                     ) : (
-                      (coluna.formatar?.(bruto, linha) ?? String(bruto))
+                      <ValorDaCelula valor={bruto} />
                     )}
                   </td>
                 );
