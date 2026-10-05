@@ -34,6 +34,7 @@ import {
   Botao,
   Campo,
   Cartao,
+  Chip,
   FaixaDeErro,
   Secao,
   Vazio,
@@ -66,7 +67,9 @@ const MODOS_DE_CADASTRO: readonly Aba<'instituicao' | 'pessoa'>[] = [
   { id: 'pessoa', rotulo: 'Contatos' },
 ];
 
-const PESSOA_AVULSA_VAZIA = { instituicao_id: '', nome: '', email: '', cargo: '', area: '' };
+const PESSOA_AVULSA_VAZIA = {
+  instituicao_id: '', nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
+};
 
 //: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
 //: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
@@ -132,7 +135,9 @@ const VAZIA = {
   //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
   subcategoria_publico_id: '',
 };
-const SEM_PESSOA = { nome: '', email: '', cargo: '', area: '' };
+const SEM_PESSOA = {
+  nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
+};
 
 /** A ficha como a tela a mostra: é o rascunho de partida da edição, e também
  *  o de quem só quer inverter `ativo` sem abrir a edição. */
@@ -197,6 +202,84 @@ interface RascunhoDaInstituicao {
   tier: string;
   categoria_publico_id: string;
   subcategoria_publico_id: string;
+}
+
+//: O RASCUNHO DE UM CONTATO, nos três lugares que o editam (o formulário do
+//: topo, o "Acrescentar pessoa" por instituição, e a edição inline) — um tipo
+//: só, para uma rede nova não exigir achar os três lugares à mão de novo.
+interface RascunhoDePessoa {
+  nome: string;
+  email: string;
+  cargo: string;
+  area: string;
+  //: LISTA LIVRE, e não uma caixa por rede: a pessoa acrescenta quantos
+  //: links quiser, de qualquer rede, um de cada vez.
+  redes_sociais: string[];
+}
+
+/** O campo de redes sociais: digita um link ou handle, "Adicionar" (ou
+ *  Enter) acrescenta na lista, cada um vira um chip removível. Não identifica
+ *  a rede nem valida formato — é só uma lista de texto.
+ *
+ *  O TEXTO SENDO DIGITADO FICA AQUI DENTRO, e não no rascunho do contato: é
+ *  estado transitório do widget, não um valor do cadastro — o rascunho só
+ *  guarda o que já foi acrescentado. Isso também é o que permite reusar este
+ *  componente nos três formulários sem um terceiro `useState` na página de
+ *  fora para cada um. */
+function CampoDeRedesSociais({
+  valores,
+  aoMudar,
+}: {
+  valores: string[];
+  aoMudar: (novos: string[]) => void;
+}) {
+  const [digitando, definirDigitando] = useState('');
+
+  const acrescentar = () => {
+    const valor = digitando.trim();
+    if (!valor) return;
+    aoMudar([...valores, valor]);
+    definirDigitando('');
+  };
+
+  return (
+    <Campo rotulo="Redes sociais">
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          style={estiloDeEntrada}
+          value={digitando}
+          onChange={(e) => definirDigitando(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              acrescentar();
+            }
+          }}
+          placeholder="Link ou @usuário"
+        />
+        <Botao
+          estilo={{ height: 40, flex: 'none' }}
+          desabilitado={!digitando.trim()}
+          aoClicar={acrescentar}
+        >
+          Adicionar
+        </Botao>
+      </div>
+      {valores.length ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          {valores.map((valor, indice) => (
+            <Chip
+              key={`${valor}-${indice}`}
+              rotulo={valor}
+              ativo
+              titulo="Remover"
+              aoClicar={() => aoMudar(valores.filter((_, i) => i !== indice))}
+            />
+          ))}
+        </div>
+      ) : null}
+    </Campo>
+  );
 }
 
 export function CadastroDeInstituicoes() {
@@ -537,6 +620,16 @@ export function CadastroDeInstituicoes() {
                   placeholder="maria.souza@ana.gov.br"
                 />
               </Campo>
+              {/* 2 COLUNAS, NÃO A LINHA INTEIRA — pra não ficar maior que
+                  as caixas de cima; termina alinhado com o fim do E-mail. */}
+              <div style={{ gridColumn: 'span 2' }}>
+                <CampoDeRedesSociais
+                  valores={pessoaAvulsa.redes_sociais}
+                  aoMudar={(novos) =>
+                    definirPessoaAvulsa({ ...pessoaAvulsa, redes_sociais: novos })
+                  }
+                />
+              </div>
             </div>
           ) : null}
 
@@ -566,6 +659,7 @@ export function CadastroDeInstituicoes() {
                           email: pessoaAvulsa.email || null,
                           cargo: pessoaAvulsa.cargo || null,
                           area: pessoaAvulsa.area || null,
+                          redes_sociais: pessoaAvulsa.redes_sociais,
                         }),
                       () => definirPessoaAvulsa(PESSOA_AVULSA_VAZIA),
                       `${pessoaAvulsa.nome} cadastrada.`,
@@ -670,6 +764,7 @@ export function CadastroDeInstituicoes() {
                       email: pessoaNova.email || null,
                       cargo: pessoaNova.cargo || null,
                       area: pessoaNova.area || null,
+                      redes_sociais: pessoaNova.redes_sociais,
                     }),
                   () => definirPessoaNova(SEM_PESSOA),
                 )
@@ -684,6 +779,7 @@ export function CadastroDeInstituicoes() {
                   email: pessoa.email ?? '',
                   cargo: pessoa.cargo ?? '',
                   area: pessoa.area ?? '',
+                  redes_sociais: pessoa.redes_sociais,
                 });
               }}
               aoCancelarPessoa={() => definirPessoaEmEdicao(null)}
@@ -696,6 +792,7 @@ export function CadastroDeInstituicoes() {
                       email: rascunhoDaPessoa.email || null,
                       cargo: rascunhoDaPessoa.cargo || null,
                       area: rascunhoDaPessoa.area || null,
+                      redes_sociais: rascunhoDaPessoa.redes_sociais,
                       tipo: pessoa.tipo,
                       ativo: pessoa.ativo,
                     }),
@@ -770,6 +867,7 @@ export function CadastroDeInstituicoes() {
                       email: pessoa.email,
                       cargo: pessoa.cargo,
                       area: pessoa.area,
+                      redes_sociais: pessoa.redes_sociais,
                       tipo: pessoa.tipo,
                       ativo: !pessoa.ativo,
                     }),
@@ -832,27 +930,17 @@ function LinhaDeInstituicao({
   aberta: boolean;
   salvando: boolean;
   rascunho: RascunhoDaInstituicao;
-  pessoaNova: { nome: string; email: string; cargo: string; area: string };
+  pessoaNova: RascunhoDePessoa;
   aoRascunhar: (r: RascunhoDaInstituicao) => void;
-  aoRascunharPessoa: (p: {
-    nome: string;
-    email: string;
-    cargo: string;
-    area: string;
-  }) => void;
+  aoRascunharPessoa: (p: RascunhoDePessoa) => void;
   aoAbrir: () => void;
   aoEditar: () => void;
   aoCancelar: () => void;
   aoSalvar: () => void;
   aoAcrescentarPessoa: () => void;
   pessoaEmEdicao: string | null;
-  rascunhoDaPessoa: { nome: string; email: string; cargo: string; area: string };
-  aoRascunharEdicaoDaPessoa: (p: {
-    nome: string;
-    email: string;
-    cargo: string;
-    area: string;
-  }) => void;
+  rascunhoDaPessoa: RascunhoDePessoa;
+  aoRascunharEdicaoDaPessoa: (p: RascunhoDePessoa) => void;
   aoEditarPessoa: (pessoa: Interlocutor) => void;
   aoCancelarPessoa: () => void;
   aoSalvarPessoa: (pessoa: Interlocutor) => void;
@@ -1178,6 +1266,14 @@ function LinhaDeInstituicao({
                       }
                     />
                   </Campo>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <CampoDeRedesSociais
+                      valores={rascunhoDaPessoa.redes_sociais}
+                      aoMudar={(novos) =>
+                        aoRascunharEdicaoDaPessoa({ ...rascunhoDaPessoa, redes_sociais: novos })
+                      }
+                    />
+                  </div>
                   <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
                     <Botao
                       variante="primario"
@@ -1230,6 +1326,15 @@ function LinhaDeInstituicao({
                     ) : (
                       <span style={{ color: 'var(--cinza-2)' }}> · sem e-mail</span>
                     )}
+                    {/* AS REDES SOCIAIS, se tiver alguma — não viram <a>,
+                        porque um handle como "@mariasouza" não é um
+                        endereço clicável. */}
+                    {pessoa.redes_sociais.map((valor, indice) => (
+                      <span key={`${valor}-${indice}`} style={{ color: 'var(--cinza-2)' }}>
+                        {' · '}
+                        {valor}
+                      </span>
+                    ))}
                   </span>
 
                   <Botao
@@ -1349,6 +1454,12 @@ function LinhaDeInstituicao({
                 placeholder="Research"
               />
             </Campo>
+            <div style={{ gridColumn: 'span 2' }}>
+              <CampoDeRedesSociais
+                valores={pessoaNova.redes_sociais}
+                aoMudar={(novos) => aoRascunharPessoa({ ...pessoaNova, redes_sociais: novos })}
+              />
+            </div>
           </div>
           <div style={{ marginTop: 10 }}>
             <Botao

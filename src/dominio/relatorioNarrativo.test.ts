@@ -36,9 +36,9 @@ const INSTITUICOES: Instituicao[] = [
 ];
 
 const INTERLOCUTORES: Interlocutor[] = [
-  { id: 'p1', nome: 'Igor Bastos', instituicao_id: 'i1', cargo: null, area: null, email: null, tipo: null, ativo: true },
-  { id: 'p2', nome: 'Juliane Silva', instituicao_id: 'i1', cargo: null, area: null, email: null, tipo: null, ativo: true },
-  { id: 'p3', nome: 'Anderson Juiz', instituicao_id: 'i1', cargo: null, area: null, email: null, tipo: null, ativo: true },
+  { id: 'p1', nome: 'Igor Bastos', instituicao_id: 'i1', cargo: null, area: null, email: null, redes_sociais: [], tipo: null, ativo: true },
+  { id: 'p2', nome: 'Juliane Silva', instituicao_id: 'i1', cargo: null, area: null, email: null, redes_sociais: [], tipo: null, ativo: true },
+  { id: 'p3', nome: 'Anderson Juiz', instituicao_id: 'i1', cargo: null, area: null, email: null, redes_sociais: [], tipo: null, ativo: true },
 ];
 
 const CATALOGO: Catalogo = montarCatalogo(DICIONARIOS, INSTITUICOES, INTERLOCUTORES, []);
