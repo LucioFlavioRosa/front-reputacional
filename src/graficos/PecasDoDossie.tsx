@@ -64,11 +64,22 @@ export function BarrasCemPorCento({
   // mesmo contrato de `BarrasEmpilhadas`/`DossieDaLente.tsx`.
   cores = [COR.positivo, COR.neutro, COR.negativo],
   vazio = 'Sem dado no mês.',
+  ativo,
+  aoClicar,
 }: {
   itens: ItemDeComposicao[];
   legenda?: [string, string, string] | string[];
   cores?: [string, string, string] | string[];
   vazio?: string;
+  /** O rótulo que está recortado agora — fica marcado, e clicar nele desmarca. */
+  ativo?: string;
+  /** QUANDO PRESENTE, CADA LINHA VIRA BOTÃO. É o que faz este gráfico servir ao
+   *  cartão "Onde está a causa": quem vê "Abastecimento · 67% negativo" tenta
+   *  clicar NELE, e até agora tinha de procurar o mesmo nome num campo suspenso.
+   *
+   *  OPCIONAL porque os painéis que só ilustram continuam sem clique — uma
+   *  linha que parece clicável e não é custa mais do que uma que não parece. */
+  aoClicar?: (rotulo: string) => void;
 }) {
   if (!itens.length) {
     return <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>{vazio}</p>;
@@ -96,10 +107,45 @@ export function BarrasCemPorCento({
               ? `${Math.round((item.negativo / classificadas) * 100)}% negativo`
               : `${Math.round((item.positivo / classificadas) * 100)}% positivo`;
 
+          const selecionado = ativo === item.rotulo;
+
           return (
-            <li key={item.rotulo} style={{ padding: '3px 0' }}>
+            // MESMO PADRÃO DE `Ranking` (graficos/Ranking.tsx): `role="button"`
+            // na linha inteira, Enter/Espaço pelo teclado, fundo de destaque no
+            // selecionado. Duas interações com a mesma aparência e regras
+            // diferentes na mesma tela é o que ensina errado.
+            <li
+              key={item.rotulo}
+              onClick={() => aoClicar?.(item.rotulo)}
+              role={aoClicar ? 'button' : undefined}
+              aria-pressed={aoClicar ? selecionado : undefined}
+              tabIndex={aoClicar ? 0 : undefined}
+              onKeyDown={(evento) => {
+                if (!aoClicar) return;
+                if (evento.key === 'Enter' || evento.key === ' ') {
+                  evento.preventDefault();
+                  aoClicar(item.rotulo);
+                }
+              }}
+              title={
+                aoClicar
+                  ? selecionado
+                    ? 'Clique para remover o recorte'
+                    : `Recortar por ${item.rotulo}`
+                  : undefined
+              }
+              style={{
+                padding: '3px 6px',
+                margin: '0 -6px',
+                borderRadius: 'var(--r-chip)',
+                cursor: aoClicar ? 'pointer' : undefined,
+                background: selecionado ? 'var(--bg-hover)' : undefined,
+              }}
+            >
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.rotulo}</span>
+                <span style={{ fontSize: 13, fontWeight: selecionado ? 700 : 600, flex: 1 }}>
+                  {item.rotulo}
+                </span>
                 <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
                   {semBase
                     ? 'sem base'

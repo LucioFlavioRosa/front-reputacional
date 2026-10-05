@@ -26,6 +26,7 @@ import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
+import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
 import {
   Cartao,
   Carregando,
@@ -37,7 +38,7 @@ import {
   Secao,
   Selo,
 } from '@/componentes/basicos';
-import { BotaoDeProcedencia, CabecalhoDoBloco } from '@/componentes/Procedencia';
+import { BotaoDeProcedencia, CabecalhoDoBloco, NotaDeFonte } from '@/componentes/Procedencia';
 import {
   COR_DO_EFEITO,
   ROTULO_DO_EFEITO,
@@ -223,6 +224,17 @@ function Conteudo({
       <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
       <BlocoAmplo titulo="Temas mais falados" bloco={dossie.temas_mais_falados} />
 
+      {/* ANTES DOS DOIS PAINÉIS, e a ordem é a da leitura: este cartão
+          responde "onde está a causa" por seis cortes, e os painéis abaixo são
+          os dois que a especificação fixou para a lente — eles aprofundam dois
+          desses cortes. Ver o cartão primeiro e os painéis depois é descer; o
+          contrário é ler a conclusão antes da pergunta. */}
+      <OndeEstaACausa
+        abas={dossie.onde_esta_a_causa}
+        filtro={filtro}
+        definirFiltro={definirFiltro}
+      />
+
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
           declarar): os dois painéis crescem para a mesma altura, a do mais
           alto — sem isto, o cartão mais curto para no fim do próprio
@@ -242,7 +254,12 @@ function Conteudo({
                 ficha={painel.ficha}
                 ajuda={GUIA_DO_BLOCO[painel.titulo]}
               />
-              <Painel bloco={painel} />
+              {/* CLICÁVEL PELO QUE O SERVIDOR DIZ QUE ELE RECORTA, e não
+                  por um palpite a partir do título: um clique em "Saneamento
+                  básico" no painel de temas recorta a tela inteira por aquele
+                  tema, igual à aba do cartão acima. Era isto que faltava para o
+                  painel ser um degrau e não um quadro de leitura. */}
+              <Painel bloco={painel} filtro={filtro} definirFiltro={definirFiltro} />
               <NotaDeFonte ficha={painel.ficha} />
             </Cartao>
           </ComFaixaDoTopo>
@@ -284,20 +301,6 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
         </>
       }
     />
-  );
-}
-
-/** A fonte do bloco, abaixo do gráfico.
- *
- *  VISÍVEL, e não só dentro do "?": a §1 pede nota de fonte em cada painel, e
- *  uma fonte que só aparece a um clique de distância deixa o gráfico solto —
- *  quem bate o olho não sabe de onde saiu, e quem não clica nunca descobre. */
-function NotaDeFonte({ ficha }: { ficha: Dossie['evolucao']['ficha'] }) {
-  return (
-    <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
-      {ficha.fonte}
-      {ficha.exemplo ? ' · conteúdo de ilustração' : ''}
-    </p>
   );
 }
 
@@ -656,7 +659,32 @@ function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
 
 /* -- o roteador de tipos ------------------------------------------------------- */
 
-function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }) {
+function Painel({
+  bloco,
+  fatos = [],
+  filtro,
+  definirFiltro,
+}: {
+  bloco: Bloco;
+  fatos?: Dossie['fatos'];
+  /** OS DOIS JUNTOS, OU NENHUM: o painel só fica clicável quando a tela sabe
+   *  aplicar o recorte. Os blocos amplos (Drivers, Temas mais falados, Últimas
+   *  matérias) desenham sem eles, e continuam só de leitura. */
+  filtro?: FiltroDaLente;
+  definirFiltro?: (filtro: FiltroDaLente) => void;
+}) {
+  // A DIMENSÃO VEM DO SERVIDOR (`bloco.recorta`). Sem ela — ou sem o filtro —
+  // não há clique: uma barra que parece clicável e não é custa mais do que uma
+  // que não parece.
+  const chave =
+    bloco.recorta && filtro && definirFiltro ? (bloco.recorta as keyof FiltroDaLente) : undefined;
+  const recortado = chave && filtro ? filtro[chave] : undefined;
+  const aoRecortar =
+    chave && filtro && definirFiltro
+      ? (rotulo: string) =>
+          definirFiltro({ ...filtro, [chave]: recortado === rotulo ? undefined : rotulo })
+      : undefined;
+
   // `unknown`, e não `never`. O payload de cada tipo de gráfico tem um formato
   // diferente, e dizer ao TypeScript que campo nenhum existe (`never`) o faz
   // parar de conferir qualquer coisa — um `any` com outro nome. A conversão
@@ -752,6 +780,8 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
         }))}
         legenda={bloco.legenda.length ? bloco.legenda : undefined}
         cores={bloco.cores.length ? bloco.cores : undefined}
+        ativo={recortado}
+        aoClicar={aoRecortar}
       />
     );
   }
@@ -766,6 +796,8 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
           cor: 'var(--azul-mar)',
         }))}
         vazio="Nada registrado no período."
+        ativo={recortado}
+        aoClicar={aoRecortar}
         detalheAoPassarMouse={(chave) => {
           const linha = dados.find((item) => comoTexto(item.rotulo) === chave);
           const detalhe = linha?.detalhe as string | undefined;

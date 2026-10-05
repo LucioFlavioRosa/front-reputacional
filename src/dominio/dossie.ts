@@ -58,6 +58,14 @@ export interface Bloco {
   cores: string[];
   /** Só nas tabelas: quais colunas mostrar, na ordem em que se lê. */
   colunas: ColunaDoBloco[];
+  /** A dimensão do recorte que um clique neste bloco aplica — `'tema'`,
+   *  `'empresa'`, `'perfil_autor'`: a chave do parâmetro da rota, igual à do
+   *  filtro. Nula no bloco que não recorta nada (a evolução, as tabelas).
+   *
+   *  VEM DO SERVIDOR, e isto não é zelo: a alternativa é a tela adivinhar a
+   *  dimensão pelo TÍTULO do bloco — e o título é a frase de um detector, que
+   *  muda com o dado. Ver `RECORTE_DO_PAINEL` em `app/api/lentes.py`. */
+  recorta: string | null;
   ficha: Ficha;
 }
 
@@ -139,6 +147,12 @@ export interface Dossie {
   materias_recentes: Bloco;
   fatos: FatoDoDossie[];
   paineis: Bloco[];
+  /** As abas de "onde está a causa": o mesmo mês cortado por cada dimensão que
+   *  o explica, na ordem em que a lente se explica. Ver `OndeEstaACausa`.
+   *
+   *  VAZIO na lente que não vem de menção (Mercado, Institucional) e no mês em
+   *  que nenhuma dimensão explica nada. */
+  onde_esta_a_causa: Bloco[];
   /** O bloco do fim da tela, já ordenado pelo servidor. */
   sinais: SinalDoDossie[];
 }
