@@ -135,6 +135,18 @@ describe('RecorteDaLente', () => {
     expect(await screen.findByText(/Lente · jun\/26/)).toBeTruthy();
   });
 
+  it('aberto por um MÊS, o título nomeia o mês mesmo com recorte herdado', async () => {
+    /** ACHADO DE REVISÃO (baixa). Com um filtro de tela ativo, clicar na coluna
+     *  de abril abria o painel certo e o intitulava "RJ" — o degrau herdado do
+     *  filtro. A pessoa clicou num MÊS: o título responde ao que ela clicou, e o
+     *  recorte herdado continua visível na trilha. */
+    abrir(DO_RIO, { mes: '2026-04', tituloPeloMes: true });
+
+    expect(await screen.findByRole('heading', { name: /abr\/26/ })).toBeTruthy();
+    //: E A TRILHA NÃO MENTE: o recorte herdado continua lá, com o botão de subir.
+    expect(screen.getByRole('button', { name: /UF: RJ/ })).toBeTruthy();
+  });
+
   it('mostra o IMPACTO em pontos e a frase que o explica', async () => {
     /** O IMPACTO É A REGRA CENTRAL DO PACOTE, e não a nota do recorte: a nota
      *  responde "como seria o mês se fosse só isto", o impacto responde "quanto

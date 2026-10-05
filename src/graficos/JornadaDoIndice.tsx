@@ -143,15 +143,19 @@ export function JornadaDoIndice({
   comparada: string | null;
   nomeDaComparada?: string;
   aoEscolherMes: (mes: string) => void;
-  /** Quando presente, clicar NO PONTO abre o aprofundamento daquele mês em vez
-   *  de trocar o mês da tela. A FAIXA DE BAIXO continua trocando.
+  /** Quando presente, clicar no gráfico abre o aprofundamento daquele mês em
+   *  vez de trocar o mês da tela — NO PONTO E NA FAIXA, os dois.
    *
-   *  OS DOIS ALVOS SÃO GÊMEOS DE PROPÓSITO — a faixa existe porque o ponto de
-   *  16px na curva "era pontaria" —, e agora fazem coisas diferentes. É
-   *  deliberado: na tela da lente, "o que houve neste mês" é a pergunta que o
-   *  ponto responde (abrindo o painel do mês), e "quero olhar outro mês" continua
-   *  na faixa e no seletor do topo. Sem isto, a única forma de abrir o mês de
-   *  março seria primeiro TROCAR a tela para março. */
+   *  ACHADO DE REVISÃO, e ele desmontou o meu primeiro desenho. Eu havia ligado
+   *  só o ponto, e justifiquei dizendo que a faixa continuava sendo o caminho
+   *  para trocar de mês. Mas a FAIXA EXISTE PORQUE O PONTO DE 16px "ERA
+   *  PONTARIA" — está escrito no comentário dela —, então eu tinha acabado de
+   *  pôr a ação nova atrás do alvo difícil, e deixado o alvo fácil com a ação
+   *  antiga. Quem não acerta o ponto não alcançava o painel do mês.
+   *
+   *  OS DOIS FAZEM A MESMA COISA, como sempre fizeram: é o que os torna
+   *  aprendíveis. Trocar o mês da tela continua no seletor "Mês" do topo, que
+   *  fica fora das abas e vale para a tela inteira. */
   aoAprofundarNoMes?: (mes: string) => void;
   /** A jornada já calculada, para quem não está desenhando o ISR geral —
    *  `dominio/jornadaDaLente.ts` monta este mesmo formato a partir da nota
@@ -306,8 +310,8 @@ export function JornadaDoIndice({
             destacado={destacado === ponto.mes}
             aoDestacar={definirDestacado}
             aoSoltar={soltar}
-            //: O PONTO APROFUNDA quando a tela sabe aprofundar; quando não,
-            //: continua trocando o mês (é o caso da jornada do ISR geral).
+            //: APROFUNDA quando a tela sabe aprofundar; quando não, troca o mês
+            //: (é o caso da jornada do ISR geral, que não tem painel por mês).
             aoEscolher={aoAprofundarNoMes ?? aoEscolherMes}
             aprofunda={Boolean(aoAprofundarNoMes)}
           />
@@ -390,7 +394,11 @@ export function JornadaDoIndice({
             destacado={destacado === coluna.mes}
             aoDestacar={definirDestacado}
             aoSoltar={soltar}
-            aoEscolher={aoEscolherMes}
+            //: A FAIXA FAZ O MESMO QUE O PONTO — ver `aoAprofundarNoMes`. Ela é o
+            //: alvo grande; deixá-la com a ação antiga punia justamente quem
+            //: precisa dela.
+            aoEscolher={aoAprofundarNoMes ?? aoEscolherMes}
+            aprofunda={Boolean(aoAprofundarNoMes)}
           />
         ))}
       </div>
@@ -463,12 +471,15 @@ function MesNaFita({
   aoDestacar,
   aoSoltar,
   aoEscolher,
+  aprofunda = false,
 }: {
   coluna: ColunaDoMes;
   destacado: boolean;
   aoDestacar: (mes: string) => void;
   aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
+  /** O clique abre o painel do mês, em vez de trocar o mês da tela. */
+  aprofunda?: boolean;
 }) {
   const aceso = coluna.selecionada || destacado;
   return (
@@ -481,7 +492,12 @@ function MesNaFita({
       onBlur={() => aoSoltar(coluna.mes)}
       // O NOME ACESSÍVEL DIZ O MÊS E O QUE ELE FEZ: "jun/26" sozinho obriga
       // quem ouve a abrir o mês para descobrir se vale abrir.
-      aria-label={`${coluna.nome}, ${coluna.variacao}`}
+      aria-label={
+        aprofunda
+          ? `${coluna.nome}, ${coluna.variacao}. Abrir o mês.`
+          : `${coluna.nome}, ${coluna.variacao}`
+      }
+      title={aprofunda ? 'Abrir este mês' : undefined}
       aria-current={coluna.selecionada ? 'true' : undefined}
       className="jornada__mes"
       style={{

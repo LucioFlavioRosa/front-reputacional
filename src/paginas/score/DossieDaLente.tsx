@@ -210,6 +210,9 @@ function Conteudo({
     //: A DIMENSÃO QUE ABRIU O PAINEL, para o título dele dizer o degrau que a
     //: pessoa acabou de abrir — a trilha vem em ordem de domínio, não de descida.
     ultimo?: string;
+    //: ABERTO POR UM MÊS (coluna da Evolução, ponto da Jornada): o título nomeia
+    //: o mês, e não o recorte que veio junto da tela.
+    peloMes?: boolean;
   } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
     definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
@@ -219,7 +222,10 @@ function Conteudo({
   //: O FILTRO DA TELA VAI JUNTO, de propósito: com uma UF escolhida, o gráfico de
   //: Evolução já desenha só aquela UF — abrir o mês inteiro a partir de uma barra
   //: que mostra o Rio contaria outro número do que a barra que foi clicada.
-  const aoAprofundarNoMes = (mes: string) => definirAprofundando({ mes, filtro });
+  const aoAprofundarNoMes = (mes: string) =>
+    //: `peloMes` É PARA O TÍTULO: a pessoa clicou num mês, e o painel tem de se
+    //: chamar pelo mês — mesmo quando herda o recorte da tela. Achado de revisão.
+    definirAprofundando({ mes, filtro, peloMes: true });
 
   return (
     <>
@@ -272,11 +278,15 @@ function Conteudo({
           //: A tela de trás fica onde estava — é o que diferencia aprofundar de
           //: recortar.
           ultimoDegrau={aprofundando.ultimo}
+          tituloPeloMes={aprofundando.peloMes}
           aoDescer={(chave, valor) =>
             definirAprofundando({
               ...aprofundando,
               filtro: { ...aprofundando.filtro, [chave]: valor },
               ultimo: chave,
+              //: DESCER DENTRO DO PAINEL deixa de ser "o mês": o título passa a
+              //: nomear o degrau que a pessoa abriu agora.
+              peloMes: false,
             })
           }
           aoSubir={(chave) =>

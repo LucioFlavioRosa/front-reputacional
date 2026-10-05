@@ -125,13 +125,18 @@ describe('a jornada do índice', () => {
     expect(aoEscolherMes).toHaveBeenCalledWith('2026-03');
   });
 
-  it('o PONTO abre o mês quando a tela sabe aprofundar, e a FITA continua trocando', async () => {
+  it('OS DOIS ALVOS abrem o mês: o ponto da curva e a célula da fita', async () => {
     /** PEDIDO DO DONO DO PRODUTO, depois do mesmo na Evolução: "ao clicar em
      *  algum ponto" da Jornada, abrir o painel do mês.
      *
-     *  OS DOIS ALVOS SÃO GÊMEOS — a fita existe porque o ponto de 16px na curva
-     *  "era pontaria" — e passam a fazer coisas diferentes. É deliberado: sem
-     *  isso, abrir o mês de março exigiria primeiro TROCAR a tela para março. */
+     *  OS DOIS, E ISTO FOI ACHADO DE REVISÃO. Eu havia ligado só o ponto,
+     *  argumentando que a fita seguia servindo para trocar de mês — mas A FITA
+     *  EXISTE PORQUE O PONTO DE 16px "ERA PONTARIA", está escrito nela. Ou seja:
+     *  eu tinha posto a ação nova atrás do alvo difícil e deixado o alvo fácil
+     *  com a ação antiga. Quem não acerta o ponto não alcançava o painel.
+     *
+     *  TROCAR O MÊS DA TELA continua no seletor "Mês" do topo, que fica fora das
+     *  abas e vale para a tela inteira. */
     const aoEscolherMes = vi.fn();
     const aoAprofundarNoMes = vi.fn();
     render(
@@ -144,14 +149,20 @@ describe('a jornada do índice', () => {
       />,
     );
 
-    //: O ponto da curva: o botão cujo nome acessível termina em "Abrir o mês."
-    await userEvent.click(screen.getByRole('button', { name: /mar.*Abrir o mês\.$/i }));
-    expect(aoAprofundarNoMes).toHaveBeenCalledWith('2026-03');
-    expect(aoEscolherMes).not.toHaveBeenCalled();
+    //: Os dois alvos de março anunciam a mesma ação.
+    const deMarco = screen
+      .getAllByRole('button')
+      .filter((botao) => /Abrir o mês\.$/.test(botao.getAttribute('aria-label') ?? ''))
+      .filter((botao) => /mar/i.test(botao.getAttribute('aria-label') ?? ''));
+    expect(deMarco).toHaveLength(2);
 
-    //: E a fita continua sendo quem troca o mês da tela.
-    await userEvent.click(naFita('março'));
-    expect(aoEscolherMes).toHaveBeenCalledWith('2026-03');
+    for (const alvo of deMarco) {
+      aoAprofundarNoMes.mockClear();
+      await userEvent.click(alvo);
+      expect(aoAprofundarNoMes).toHaveBeenCalledWith('2026-03');
+    }
+    //: E NENHUM DOS DOIS troca o mês da tela.
+    expect(aoEscolherMes).not.toHaveBeenCalled();
   });
 
   it('sem aprofundamento, o ponto volta a TROCAR o mês', async () => {

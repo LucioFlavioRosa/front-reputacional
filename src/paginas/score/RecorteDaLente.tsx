@@ -48,6 +48,7 @@ export function RecorteDaLente({
   aoDescer,
   aoSubir,
   ultimoDegrau,
+  tituloPeloMes = false,
 }: {
   codigo: string;
   mes: string;
@@ -60,6 +61,14 @@ export function RecorteDaLente({
    *  na ordem da descida. Quem abria "UF: RJ" e descia em "Cidadão" via o título
    *  voltar para "RJ", porque na Sociedade o perfil vem antes da UF. */
   ultimoDegrau?: string;
+  /** O painel foi aberto clicando num MÊS (a coluna da Evolução, o ponto da
+   *  Jornada), e por isso o título nomeia o mês mesmo havendo recorte na trilha.
+   *
+   *  ACHADO DE REVISÃO: com um filtro de tela ativo, clicar na coluna de abril
+   *  abria o painel certo e o intitulava "Folha" — o degrau herdado do filtro.
+   *  A pessoa clicou num MÊS; o título tem de responder ao que ela clicou, e o
+   *  recorte herdado continua visível na trilha. */
+  tituloPeloMes?: boolean;
   aoFechar: () => void;
   /** Empilha mais um degrau — descer um nível SEM sair do painel. */
   aoDescer: (chave: string, valor: string) => void;
@@ -105,8 +114,10 @@ export function RecorteDaLente({
 
   //: O DEGRAU DO TÍTULO: o que a pessoa acabou de abrir, e só então o último da
   //: trilha (que é ordem de domínio, não de descida).
-  const ultimo =
-    recorte?.trilha.find((passo) => passo.chave === ultimoDegrau) ?? recorte?.trilha.at(-1);
+  const ultimo = tituloPeloMes
+    ? undefined
+    : (recorte?.trilha.find((passo) => passo.chave === ultimoDegrau) ??
+      recorte?.trilha.at(-1));
 
   return (
     <Modal
