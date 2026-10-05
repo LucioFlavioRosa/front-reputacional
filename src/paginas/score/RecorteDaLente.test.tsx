@@ -270,6 +270,24 @@ describe('RecorteDaLente', () => {
     expect(screen.queryByRole('link', { name: '2026-06-09' })).toBeNull();
   });
 
+  it('SELECIONAR texto na linha não abre a página', async () => {
+    /** A tabela de menções é feita de texto que se copia, e um arrasto para
+     *  selecionar termina em `click`. Sem a guarda, copiar meia frase abria a
+     *  página do fornecedor no meio do gesto. */
+    const espiao = vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => 'Falta de água',
+    } as unknown as Selection);
+    abrir(DO_RIO);
+    const dentro = await screen.findByText('Falta de água no bairro');
+
+    await userEvent.click(dentro.closest('tr')!);
+
+    expect(window.open).not.toHaveBeenCalled();
+    espiao.mockRestore();
+    vi.mocked(window.getSelection).mockRestore();
+  });
+
   it('endereço que não é http NAO vira destino', async () => {
     /** O ENDEREÇO VEM DO ARQUIVO QUE O FORNECEDOR ENTREGOU: um `javascript:`
      *  numa célula viraria código executando na sessão de quem clicou. */

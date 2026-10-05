@@ -742,7 +742,15 @@ export function TabelaDeLeitura({
               //: do fornecedor perderia o caminho inteiro.
               onClick={
                 destino
-                  ? () => window.open(destino, '_blank', 'noopener,noreferrer')
+                  ? () => {
+                      //: SELECIONAR TEXTO NÃO ABRE NADA. A tabela de menções é
+                      //: feita de texto que se copia, e um arrasto para
+                      //: selecionar termina em `click` — sem esta guarda, copiar
+                      //: meia frase abriria a página do fornecedor no meio do
+                      //: gesto.
+                      if (window.getSelection()?.toString()) return;
+                      window.open(destino, '_blank', 'noopener,noreferrer');
+                    }
                   : undefined
               }
               title={destino ? 'Abrir na fonte' : undefined}
@@ -756,6 +764,13 @@ export function TabelaDeLeitura({
                 const bruto = linha[coluna.chave];
                 const destaque = coluna.destaque?.(linha) ?? null;
                 const vazia = bruto === null || bruto === undefined || bruto === '';
+                const conteudo = vazia ? (
+                  <SemDado />
+                ) : coluna.formatar ? (
+                  coluna.formatar(bruto, linha)
+                ) : (
+                  <ValorDaCelula valor={bruto} />
+                );
                 return (
                   <td
                     key={coluna.chave}
@@ -772,16 +787,21 @@ export function TabelaDeLeitura({
                       fontWeight: destaque ? 700 : undefined,
                     }}
                   >
-                    {vazia ? (
-                      <SemDado />
-                    ) : coluna.formatar ? (
-                      coluna.formatar(bruto, linha)
-                    ) : destino && coluna.chave === colunaDoTexto?.chave ? (
-                      //: O LINK NO PRÓPRIO TEXTO: quem navega por teclado chega
-                      //: nele, o leitor de tela o anuncia como link, e o meio do
-                      //: mouse abre em outra aba. `stopPropagation` para o clique
-                      //: não contar duas vezes (o link já abre; a linha abriria
-                      //: de novo).
+                    {/* O LINK ENVOLVE O CONTEÚDO, qualquer que ele seja — e não
+                        é um terceiro ramo ao lado do formatador. Como ramo,
+                        bastava uma coluna formatada virar a primeira para o link
+                        desaparecer em silêncio: o formatador ganharia o ternário,
+                        e ninguém notaria, porque a linha continua clicável. */}
+                    {/* `!vazia` PORQUE CÉLULA VAZIA NÃO VIRA LINK: sem isto, a
+                        linha sem texto da menção publicava um "—" clicável — um
+                        link cujo rótulo é um travessão, que o leitor de tela
+                        anuncia como "link, travessão". O clique na linha continua
+                        levando. (Teste pegou.) */}
+                    {destino && !vazia && coluna.chave === colunaDoTexto?.chave ? (
+                      //: QUEM NAVEGA POR TECLADO chega nele, o leitor de tela o
+                      //: anuncia como link, e o meio do mouse abre em outra aba.
+                      //: `stopPropagation` para o clique não contar duas vezes (o
+                      //: link já abre; a linha abriria de novo).
                       <a
                         href={destino}
                         target="_blank"
@@ -789,10 +809,10 @@ export function TabelaDeLeitura({
                         onClick={(evento) => evento.stopPropagation()}
                         style={{ color: 'inherit', textDecoration: 'none' }}
                       >
-                        <ValorDaCelula valor={bruto} />
+                        {conteudo}
                       </a>
                     ) : (
-                      <ValorDaCelula valor={bruto} />
+                      conteudo
                     )}
                   </td>
                 );
