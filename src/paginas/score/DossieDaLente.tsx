@@ -263,7 +263,15 @@ function Conteudo({
       ) : null}
 
       <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
-      <BlocoAmplo titulo="Temas mais falados" bloco={dossie.temas_mais_falados} />
+      {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
+          painel a primeira aba é o Subtema — que é onde "Saneamento básico"
+          deixa de ser um rótulo e passa a dizer o que aconteceu. */}
+      <BlocoAmplo
+        titulo="Temas mais falados"
+        bloco={dossie.temas_mais_falados}
+        filtro={filtro}
+        aoAprofundar={aoAprofundar}
+      />
 
       {/* O APROFUNDAMENTO, por cima de tudo. Montado só quando há recorte
           aberto: um modal montado e invisível continua carregando dados. */}
@@ -740,7 +748,20 @@ function ClimaPorVeiculos({
  *  tier/veículo/atributo/tema em cada consulta, então os três estreitam
  *  juntos quando alguém filtra — é a mesma régua "do amplo ao específico"
  *  levada até a linha, não três drill-downs independentes. */
-function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
+function BlocoAmplo({
+  titulo,
+  bloco,
+  filtro,
+  aoAprofundar,
+}: {
+  titulo: string;
+  bloco: Bloco;
+  /** OS DOIS JUNTOS, OU NENHUM — mesmo contrato de `Painel`: o bloco só fica
+   *  clicável quando a tela sabe onde levar o clique, e só quando o servidor diz
+   *  o que ele recorta (`bloco.recorta`). */
+  filtro?: FiltroDaLente;
+  aoAprofundar?: (chave: string, valor: string) => void;
+}) {
   return (
     <ComFaixaDoTopo>
     <Secao titulo={titulo}>
@@ -751,7 +772,7 @@ function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
           ficha={bloco.ficha}
           ajuda={GUIA_DO_BLOCO[bloco.titulo]}
         />
-        <Painel bloco={bloco} />
+        <Painel bloco={bloco} filtro={filtro} aoAprofundar={aoAprofundar} />
         <NotaDeFonte ficha={bloco.ficha} />
       </Cartao>
     </Secao>
