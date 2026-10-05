@@ -530,6 +530,9 @@ export interface InterlocutorEntrada {
   area?: string | null;
   /** Como se chega na pessoa para marcar a agenda. */
   email?: string | null;
+  /** Links/handles de redes sociais, texto livre, zero ou mais — não
+   *  identifica a rede nem valida formato. */
+  redes_sociais?: string[];
   tipo?: string | null;
   ativo?: boolean;
 }
