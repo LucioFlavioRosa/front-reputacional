@@ -86,7 +86,15 @@ export function RecorteDaLente({
       titulo={ultimo ? ultimo.valor : 'O mês inteiro'}
       subtitulo={<Trilha recorte={recorte} aoSubir={aoSubir} />}
       aoFechar={aoFechar}
-      largura={600}
+      //: MAIS LARGO QUE OS 600px DA GAVETA DO PACOTE, e o motivo é a tabela de
+      //: menções: são sete colunas, e uma delas é o TEXTO da menção — o que se
+      //: lê. Em 600px o texto virava uma coluna de três palavras por linha e as
+      //: outras seis saíam da borda; o dono do produto foi à tela e disse: "não
+      //: estou conseguindo ler todas as colunas".
+      //:
+      //: `Modal` trata isto como MÁXIMO (`maxWidth` com `width: 100%`), então em
+      //: tela estreita o painel encolhe sozinho em vez de cortar.
+      largura={1100}
     >
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
