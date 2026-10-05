@@ -58,6 +58,16 @@ export interface Bloco {
   cores: string[];
   /** Só nas tabelas: quais colunas mostrar, na ordem em que se lê. */
   colunas: ColunaDoBloco[];
+  /** A coluna cujo valor é o ENDEREÇO DA LINHA. A tela a usa como destino de um
+   *  clique na linha e NÃO desenha a coluna.
+   *
+   *  UMA COLUNA "LINK" COM "ABRIR ↗" REPETIDO É RUÍDO, e rouba largura do texto
+   *  da menção — que é o que se lê. Pedido do dono do produto: "não precisa ter o
+   *  link no modal, mas se clicar gostaria de acessar a página".
+   *
+   *  VEM DO SERVIDOR pelo mesmo motivo de `recorta`: procurar uma coluna chamada
+   *  "link" é adivinhação pelo nome. */
+  coluna_do_link: string | null;
   /** A dimensão do recorte que um clique neste bloco aplica — `'tema'`,
    *  `'empresa'`, `'perfil_autor'`: a chave do parâmetro da rota, igual à do
    *  filtro. Nula no bloco que não recorta nada (a evolução, as tabelas).
@@ -319,6 +329,20 @@ export interface ColunaMontada {
  *  tabela inteira em silêncio. Agora o `subtipo` diz qual leitura é, e ele não
  *  muda quando alguém melhora um texto.
  */
+/** O endereço para onde cada linha desta tabela leva — ou nada, quando a tabela
+ *  não tem destino.
+ *
+ *  O SERVIDOR DIZ QUAL COLUNA É (`bloco.coluna_do_link`), e a tela não procura por
+ *  nome: é o mesmo cuidado de `recorta`, e a mesma razão pela qual a escolha do
+ *  schema da tabela deixou de ser adivinhada pelo título. */
+export function enderecoDaLinhaDo(
+  bloco: Bloco,
+): ((linha: Record<string, unknown>) => string | null) | undefined {
+  const chave = bloco.coluna_do_link;
+  if (!chave) return undefined;
+  return (linha) => (typeof linha[chave] === 'string' ? (linha[chave] as string) : null);
+}
+
 export function colunasDaTabela(bloco: Bloco): ColunaMontada[] {
   return bloco.colunas.map((coluna) => ({
     chave: coluna.chave,

@@ -64,6 +64,7 @@ const DO_RIO: Recorte = {
       cores: [],
       colunas: [],
       recorta: 'perfil_autor',
+      coluna_do_link: null,
       ficha: FICHA,
     },
   ],
@@ -72,7 +73,13 @@ const DO_RIO: Recorte = {
     subtipo: null,
     titulo: 'Menções',
     conclusao: null,
-    dados: [{ texto: 'Falta de água no bairro', quando: '2026-06-10' }],
+    dados: [
+      {
+        texto: 'Falta de água no bairro',
+        quando: '2026-06-10',
+        link: 'https://exemplo.com/post/1',
+      },
+    ],
     legenda: [],
     cores: [],
     colunas: [
@@ -80,6 +87,9 @@ const DO_RIO: Recorte = {
       { chave: 'quando', titulo: 'Quando', alinhamento: 'esquerda' },
     ],
     recorta: null,
+    //: A TABELA DE MENÇÕES LEVA À FONTE: o servidor diz qual coluna é o
+    //: endereço da linha, e a coluna não é desenhada.
+    coluna_do_link: 'link',
     ficha: FICHA,
   },
 };
@@ -190,6 +200,94 @@ describe('RecorteDaLente', () => {
     expect(await screen.findByText('Nenhum item deste recorte neste mês.')).toBeTruthy();
     expect(screen.getByText('Este recorte, mês a mês')).toBeTruthy();
     expect(screen.getByText('31 itens')).toBeTruthy();
+  });
+
+  it('clicar na LINHA da menção abre a página da fonte, em outra aba', async () => {
+    /** PEDIDO DO DONO DO PRODUTO: "não precisa ter o link no modal, mas se
+     *  clicar gostaria de acessar a página". Uma coluna "Link" com "Abrir ↗"
+     *  repetido trinta vezes é ruído, e rouba largura do texto — que é o que se
+     *  lê.
+     *
+     *  EM OUTRA ABA porque a tela de trás é o aprofundamento que a pessoa estava
+     *  lendo: trocá-la pela página do fornecedor perderia o caminho inteiro. */
+    const espiao = vi.spyOn(window, 'open').mockReturnValue(null);
+    abrir(DO_RIO);
+    const dentro = await screen.findByText('Falta de água no bairro');
+
+    await userEvent.click(dentro.closest('tr')!);
+
+    expect(window.open).toHaveBeenCalledWith(
+      'https://exemplo.com/post/1',
+      '_blank',
+      'noopener,noreferrer',
+    );
+    espiao.mockRestore();
+  });
+
+  it('o texto da menção é um LINK de verdade, para teclado e leitor de tela', async () => {
+    /** O CLIQUE NA LINHA É CONVENIÊNCIA; o link é o caminho acessível. Um `tr`
+     *  com `role="button"` quebraria a semântica da tabela — mesmo achado que
+     *  tirou o `role` do `li` nas barras. */
+    abrir(DO_RIO);
+
+    const link = await screen.findByRole('link', { name: /Falta de água no bairro/ });
+    expect(link.getAttribute('href')).toBe('https://exemplo.com/post/1');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(link.getAttribute('target')).toBe('_blank');
+  });
+
+  it('a coluna de LINK não é desenhada — o endereço é o destino da linha', async () => {
+    abrir(DO_RIO);
+    await screen.findByText('Falta de água no bairro');
+
+    expect(screen.queryByText('Abrir ↗')).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Link' })).toBeNull();
+  });
+
+  it('o link NÃO PULA de coluna quando uma linha vem sem texto', async () => {
+    /** FURO MEU, CORRIGIDO ANTES DE IR: eu havia escrito "a primeira célula com
+     *  texto", POR LINHA — e numa linha sem o texto da menção o link cairia na
+     *  coluna de data. A mesma tabela teria o link em lugares diferentes
+     *  dependendo do que o fornecedor preencheu, e uma tabela assim não se
+     *  aprende. A coluna é decisão da TABELA: a primeira. */
+    abrir({
+      ...DO_RIO,
+      itens_do_recorte: {
+        ...DO_RIO.itens_do_recorte,
+        dados: [
+          { texto: null, quando: '2026-06-09', link: 'https://exemplo.com/post/2' },
+          { texto: 'Com texto', quando: '2026-06-10', link: 'https://exemplo.com/post/3' },
+        ],
+      },
+    });
+    await screen.findByText('Com texto');
+
+    //: Um link só, no texto da segunda linha: a primeira não tem o que linkar, e
+    //: a data dela NÃO virou link.
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toBe('Com texto');
+    expect(screen.queryByRole('link', { name: '2026-06-09' })).toBeNull();
+  });
+
+  it('endereço que não é http NAO vira destino', async () => {
+    /** O ENDEREÇO VEM DO ARQUIVO QUE O FORNECEDOR ENTREGOU: um `javascript:`
+     *  numa célula viraria código executando na sessão de quem clicou. */
+    const aberto = vi.spyOn(window, 'open').mockReturnValue(null);
+    abrir({
+      ...DO_RIO,
+      itens_do_recorte: {
+        ...DO_RIO.itens_do_recorte,
+        dados: [{ texto: 'Menção suspeita', quando: '2026-06-10', link: 'javascript:alert(1)' }],
+      },
+    });
+    const dentro = await screen.findByText('Menção suspeita');
+
+    await userEvent.click(dentro.closest('tr')!);
+
+    expect(window.open).not.toHaveBeenCalled();
+    expect(screen.queryByRole('link', { name: /Menção suspeita/ })).toBeNull();
+    aberto.mockRestore();
   });
 
   it('pede o recorte com o caminho inteiro, e não só o último degrau', async () => {

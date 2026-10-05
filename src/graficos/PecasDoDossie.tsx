@@ -658,13 +658,42 @@ export function TabelaDeLeitura({
   colunas,
   linhas,
   vazio = 'Sem registro no período.',
+  enderecoDaLinha,
 }: {
   colunas: ColunaDaTabela[];
   linhas: Record<string, unknown>[];
   vazio?: string;
+  /** O endereço para onde a linha leva, quando há um.
+   *
+   *  CLIQUE NA LINHA **E** LINK DE VERDADE NO TEXTO, e os dois não são
+   *  redundância:
+   *
+   *    o clique na linha   é o gesto que a pessoa já tenta — pedido do dono do
+   *                        produto, "se clicar gostaria de acessar a página"
+   *    o `a` no texto      é o que teclado e leitor de tela alcançam, e o que
+   *                        permite abrir em outra aba pelo meio do mouse
+   *
+   *  O `tr` NÃO VIRA BOTÃO: sobrescrever o papel dele quebraria a semântica da
+   *  tabela — é o mesmo achado de revisão que tirou o `role="button"` do `li` em
+   *  `BarrasCemPorCento`. A linha fica linha, com um link dentro. */
+  enderecoDaLinha?: (linha: Record<string, unknown>) => string | null;
 }) {
   const id = useId();
   const [linhaEmFoco, definirLinhaEmFoco] = useState<number | null>(null);
+  //: QUAL CÉLULA RECEBE O LINK: a PRIMEIRA COLUNA, e a decisão é da tabela —
+  //: não de cada linha.
+  //:
+  //: EU HAVIA ESCRITO "a primeira célula com texto", POR LINHA, e isso faz o
+  //: link pular de coluna: numa linha sem texto de menção ele cairia na coluna
+  //: de rede ou de data, e a mesma tabela teria o link em lugares diferentes
+  //: dependendo do que o fornecedor preencheu. Uma tabela em que o link muda de
+  //: lugar não se aprende.
+  //:
+  //: A PRIMEIRA, E NÃO UMA ADIVINHADA: a ordem das colunas é decisão do
+  //: servidor, e ele põe na frente o que se lê ("O TEXTO VEM PRIMEIRO porque é o
+  //: que se lê", em `COLUNAS_DAS_MENCOES`). Célula vazia nessa coluna fica sem
+  //: link, e o clique na linha continua levando.
+  const colunaDoTexto = colunas[0];
 
   if (!linhas.length) {
     return <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>{vazio}</p>;
@@ -697,14 +726,30 @@ export function TabelaDeLeitura({
           </tr>
         </thead>
         <tbody>
-          {linhas.map((linha, indice) => (
+          {linhas.map((linha, indice) => {
+            const endereco = enderecoDaLinha?.(linha) ?? null;
+            //: SÓ `http`/`https`, e a conferência é aqui porque o endereço vem do
+            //: arquivo que o fornecedor entregou: um `javascript:` numa célula
+            //: viraria código executando na sessão de quem clicou.
+            const destino = endereco && /^https?:\/\//i.test(endereco) ? endereco : null;
+            return (
             <tr
               key={`${id}-${indice}`}
               onMouseEnter={() => definirLinhaEmFoco(indice)}
               onMouseLeave={() => definirLinhaEmFoco(null)}
+              //: ABRE EM OUTRA ABA, como o link do texto: a tela de trás é o
+              //: aprofundamento que a pessoa estava lendo, e trocá-la pela página
+              //: do fornecedor perderia o caminho inteiro.
+              onClick={
+                destino
+                  ? () => window.open(destino, '_blank', 'noopener,noreferrer')
+                  : undefined
+              }
+              title={destino ? 'Abrir na fonte' : undefined}
               style={{
                 borderBottom: '1px solid var(--borda)',
                 background: linhaEmFoco === indice ? 'var(--bg-hover)' : undefined,
+                cursor: destino ? 'pointer' : undefined,
               }}
             >
               {colunas.map((coluna) => {
@@ -731,6 +776,21 @@ export function TabelaDeLeitura({
                       <SemDado />
                     ) : coluna.formatar ? (
                       coluna.formatar(bruto, linha)
+                    ) : destino && coluna.chave === colunaDoTexto?.chave ? (
+                      //: O LINK NO PRÓPRIO TEXTO: quem navega por teclado chega
+                      //: nele, o leitor de tela o anuncia como link, e o meio do
+                      //: mouse abre em outra aba. `stopPropagation` para o clique
+                      //: não contar duas vezes (o link já abre; a linha abriria
+                      //: de novo).
+                      <a
+                        href={destino}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(evento) => evento.stopPropagation()}
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                      >
+                        <ValorDaCelula valor={bruto} />
+                      </a>
                     ) : (
                       <ValorDaCelula valor={bruto} />
                     )}
@@ -738,7 +798,8 @@ export function TabelaDeLeitura({
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

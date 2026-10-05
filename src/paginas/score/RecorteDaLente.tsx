@@ -31,7 +31,13 @@ import type { FiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
 import { obterRecorteDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
-import { colunasDaTabela, comoNumero, comoTexto, mesCurto } from '@/dominio/dossie';
+import {
+  colunasDaTabela,
+  comoNumero,
+  comoTexto,
+  enderecoDaLinhaDo,
+  mesCurto,
+} from '@/dominio/dossie';
 import { BarrasCemPorCento, TabelaDeLeitura } from '@/graficos/PecasDoDossie';
 
 export function RecorteDaLente({
@@ -223,6 +229,10 @@ function Conteudo({
           <TabelaDeLeitura
             colunas={colunasDaTabela(recorte.itens_do_recorte)}
             linhas={recorte.itens_do_recorte.dados}
+            //: CLICAR NA LINHA ABRE A MENÇÃO NA FONTE — pedido do dono do
+            //: produto. O servidor diz qual coluna é o endereço; ver
+            //: `coluna_do_link`.
+            enderecoDaLinha={enderecoDaLinhaDo(recorte.itens_do_recorte)}
           />
         </section>
       ) : null}

@@ -44,6 +44,7 @@ import {
   COR_DO_EFEITO,
   ROTULO_DO_EFEITO,
   colunasDaTabela,
+  enderecoDaLinhaDo,
   comoNumero,
   comoTexto,
   corDoTom,
@@ -904,7 +905,13 @@ function Painel({
   }
 
   if (bloco.tipo === 'tabela') {
-    return <TabelaDeLeitura colunas={colunasDaTabela(bloco)} linhas={dados} />;
+    return (
+      <TabelaDeLeitura
+        colunas={colunasDaTabela(bloco)}
+        linhas={dados}
+        enderecoDaLinha={enderecoDaLinhaDo(bloco)}
+      />
+    );
   }
 
   // Um tipo que a tela não conhece é erro de contrato, e some sem avisar se

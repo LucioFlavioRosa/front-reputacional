@@ -48,6 +48,7 @@ function bloco(parcial: Partial<Bloco>): Bloco {
     cores: [],
     colunas: [],
     recorta: null,
+    coluna_do_link: null,
     ficha: FICHA,
     ...parcial,
   };

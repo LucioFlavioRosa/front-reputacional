@@ -41,6 +41,7 @@ function aba(titulo: string, recorta: string, dados: Bloco['dados']): Bloco {
     cores: [],
     colunas: [],
     recorta,
+    coluna_do_link: null,
     ficha: FICHA,
   };
 }
