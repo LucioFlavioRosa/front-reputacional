@@ -27,6 +27,7 @@ import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
 import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
+import { RecorteDaLente } from '@/paginas/score/RecorteDaLente';
 import {
   Cartao,
   Carregando,
@@ -192,6 +193,15 @@ function Conteudo({
   mes: string;
   aoTrocarMes: (mes: string) => void;
 }) {
+  //: O RECORTE ABERTO NO MODAL — nulo com o modal fechado. É um estado À PARTE
+  //: do `filtro` da tela, e a separação é o ponto: a barra de filtros refaz a
+  //: tela, o modal abre ao lado dela. Guardar os dois no mesmo lugar faria
+  //: aprofundar num tema refazer o mês atrás do modal — exatamente o que o dono
+  //: do produto pediu para deixar de acontecer.
+  const [aprofundando, definirAprofundando] = useState<FiltroDaLente | null>(null);
+  const aoAprofundar = (chave: string, valor: string) =>
+    definirAprofundando({ ...filtro, [chave]: valor });
+
   return (
     <>
       <Destaque dossie={dossie} />
@@ -224,15 +234,45 @@ function Conteudo({
       <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
       <BlocoAmplo titulo="Temas mais falados" bloco={dossie.temas_mais_falados} />
 
+      {/* O APROFUNDAMENTO, por cima de tudo. Montado só quando há recorte
+          aberto: um modal montado e invisível continua carregando dados. */}
+      {aprofundando ? (
+        <RecorteDaLente
+          codigo={dossie.codigo}
+          mes={dossie.mes}
+          filtro={aprofundando}
+          aoFechar={() => definirAprofundando(null)}
+          //: DESCER EMPILHA no recorte já aberto, e não no filtro da tela: o
+          //: caminho de dentro do painel é dele, e some quando o painel fecha.
+          //: A tela de trás fica onde estava — é o que diferencia aprofundar de
+          //: recortar.
+          aoDescer={(chave, valor) =>
+            definirAprofundando({ ...aprofundando, [chave]: valor })
+          }
+          aoSubir={(chave) => definirAprofundando({ ...aprofundando, [chave]: undefined })}
+        />
+      ) : null}
+
       {/* ANTES DOS DOIS PAINÉIS, e a ordem é a da leitura: este cartão
           responde "onde está a causa" por seis cortes, e os painéis abaixo são
           os dois que a especificação fixou para a lente — eles aprofundam dois
           desses cortes. Ver o cartão primeiro e os painéis depois é descer; o
           contrário é ler a conclusão antes da pergunta. */}
       <OndeEstaACausa
+        //: REMONTA AO TROCAR DE MÊS OU DE LENTE, e isto é achado de revisão: a
+        //: aba escolhida é estado da tela, e o conjunto de abas muda com o mês
+        //: (uma dimensão deixa de explicar e volta a explicar). Sem a chave, o
+        //: estado antigo ressuscita: o cartão pulava de volta para "Autor" ao
+        //: remover um recorte, mesmo que o último visível fosse "Tema".
+        key={`${dossie.codigo}-${dossie.mes}`}
         abas={dossie.onde_esta_a_causa}
+        lacunas={dossie.lacunas_da_causa}
         filtro={filtro}
-        definirFiltro={definirFiltro}
+        //: PARTE DO RECORTE QUE JÁ ESTÁ NA TELA: aprofundar de dentro de um mês
+        //: já filtrado por UF tem de significar "este tema, no Rio" — senão o
+        //: número do painel e o número do modal discordam, e quem clicou não
+        //: tem como saber por quê.
+        aoAprofundar={(chave, valor) => definirAprofundando({ ...filtro, [chave]: valor })}
       />
 
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
@@ -259,7 +299,7 @@ function Conteudo({
                   básico" no painel de temas recorta a tela inteira por aquele
                   tema, igual à aba do cartão acima. Era isto que faltava para o
                   painel ser um degrau e não um quadro de leitura. */}
-              <Painel bloco={painel} filtro={filtro} definirFiltro={definirFiltro} />
+              <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
               <NotaDeFonte ficha={painel.ficha} />
             </Cartao>
           </ComFaixaDoTopo>
@@ -663,27 +703,24 @@ function Painel({
   bloco,
   fatos = [],
   filtro,
-  definirFiltro,
+  aoAprofundar,
 }: {
   bloco: Bloco;
   fatos?: Dossie['fatos'];
   /** OS DOIS JUNTOS, OU NENHUM: o painel só fica clicável quando a tela sabe
-   *  aplicar o recorte. Os blocos amplos (Drivers, Temas mais falados, Últimas
+   *  onde levar o clique. Os blocos amplos (Drivers, Temas mais falados, Últimas
    *  matérias) desenham sem eles, e continuam só de leitura. */
   filtro?: FiltroDaLente;
-  definirFiltro?: (filtro: FiltroDaLente) => void;
+  aoAprofundar?: (chave: string, valor: string) => void;
 }) {
-  // A DIMENSÃO VEM DO SERVIDOR (`bloco.recorta`). Sem ela — ou sem o filtro —
-  // não há clique: uma barra que parece clicável e não é custa mais do que uma
-  // que não parece.
+  // A DIMENSÃO VEM DO SERVIDOR (`bloco.recorta`). Sem ela — ou sem quem receba
+  // o clique — não há clique: uma barra que parece clicável e não é custa mais
+  // do que uma que não parece.
   const chave =
-    bloco.recorta && filtro && definirFiltro ? (bloco.recorta as keyof FiltroDaLente) : undefined;
+    bloco.recorta && aoAprofundar ? (bloco.recorta as keyof FiltroDaLente) : undefined;
   const recortado = chave && filtro ? filtro[chave] : undefined;
   const aoRecortar =
-    chave && filtro && definirFiltro
-      ? (rotulo: string) =>
-          definirFiltro({ ...filtro, [chave]: recortado === rotulo ? undefined : rotulo })
-      : undefined;
+    chave && aoAprofundar ? (rotulo: string) => aoAprofundar(chave, rotulo) : undefined;
 
   // `unknown`, e não `never`. O payload de cada tipo de gráfico tem um formato
   // diferente, e dizer ao TypeScript que campo nenhum existe (`never`) o faz

@@ -8,8 +8,10 @@
  *  existiam no seletor da barra de filtros — e a barra serve a quem JÁ SABE o
  *  que procurar. Quem abre a lente com a nota caída não sabe.
  *
- *  ESTE ARQUIVO TRAVA A NAVEGAÇÃO, que é o que faltava: trocar de aba para
- *  perguntar de outro jeito, e clicar numa barra para descer nela.
+ *  E O CLIQUE APROFUNDA, NÃO FILTRA — segunda correção do mesmo dono, nas
+ *  palavras dele: "ao clicar em um dado temos que abrir um modal com o deep
+ *  diving, e não como é feito hoje". Filtrar a tela REFAZ o mês: a nota muda, os
+ *  painéis se refazem, e quem clicou perde de vista o mês de onde saiu.
  */
 
 import { render, screen } from '@testing-library/react';
@@ -60,14 +62,14 @@ describe('OndeEstaACausa', () => {
      *  conteúdo se lê como dado que sumiu. Mercado e Institucional não vêm de
      *  menção, e o servidor manda lista vazia para elas. */
     const { container } = render(
-      <OndeEstaACausa abas={[]} filtro={{}} definirFiltro={vi.fn()} />,
+      <OndeEstaACausa abas={[]} filtro={{}} aoAprofundar={vi.fn()} />,
     );
 
     expect(container.firstChild).toBeNull();
   });
 
   it('mostra uma aba por dimensão, e só o corte da aba ativa', async () => {
-    render(<OndeEstaACausa abas={ABAS} filtro={{}} definirFiltro={vi.fn()} />);
+    render(<OndeEstaACausa abas={ABAS} filtro={{}} aoAprofundar={vi.fn()} />);
 
     expect(screen.getByRole('tab', { name: 'Tema' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'UF' })).toBeTruthy();
@@ -82,67 +84,39 @@ describe('OndeEstaACausa', () => {
     expect(screen.queryByText('Abastecimento')).toBeNull();
   });
 
-  it('clicar numa barra APLICA o recorte daquela dimensão', async () => {
-    /** É O CLIQUE QUE FALTAVA. Quem vê "Abastecimento · 67% negativo" tenta
-     *  clicar NELE — e até agora tinha de procurar o mesmo nome num campo
-     *  suspenso. A dimensão vem do servidor (`bloco.recorta`), e não de um
-     *  palpite pelo título da aba. */
-    const definirFiltro = vi.fn();
-    render(<OndeEstaACausa abas={ABAS} filtro={{}} definirFiltro={definirFiltro} />);
+  it('clicar numa barra APROFUNDA naquela dimensão', async () => {
+    /** É O CLIQUE QUE FALTAVA, e ele ABRE em vez de filtrar. Quem vê
+     *  "Abastecimento · 67% negativo" tenta clicar NELE — e o que tem de
+     *  acontecer é o painel do pedaço, não a tela inteira virar outra. A
+     *  dimensão vem do servidor (`bloco.recorta`), e não de um palpite pelo
+     *  título da aba. */
+    const aoAprofundar = vi.fn();
+    render(<OndeEstaACausa abas={ABAS} filtro={{}} aoAprofundar={aoAprofundar} />);
 
     await userEvent.click(screen.getByText('Abastecimento'));
 
-    expect(definirFiltro).toHaveBeenCalledWith({ tema: 'Abastecimento' });
+    expect(aoAprofundar).toHaveBeenCalledWith('tema', 'Abastecimento');
   });
 
-  it('o recorte se EMPILHA com o que já estava ativo', async () => {
-    /** É o nível 3 do pacote: "Abastecimento no Rio" tem de ser uma pergunta
-     *  possível. Um clique que substituísse o filtro a tornaria impossível. */
-    const definirFiltro = vi.fn();
-    render(
-      <OndeEstaACausa abas={ABAS} filtro={{ uf: 'RJ' }} definirFiltro={definirFiltro} />,
-    );
-
-    //: TROCA DE ABA PRIMEIRO, como a pessoa faz: com `uf=RJ` ativo o cartão abre
-    //: na aba de UF (é onde o recorte está), e perguntar "e por tema?" dentro do
-    //: Rio é exatamente o movimento de descer um nível.
-    await userEvent.click(screen.getByRole('tab', { name: 'Tema' }));
-    await userEvent.click(screen.getByText('Abastecimento'));
-
-    expect(definirFiltro).toHaveBeenCalledWith({ uf: 'RJ', tema: 'Abastecimento' });
-  });
-
-  it('clicar de novo no que já está recortado DESMARCA', async () => {
-    const definirFiltro = vi.fn();
-    render(
-      <OndeEstaACausa
-        abas={ABAS}
-        filtro={{ tema: 'Abastecimento' }}
-        definirFiltro={definirFiltro}
-      />,
-    );
-
-    await userEvent.click(screen.getByText('Abastecimento'));
-
-    expect(definirFiltro).toHaveBeenCalledWith({ tema: undefined });
-  });
-
-  it('a aba abre na dimensão que já está recortada', () => {
+  it('a aba abre na dimensão que já está recortada na tela', () => {
     /** SEM ISTO O CARTÃO SE CONTRADIZ: com `?uf=RJ` vindo de um link, a tela
      *  mostraria o selo "recorte filtrado" no topo e abriria o cartão na aba de
      *  tema — quem chega pelo link não vê onde o recorte foi aplicado. */
-    render(<OndeEstaACausa abas={ABAS} filtro={{ uf: 'RJ' }} definirFiltro={vi.fn()} />);
+    render(<OndeEstaACausa abas={ABAS} filtro={{ uf: 'RJ' }} aoAprofundar={vi.fn()} />);
 
     expect(screen.getByRole('tab', { name: 'UF' }).getAttribute('aria-selected')).toBe('true');
   });
 
-  it('a barra recortada fica marcada, e se chega pelo teclado', async () => {
-    const definirFiltro = vi.fn();
+  it('a linha do recorte ativo fica marcada, e se alcança pelo teclado', async () => {
+    /** MARCADA PELO FILTRO DA TELA, que continua existindo: a barra de filtros é
+     *  o seletor de quem já sabe o que quer ver, e a marca aqui diz "esta linha
+     *  é aquele recorte". O clique, ainda assim, aprofunda. */
+    const aoAprofundar = vi.fn();
     render(
       <OndeEstaACausa
         abas={ABAS}
         filtro={{ tema: 'Abastecimento' }}
-        definirFiltro={definirFiltro}
+        aoAprofundar={aoAprofundar}
       />,
     );
 
@@ -152,6 +126,44 @@ describe('OndeEstaACausa', () => {
     barra.focus();
     await userEvent.keyboard('{Enter}');
 
-    expect(definirFiltro).toHaveBeenCalledWith({ tema: undefined });
+    expect(aoAprofundar).toHaveBeenCalledWith('tema', 'Abastecimento');
+  });
+
+  it('a lista continua sendo LISTA, com o botão dentro de cada item', () => {
+    /** ACHADO DE REVISÃO (baixa): `role="button"` posto no próprio `li` tira
+     *  dele o papel de `listitem`, e quem ouve a tela perde a estrutura "lista
+     *  com N itens" — justamente no gráfico em que a quantidade de linhas é
+     *  parte da leitura. */
+    render(<OndeEstaACausa abas={ABAS} filtro={{}} aoAprofundar={vi.fn()} />);
+
+    const itens = screen.getAllByRole('listitem');
+    expect(itens).toHaveLength(2);
+    expect(itens[0].querySelector('button')).toBeTruthy();
+  });
+
+  it('diz, no rodapé, qual dimensão esperada NÃO explica o mês', () => {
+    /** O AVISO ÂMBAR DO PACOTE (FRONTEND §40). O tema é a primeira dimensão
+     *  prioritária da Sociedade e chega em 28% dos itens reais: sem a frase, o
+     *  cartão abre sem aba de tema logo acima de um painel "Temas × sentimento",
+     *  e quem lê conclui que a tela está quebrada. */
+    render(
+      <OndeEstaACausa
+        abas={ABAS}
+        lacunas={['Tema: a fonte classificou 1.959 de 6.932 itens — pouco para explicar o mês.']}
+        filtro={{}}
+        aoAprofundar={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/a fonte classificou 1.959 de 6.932 itens/)).toBeTruthy();
+  });
+
+  it('o título do clique fala de APROFUNDAR, e não de filtrar', () => {
+    /** A PALAVRA ENSINA O QUE VAI ACONTECER. Quem lê "filtrar" espera a tela
+     *  mudar; aqui a tela de trás fica exatamente onde estava. */
+    render(<OndeEstaACausa abas={ABAS} filtro={{}} aoAprofundar={vi.fn()} />);
+
+    const barra = screen.getByRole('button', { name: /Abastecimento/ });
+    expect(barra.getAttribute('title')).toBe('Aprofundar em Abastecimento');
   });
 });

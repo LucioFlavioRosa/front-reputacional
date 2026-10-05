@@ -88,6 +88,10 @@ const DIMENSOES: {
   { chave: 'uf', rotulo: 'UF', de: 'ufs' },
   { chave: 'perfil_autor', rotulo: 'Perfil do autor', de: 'perfis' },
   { chave: 'autor', rotulo: 'Autor', de: 'autores' },
+  //: A CONCESSIONÁRIA, e ela faltava: o servidor aceita `?empresa=`, devolve
+  //: `opcoes.empresas` e marca o painel de concessionárias com
+  //: `recorta: "empresa"` — só a barra não oferecia o campo. Achado de revisão.
+  { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' },
   { chave: 'tier', rotulo: 'Tier', de: 'tiers', rotulos: ROTULO_DO_TIER },
   { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
   { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },

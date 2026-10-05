@@ -23,7 +23,7 @@ import { useState } from 'react';
 
 import type { FiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
-import { Secao } from '@/componentes/basicos';
+import { FaixaDeAtencao, Secao } from '@/componentes/basicos';
 import { NotaDeFonte } from '@/componentes/Procedencia';
 import type { Bloco } from '@/dominio/dossie';
 import { comoNumero, comoTexto } from '@/dominio/dossie';
@@ -31,12 +31,19 @@ import { BarrasCemPorCento } from '@/graficos/PecasDoDossie';
 
 export function OndeEstaACausa({
   abas,
+  lacunas,
   filtro,
-  definirFiltro,
+  aoAprofundar,
 }: {
   abas: Bloco[];
+  /** A dimensão esperada que não explica este mês — o aviso âmbar do pacote. */
+  lacunas?: string[];
   filtro: FiltroDaLente;
-  definirFiltro: (filtro: FiltroDaLente) => void;
+  /** ABRE O APROFUNDAMENTO, e não aplica o filtro na tela — e esta é a correção
+   *  que o dono do produto pediu: "ao clicar em um dado temos que abrir um modal
+   *  com o deep diving, e não como é feito hoje". Filtrar a tela REFAZ o mês; o
+   *  modal põe o pedaço ao lado dele. Ver `RecorteDaLente`. */
+  aoAprofundar: (chave: string, valor: string) => void;
 }) {
   // ABRE NA DIMENSÃO JÁ RECORTADA, e isto não é conveniência: quem chega por um
   // link com `?uf=RJ` vê o selo "recorte filtrado" no topo da tela, e um cartão
@@ -48,6 +55,7 @@ export function OndeEstaACausa({
   // dado que sumiu. Mercado e Institucional não vêm de menção, e o servidor
   // manda lista vazia para elas.
   if (!abas.length) return null;
+
 
   const bloco = abas.find((candidata) => candidata.titulo === ativa) ?? abas[0];
   const chave = bloco.recorta ? asChave(bloco.recorta) : undefined;
@@ -81,24 +89,26 @@ export function OndeEstaACausa({
           }))}
           legenda={bloco.legenda.length ? bloco.legenda : undefined}
           cores={bloco.cores.length ? bloco.cores : undefined}
+          //: MARCADO PELO RECORTE DA BARRA DE FILTROS, que continua existindo e
+          //: continua filtrando a tela: o seletor serve a quem já sabe o que
+          //: quer ver. A marca diz "esta linha é o recorte que está ativo lá em
+          //: cima", e o clique aqui aprofunda — as duas coisas conversam.
           ativo={ativo}
-          // O EMPILHAMENTO É O PONTO: o recorte novo se soma ao que já estava,
-          // então "Abastecimento no Rio" é uma pergunta possível. Clicar de novo
-          // no que já está marcado desmarca — é como a barra de filtros se
-          // comporta, e duas interações com a mesma aparência e regras
-          // diferentes na mesma tela é o que ensina errado.
-          aoClicar={
-            chave
-              ? (rotulo) =>
-                  definirFiltro({
-                    ...filtro,
-                    [chave]: ativo === rotulo ? undefined : rotulo,
-                  })
-              : undefined
-          }
+          aoClicar={chave ? (rotulo) => aoAprofundar(chave, rotulo) : undefined}
         />
         <NotaDeFonte ficha={bloco.ficha} />
       </div>
+
+      {/* A DIMENSÃO QUE FALTA, DITA. Depois do conteúdo e não antes: é nota de
+          rodapé sobre o que NÃO está ali, e abrir o cartão com ela faria parecer
+          que o cartão inteiro está comprometido. */}
+      {lacunas?.length ? (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {lacunas.map((frase) => (
+            <FaixaDeAtencao key={frase} mensagem={frase} />
+          ))}
+        </div>
+      ) : null}
     </Secao>
   );
 }

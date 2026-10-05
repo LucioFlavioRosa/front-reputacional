@@ -109,95 +109,101 @@ export function BarrasCemPorCento({
 
           const selecionado = ativo === item.rotulo;
 
-          return (
-            // MESMO PADRÃO DE `Ranking` (graficos/Ranking.tsx): `role="button"`
-            // na linha inteira, Enter/Espaço pelo teclado, fundo de destaque no
-            // selecionado. Duas interações com a mesma aparência e regras
-            // diferentes na mesma tela é o que ensina errado.
-            <li
-              key={item.rotulo}
-              onClick={() => aoClicar?.(item.rotulo)}
-              role={aoClicar ? 'button' : undefined}
-              aria-pressed={aoClicar ? selecionado : undefined}
-              tabIndex={aoClicar ? 0 : undefined}
-              onKeyDown={(evento) => {
-                if (!aoClicar) return;
-                if (evento.key === 'Enter' || evento.key === ' ') {
-                  evento.preventDefault();
-                  aoClicar(item.rotulo);
-                }
-              }}
-              title={
-                aoClicar
-                  ? selecionado
-                    ? 'Clique para remover o recorte'
-                    : `Recortar por ${item.rotulo}`
-                  : undefined
-              }
-              style={{
-                padding: '3px 6px',
-                margin: '0 -6px',
-                borderRadius: 'var(--r-chip)',
-                cursor: aoClicar ? 'pointer' : undefined,
-                background: selecionado ? 'var(--bg-hover)' : undefined,
-              }}
-            >
-              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: selecionado ? 700 : 600, flex: 1 }}>
-                  {item.rotulo}
-                </span>
-                <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
-                  {semBase
-                    ? 'sem base'
-                    : soSemClassificacao
-                      ? `${numero(total)} · sentimento a integrar`
-                      : `${numero(total)} · ${dominante}`}
-                </span>
-              </div>
+          // UM `button` DENTRO DO `li`, e não o `li` virando botão — achado de
+          // revisão (baixa): `role="button"` sobrescrito num filho direto de
+          // `<ul>` tira dele o papel de `listitem`, e quem ouve a tela perde a
+          // estrutura "lista com N itens" justamente no gráfico em que a
+          // quantidade de linhas é parte da leitura.
+          //
+          // `button` DE VERDADE, e não um `div` com `role`: Enter e Espaço,
+          // foco visível e `aria-pressed` vêm do elemento — é menos código que
+          // o `Ranking` ao lado, que nasceu antes desta conclusão.
+          const Linha = aoClicar ? 'button' : 'div';
 
-              {semBase ? (
-                <div
-                  title="sem base neste mês"
-                  style={{
-                    // MESMA ESPESSURA DE `Barra` (componentes/basicos.tsx): o
-                    // `Ranking` ao lado usa 7px, e um valor diferente aqui
-                    // desalinhava a altura das duas colunas do dossiê que
-                    // ficam lado a lado.
-                    height: 7,
-                    borderRadius: 2,
-                    border: '1px dashed var(--borda)',
-                    background:
-                      'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
-                  }}
-                />
-              ) : (
-                <div
-                  role="img"
-                  aria-label={
-                    soSemClassificacao
-                      ? `${item.rotulo}: ${total} menções, sentimento a integrar`
-                      : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
-                  }
-                  style={{ display: 'flex', height: 7, borderRadius: 2, overflow: 'hidden', gap: 2 }}
-                >
-                  {(
-                    [
-                      ['positivo', item.positivo, cores[0], legenda[0]],
-                      ['neutro', item.neutro, cores[1], legenda[1]],
-                      ['negativo', item.negativo, cores[2], legenda[2]],
-                      ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
-                    ] as const
-                  )
-                    .filter(([, valor]) => valor > 0)
-                    .map(([chave, valor, cor, rotulo]) => (
-                      <div
-                        key={chave}
-                        title={`${rotulo}: ${numero(valor)} (${Math.round((valor / total) * 100)}%)`}
-                        style={{ width: `${(valor / total) * 100}%`, background: cor }}
-                      />
-                    ))}
+          return (
+            <li key={item.rotulo} style={{ padding: '3px 0' }}>
+              <Linha
+                type={aoClicar ? 'button' : undefined}
+                onClick={aoClicar ? () => aoClicar(item.rotulo) : undefined}
+                aria-pressed={aoClicar ? selecionado : undefined}
+                //: "APROFUNDAR", E NÃO "FILTRAR": o clique abre o painel de
+                //: aprofundamento do pacote (nível 3), que mede aquele pedaço e
+                //: o decompõe por dentro. Quem lê "filtrar" espera a tela
+                //: mudar — e a tela de trás continua onde estava.
+                title={aoClicar ? `Aprofundar em ${item.rotulo}` : undefined}
+                style={{
+                  //: O BOTÃO TEM DE PARECER A LINHA QUE ERA: largura inteira,
+                  //: texto à esquerda, sem moldura nem fundo próprios.
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  color: 'inherit',
+                  border: 'none',
+                  padding: '3px 6px',
+                  margin: '0 -6px',
+                  borderRadius: 'var(--r-chip)',
+                  cursor: aoClicar ? 'pointer' : undefined,
+                  background: selecionado ? 'var(--bg-hover)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
+                  <span style={{ fontSize: 13, fontWeight: selecionado ? 700 : 600, flex: 1 }}>
+                    {item.rotulo}
+                  </span>
+                  <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                    {semBase
+                      ? 'sem base'
+                      : soSemClassificacao
+                        ? `${numero(total)} · sentimento a integrar`
+                        : `${numero(total)} · ${dominante}`}
+                  </span>
                 </div>
-              )}
+
+                {semBase ? (
+                  <div
+                    title="sem base neste mês"
+                    style={{
+                      // MESMA ESPESSURA DE `Barra` (componentes/basicos.tsx): o
+                      // `Ranking` ao lado usa 7px, e um valor diferente aqui
+                      // desalinhava a altura das duas colunas do dossiê que
+                      // ficam lado a lado.
+                      height: 7,
+                      borderRadius: 2,
+                      border: '1px dashed var(--borda)',
+                      background:
+                        'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    role="img"
+                    aria-label={
+                      soSemClassificacao
+                        ? `${item.rotulo}: ${total} menções, sentimento a integrar`
+                        : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
+                    }
+                    style={{ display: 'flex', height: 7, borderRadius: 2, overflow: 'hidden', gap: 2 }}
+                  >
+                    {(
+                      [
+                        ['positivo', item.positivo, cores[0], legenda[0]],
+                        ['neutro', item.neutro, cores[1], legenda[1]],
+                        ['negativo', item.negativo, cores[2], legenda[2]],
+                        ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
+                      ] as const
+                    )
+                      .filter(([, valor]) => valor > 0)
+                      .map(([chave, valor, cor, rotulo]) => (
+                        <div
+                          key={chave}
+                          title={`${rotulo}: ${numero(valor)} (${Math.round((valor / total) * 100)}%)`}
+                          style={{ width: `${(valor / total) * 100}%`, background: cor }}
+                        />
+                      ))}
+                  </div>
+                )}
+              </Linha>
             </li>
           );
         })}

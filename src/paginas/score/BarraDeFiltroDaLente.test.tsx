@@ -27,6 +27,7 @@ const DA_SOCIEDADE: OpcoesDeFiltroDaLente = {
   ufs: ['RJ', 'SP'],
   subtemas: ['Falta de água'],
   autores: ['@vizinho'],
+  empresas: ['Águas do Rio', 'Aegea Holding'],
 };
 
 const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
@@ -38,6 +39,7 @@ const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
   ufs: [],
   subtemas: [],
   autores: [],
+  empresas: [],
 };
 
 describe('BarraDeFiltroDaLente', () => {
