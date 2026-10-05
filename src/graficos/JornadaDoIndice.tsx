@@ -54,9 +54,11 @@
  *  toda tela que não fosse a do desenho.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { VB, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { VB, dominioDaJornada, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { DURACAO_DA_TRANSICAO, entre, suavidade } from '@/dominio/dominioSuave';
+import type { Dominio } from '@/dominio/dominioSuave';
 import type {
   ColunaDoMes,
   FaixaDeFundo,
@@ -68,12 +70,72 @@ import { COR_DO_EFEITO } from '@/dominio/score';
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
 
+/** O eixo, andando até onde ele deve estar.
+ *
+ *  O EIXO É ADAPTATIVO E POR ISSO SE MOVE: um mês novo na base ou uma lente
+ *  escolhida para comparar mudam o domínio, e a mudança seca lê-se como mudança
+ *  de dado — a curva aparece noutra altura sem nada avisar que a régua é que
+ *  mudou. Este hook faz a régua caminhar, em `DURACAO_DA_TRANSICAO`.
+ *
+ *  O PRIMEIRO DESENHO NÃO ANIMA, e isso é metade da ideia: a transição existe
+ *  para a MUDANÇA. Animar na abertura faria a tela nascer com o eixo errado e
+ *  consertá-lo na frente de quem abriu.
+ *
+ *  `prefers-reduced-motion` É OBEDECIDO, e sem ele este hook seria um defeito de
+ *  acessibilidade: quem pede menos movimento tem razões (vertigem, enxaqueca
+ *  vestibular) e recebe o eixo no lugar, de uma vez.
+ *
+ *  A CONTA NÃO MORA AQUI. `dominioDaJornada` diz para onde ir, `entre` e
+ *  `suavidade` dizem como caminhar — os dois com testes próprios. Aqui fica só o
+ *  relógio, que é o que um componente tem e um módulo puro não. */
+function useEixoQueSeMove(alvo: Dominio): Dominio {
+  const [atual, definirAtual] = useState(alvo);
+  //: O PONTO DE PARTIDA DO QUADRO ATUAL, numa ref e não no estado: ele é lido
+  //: dentro da animação e escrevê-lo no estado faria cada quadro reiniciar o
+  //: efeito, que é o laço infinito clássico desse tipo de hook.
+  const partida = useRef(alvo);
+  const quadro = useRef(0);
+
+  useEffect(() => {
+    if (atual.piso === alvo.piso && atual.teto === alvo.teto) return;
+
+    const quieto =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (quieto) {
+      definirAtual(alvo);
+      return;
+    }
+
+    partida.current = atual;
+    const comecou = performance.now();
+    const passo = (agora: number) => {
+      const andou = Math.min((agora - comecou) / DURACAO_DA_TRANSICAO, 1);
+      definirAtual(entre(partida.current, alvo, suavidade(andou)));
+      //: CHEGA EXATAMENTE NO ALVO: o último quadro usa `andou === 1`, e `entre`
+      //: devolve o destino sem arredondamento. Um eixo que para a um décimo do
+      //: destino desenharia uma escala que ninguém calculou.
+      if (andou < 1) quadro.current = requestAnimationFrame(passo);
+    };
+    quadro.current = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro.current);
+    //: `atual` FICA FORA DAS DEPENDÊNCIAS de propósito: ele muda a cada quadro, e
+    //: incluí-lo reiniciaria a animação sessenta vezes por segundo — ela nunca
+    //: chegaria ao fim. O efeito reage ao ALVO, que é o que de fato mudou.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alvo.piso, alvo.teto]);
+
+  return atual;
+}
+
 export function JornadaDoIndice({
   serie,
   mes,
   comparada,
   nomeDaComparada = '',
   aoEscolherMes,
+  aoAprofundarNoMes,
   jornadaPronta,
 }: {
   serie: PontoDaSerie[];
@@ -81,13 +143,35 @@ export function JornadaDoIndice({
   comparada: string | null;
   nomeDaComparada?: string;
   aoEscolherMes: (mes: string) => void;
+  /** Quando presente, clicar no gráfico abre o aprofundamento daquele mês em
+   *  vez de trocar o mês da tela — NO PONTO E NA FAIXA, os dois.
+   *
+   *  ACHADO DE REVISÃO, e ele desmontou o meu primeiro desenho. Eu havia ligado
+   *  só o ponto, e justifiquei dizendo que a faixa continuava sendo o caminho
+   *  para trocar de mês. Mas a FAIXA EXISTE PORQUE O PONTO DE 16px "ERA
+   *  PONTARIA" — está escrito no comentário dela —, então eu tinha acabado de
+   *  pôr a ação nova atrás do alvo difícil, e deixado o alvo fácil com a ação
+   *  antiga. Quem não acerta o ponto não alcançava o painel do mês.
+   *
+   *  OS DOIS FAZEM A MESMA COISA, como sempre fizeram: é o que os torna
+   *  aprendíveis. Trocar o mês da tela continua no seletor "Mês" do topo, que
+   *  fica fora das abas e vale para a tela inteira. */
+  aoAprofundarNoMes?: (mes: string) => void;
   /** A jornada já calculada, para quem não está desenhando o ISR geral —
    *  `dominio/jornadaDaLente.ts` monta este mesmo formato a partir da nota
    *  de UMA lente. Presente, ela VENCE `serie`: o desenho é o mesmo dos
    *  dois lados, só a conta de onde ele vem é que muda. */
   jornadaPronta?: Jornada;
 }) {
-  const jornada = jornadaPronta ?? jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
+  //: O ALVO DO EIXO, memorizado pelas duas pontas: sem isto, cada render criaria
+  //: um objeto novo e o hook da transição reiniciaria a animação a cada passo do
+  //: mouse sobre a fita dos meses.
+  const alvo = useMemo(() => dominioDaJornada(serie, comparada), [serie, comparada]);
+  const eixo = useEixoQueSeMove(alvo);
+  //: A JORNADA PRONTA VEM DE FORA quando a tela já a calculou (a jornada de UMA
+  //: lente monta o mesmo formato), e aí o eixo dela já é o que ela escolheu.
+  const jornada =
+    jornadaPronta ?? jornadaDoIndice(serie, mes, comparada, nomeDaComparada, eixo);
   const [destacado, definirDestacado] = useState<string | null>(null);
 
   //: SOLTAR SÓ APAGA SE AINDA FOR O MESMO MÊS.
@@ -226,13 +310,20 @@ export function JornadaDoIndice({
             destacado={destacado === ponto.mes}
             aoDestacar={definirDestacado}
             aoSoltar={soltar}
-            aoEscolher={aoEscolherMes}
+            //: APROFUNDA quando a tela sabe aprofundar; quando não, troca o mês
+            //: (é o caso da jornada do ISR geral, que não tem painel por mês).
+            aoEscolher={aoAprofundarNoMes ?? aoEscolherMes}
+            aprofunda={Boolean(aoAprofundarNoMes)}
           />
         ))}
 
         {jornada.marcas.map((marca) => (
           <span
             key={marca.valor}
+            //: O VALOR NUM ATRIBUTO, e não só no texto: é por ele que o teste da
+            //: transição lê onde o eixo está, sem depender de como o número é
+            //: formatado nem de qual `<span>` da tela é qual.
+            data-marca-do-eixo={marca.valor}
             className="tabular"
             style={{
               position: 'absolute',
@@ -303,7 +394,11 @@ export function JornadaDoIndice({
             destacado={destacado === coluna.mes}
             aoDestacar={definirDestacado}
             aoSoltar={soltar}
-            aoEscolher={aoEscolherMes}
+            //: A FAIXA FAZ O MESMO QUE O PONTO — ver `aoAprofundarNoMes`. Ela é o
+            //: alvo grande; deixá-la com a ação antiga punia justamente quem
+            //: precisa dela.
+            aoEscolher={aoAprofundarNoMes ?? aoEscolherMes}
+            aprofunda={Boolean(aoAprofundarNoMes)}
           />
         ))}
       </div>
@@ -321,7 +416,33 @@ export function JornadaDoIndice({
           }}
         >
           <span className="jornada__bico" aria-hidden />
-          <DetalheDoMes coluna={emFoco} aoDestacar={definirDestacado} aoSoltar={soltar} />
+          {/* TODOS OS MESES MONTADOS NO MESMO LUGAR, e só o apontado à vista.
+              É o que tira o salto que o dono do produto viu: "a janela que mostra
+              os detalhes dos pontos mês a mês piorou muito a instabilidade".
+
+              A CAUSA ERA A ALTURA LIVRE: um mês com três fatos e rodapé é alto, o
+              seguinte sem fato nenhum é baixo, e passar o mouse pela fita fazia a
+              janela encurtar e tudo abaixo dela subir. Pior que o salto: o cartão
+              encurtava DEBAIXO DO PONTEIRO, o mouse saía dele sozinho e o destaque
+              se desfazia sem ninguém mexer.
+
+              MEDIDO PELO NAVEGADOR, E NÃO ESTIMADO. Contar linhas para calcular uma
+              altura mínima erraria no texto que quebra em duas — e erraria para
+              menos, justo no mês mais cheio. Empilhados na mesma célula da grade, é
+              o mais alto de verdade que define a altura, com o texto real, na
+              largura real. */}
+          {jornada.colunas.map((coluna) =>
+            coluna.mes === emFoco.mes ? (
+              <DetalheDoMes
+                key={coluna.mes}
+                coluna={coluna}
+                aoDestacar={definirDestacado}
+                aoSoltar={soltar}
+              />
+            ) : (
+              <DetalheDoMes key={coluna.mes} coluna={coluna} reserva />
+            ),
+          )}
         </div>
       ) : null}
 
@@ -350,12 +471,15 @@ function MesNaFita({
   aoDestacar,
   aoSoltar,
   aoEscolher,
+  aprofunda = false,
 }: {
   coluna: ColunaDoMes;
   destacado: boolean;
   aoDestacar: (mes: string) => void;
   aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
+  /** O clique abre o painel do mês, em vez de trocar o mês da tela. */
+  aprofunda?: boolean;
 }) {
   const aceso = coluna.selecionada || destacado;
   return (
@@ -368,7 +492,12 @@ function MesNaFita({
       onBlur={() => aoSoltar(coluna.mes)}
       // O NOME ACESSÍVEL DIZ O MÊS E O QUE ELE FEZ: "jun/26" sozinho obriga
       // quem ouve a abrir o mês para descobrir se vale abrir.
-      aria-label={`${coluna.nome}, ${coluna.variacao}`}
+      aria-label={
+        aprofunda
+          ? `${coluna.nome}, ${coluna.variacao}. Abrir o mês.`
+          : `${coluna.nome}, ${coluna.variacao}`
+      }
+      title={aprofunda ? 'Abrir este mês' : undefined}
       aria-current={coluna.selecionada ? 'true' : undefined}
       className="jornada__mes"
       style={{
@@ -407,17 +536,34 @@ function DetalheDoMes({
   coluna,
   aoDestacar,
   aoSoltar,
+  //: A CÓPIA QUE SÓ SEGURA A ALTURA. Ela monta o mesmo conteúdo do mês, na mesma
+  //: largura, e fica fora de vista: é o que faz a janela ter sempre a altura do mês
+  //: mais cheio da série, em vez de encurtar no mês seguinte.
+  //:
+  //: INVISÍVEL DE VERDADE, nos três sentidos que importam: `visibility: hidden`
+  //: tira da vista E da árvore de acessibilidade, `aria-hidden` garante o segundo
+  //: mesmo onde o primeiro não valesse, e `pointer-events: none` impede que a
+  //: cópia roube o mouse do cartão de verdade — se ela o roubasse, o destaque
+  //: pularia de mês sozinho, que é um defeito pior que o salto de altura.
+  reserva = false,
 }: {
   coluna: ColunaDoMes;
-  aoDestacar: (mes: string) => void;
-  aoSoltar: (mes: string) => void;
+  aoDestacar?: (mes: string) => void;
+  aoSoltar?: (mes: string) => void;
+  reserva?: boolean;
 }) {
   return (
     <div
-      className="jornada__cartao"
-      onMouseEnter={() => aoDestacar(coluna.mes)}
-      onMouseLeave={() => aoSoltar(coluna.mes)}
-      style={{ borderTop: `3px solid ${coluna.filete}` }}
+      className={reserva ? 'jornada__cartao jornada__cartao--reserva' : 'jornada__cartao'}
+      aria-hidden={reserva ? 'true' : undefined}
+      onMouseEnter={reserva ? undefined : () => aoDestacar?.(coluna.mes)}
+      onMouseLeave={reserva ? undefined : () => aoSoltar?.(coluna.mes)}
+      style={{
+        borderTop: `3px solid ${coluna.filete}`,
+        ...(reserva
+          ? { visibility: 'hidden' as const, pointerEvents: 'none' as const }
+          : {}),
+      }}
     >
       {/* NA MESMA LINHA, agora que há largura: nas colunas de 90px o nome do mês
           e a variação não caibam lado a lado, e a variação ia para baixo. */}
@@ -526,12 +672,17 @@ function Ponto({
   aoDestacar,
   aoSoltar,
   aoEscolher,
+  aprofunda = false,
 }: {
   ponto: PontoDaJornada;
   destacado: boolean;
   aoDestacar: (mes: string) => void;
   aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
+  /** O clique abre o painel do mês, em vez de trocar o mês da tela. Muda o que o
+   *  ponto ANUNCIA: dois alvos com a mesma aparência e ações diferentes na mesma
+   *  tela só se aprendem se cada um disser o que faz. */
+  aprofunda?: boolean;
 }) {
   const raio = ponto.selecionado ? 22 : destacado ? 20 : 16;
   return (
@@ -542,7 +693,8 @@ function Ponto({
       onMouseLeave={() => aoSoltar(ponto.mes)}
       onFocus={() => aoDestacar(ponto.mes)}
       onBlur={() => aoSoltar(ponto.mes)}
-      aria-label={ponto.descricao}
+      aria-label={aprofunda ? `${ponto.descricao}. Abrir o mês.` : ponto.descricao}
+      title={aprofunda ? 'Abrir este mês' : undefined}
       aria-current={ponto.selecionado ? 'true' : undefined}
       style={{
         position: 'absolute',
@@ -590,7 +742,7 @@ function Ponto({
 
             O AVISO DE ESCALA SOZINHO CONTINUA POSSÍVEL: um mês completo pode
             sair do eixo quando a lente comparada estica o domínio. */}
-        {ponto.cobertura || ponto.foraDaEscala ? (
+        {ponto.cobertura ? (
           <span className="kicker jornada__cobertura" style={{ color: 'var(--cinza-2)' }}>
             {ponto.cobertura || 'fora da escala'}
           </span>

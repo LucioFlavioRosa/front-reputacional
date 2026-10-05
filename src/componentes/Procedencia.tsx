@@ -207,6 +207,24 @@ function Conteudo({ ficha }: { ficha: Ficha }) {
  *  prova. Quando a curadoria ainda não escreveu a frase, o bloco mostra só o
  *  título — nunca uma frase inventada, que é o que transformaria um gráfico
  *  honesto numa afirmação sem dono. */
+/** A fonte do bloco, abaixo do gráfico.
+ *
+ *  VISÍVEL, e não só dentro do "?": a §1 pede nota de fonte em cada painel, e
+ *  uma fonte que só aparece a um clique de distância deixa o gráfico solto —
+ *  quem bate o olho não sabe de onde saiu, e quem não clica nunca descobre.
+ *
+ *  AQUI, E NÃO NA TELA DO DOSSIÊ onde ela nasceu: o cartão "Onde está a causa"
+ *  também a usa, e importá-la de lá criaria ciclo — a tela importa o cartão.
+ *  Esta é a terceira peça que lê uma `Ficha`, junto do "?" e do cabeçalho. */
+export function NotaDeFonte({ ficha }: { ficha: Ficha }) {
+  return (
+    <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
+      {ficha.fonte}
+      {ficha.exemplo ? ' · conteúdo de ilustração' : ''}
+    </p>
+  );
+}
+
 export function CabecalhoDoBloco({
   titulo,
   conclusao,

@@ -56,9 +56,46 @@ function campoDeEscolhaUnica(
   };
 }
 
+/** ATIVO É QUALQUER CAMPO PREENCHIDO, perguntado ao próprio objeto.
+ *
+ *  Era uma lista escrita à mão com os quatro campos de então, e é exatamente o
+ *  tipo de lista que esquece o campo acrescentado depois: o recorte ficaria ativo
+ *  e o botão de limpar não apareceria, deixando a pessoa presa num recorte que
+ *  ela não sabe como desfazer. */
 function filtroAtivo(filtro: FiltroDaLente): boolean {
-  return Boolean(filtro.tier || filtro.veiculo || filtro.atributo || filtro.tema);
+  return Object.values(filtro).some(Boolean);
 }
+
+/** As dimensões da barra, na ordem em que aparecem.
+ *
+ *  UMA LINHA POR DIMENSÃO, e a barra as percorre: eram quatro blocos de JSX
+ *  quase idênticos, e com as oito do padrão Aegea seriam oito — cento e sessenta
+ *  linhas onde a única diferença entre elas é o nome do campo.
+ *
+ *  A ORDEM É A DO PACOTE para a lente que tem tudo: o que explica o assunto
+ *  primeiro (tema, subtema), depois onde (UF), depois quem falou (perfil, autor),
+ *  e por fim as de clipping (tier, veículo, atributo). Campo sem opção no mês não
+ *  é desenhado, então cada lente mostra só as dela sem precisar saber de nenhuma
+ *  regra por lente. */
+const DIMENSOES: {
+  chave: keyof FiltroDaLente;
+  rotulo: string;
+  de: keyof OpcoesDeFiltroDaLente;
+  rotulos?: Record<string, string>;
+}[] = [
+  { chave: 'tema', rotulo: 'Tema', de: 'temas' },
+  { chave: 'subtema', rotulo: 'Subtema', de: 'subtemas' },
+  { chave: 'uf', rotulo: 'UF', de: 'ufs' },
+  { chave: 'perfil_autor', rotulo: 'Perfil do autor', de: 'perfis' },
+  { chave: 'autor', rotulo: 'Autor', de: 'autores' },
+  //: A CONCESSIONÁRIA, e ela faltava: o servidor aceita `?empresa=`, devolve
+  //: `opcoes.empresas` e marca o painel de concessionárias com
+  //: `recorta: "empresa"` — só a barra não oferecia o campo. Achado de revisão.
+  { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' },
+  { chave: 'tier', rotulo: 'Tier', de: 'tiers', rotulos: ROTULO_DO_TIER },
+  { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
+  { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
+];
 
 export function BarraDeFiltroDaLente({
   filtro,
@@ -71,50 +108,31 @@ export function BarraDeFiltroDaLente({
 }) {
   return (
     <FaixaDeFiltros>
-      <CampoSuspenso
-        campo={campoDeEscolhaUnica(
-          'tier',
-          'Tier',
-          comoItens(opcoes?.tiers ?? [], ROTULO_DO_TIER),
-          filtro.tier,
-          (tier) => definirFiltro({ ...filtro, tier }),
-        )}
-        aoLimpar={filtro.tier ? () => definirFiltro({ ...filtro, tier: undefined }) : undefined}
-      />
-      <CampoSuspenso
-        campo={campoDeEscolhaUnica(
-          'veiculo',
-          'Veículo',
-          comoItens(opcoes?.veiculos ?? []),
-          filtro.veiculo,
-          (veiculo) => definirFiltro({ ...filtro, veiculo }),
-        )}
-        aoLimpar={
-          filtro.veiculo ? () => definirFiltro({ ...filtro, veiculo: undefined }) : undefined
-        }
-      />
-      <CampoSuspenso
-        campo={campoDeEscolhaUnica(
-          'atributo',
-          'Atributo',
-          comoItens(opcoes?.atributos ?? []),
-          filtro.atributo,
-          (atributo) => definirFiltro({ ...filtro, atributo }),
-        )}
-        aoLimpar={
-          filtro.atributo ? () => definirFiltro({ ...filtro, atributo: undefined }) : undefined
-        }
-      />
-      <CampoSuspenso
-        campo={campoDeEscolhaUnica(
-          'tema',
-          'Tema',
-          comoItens(opcoes?.temas ?? []),
-          filtro.tema,
-          (tema) => definirFiltro({ ...filtro, tema }),
-        )}
-        aoLimpar={filtro.tema ? () => definirFiltro({ ...filtro, tema: undefined }) : undefined}
-      />
+      {DIMENSOES.map(({ chave, rotulo, de, rotulos }) => {
+        const valores = opcoes?.[de] ?? [];
+        //: CAMPO VAZIO É PIOR QUE CAMPO AUSENTE: um seletor que abre sem opção
+        //: nenhuma faz a pessoa concluir que o dado sumiu, quando a verdade é
+        //: que aquela fonte nunca mandou o campo.
+        if (!valores.length) return null;
+        const valorAtual = filtro[chave];
+        return (
+          <CampoSuspenso
+            key={chave}
+            campo={campoDeEscolhaUnica(
+              chave,
+              rotulo,
+              comoItens(valores, rotulos),
+              valorAtual,
+              (valor) => definirFiltro({ ...filtro, [chave]: valor }),
+            )}
+            aoLimpar={
+              valorAtual
+                ? () => definirFiltro({ ...filtro, [chave]: undefined })
+                : undefined
+            }
+          />
+        );
+      })}
       {filtroAtivo(filtro) ? (
         <button
           type="button"

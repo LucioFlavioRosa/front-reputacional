@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { jornadaDaLente } from '@/dominio/jornadaDaLente';
+import { FOLGA_NO_LIMITE, PAD_TOPO, VB } from '@/dominio/jornadaDoIndice';
 import type { PontoDaSerie } from '@/dominio/score';
 
 function ponto(parcial: Partial<PontoDaSerie>): PontoDaSerie {
@@ -72,7 +73,6 @@ describe('jornadaDaLente', () => {
     expect(jornada.curvaDaLente).toBe('');
     expect(jornada.pontosDaLente).toEqual([]);
     expect(jornada.fimDaLente).toBeNull();
-    expect(jornada.eixoRegidoPorParciais).toBe(false);
   });
 
   it('o que sustentou e o que pressionou a lente entram na coluna do mês', () => {
@@ -164,5 +164,73 @@ describe('jornadaDaLente', () => {
   it('série vazia não estoura', () => {
     const jornada = jornadaDaLente([], 'imprensa', 'Imprensa', '2026-01');
     expect(jornada.pontos).toEqual([]);
+  });
+});
+
+describe('a jornada da lente segue as MESMAS regras da do índice', () => {
+  /** AS DUAS TELAS SÃO O MESMO GRÁFICO, e é por isso que este bloco existe. A
+   *  Jornada do índice (Visão geral) e a jornada de uma lente (Dossiê da Lente)
+   *  dividem `VB`, as faixas de fundo, `dominioDe` e o formato `Jornada` inteiro —
+   *  mas cada uma monta os pontos no seu arquivo.
+   *
+   *  FOI ASSIM QUE EU DEIXEI UM DEFEITO ATRÁS: ao corrigir os três sintomas que o
+   *  dono do produto apontou — ponto fantasma preso na borda, rótulo pulando de
+   *  lado, e nenhum ar quando o eixo encosta no limite do índice — mexi apenas na
+   *  do índice. A do Dossiê continuou com as três coisas, e a pessoa que abrir as
+   *  duas telas vê o gráfico se comportar de dois jeitos.
+   */
+
+  it('o ponto fica no valor dele, e não preso na borda da faixa', () => {
+    //: Uma lente com nota 100: o eixo vai a 100 e o ponto tem de ficar onde o 100
+    //: cai, não encostado no topo com a altura cortada.
+    const comCem = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: { imprensa: i === 5 ? 100 : 60 + i },
+    }));
+
+    const { pontos } = jornadaDaLente(comCem, 'imprensa', 'Imprensa', '2026-06');
+
+    for (const ponto of pontos) {
+      expect(ponto.topo).toBeCloseTo((ponto.cy / VB.altura) * 100, 6);
+    }
+  });
+
+  it('ganha ar quando o eixo encosta no limite do índice', () => {
+    const comCem = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: { imprensa: i === 5 ? 100 : 90 + i },
+    }));
+
+    const { pontos } = jornadaDaLente(comCem, 'imprensa', 'Imprensa', '2026-06');
+    const noLimite = pontos.reduce((alto, p) => (p.isr > alto.isr ? p : alto));
+
+    expect(noLimite.isr).toBe(100);
+    expect(noLimite.cy).toBeCloseTo(PAD_TOPO + FOLGA_NO_LIMITE, 6);
+  });
+
+  it('o rótulo não troca de lado quando entra um mês novo no fim', () => {
+    //: A MESMA ESTABILIDADE que a do índice ganhou: o lado de cada rótulo depende
+    //: só do que vem antes dele, então o mês que entra no fim não mexe nos
+    //: anteriores.
+    const notas = [60, 58, 59, 61, 62, 60];
+    const serie = SEMESTRE.map((p, i) => ({
+      ...p,
+      notas_das_lentes: { imprensa: notas[i] },
+    }));
+    const comMaisUm = [
+      ...serie,
+      {
+        ...SEMESTRE[0],
+        mes: '2026-07',
+        notas_das_lentes: { imprensa: 57 },
+      },
+    ];
+
+    const antes = jornadaDaLente(serie, 'imprensa', 'Imprensa', '2026-06');
+    const depois = jornadaDaLente(comMaisUm, 'imprensa', 'Imprensa', '2026-07');
+
+    expect(depois.pontos.slice(0, antes.pontos.length).map((p) => p.acima)).toEqual(
+      antes.pontos.map((p) => p.acima),
+    );
   });
 });

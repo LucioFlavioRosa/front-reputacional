@@ -8,7 +8,7 @@ import {
   escreveNoCatalogo,
 } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
-import type { Dossie } from '@/dominio/dossie';
+import type { Bloco, Dossie } from '@/dominio/dossie';
 import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
@@ -798,13 +798,27 @@ export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
 }
 
-/** O recorte de tela que a aba Lentes oferece — tier, veículo, atributo,
- *  tema. Nenhum dos quatro é obrigatório; o campo some da URL quando vazio. */
+/** O recorte de tela que a aba Lentes oferece.
+ *
+ *  OITO DIMENSÕES, e as quatro últimas vieram do padrão Aegea: perfil do autor,
+ *  UF, subtema e autor. Nenhuma é obrigatória; o campo some da URL quando vazio.
+ *
+ *  ELAS SE EMPILHAM — `{ uf: 'RJ', perfil_autor: 'Figura pública' }` é "figuras
+ *  públicas no Rio", e não uma coisa OU a outra. É o nível 3 do pacote, e é o que
+ *  faz um link reproduzir o ponto exato do caminho. */
 export interface FiltroDaLente {
   tier?: string;
   veiculo?: string;
   atributo?: string;
   tema?: string;
+  perfil_autor?: string;
+  uf?: string;
+  subtema?: string;
+  autor?: string;
+  /** A concessionária citada, como o fornecedor a nomeia. É a terceira dimensão
+   *  prioritária do pacote, e era a única dos dois painéis da lente sem lugar
+   *  aqui: clicar na barra de uma concessionária não tinha para onde ir. */
+  empresa?: string;
 }
 
 /** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
@@ -815,14 +829,62 @@ export interface OpcoesDeFiltroDaLente {
   veiculos: string[];
   atributos: string[];
   temas: string[];
+  //: As do padrão Aegea. VAZIAS na lente que não tem o campo — a Imprensa não
+  //: manda perfil do autor —, e é por isso que a barra esconde o campo em vez de
+  //: abrir um seletor sem opção nenhuma.
+  perfis: string[];
+  ufs: string[];
+  subtemas: string[];
+  autores: string[];
+  empresas: string[];
+}
+
+/** Um degrau do caminho até um recorte. */
+export interface PassoDaTrilha {
+  /** A chave do parâmetro (`uf`) — é o que a tela remove para subir um nível. */
+  chave: string;
+  /** O nome da dimensão como se lê na aba (`UF`). */
+  dimensao: string;
+  valor: string;
+}
+
+/** O nível 3 do pacote: um pedaço do mês, medido e decomposto — o que o modal
+ *  de aprofundamento mostra quando alguém clica num dado.
+ *
+ *  UM PEDIDO SÓ. O modal abre com tudo ou abre mentindo; cinco chamadas dariam
+ *  cinco estados de carregamento dentro do mesmo painel. */
+export interface RecorteDaLente {
+  lente: string;
+  mes: string;
+  /** O caminho até aqui. Vazio quando o recorte é o mês inteiro. */
+  trilha: PassoDaTrilha[];
+  /** A nota que este pedaço teria se fosse o mês. */
+  nota: number | null;
+  /** Quantos pontos ele tira (negativo) ou põe na nota da lente. O denominador
+   *  é o do MÊS, e é isso que faz a soma dos pedaços fechar em `nota − 50`. */
+  impacto: number;
+  composicao: { positivo: number; neutro: number; negativo: number };
+  itens: number;
+  /** O total do mês, para "4 de 6 itens" em vez de "4 itens". */
+  itens_no_mes: number;
+  frase: string;
+  ausencia: string | null;
+  /** Uma célula por mês do período: o mesmo recorte medido mês a mês. */
+  historico: { mes: string; impacto: number; itens: number; sem_base: boolean }[];
+  /** As dimensões AINDA NÃO usadas, cortadas dentro deste recorte: clicar numa
+   *  linha empilha mais um degrau, sem sair do painel. */
+  dentro: Bloco[];
+  itens_do_recorte: Bloco;
 }
 
 function paraConsultaDoFiltro(mes: string, filtro?: FiltroDaLente): string {
   const parametros = new URLSearchParams({ mes });
-  if (filtro?.tier) parametros.set('tier', filtro.tier);
-  if (filtro?.veiculo) parametros.set('veiculo', filtro.veiculo);
-  if (filtro?.atributo) parametros.set('atributo', filtro.atributo);
-  if (filtro?.tema) parametros.set('tema', filtro.tema);
+  //: PERCORRE O OBJETO em vez de listar campo por campo: a lista escrita à mão
+  //: era o lugar onde uma dimensão nova se esquecia — a tela mandaria o recorte,
+  //: o servidor devolveria o mês inteiro, e nada reclamaria.
+  for (const [chave, valor] of Object.entries(filtro ?? {})) {
+    if (valor) parametros.set(chave, valor);
+  }
   return parametros.toString();
 }
 
@@ -837,6 +899,22 @@ export function obterDossieDaLente(
   filtro?: FiltroDaLente,
 ): Promise<Dossie> {
   return requisitar<Dossie>(`/api/score/lentes/${codigo}/dossie?${paraConsultaDoFiltro(mes, filtro)}`);
+}
+
+/** O recorte: o aprofundamento de um dado, num pedido só.
+ *
+ *  POR QUE ELE EXISTE em vez de o clique filtrar a tela: aplicar o filtro na
+ *  tela inteira REFAZ o mês — a nota muda, os painéis se refazem, e quem clicou
+ *  perde de vista o mês de onde saiu. É recortar, não aprofundar. O modal põe o
+ *  pedaço AO LADO do mês, com a trilha de volta. */
+export function obterRecorteDaLente(
+  codigo: string,
+  mes: string,
+  filtro?: FiltroDaLente,
+): Promise<RecorteDaLente> {
+  return requisitar<RecorteDaLente>(
+    `/api/score/lentes/${codigo}/recorte?${paraConsultaDoFiltro(mes, filtro)}`,
+  );
 }
 
 /** As opções que o filtro desta lente pode oferecer neste mês. */

@@ -26,6 +26,8 @@ import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
+import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
+import { RecorteDaLente } from '@/paginas/score/RecorteDaLente';
 import {
   Cartao,
   Carregando,
@@ -37,11 +39,12 @@ import {
   Secao,
   Selo,
 } from '@/componentes/basicos';
-import { BotaoDeProcedencia, CabecalhoDoBloco } from '@/componentes/Procedencia';
+import { BotaoDeProcedencia, CabecalhoDoBloco, NotaDeFonte } from '@/componentes/Procedencia';
 import {
   COR_DO_EFEITO,
   ROTULO_DO_EFEITO,
   colunasDaTabela,
+  enderecoDaLinhaDo,
   comoNumero,
   comoTexto,
   corDoTom,
@@ -191,11 +194,50 @@ function Conteudo({
   mes: string;
   aoTrocarMes: (mes: string) => void;
 }) {
+  //: O RECORTE ABERTO NO MODAL — nulo com o modal fechado. É um estado À PARTE
+  //: do `filtro` da tela, e a separação é o ponto: a barra de filtros refaz a
+  //: tela, o modal abre ao lado dela. Guardar os dois no mesmo lugar faria
+  //: aprofundar num tema refazer o mês atrás do modal — exatamente o que o dono
+  //: do produto pediu para deixar de acontecer.
+  //:
+  //: O MÊS VIAJA JUNTO porque o modal deixou de ser sempre do mês da tela:
+  //: clicar numa barra da Evolução abre o mês DAQUELA barra, que é abril quando a
+  //: tela está em junho. Sem o mês no estado, o painel mediria junho com o título
+  //: de abril.
+  const [aprofundando, definirAprofundando] = useState<{
+    mes: string;
+    filtro: FiltroDaLente;
+    //: A DIMENSÃO QUE ABRIU O PAINEL, para o título dele dizer o degrau que a
+    //: pessoa acabou de abrir — a trilha vem em ordem de domínio, não de descida.
+    ultimo?: string;
+    //: ABERTO POR UM MÊS (coluna da Evolução, ponto da Jornada): o título nomeia
+    //: o mês, e não o recorte que veio junto da tela.
+    peloMes?: boolean;
+  } | null>(null);
+  const aoAprofundar = (chave: string, valor: string) =>
+    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
+  //: O RECORTE DO MÊS, SEM DIMENSÃO NENHUMA: o endpoint já responde isso (trilha
+  //: vazia, impacto do mês inteiro), e é o que a barra da Evolução pergunta.
+  //:
+  //: O FILTRO DA TELA VAI JUNTO, de propósito: com uma UF escolhida, o gráfico de
+  //: Evolução já desenha só aquela UF — abrir o mês inteiro a partir de uma barra
+  //: que mostra o Rio contaria outro número do que a barra que foi clicada.
+  const aoAprofundarNoMes = (mes: string) =>
+    //: `peloMes` É PARA O TÍTULO: a pessoa clicou num mês, e o painel tem de se
+    //: chamar pelo mês — mesmo quando herda o recorte da tela. Achado de revisão.
+    definirAprofundando({ mes, filtro, peloMes: true });
+
   return (
     <>
       <Destaque dossie={dossie} />
-      <Evolucao dossie={dossie} />
-      <JornadaDaLente dossie={dossie} serie={serie} mes={mes} aoTrocarMes={aoTrocarMes} />
+      <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
+      <JornadaDaLente
+        dossie={dossie}
+        serie={serie}
+        mes={mes}
+        aoTrocarMes={aoTrocarMes}
+        aoAprofundarNoMes={aoAprofundarNoMes}
+      />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
           devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
@@ -221,7 +263,73 @@ function Conteudo({
       ) : null}
 
       <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
-      <BlocoAmplo titulo="Temas mais falados" bloco={dossie.temas_mais_falados} />
+      {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
+          painel a primeira aba é o Subtema — que é onde "Saneamento básico"
+          deixa de ser um rótulo e passa a dizer o que aconteceu. */}
+      <BlocoAmplo
+        titulo="Temas mais falados"
+        bloco={dossie.temas_mais_falados}
+        filtro={filtro}
+        aoAprofundar={aoAprofundar}
+      />
+
+      {/* O APROFUNDAMENTO, por cima de tudo. Montado só quando há recorte
+          aberto: um modal montado e invisível continua carregando dados. */}
+      {aprofundando ? (
+        <RecorteDaLente
+          codigo={dossie.codigo}
+          mes={aprofundando.mes}
+          filtro={aprofundando.filtro}
+          aoFechar={() => definirAprofundando(null)}
+          //: DESCER EMPILHA no recorte já aberto, e não no filtro da tela: o
+          //: caminho de dentro do painel é dele, e some quando o painel fecha.
+          //: A tela de trás fica onde estava — é o que diferencia aprofundar de
+          //: recortar.
+          ultimoDegrau={aprofundando.ultimo}
+          tituloPeloMes={aprofundando.peloMes}
+          aoDescer={(chave, valor) =>
+            definirAprofundando({
+              ...aprofundando,
+              filtro: { ...aprofundando.filtro, [chave]: valor },
+              ultimo: chave,
+              //: DESCER DENTRO DO PAINEL deixa de ser "o mês": o título passa a
+              //: nomear o degrau que a pessoa abriu agora.
+              peloMes: false,
+            })
+          }
+          aoSubir={(chave) =>
+            definirAprofundando({
+              ...aprofundando,
+              filtro: { ...aprofundando.filtro, [chave]: undefined },
+              //: SUBIR NÃO DEIXA DEGRAU NOVO: o título cai no último da trilha
+              //: que sobrou, que é o que a pessoa está vendo agora.
+              ultimo: aprofundando.ultimo === chave ? undefined : aprofundando.ultimo,
+            })
+          }
+        />
+      ) : null}
+
+      {/* ANTES DOS DOIS PAINÉIS, e a ordem é a da leitura: este cartão
+          responde "onde está a causa" por seis cortes, e os painéis abaixo são
+          os dois que a especificação fixou para a lente — eles aprofundam dois
+          desses cortes. Ver o cartão primeiro e os painéis depois é descer; o
+          contrário é ler a conclusão antes da pergunta. */}
+      <OndeEstaACausa
+        //: REMONTA AO TROCAR DE MÊS OU DE LENTE, e isto é achado de revisão: a
+        //: aba escolhida é estado da tela, e o conjunto de abas muda com o mês
+        //: (uma dimensão deixa de explicar e volta a explicar). Sem a chave, o
+        //: estado antigo ressuscita: o cartão pulava de volta para "Autor" ao
+        //: remover um recorte, mesmo que o último visível fosse "Tema".
+        key={`${dossie.codigo}-${dossie.mes}`}
+        abas={dossie.onde_esta_a_causa}
+        lacunas={dossie.lacunas_da_causa}
+        filtro={filtro}
+        //: PARTE DO RECORTE QUE JÁ ESTÁ NA TELA: aprofundar de dentro de um mês
+        //: já filtrado por UF tem de significar "este tema, no Rio" — senão o
+        //: número do painel e o número do modal discordam, e quem clicou não
+        //: tem como saber por quê.
+        aoAprofundar={aoAprofundar}
+      />
 
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
           declarar): os dois painéis crescem para a mesma altura, a do mais
@@ -242,7 +350,12 @@ function Conteudo({
                 ficha={painel.ficha}
                 ajuda={GUIA_DO_BLOCO[painel.titulo]}
               />
-              <Painel bloco={painel} />
+              {/* CLICÁVEL PELO QUE O SERVIDOR DIZ QUE ELE RECORTA, e não
+                  por um palpite a partir do título: um clique em "Saneamento
+                  básico" no painel de temas recorta a tela inteira por aquele
+                  tema, igual à aba do cartão acima. Era isto que faltava para o
+                  painel ser um degrau e não um quadro de leitura. */}
+              <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
               <NotaDeFonte ficha={painel.ficha} />
             </Cartao>
           </ComFaixaDoTopo>
@@ -284,20 +397,6 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
         </>
       }
     />
-  );
-}
-
-/** A fonte do bloco, abaixo do gráfico.
- *
- *  VISÍVEL, e não só dentro do "?": a §1 pede nota de fonte em cada painel, e
- *  uma fonte que só aparece a um clique de distância deixa o gráfico solto —
- *  quem bate o olho não sabe de onde saiu, e quem não clica nunca descobre. */
-function NotaDeFonte({ ficha }: { ficha: Dossie['evolucao']['ficha'] }) {
-  return (
-    <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
-      {ficha.fonte}
-      {ficha.exemplo ? ' · conteúdo de ilustração' : ''}
-    </p>
   );
 }
 
@@ -393,7 +492,15 @@ function Destaque({ dossie }: { dossie: Dossie }) {
 
 /* -- 2. a evolução, com os fatos do período ------------------------------------ */
 
-function Evolucao({ dossie }: { dossie: Dossie }) {
+function Evolucao({
+  dossie,
+  aoAprofundarNoMes,
+}: {
+  dossie: Dossie;
+  /** Clicar numa barra abre o aprofundamento DAQUELE mês — o mesmo painel dos
+   *  outros gráficos, com a conta do mês inteiro em vez de um recorte. */
+  aoAprofundarNoMes: (mes: string) => void;
+}) {
   const { evolucao } = dossie;
 
   return (
@@ -406,7 +513,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           ficha={evolucao.ficha}
           ajuda={GUIA_DO_BLOCO[evolucao.titulo]}
         />
-        <Painel bloco={evolucao} fatos={dossie.fatos} />
+        <Painel bloco={evolucao} fatos={dossie.fatos} aoAprofundarNoMes={aoAprofundarNoMes} />
         <QuadroDaEvolucao linhas={dossie.sinais_da_evolucao} />
         <NotaDeFonte ficha={evolucao.ficha} />
 
@@ -469,11 +576,16 @@ function JornadaDaLente({
   serie,
   mes,
   aoTrocarMes,
+  aoAprofundarNoMes,
 }: {
   dossie: Dossie;
   serie: PontoDaSerie[];
   mes: string;
   aoTrocarMes: (mes: string) => void;
+  /** Clicar num PONTO abre o aprofundamento daquele mês — o mesmo painel da
+   *  Evolução e dos outros gráficos. A faixa de meses embaixo continua trocando
+   *  o mês da tela. */
+  aoAprofundarNoMes: (mes: string) => void;
 }) {
   const jornada = jornadaDaLente(serie, dossie.codigo, dossie.nome, mes);
 
@@ -486,6 +598,7 @@ function JornadaDaLente({
           mes={mes}
           comparada={null}
           aoEscolherMes={aoTrocarMes}
+          aoAprofundarNoMes={aoAprofundarNoMes}
           jornadaPronta={jornada}
         />
       </Cartao>
@@ -635,7 +748,20 @@ function ClimaPorVeiculos({
  *  tier/veículo/atributo/tema em cada consulta, então os três estreitam
  *  juntos quando alguém filtra — é a mesma régua "do amplo ao específico"
  *  levada até a linha, não três drill-downs independentes. */
-function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
+function BlocoAmplo({
+  titulo,
+  bloco,
+  filtro,
+  aoAprofundar,
+}: {
+  titulo: string;
+  bloco: Bloco;
+  /** OS DOIS JUNTOS, OU NENHUM — mesmo contrato de `Painel`: o bloco só fica
+   *  clicável quando a tela sabe onde levar o clique, e só quando o servidor diz
+   *  o que ele recorta (`bloco.recorta`). */
+  filtro?: FiltroDaLente;
+  aoAprofundar?: (chave: string, valor: string) => void;
+}) {
   return (
     <ComFaixaDoTopo>
     <Secao titulo={titulo}>
@@ -646,7 +772,7 @@ function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
           ficha={bloco.ficha}
           ajuda={GUIA_DO_BLOCO[bloco.titulo]}
         />
-        <Painel bloco={bloco} />
+        <Painel bloco={bloco} filtro={filtro} aoAprofundar={aoAprofundar} />
         <NotaDeFonte ficha={bloco.ficha} />
       </Cartao>
     </Secao>
@@ -656,7 +782,32 @@ function BlocoAmplo({ titulo, bloco }: { titulo: string; bloco: Bloco }) {
 
 /* -- o roteador de tipos ------------------------------------------------------- */
 
-function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }) {
+function Painel({
+  bloco,
+  fatos = [],
+  filtro,
+  aoAprofundar,
+  aoAprofundarNoMes,
+}: {
+  bloco: Bloco;
+  fatos?: Dossie['fatos'];
+  /** OS DOIS JUNTOS, OU NENHUM: o painel só fica clicável quando a tela sabe
+   *  onde levar o clique. Os blocos amplos (Drivers, Temas mais falados, Últimas
+   *  matérias) desenham sem eles, e continuam só de leitura. */
+  filtro?: FiltroDaLente;
+  aoAprofundar?: (chave: string, valor: string) => void;
+  /** Só a Evolução usa: clicar na COLUNA de um mês abre o aprofundamento dele. */
+  aoAprofundarNoMes?: (mes: string) => void;
+}) {
+  // A DIMENSÃO VEM DO SERVIDOR (`bloco.recorta`). Sem ela — ou sem quem receba
+  // o clique — não há clique: uma barra que parece clicável e não é custa mais
+  // do que uma que não parece.
+  const chave =
+    bloco.recorta && aoAprofundar ? (bloco.recorta as keyof FiltroDaLente) : undefined;
+  const recortado = chave && filtro ? filtro[chave] : undefined;
+  const aoRecortar =
+    chave && aoAprofundar ? (rotulo: string) => aoAprofundar(chave, rotulo) : undefined;
+
   // `unknown`, e não `never`. O payload de cada tipo de gráfico tem um formato
   // diferente, e dizer ao TypeScript que campo nenhum existe (`never`) o faz
   // parar de conferir qualquer coisa — um `any` com outro nome. A conversão
@@ -667,6 +818,10 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
     const porMes = new Map(fatos.map((fato) => [fato.mes, fato]));
     return (
       <BarrasEmpilhadas
+        //: A COLUNA INTEIRA ABRE O MÊS. A faixa colorida não: ela recortaria por
+        //: sentimento, que não é dimensão de recorte desta tela — e um clique que
+        //: às vezes abre o mês e às vezes não faz a pessoa parar de clicar.
+        aoClicarMes={aoAprofundarNoMes}
         colunas={dados.map((linha) => {
           const semClassificacao = comoNumero(linha.sem_classificacao ?? 0);
           const classificadas =
@@ -752,6 +907,8 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
         }))}
         legenda={bloco.legenda.length ? bloco.legenda : undefined}
         cores={bloco.cores.length ? bloco.cores : undefined}
+        ativo={recortado}
+        aoClicar={aoRecortar}
       />
     );
   }
@@ -766,6 +923,8 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
           cor: 'var(--azul-mar)',
         }))}
         vazio="Nada registrado no período."
+        ativo={recortado}
+        aoClicar={aoRecortar}
         detalheAoPassarMouse={(chave) => {
           const linha = dados.find((item) => comoTexto(item.rotulo) === chave);
           const detalhe = linha?.detalhe as string | undefined;
@@ -835,7 +994,13 @@ function Painel({ bloco, fatos = [] }: { bloco: Bloco; fatos?: Dossie['fatos'] }
   }
 
   if (bloco.tipo === 'tabela') {
-    return <TabelaDeLeitura colunas={colunasDaTabela(bloco)} linhas={dados} />;
+    return (
+      <TabelaDeLeitura
+        colunas={colunasDaTabela(bloco)}
+        linhas={dados}
+        enderecoDaLinha={enderecoDaLinhaDo(bloco)}
+      />
+    );
   }
 
   // Um tipo que a tela não conhece é erro de contrato, e some sem avisar se

@@ -58,6 +58,24 @@ export interface Bloco {
   cores: string[];
   /** Só nas tabelas: quais colunas mostrar, na ordem em que se lê. */
   colunas: ColunaDoBloco[];
+  /** A coluna cujo valor é o ENDEREÇO DA LINHA. A tela a usa como destino de um
+   *  clique na linha e NÃO desenha a coluna.
+   *
+   *  UMA COLUNA "LINK" COM "ABRIR ↗" REPETIDO É RUÍDO, e rouba largura do texto
+   *  da menção — que é o que se lê. Pedido do dono do produto: "não precisa ter o
+   *  link no modal, mas se clicar gostaria de acessar a página".
+   *
+   *  VEM DO SERVIDOR pelo mesmo motivo de `recorta`: procurar uma coluna chamada
+   *  "link" é adivinhação pelo nome. */
+  coluna_do_link: string | null;
+  /** A dimensão do recorte que um clique neste bloco aplica — `'tema'`,
+   *  `'empresa'`, `'perfil_autor'`: a chave do parâmetro da rota, igual à do
+   *  filtro. Nula no bloco que não recorta nada (a evolução, as tabelas).
+   *
+   *  VEM DO SERVIDOR, e isto não é zelo: a alternativa é a tela adivinhar a
+   *  dimensão pelo TÍTULO do bloco — e o título é a frase de um detector, que
+   *  muda com o dado. Ver `RECORTE_DO_PAINEL` em `app/api/lentes.py`. */
+  recorta: string | null;
   ficha: Ficha;
 }
 
@@ -139,6 +157,20 @@ export interface Dossie {
   materias_recentes: Bloco;
   fatos: FatoDoDossie[];
   paineis: Bloco[];
+  /** As abas de "onde está a causa": o mesmo mês cortado por cada dimensão que
+   *  o explica, na ordem em que a lente se explica. Ver `OndeEstaACausa`.
+   *
+   *  VAZIO na lente que não vem de menção (Mercado, Institucional) e no mês em
+   *  que nenhuma dimensão explica nada. */
+  onde_esta_a_causa: Bloco[];
+  /** A dimensão ESPERADA que não explica este mês, dita em palavras — o aviso
+   *  âmbar do pacote (FRONTEND §40).
+   *
+   *  SEM ELE A ABA QUE FALTA É UM BURACO: o tema é a primeira dimensão
+   *  prioritária da Sociedade e chega em 28% dos itens, então o cartão abre sem
+   *  aba de tema logo acima de um painel "Temas × sentimento" — e quem lê conclui
+   *  que a tela está quebrada. A frase transforma isso num fato sobre a fonte. */
+  lacunas_da_causa: string[];
   /** O bloco do fim da tela, já ordenado pelo servidor. */
   sinais: SinalDoDossie[];
 }
@@ -297,6 +329,20 @@ export interface ColunaMontada {
  *  tabela inteira em silêncio. Agora o `subtipo` diz qual leitura é, e ele não
  *  muda quando alguém melhora um texto.
  */
+/** O endereço para onde cada linha desta tabela leva — ou nada, quando a tabela
+ *  não tem destino.
+ *
+ *  O SERVIDOR DIZ QUAL COLUNA É (`bloco.coluna_do_link`), e a tela não procura por
+ *  nome: é o mesmo cuidado de `recorta`, e a mesma razão pela qual a escolha do
+ *  schema da tabela deixou de ser adivinhada pelo título. */
+export function enderecoDaLinhaDo(
+  bloco: Bloco,
+): ((linha: Record<string, unknown>) => string | null) | undefined {
+  const chave = bloco.coluna_do_link;
+  if (!chave) return undefined;
+  return (linha) => (typeof linha[chave] === 'string' ? (linha[chave] as string) : null);
+}
+
 export function colunasDaTabela(bloco: Bloco): ColunaMontada[] {
   return bloco.colunas.map((coluna) => ({
     chave: coluna.chave,

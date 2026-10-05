@@ -64,11 +64,22 @@ export function BarrasCemPorCento({
   // mesmo contrato de `BarrasEmpilhadas`/`DossieDaLente.tsx`.
   cores = [COR.positivo, COR.neutro, COR.negativo],
   vazio = 'Sem dado no mês.',
+  ativo,
+  aoClicar,
 }: {
   itens: ItemDeComposicao[];
   legenda?: [string, string, string] | string[];
   cores?: [string, string, string] | string[];
   vazio?: string;
+  /** O rótulo que está recortado agora — fica marcado, e clicar nele desmarca. */
+  ativo?: string;
+  /** QUANDO PRESENTE, CADA LINHA VIRA BOTÃO. É o que faz este gráfico servir ao
+   *  cartão "Onde está a causa": quem vê "Abastecimento · 67% negativo" tenta
+   *  clicar NELE, e até agora tinha de procurar o mesmo nome num campo suspenso.
+   *
+   *  OPCIONAL porque os painéis que só ilustram continuam sem clique — uma
+   *  linha que parece clicável e não é custa mais do que uma que não parece. */
+  aoClicar?: (rotulo: string) => void;
 }) {
   if (!itens.length) {
     return <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>{vazio}</p>;
@@ -96,62 +107,103 @@ export function BarrasCemPorCento({
               ? `${Math.round((item.negativo / classificadas) * 100)}% negativo`
               : `${Math.round((item.positivo / classificadas) * 100)}% positivo`;
 
+          const selecionado = ativo === item.rotulo;
+
+          // UM `button` DENTRO DO `li`, e não o `li` virando botão — achado de
+          // revisão (baixa): `role="button"` sobrescrito num filho direto de
+          // `<ul>` tira dele o papel de `listitem`, e quem ouve a tela perde a
+          // estrutura "lista com N itens" justamente no gráfico em que a
+          // quantidade de linhas é parte da leitura.
+          //
+          // `button` DE VERDADE, e não um `div` com `role`: Enter e Espaço,
+          // foco visível e `aria-pressed` vêm do elemento — é menos código que
+          // o `Ranking` ao lado, que nasceu antes desta conclusão.
+          const Linha = aoClicar ? 'button' : 'div';
+
           return (
             <li key={item.rotulo} style={{ padding: '3px 0' }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.rotulo}</span>
-                <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
-                  {semBase
-                    ? 'sem base'
-                    : soSemClassificacao
-                      ? `${numero(total)} · sentimento a integrar`
-                      : `${numero(total)} · ${dominante}`}
-                </span>
-              </div>
-
-              {semBase ? (
-                <div
-                  title="sem base neste mês"
-                  style={{
-                    // MESMA ESPESSURA DE `Barra` (componentes/basicos.tsx): o
-                    // `Ranking` ao lado usa 7px, e um valor diferente aqui
-                    // desalinhava a altura das duas colunas do dossiê que
-                    // ficam lado a lado.
-                    height: 7,
-                    borderRadius: 2,
-                    border: '1px dashed var(--borda)',
-                    background:
-                      'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
-                  }}
-                />
-              ) : (
-                <div
-                  role="img"
-                  aria-label={
-                    soSemClassificacao
-                      ? `${item.rotulo}: ${total} menções, sentimento a integrar`
-                      : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
-                  }
-                  style={{ display: 'flex', height: 7, borderRadius: 2, overflow: 'hidden', gap: 2 }}
-                >
-                  {(
-                    [
-                      ['positivo', item.positivo, cores[0], legenda[0]],
-                      ['neutro', item.neutro, cores[1], legenda[1]],
-                      ['negativo', item.negativo, cores[2], legenda[2]],
-                      ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
-                    ] as const
-                  )
-                    .filter(([, valor]) => valor > 0)
-                    .map(([chave, valor, cor, rotulo]) => (
-                      <div
-                        key={chave}
-                        title={`${rotulo}: ${numero(valor)} (${Math.round((valor / total) * 100)}%)`}
-                        style={{ width: `${(valor / total) * 100}%`, background: cor }}
-                      />
-                    ))}
+              <Linha
+                type={aoClicar ? 'button' : undefined}
+                onClick={aoClicar ? () => aoClicar(item.rotulo) : undefined}
+                aria-pressed={aoClicar ? selecionado : undefined}
+                //: "APROFUNDAR", E NÃO "FILTRAR": o clique abre o painel de
+                //: aprofundamento do pacote (nível 3), que mede aquele pedaço e
+                //: o decompõe por dentro. Quem lê "filtrar" espera a tela
+                //: mudar — e a tela de trás continua onde estava.
+                title={aoClicar ? `Aprofundar em ${item.rotulo}` : undefined}
+                style={{
+                  //: O BOTÃO TEM DE PARECER A LINHA QUE ERA: largura inteira,
+                  //: texto à esquerda, sem moldura nem fundo próprios.
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  color: 'inherit',
+                  border: 'none',
+                  padding: '3px 6px',
+                  margin: '0 -6px',
+                  borderRadius: 'var(--r-chip)',
+                  cursor: aoClicar ? 'pointer' : undefined,
+                  background: selecionado ? 'var(--bg-hover)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5 }}>
+                  <span style={{ fontSize: 13, fontWeight: selecionado ? 700 : 600, flex: 1 }}>
+                    {item.rotulo}
+                  </span>
+                  <span className="tabular" style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                    {semBase
+                      ? 'sem base'
+                      : soSemClassificacao
+                        ? `${numero(total)} · sentimento a integrar`
+                        : `${numero(total)} · ${dominante}`}
+                  </span>
                 </div>
-              )}
+
+                {semBase ? (
+                  <div
+                    title="sem base neste mês"
+                    style={{
+                      // MESMA ESPESSURA DE `Barra` (componentes/basicos.tsx): o
+                      // `Ranking` ao lado usa 7px, e um valor diferente aqui
+                      // desalinhava a altura das duas colunas do dossiê que
+                      // ficam lado a lado.
+                      height: 7,
+                      borderRadius: 2,
+                      border: '1px dashed var(--borda)',
+                      background:
+                        'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--cinza-0) 4px, var(--cinza-0) 8px)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    role="img"
+                    aria-label={
+                      soSemClassificacao
+                        ? `${item.rotulo}: ${total} menções, sentimento a integrar`
+                        : `${item.rotulo}: ${legenda[0]} ${item.positivo}, ${legenda[1]} ${item.neutro}, ${legenda[2]} ${item.negativo}`
+                    }
+                    style={{ display: 'flex', height: 7, borderRadius: 2, overflow: 'hidden', gap: 2 }}
+                  >
+                    {(
+                      [
+                        ['positivo', item.positivo, cores[0], legenda[0]],
+                        ['neutro', item.neutro, cores[1], legenda[1]],
+                        ['negativo', item.negativo, cores[2], legenda[2]],
+                        ['sem', semClassificacao, COR.semClassificacao, 'Sem classificação'],
+                      ] as const
+                    )
+                      .filter(([, valor]) => valor > 0)
+                      .map(([chave, valor, cor, rotulo]) => (
+                        <div
+                          key={chave}
+                          title={`${rotulo}: ${numero(valor)} (${Math.round((valor / total) * 100)}%)`}
+                          style={{ width: `${(valor / total) * 100}%`, background: cor }}
+                        />
+                      ))}
+                  </div>
+                )}
+              </Linha>
             </li>
           );
         })}
@@ -569,17 +621,79 @@ export interface ColunaDaTabela {
   formatar?: (valor: unknown, linha: Record<string, unknown>) => string;
 }
 
+/** O valor de uma célula: endereço vira link, o resto vira texto.
+ *
+ *  POR QUE AQUI. A lista de menções da Sociedade digital traz o LINK de cada
+ *  post — a carga do padrão Aegea trouxe o endereço de 2.208 itens —, e a célula
+ *  escrevia `String(valor)`: a URL inteira ocupava a largura de três colunas, não
+ *  se clicava, e quem quisesse abrir tinha de selecionar e copiar.
+ *
+ *  NO COMPONENTE, E NÃO NO FORMATADOR: `dominio/dossie.ts` é TypeScript puro e
+ *  devolve texto; um link é elemento, e elemento é coisa de componente. Pôr JSX
+ *  no domínio misturaria as duas camadas por causa de uma âncora.
+ *
+ *  O CRITÉRIO É O ESQUEMA DA URL, e não a presença de um ponto: `aegea.com.br`
+ *  sem `https://` pode ser o nome de um perfil, e transformá-lo em link daria um
+ *  clique para lugar nenhum. Vale para qualquer tabela do dossiê — nenhuma
+ *  precisa declarar que tem coluna de endereço.
+ */
+function ValorDaCelula({ valor }: { valor: unknown }) {
+  const texto = String(valor);
+  if (typeof valor === 'string' && /^https?:\/\//i.test(valor)) {
+    return (
+      <a
+        href={valor}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'var(--azul-mar)', fontWeight: 600, whiteSpace: 'nowrap' }}
+      >
+        Abrir ↗
+      </a>
+    );
+  }
+  return <>{texto}</>;
+}
+
 export function TabelaDeLeitura({
   colunas,
   linhas,
   vazio = 'Sem registro no período.',
+  enderecoDaLinha,
 }: {
   colunas: ColunaDaTabela[];
   linhas: Record<string, unknown>[];
   vazio?: string;
+  /** O endereço para onde a linha leva, quando há um.
+   *
+   *  CLIQUE NA LINHA **E** LINK DE VERDADE NO TEXTO, e os dois não são
+   *  redundância:
+   *
+   *    o clique na linha   é o gesto que a pessoa já tenta — pedido do dono do
+   *                        produto, "se clicar gostaria de acessar a página"
+   *    o `a` no texto      é o que teclado e leitor de tela alcançam, e o que
+   *                        permite abrir em outra aba pelo meio do mouse
+   *
+   *  O `tr` NÃO VIRA BOTÃO: sobrescrever o papel dele quebraria a semântica da
+   *  tabela — é o mesmo achado de revisão que tirou o `role="button"` do `li` em
+   *  `BarrasCemPorCento`. A linha fica linha, com um link dentro. */
+  enderecoDaLinha?: (linha: Record<string, unknown>) => string | null;
 }) {
   const id = useId();
   const [linhaEmFoco, definirLinhaEmFoco] = useState<number | null>(null);
+  //: QUAL CÉLULA RECEBE O LINK: a PRIMEIRA COLUNA, e a decisão é da tabela —
+  //: não de cada linha.
+  //:
+  //: EU HAVIA ESCRITO "a primeira célula com texto", POR LINHA, e isso faz o
+  //: link pular de coluna: numa linha sem texto de menção ele cairia na coluna
+  //: de rede ou de data, e a mesma tabela teria o link em lugares diferentes
+  //: dependendo do que o fornecedor preencheu. Uma tabela em que o link muda de
+  //: lugar não se aprende.
+  //:
+  //: A PRIMEIRA, E NÃO UMA ADIVINHADA: a ordem das colunas é decisão do
+  //: servidor, e ele põe na frente o que se lê ("O TEXTO VEM PRIMEIRO porque é o
+  //: que se lê", em `COLUNAS_DAS_MENCOES`). Célula vazia nessa coluna fica sem
+  //: link, e o clique na linha continua levando.
+  const colunaDoTexto = colunas[0];
 
   if (!linhas.length) {
     return <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>{vazio}</p>;
@@ -612,20 +726,51 @@ export function TabelaDeLeitura({
           </tr>
         </thead>
         <tbody>
-          {linhas.map((linha, indice) => (
+          {linhas.map((linha, indice) => {
+            const endereco = enderecoDaLinha?.(linha) ?? null;
+            //: SÓ `http`/`https`, e a conferência é aqui porque o endereço vem do
+            //: arquivo que o fornecedor entregou: um `javascript:` numa célula
+            //: viraria código executando na sessão de quem clicou.
+            const destino = endereco && /^https?:\/\//i.test(endereco) ? endereco : null;
+            return (
             <tr
               key={`${id}-${indice}`}
               onMouseEnter={() => definirLinhaEmFoco(indice)}
               onMouseLeave={() => definirLinhaEmFoco(null)}
+              //: ABRE EM OUTRA ABA, como o link do texto: a tela de trás é o
+              //: aprofundamento que a pessoa estava lendo, e trocá-la pela página
+              //: do fornecedor perderia o caminho inteiro.
+              onClick={
+                destino
+                  ? () => {
+                      //: SELECIONAR TEXTO NÃO ABRE NADA. A tabela de menções é
+                      //: feita de texto que se copia, e um arrasto para
+                      //: selecionar termina em `click` — sem esta guarda, copiar
+                      //: meia frase abriria a página do fornecedor no meio do
+                      //: gesto.
+                      if (window.getSelection()?.toString()) return;
+                      window.open(destino, '_blank', 'noopener,noreferrer');
+                    }
+                  : undefined
+              }
+              title={destino ? 'Abrir na fonte' : undefined}
               style={{
                 borderBottom: '1px solid var(--borda)',
                 background: linhaEmFoco === indice ? 'var(--bg-hover)' : undefined,
+                cursor: destino ? 'pointer' : undefined,
               }}
             >
               {colunas.map((coluna) => {
                 const bruto = linha[coluna.chave];
                 const destaque = coluna.destaque?.(linha) ?? null;
                 const vazia = bruto === null || bruto === undefined || bruto === '';
+                const conteudo = vazia ? (
+                  <SemDado />
+                ) : coluna.formatar ? (
+                  coluna.formatar(bruto, linha)
+                ) : (
+                  <ValorDaCelula valor={bruto} />
+                );
                 return (
                   <td
                     key={coluna.chave}
@@ -642,16 +787,48 @@ export function TabelaDeLeitura({
                       fontWeight: destaque ? 700 : undefined,
                     }}
                   >
-                    {vazia ? (
-                      <SemDado />
+                    {/* O LINK ENVOLVE O CONTEÚDO, qualquer que ele seja — e não
+                        é um terceiro ramo ao lado do formatador. Como ramo,
+                        bastava uma coluna formatada virar a primeira para o link
+                        desaparecer em silêncio: o formatador ganharia o ternário,
+                        e ninguém notaria, porque a linha continua clicável. */}
+                    {/* `!vazia` PORQUE CÉLULA VAZIA NÃO VIRA LINK: sem isto, a
+                        linha sem texto da menção publicava um "—" clicável — um
+                        link cujo rótulo é um travessão, que o leitor de tela
+                        anuncia como "link, travessão". O clique na linha continua
+                        levando. (Teste pegou.) */}
+                    {destino && !vazia && coluna.chave === colunaDoTexto?.chave ? (
+                      //: QUEM NAVEGA POR TECLADO chega nele, o leitor de tela o
+                      //: anuncia como link, e o meio do mouse abre em outra aba.
+                      //: `stopPropagation` para o clique não contar duas vezes (o
+                      //: link já abre; a linha abriria de novo).
+                      <a
+                        href={destino}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(evento) => {
+                          //: A MESMA GUARDA DA LINHA, e ela faltava aqui: o
+                          //: `stopPropagation` impede o `tr` de abrir, então a
+                          //: guarda de lá não roda — e o comportamento padrão do
+                          //: `a` abria a página de qualquer jeito. Selecionar
+                          //: texto DENTRO do link é o caso mais provável de
+                          //: todos, porque o texto da menção é o próprio link.
+                          if (window.getSelection()?.toString()) evento.preventDefault();
+                          evento.stopPropagation();
+                        }}
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                      >
+                        {conteudo}
+                      </a>
                     ) : (
-                      (coluna.formatar?.(bruto, linha) ?? String(bruto))
+                      conteudo
                     )}
                   </td>
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

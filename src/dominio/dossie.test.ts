@@ -47,6 +47,8 @@ function bloco(parcial: Partial<Bloco>): Bloco {
     legenda: [],
     cores: [],
     colunas: [],
+    recorta: null,
+    coluna_do_link: null,
     ficha: FICHA,
     ...parcial,
   };
@@ -238,6 +240,8 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     materias_recentes: bloco({ titulo: 'Últimas matérias', subtipo: 'materias' }),
     fatos: [],
     paineis: [],
+    onde_esta_a_causa: [],
+    lacunas_da_causa: [],
     sinais: [],
     ...parcial,
   };
