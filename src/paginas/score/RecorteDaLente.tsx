@@ -83,8 +83,12 @@ export function RecorteDaLente({
 
   return (
     <Modal
-      titulo={ultimo ? ultimo.valor : 'O mês inteiro'}
-      subtitulo={<Trilha recorte={recorte} aoSubir={aoSubir} />}
+      //: O MÊS NO TÍTULO QUANDO NÃO HÁ DIMENSÃO, e não "o mês inteiro": desde que
+      //: a barra da Evolução abre este painel, o mês dele pode não ser o da tela
+      //: — clicar em abril com a tela em junho mostrava um painel sem nada
+      //: dizendo de que mês eram aqueles números.
+      titulo={ultimo ? ultimo.valor : `Mês inteiro · ${mesCurto(mes)}`}
+      subtitulo={<Trilha recorte={recorte} mes={mes} aoSubir={aoSubir} />}
       aoFechar={aoFechar}
       //: MAIS LARGO QUE OS 600px DA GAVETA DO PACOTE, e o motivo é a tabela de
       //: menções: são sete colunas, e uma delas é o TEXTO da menção — o que se
@@ -114,16 +118,21 @@ export function RecorteDaLente({
  *  e não recomeçando. */
 function Trilha({
   recorte,
+  mes,
   aoSubir,
 }: {
   recorte: Recorte | null;
+  mes: string;
   aoSubir: (chave: string) => void;
 }) {
-  if (!recorte?.trilha.length) return <>Lente</>;
+  //: A RAIZ NOMEIA O MÊS, sempre: com a barra da Evolução abrindo este painel, a
+  //: trilha "Lente › UF: RJ" não diria de que mês é o Rio.
+  const raiz = `Lente · ${mesCurto(mes)}`;
+  if (!recorte?.trilha.length) return <>{raiz}</>;
 
   return (
     <span>
-      Lente
+      {raiz}
       {recorte.trilha.map((passo) => (
         <span key={passo.chave}>
           {' › '}

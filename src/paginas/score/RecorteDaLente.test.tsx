@@ -119,6 +119,22 @@ describe('RecorteDaLente', () => {
     expect(screen.getByRole('button', { name: /UF: RJ/ })).toBeTruthy();
   });
 
+  it('NOMEIA O MÊS, porque ele pode não ser o da tela', async () => {
+    /** DESDE QUE A BARRA DA EVOLUÇÃO ABRE ESTE PAINEL, o mês dele pode ser outro:
+     *  clicar em abril com a tela em junho mostrava números sem nada dizendo de
+     *  que mês eram. O mês está no título quando não há dimensão, e na raiz da
+     *  trilha sempre. */
+    abrir({ ...DO_RIO, mes: '2026-04', trilha: [] }, { mes: '2026-04', filtro: {} });
+
+    expect(await screen.findByRole('heading', { name: /abr\/26/ })).toBeTruthy();
+  });
+
+  it('a raiz da trilha nomeia o mês mesmo com dimensão escolhida', async () => {
+    abrir(DO_RIO);
+
+    expect(await screen.findByText(/Lente · jun\/26/)).toBeTruthy();
+  });
+
   it('mostra o IMPACTO em pontos e a frase que o explica', async () => {
     /** O IMPACTO É A REGRA CENTRAL DO PACOTE, e não a nota do recorte: a nota
      *  responde "como seria o mês se fosse só isto", o impacto responde "quanto

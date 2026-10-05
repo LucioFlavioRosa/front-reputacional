@@ -199,14 +199,29 @@ function Conteudo({
   //: tela, o modal abre ao lado dela. Guardar os dois no mesmo lugar faria
   //: aprofundar num tema refazer o mês atrás do modal — exatamente o que o dono
   //: do produto pediu para deixar de acontecer.
-  const [aprofundando, definirAprofundando] = useState<FiltroDaLente | null>(null);
+  //:
+  //: O MÊS VIAJA JUNTO porque o modal deixou de ser sempre do mês da tela:
+  //: clicar numa barra da Evolução abre o mês DAQUELA barra, que é abril quando a
+  //: tela está em junho. Sem o mês no estado, o painel mediria junho com o título
+  //: de abril.
+  const [aprofundando, definirAprofundando] = useState<{
+    mes: string;
+    filtro: FiltroDaLente;
+  } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
-    definirAprofundando({ ...filtro, [chave]: valor });
+    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor } });
+  //: O RECORTE DO MÊS, SEM DIMENSÃO NENHUMA: o endpoint já responde isso (trilha
+  //: vazia, impacto do mês inteiro), e é o que a barra da Evolução pergunta.
+  //:
+  //: O FILTRO DA TELA VAI JUNTO, de propósito: com uma UF escolhida, o gráfico de
+  //: Evolução já desenha só aquela UF — abrir o mês inteiro a partir de uma barra
+  //: que mostra o Rio contaria outro número do que a barra que foi clicada.
+  const aoAprofundarNoMes = (mes: string) => definirAprofundando({ mes, filtro });
 
   return (
     <>
       <Destaque dossie={dossie} />
-      <Evolucao dossie={dossie} />
+      <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
       <JornadaDaLente dossie={dossie} serie={serie} mes={mes} aoTrocarMes={aoTrocarMes} />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
@@ -240,17 +255,25 @@ function Conteudo({
       {aprofundando ? (
         <RecorteDaLente
           codigo={dossie.codigo}
-          mes={dossie.mes}
-          filtro={aprofundando}
+          mes={aprofundando.mes}
+          filtro={aprofundando.filtro}
           aoFechar={() => definirAprofundando(null)}
           //: DESCER EMPILHA no recorte já aberto, e não no filtro da tela: o
           //: caminho de dentro do painel é dele, e some quando o painel fecha.
           //: A tela de trás fica onde estava — é o que diferencia aprofundar de
           //: recortar.
           aoDescer={(chave, valor) =>
-            definirAprofundando({ ...aprofundando, [chave]: valor })
+            definirAprofundando({
+              ...aprofundando,
+              filtro: { ...aprofundando.filtro, [chave]: valor },
+            })
           }
-          aoSubir={(chave) => definirAprofundando({ ...aprofundando, [chave]: undefined })}
+          aoSubir={(chave) =>
+            definirAprofundando({
+              ...aprofundando,
+              filtro: { ...aprofundando.filtro, [chave]: undefined },
+            })
+          }
         />
       ) : null}
 
@@ -273,7 +296,7 @@ function Conteudo({
         //: já filtrado por UF tem de significar "este tema, no Rio" — senão o
         //: número do painel e o número do modal discordam, e quem clicou não
         //: tem como saber por quê.
-        aoAprofundar={(chave, valor) => definirAprofundando({ ...filtro, [chave]: valor })}
+        aoAprofundar={aoAprofundar}
       />
 
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
@@ -437,7 +460,15 @@ function Destaque({ dossie }: { dossie: Dossie }) {
 
 /* -- 2. a evolução, com os fatos do período ------------------------------------ */
 
-function Evolucao({ dossie }: { dossie: Dossie }) {
+function Evolucao({
+  dossie,
+  aoAprofundarNoMes,
+}: {
+  dossie: Dossie;
+  /** Clicar numa barra abre o aprofundamento DAQUELE mês — o mesmo painel dos
+   *  outros gráficos, com a conta do mês inteiro em vez de um recorte. */
+  aoAprofundarNoMes: (mes: string) => void;
+}) {
   const { evolucao } = dossie;
 
   return (
@@ -450,7 +481,7 @@ function Evolucao({ dossie }: { dossie: Dossie }) {
           ficha={evolucao.ficha}
           ajuda={GUIA_DO_BLOCO[evolucao.titulo]}
         />
-        <Painel bloco={evolucao} fatos={dossie.fatos} />
+        <Painel bloco={evolucao} fatos={dossie.fatos} aoAprofundarNoMes={aoAprofundarNoMes} />
         <QuadroDaEvolucao linhas={dossie.sinais_da_evolucao} />
         <NotaDeFonte ficha={evolucao.ficha} />
 
@@ -705,6 +736,7 @@ function Painel({
   fatos = [],
   filtro,
   aoAprofundar,
+  aoAprofundarNoMes,
 }: {
   bloco: Bloco;
   fatos?: Dossie['fatos'];
@@ -713,6 +745,8 @@ function Painel({
    *  matérias) desenham sem eles, e continuam só de leitura. */
   filtro?: FiltroDaLente;
   aoAprofundar?: (chave: string, valor: string) => void;
+  /** Só a Evolução usa: clicar na COLUNA de um mês abre o aprofundamento dele. */
+  aoAprofundarNoMes?: (mes: string) => void;
 }) {
   // A DIMENSÃO VEM DO SERVIDOR (`bloco.recorta`). Sem ela — ou sem quem receba
   // o clique — não há clique: uma barra que parece clicável e não é custa mais
@@ -733,6 +767,10 @@ function Painel({
     const porMes = new Map(fatos.map((fato) => [fato.mes, fato]));
     return (
       <BarrasEmpilhadas
+        //: A COLUNA INTEIRA ABRE O MÊS. A faixa colorida não: ela recortaria por
+        //: sentimento, que não é dimensão de recorte desta tela — e um clique que
+        //: às vezes abre o mês e às vezes não faz a pessoa parar de clicar.
+        aoClicarMes={aoAprofundarNoMes}
         colunas={dados.map((linha) => {
           const semClassificacao = comoNumero(linha.sem_classificacao ?? 0);
           const classificadas =
