@@ -847,9 +847,10 @@ function Metodologia() {
               <strong>score = (NS + 1) ÷ 2 × 100</strong>, de 0 a 100.
             </li>
             <li>
-              Com mais de uma fonte na mesma lente, o score é a <strong>média simples dos
-              NS</strong> das fontes ligadas — a que classifica mais posts não decide a lente
-              sozinha.
+              Com mais de uma fonte na mesma lente, as menções das duas entram na{' '}
+              <strong>mesma conta</strong> — um denominador só. É o que faz a soma dos
+              recortes fechar com a nota: o impacto de qualquer conjunto de menções é
+              medido sobre o total do mês na lente.
             </li>
             <li>
               <strong>ISR = Σ (score × peso) ÷ Σ peso</strong>, sobre as lentes com dado. Lente
