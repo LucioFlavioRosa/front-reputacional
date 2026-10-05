@@ -54,7 +54,7 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     exemplo:
       'Um post com 50 mil interações vale 1 na régua simples, cerca de 5,7 no logaritmo, e 50 mil no bruto — onde ele passa a valer mais que todo o resto do mês somado.',
     aviso:
-      'A escolha é por fonte e por mês: uma fonte que não registrou engajamento naquele mês é contada por menções, e não zerada. Sem isso, escolher o bruto tirava quatro das cinco lentes do índice em junho de 2026 — e o número que sobrava era a Sociedade digital sozinha.',
+      'A escolha é por LENTE e por mês: basta uma das fontes da lente não ter registrado engajamento naquele mês para a lente inteira ser contada por menções, e não zerada. É o que mantém numerador e denominador na mesma grandeza, agora que as fontes de uma lente entram na mesma conta — medir uma em curtidas e a outra em menções faria a fonte sem o dado vencer justamente por não tê-lo. Sem essa proteção, escolher o bruto tirava quatro das cinco lentes do índice em junho de 2026, e o número que sobrava era a Sociedade digital sozinha.',
   },
   pesos: {
     titulo: 'Peso de cada lente',
