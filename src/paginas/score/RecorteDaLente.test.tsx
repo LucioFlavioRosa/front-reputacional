@@ -47,8 +47,8 @@ const DO_RIO: Recorte = {
   frase: 'Este recorte tira 2,1 pontos da nota de Sociedade digital, com 4 de 6 itens do mês e 75% de negativas.',
   ausencia: null,
   historico: [
-    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true, nota: null },
-    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false, nota: null },
+    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true },
+    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false },
   ],
   dentro: [
     {
@@ -167,14 +167,20 @@ describe('RecorteDaLente', () => {
      *  histórico dizia "-15,1" e o ponto do gráfico dizia 35, sem nada ligando os
      *  dois. Agora a NOTA é o número grande (o mesmo do gráfico), o impacto vai
      *  embaixo como "vs. 50", e o subtítulo diz que não é variação. */
-    abrir({
-      ...DO_RIO,
-      trilha: [],
-      historico: [
-        { mes: '2026-05', impacto: 0.31, itens: 1117, sem_base: false, nota: 50 },
-        { mes: '2026-06', impacto: -15.14, itens: 6932, sem_base: false, nota: 35 },
-      ],
-    });
+    abrir(
+      {
+        ...DO_RIO,
+        trilha: [],
+        historico: [
+          { mes: '2026-05', impacto: 0.31, itens: 1117, sem_base: false },
+          { mes: '2026-06', impacto: -15.14, itens: 6932, sem_base: false },
+        ],
+      },
+      //: A NOTA VEM DA SÉRIE DA TELA — a mesma que desenha a Jornada. Achado de
+      //: revisão: o servidor a derivava do impacto, e divergia por arredondamento
+      //: duplo e nos meses de nota estimada.
+      { notaDoMes: (mes) => ({ '2026-05': 50, '2026-06': 35 })[mes] ?? null },
+    );
 
     expect(await screen.findByText('A nota, mês a mês')).toBeTruthy();
     expect(screen.getByText(/Não é a variação de um mês para o outro/)).toBeTruthy();
@@ -302,8 +308,8 @@ describe('RecorteDaLente', () => {
       ausencia: 'Nenhum item deste recorte neste mês.',
       dentro: [],
       historico: [
-        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false, nota: null },
-        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true, nota: null },
+        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false },
+        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true },
       ],
     });
 

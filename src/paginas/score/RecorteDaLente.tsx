@@ -49,6 +49,7 @@ export function RecorteDaLente({
   aoSubir,
   ultimoDegrau,
   tituloPeloMes = false,
+  notaDoMes,
 }: {
   codigo: string;
   mes: string;
@@ -69,6 +70,18 @@ export function RecorteDaLente({
    *  A pessoa clicou num MÊS; o título tem de responder ao que ela clicou, e o
    *  recorte herdado continua visível na trilha. */
   tituloPeloMes?: boolean;
+  /** A nota OFICIAL da lente em cada mês — a mesma que a Jornada desenha.
+   *
+   *  VEM DE FORA, E NÃO DO PAYLOAD DESTE PAINEL, e isto foi achado de revisão
+   *  (duas vezes). Eu havia feito o servidor derivar a nota do impacto
+   *  (`50 + impacto`, identidade exata sem recorte); dava divergência de 1 ponto
+   *  por arredondamento duplo, e nos meses de nota ESTIMADA o painel dizia "sem
+   *  base" onde a lente publica número.
+   *
+   *  A TELA JÁ TEM O NÚMERO CERTO: `PontoDaSerie.notas_das_lentes`, de onde a
+   *  curva é desenhada. Lê-lo de lá é o que garante que o painel e o gráfico
+   *  digam o mesmo — por construção, não por coincidência de duas contas. */
+  notaDoMes?: (mes: string) => number | null;
   aoFechar: () => void;
   /** Empilha mais um degrau — descer um nível SEM sair do painel. */
   aoDescer: (chave: string, valor: string) => void;
@@ -148,7 +161,9 @@ export function RecorteDaLente({
       >
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
         {!recorte && !erro ? <Carregando /> : null}
-        {recorte ? <Conteudo recorte={recorte} aoDescer={aoDescer} /> : null}
+        {recorte ? (
+          <Conteudo recorte={recorte} aoDescer={aoDescer} notaDoMes={notaDoMes} />
+        ) : null}
       </div>
     </Modal>
   );
@@ -206,9 +221,11 @@ function Trilha({
 function Conteudo({
   recorte,
   aoDescer,
+  notaDoMes,
 }: {
   recorte: Recorte;
   aoDescer: (chave: string, valor: string) => void;
+  notaDoMes?: (mes: string) => number | null;
 }) {
   // SEM ITEM NESTE MÊS, A AUSÊNCIA — MAIS O HISTÓRICO, que é justamente onde ele
   // mais importa. ACHADO DE REVISÃO (alta): o painel "Concessionárias com maior
@@ -227,7 +244,7 @@ function Conteudo({
           {recorte.ausencia ?? recorte.frase}
         </p>
         {recorte.historico.some((celula) => celula.itens) ? (
-          <Historico recorte={recorte} />
+          <Historico recorte={recorte} notaDoMes={notaDoMes} />
         ) : null}
       </>
     );
@@ -277,7 +294,7 @@ function Conteudo({
 
       {/* 3. O HISTÓRICO responde "isto é de agora ou é sempre assim" — a
              pergunta que decide se o pedaço merece ação. */}
-      <Historico recorte={recorte} />
+      <Historico recorte={recorte} notaDoMes={notaDoMes} />
 
       {/* 4. DENTRO DESTE RECORTE: clicar empilha mais um degrau. */}
       <DentroDoRecorte recorte={recorte} aoDescer={aoDescer} />
@@ -302,10 +319,19 @@ function Conteudo({
   );
 }
 
-function Historico({ recorte }: { recorte: Recorte }) {
-  //: TEM NOTA? Então este painel é o mês inteiro, e o número grande da célula
-  //: pode ser a NOTA — que é o que a pessoa acabou de ver no gráfico.
-  const comNota = recorte.historico.some((celula) => celula.nota !== null);
+function Historico({
+  recorte,
+  notaDoMes,
+}: {
+  recorte: Recorte;
+  notaDoMes?: (mes: string) => number | null;
+}) {
+  //: A NOTA SÓ VALE SEM RECORTE. Com um pedaço escolhido, a nota da LENTE no mês
+  //: não é a nota daquele pedaço — e pôr as duas lado a lado como se uma
+  //: explicasse a outra repetiria o mal-entendido que isto vem corrigir.
+  const nota = (mes: string) =>
+    recorte.trilha.length || !notaDoMes ? null : notaDoMes(mes);
+  const comNota = recorte.historico.some((celula) => nota(celula.mes) !== null);
 
   return (
     <section>
@@ -323,14 +349,16 @@ function Historico({ recorte }: { recorte: Recorte }) {
           : 'Quantos pontos este recorte pôs (+) ou tirou (−) da nota de cada mês. Não é a variação de um mês para o outro.'}
       </p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {recorte.historico.map((celula) => (
+        {recorte.historico.map((celula) => {
+          const daCelula = celula.sem_base ? null : nota(celula.mes);
+          return (
           <div
             key={celula.mes}
             title={
               celula.sem_base
                 ? 'sem menção desta lente neste mês'
-                : celula.nota !== null
-                  ? `nota ${celula.nota} · ${celula.impacto} pontos em relação a 50 · ${celula.itens} itens`
+                : daCelula !== null
+                  ? `nota ${daCelula} · ${celula.impacto} pontos em relação a 50 · ${celula.itens} itens`
                   : `${celula.itens} itens · ${celula.impacto} pontos`
             }
             style={{
@@ -353,19 +381,20 @@ function Historico({ recorte }: { recorte: Recorte }) {
             <div className="tabular" style={{ fontSize: 15, fontWeight: 700 }}>
               {celula.sem_base
                 ? '—'
-                : celula.nota !== null
-                  ? celula.nota
+                : daCelula !== null
+                  ? daCelula
                   : celula.impacto.toFixed(1).replace('.', ',')}
             </div>
             <div style={{ fontSize: 10, color: 'var(--cinza-2)' }}>
               {celula.sem_base
                 ? 'sem base'
-                : celula.nota !== null
+                : daCelula !== null
                   ? `${celula.impacto > 0 ? '+' : ''}${celula.impacto.toFixed(1).replace('.', ',')} vs. 50`
                   : `${celula.itens} itens`}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
