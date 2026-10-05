@@ -795,13 +795,23 @@ export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);
 }
 
-/** O recorte de tela que a aba Lentes oferece — tier, veículo, atributo,
- *  tema. Nenhum dos quatro é obrigatório; o campo some da URL quando vazio. */
+/** O recorte de tela que a aba Lentes oferece.
+ *
+ *  OITO DIMENSÕES, e as quatro últimas vieram do padrão Aegea: perfil do autor,
+ *  UF, subtema e autor. Nenhuma é obrigatória; o campo some da URL quando vazio.
+ *
+ *  ELAS SE EMPILHAM — `{ uf: 'RJ', perfil_autor: 'Figura pública' }` é "figuras
+ *  públicas no Rio", e não uma coisa OU a outra. É o nível 3 do pacote, e é o que
+ *  faz um link reproduzir o ponto exato do caminho. */
 export interface FiltroDaLente {
   tier?: string;
   veiculo?: string;
   atributo?: string;
   tema?: string;
+  perfil_autor?: string;
+  uf?: string;
+  subtema?: string;
+  autor?: string;
 }
 
 /** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
@@ -812,14 +822,23 @@ export interface OpcoesDeFiltroDaLente {
   veiculos: string[];
   atributos: string[];
   temas: string[];
+  //: As do padrão Aegea. VAZIAS na lente que não tem o campo — a Imprensa não
+  //: manda perfil do autor —, e é por isso que a barra esconde o campo em vez de
+  //: abrir um seletor sem opção nenhuma.
+  perfis: string[];
+  ufs: string[];
+  subtemas: string[];
+  autores: string[];
 }
 
 function paraConsultaDoFiltro(mes: string, filtro?: FiltroDaLente): string {
   const parametros = new URLSearchParams({ mes });
-  if (filtro?.tier) parametros.set('tier', filtro.tier);
-  if (filtro?.veiculo) parametros.set('veiculo', filtro.veiculo);
-  if (filtro?.atributo) parametros.set('atributo', filtro.atributo);
-  if (filtro?.tema) parametros.set('tema', filtro.tema);
+  //: PERCORRE O OBJETO em vez de listar campo por campo: a lista escrita à mão
+  //: era o lugar onde uma dimensão nova se esquecia — a tela mandaria o recorte,
+  //: o servidor devolveria o mês inteiro, e nada reclamaria.
+  for (const [chave, valor] of Object.entries(filtro ?? {})) {
+    if (valor) parametros.set(chave, valor);
+  }
   return parametros.toString();
 }
 
