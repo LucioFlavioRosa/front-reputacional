@@ -207,9 +207,12 @@ function Conteudo({
   const [aprofundando, definirAprofundando] = useState<{
     mes: string;
     filtro: FiltroDaLente;
+    //: A DIMENSÃO QUE ABRIU O PAINEL, para o título dele dizer o degrau que a
+    //: pessoa acabou de abrir — a trilha vem em ordem de domínio, não de descida.
+    ultimo?: string;
   } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
-    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor } });
+    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
   //: O RECORTE DO MÊS, SEM DIMENSÃO NENHUMA: o endpoint já responde isso (trilha
   //: vazia, impacto do mês inteiro), e é o que a barra da Evolução pergunta.
   //:
@@ -262,16 +265,21 @@ function Conteudo({
           //: caminho de dentro do painel é dele, e some quando o painel fecha.
           //: A tela de trás fica onde estava — é o que diferencia aprofundar de
           //: recortar.
+          ultimoDegrau={aprofundando.ultimo}
           aoDescer={(chave, valor) =>
             definirAprofundando({
               ...aprofundando,
               filtro: { ...aprofundando.filtro, [chave]: valor },
+              ultimo: chave,
             })
           }
           aoSubir={(chave) =>
             definirAprofundando({
               ...aprofundando,
               filtro: { ...aprofundando.filtro, [chave]: undefined },
+              //: SUBIR NÃO DEIXA DEGRAU NOVO: o título cai no último da trilha
+              //: que sobrou, que é o que a pessoa está vendo agora.
+              ultimo: aprofundando.ultimo === chave ? undefined : aprofundando.ultimo,
             })
           }
         />

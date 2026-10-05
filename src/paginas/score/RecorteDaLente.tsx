@@ -25,7 +25,7 @@
  *  aparece, não o que ele faz.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { FiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
 import { obterRecorteDaLente } from '@/api/cliente';
@@ -47,11 +47,19 @@ export function RecorteDaLente({
   aoFechar,
   aoDescer,
   aoSubir,
+  ultimoDegrau,
 }: {
   codigo: string;
   mes: string;
   /** O recorte aberto: o caminho inteiro, não só o último degrau. */
   filtro: FiltroDaLente;
+  /** A dimensão que a pessoa ACABOU de abrir, para o título.
+   *
+   *  ACHADO DE REVISÃO: o título usava o último passo da trilha, e a trilha vem
+   *  na ordem do DOMÍNIO (para dois links do mesmo recorte se lerem igual) — não
+   *  na ordem da descida. Quem abria "UF: RJ" e descia em "Cidadão" via o título
+   *  voltar para "RJ", porque na Sociedade o perfil vem antes da UF. */
+  ultimoDegrau?: string;
   aoFechar: () => void;
   /** Empilha mais um degrau — descer um nível SEM sair do painel. */
   aoDescer: (chave: string, valor: string) => void;
@@ -60,6 +68,7 @@ export function RecorteDaLente({
 }) {
   const [recorte, definirRecorte] = useState<Recorte | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
+  const corpo = useRef<HTMLDivElement>(null);
 
   //: O FILTRO SERIALIZADO É A CHAVE DO EFEITO, e não o objeto: a tela monta um
   //: objeto novo a cada render, e um efeito que dependesse dele recarregaria em
@@ -79,7 +88,25 @@ export function RecorteDaLente({
     };
   }, [codigo, mes, caminho]);
 
-  const ultimo = recorte?.trilha.at(-1);
+  //: O FOCO VOLTA PARA O PAINEL quando o conteúdo troca. ACHADO DE REVISÃO: quem
+  //: desce por teclado aperta Enter num botão que o recorte novo desmonta — e
+  //: `Modal` só move o foco ao montar, não quando o conteúdo interno muda. O Tab
+  //: seguinte partia do `body`, ou seja, da página ATRÁS do diálogo.
+  //:
+  //: SÓ QUANDO O FOCO SE PERDEU: se a pessoa já moveu o foco para outro lugar
+  //: dentro do painel, roubá-lo seria pior que o problema.
+  useEffect(() => {
+    if (!recorte) return;
+    const ativo = document.activeElement;
+    if (!ativo || ativo === document.body || !corpo.current?.contains(ativo)) {
+      corpo.current?.focus();
+    }
+  }, [recorte]);
+
+  //: O DEGRAU DO TÍTULO: o que a pessoa acabou de abrir, e só então o último da
+  //: trilha (que é ordem de domínio, não de descida).
+  const ultimo =
+    recorte?.trilha.find((passo) => passo.chave === ultimoDegrau) ?? recorte?.trilha.at(-1);
 
   return (
     <Modal
@@ -100,7 +127,14 @@ export function RecorteDaLente({
       //: tela estreita o painel encolhe sozinho em vez de cortar.
       largura={1100}
     >
-      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <div
+        ref={corpo}
+        //: `-1` e não `0`: o corpo recebe o foco quando o conteúdo troca, mas não
+        //: entra na ordem de tabulação — quem tabula passa pelos controles DENTRO
+        //: dele. Mesmo contrato da caixa do `Modal`.
+        tabIndex={-1}
+        style={{ padding: 24, outline: 'none', display: 'flex', flexDirection: 'column', gap: 22 }}
+      >
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
         {!recorte && !erro ? <Carregando /> : null}
         {recorte ? <Conteudo recorte={recorte} aoDescer={aoDescer} /> : null}

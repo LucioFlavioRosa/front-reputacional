@@ -170,6 +170,66 @@ describe('RecorteDaLente', () => {
     expect(aoDescer).toHaveBeenCalledWith('perfil_autor', 'Cidadão');
   });
 
+  it('o título mostra o degrau que a pessoa ACABOU de abrir', async () => {
+    /** ACHADO DE REVISÃO (média). O título usava o último passo da trilha, e a
+     *  trilha vem na ordem do DOMÍNIO — para dois links do mesmo recorte se lerem
+     *  igual —, não na ordem da descida. Na Sociedade o perfil vem antes da UF:
+     *  quem abria "UF: RJ" e descia em "Cidadão" via o título voltar para "RJ". */
+    abrir(
+      {
+        ...DO_RIO,
+        trilha: [
+          { chave: 'perfil_autor', dimensao: 'Perfil de quem fala', valor: 'Cidadão' },
+          { chave: 'uf', dimensao: 'UF', valor: 'RJ' },
+        ],
+      },
+      { filtro: { uf: 'RJ', perfil_autor: 'Cidadão' }, ultimoDegrau: 'perfil_autor' },
+    );
+
+    //: "Cidadão", e não "RJ" — embora "RJ" seja o último da trilha.
+    expect(await screen.findByRole('heading', { name: 'Cidadão' })).toBeTruthy();
+  });
+
+  it('sem degrau dito, o título cai no último da trilha', async () => {
+    abrir(DO_RIO);
+
+    expect(await screen.findByRole('heading', { name: 'RJ' })).toBeTruthy();
+  });
+
+  it('o FOCO volta para o painel quando o recorte troca', async () => {
+    /** ACHADO DE REVISÃO (baixa): quem desce por teclado aperta Enter num botão
+     *  que o recorte novo desmonta, e `Modal` só move o foco ao montar. O Tab
+     *  seguinte partia do `body` — a página ATRÁS do diálogo. */
+    const { container } = abrir(DO_RIO);
+    await screen.findByText(/pontos na nota da lente/);
+
+    //: O corpo do painel é quem recebe o foco perdido.
+    expect(container.querySelector('[tabindex="-1"]')).toBeTruthy();
+    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('selecionar texto DENTRO do link não abre a página', async () => {
+    /** ACHADO DE REVISÃO (baixa): o `stopPropagation` do link impedia a guarda da
+     *  linha de rodar, e o comportamento padrão do `a` abria de qualquer jeito. E
+     *  é o caso mais provável de todos, porque o texto da menção É o link. */
+    const espiao = vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => 'Falta de água',
+    } as unknown as Selection);
+    abrir(DO_RIO);
+
+    const link = await screen.findByRole('link', { name: /Falta de água no bairro/ });
+    const clique = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(clique);
+
+    //: `defaultPrevented` é o que impede a navegação do `a`; `window.open` nem
+    //: entra nesse caminho, e o teste confere os dois.
+    expect(clique.defaultPrevented).toBe(true);
+    expect(window.open).not.toHaveBeenCalled();
+    espiao.mockRestore();
+    vi.mocked(window.getSelection).mockRestore();
+  });
+
   it('clicar num degrau da trilha SOBE aquele degrau', async () => {
     const aoSubir = vi.fn();
     abrir(DO_RIO, { aoSubir });

@@ -806,7 +806,16 @@ export function TabelaDeLeitura({
                         href={destino}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(evento) => evento.stopPropagation()}
+                        onClick={(evento) => {
+                          //: A MESMA GUARDA DA LINHA, e ela faltava aqui: o
+                          //: `stopPropagation` impede o `tr` de abrir, então a
+                          //: guarda de lá não roda — e o comportamento padrão do
+                          //: `a` abria a página de qualquer jeito. Selecionar
+                          //: texto DENTRO do link é o caso mais provável de
+                          //: todos, porque o texto da menção é o próprio link.
+                          if (window.getSelection()?.toString()) evento.preventDefault();
+                          evento.stopPropagation();
+                        }}
                         style={{ color: 'inherit', textDecoration: 'none' }}
                       >
                         {conteudo}
