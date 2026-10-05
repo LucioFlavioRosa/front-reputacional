@@ -9,6 +9,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  FOLGA_NO_LIMITE,
+  PAD_TOPO,
   VB,
   curvaPor,
   dominioDe,
@@ -712,5 +714,79 @@ describe('os rótulos não pulam de lado', () => {
     const lados = jornadaDoIndice(serrote, '2026-06', null).pontos.map((p) => p.acima);
 
     expect(new Set(lados).size).toBe(1);
+  });
+});
+
+describe('quando o eixo bate em 0 ou em 100', () => {
+  /** O PEDIDO: "a faixa, se bater 0 ou 100, deve ter um extra".
+   *
+   *  POR QUE ELE PRECISA DISSO: o índice não passa de 100 nem desce de 0, então
+   *  `dominioDe` para ali — e um mês de 100 fica com o ponto exatamente na borda
+   *  de cima da área desenhada, metade da bolinha fora, a tag colada no topo do
+   *  cartão. O mesmo embaixo, com o zero.
+   *
+   *  A FOLGA É DE DESENHO, E NÃO DE ESCALA, e a diferença é o que impede um
+   *  engano: esticar o eixo até 105 escreveria no gráfico um valor de índice que
+   *  não existe. O eixo continua terminando em 100; o que ganha ar é o espaço
+   *  entre a última marca e a borda. */
+
+  const noTeto = [
+    ponto({ mes: '2026-01', isr: 90 }),
+    ponto({ mes: '2026-02', isr: 95 }),
+    ponto({ mes: '2026-03', isr: 100 }),
+  ];
+  const noPiso = [
+    ponto({ mes: '2026-01', isr: 10 }),
+    ponto({ mes: '2026-02', isr: 5 }),
+    ponto({ mes: '2026-03', isr: 0 }),
+  ];
+
+  it('o eixo continua terminando em 100 — a folga não inventa índice', () => {
+    const { marcas } = jornadaDoIndice(noTeto, '2026-03', null);
+
+    expect(Math.max(...marcas.map((m) => m.valor))).toBe(100);
+  });
+
+  it('o ponto de 100 ganha ar acima dele, em vez de encostar na borda', () => {
+    const encostado = jornadaDoIndice(noTeto, '2026-03', null).pontos.at(-1);
+
+    //: O AR MEDIDO CONTRA A BORDA: sem a folga, o valor igual ao teto cai em
+    //: `PAD_TOPO` — a bolinha de 8px fica metade para fora do desenho.
+    expect(encostado!.cy).toBeCloseTo(PAD_TOPO + FOLGA_NO_LIMITE, 6);
+  });
+
+  it('a série que NÃO encosta no limite não ganha folga nenhuma', () => {
+    //: O CONTRAPESO, e ele importa: a folga existe para o caso em que o índice
+    //: acabou e `dominioDe` não teve onde pôr a folga dele. Numa série que vive
+    //: longe das pontas, dar o mesmo ar seria desperdiçar altura de desenho —
+    //: aqui o valor do teto cai exatamente em `PAD_TOPO`, como sempre caiu.
+    const longe = [
+      ponto({ mes: '2026-01', isr: 60 }),
+      ponto({ mes: '2026-02', isr: 70 }),
+      ponto({ mes: '2026-03', isr: 80 }),
+    ];
+
+    const { marcas } = jornadaDoIndice(longe, '2026-03', null);
+    const doTeto = marcas.reduce((alta, m) => (m.valor > alta.valor ? m : alta));
+
+    expect(doTeto.valor).toBe(90);
+    expect(doTeto.topo).toBeCloseTo((PAD_TOPO / VB.altura) * 100, 6);
+  });
+
+  it('o ponto de 0 ganha ar abaixo dele', () => {
+    const encostado = jornadaDoIndice(noPiso, '2026-03', null).pontos.at(-1);
+
+    expect(encostado!.cy).toBeLessThanOrEqual(VB.altura - 8);
+  });
+
+  it('a faixa de fundo acompanha a folga, e não vaza por cima dela', () => {
+    //: SE A FAIXA NÃO ACOMPANHA, o ar vira um defeito visível: uma tira colorida
+    //: terminando antes do ponto mais alto, ou passando por cima da folga.
+    const { faixas, pontos } = jornadaDoIndice(noTeto, '2026-03', null);
+    const maisAlta = Math.min(...faixas.map((f) => f.y));
+    const pontoMaisAlto = Math.min(...pontos.map((p) => p.cy));
+
+    expect(maisAlta).toBeLessThanOrEqual(pontoMaisAlto);
+    expect(maisAlta).toBeGreaterThan(0);
   });
 });

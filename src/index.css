@@ -485,6 +485,16 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 .jornada__detalhe {
   position: relative;
   margin-top: 12px;
+  /* OS CARTÕES EMPILHADOS NA MESMA CÉLULA: todos os meses são montados aqui e
+     ocupam o mesmo espaço, então a altura da janela é a do mês MAIS CHEIO da
+     série — e deixa de mudar quando o mouse passa de um mês para o outro.
+     Ver `DetalheDoMes` e a prop `reserva`. */
+  display: grid;
+  grid-template-areas: 'cartao';
+}
+
+.jornada__detalhe > .jornada__cartao {
+  grid-area: cartao;
 }
 
 .jornada__cartao {

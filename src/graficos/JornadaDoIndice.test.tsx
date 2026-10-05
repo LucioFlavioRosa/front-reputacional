@@ -80,10 +80,17 @@ describe('a jornada do índice', () => {
     // O PONTO DA MUDANÇA. Eram dez colunas de texto simultâneas; agora há um
     // cartão. Se este teste falhar porque os três fatos voltaram à tela, a
     // parede de letra miúda voltou com eles.
+    //
+    // MEDE VISIBILIDADE, E NÃO PRESENÇA NO DOM, desde que a janela passou a
+    // reservar a altura do mês mais cheio: os outros meses são montados fora de
+    // vista (`visibility: hidden` + `aria-hidden`) para segurar a altura, e é só
+    // por isso que o texto deles existe no documento. A propriedade que este
+    // teste protege — uma janela por vez, sem parede de texto — é sobre o que se
+    // VÊ e sobre o que o leitor de tela anuncia, e as duas continuam de pé.
     montar();
-    expect(screen.getByText('Atraso das demonstrações financeiras')).toBeInTheDocument();
-    expect(screen.queryByText('Aporte anunciado na Brazil Week')).toBeNull();
-    expect(screen.queryByText('Acordo com a agência reguladora')).toBeNull();
+    expect(screen.getByText('Atraso das demonstrações financeiras')).toBeVisible();
+    expect(screen.queryByText('Aporte anunciado na Brazil Week')).not.toBeVisible();
+    expect(screen.queryByText('Acordo com a agência reguladora')).not.toBeVisible();
   });
 
   it('sem mouse nenhum, mostra o mês escolhido', () => {
@@ -97,8 +104,10 @@ describe('a jornada do índice', () => {
   it('troca de mês quando o mouse passa pela fita', async () => {
     montar('2026-02');
     await userEvent.hover(naFita('janeiro'));
-    expect(screen.getByText('Aporte anunciado na Brazil Week')).toBeInTheDocument();
-    expect(screen.queryByText('Atraso das demonstrações financeiras')).toBeNull();
+    //: VISIBILIDADE, pelo mesmo motivo do teste acima: os meses fora de foco
+    //: continuam montados, fora de vista, para a janela não encurtar.
+    expect(screen.getByText('Aporte anunciado na Brazil Week')).toBeVisible();
+    expect(screen.queryByText('Atraso das demonstrações financeiras')).not.toBeVisible();
   });
 
   it('volta ao mês escolhido quando o mouse sai', async () => {
@@ -200,5 +209,74 @@ describe('o eixo se move em vez de saltar', () => {
       expect(Math.min(...marcas)).toBeGreaterThanOrEqual(comLente.piso);
       expect(Math.max(...marcas)).toBeLessThanOrEqual(comLente.teto);
     });
+  });
+});
+
+describe('a janela de detalhes não salta de altura', () => {
+  /** O RELATO: "a janela que mostra os detalhes dos pontos mês a mês piorou muito
+   *  a instabilidade".
+   *
+   *  A CAUSA: o cartão tem altura livre e conteúdo variável — um mês com três
+   *  fatos e rodapé é alto, o mês seguinte sem fato nenhum é baixo. Passar o mouse
+   *  pela fita trocava o conteúdo, a altura mudava, e tudo o que está abaixo do
+   *  gráfico subia e descia. Pior: o próprio cartão encurtava embaixo do ponteiro,
+   *  então o mouse saía dele sozinho e o destaque se desfazia.
+   *
+   *  A CORREÇÃO É RESERVAR O MAIOR: todos os meses são montados no mesmo lugar da
+   *  grade, e só o apontado fica visível. A altura passa a ser a do mês mais cheio
+   *  da série, sempre — medida pelo navegador, e não estimada por contagem de
+   *  linhas, que erraria no texto que quebra em duas. */
+
+  const CHEIO_E_VAZIO = [
+    ponto({
+      mes: '2026-01',
+      isr: 46,
+      fatos: [
+        { id: 'a', texto: 'Aporte anunciado na Brazil Week', efeito: 'sustenta' },
+        { id: 'b', texto: 'Reunião com a agência reguladora do estado', efeito: 'sustenta' },
+        { id: 'c', texto: 'Audiência pública sobre a tarifa de esgoto', efeito: 'pressiona' },
+      ],
+      maior_movimento: { lente: 'Imprensa', delta: 7 },
+      pontos_sem_tema: 3,
+    }),
+    ponto({ mes: '2026-02', isr: 42, delta: -4 }),
+  ];
+
+  it('reserva a altura do mês mais cheio, e não a do que está à vista', () => {
+    render(
+      <JornadaDoIndice
+        serie={CHEIO_E_VAZIO}
+        mes="2026-02"
+        comparada={null}
+        aoEscolherMes={vi.fn()}
+      />,
+    );
+
+    //: O MÊS VAZIO ESTÁ EM FOCO e o conteúdo do mês cheio continua montado, fora
+    //: de vista, segurando a altura. É isso que o teste prova: o texto do mês
+    //: cheio existe no documento mesmo com fevereiro selecionado.
+    const naJanela = document.querySelector('.jornada__detalhe') as HTMLElement;
+    expect(naJanela.textContent).toContain('Audiência pública sobre a tarifa de esgoto');
+  });
+
+  it('o que está fora de vista não é lido por quem ouve a tela, nem pega o mouse', () => {
+    //: O PREÇO DE MONTAR TODOS seria dobrar o que o leitor de tela anuncia e criar
+    //: alvos de mouse invisíveis — o cartão escondido roubaria o `mouseenter` do
+    //: visível e o destaque pularia de mês sozinho.
+    render(
+      <JornadaDoIndice
+        serie={CHEIO_E_VAZIO}
+        mes="2026-02"
+        comparada={null}
+        aoEscolherMes={vi.fn()}
+      />,
+    );
+
+    const escondidos = [...document.querySelectorAll('.jornada__cartao--reserva')];
+    expect(escondidos.length).toBeGreaterThan(0);
+    for (const cartao of escondidos) {
+      expect(cartao.getAttribute('aria-hidden')).toBe('true');
+      expect((cartao as HTMLElement).style.pointerEvents).toBe('none');
+    }
   });
 });

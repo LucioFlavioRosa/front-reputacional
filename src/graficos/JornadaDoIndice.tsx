@@ -394,7 +394,33 @@ export function JornadaDoIndice({
           }}
         >
           <span className="jornada__bico" aria-hidden />
-          <DetalheDoMes coluna={emFoco} aoDestacar={definirDestacado} aoSoltar={soltar} />
+          {/* TODOS OS MESES MONTADOS NO MESMO LUGAR, e só o apontado à vista.
+              É o que tira o salto que o dono do produto viu: "a janela que mostra
+              os detalhes dos pontos mês a mês piorou muito a instabilidade".
+
+              A CAUSA ERA A ALTURA LIVRE: um mês com três fatos e rodapé é alto, o
+              seguinte sem fato nenhum é baixo, e passar o mouse pela fita fazia a
+              janela encurtar e tudo abaixo dela subir. Pior que o salto: o cartão
+              encurtava DEBAIXO DO PONTEIRO, o mouse saía dele sozinho e o destaque
+              se desfazia sem ninguém mexer.
+
+              MEDIDO PELO NAVEGADOR, E NÃO ESTIMADO. Contar linhas para calcular uma
+              altura mínima erraria no texto que quebra em duas — e erraria para
+              menos, justo no mês mais cheio. Empilhados na mesma célula da grade, é
+              o mais alto de verdade que define a altura, com o texto real, na
+              largura real. */}
+          {jornada.colunas.map((coluna) =>
+            coluna.mes === emFoco.mes ? (
+              <DetalheDoMes
+                key={coluna.mes}
+                coluna={coluna}
+                aoDestacar={definirDestacado}
+                aoSoltar={soltar}
+              />
+            ) : (
+              <DetalheDoMes key={coluna.mes} coluna={coluna} reserva />
+            ),
+          )}
         </div>
       ) : null}
 
@@ -480,17 +506,34 @@ function DetalheDoMes({
   coluna,
   aoDestacar,
   aoSoltar,
+  //: A CÓPIA QUE SÓ SEGURA A ALTURA. Ela monta o mesmo conteúdo do mês, na mesma
+  //: largura, e fica fora de vista: é o que faz a janela ter sempre a altura do mês
+  //: mais cheio da série, em vez de encurtar no mês seguinte.
+  //:
+  //: INVISÍVEL DE VERDADE, nos três sentidos que importam: `visibility: hidden`
+  //: tira da vista E da árvore de acessibilidade, `aria-hidden` garante o segundo
+  //: mesmo onde o primeiro não valesse, e `pointer-events: none` impede que a
+  //: cópia roube o mouse do cartão de verdade — se ela o roubasse, o destaque
+  //: pularia de mês sozinho, que é um defeito pior que o salto de altura.
+  reserva = false,
 }: {
   coluna: ColunaDoMes;
-  aoDestacar: (mes: string) => void;
-  aoSoltar: (mes: string) => void;
+  aoDestacar?: (mes: string) => void;
+  aoSoltar?: (mes: string) => void;
+  reserva?: boolean;
 }) {
   return (
     <div
-      className="jornada__cartao"
-      onMouseEnter={() => aoDestacar(coluna.mes)}
-      onMouseLeave={() => aoSoltar(coluna.mes)}
-      style={{ borderTop: `3px solid ${coluna.filete}` }}
+      className={reserva ? 'jornada__cartao jornada__cartao--reserva' : 'jornada__cartao'}
+      aria-hidden={reserva ? 'true' : undefined}
+      onMouseEnter={reserva ? undefined : () => aoDestacar?.(coluna.mes)}
+      onMouseLeave={reserva ? undefined : () => aoSoltar?.(coluna.mes)}
+      style={{
+        borderTop: `3px solid ${coluna.filete}`,
+        ...(reserva
+          ? { visibility: 'hidden' as const, pointerEvents: 'none' as const }
+          : {}),
+      }}
     >
       {/* NA MESMA LINHA, agora que há largura: nas colunas de 90px o nome do mês
           e a variação não caibam lado a lado, e a variação ia para baixo. */}

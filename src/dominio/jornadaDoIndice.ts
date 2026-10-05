@@ -38,6 +38,22 @@ export const VB = { largura: 1000, altura: 330 } as const;
  *  mesmo desenho é o tipo de divergência que só aparece quando alguém já
  *  está comparando prints. */
 export const PAD_TOPO = 14;
+
+/** A folga EXTRA do lado em que o eixo bate no limite do índice.
+ *
+ *  O PEDIDO: "a faixa, se bater 0 ou 100, deve ter um extra". O índice não passa
+ *  de 100 nem desce de 0, então o domínio para ali — e o mês de 100 fica com o
+ *  ponto exatamente na borda de cima da área desenhada: metade da bolinha fora, a
+ *  tag colada no topo. O mesmo embaixo, com o zero.
+ *
+ *  DE DESENHO, E NÃO DE ESCALA. Esticar o eixo até 105 escreveria no gráfico um
+ *  valor de índice que não existe — e a marca de 105 seria uma mentira pequena no
+ *  lugar onde a diretoria lê o número. O eixo continua terminando em 100; o que
+ *  ganha ar é o espaço entre a última marca e a borda.
+ *
+ *  DEZESSEIS É O DOBRO DA BOLINHA (8px): menos que ela continuaria cortando o
+ *  ponto, e o dobro dá para a bolinha caber inteira com uma folga do tamanho dela. */
+export const FOLGA_NO_LIMITE = 16;
 export const PAD_BASE = 34;
 //: AS BORDAS DA FAIXA DESENHADA, em porcentagem da altura — que é a unidade em
 //: que o ponto é posicionado em HTML sobre o SVG. É contra elas que um valor
@@ -387,6 +403,19 @@ export function ladosDosRotulos(notas: number[]): boolean[] {
   return lados;
 }
 
+/** Quanto de folga extra cada lado do desenho ganha, por o eixo ter batido no
+ *  limite do índice.
+ *
+ *  SÓ NO LADO QUE ENCOSTOU: um gráfico que vive entre 36 e 58 não precisa de ar
+ *  nenhum, porque o domínio dele já tem a folga de `dominioDe` nas duas pontas. A
+ *  folga daqui é para o caso em que essa folga não pôde existir — o índice acabou. */
+function folgasDoLimite(piso: number, teto: number): { topo: number; base: number } {
+  return {
+    topo: teto >= 100 ? FOLGA_NO_LIMITE : 0,
+    base: piso <= 0 ? FOLGA_NO_LIMITE : 0,
+  };
+}
+
 /** Todos os valores que o eixo precisa conter: o índice de cada mês medido, e a
  *  nota da lente comparada quando há uma.
  *
@@ -551,8 +580,14 @@ export function jornadaDoIndice(
   // continua dizendo "1 de 5 lentes" ao lado do número. O que mudou é onde ele
   // é desenhado: no lugar dele.
   const { piso, teto } = dominioAnimado ?? dominioDe(valoresDoEixo(medidos, daLente));
-  const alturaUtil = VB.altura - PAD_TOPO - PAD_BASE;
-  const y = (valor: number) => PAD_TOPO + alturaUtil * (1 - (valor - piso) / (teto - piso));
+  //: A FOLGA EXTRA ENTRA NO DESENHO, de cada lado em que o eixo encostou no
+  //: limite do índice (ver `FOLGA_NO_LIMITE`). A escala não muda — `piso` e `teto`
+  //: continuam sendo o que `dominioDe` decidiu, e as marcas continuam dizendo os
+  //: mesmos números. O que muda é a altura em que 100 (ou 0) é desenhado.
+  const { topo: folgaDoTopo, base: folgaDaBase } = folgasDoLimite(piso, teto);
+  const alturaUtil = VB.altura - PAD_TOPO - folgaDoTopo - PAD_BASE - folgaDaBase;
+  const y = (valor: number) =>
+    PAD_TOPO + folgaDoTopo + alturaUtil * (1 - (valor - piso) / (teto - piso));
   // O CENTRO DA COLUNA, e não a borda: é o que faz o ponto cair exatamente
   // sobre a coluna do mês, que é a única forma de ligar um ao outro.
   const x = (i: number) => ((i + 0.5) / total) * VB.largura;
@@ -587,7 +622,7 @@ export function jornadaDoIndice(
   const pontos = medidos.map((ponto, i): PontoDaJornada => {
     const isr = ponto.isr as number;
     const preferaAcima = ladoDeCada[i];
-    const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE;
+    const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE - folgaDaBase;
     const cabeAcima = y(isr) - ALTURA_DO_ROTULO >= 0;
     // O FILETE E A ETIQUETA SEGUEM O PRIMEIRO FATO CADASTRADO. Com vários, é
     // o mais antigo que abre a coluna, e é ele que dá a cor: o destaque do mês
