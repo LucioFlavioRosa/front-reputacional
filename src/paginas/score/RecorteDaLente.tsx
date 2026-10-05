@@ -303,9 +303,25 @@ function Conteudo({
 }
 
 function Historico({ recorte }: { recorte: Recorte }) {
+  //: TEM NOTA? Então este painel é o mês inteiro, e o número grande da célula
+  //: pode ser a NOTA — que é o que a pessoa acabou de ver no gráfico.
+  const comNota = recorte.historico.some((celula) => celula.nota !== null);
+
   return (
     <section>
-      <h3 style={{ fontSize: 13, margin: '0 0 10px' }}>Este recorte, mês a mês</h3>
+      <h3 style={{ fontSize: 13, margin: '0 0 2px' }}>
+        {comNota ? 'A nota, mês a mês' : 'Este recorte, mês a mês'}
+      </h3>
+      {/* O QUE O NÚMERO É, ESCRITO. O dono do produto leu a coluna como variação
+          mês a mês — "-15" ao lado de "-8" e "+29" se lê como salto de um mês
+          para o outro. Não é: é a distância até 50, o neutro. Uma coluna de
+          números sem unidade nem base deixa quem lê adivinhar, e a leitura mais
+          natural era a errada. */}
+      <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
+        {comNota
+          ? 'A nota de cada mês, e quantos pontos ela está acima (+) ou abaixo (−) de 50 — o neutro. Não é a variação de um mês para o outro.'
+          : 'Quantos pontos este recorte pôs (+) ou tirou (−) da nota de cada mês. Não é a variação de um mês para o outro.'}
+      </p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {recorte.historico.map((celula) => (
           <div
@@ -313,7 +329,9 @@ function Historico({ recorte }: { recorte: Recorte }) {
             title={
               celula.sem_base
                 ? 'sem menção desta lente neste mês'
-                : `${celula.itens} itens · ${celula.impacto} pontos`
+                : celula.nota !== null
+                  ? `nota ${celula.nota} · ${celula.impacto} pontos em relação a 50 · ${celula.itens} itens`
+                  : `${celula.itens} itens · ${celula.impacto} pontos`
             }
             style={{
               flex: '1 1 56px',
@@ -328,11 +346,23 @@ function Historico({ recorte }: { recorte: Recorte }) {
             }}
           >
             <div style={{ fontSize: 10, color: 'var(--cinza-2)' }}>{mesCurto(celula.mes)}</div>
-            <div className="tabular" style={{ fontSize: 13, fontWeight: 700 }}>
-              {celula.sem_base ? '—' : celula.impacto.toFixed(1).replace('.', ',')}
+            {/* A NOTA EM DESTAQUE E O IMPACTO ABAIXO, quando há nota: é o número
+                do gráfico que abriu este painel, e é por ele que a pessoa liga
+                uma coisa à outra. Sem nota (há recorte), o impacto é o número
+                principal — ali ele é a resposta, não um intermediário. */}
+            <div className="tabular" style={{ fontSize: 15, fontWeight: 700 }}>
+              {celula.sem_base
+                ? '—'
+                : celula.nota !== null
+                  ? celula.nota
+                  : celula.impacto.toFixed(1).replace('.', ',')}
             </div>
             <div style={{ fontSize: 10, color: 'var(--cinza-2)' }}>
-              {celula.sem_base ? 'sem base' : `${celula.itens} itens`}
+              {celula.sem_base
+                ? 'sem base'
+                : celula.nota !== null
+                  ? `${celula.impacto > 0 ? '+' : ''}${celula.impacto.toFixed(1).replace('.', ',')} vs. 50`
+                  : `${celula.itens} itens`}
             </div>
           </div>
         ))}

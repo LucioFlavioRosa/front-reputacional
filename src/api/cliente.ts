@@ -867,7 +867,16 @@ export interface RecorteDaLente {
   frase: string;
   ausencia: string | null;
   /** Uma célula por mês do período: o mesmo recorte medido mês a mês. */
-  historico: { mes: string; impacto: number; itens: number; sem_base: boolean }[];
+  historico: {
+    mes: string;
+    impacto: number;
+    itens: number;
+    sem_base: boolean;
+    /** A nota daquele mês — só SEM recorte, onde `nota = 50 + impacto` é
+     *  identidade exata. Com recorte é nula: ali o impacto é a contribuição do
+     *  pedaço, e a nota do pedaço é outra conta. */
+    nota: number | null;
+  }[];
   /** As dimensões AINDA NÃO usadas, cortadas dentro deste recorte: clicar numa
    *  linha empilha mais um degrau, sem sair do painel. */
   dentro: Bloco[];

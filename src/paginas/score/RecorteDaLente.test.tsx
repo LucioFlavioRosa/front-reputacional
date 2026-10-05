@@ -47,8 +47,8 @@ const DO_RIO: Recorte = {
   frase: 'Este recorte tira 2,1 pontos da nota de Sociedade digital, com 4 de 6 itens do mês e 75% de negativas.',
   ausencia: null,
   historico: [
-    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true },
-    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false },
+    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true, nota: null },
+    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false, nota: null },
   ],
   dentro: [
     {
@@ -159,6 +159,28 @@ describe('RecorteDaLente', () => {
     //: no histórico, e procurar pelo texto acha os dois.
     expect(container.querySelector('[data-impacto-do-recorte]')?.textContent).toBe('-2,1');
     expect(screen.getByText(/4 de 6 itens do mês/)).toBeTruthy();
+  });
+
+  it('sem recorte, o histórico mostra a NOTA de cada mês e diz o que o número é', async () => {
+    /** O DONO DO PRODUTO ABRIU JUNHO NA JORNADA e leu a coluna como variação mês a
+     *  mês. Não é: cada número era a distância da nota até 50, o neutro — o
+     *  histórico dizia "-15,1" e o ponto do gráfico dizia 35, sem nada ligando os
+     *  dois. Agora a NOTA é o número grande (o mesmo do gráfico), o impacto vai
+     *  embaixo como "vs. 50", e o subtítulo diz que não é variação. */
+    abrir({
+      ...DO_RIO,
+      trilha: [],
+      historico: [
+        { mes: '2026-05', impacto: 0.31, itens: 1117, sem_base: false, nota: 50 },
+        { mes: '2026-06', impacto: -15.14, itens: 6932, sem_base: false, nota: 35 },
+      ],
+    });
+
+    expect(await screen.findByText('A nota, mês a mês')).toBeTruthy();
+    expect(screen.getByText(/Não é a variação de um mês para o outro/)).toBeTruthy();
+    //: 35, o mesmo número do ponto da Jornada — e o impacto ao lado, rotulado.
+    expect(screen.getByText('35')).toBeTruthy();
+    expect(screen.getByText('-15,1 vs. 50')).toBeTruthy();
   });
 
   it('o histórico marca o mês SEM BASE em vez de mostrar zero', async () => {
@@ -280,8 +302,8 @@ describe('RecorteDaLente', () => {
       ausencia: 'Nenhum item deste recorte neste mês.',
       dentro: [],
       historico: [
-        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false },
-        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true },
+        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false, nota: null },
+        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true, nota: null },
       ],
     });
 
