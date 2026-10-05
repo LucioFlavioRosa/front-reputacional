@@ -31,15 +31,14 @@
 
 import {
   ALTURA_DO_ROTULO,
-  BASE_DA_FAIXA,
   FAIXAS_DE_FUNDO,
   PAD_BASE,
-  PAD_TOPO,
-  TOPO_DA_FAIXA,
   VB,
   curvaPor,
   dominioDe,
   emPontos,
+  escalaDoEixo,
+  ladosDosRotulos,
   mesPorExtenso,
 } from '@/dominio/jornadaDoIndice';
 import type {
@@ -113,8 +112,13 @@ export function jornadaDaLente(
 
   const notas = medidos.map((ponto) => ponto.nota);
   const { piso, teto } = dominioDe(notas);
-  const alturaUtil = VB.altura - PAD_TOPO - PAD_BASE;
-  const y = (valor: number) => PAD_TOPO + alturaUtil * (1 - (valor - piso) / (teto - piso));
+  //: A MESMA ESCALA DA JORNADA DO ÍNDICE, e não uma cópia da conta: as duas telas
+  //: são o mesmo gráfico, e foi por cada uma ter a sua conta de `y` que a folga no
+  //: limite do índice entrou numa e não na outra.
+  const { y, folgaDaBase } = escalaDoEixo(piso, teto);
+  //: O LADO DE CADA RÓTULO, varrido de uma vez — a mesma regra e a mesma
+  //: estabilidade da do índice: um mês novo no fim não mexe nos anteriores.
+  const ladoDeCada = ladosDosRotulos(notas);
   const x = (i: number) => ((i + 0.5) / total) * VB.largura;
 
   const faixas: FaixaDeFundo[] = FAIXAS_DE_FUNDO.filter(
@@ -139,21 +143,16 @@ export function jornadaDaLente(
 
   const pontos: PontoDaJornada[] = medidos.map((ponto, i) => {
     const nota = ponto.nota;
-    const anterior = notas[i - 1];
-    const seguinte = notas[i + 1];
-    const preferaAcima =
-      anterior === undefined
-        ? nota >= (seguinte ?? nota)
-        : seguinte === undefined
-          ? nota >= anterior
-          : nota >= (anterior + seguinte) / 2;
-    const cabeAbaixo = y(nota) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE;
+    const preferaAcima = ladoDeCada[i];
+    const cabeAbaixo = y(nota) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE - folgaDaBase;
     const cabeAcima = y(nota) - ALTURA_DO_ROTULO >= 0;
-    const alturaCrua = (y(nota) / VB.altura) * 100;
     return {
       mes: ponto.mes,
       esquerda: (x(i) / VB.largura) * 100,
-      topo: Math.min(Math.max(alturaCrua, TOPO_DA_FAIXA), BASE_DA_FAIXA),
+      //: NO LUGAR DO VALOR, como na do índice: havia um corte aqui, e era ele
+      //: que desenhava o ponto fantasma — uma bolinha encostada na borda dizendo
+      //: uma altura que não era a do número ao lado dela.
+      topo: (y(nota) / VB.altura) * 100,
       cx: x(i),
       cy: y(nota),
       isr: nota,

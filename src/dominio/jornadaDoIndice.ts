@@ -416,6 +416,32 @@ function folgasDoLimite(piso: number, teto: number): { topo: number; base: numbe
   };
 }
 
+/** A escala vertical do desenho: onde cada valor do índice cai, em unidades do
+ *  viewBox, e quanto de folga sobrou embaixo.
+ *
+ *  EXPORTADA PORQUE SÃO DUAS JORNADAS, e foi por não existir que eu deixei um
+ *  defeito atrás: a Jornada do índice e a jornada de UMA lente (Dossiê da Lente)
+ *  são o mesmo gráfico com dados diferentes, e cada uma montava a sua conta de `y`
+ *  com as mesmas constantes. Corrigi a folga no limite e o lado do rótulo em uma
+ *  delas; a outra continuou como estava, e quem abrisse as duas telas veria o
+ *  mesmo gráfico se comportar de dois jeitos.
+ *
+ *  DEVOLVE A FOLGA DA BASE junto com o `y` porque quem desenha o rótulo precisa
+ *  saber onde o desenho termina — é contra esse fim que se mede se o rótulo cabe
+ *  abaixo do ponto. */
+export function escalaDoEixo(
+  piso: number,
+  teto: number,
+): { y: (valor: number) => number; folgaDaBase: number } {
+  const folgas = folgasDoLimite(piso, teto);
+  const alturaUtil = VB.altura - PAD_TOPO - folgas.topo - PAD_BASE - folgas.base;
+  return {
+    y: (valor: number) =>
+      PAD_TOPO + folgas.topo + alturaUtil * (1 - (valor - piso) / (teto - piso)),
+    folgaDaBase: folgas.base,
+  };
+}
+
 /** Todos os valores que o eixo precisa conter: o índice de cada mês medido, e a
  *  nota da lente comparada quando há uma.
  *
@@ -580,14 +606,9 @@ export function jornadaDoIndice(
   // continua dizendo "1 de 5 lentes" ao lado do número. O que mudou é onde ele
   // é desenhado: no lugar dele.
   const { piso, teto } = dominioAnimado ?? dominioDe(valoresDoEixo(medidos, daLente));
-  //: A FOLGA EXTRA ENTRA NO DESENHO, de cada lado em que o eixo encostou no
-  //: limite do índice (ver `FOLGA_NO_LIMITE`). A escala não muda — `piso` e `teto`
-  //: continuam sendo o que `dominioDe` decidiu, e as marcas continuam dizendo os
-  //: mesmos números. O que muda é a altura em que 100 (ou 0) é desenhado.
-  const { topo: folgaDoTopo, base: folgaDaBase } = folgasDoLimite(piso, teto);
-  const alturaUtil = VB.altura - PAD_TOPO - folgaDoTopo - PAD_BASE - folgaDaBase;
-  const y = (valor: number) =>
-    PAD_TOPO + folgaDoTopo + alturaUtil * (1 - (valor - piso) / (teto - piso));
+  //: A ESCALA É A MESMA DAS DUAS JORNADAS (ver `escalaDoEixo`), e nela mora a
+  //: folga extra de cada lado em que o eixo encostou no limite do índice.
+  const { y, folgaDaBase } = escalaDoEixo(piso, teto);
   // O CENTRO DA COLUNA, e não a borda: é o que faz o ponto cair exatamente
   // sobre a coluna do mês, que é a única forma de ligar um ao outro.
   const x = (i: number) => ((i + 0.5) / total) * VB.largura;
