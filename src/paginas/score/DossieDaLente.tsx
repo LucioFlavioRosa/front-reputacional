@@ -225,7 +225,13 @@ function Conteudo({
     <>
       <Destaque dossie={dossie} />
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
-      <JornadaDaLente dossie={dossie} serie={serie} mes={mes} aoTrocarMes={aoTrocarMes} />
+      <JornadaDaLente
+        dossie={dossie}
+        serie={serie}
+        mes={mes}
+        aoTrocarMes={aoTrocarMes}
+        aoAprofundarNoMes={aoAprofundarNoMes}
+      />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
           devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
@@ -552,11 +558,16 @@ function JornadaDaLente({
   serie,
   mes,
   aoTrocarMes,
+  aoAprofundarNoMes,
 }: {
   dossie: Dossie;
   serie: PontoDaSerie[];
   mes: string;
   aoTrocarMes: (mes: string) => void;
+  /** Clicar num PONTO abre o aprofundamento daquele mês — o mesmo painel da
+   *  Evolução e dos outros gráficos. A faixa de meses embaixo continua trocando
+   *  o mês da tela. */
+  aoAprofundarNoMes: (mes: string) => void;
 }) {
   const jornada = jornadaDaLente(serie, dossie.codigo, dossie.nome, mes);
 
@@ -569,6 +580,7 @@ function JornadaDaLente({
           mes={mes}
           comparada={null}
           aoEscolherMes={aoTrocarMes}
+          aoAprofundarNoMes={aoAprofundarNoMes}
           jornadaPronta={jornada}
         />
       </Cartao>

@@ -125,6 +125,52 @@ describe('a jornada do índice', () => {
     expect(aoEscolherMes).toHaveBeenCalledWith('2026-03');
   });
 
+  it('o PONTO abre o mês quando a tela sabe aprofundar, e a FITA continua trocando', async () => {
+    /** PEDIDO DO DONO DO PRODUTO, depois do mesmo na Evolução: "ao clicar em
+     *  algum ponto" da Jornada, abrir o painel do mês.
+     *
+     *  OS DOIS ALVOS SÃO GÊMEOS — a fita existe porque o ponto de 16px na curva
+     *  "era pontaria" — e passam a fazer coisas diferentes. É deliberado: sem
+     *  isso, abrir o mês de março exigiria primeiro TROCAR a tela para março. */
+    const aoEscolherMes = vi.fn();
+    const aoAprofundarNoMes = vi.fn();
+    render(
+      <JornadaDoIndice
+        serie={SERIE}
+        mes="2026-02"
+        comparada={null}
+        aoEscolherMes={aoEscolherMes}
+        aoAprofundarNoMes={aoAprofundarNoMes}
+      />,
+    );
+
+    //: O ponto da curva: o botão cujo nome acessível termina em "Abrir o mês."
+    await userEvent.click(screen.getByRole('button', { name: /mar.*Abrir o mês\.$/i }));
+    expect(aoAprofundarNoMes).toHaveBeenCalledWith('2026-03');
+    expect(aoEscolherMes).not.toHaveBeenCalled();
+
+    //: E a fita continua sendo quem troca o mês da tela.
+    await userEvent.click(naFita('março'));
+    expect(aoEscolherMes).toHaveBeenCalledWith('2026-03');
+  });
+
+  it('sem aprofundamento, o ponto volta a TROCAR o mês', async () => {
+    /** É a jornada do ISR geral, na visão de conjunto: lá não há painel de
+     *  recorte por mês, e o ponto continua sendo um atalho da fita. */
+    const aoEscolherMes = montar('2026-02');
+
+    const pontos = screen
+      .getAllByRole('button')
+      .filter((botao) => /mar/i.test(botao.getAttribute('aria-label') ?? ''));
+    //: Nenhum deles anuncia "Abrir o mês".
+    expect(pontos.every((botao) => !/Abrir o mês/.test(botao.getAttribute('aria-label') ?? ''))).toBe(
+      true,
+    );
+
+    await userEvent.click(pontos[0]);
+    expect(aoEscolherMes).toHaveBeenCalledWith('2026-03');
+  });
+
   it('o cartão não é um controle', () => {
     // Um botão anuncia como nome tudo o que tem dentro, e este tem o mês, a
     // variação, o fato e o rodapé. Quem escolhe o mês é a fita: três células,

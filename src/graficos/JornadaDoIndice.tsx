@@ -135,6 +135,7 @@ export function JornadaDoIndice({
   comparada,
   nomeDaComparada = '',
   aoEscolherMes,
+  aoAprofundarNoMes,
   jornadaPronta,
 }: {
   serie: PontoDaSerie[];
@@ -142,6 +143,16 @@ export function JornadaDoIndice({
   comparada: string | null;
   nomeDaComparada?: string;
   aoEscolherMes: (mes: string) => void;
+  /** Quando presente, clicar NO PONTO abre o aprofundamento daquele mês em vez
+   *  de trocar o mês da tela. A FAIXA DE BAIXO continua trocando.
+   *
+   *  OS DOIS ALVOS SÃO GÊMEOS DE PROPÓSITO — a faixa existe porque o ponto de
+   *  16px na curva "era pontaria" —, e agora fazem coisas diferentes. É
+   *  deliberado: na tela da lente, "o que houve neste mês" é a pergunta que o
+   *  ponto responde (abrindo o painel do mês), e "quero olhar outro mês" continua
+   *  na faixa e no seletor do topo. Sem isto, a única forma de abrir o mês de
+   *  março seria primeiro TROCAR a tela para março. */
+  aoAprofundarNoMes?: (mes: string) => void;
   /** A jornada já calculada, para quem não está desenhando o ISR geral —
    *  `dominio/jornadaDaLente.ts` monta este mesmo formato a partir da nota
    *  de UMA lente. Presente, ela VENCE `serie`: o desenho é o mesmo dos
@@ -295,7 +306,10 @@ export function JornadaDoIndice({
             destacado={destacado === ponto.mes}
             aoDestacar={definirDestacado}
             aoSoltar={soltar}
-            aoEscolher={aoEscolherMes}
+            //: O PONTO APROFUNDA quando a tela sabe aprofundar; quando não,
+            //: continua trocando o mês (é o caso da jornada do ISR geral).
+            aoEscolher={aoAprofundarNoMes ?? aoEscolherMes}
+            aprofunda={Boolean(aoAprofundarNoMes)}
           />
         ))}
 
@@ -642,12 +656,17 @@ function Ponto({
   aoDestacar,
   aoSoltar,
   aoEscolher,
+  aprofunda = false,
 }: {
   ponto: PontoDaJornada;
   destacado: boolean;
   aoDestacar: (mes: string) => void;
   aoSoltar: (mes: string) => void;
   aoEscolher: (mes: string) => void;
+  /** O clique abre o painel do mês, em vez de trocar o mês da tela. Muda o que o
+   *  ponto ANUNCIA: dois alvos com a mesma aparência e ações diferentes na mesma
+   *  tela só se aprendem se cada um disser o que faz. */
+  aprofunda?: boolean;
 }) {
   const raio = ponto.selecionado ? 22 : destacado ? 20 : 16;
   return (
@@ -658,7 +677,8 @@ function Ponto({
       onMouseLeave={() => aoSoltar(ponto.mes)}
       onFocus={() => aoDestacar(ponto.mes)}
       onBlur={() => aoSoltar(ponto.mes)}
-      aria-label={ponto.descricao}
+      aria-label={aprofunda ? `${ponto.descricao}. Abrir o mês.` : ponto.descricao}
+      title={aprofunda ? 'Abrir este mês' : undefined}
       aria-current={ponto.selecionado ? 'true' : undefined}
       style={{
         position: 'absolute',
