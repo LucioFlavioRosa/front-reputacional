@@ -244,7 +244,6 @@ function VisaoGeral({
   //: escrito à mão aqui: dois lugares decidindo o que é "parcial" é um a mais
   //: do que se consegue manter de acordo.
   const mesesParciais = jornada.pontos.filter((ponto) => ponto.parcial).length;
-  const mesesForaDaEscala = jornada.pontos.filter((ponto) => ponto.foraDaEscala).length;
   //: O MESMO AVISO ONDE O NÚMERO É MAIOR. A Jornada já o carrega na etiqueta do
   //: ponto; aqui ele qualifica a faixa, que é a frase mais forte da tela —
   //: "Referência · reputação é ativo de valor" é uma afirmação sobre a
@@ -400,11 +399,7 @@ function VisaoGeral({
                     border: '2px dashed var(--cinza-2)',
                   }}
                 />
-                {fraseDosParciais(
-                  mesesParciais,
-                  mesesForaDaEscala,
-                  jornada.eixoRegidoPorParciais,
-                )}
+                {fraseDosParciais(mesesParciais)}
               </span>
             ) : null}
             {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe

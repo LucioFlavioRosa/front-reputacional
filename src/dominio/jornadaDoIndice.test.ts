@@ -536,6 +536,26 @@ describe('coberturaDoMes', () => {
   });
 });
 
+/* -- POR QUE OITO TESTES SAÍRAM DAQUI ----------------------------------------
+ *
+ * Eles travavam a decisão ANTERIOR do dono do produto: o eixo regido só pelos
+ * meses comparáveis, o mês de poucas lentes preso à borda quando não cabia, e a
+ * tela avisando que ele estava "fora da escala". Cada um deles passava, e cada um
+ * descrevia um comportamento que ele pediu para inverter depois de ver a tela:
+ * "preciso que a escala em y seja mais dinâmica para não ter pontos fantasmas
+ * como é hoje".
+ *
+ * O QUE ESTÁ NO LUGAR DELES é o bloco "o eixo acompanha todo ponto desenhado",
+ * no fim do arquivo. Não é teste a menos: são as mesmas regras com o sinal
+ * trocado — teto que sobe até o parcial, ponto sempre no seu valor, e o aviso de
+ * cobertura preservado, que é a parte da decisão antiga que continua valendo.
+ *
+ * O CONCEITO DE "FORA DA ESCALA" DEIXOU DE EXISTIR no código, e é por isso que
+ * os testes dele não foram reescritos: com o eixo acompanhando todo ponto, não há
+ * ponto fora para marcar. `eixoRegidoPorParciais` saiu pelo mesmo motivo — ele
+ * distinguia quem regia o eixo, e agora todos regem.
+ */
+
 describe('o mês medido por poucas lentes', () => {
   it('diz quantas lentes o mediram, para ler junto do número', () => {
     // A decisão do dono do produto: o número aparece, com o rótulo ao lado.
@@ -553,131 +573,144 @@ describe('o mês medido por poucas lentes', () => {
 
     expect(junho?.cobertura).toBe('');
   });
-
-  it('não manda na escala do eixo', () => {
-    // Um janeiro de 2025 com 100 esticava o teto em vinte pontos e achatava o
-    // ano inteiro num terço da altura.
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
-
-    const { marcas } = jornadaDoIndice(serie, '2026-06', null);
-
-    // O teto para em 80 porque o 100 do mês parcial não entrou na conta do
-    // domínio. Se entrasse, `dominioDe` subiria o teto a 100 e a régua toda
-    // mudaria — que é o achatamento que esta regra existe para evitar.
-    expect(Math.max(...marcas.map((m) => m.valor))).toBe(80);
-  });
-
-  it('está FORA DA ESCALA quando passa do teto, e não quando passa do desenho', () => {
-    // O DEFEITO: `foraDaEscala` era medido em pixel do viewBox, e o desenho tem
-    // 14px de folga no topo. Um valor acima do teto cabia nessa folga — ficava
-    // desenhado acima da última faixa, rotulado como qualquer outro mês, e o
-    // aviso não aparecia. Com domínio 45..80, só a partir de 82 o pixel saía.
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 81, lentes: 1 })];
-
-    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
-
-    expect(julho?.foraDaEscala).toBe(true);
-  });
-
-  it('está dentro da escala quando cabe no domínio', () => {
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 72, lentes: 1 })];
-
-    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
-
-    expect(julho?.foraDaEscala).toBe(false);
-    expect(julho?.parcial).toBe(true);
-  });
-
-  it('quando TODOS os meses são parciais, o eixo diz que foi regido por eles', () => {
-    // O eixo cai nos parciais porque não há outra coisa — é melhor que um
-    // domínio vazio. Mas aí a tela não pode seguir afirmando que eles estão
-    // "fora da escala do eixo": eles SÃO o eixo. É a primeira configuração que
-    // um cliente novo vê.
-    const serie = [
-      ponto({ mes: '2026-01', isr: 40, lentes: 2 }),
-      ponto({ mes: '2026-02', isr: 45, lentes: 2 }),
-      ponto({ mes: '2026-03', isr: 50, lentes: 2 }),
-    ];
-
-    const jornada = jornadaDoIndice(serie, '2026-03', null);
-
-    expect(jornada.eixoRegidoPorParciais).toBe(true);
-    expect(jornada.pontos.every((p) => !p.foraDaEscala)).toBe(true);
-  });
-
-  it('com meses completos na série, o eixo NÃO é regido por parciais', () => {
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
-
-    expect(jornadaDoIndice(serie, '2026-06', null).eixoRegidoPorParciais).toBe(false);
-  });
 });
 
-describe('o ponto que sai do eixo', () => {
-  it('é PRESO À BORDA DA FAIXA, e não à borda do desenho', () => {
-    // O DEFEITO QUE EU INTRODUZI: mudei o critério de `foraDaEscala` para o
-    // domínio e deixei o `topo` preso em 0..100% do viewBox. Mas a faixa
-    // desenhada vai de PAD_TOPO a altura−PAD_BASE — sobra folga em cima. Um 81
-    // com domínio 45..80 era marcado como fora da escala E desenhado dentro do
-    // gráfico, flutuando acima da marca de 80: o aviso dizia uma coisa e o
-    // desenho outra.
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 81, lentes: 1 })];
-
-    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
-    const topoDaFaixa = (14 / 330) * 100;
-
-    expect(julho?.foraDaEscala).toBe(true);
-    expect(julho?.topo).toBeCloseTo(topoDaFaixa, 2);
-  });
-
-  it('o que cabe no domínio continua no lugar exato', () => {
-    // O contrapeso: prender na borda não pode arrastar quem está dentro.
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 80, lentes: 1 })];
-
-    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
-
-    // 80 é o teto: cai exatamente na borda de cima, por cálculo e não por corte.
-    expect(julho?.foraDaEscala).toBe(false);
-    expect(julho?.topo).toBeCloseTo((14 / 330) * 100, 2);
-  });
-
-  it('abaixo do piso, encosta embaixo', () => {
-    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 10, lentes: 1 })];
-
-    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
-    const baseDaFaixa = ((330 - 34) / 330) * 100;
-
-    expect(julho?.foraDaEscala).toBe(true);
-    expect(julho?.topo).toBeCloseTo(baseDaFaixa, 2);
-  });
-});
+/* O bloco "o ponto que sai do eixo" morava aqui, e saiu inteiro: não existe mais
+ * ponto que saia do eixo. Ver o registro acima e o bloco novo no fim do arquivo. */
 
 describe('fraseDosParciais', () => {
-  it('no singular, não diz "deles"', () => {
-    // "1 mês medido por menos de 4 lentes — 1 deles está fora" tem antecedente
-    // singular e pronome plural. A frase estava montada em três ramificações
-    // dentro do JSX, que é onde esse tipo de coisa se esconde.
-    expect(fraseDosParciais(1, 1, false)).toBe(
-      '1 mês medido por menos de 4 lentes — e ele está fora da escala do eixo',
-    );
+  /** ELA TINHA TRÊS RAMOS E FICOU COM UM, e os outros dois morreram com o
+   *  conceito e não por simplificação: a frase também contava quantos meses
+   *  estavam "fora da escala do eixo", e avisava quando os parciais REGIAM o
+   *  eixo por não haver mês completo. Com o eixo acompanhando todo ponto
+   *  desenhado, nenhum mês fica fora dele e todos o regem — as duas frases
+   *  passariam a afirmar coisas que não existem mais. */
+
+  it('conta quantos meses o número descreve menos do que parece', () => {
+    expect(fraseDosParciais(3)).toBe('3 meses medidos por menos de 4 lentes');
   });
 
-  it('no plural, concorda', () => {
-    expect(fraseDosParciais(3, 2, false)).toBe(
-      '3 meses medidos por menos de 4 lentes — 2 deles estão fora da escala do eixo',
-    );
-  });
-
-  it('sem nenhum fora da escala, não inventa a segunda metade', () => {
-    expect(fraseDosParciais(3, 0, false)).toBe('3 meses medidos por menos de 4 lentes');
-  });
-
-  it('quando os parciais regem o eixo, diz isso em vez de "fora dele"', () => {
-    expect(fraseDosParciais(3, 0, true)).toBe(
-      '3 meses medidos por menos de 4 lentes — são eles que regem o eixo, por não haver mês completo',
-    );
+  it('no singular, concorda', () => {
+    expect(fraseDosParciais(1)).toBe('1 mês medido por menos de 4 lentes');
   });
 
   it('sem mês parcial nenhum, não há frase', () => {
-    expect(fraseDosParciais(0, 0, false)).toBe('');
+    expect(fraseDosParciais(0)).toBe('');
+  });
+});
+
+/* -- a escala acompanha todos os pontos, e os rótulos não pulam --------------
+ *
+ * O PEDIDO DO DONO DO PRODUTO, depois de olhar a Jornada: "o gráfico está fixo e
+ * tem pontos fora do gráfico (...) preciso que a escala em y seja mais dinâmica
+ * para não ter pontos fantasmas como é hoje, e tenha transições suaves e
+ * estáveis mês a mês".
+ *
+ * ELE INVERTEU UMA DECISÃO DELE MESMO, e sabendo o preço: antes o eixo ignorava
+ * os meses de poucas lentes para um janeiro de 100 não achatar o ano, e o efeito
+ * colateral era o ponto preso na borda — o "fantasma". Perguntei com as três
+ * opções na mesa, e ele escolheu o eixo que acompanha todo ponto desenhado.
+ */
+
+describe('o eixo acompanha todo ponto desenhado', () => {
+  it('o teto sobe até o mês de poucas lentes, em vez de deixá-lo fora', () => {
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    const { marcas, pontos } = jornadaDoIndice(serie, '2026-06', null);
+
+    //: O ponto de 100 passa a reger o teto junto com os outros.
+    expect(Math.max(...marcas.map((m) => m.valor))).toBe(100);
+    //: E O QUE ISSO COMPRA: nenhum ponto preso na borda, em nenhuma série.
+    expect(pontos.every((p) => p.cy >= 0 && p.cy <= VB.altura)).toBe(true);
+  });
+
+  it('o ponto desenhado está SEMPRE no seu valor, nunca encostado na borda', () => {
+    //: O QUE ERA O FANTASMA: `topo` era cortado na faixa, então o ponto aparecia
+    //: encostado na borda de cima dizendo um valor que não era o dele. Agora o
+    //: `topo` é o lugar do valor, sempre.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    const { pontos } = jornadaDoIndice(serie, '2026-06', null);
+
+    for (const p of pontos) {
+      expect(p.topo).toBeCloseTo((p.cy / VB.altura) * 100, 6);
+    }
+  });
+
+  it('o mês de poucas lentes continua dizendo que é parcial', () => {
+    //: A escala mudou; o aviso não. Quem lê 100 precisa saber que veio de uma
+    //: lente — é a decisão anterior do dono do produto, e ela continua valendo.
+    const serie = [...COMPLETOS, ponto({ mes: '2026-07', isr: 100, lentes: 1 })];
+
+    const julho = jornadaDoIndice(serie, '2026-06', null).pontos.at(-1);
+
+    expect(julho?.parcial).toBe(true);
+    expect(julho?.cobertura).toBe('1 de 5 lentes');
+  });
+});
+
+describe('os rótulos não pulam de lado', () => {
+  it('um mês NOVO no fim não troca o lado dos rótulos que já existiam', () => {
+    /** "AS JANELAS COM PONTOS MAIS RELEVANTES ESTÃO PULANDO MUITO QUANDO
+     *  PASSAMOS DE UM MÊS PARA O OUTRO" — é este teste.
+     *
+     *  A CAUSA: o lado de cada rótulo saía da comparação com a MÉDIA DOS DOIS
+     *  VIZINHOS, e o último ponto da série usava a regra de ponta. Quando o mês
+     *  seguinte entrava na base, o que era ponta ganhava um vizinho à direita,
+     *  a média mudava, e o rótulo saltava de cima para baixo — junto com todos
+     *  os outros que estavam perto do empate. */
+    const antes = jornadaDoIndice(SEMESTRE, '2026-06', null);
+    const depois = jornadaDoIndice(
+      [...SEMESTRE, ponto({ mes: '2026-07', isr: 54, delta: -4 })],
+      '2026-07',
+      null,
+    );
+
+    const ladosAntes = antes.pontos.map((p) => p.acima);
+    const ladosDepois = depois.pontos.slice(0, antes.pontos.length).map((p) => p.acima);
+
+    expect(ladosDepois).toEqual(ladosAntes);
+  });
+
+  it('o relevo de verdade continua mandando: o pico sobe, o vale desce', () => {
+    //: O CONTRAPESO. Estabilidade não pode virar "todos do mesmo lado sempre" —
+    //: aí o rótulo do vale cairia dentro da curva que sobe, que é o que a regra
+    //: do relevo existe para evitar.
+    //: UMA SÉRIE COM O VALE NO MEIO DO EIXO, de propósito: no `SEMESTRE` o vale
+    //: é 36 e encosta na base, então ele sobe por não CABER embaixo — regra
+    //: antiga e legítima (ver "o vale que não cabe embaixo sobe"). Para medir o
+    //: relevo é preciso um vale que tenha espaço dos dois lados.
+    const comVale = [
+      ponto({ mes: '2026-01', isr: 50 }),
+      ponto({ mes: '2026-02', isr: 45 }),
+      ponto({ mes: '2026-03', isr: 40 }),
+      ponto({ mes: '2026-04', isr: 45 }),
+      ponto({ mes: '2026-05', isr: 50 }),
+      ponto({ mes: '2026-06', isr: 55 }),
+    ];
+
+    const { pontos } = jornadaDoIndice(comVale, '2026-06', null);
+    const porMes = Object.fromEntries(pontos.map((p) => [p.mes, p]));
+
+    expect(porMes['2026-03'].acima).toBe(false);
+    expect(porMes['2026-06'].acima).toBe(true);
+  });
+
+  it('um degrau pequeno NÃO troca o lado, só um relevo que se enxerga', () => {
+    //: Uma série que oscila um ponto para cada lado não tem relevo nenhum: com
+    //: a regra antiga, cada mês alternava o lado do rótulo e a leitura virava
+    //: um zigue-zague de etiquetas.
+    const serrote = [
+      ponto({ mes: '2026-01', isr: 50 }),
+      ponto({ mes: '2026-02', isr: 51 }),
+      ponto({ mes: '2026-03', isr: 50 }),
+      ponto({ mes: '2026-04', isr: 51 }),
+      ponto({ mes: '2026-05', isr: 50 }),
+      ponto({ mes: '2026-06', isr: 51 }),
+    ];
+
+    const lados = jornadaDoIndice(serrote, '2026-06', null).pontos.map((p) => p.acima);
+
+    expect(new Set(lados).size).toBe(1);
   });
 });

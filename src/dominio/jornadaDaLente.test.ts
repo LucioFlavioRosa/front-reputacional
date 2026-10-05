@@ -72,7 +72,6 @@ describe('jornadaDaLente', () => {
     expect(jornada.curvaDaLente).toBe('');
     expect(jornada.pontosDaLente).toEqual([]);
     expect(jornada.fimDaLente).toBeNull();
-    expect(jornada.eixoRegidoPorParciais).toBe(false);
   });
 
   it('o que sustentou e o que pressionou a lente entram na coluna do mês', () => {

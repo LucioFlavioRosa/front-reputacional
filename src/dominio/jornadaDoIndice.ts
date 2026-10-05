@@ -120,7 +120,6 @@ export interface PontoDaJornada {
    *  bolinha vazada e uma nota de rodapé no fim do cartão. */
   cobertura: string;
   /** O valor real ficou fora do eixo, que é regido pelos meses completos. */
-  foraDaEscala: boolean;
   descricao: string;
 }
 
@@ -153,33 +152,17 @@ const LENTES_NO_MODELO = 5;
  *  `<span>`. A versão anterior dizia "1 mês medido por menos de 4 lentes — 1
  *  DELES está fora da escala": antecedente singular, pronome plural.
  *
- *  SÃO DUAS CONTAS, e não uma. "Medido por poucas lentes" e "fora da escala do
- *  eixo" eram ditos como se fossem a mesma coisa; um mês parcial costuma cair
- *  DENTRO do eixo, e quando não há nenhum mês completo são os parciais que
- *  REGEM o eixo — aí eles não estão fora dele, eles SÃO ele. */
-export function fraseDosParciais(
-  parciais: number,
-  foraDaEscala: number,
-  eixoRegidoPorParciais: boolean,
-): string {
+ *  ERA UMA FRASE DE TRÊS RAMOS, e ficou de um: ela também dizia quantos meses
+ *  estavam "fora da escala do eixo", e quando os parciais REGIAM o eixo por não
+ *  haver mês completo. Os dois ramos morreram com o conceito: o eixo passou a
+ *  acompanhar todo ponto desenhado, então não há mês fora dele e não há mais
+ *  distinção sobre quem o rege — todos regem. Sobrou a conta que interessa, que é
+ *  de quantos meses o número descreve menos do que parece. */
+export function fraseDosParciais(parciais: number): string {
   if (!parciais) return '';
-  const base =
-    parciais === 1
-      ? `1 mês medido por menos de ${LENTES_PARA_SER_COMPLETO} lentes`
-      : `${parciais} meses medidos por menos de ${LENTES_PARA_SER_COMPLETO} lentes`;
-
-  if (eixoRegidoPorParciais) {
-    return `${base} — são eles que regem o eixo, por não haver mês completo`;
-  }
-  if (!foraDaEscala) return base;
-
-  const segunda =
-    parciais === 1
-      ? 'e ele está fora da escala do eixo'
-      : foraDaEscala === 1
-        ? '1 deles está fora da escala do eixo'
-        : `${foraDaEscala} deles estão fora da escala do eixo`;
-  return `${base} — ${segunda}`;
+  return parciais === 1
+    ? `1 mês medido por menos de ${LENTES_PARA_SER_COMPLETO} lentes`
+    : `${parciais} meses medidos por menos de ${LENTES_PARA_SER_COMPLETO} lentes`;
 }
 
 export function coberturaDoMes(lentes: number): string {
@@ -232,7 +215,6 @@ export interface Jornada {
    *  parcial, e numa base nova — três meses, duas lentes cada, que é
    *  exatamente o que um cliente vê primeiro — os três REGEM o eixo e caem
    *  dentro dele. A frase afirmava o oposto do desenho. */
-  eixoRegidoPorParciais: boolean;
   faixas: FaixaDeFundo[];
   marcas: MarcaDoEixo[];
   curva: string;
@@ -345,6 +327,106 @@ export function dominioDe(valores: number[]): { piso: number; teto: number } {
   return { piso, teto };
 }
 
+//: O DEGRAU QUE CONTA COMO RELEVO, em pontos do índice. Abaixo disto, o mês
+//: continua do lado do anterior.
+//:
+//: TRÊS PONTOS é o degrau que se enxerga na curva. O valor existe por causa de
+//: uma série que oscila um ponto para cada lado: pela comparação crua com os
+//: vizinhos, cada mês desses é "pico" ou "vale" e o rótulo alterna de lado a
+//: cada coluna — o dono do produto viu isso como "as janelas pulando muito".
+const RELEVO_QUE_SE_ENXERGA = 3;
+
+/** De que lado da curva fica o rótulo de cada mês: `true` acima.
+ *
+ *  O RELEVO MANDA, A HISTERESE SEGURA. Um pico de verdade leva o rótulo para
+ *  cima e um vale de verdade para baixo — abaixo de um pico o rótulo cairia
+ *  dentro da própria curva. Mas quando o mês não é nem um nem outro, ele
+ *  acompanha o lado do anterior em vez de decidir sozinho: é o que faz as
+ *  etiquetas formarem blocos legíveis em vez de um zigue-zague.
+ *
+ *  VARRE DA ESQUERDA PARA A DIREITA, e isso é o que dá a estabilidade mês a mês:
+ *  cada lado depende só do que vem ANTES, então o mês novo que entra no fim da
+ *  série não mexe em nenhum dos que já estavam desenhados.
+ *
+ *  A PRIMEIRA PONTA olha para o único vizinho que tem. Aqui eu divirjo da
+ *  referência, de propósito: o `evolVals` do protótipo usa `v <= serie[1]` no
+ *  primeiro ponto e `v >= serie[n-2]` no último — as duas pontas com o sinal
+ *  trocado entre si, e a primeira contra a regra do meio. Numa série que só cai,
+ *  aquilo manda o rótulo do primeiro ponto para baixo, para dentro da curva que
+ *  desce.
+ */
+export function ladosDosRotulos(notas: number[]): boolean[] {
+  const lados: boolean[] = [];
+  for (let i = 0; i < notas.length; i += 1) {
+    const atual = notas[i];
+    const anterior = notas[i - 1];
+    const seguinte = notas[i + 1];
+    //: A RÉGUA DO RELEVO: contra a média dos vizinhos no meio, contra o único
+    //: vizinho nas pontas. É a mesma pergunta — "este mês está acima ou abaixo
+    //: do caminho?" — com os dados que cada posição tem.
+    const referencia =
+      anterior === undefined
+        ? seguinte
+        : seguinte === undefined
+          ? anterior
+          : (anterior + seguinte) / 2;
+
+    if (referencia === undefined) {
+      //: Um mês só: não há caminho, e para cima é onde o rótulo não disputa
+      //: espaço com a coluna do mês.
+      lados.push(true);
+      continue;
+    }
+    const degrau = atual - referencia;
+    if (degrau >= RELEVO_QUE_SE_ENXERGA) lados.push(true);
+    else if (degrau <= -RELEVO_QUE_SE_ENXERGA) lados.push(false);
+    //: SEM RELEVO, SEGUE O ANTERIOR — e o primeiro de todos, que não tem quem
+    //: seguir, vai para cima pelo mesmo motivo do mês único.
+    else lados.push(lados[i - 1] ?? true);
+  }
+  return lados;
+}
+
+/** Todos os valores que o eixo precisa conter: o índice de cada mês medido, e a
+ *  nota da lente comparada quando há uma.
+ *
+ *  SEPARADO PARA SER CHAMADO DE FORA (ver `dominioDaJornada`): a tela precisa
+ *  saber para onde o eixo vai ANTES de desenhar, para animar até lá. Com a conta
+ *  em dois lugares, um dia um deles aprenderia algo e o outro não — e o eixo
+ *  animaria para um lugar diferente do que a jornada desenha. */
+function valoresDoEixo(
+  medidos: PontoDaSerie[],
+  daLente: { i: number; nota: number }[],
+): number[] {
+  return [
+    ...medidos.map((ponto) => ponto.isr as number),
+    ...daLente.map((par) => par.nota),
+  ];
+}
+
+/** Para onde o eixo da jornada vai, com esta série e esta lente comparada.
+ *
+ *  A TELA PERGUNTA ISTO E ANIMA ATÉ AQUI. É a MESMA conta que `jornadaDoIndice`
+ *  faz quando desenha sem domínio injetado — ela chama as mesmas duas funções, na
+ *  mesma ordem, e é isso que garante que o fim da animação coincida exatamente
+ *  com o desenho. */
+export function dominioDaJornada(
+  serie: PontoDaSerie[],
+  comparada: string | null = null,
+): { piso: number; teto: number } {
+  const medidos = serie.filter((ponto) => ponto.isr !== null);
+  if (!medidos.length) return dominioDe([]);
+  const daLente = comparada
+    ? medidos
+        .map((ponto, i) => ({ i, nota: ponto.notas_das_lentes[comparada] }))
+        .filter((par): par is { i: number; nota: number } => par.nota !== undefined)
+    : [];
+  //: DOIS PONTOS É O MÍNIMO para existir curva da lente — o mesmo corte que
+  //: `jornadaDoIndice` usa. Com um só, a nota não é desenhada, então ela também
+  //: não pode mandar no eixo.
+  return dominioDe(valoresDoEixo(medidos, daLente.length >= 2 ? daLente : []));
+}
+
 /** A curva suave que passa por todos os pontos.
  *
  *  CATMULL-ROM CONVERTIDA EM BÉZIER: é a spline que passa EXATAMENTE pelos
@@ -407,6 +489,14 @@ export function jornadaDoIndice(
   mesSelecionado: string,
   comparada: string | null = null,
   nomeDaComparada = '',
+  //: O EIXO VINDO DE FORA, para a tela poder animá-lo. Quando não vem, é
+  //: calculado aqui como sempre — nenhum chamador precisou mudar.
+  //:
+  //: POR QUE A TELA PRECISA DISSO: o eixo é adaptativo, então ele muda quando um
+  //: mês novo entra ou quando se escolhe uma lente para comparar, e a mudança
+  //: seca lê-se como mudança de DADO. Quem anima é o componente, que é quem tem o
+  //: relógio; a conta de onde o eixo deve chegar é `dominioDaJornada`, abaixo.
+  dominioAnimado?: { piso: number; teto: number },
 ): Jornada {
   const medidos = serie.filter((ponto) => ponto.isr !== null);
   const total = medidos.length;
@@ -414,7 +504,6 @@ export function jornadaDoIndice(
     resumo: resumoDa(serie),
     // Sem mês nenhum não há eixo para ser regido: `false` é a ausência da
     // afirmação, e não a afirmação contrária.
-    eixoRegidoPorParciais: false,
     faixas: [],
     marcas: [],
     curva: '',
@@ -444,26 +533,24 @@ export function jornadaDoIndice(
   // ponto solto que ninguém liga a lente nenhuma.
   const temLente = daLente.length >= 2;
 
-  // O EIXO É REGIDO PELOS MESES COMPARÁVEIS. Um mês medido por uma lente só
-  // produz um ISR legítimo pela fórmula e enganoso na curva, e deixá-lo mandar
-  // na escala espremia o período inteiro: um janeiro de 2025 com 100 esticava o
-  // teto em vinte pontos e achatava 2026 num terço da altura.
+  // O EIXO ACOMPANHA TODO PONTO DESENHADO, e isto é uma inversão de decisão do
+  // dono do produto — a anterior era dele também.
   //
-  // ELE CONTINUA DESENHADO, e é isso que separa esta regra de esconder o dado:
-  // o ponto aparece, marcado como parcial, e quando cai fora do eixo vai para a
-  // borda dizendo que saiu.
-  const completos = medidos.filter((ponto) => ponto.lentes >= LENTES_PARA_SER_COMPLETO);
-  //: SEM NENHUM COMPLETO, os parciais regem — um domínio vazio seria pior. Mas
-  //: o fato viaja no payload, porque a tela conta outra história quando ele é
-  //: verdade: eles não estão fora do eixo, eles SÃO o eixo.
-  const eixoRegidoPorParciais = completos.length === 0 && medidos.length > 0;
-  const regem = (completos.length ? completos : medidos).map(
-    (ponto) => ponto.isr as number,
-  );
-  const { piso, teto } = dominioDe([
-    ...regem,
-    ...(temLente ? daLente.map((par) => par.nota) : []),
-  ]);
+  // ANTES o eixo era regido só pelos meses comparáveis: um mês medido por uma
+  // lente produz um ISR legítimo pela fórmula e enganoso na curva, e deixá-lo
+  // mandar na escala espremia o período inteiro. Um janeiro com 100 esticava o
+  // teto em vinte pontos e achatava o ano num terço da altura.
+  //
+  // O PREÇO ERA O PONTO FANTASMA: o que não cabia no eixo ia preso na borda,
+  // desenhado num lugar que não era o seu valor. Ele olhou a tela e trocou: "não
+  // ter pontos fantasmas como é hoje". Perguntei com as três saídas na mesa — o
+  // eixo que acompanha tudo, o extremo que sai do desenho, e o eixo que se
+  // estica até um limite — e esta foi a escolhida, com o achatamento aceito.
+  //
+  // O AVISO NÃO MUDOU: o mês de poucas lentes continua marcado como parcial e
+  // continua dizendo "1 de 5 lentes" ao lado do número. O que mudou é onde ele
+  // é desenhado: no lugar dele.
+  const { piso, teto } = dominioAnimado ?? dominioDe(valoresDoEixo(medidos, daLente));
   const alturaUtil = VB.altura - PAD_TOPO - PAD_BASE;
   const y = (valor: number) => PAD_TOPO + alturaUtil * (1 - (valor - piso) / (teto - piso));
   // O CENTRO DA COLUNA, e não a borda: é o que faz o ponto cair exatamente
@@ -490,28 +577,16 @@ export function jornadaDoIndice(
     marcas.push({ valor, topo: (y(valor) / VB.altura) * 100 });
   }
 
+  //: O LADO DE CADA RÓTULO, decidido de uma vez para a série inteira.
+  //:
+  //: VARRIDO E NÃO PONTO A PONTO porque a decisão de um depende do lado do
+  //: anterior — é o que dá a estabilidade que o dono do produto pediu ("as
+  //: janelas (...) estão pulando muito quando passamos de um mês para o outro").
+  const ladoDeCada = ladosDosRotulos(notas);
+
   const pontos = medidos.map((ponto, i): PontoDaJornada => {
     const isr = ponto.isr as number;
-    const anterior = notas[i - 1];
-    const seguinte = notas[i + 1];
-    // PICO LOCAL VAI PARA CIMA: o rótulo acompanha o relevo, e não uma regra
-    // fixa — abaixo de um pico ele cairia dentro da própria curva.
-    //
-    // AS PONTAS OLHAM PARA O ÚNICO VIZINHO QUE TÊM: mais alto que ele, o rótulo
-    // sobe; mais baixo, desce. É a mesma regra do meio, com um vizinho só.
-    //
-    // AQUI EU DIVIRJO DA REFERÊNCIA, de propósito. O `evolVals` do protótipo usa
-    // `v <= serie[1]` no primeiro ponto e `v >= serie[n-2]` no último — as duas
-    // pontas com o sinal trocado entre si, e a primeira contra a regra do meio.
-    // Numa série que só cai, aquilo manda o rótulo do primeiro ponto para
-    // baixo, para dentro da curva que desce. Copiar o sinal invertido seria
-    // reproduzir um engano, e não obedecer a uma decisão.
-    const preferaAcima =
-      anterior === undefined
-        ? isr >= (seguinte ?? isr)
-        : seguinte === undefined
-          ? isr >= anterior
-          : isr >= (anterior + seguinte) / 2;
+    const preferaAcima = ladoDeCada[i];
     const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE;
     const cabeAcima = y(isr) - ALTURA_DO_ROTULO >= 0;
     // O FILETE E A ETIQUETA SEGUEM O PRIMEIRO FATO CADASTRADO. Com vários, é
@@ -519,20 +594,15 @@ export function jornadaDoIndice(
     // não pode mudar quando alguém acrescenta uma nota de rodapé depois.
     const efeito = ponto.fatos[0]?.efeito ?? '';
     const parcial = ponto.lentes < LENTES_PARA_SER_COMPLETO;
-    const alturaCrua = (y(isr) / VB.altura) * 100;
     return {
       mes: ponto.mes,
       esquerda: (x(i) / VB.largura) * 100,
-      // PRESO À BORDA DA FAIXA quando o valor sai do eixo: o número continua
-      // escrito ao lado, e o ponto encostado na borda diz que ele está além
-      // dela. Desenhá-lo no y real o jogaria por cima das colunas.
-      //
-      // CONTRA A FAIXA, E NÃO CONTRA O DESENHO. O corte era 0..100% do viewBox,
-      // e a faixa desenhada vai de PAD_TOPO a altura−PAD_BASE: sobra folga em
-      // cima e embaixo. Um 81 com domínio 45..80 era marcado como fora da
-      // escala E desenhado dentro do gráfico, flutuando acima da marca de 80 —
-      // o aviso dizia uma coisa e o desenho dizia outra.
-      topo: Math.min(Math.max(alturaCrua, TOPO_DA_FAIXA), BASE_DA_FAIXA),
+      // NO LUGAR DO VALOR, SEMPRE. Havia um corte aqui — o ponto que saía do
+      // eixo era preso na borda da faixa —, e era ele que desenhava o fantasma:
+      // uma bolinha encostada no topo afirmando uma altura que não era a do
+      // número escrito ao lado dela. Com o eixo acompanhando todo ponto (ver o
+      // domínio, acima), não existe mais ponto fora para prender.
+      topo: (y(isr) / VB.altura) * 100,
       cx: x(i),
       cy: y(isr),
       isr,
@@ -547,14 +617,6 @@ export function jornadaDoIndice(
       selecionado: ponto.mes === mesSelecionado,
       parcial,
       cobertura: coberturaDoMes(ponto.lentes),
-      //: CONTRA O DOMÍNIO, e não contra o pixel. Media-se `alturaCrua`, que é a
-      //: posição no viewBox — e o desenho tem 14px de folga no topo e 34 na
-      //: base. Um valor ACIMA do teto cabia nessa folga: com domínio 45..80, um
-      //: 81 caía em 1,8% da altura, desenhado acima da última faixa e da marca
-      //: de 80, rotulado como qualquer outro mês, sem o aviso. Só a partir de
-      //: 82 o pixel saía e a tela avisava. A pergunta é sobre a ESCALA, e a
-      //: escala é `piso`..`teto`.
-      foraDaEscala: isr < piso || isr > teto,
       descricao:
         `${mesPorExtenso(ponto.mes)}: índice ${isr}, faixa ${rotuloDaFaixa(isr)}` +
         (parcial ? `, medido por ${ponto.lentes} de 5 lentes` : '') +
@@ -587,7 +649,6 @@ export function jornadaDoIndice(
 
   return {
     resumo: resumoDa(serie),
-    eixoRegidoPorParciais,
     faixas,
     marcas,
     curva: curvaPor(notas.map((nota, i) => [x(i), y(nota)])),

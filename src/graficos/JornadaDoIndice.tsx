@@ -54,9 +54,11 @@
  *  toda tela que não fosse a do desenho.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { VB, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { VB, dominioDaJornada, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { DURACAO_DA_TRANSICAO, entre, suavidade } from '@/dominio/dominioSuave';
+import type { Dominio } from '@/dominio/dominioSuave';
 import type {
   ColunaDoMes,
   FaixaDeFundo,
@@ -67,6 +69,65 @@ import type {
 import { COR_DO_EFEITO } from '@/dominio/score';
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
+
+/** O eixo, andando até onde ele deve estar.
+ *
+ *  O EIXO É ADAPTATIVO E POR ISSO SE MOVE: um mês novo na base ou uma lente
+ *  escolhida para comparar mudam o domínio, e a mudança seca lê-se como mudança
+ *  de dado — a curva aparece noutra altura sem nada avisar que a régua é que
+ *  mudou. Este hook faz a régua caminhar, em `DURACAO_DA_TRANSICAO`.
+ *
+ *  O PRIMEIRO DESENHO NÃO ANIMA, e isso é metade da ideia: a transição existe
+ *  para a MUDANÇA. Animar na abertura faria a tela nascer com o eixo errado e
+ *  consertá-lo na frente de quem abriu.
+ *
+ *  `prefers-reduced-motion` É OBEDECIDO, e sem ele este hook seria um defeito de
+ *  acessibilidade: quem pede menos movimento tem razões (vertigem, enxaqueca
+ *  vestibular) e recebe o eixo no lugar, de uma vez.
+ *
+ *  A CONTA NÃO MORA AQUI. `dominioDaJornada` diz para onde ir, `entre` e
+ *  `suavidade` dizem como caminhar — os dois com testes próprios. Aqui fica só o
+ *  relógio, que é o que um componente tem e um módulo puro não. */
+function useEixoQueSeMove(alvo: Dominio): Dominio {
+  const [atual, definirAtual] = useState(alvo);
+  //: O PONTO DE PARTIDA DO QUADRO ATUAL, numa ref e não no estado: ele é lido
+  //: dentro da animação e escrevê-lo no estado faria cada quadro reiniciar o
+  //: efeito, que é o laço infinito clássico desse tipo de hook.
+  const partida = useRef(alvo);
+  const quadro = useRef(0);
+
+  useEffect(() => {
+    if (atual.piso === alvo.piso && atual.teto === alvo.teto) return;
+
+    const quieto =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (quieto) {
+      definirAtual(alvo);
+      return;
+    }
+
+    partida.current = atual;
+    const comecou = performance.now();
+    const passo = (agora: number) => {
+      const andou = Math.min((agora - comecou) / DURACAO_DA_TRANSICAO, 1);
+      definirAtual(entre(partida.current, alvo, suavidade(andou)));
+      //: CHEGA EXATAMENTE NO ALVO: o último quadro usa `andou === 1`, e `entre`
+      //: devolve o destino sem arredondamento. Um eixo que para a um décimo do
+      //: destino desenharia uma escala que ninguém calculou.
+      if (andou < 1) quadro.current = requestAnimationFrame(passo);
+    };
+    quadro.current = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro.current);
+    //: `atual` FICA FORA DAS DEPENDÊNCIAS de propósito: ele muda a cada quadro, e
+    //: incluí-lo reiniciaria a animação sessenta vezes por segundo — ela nunca
+    //: chegaria ao fim. O efeito reage ao ALVO, que é o que de fato mudou.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alvo.piso, alvo.teto]);
+
+  return atual;
+}
 
 export function JornadaDoIndice({
   serie,
@@ -87,7 +148,15 @@ export function JornadaDoIndice({
    *  dois lados, só a conta de onde ele vem é que muda. */
   jornadaPronta?: Jornada;
 }) {
-  const jornada = jornadaPronta ?? jornadaDoIndice(serie, mes, comparada, nomeDaComparada);
+  //: O ALVO DO EIXO, memorizado pelas duas pontas: sem isto, cada render criaria
+  //: um objeto novo e o hook da transição reiniciaria a animação a cada passo do
+  //: mouse sobre a fita dos meses.
+  const alvo = useMemo(() => dominioDaJornada(serie, comparada), [serie, comparada]);
+  const eixo = useEixoQueSeMove(alvo);
+  //: A JORNADA PRONTA VEM DE FORA quando a tela já a calculou (a jornada de UMA
+  //: lente monta o mesmo formato), e aí o eixo dela já é o que ela escolheu.
+  const jornada =
+    jornadaPronta ?? jornadaDoIndice(serie, mes, comparada, nomeDaComparada, eixo);
   const [destacado, definirDestacado] = useState<string | null>(null);
 
   //: SOLTAR SÓ APAGA SE AINDA FOR O MESMO MÊS.
@@ -233,6 +302,10 @@ export function JornadaDoIndice({
         {jornada.marcas.map((marca) => (
           <span
             key={marca.valor}
+            //: O VALOR NUM ATRIBUTO, e não só no texto: é por ele que o teste da
+            //: transição lê onde o eixo está, sem depender de como o número é
+            //: formatado nem de qual `<span>` da tela é qual.
+            data-marca-do-eixo={marca.valor}
             className="tabular"
             style={{
               position: 'absolute',
@@ -590,7 +663,7 @@ function Ponto({
 
             O AVISO DE ESCALA SOZINHO CONTINUA POSSÍVEL: um mês completo pode
             sair do eixo quando a lente comparada estica o domínio. */}
-        {ponto.cobertura || ponto.foraDaEscala ? (
+        {ponto.cobertura ? (
           <span className="kicker jornada__cobertura" style={{ color: 'var(--cinza-2)' }}>
             {ponto.cobertura || 'fora da escala'}
           </span>

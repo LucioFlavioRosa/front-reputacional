@@ -55,7 +55,6 @@ import type { PontoDaSerie, TemaDoMes } from '@/dominio/score';
 
 const JORNADA_VAZIA: Jornada = {
   resumo: '',
-  eixoRegidoPorParciais: false,
   faixas: [],
   marcas: [],
   curva: '',
@@ -168,7 +167,6 @@ export function jornadaDaLente(
       selecionado: ponto.mes === mesSelecionado,
       parcial: false,
       cobertura: '',
-      foraDaEscala: nota < piso || nota > teto,
       descricao: `${mesPorExtenso(ponto.mes)}: ${nomeDaLente} ${nota}, faixa ${faixaDoValor(nota)}`,
     };
   });
@@ -194,7 +192,6 @@ export function jornadaDaLente(
 
   return {
     resumo: resumoDaLente(medidos, nomeDaLente),
-    eixoRegidoPorParciais: false,
     faixas,
     marcas,
     curva: curvaPor(notas.map((nota, i) => [x(i), y(nota)])),

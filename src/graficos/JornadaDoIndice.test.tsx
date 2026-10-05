@@ -13,11 +13,12 @@
  *  se vê montando: quem manda no cartão, e quando ele troca de mês.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
+import { dominioDaJornada } from '@/dominio/jornadaDoIndice';
 import type { PontoDaSerie } from '@/dominio/score';
 
 function ponto(parcial: Partial<PontoDaSerie>): PontoDaSerie {
@@ -122,5 +123,82 @@ describe('a jornada do índice', () => {
     montar();
     const fato = screen.getByText('Atraso das demonstrações financeiras');
     expect(fato.closest('button')).toBeNull();
+  });
+});
+
+describe('o eixo se move em vez de saltar', () => {
+  /** O PEDIDO: "preciso que (...) tenha transições suaves e estáveis mês a mês".
+   *
+   *  O QUE MUDA O EIXO: ele é adaptativo, então escolher uma lente para comparar
+   *  acrescenta as notas dela à conta do domínio — e o eixo inteiro se move. Até
+   *  aqui isso era um corte seco, e um corte de régua lê-se como mudança de dado:
+   *  a curva aparece noutra altura e quem estava olhando um degrau não sabe se
+   *  mudou o degrau ou a régua debaixo dele.
+   *
+   *  ESTE BLOCO TRAVA AS BORDAS DO MOVIMENTO — onde ele começa e onde termina —,
+   *  não os quadros do meio. Os quadros são aritmética, e estão travados em
+   *  `dominio/dominioSuave.test.ts`. */
+
+  /** Uma lente que puxa o eixo para cima: notas 30 pontos acima do índice. */
+  const COM_LENTE = SERIE.map((p) => ({
+    ...p,
+    notas_das_lentes: { imprensa: (p.isr as number) + 30 },
+  }));
+
+  const marcasDoEixo = () =>
+    [...document.querySelectorAll('[data-marca-do-eixo]')].map((no) =>
+      Number(no.getAttribute('data-marca-do-eixo')),
+    );
+
+  it('o primeiro desenho JÁ está no lugar certo, sem animar da estaca zero', () => {
+    //: ANIMAR NA ABERTURA seria o pior dos dois mundos: a tela nasceria com o
+    //: eixo errado e o consertaria na frente de quem abriu. A transição existe
+    //: para a MUDANÇA, e na primeira vez não houve mudança nenhuma.
+    const alvo = dominioDaJornada(SERIE, null);
+
+    render(
+      <JornadaDoIndice serie={SERIE} mes="2026-02" comparada={null} aoEscolherMes={vi.fn()} />,
+    );
+
+    const marcas = marcasDoEixo();
+    expect(marcas.length).toBeGreaterThan(0);
+    expect(Math.min(...marcas)).toBeGreaterThanOrEqual(alvo.piso);
+    expect(Math.max(...marcas)).toBeLessThanOrEqual(alvo.teto);
+  });
+
+  it('termina exatamente no eixo que a jornada desenharia', async () => {
+    //: SEM ISTO A ANIMAÇÃO É UM DEFEITO: um eixo que para a meio caminho desenha
+    //: uma escala que ninguém calculou, e os números do eixo deixam de bater com
+    //: a altura dos pontos.
+    const semLente = dominioDaJornada(SERIE, null);
+    const comLente = dominioDaJornada(COM_LENTE, 'imprensa');
+    //: A premissa do teste: a lente MUDA o eixo. Sem isso não há transição para
+    //: medir, e o teste passaria sem exercitar nada.
+    expect(comLente.teto).toBeGreaterThan(semLente.teto);
+
+    const { rerender } = render(
+      <JornadaDoIndice
+        serie={COM_LENTE}
+        mes="2026-02"
+        comparada={null}
+        aoEscolherMes={vi.fn()}
+      />,
+    );
+    rerender(
+      <JornadaDoIndice
+        serie={COM_LENTE}
+        mes="2026-02"
+        comparada="imprensa"
+        nomeDaComparada="Imprensa"
+        aoEscolherMes={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      const marcas = marcasDoEixo();
+      expect(Math.max(...marcas)).toBeGreaterThan(semLente.teto - 10);
+      expect(Math.min(...marcas)).toBeGreaterThanOrEqual(comLente.piso);
+      expect(Math.max(...marcas)).toBeLessThanOrEqual(comLente.teto);
+    });
   });
 });
