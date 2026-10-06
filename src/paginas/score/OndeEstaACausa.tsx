@@ -26,7 +26,7 @@ import { Abas } from '@/componentes/Abas';
 import { Secao } from '@/componentes/basicos';
 import { NotaDeFonte } from '@/componentes/Procedencia';
 import type { Bloco } from '@/dominio/dossie';
-import { comoNumero, comoTexto } from '@/dominio/dossie';
+import { comoNumero, comoTexto, rotuloNaFrase } from '@/dominio/dossie';
 import { BarrasCemPorCento } from '@/graficos/PecasDoDossie';
 
 export function OndeEstaACausa({
@@ -91,7 +91,7 @@ export function OndeEstaACausa({
           //: reparar que o tema não estava lá "como aparece nos demais meses". O
           //: preço é a aba sem dado, e ela só não é um quadro em branco porque a
           //: frase da ficha está logo abaixo.
-          vazio={`Nenhuma menção deste mês traz ${bloco.titulo.toLowerCase()}.`}
+          vazio={`Nenhuma menção deste mês traz ${rotuloNaFrase(bloco.titulo)}.`}
           //: MARCADO PELO RECORTE DA BARRA DE FILTROS, que continua existindo e
           //: continua filtrando a tela: o seletor serve a quem já sabe o que
           //: quer ver. A marca diz "esta linha é o recorte que está ativo lá em

@@ -327,6 +327,16 @@ export interface ColunaMontada {
  *  O SERVIDOR DIZ QUAL COLUNA É (`bloco.coluna_do_link`), e a tela não procura por
  *  nome: é o mesmo cuidado de `recorta`, e a mesma razão pela qual a escolha do
  *  schema da tabela deixou de ser adivinhada pelo título. */
+/** O rótulo de uma dimensão dentro de uma frase.
+ *
+ *  `toLowerCase()` DIRETO ESTRAGA A SIGLA: "Nenhuma menção deste mês traz uf." —
+ *  e UF é das sete dimensões da Sociedade a única que é sigla. Aqui só a primeira
+ *  letra desce, e o rótulo todo em maiúscula fica como está. */
+export function rotuloNaFrase(rotulo: string): string {
+  if (rotulo === rotulo.toUpperCase()) return rotulo;
+  return rotulo.charAt(0).toLowerCase() + rotulo.slice(1);
+}
+
 export function enderecoDaLinhaDo(
   bloco: Bloco,
 ): ((linha: Record<string, unknown>) => string | null) | undefined {

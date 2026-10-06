@@ -162,6 +162,18 @@ describe('OndeEstaACausa', () => {
     expect(screen.getByText('Nenhuma menção deste mês traz subtema.')).toBeTruthy();
   });
 
+  it('a SIGLA não desce para minúscula na frase da aba vazia', () => {
+    /** FURO MEU, achado antes da revisão: `toLowerCase()` direto fazia "traz uf.".
+     *  UF é, das sete dimensões da Sociedade, a única que é sigla — e a frase
+     *  aparece justamente no mês em que o campo falta, que é quando quem lê está
+     *  desconfiando da tela. */
+    render(
+      <OndeEstaACausa abas={[aba('UF', 'uf', [])]} filtro={{}} aoAprofundar={vi.fn()} />,
+    );
+
+    expect(screen.getByText('Nenhuma menção deste mês traz UF.')).toBeTruthy();
+  });
+
   it('o título do clique fala de APROFUNDAR, e não de filtrar', () => {
     /** A PALAVRA ENSINA O QUE VAI ACONTECER. Quem lê "filtrar" espera a tela
      *  mudar; aqui a tela de trás fica exatamente onde estava. */

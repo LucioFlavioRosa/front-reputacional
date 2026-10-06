@@ -37,6 +37,7 @@ import {
   comoTexto,
   enderecoDaLinhaDo,
   mesCurto,
+  rotuloNaFrase,
 } from '@/dominio/dossie';
 import { BarrasCemPorCento, TabelaDeLeitura } from '@/graficos/PecasDoDossie';
 
@@ -445,7 +446,7 @@ function DentroDoRecorte({
           legenda={bloco.legenda.length ? bloco.legenda : undefined}
           //: MESMA REGRA DO CARTÃO: as abas são as mesmas em todo recorte, e a
           //: que não tem dado diz que a fonte não classificou aquele campo.
-          vazio={`Nenhuma menção deste recorte traz ${bloco.titulo.toLowerCase()}.`}
+          vazio={`Nenhuma menção deste recorte traz ${rotuloNaFrase(bloco.titulo)}.`}
           aoClicar={
             bloco.recorta ? (rotulo) => aoDescer(bloco.recorta as string, rotulo) : undefined
           }
