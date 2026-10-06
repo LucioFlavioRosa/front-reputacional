@@ -36,7 +36,7 @@ import { urlDeLogin } from '@/api/cliente';
 export async function entrarNoPainel(
   confirmarSessao: () => Promise<boolean>,
   navegar: (url: string) => void,
-  destino = '/painel',
+  destino = '/',
 ): Promise<void> {
   if (await confirmarSessao()) return;
   navegar(urlDeLogin(destino));
