@@ -104,6 +104,7 @@ function abrir(recorte: Recorte, props: Partial<Parameters<typeof RecorteDaLente
       aoFechar={vi.fn()}
       aoDescer={vi.fn()}
       aoSubir={vi.fn()}
+      notaDoMes={() => null}
       {...props}
     />,
   );
@@ -211,6 +212,30 @@ describe('RecorteDaLente', () => {
     expect(screen.getByText(/A nota deste recorte em cada mês/)).toBeTruthy();
     expect(screen.getByText('33')).toBeTruthy();
     expect(screen.getByText('55')).toBeTruthy();
+    expect(screen.getByText('899 itens')).toBeTruthy();
+  });
+
+  it('célula SEM NOTA mostra traço, e nunca o impacto', async () => {
+    /** ACHADO DE REVISÃO. A célula decidia por `sem_base`, e nota e base podem
+     *  discordar: `serie_da_lente` marca base por menção existente, e a nota passa
+     *  por `ponderar`, que descarta tier de peso zero. Com a calibração `so_tier1`
+     *  e um mês de menções só `relevante`, vinha itens sem nota — e a célula
+     *  mostrava o IMPACTO como número grande dentro de uma seção chamada "A nota,
+     *  mês a mês". Um número numa escala dizendo-se de outra. */
+    abrir({
+      ...DO_RIO,
+      historico: [
+        { mes: '2026-06', impacto: -2.1, itens: 899, sem_base: false, nota: null },
+      ],
+    });
+    await screen.findByText('A nota, mês a mês');
+
+    //: DENTRO DA SEÇÃO, e não na tela: o impacto APARECE no topo do painel, em
+    //: destaque, de propósito — o que não pode é ele ocupar a célula da nota.
+    const secao = screen.getByText('A nota, mês a mês').closest('section')!;
+    expect(secao.textContent).toContain('—');
+    expect(secao.textContent).not.toContain('-2,1');
+    //: E O VOLUME CONTINUA DITO: há menção, o que falta é nota sob esta régua.
     expect(screen.getByText('899 itens')).toBeTruthy();
   });
 
@@ -339,7 +364,7 @@ describe('RecorteDaLente', () => {
     });
 
     expect(await screen.findByText('Nenhum item deste recorte neste mês.')).toBeTruthy();
-    expect(screen.getByText('Este recorte, mês a mês')).toBeTruthy();
+    expect(screen.getByText('A nota, mês a mês')).toBeTruthy();
     expect(screen.getByText('31 itens')).toBeTruthy();
   });
 

@@ -74,6 +74,16 @@ export function RecorteDaLente({
   tituloPeloMes?: boolean;
   /** A nota OFICIAL da lente em cada mês — a mesma que a Jornada desenha.
    *
+   *  OBRIGATÓRIA, E ISSO É CORREÇÃO DE UM BUG QUE PASSOU POR TUDO: ela nasceu
+   *  opcional, o script que a ligava na tela falhou no meio, e eu consertei só a
+   *  parte que estourou. `tsc` não reclamou (era opcional) e os testes passaram
+   *  (eles injetam a prop direto), então o painel real abria SEM nota e caía no
+   *  impacto — exatamente o que o dono do produto reportou como "voltou o
+   *  comportamento que toma 50 como parâmetro".
+   *
+   *  OBRIGATÓRIA, o compilador cobra a ligação. Era o que faltava para o erro não
+   *  poder acontecer, em vez de depender de eu lembrar.
+   *
    *  VEM DE FORA, E NÃO DO PAYLOAD DESTE PAINEL, e isto foi achado de revisão
    *  (duas vezes). Eu havia feito o servidor derivar a nota do impacto
    *  (`50 + impacto`, identidade exata sem recorte); dava divergência de 1 ponto
@@ -83,7 +93,7 @@ export function RecorteDaLente({
    *  A TELA JÁ TEM O NÚMERO CERTO: `PontoDaSerie.notas_das_lentes`, de onde a
    *  curva é desenhada. Lê-lo de lá é o que garante que o painel e o gráfico
    *  digam o mesmo — por construção, não por coincidência de duas contas. */
-  notaDoMes?: (mes: string) => number | null;
+  notaDoMes: (mes: string) => number | null;
   aoFechar: () => void;
   /** Empilha mais um degrau — descer um nível SEM sair do painel. */
   aoDescer: (chave: string, valor: string) => void;
@@ -227,7 +237,7 @@ function Conteudo({
 }: {
   recorte: Recorte;
   aoDescer: (chave: string, valor: string) => void;
-  notaDoMes?: (mes: string) => number | null;
+  notaDoMes: (mes: string) => number | null;
 }) {
   // SEM ITEM NESTE MÊS, A AUSÊNCIA — MAIS O HISTÓRICO, que é justamente onde ele
   // mais importa. ACHADO DE REVISÃO (alta): o painel "Concessionárias com maior
@@ -326,39 +336,47 @@ function Historico({
   notaDoMes,
 }: {
   recorte: Recorte;
-  notaDoMes?: (mes: string) => number | null;
+  notaDoMes: (mes: string) => number | null;
 }) {
-  //: A PONTUAÇÃO É A COLUNA, com recorte ou sem — pedido do dono do produto:
-  //: "traga a pontuação, que é mais fácil de comunicar".
+  //: A PONTUAÇÃO É A COLUNA, SEMPRE — pedido do dono do produto: "traga a
+  //: pontuação, que é mais fácil de comunicar". Sem nota, a célula mostra "—", e
+  //: NÃO o impacto.
   //:
-  //: DE ONDE VEM MUDA, E ISSO É INVISÍVEL NA TELA, de propósito: COM recorte, a
-  //: nota do pedaço é medida no servidor (ela não existe em lugar nenhum senão
-  //: medindo); SEM recorte, é a da série que desenha a Jornada — a mesma que o
-  //: gráfico mostra, estimativa incluída. Cada uma é o número certo do seu caso.
+  //: ACHADO DE REVISÃO: a célula decidia por `sem_base`, e nota e base podem
+  //: discordar. `serie_da_lente` marca base por menção existente; a nota passa por
+  //: `ponderar`, que descarta tier de peso zero — com a calibração `so_tier1` e um
+  //: mês de menções só `relevante`, a célula vinha com itens e sem nota, e
+  //: mostrava o IMPACTO como número grande dentro de uma seção chamada "A nota,
+  //: mês a mês". Um número numa escala dizendo-se de outra.
+  //:
+  //: DE ONDE A NOTA VEM MUDA, E ISSO É INVISÍVEL NA TELA, de propósito: COM
+  //: recorte, a nota do pedaço é medida no servidor (ela não existe em lugar
+  //: nenhum senão medindo); SEM recorte, é a da série que desenha a Jornada —
+  //: estimativa incluída. Cada uma é o número certo do seu caso.
   const nota = (celula: Recorte['historico'][number]) =>
-    celula.nota ?? (recorte.trilha.length || !notaDoMes ? null : notaDoMes(celula.mes));
-  const comNota = recorte.historico.some((celula) => nota(celula) !== null);
+    celula.nota ?? (recorte.trilha.length ? null : notaDoMes(celula.mes));
 
   return (
     <section>
-      <h3 style={{ fontSize: 13, margin: '0 0 2px' }}>
-        {comNota ? 'A nota, mês a mês' : 'Este recorte, mês a mês'}
-      </h3>
+      <h3 style={{ fontSize: 13, margin: '0 0 2px' }}>A nota, mês a mês</h3>
       {/* O QUE O NÚMERO É, ESCRITO. O dono do produto leu a coluna como variação
           mês a mês — "-15" ao lado de "-8" e "+29" se lê como salto de um mês
           para o outro. Não é: é a distância até 50, o neutro. Uma coluna de
           números sem unidade nem base deixa quem lê adivinhar, e a leitura mais
           natural era a errada. */}
       <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
-        {comNota
-          ? recorte.trilha.length
-            ? 'A nota deste recorte em cada mês, de 0 a 100 — 50 é o neutro. Não é a variação de um mês para o outro.'
-            : 'A nota da lente em cada mês, de 0 a 100 — a mesma do gráfico. Não é a variação de um mês para o outro.'
-          : 'Quantos pontos este recorte pôs (+) ou tirou (−) da nota de cada mês. Não é a variação de um mês para o outro.'}
+        {recorte.trilha.length
+          ? 'A nota deste recorte em cada mês, de 0 a 100 — 50 é o neutro. Não é a variação de um mês para o outro.'
+          : 'A nota da lente em cada mês, de 0 a 100 — a mesma do gráfico. Não é a variação de um mês para o outro.'}
       </p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {recorte.historico.map((celula) => {
+          //: PELA NOTA, E NÃO POR `sem_base`: os dois podem discordar — ver o
+          //: comentário de `nota` acima.
           const daCelula = celula.sem_base ? null : nota(celula);
+          //: SEM NOTA, TRAÇO. Mostrar o impacto aqui seria pôr um número de outra
+          //: escala debaixo de um título que promete nota.
+          const numeroGrande = daCelula !== null ? String(daCelula) : '—';
           return (
           <div
             key={celula.mes}
@@ -392,11 +410,7 @@ function Historico({
                 uma coisa à outra. Sem nota (há recorte), o impacto é o número
                 principal — ali ele é a resposta, não um intermediário. */}
             <div className="tabular" style={{ fontSize: 15, fontWeight: 700 }}>
-              {celula.sem_base
-                ? '—'
-                : daCelula !== null
-                  ? daCelula
-                  : celula.impacto.toFixed(1).replace('.', ',')}
+              {numeroGrande}
             </div>
             <div style={{ fontSize: 10, color: 'var(--cinza-2)' }}>
               {celula.sem_base ? 'sem base' : `${numeroBR(celula.itens)} itens`}
