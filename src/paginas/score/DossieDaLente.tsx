@@ -293,6 +293,9 @@ function Conteudo({
           notaDoMes={(mes) =>
             serie.find((ponto) => ponto.mes === mes)?.notas_das_lentes[dossie.codigo] ?? null
           }
+          //: A FÓRMULA VIVA, que o servidor escreve com a régua em vigor — é o que
+          //: o "?" do painel mostra na primeira seção.
+          formula={dossie.formula}
           aoDescer={(chave, valor) =>
             definirAprofundando({
               ...aprofundando,

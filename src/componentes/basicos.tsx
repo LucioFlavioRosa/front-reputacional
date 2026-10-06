@@ -975,6 +975,18 @@ export function FaixaDeAtencao({ mensagem }: { mensagem: ReactNode }) {
 
 /* -- modal ---------------------------------------------------------------- */
 
+//: A PILHA DE DIÁLOGOS ABERTOS, para o teclado saber a quem responder.
+//:
+//: NASCEU DE UM MODAL DENTRO DE OUTRO: o painel de aprofundamento ganhou um "?"
+//: que abre a explicação da conta, e os dois são `Modal`. Com os dois ouvindo
+//: `keydown` no documento, um Escape fechava OS DOIS — quem fechava a explicação
+//: perdia o recorte que estava lendo. O mesmo valia para o Tab: as duas armadilhas
+//: de foco disputavam o cursor.
+//:
+//: SÓ O DO TOPO AGE. A pilha é de módulo porque a pergunta é global ("quem está em
+//: cima na tela?"), e não de um diálogo sobre si mesmo.
+const dialogosAbertos: object[] = [];
+
 export function Modal({
   titulo,
   subtitulo,
@@ -998,6 +1010,13 @@ export function Modal({
   //: iguais fazem o segundo apontar para o cabecalho do primeiro.
   const idDoTitulo = useId();
   const caixa = useRef<HTMLDivElement>(null);
+  //: O FECHAR POR REF, e o efeito de MONTAGEM: antes o efeito dependia de
+  //: `aoFechar`, que os chamadores passam como função nova a cada render — então
+  //: ele se desmontava e remontava sem parar. Com a pilha isso virou defeito de
+  //: verdade: cada remontagem tirava este diálogo da pilha e o punha de volta no
+  //: TOPO, e um diálogo de baixo roubava o teclado do de cima.
+  const fechar = useRef(aoFechar);
+  fechar.current = aoFechar;
 
   //: O TECLADO PRECISA CONSEGUIR SAIR, E NÃO PODE VAZAR.
   //:
@@ -1012,13 +1031,18 @@ export function Modal({
   //:
   //: Escape fecha porque é o gesto que todo mundo já tenta primeiro.
   useEffect(() => {
+    const meu = {};
+    dialogosAbertos.push(meu);
     const quemAbriu = document.activeElement as HTMLElement | null;
     caixa.current?.focus();
 
     function aoTeclar(evento: KeyboardEvent) {
+      //: SÓ O DO TOPO. `stopPropagation` não bastaria: os dois ouvem no MESMO
+      //: alvo (o documento), e parar a propagação não cala o vizinho.
+      if (dialogosAbertos[dialogosAbertos.length - 1] !== meu) return;
       if (evento.key === 'Escape') {
         evento.stopPropagation();
-        aoFechar();
+        fechar.current();
         return;
       }
       if (evento.key !== 'Tab' || !caixa.current) return;
@@ -1043,10 +1067,16 @@ export function Modal({
     document.addEventListener('keydown', aoTeclar, true);
     return () => {
       document.removeEventListener('keydown', aoTeclar, true);
+      const onde = dialogosAbertos.indexOf(meu);
+      if (onde >= 0) dialogosAbertos.splice(onde, 1);
       // `?.` porque o elemento pode ter saído do DOM junto com o que o abriu.
       quemAbriu?.focus?.();
     };
-  }, [aoFechar]);
+    //: DE MONTAGEM, E A LISTA VAZIA É DELIBERADA: `aoFechar` entra por `fechar`
+    //: (um ref), e é isso que mantém este diálogo no mesmo lugar da pilha
+    //: enquanto ele existe. Ver o comentário de `fechar`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

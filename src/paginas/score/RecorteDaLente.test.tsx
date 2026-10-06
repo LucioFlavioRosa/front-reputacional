@@ -105,6 +105,7 @@ function abrir(recorte: Recorte, props: Partial<Parameters<typeof RecorteDaLente
       aoDescer={vi.fn()}
       aoSubir={vi.fn()}
       notaDoMes={() => null}
+      formula="NS = (positivas − negativas) ÷ total; score = (NS + 1) ÷ 2 × 100."
       {...props}
     />,
   );
@@ -318,6 +319,38 @@ describe('RecorteDaLente', () => {
     expect(window.open).not.toHaveBeenCalled();
     espiao.mockRestore();
     vi.mocked(window.getSelection).mockRestore();
+  });
+
+  it('o "?" abre a explicação da conta, SEM fechar o painel', async () => {
+    /** PEDIDO DO DONO DO PRODUTO: "preciso explicar para meu usuário como isso é
+     *  feito; crie um botão de interrogação que abre um modal para explicar esses
+     *  cálculos".
+     *
+     *  SEM FECHAR O PAINEL é metade do trabalho: são dois `Modal` aninhados, e antes
+     *  os dois ouviam o teclado no documento — um Escape fechava OS DOIS, e quem
+     *  fechava a explicação perdia o recorte que estava lendo. */
+    abrir(DO_RIO, { formula: 'NS = (positivas − negativas) ÷ total; cada menção vale 1.' });
+
+    await userEvent.click(await screen.findByRole('button', { name: /Como esta conta é feita/ }));
+
+    //: A FÓRMULA VIVA, que o servidor escreveu com a régua em vigor.
+    expect(screen.getByText(/cada menção vale 1/)).toBeTruthy();
+    //: E A EXPLICAÇÃO DO IMPACTO, que é o número grande do painel.
+    expect(screen.getByText(/denominador é o do mês inteiro/)).toBeTruthy();
+
+    //: ESCAPE FECHA SÓ A EXPLICAÇÃO: o recorte continua aberto atrás.
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByText(/denominador é o do mês inteiro/)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'RJ' })).toBeTruthy();
+  });
+
+  it('a explicação da coluna muda COM e SEM recorte', async () => {
+    /** Com um pedaço escolhido a coluna é a nota DELE; sem recorte, a da lente —
+     *  e quem vai explicar precisa da frase certa para o caso que está vendo. */
+    abrir({ ...DO_RIO, trilha: [] });
+    await userEvent.click(await screen.findByRole('button', { name: /Como esta conta é feita/ }));
+
+    expect(screen.getByText(/a mesma que o gráfico de Jornada desenha/)).toBeTruthy();
   });
 
   it('clicar num degrau da trilha SOBE aquele degrau', async () => {

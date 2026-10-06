@@ -32,6 +32,8 @@ import { obterRecorteDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { numero as numeroBR } from '@/dominio/formato';
 import { Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
+import { BotaoDaConta } from '@/componentes/Procedencia';
+import { guiaDoRecorte } from '@/dominio/guiaDoRecorte';
 import {
   colunasDaTabela,
   comoNumero,
@@ -52,6 +54,7 @@ export function RecorteDaLente({
   ultimoDegrau,
   tituloPeloMes = false,
   notaDoMes,
+  formula,
 }: {
   codigo: string;
   mes: string;
@@ -94,6 +97,10 @@ export function RecorteDaLente({
    *  curva é desenhada. Lê-lo de lá é o que garante que o painel e o gráfico
    *  digam o mesmo — por construção, não por coincidência de duas contas. */
   notaDoMes: (mes: string) => number | null;
+  /** A fórmula da nota desta lente, como o servidor a escreve
+   *  (`DossieSaida.formula`) — ela nomeia a régua em vigor, e por isso não pode
+   *  ser texto fixo: muda no primeiro ajuste da calibração. */
+  formula: string;
   aoFechar: () => void;
   /** Empilha mais um degrau — descer um nível SEM sair do painel. */
   aoDescer: (chave: string, valor: string) => void;
@@ -174,7 +181,12 @@ export function RecorteDaLente({
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
         {!recorte && !erro ? <Carregando /> : null}
         {recorte ? (
-          <Conteudo recorte={recorte} aoDescer={aoDescer} notaDoMes={notaDoMes} />
+          <Conteudo
+            recorte={recorte}
+            aoDescer={aoDescer}
+            notaDoMes={notaDoMes}
+            formula={formula}
+          />
         ) : null}
       </div>
     </Modal>
@@ -234,10 +246,12 @@ function Conteudo({
   recorte,
   aoDescer,
   notaDoMes,
+  formula,
 }: {
   recorte: Recorte;
   aoDescer: (chave: string, valor: string) => void;
   notaDoMes: (mes: string) => number | null;
+  formula: string;
 }) {
   // SEM ITEM NESTE MÊS, A AUSÊNCIA — MAIS O HISTÓRICO, que é justamente onde ele
   // mais importa. ACHADO DE REVISÃO (alta): o painel "Concessionárias com maior
@@ -288,6 +302,13 @@ function Conteudo({
           <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
             pontos na nota da lente
           </span>
+          {/* O "?" AO LADO DO NÚMERO GRANDE, e não no cabeçalho: é este número
+              que a pessoa vai ter de explicar numa reunião, e a dúvida nasce
+              olhando para ele. */}
+          <BotaoDaConta
+            titulo={`${recorte.trilha.at(-1)?.valor ?? 'Mês inteiro'} · ${recorte.mes}`}
+            trechos={guiaDoRecorte(formula, recorte.trilha.length > 0)}
+          />
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 13, lineHeight: 1.6 }}>{recorte.frase}</p>
       </div>
