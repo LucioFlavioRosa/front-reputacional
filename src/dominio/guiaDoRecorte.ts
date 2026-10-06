@@ -45,10 +45,13 @@ export function guiaDoRecorte(formula: string, temRecorte: boolean): TrechoDoGui
       texto:
         'Quanto este recorte tira (−) ou põe (+) na nota da lente no mês: ' +
         '50 × (positivas − negativas deste recorte) ÷ peso de TODOS os itens do mês ' +
-        'na lente. O denominador é o do mês inteiro, e não o do recorte — é isso que ' +
-        'faz as partes somarem o todo: somando o impacto de todos os pedaços de uma ' +
-        'dimensão (todas as UFs, por exemplo) chega-se à distância entre a nota do ' +
-        'mês e 50.',
+        'na lente. O denominador é o do mês inteiro, e não o do recorte — é por isso ' +
+        'que os pedaços são comparáveis entre si: cada um é medido contra o mesmo ' +
+        'mundo. Somando os pedaços de uma dimensão chega-se à distância entre a nota ' +
+        'do mês e 50 SÓ QUANDO aquela dimensão está preenchida em todas as menções; ' +
+        'o que falta é o pedaço sem classificação, e a ficha de cada aba diz o ' +
+        'tamanho dele (em junho de 2026, por exemplo, a UF vem em 5.050 das 6.932 ' +
+        'menções).',
     },
     {
       termo: temRecorte ? 'A coluna mês a mês (a nota deste recorte)' : 'A coluna mês a mês',
@@ -64,8 +67,11 @@ export function guiaDoRecorte(formula: string, temRecorte: boolean): TrechoDoGui
     {
       termo: 'O número embaixo da nota',
       texto:
-        'Quantas menções entraram na conta daquele mês. Serve para dar tamanho à ' +
-        'nota: 100 com três menções e 100 com trezentas são coisas diferentes.',
+        'Quantas menções deste recorte o mês tem. Serve para dar tamanho à nota: ' +
+        '100 com três menções e 100 com trezentas são coisas diferentes. É a ' +
+        'contagem de menções, e não o que cada uma pesou — numa régua que zera ' +
+        'tier (como "só Tier 1"), pode haver menção contada aqui que não entrou na ' +
+        'nota.',
     },
     {
       termo: 'Quando a célula mostra "—"',
