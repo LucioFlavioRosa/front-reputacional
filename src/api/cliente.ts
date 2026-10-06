@@ -342,7 +342,7 @@ export function sair(): Promise<void> {
   return requisitar<void>('/api/auth/logout', { method: 'POST' });
 }
 
-export function urlDeLogin(destino = '/painel'): string {
+export function urlDeLogin(destino = '/'): string {
   return `${BASE}/api/auth/login?redirect=${encodeURIComponent(destino)}`;
 }
 
