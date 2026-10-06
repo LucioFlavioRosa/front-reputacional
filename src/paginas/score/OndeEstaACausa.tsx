@@ -23,7 +23,7 @@ import { useState } from 'react';
 
 import type { FiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
-import { FaixaDeAtencao, Secao } from '@/componentes/basicos';
+import { Secao } from '@/componentes/basicos';
 import { NotaDeFonte } from '@/componentes/Procedencia';
 import type { Bloco } from '@/dominio/dossie';
 import { comoNumero, comoTexto } from '@/dominio/dossie';
@@ -31,13 +31,10 @@ import { BarrasCemPorCento } from '@/graficos/PecasDoDossie';
 
 export function OndeEstaACausa({
   abas,
-  lacunas,
   filtro,
   aoAprofundar,
 }: {
   abas: Bloco[];
-  /** A dimensão esperada que não explica este mês — o aviso âmbar do pacote. */
-  lacunas?: string[];
   filtro: FiltroDaLente;
   /** ABRE O APROFUNDAMENTO, e não aplica o filtro na tela — e esta é a correção
    *  que o dono do produto pediu: "ao clicar em um dado temos que abrir um modal
@@ -89,6 +86,12 @@ export function OndeEstaACausa({
           }))}
           legenda={bloco.legenda.length ? bloco.legenda : undefined}
           cores={bloco.cores.length ? bloco.cores : undefined}
+          //: A ABA VAZIA DIZ POR QUÊ. A fileira de abas é a mesma em todo mês —
+          //: decisão do dono do produto, depois de abrir junho pela Jornada e
+          //: reparar que o tema não estava lá "como aparece nos demais meses". O
+          //: preço é a aba sem dado, e ela só não é um quadro em branco porque a
+          //: frase da ficha está logo abaixo.
+          vazio={`Nenhuma menção deste mês traz ${bloco.titulo.toLowerCase()}.`}
           //: MARCADO PELO RECORTE DA BARRA DE FILTROS, que continua existindo e
           //: continua filtrando a tela: o seletor serve a quem já sabe o que
           //: quer ver. A marca diz "esta linha é o recorte que está ativo lá em
@@ -99,16 +102,6 @@ export function OndeEstaACausa({
         <NotaDeFonte ficha={bloco.ficha} />
       </div>
 
-      {/* A DIMENSÃO QUE FALTA, DITA. Depois do conteúdo e não antes: é nota de
-          rodapé sobre o que NÃO está ali, e abrir o cartão com ela faria parecer
-          que o cartão inteiro está comprometido. */}
-      {lacunas?.length ? (
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {lacunas.map((frase) => (
-            <FaixaDeAtencao key={frase} mensagem={frase} />
-          ))}
-        </div>
-      ) : null}
     </Secao>
   );
 }

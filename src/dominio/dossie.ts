@@ -163,14 +163,6 @@ export interface Dossie {
    *  VAZIO na lente que não vem de menção (Mercado, Institucional) e no mês em
    *  que nenhuma dimensão explica nada. */
   onde_esta_a_causa: Bloco[];
-  /** A dimensão ESPERADA que não explica este mês, dita em palavras — o aviso
-   *  âmbar do pacote (FRONTEND §40).
-   *
-   *  SEM ELE A ABA QUE FALTA É UM BURACO: o tema é a primeira dimensão
-   *  prioritária da Sociedade e chega em 28% dos itens, então o cartão abre sem
-   *  aba de tema logo acima de um painel "Temas × sentimento" — e quem lê conclui
-   *  que a tela está quebrada. A frase transforma isso num fato sobre a fonte. */
-  lacunas_da_causa: string[];
   /** O bloco do fim da tela, já ordenado pelo servidor. */
   sinais: SinalDoDossie[];
 }

@@ -443,6 +443,9 @@ function DentroDoRecorte({
             negativo: comoNumero(linha.negativo ?? 0),
           }))}
           legenda={bloco.legenda.length ? bloco.legenda : undefined}
+          //: MESMA REGRA DO CARTÃO: as abas são as mesmas em todo recorte, e a
+          //: que não tem dado diz que a fonte não classificou aquele campo.
+          vazio={`Nenhuma menção deste recorte traz ${bloco.titulo.toLowerCase()}.`}
           aoClicar={
             bloco.recorta ? (rotulo) => aoDescer(bloco.recorta as string, rotulo) : undefined
           }
