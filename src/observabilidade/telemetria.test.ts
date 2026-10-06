@@ -58,6 +58,63 @@ afterEach(() => {
   console_erro.mockRestore();
 });
 
+describe('a connection string vem do RUNTIME', () => {
+  /** A IMAGEM PASSOU A SER NEUTRA DE AMBIENTE, e esta é a metade que o
+   *  TypeScript não garante: a connection string era assada no build
+   *  (`import.meta.env`), o que obrigava a um build por ambiente — com o cliente
+   *  usando o App Insights dele, a imagem testada não era a publicada. Agora o
+   *  contêiner escreve `/configuracao.js` na subida e o `index.html` o carrega
+   *  antes do bundle. */
+
+  afterEach(() => {
+    delete globalThis.__PAINEL__;
+  });
+
+  it('o valor do contêiner VENCE o do build', async () => {
+    globalThis.__PAINEL__ = { appInsights: 'InstrumentationKey=do-conteiner' };
+    const { instancia } = sdkFalso();
+    const construtor = vi.fn(function () {
+      return instancia;
+    });
+    //: `carregarModulo` ainda injeta a variável de build, e é esse o ponto: as
+    //: duas presentes, a do contêiner é que vale.
+    const telemetria = await carregarModulo({ ApplicationInsights: construtor });
+
+    telemetria.iniciarTelemetria();
+    await vi.waitFor(() => expect(construtor).toHaveBeenCalled());
+
+    //: `as unknown as` porque o construtor falso nao declara parametros, entao o
+    //: TypeScript tipa a tupla da chamada como vazia.
+    //: A LISTA DE CHAMADAS POR `unknown`: o construtor falso nao declara
+    //: parametros, entao o TypeScript tipa cada chamada como tupla VAZIA e nega o
+    //: indice 0. O `as unknown` e sobre a tupla, nao sobre o argumento.
+    const chamadas = construtor.mock.calls as unknown as { config: { connectionString: string } }[][];
+    const configuracao = chamadas[0][0];
+    expect(configuracao.config.connectionString).toBe('InstrumentationKey=do-conteiner');
+  });
+
+  it('sem valor do contêiner, o do build continua servindo (desenvolvimento)', async () => {
+    globalThis.__PAINEL__ = { appInsights: '' };
+    const { instancia } = sdkFalso();
+    const construtor = vi.fn(function () {
+      return instancia;
+    });
+    const telemetria = await carregarModulo({ ApplicationInsights: construtor });
+
+    telemetria.iniciarTelemetria();
+    await vi.waitFor(() => expect(construtor).toHaveBeenCalled());
+
+    //: `as unknown as` porque o construtor falso nao declara parametros, entao o
+    //: TypeScript tipa a tupla da chamada como vazia.
+    //: A LISTA DE CHAMADAS POR `unknown`: o construtor falso nao declara
+    //: parametros, entao o TypeScript tipa cada chamada como tupla VAZIA e nega o
+    //: indice 0. O `as unknown` e sobre a tupla, nao sobre o argumento.
+    const chamadas = construtor.mock.calls as unknown as { config: { connectionString: string } }[][];
+    const configuracao = chamadas[0][0];
+    expect(configuracao.config.connectionString).toBe(CONEXAO);
+  });
+});
+
 describe('erro registrado antes de o SDK chegar', () => {
   it('chega ao SDK quando ele carrega', async () => {
     const { instancia, excecoes } = sdkFalso();

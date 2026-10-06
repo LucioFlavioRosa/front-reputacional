@@ -5,12 +5,21 @@
 # entrega. Não há Node em produção — a imagem final é nginx com uns 350 KB de
 # bundle dentro.
 #
-# `VITE_API_URL` entra no BUILD, não na execução.
+# UMA IMAGEM PARA TODOS OS AMBIENTES, e é o que permite promover para o cliente
+# o MESMO digest que se testou aqui. Duas decisões sustentam isso:
 #
-# É a consequência de `import.meta.env` do Vite ser substituído em tempo de
-# compilação. Trocar o endereço da API exige reconstruir a imagem — não dá para
-# passar variável de ambiente no `docker run` e esperar efeito. A mesma
-# propriedade é o que permite eliminar código morto por build, e é deliberada.
+#   a API na MESMA ORIGEM   `VITE_API_URL` é vazio por padrão, então o bundle
+#                           chama `/api/...` e o nginx desta imagem encaminha
+#                           para `API_UPSTREAM` — variável de EXECUÇÃO.
+#   telemetria em RUNTIME   a connection string do Application Insights chega
+#                           por variável de ambiente e é escrita em
+#                           `/configuracao.js` na subida, junto da parte da CSP
+#                           que depende dela.
+#
+# `VITE_API_URL` CONTINUA EXISTINDO para o caso de alguém apontar o bundle para
+# uma API de outra origem (sem o proxy desta imagem). Aí volta a valer o que o
+# Vite impõe: `import.meta.env` é substituído em tempo de compilação, e trocar o
+# endereço exige reconstruir. É a exceção, não o caminho.
 # =============================================================================
 
 FROM node:22-alpine AS construcao
@@ -23,16 +32,14 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_API_URL=http://localhost:8000
+# VAZIO DE PROPÓSITO: `BASE` fica vazio no bundle, as chamadas saem como
+# `/api/...` e quem encaminha é o nginx desta imagem, por `API_UPSTREAM`. É o que
+# torna a imagem neutra de ambiente.
+#
+# Preenchê-lo só faz sentido para um bundle que fale com uma API de OUTRA origem,
+# sem o proxy daqui — e aí a imagem passa a ser de um ambiente só.
+ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
-
-# A telemetria do navegador também é decidida no build, pelo mesmo motivo: o
-# Vite substitui `import.meta.env` na compilação. Sem este ARG a imagem saía com
-# a telemetria DESLIGADA em qualquer ambiente, e nada denunciava — o código a
-# desliga silenciosamente quando a connection string falta, que é o
-# comportamento certo para desenvolver, e o errado para produção sem aviso.
-ARG VITE_APPINSIGHTS_CONNECTION_STRING=
-ENV VITE_APPINSIGHTS_CONNECTION_STRING=$VITE_APPINSIGHTS_CONNECTION_STRING
 
 # `npm run build`, e nunca `vite build` direto: o script roda `tsc -b` ANTES,
 # então erro de tipo derruba a imagem em vez de virar defeito em produção.
@@ -53,7 +60,7 @@ COPY nginx.conf /etc/nginx/templates/default.conf.template
 # `$host`, `$uri` e `$proxy_add_x_forwarded_for` por vazio caso existisse
 # variável de ambiente com esse nome — e a configuração encaminharia para lugar
 # nenhum, sem erro no build.
-ENV NGINX_ENVSUBST_FILTER=^API_UPSTREAM$
+ENV NGINX_ENVSUBST_FILTER=^(API_UPSTREAM|CSP_CONNECT_EXTRA)$
 
 # O PADRÃO É O DA PILHA LOCAL, onde a API é o serviço `api` do compose. Sem um
 # valor, o `envsubst` deixaria `${API_UPSTREAM}` literal e o nginx recusaria
@@ -77,25 +84,14 @@ RUN printf '#!/bin/sh\nif [ -z "$API_UPSTREAM" ]; then\n  echo "API_UPSTREAM est
 # É o MESMO fato do `VITE_API_URL` acima. Escrito em dois lugares, ele se
 # desencontra — e o sintoma seria a tela vazia sem erro no servidor.
 #
-# `'self'` fica sempre: o painel busca os próprios arquivos, e quando a API é
-# servida na mesma origem (o caso atrás do Front Door) ele já basta sozinho.
+# VAZIO NO CAMINHO NORMAL, e aí `'self'` basta sozinho: o bundle chama `/api`
+# aqui mesmo. A parte da CSP que depende da TELEMETRIA é de execução, e entra por
+# `${CSP_CONNECT_EXTRA}` — ver o script de subida mais abaixo.
 #
 # O `grep` depois do `sed` não é zelo excessivo: marcador não substituído vira
 # uma CSP com um nome de host inválido, o navegador bloqueia TODA chamada, e a
 # tela fica vazia sem erro nenhum no servidor. Falhar no build é bem mais barato.
-ARG VITE_API_URL=http://localhost:8000
-
-# A MESMA connection string do estágio de build, e não um segundo argumento com
-# os endereços.
-#
-# O SDK do Application Insights manda telemetria para o `IngestionEndpoint` e
-# para o `LiveEndpoint`, os dois escritos DENTRO da connection string. Origem
-# fora do `connect-src` é bloqueada pelo navegador, e a telemetria sumiria sem
-# erro no servidor — justamente o tipo de falha que ela existiria para mostrar.
-#
-# Os endereços NÃO são um argumento separado: seriam um segundo lugar para o
-# mesmo fato. Aqui eles são EXTRAÍDOS da connection string.
-ARG VITE_APPINSIGHTS_CONNECTION_STRING=
+ARG VITE_API_URL=
 
 # HSTS: `off` (padrão), `on`, ou um `max-age` em segundos.
 #
@@ -114,17 +110,7 @@ ARG VITE_APPINSIGHTS_CONNECTION_STRING=
 # local usa autoassinado. A explicação longa está no `nginx.conf`.
 ARG HSTS=off
 
-RUN TELEMETRIA=""; \
-    for chave in IngestionEndpoint LiveEndpoint; do \
-        valor=$(printf '%s' "$VITE_APPINSIGHTS_CONNECTION_STRING" | tr ';' '\n' \
-                | sed -n "s|^${chave}=||p" | head -n1); \
-        if [ -n "$valor" ]; then TELEMETRIA="$TELEMETRIA ${valor%/}"; fi; \
-    done; \
-    if [ -n "$VITE_APPINSIGHTS_CONNECTION_STRING" ] && [ -z "$TELEMETRIA" ]; then \
-        echo "CSP: connection string sem IngestionEndpoint/LiveEndpoint"; exit 1; \
-    fi; \
-    echo "connect-src extra: '$TELEMETRIA'" \
- && sed -i "s|__CONNECT_SRC__|'self' ${VITE_API_URL}${TELEMETRIA}|g" /etc/nginx/templates/default.conf.template \
+RUN sed -i "s|__CONNECT_SRC__|'self' ${VITE_API_URL}|g" /etc/nginx/templates/default.conf.template \
  && case "$HSTS" in \
         on)          IDADE=31536000 ;; \
         ""|off)      IDADE= ;; \
@@ -139,11 +125,16 @@ RUN TELEMETRIA=""; \
  && if grep -qE "__CONNECT_SRC__|__HSTS__" /etc/nginx/templates/default.conf.template; then \
         echo "nginx.conf: marcador nao substituido"; exit 1; \
     fi \
- && API_UPSTREAM=http://127.0.0.1:8000 \
-    envsubst '${API_UPSTREAM}' < /etc/nginx/templates/default.conf.template \
+ && API_UPSTREAM=http://127.0.0.1:8000 CSP_CONNECT_EXTRA= \
+    envsubst '${API_UPSTREAM} ${CSP_CONNECT_EXTRA}' < /etc/nginx/templates/default.conf.template \
     > /etc/nginx/conf.d/default.conf \
  && nginx -t \
  && rm /etc/nginx/conf.d/default.conf
+
+# A CONFIGURAÇÃO DO NAVEGADOR, escrita na subida — ver o próprio script, que
+# explica por que é `.envsh` e por que a CSP sai de lá junto.
+COPY docker/16-configuracao-do-navegador.envsh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/16-configuracao-do-navegador.envsh
 
 EXPOSE 80
 

@@ -1,0 +1,64 @@
+#!/bin/sh
+# A configuração do navegador, escrita na subida do contêiner.
+#
+# `.envsh` E NÃO `.sh`, e a diferença é o que faz isto funcionar: o entrypoint da
+# imagem oficial do nginx faz `. "$f"` nos arquivos `.envsh` e `"$f"` nos `.sh`.
+# Só o primeiro roda no MESMO shell — e é assim que `CSP_CONNECT_EXTRA` chega ao
+# `20-envsubst-on-templates.sh`, que corre depois (16 < 20).
+#
+# UM LUGAR PARA UM FATO: a connection string decide duas coisas — o que o SDK do
+# Application Insights usa e o que a CSP libera. As duas saem daqui, da mesma
+# variável, no mesmo script. Elas estarem em lugares diferentes é o que obrigava a
+# um build por ambiente.
+#
+# ARQUIVO DE VERDADE, e não um `printf` dentro do Dockerfile: a primeira versão
+# disto era um `printf` com escape em três níveis, impossível de ler e de testar.
+# Aqui dá para rodar `sh docker/16-configuracao-do-navegador.envsh` à mão.
+
+CONEXAO="${APPINSIGHTS_CONNECTION_STRING:-}"
+DESTINO="${RAIZ_DO_SITE:-/usr/share/nginx/html}/configuracao.js"
+
+# ESCRITO SEMPRE, mesmo vazio: o `index.html` carrega este arquivo, e um 404 aqui
+# viraria erro no console de toda sessão.
+#
+# A connection string vai entre aspas simples no JavaScript, então o que precisa
+# escapar é a própria aspa simples e a barra invertida. Uma connection string do
+# Azure não tem nenhuma das duas — o escape existe para o caso de alguém colar
+# outra coisa na variável, e não para um formato que já é seguro.
+ESCAPADA=$(printf '%s' "$CONEXAO" | sed -e 's/\\/\\\\/g' -e "s/'/\\\\'/g")
+cat > "$DESTINO" <<ARQUIVO
+window.__PAINEL__ = { appInsights: '$ESCAPADA' };
+ARQUIVO
+
+# A PARTE DA CSP QUE DEPENDE DA TELEMETRIA. O SDK manda dados para o
+# `IngestionEndpoint` e para o `LiveEndpoint`, os dois escritos DENTRO da
+# connection string. Origem fora do `connect-src` é bloqueada pelo navegador, e a
+# telemetria sumiria sem erro no servidor — justamente o tipo de falha que ela
+# existe para mostrar.
+CSP_CONNECT_EXTRA=""
+for chave in IngestionEndpoint LiveEndpoint; do
+    valor=$(printf '%s' "$CONEXAO" | tr ';' '\n' | sed -n "s|^${chave}=||p" | head -n1)
+    if [ -n "$valor" ]; then
+        # Sem a barra final: a CSP compara origem, e `https://x/` com barra não
+        # casa com o que o SDK envia.
+        CSP_CONNECT_EXTRA="$CSP_CONNECT_EXTRA ${valor%/}"
+    fi
+done
+
+# CONNECTION STRING PREENCHIDA E SEM ENDEREÇO É ERRO, e precisa matar a subida: a
+# telemetria carregaria, tentaria enviar, e o navegador bloquearia tudo em
+# silêncio. Recusar dizendo o que falta é a diferença entre dez segundos e uma
+# tarde de investigação.
+if [ -n "$CONEXAO" ] && [ -z "$CSP_CONNECT_EXTRA" ]; then
+    echo "APPINSIGHTS_CONNECTION_STRING nao tem IngestionEndpoint nem LiveEndpoint." >&2
+    echo "A telemetria seria bloqueada pela CSP. Confira a variavel." >&2
+    exit 1
+fi
+
+export CSP_CONNECT_EXTRA
+
+if [ -n "$CONEXAO" ]; then
+    echo "configuracao do navegador: telemetria ligada ($CSP_CONNECT_EXTRA)"
+else
+    echo "configuracao do navegador: telemetria desligada"
+fi
