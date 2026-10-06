@@ -322,7 +322,6 @@ function Conteudo({
         //: remover um recorte, mesmo que o último visível fosse "Tema".
         key={`${dossie.codigo}-${dossie.mes}`}
         abas={dossie.onde_esta_a_causa}
-        lacunas={dossie.lacunas_da_causa}
         filtro={filtro}
         //: PARTE DO RECORTE QUE JÁ ESTÁ NA TELA: aprofundar de dentro de um mês
         //: já filtrado por UF tem de significar "este tema, no Rio" — senão o

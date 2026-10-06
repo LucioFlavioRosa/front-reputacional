@@ -241,7 +241,6 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     fatos: [],
     paineis: [],
     onde_esta_a_causa: [],
-    lacunas_da_causa: [],
     sinais: [],
     ...parcial,
   };

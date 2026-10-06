@@ -142,21 +142,36 @@ describe('OndeEstaACausa', () => {
     expect(itens[0].querySelector('button')).toBeTruthy();
   });
 
-  it('diz, no rodapé, qual dimensão esperada NÃO explica o mês', () => {
-    /** O AVISO ÂMBAR DO PACOTE (FRONTEND §40). O tema é a primeira dimensão
-     *  prioritária da Sociedade e chega em 28% dos itens reais: sem a frase, o
-     *  cartão abre sem aba de tema logo acima de um painel "Temas × sentimento",
-     *  e quem lê conclui que a tela está quebrada. */
+  it('a aba SEM DADO existe e diz por quê', () => {
+    /** A FILEIRA DE ABAS É A MESMA EM TODO MÊS — decisão do dono do produto, depois
+     *  de abrir junho pela Jornada e reparar que o tema não estava lá "como
+     *  aparece nos demais meses". Até maio só a Approach entregava (tema em 97% a
+     *  100% dos itens); em junho a Bites entra com 4.973 posts sem tema, e a aba
+     *  sumia.
+     *
+     *  O PREÇO É A ABA VAZIA, e ela não pode ser um quadro em branco. */
     render(
       <OndeEstaACausa
-        abas={ABAS}
-        lacunas={['Tema: a fonte classificou 1.959 de 6.932 itens — pouco para explicar o mês.']}
+        abas={[aba('Subtema', 'subtema', [])]}
         filtro={{}}
         aoAprofundar={vi.fn()}
       />,
     );
 
-    expect(screen.getByText(/a fonte classificou 1.959 de 6.932 itens/)).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Subtema' })).toBeTruthy();
+    expect(screen.getByText('Nenhuma menção deste mês traz subtema.')).toBeTruthy();
+  });
+
+  it('a SIGLA não desce para minúscula na frase da aba vazia', () => {
+    /** FURO MEU, achado antes da revisão: `toLowerCase()` direto fazia "traz uf.".
+     *  UF é, das sete dimensões da Sociedade, a única que é sigla — e a frase
+     *  aparece justamente no mês em que o campo falta, que é quando quem lê está
+     *  desconfiando da tela. */
+    render(
+      <OndeEstaACausa abas={[aba('UF', 'uf', [])]} filtro={{}} aoAprofundar={vi.fn()} />,
+    );
+
+    expect(screen.getByText('Nenhuma menção deste mês traz UF.')).toBeTruthy();
   });
 
   it('o título do clique fala de APROFUNDAR, e não de filtrar', () => {

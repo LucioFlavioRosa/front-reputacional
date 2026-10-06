@@ -30,6 +30,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
 import { obterRecorteDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
+import { numero as numeroBR } from '@/dominio/formato';
 import { Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
 import {
   colunasDaTabela,
@@ -37,6 +38,7 @@ import {
   comoTexto,
   enderecoDaLinhaDo,
   mesCurto,
+  rotuloNaFrase,
 } from '@/dominio/dossie';
 import { BarrasCemPorCento, TabelaDeLeitura } from '@/graficos/PecasDoDossie';
 
@@ -326,12 +328,16 @@ function Historico({
   recorte: Recorte;
   notaDoMes?: (mes: string) => number | null;
 }) {
-  //: A NOTA SÓ VALE SEM RECORTE. Com um pedaço escolhido, a nota da LENTE no mês
-  //: não é a nota daquele pedaço — e pôr as duas lado a lado como se uma
-  //: explicasse a outra repetiria o mal-entendido que isto vem corrigir.
-  const nota = (mes: string) =>
-    recorte.trilha.length || !notaDoMes ? null : notaDoMes(mes);
-  const comNota = recorte.historico.some((celula) => nota(celula.mes) !== null);
+  //: A PONTUAÇÃO É A COLUNA, com recorte ou sem — pedido do dono do produto:
+  //: "traga a pontuação, que é mais fácil de comunicar".
+  //:
+  //: DE ONDE VEM MUDA, E ISSO É INVISÍVEL NA TELA, de propósito: COM recorte, a
+  //: nota do pedaço é medida no servidor (ela não existe em lugar nenhum senão
+  //: medindo); SEM recorte, é a da série que desenha a Jornada — a mesma que o
+  //: gráfico mostra, estimativa incluída. Cada uma é o número certo do seu caso.
+  const nota = (celula: Recorte['historico'][number]) =>
+    celula.nota ?? (recorte.trilha.length || !notaDoMes ? null : notaDoMes(celula.mes));
+  const comNota = recorte.historico.some((celula) => nota(celula) !== null);
 
   return (
     <section>
@@ -345,20 +351,27 @@ function Historico({
           natural era a errada. */}
       <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--cinza-2)', lineHeight: 1.5 }}>
         {comNota
-          ? 'A nota de cada mês, e quantos pontos ela está acima (+) ou abaixo (−) de 50 — o neutro. Não é a variação de um mês para o outro.'
+          ? recorte.trilha.length
+            ? 'A nota deste recorte em cada mês, de 0 a 100 — 50 é o neutro. Não é a variação de um mês para o outro.'
+            : 'A nota da lente em cada mês, de 0 a 100 — a mesma do gráfico. Não é a variação de um mês para o outro.'
           : 'Quantos pontos este recorte pôs (+) ou tirou (−) da nota de cada mês. Não é a variação de um mês para o outro.'}
       </p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {recorte.historico.map((celula) => {
-          const daCelula = celula.sem_base ? null : nota(celula.mes);
+          const daCelula = celula.sem_base ? null : nota(celula);
           return (
           <div
             key={celula.mes}
+            //: O IMPACTO VAI PARA A DICA, e não para a célula: ele continua
+            //: sendo a conta certa de "quanto este pedaço mexe na nota da lente"
+            //: — é o número grande do topo deste painel —, mas numa coluna de oito
+            //: meses não se lê. −2,1 ao lado de +1,0 diz que mexeu para baixo e
+            //: para cima, e não se o pedaço está bem ou mal.
             title={
               celula.sem_base
                 ? 'sem menção desta lente neste mês'
                 : daCelula !== null
-                  ? `nota ${daCelula} · ${celula.impacto} pontos em relação a 50 · ${celula.itens} itens`
+                  ? `nota ${daCelula} · ${celula.impacto} pontos na nota da lente · ${celula.itens} itens`
                   : `${celula.itens} itens · ${celula.impacto} pontos`
             }
             style={{
@@ -386,11 +399,7 @@ function Historico({
                   : celula.impacto.toFixed(1).replace('.', ',')}
             </div>
             <div style={{ fontSize: 10, color: 'var(--cinza-2)' }}>
-              {celula.sem_base
-                ? 'sem base'
-                : daCelula !== null
-                  ? `${celula.impacto > 0 ? '+' : ''}${celula.impacto.toFixed(1).replace('.', ',')} vs. 50`
-                  : `${celula.itens} itens`}
+              {celula.sem_base ? 'sem base' : `${numeroBR(celula.itens)} itens`}
             </div>
           </div>
           );
@@ -443,6 +452,9 @@ function DentroDoRecorte({
             negativo: comoNumero(linha.negativo ?? 0),
           }))}
           legenda={bloco.legenda.length ? bloco.legenda : undefined}
+          //: MESMA REGRA DO CARTÃO: as abas são as mesmas em todo recorte, e a
+          //: que não tem dado diz que a fonte não classificou aquele campo.
+          vazio={`Nenhuma menção deste recorte traz ${rotuloNaFrase(bloco.titulo)}.`}
           aoClicar={
             bloco.recorta ? (rotulo) => aoDescer(bloco.recorta as string, rotulo) : undefined
           }

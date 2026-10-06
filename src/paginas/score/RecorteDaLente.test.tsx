@@ -47,8 +47,8 @@ const DO_RIO: Recorte = {
   frase: 'Este recorte tira 2,1 pontos da nota de Sociedade digital, com 4 de 6 itens do mês e 75% de negativas.',
   ausencia: null,
   historico: [
-    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true },
-    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false },
+    { mes: '2026-05', impacto: 0, itens: 0, sem_base: true, nota: null },
+    { mes: '2026-06', impacto: -2.1, itens: 4, sem_base: false, nota: null },
   ],
   dentro: [
     {
@@ -172,8 +172,8 @@ describe('RecorteDaLente', () => {
         ...DO_RIO,
         trilha: [],
         historico: [
-          { mes: '2026-05', impacto: 0.31, itens: 1117, sem_base: false },
-          { mes: '2026-06', impacto: -15.14, itens: 6932, sem_base: false },
+          { mes: '2026-05', impacto: 0.31, itens: 1117, sem_base: false, nota: null },
+          { mes: '2026-06', impacto: -15.14, itens: 6932, sem_base: false, nota: null },
         ],
       },
       //: A NOTA VEM DA SÉRIE DA TELA — a mesma que desenha a Jornada. Achado de
@@ -184,9 +184,34 @@ describe('RecorteDaLente', () => {
 
     expect(await screen.findByText('A nota, mês a mês')).toBeTruthy();
     expect(screen.getByText(/Não é a variação de um mês para o outro/)).toBeTruthy();
-    //: 35, o mesmo número do ponto da Jornada — e o impacto ao lado, rotulado.
+    //: 35, o mesmo número do ponto da Jornada.
     expect(screen.getByText('35')).toBeTruthy();
-    expect(screen.getByText('-15,1 vs. 50')).toBeTruthy();
+    //: E O VOLUME embaixo. O impacto saiu da célula e foi para a dica: numa coluna
+    //: de oito meses ele não se lê — −2,1 ao lado de +1,0 diz que mexeu para baixo
+    //: e para cima, e não se o pedaço está bem ou mal.
+    expect(screen.getByText('6.932 itens')).toBeTruthy();
+    expect(screen.queryByText('-15,1 vs. 50')).toBeNull();
+  });
+
+  it('COM recorte, a coluna mostra a nota DO PEDAÇO, medida no servidor', async () => {
+    /** "Traga a pontuação, que é mais fácil de comunicar" — dono do produto. A nota
+     *  de um pedaço não existe em lugar nenhum senão medindo, então ela vem no
+     *  payload; sem recorte, vem da série que desenha a Jornada. A diferença de
+     *  procedência é invisível na tela, de propósito: cada uma é o número certo do
+     *  seu caso. */
+    abrir({
+      ...DO_RIO,
+      historico: [
+        { mes: '2026-05', impacto: 0.45, itens: 812, sem_base: false, nota: 55 },
+        { mes: '2026-06', impacto: -2.1, itens: 899, sem_base: false, nota: 33 },
+      ],
+    });
+
+    expect(await screen.findByText('A nota, mês a mês')).toBeTruthy();
+    expect(screen.getByText(/A nota deste recorte em cada mês/)).toBeTruthy();
+    expect(screen.getByText('33')).toBeTruthy();
+    expect(screen.getByText('55')).toBeTruthy();
+    expect(screen.getByText('899 itens')).toBeTruthy();
   });
 
   it('o histórico marca o mês SEM BASE em vez de mostrar zero', async () => {
@@ -308,8 +333,8 @@ describe('RecorteDaLente', () => {
       ausencia: 'Nenhum item deste recorte neste mês.',
       dentro: [],
       historico: [
-        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false },
-        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true },
+        { mes: '2026-04', impacto: -4.2, itens: 31, sem_base: false, nota: null },
+        { mes: '2026-06', impacto: 0, itens: 0, sem_base: true, nota: null },
       ],
     });
 
