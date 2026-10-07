@@ -778,17 +778,23 @@ export function Cadastro({
           <CampoQueCompleta
             rotulo="UF da interação"
             obrigatorio
-            dica="UF, NA (nacional) ou IN (internacional)."
+            dica="UF ou IN (internacional)."
             aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.uf_interacao} />}
             valor={form.uf}
             aoEscolher={(v) => alterar('uf', v)}
-            opcoes={(catalogo?.dicionarios.ufs ?? []).map((a) => ({
-              valor: a.codigo,
-              rotulo: a.nome,
-              // A SIGLA ENTRA NA BUSCA: quem digita "SP" nao quer procurar
-              // "São Paulo" numa lista de 28.
-              detalhe: a.codigo,
-            }))}
+            // "Nacional" (NA) segue válido no banco — instituição o usa para
+            // PL/área interna, que não têm estado. Só não é uma opção para a
+            // UF de uma interação, que sempre acontece em algum lugar (ou
+            // "internacional"). Ver conversa sobre 0053/abrangencia.
+            opcoes={(catalogo?.dicionarios.ufs ?? [])
+              .filter((a) => a.codigo !== 'NA')
+              .map((a) => ({
+                valor: a.codigo,
+                rotulo: a.nome,
+                // A SIGLA ENTRA NA BUSCA: quem digita "SP" nao quer procurar
+                // "São Paulo" numa lista de 28.
+                detalhe: a.codigo,
+              }))}
           />
         </div>
 
