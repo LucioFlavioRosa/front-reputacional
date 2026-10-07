@@ -68,9 +68,9 @@ export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [novo, definirNovo] = useState({ nome: '', nivel: 'gerais' });
+  const [novo, definirNovo] = useState({ nome: '', nivel: 'gerais', e_risco: false });
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
-  const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'gerais' });
+  const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'gerais', e_risco: false });
   const [busca, definirBusca] = useState('');
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
@@ -151,13 +151,22 @@ export function CadastroDeAssuntos() {
             </Campo>
           </div>
           <div style={{ marginTop: 14 }}>
+            <Campo rotulo="Este é um tema de risco?">
+              <input
+                type="checkbox"
+                checked={novo.e_risco}
+                onChange={(e) => definirNovo({ ...novo, e_risco: e.target.checked })}
+              />
+            </Campo>
+          </div>
+          <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
               desabilitado={salvando || !novo.nome.trim()}
               aoClicar={() =>
                 void executar(
-                  () => criarTema({ nome: novo.nome, nivel: novo.nivel }),
-                  () => definirNovo({ nome: '', nivel: 'gerais' }),
+                  () => criarTema({ nome: novo.nome, nivel: novo.nivel, e_risco: novo.e_risco }),
+                  () => definirNovo({ nome: '', nivel: 'gerais', e_risco: false }),
                 )
               }
             >
@@ -217,6 +226,15 @@ export function CadastroDeAssuntos() {
                       ))}
                     </select>
                   </Campo>
+                  <Campo rotulo="Este é um tema de risco?">
+                    <input
+                      type="checkbox"
+                      checked={rascunho.e_risco}
+                      onChange={(e) =>
+                        definirRascunho({ ...rascunho, e_risco: e.target.checked })
+                      }
+                    />
+                  </Campo>
                   <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
                     <Botao
                       variante="primario"
@@ -228,6 +246,7 @@ export function CadastroDeAssuntos() {
                               nome: rascunho.nome,
                               nivel: rascunho.nivel,
                               ativo: tema.ativo,
+                              e_risco: rascunho.e_risco,
                             }),
                           () => definirEmEdicao(null),
                         )
@@ -265,12 +284,23 @@ export function CadastroDeAssuntos() {
                     fundo={SELO_DO_NIVEL[tema.nivel]?.fundo ?? 'var(--bg-trilho)'}
                     texto={SELO_DO_NIVEL[tema.nivel]?.texto ?? 'var(--cinza-3)'}
                   />
+                  {/* SÓ QUANDO É RISCO: `null` (não reconciliado com a
+                      taxonomia v4) e `false` (reconciliado, mas não é risco)
+                      não precisam de selo — só o `true` muda o que a
+                      pessoa faz com o tema. */}
+                  {tema.e_risco ? (
+                    <Selo rotulo="Risco" fundo="var(--vermelho-pitanga)" texto="var(--branco)" />
+                  ) : null}
                   <Botao
                     variante="fantasma"
                     desabilitado={salvando}
                     aoClicar={() => {
                       definirEmEdicao(tema.id);
-                      definirRascunho({ nome: tema.nome, nivel: tema.nivel });
+                      definirRascunho({
+                        nome: tema.nome,
+                        nivel: tema.nivel,
+                        e_risco: tema.e_risco ?? false,
+                      });
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}
                   >
@@ -289,6 +319,7 @@ export function CadastroDeAssuntos() {
                             nome: tema.nome,
                             nivel: tema.nivel,
                             ativo: !tema.ativo,
+                            e_risco: tema.e_risco,
                           }),
                         () => undefined,
                       )
