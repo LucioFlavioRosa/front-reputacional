@@ -53,7 +53,7 @@ export const GUIA_DO_CADASTRO: Record<string, VerbeteDoCampo> = {
   },
   uf_interacao: {
     oQuePreencher: 'O estado onde a interação acontece.',
-    exemplo: 'SP para uma reunião em São Paulo; NA para um assunto nacional; IN para um investidor internacional.',
+    exemplo: 'SP para uma reunião em São Paulo; IN para um investidor internacional.',
     porQue:
       'É por UF que o Painel e o Base recortam geograficamente — sem ela, a interação não aparece em nenhum filtro de estado.',
   },
