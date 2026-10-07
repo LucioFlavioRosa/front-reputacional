@@ -287,6 +287,15 @@ function Conteudo({
           //: recortar.
           ultimoDegrau={aprofundando.ultimo}
           tituloPeloMes={aprofundando.peloMes}
+          //: A NOTA OFICIAL DE CADA MÊS, da MESMA série que desenha a Jornada —
+          //: `notas_das_lentes` é o número do ponto. Sem isto o painel abria sem
+          //: nota e caía no impacto; ver `notaDoMes` em `RecorteDaLente`.
+          notaDoMes={(mes) =>
+            serie.find((ponto) => ponto.mes === mes)?.notas_das_lentes[dossie.codigo] ?? null
+          }
+          //: A FÓRMULA VIVA, que o servidor escreve com a régua em vigor — é o que
+          //: o "?" do painel mostra na primeira seção.
+          formula={dossie.formula}
           aoDescer={(chave, valor) =>
             definirAprofundando({
               ...aprofundando,

@@ -34,7 +34,30 @@
 // escrito acima, e nada além do tamanho do arquivo denuncia.
 import type { ApplicationInsights, SeverityLevel } from '@microsoft/applicationinsights-web';
 
-const CONEXAO = import.meta.env.VITE_APPINSIGHTS_CONNECTION_STRING as string | undefined;
+/** O que o contêiner escreve em `/configuracao.js` na subida.
+ *
+ *  EM `globalThis`, E NÃO EM `window`: no navegador os dois são o mesmo objeto,
+ *  mas `window` não existe em Node — e este módulo É importado lá, pelos próprios
+ *  testes. Lido no nível do módulo, um `window.` sem guarda estoura no `import` e
+ *  derruba o arquivo inteiro de teste, não só a linha. (Foi o que aconteceu.) */
+declare global {
+  // eslint-disable-next-line no-var
+  var __PAINEL__: { appInsights?: string } | undefined;
+}
+
+/** A connection string, do RUNTIME primeiro.
+ *
+ *  ANTES ELA ERA ASSADA NO BUILD (`import.meta.env`), e isso obrigava a um build
+ *  por ambiente: com o cliente usando o App Insights dele, a imagem que se testou
+ *  não era a que se publicava. Agora o mesmo digest serve dev, homologação e o
+ *  cluster do cliente — ver `public/configuracao.js`.
+ *
+ *  O BUILD FICA COMO RESERVA, para quem desenvolve com `.env` local: era assim
+ *  que funcionava, e tirar isso quebraria um fluxo que ninguém pediu para mudar.
+ */
+const CONEXAO =
+  globalThis.__PAINEL__?.appInsights ||
+  (import.meta.env.VITE_APPINSIGHTS_CONNECTION_STRING as string | undefined);
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
 let cliente: ApplicationInsights | null = null;

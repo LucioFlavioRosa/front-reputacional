@@ -225,6 +225,75 @@ export function NotaDeFonte({ ficha }: { ficha: Ficha }) {
   );
 }
 
+/** O "?" que explica COMO A CONTA É FEITA — irmão do de procedência, e a
+ *  distinção entre os dois é o que justifica existirem separados:
+ *
+ *      procedência   DE ONDE vem o dado (fonte, colunas, o que falta)
+ *      conta         COMO o número é calculado, e o que ele quer dizer
+ *
+ *  O PEDIDO FOI PARA EXPLICAR A OUTRA PESSOA: "preciso explicar para meu usuário
+ *  como isso é feito". Quem apresenta um número numa reunião precisa da frase
+ *  pronta, não de uma fórmula para traduzir na hora — por isso cada trecho é um
+ *  parágrafo em português, e não uma expressão.
+ */
+export function BotaoDaConta({
+  titulo,
+  trechos,
+}: {
+  titulo: string;
+  trechos: { termo: string; texto: string }[];
+}) {
+  const [aberto, definirAberto] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => definirAberto(true)}
+        aria-label={`Como esta conta é feita: ${titulo}`}
+        title="Como esta conta é feita"
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          border: '1px solid var(--borda)',
+          background: 'var(--branco)',
+          color: 'var(--cinza-2)',
+          fontSize: 11,
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        ?
+      </button>
+
+      {aberto ? (
+        <Modal
+          titulo="Como esta conta é feita"
+          subtitulo={titulo}
+          aoFechar={() => definirAberto(false)}
+          largura={640}
+        >
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {trechos.map((trecho) => (
+              <div key={trecho.termo}>
+                <h3 style={{ fontSize: 13, margin: '0 0 6px' }}>{trecho.termo}</h3>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--cinza-3)' }}>
+                  {trecho.texto}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
 export function CabecalhoDoBloco({
   titulo,
   conclusao,
