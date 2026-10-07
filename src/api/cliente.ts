@@ -637,12 +637,16 @@ export interface TemaCadastrado {
    *  da companhia) ou `gerais` (o que aparece sem ter sido planejado). */
   nivel: string;
   ativo: boolean;
+  /** Classificação binária Risco/Outros da taxonomia v3. `null` em quem não
+   *  foi reconciliado com a taxonomia v4. */
+  e_risco: boolean | null;
 }
 
 export interface TemaEntrada {
   nome: string;
   nivel?: string;
   ativo?: boolean;
+  e_risco?: boolean | null;
 }
 
 /** A lista COMPLETA, inclusive os inativos.
