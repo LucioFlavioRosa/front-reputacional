@@ -138,6 +138,7 @@ export function JornadaDoIndice({
   aoAprofundarNoMes,
   jornadaPronta,
   linhaDeReferencia = null,
+  semDetalheDoMes = false,
 }: {
   serie: PontoDaSerie[];
   mes: string;
@@ -167,6 +168,11 @@ export function JornadaDoIndice({
    *  janela. Nula, não aparece. Fica atrás dos pontos e não recebe o mouse: é
    *  régua, não dado. */
   linhaDeReferencia?: { valor: number; rotulo: string } | null;
+  /** Sem o cartão do mês embaixo da fita — o que segue o mouse. A Visão geral
+   *  do Score o tirou, por pedido: lá os cartões de KPI e o subtítulo já contam
+   *  a janela, e o cartão do mês competia com eles. A Jornada de uma lente
+   *  continua com ele. */
+  semDetalheDoMes?: boolean;
 }) {
   //: O ALVO DO EIXO, memorizado pelas duas pontas: sem isto, cada render criaria
   //: um objeto novo e o hook da transição reiniciaria a animação a cada passo do
@@ -450,7 +456,7 @@ export function JornadaDoIndice({
           cima: aqui a altura dele muda de um mês para outro sem mover nada do
           que está acima — pôr o cartão sobre o gráfico faria a curva pular a
           cada passada do mouse. */}
-      {emFoco ? (
+      {emFoco && !semDetalheDoMes ? (
         <div
           className="jornada__margens jornada__detalhe"
           style={{

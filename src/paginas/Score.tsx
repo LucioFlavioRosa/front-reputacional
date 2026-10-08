@@ -359,8 +359,19 @@ function VisaoGeral({
       <Secao
         titulo="Jornada do índice"
         subtitulo={jornada.resumo}
-        acao={
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      >
+        <Cartao>
+          {/* CARTÕES EM CIMA, EM UMA FAIXA, e o gráfico com a largura inteira
+              logo abaixo — por pedido: ao lado, os cartões roubavam do gráfico
+              justamente a largura que separa um mês do outro. Em cima eles
+              leem como o resumo do que o gráfico vai mostrar. */}
+          <CartoesDaJanela kpis={kpis} />
+          {/* "COMPARAR COM" COLADO NO GRÁFICO, por pedido — no cabeçalho da seção
+              ele ficava longe da curva que muda, e acima dos cartões, que ele
+              não muda. */}
+          <div
+            style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}
+          >
             <span className="kicker">Comparar com</span>
             <Chip
               rotulo="Só o índice"
@@ -380,16 +391,9 @@ function VisaoGeral({
                 />
               ))}
           </div>
-        }
-      >
-        <Cartao>
-          {/* CARTÕES EM CIMA, EM UMA FAIXA, e o gráfico com a largura inteira
-              logo abaixo — por pedido: ao lado, os cartões roubavam do gráfico
-              justamente a largura que separa um mês do outro. Em cima eles
-              leem como o resumo do que o gráfico vai mostrar. */}
-          <CartoesDaJanela kpis={kpis} />
-          <div style={{ marginTop: 18 }}>
+          <div style={{ marginTop: 12 }}>
             <JornadaDoIndice
+              semDetalheDoMes
               serie={serieRecortada}
               mes={indice.mes}
               comparada={comparada}
@@ -471,13 +475,9 @@ function VisaoGeral({
                 {fraseDosParciais(mesesParciais)}
               </span>
             ) : null}
-            {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe
-                do mês agora se pede apontando. Sem esta linha, quem abre a tela
-                vê uma fita de cores e não descobre que há texto atrás dela. */}
-            <span>
-              Aponte um mês para ver o que aconteceu nele; clique para abrir a
-              lente e o radial daquele mês.
-            </span>
+            {/* ENSINA O GESTO que sobrou: o cartão do mês saiu desta tela, e o
+                clique continua sendo o caminho para o detalhe de um mês. */}
+            <span>Clique num mês para abrir a lente e o radial daquele mês.</span>
           </div>
         </Cartao>
       </Secao>

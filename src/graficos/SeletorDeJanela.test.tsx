@@ -105,4 +105,12 @@ describe('JornadaDoIndice com linha de referência', () => {
     rerender(<JornadaDoIndice serie={MESES} mes="2026-08" comparada={null} aoEscolherMes={() => {}} />);
     expect(container.querySelector('[data-linha-de-referencia]')).toBeNull();
   });
+  it('sem o cartão do mês quando pedido; com ele, como na tela da lente', () => {
+    const { container, rerender } = render(
+      <JornadaDoIndice serie={MESES} mes="2026-08" comparada={null} aoEscolherMes={() => {}} semDetalheDoMes />,
+    );
+    expect(container.querySelector('.jornada__detalhe')).toBeNull();
+    rerender(<JornadaDoIndice serie={MESES} mes="2026-08" comparada={null} aoEscolherMes={() => {}} />);
+    expect(container.querySelector('.jornada__detalhe')).toBeTruthy();
+  });
 });
