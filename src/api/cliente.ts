@@ -646,6 +646,9 @@ export interface TemaCadastrado {
   macro_tema_id: number | null;
   /** `legitimidade` | `credibilidade` | `confianca` | `nao_se_aplica`. */
   camada_lso: string | null;
+  /** Os ids dos riscos da matriz corporativa (`dicionarios.riscos`) que este
+   *  tema toca. Pode ser mais de um. Ver `migrations/0059`. */
+  riscos: number[];
 }
 
 export interface TemaEntrada {
@@ -655,6 +658,7 @@ export interface TemaEntrada {
   e_risco?: boolean | null;
   macro_tema_id?: number | null;
   camada_lso?: string | null;
+  riscos?: number[];
 }
 
 /** A lista COMPLETA, inclusive os inativos.
