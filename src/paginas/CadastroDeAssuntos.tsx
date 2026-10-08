@@ -103,6 +103,37 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
   gerais: { fundo: 'var(--roxo-acai)', texto: 'var(--branco)' },
 };
 
+//: A severidade do enquadramento RepRisk, no selo da lista. A escala vai do
+//: mais claro ao mais forte, para a leitura ser a da gravidade e não a do
+//: alfabeto.
+const SELO_DA_SEVERIDADE: Record<string, { fundo: string; texto: string }> = {
+  moderado: { fundo: 'var(--amarelo-pequi)', texto: 'var(--sobre-turquesa)' },
+  alto: { fundo: 'var(--laranja-baia)', texto: 'var(--branco)' },
+  critico: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
+};
+
+/** Os dois eixos discordam neste assunto?
+ *
+ *  NÃO É DEFEITO, e é por isso que a tela mostra em vez de corrigir. `e_risco` é
+ *  a binária Risco/Outros da taxonomia v3 — "este assunto é exposição?" — e o
+ *  enquadramento é o do `Risk tracking map`, que responde outra pergunta: "que
+ *  risco corporativo ele toca?".
+ *
+ *  Uma pauta positiva responde diferente às duas. "Reúso de água", "Educação
+ *  ambiental" e "Geração de empregos" tocam o cluster ESG sem serem, elas
+ *  mesmas, temas de exposição — e são exatamente três dos 18 que divergem nesse
+ *  sentido. No outro sentido são 3, os que a v3 chama de risco e o mapa marca
+ *  "Sem enquadramento".
+ *
+ *  O QUE A TELA FAZ COM ISSO é deixar achar os 21 sem abrir 104 assuntos um por
+ *  um. Quem administra olha, e decide caso a caso se a divergência é a esperada
+ *  ou se foi alguém marcando o checkbox sem querer. Derivar um eixo do outro
+ *  apagaria uma das duas leituras.
+ */
+function eixosDiscordam(tema: TemaCadastrado): boolean {
+  return Boolean(tema.e_risco) !== (tema.risco_id !== null);
+}
+
 /** Um rascunho de tema, no formulário de criar ou de editar.
  *
  *  `bloco_tema_id` É SÓ DA TELA, e nunca vai pro back: o banco guarda só
@@ -338,7 +369,15 @@ function SeletorDeHierarquia({
           ))}
         </select>
       </Campo>
-      <Campo rotulo="LSO" obrigatorio>
+      {/* NÃO É OBRIGATÓRIO, e a razão está na fonte: a taxonomia v4 deixa 47 dos
+          104 subtemas SEM LSO. Marcá-lo com asterisco e exigi-lo no botão
+          travaria 45% das classificações válidas — e afirmaria uma camada que a
+          Aegea não atribuiu. Pilar e Tema estratégico continuam obrigatórios
+          porque a planilha os preenche em 104 de 104, sem uma exceção. */}
+      <Campo
+        rotulo="LSO"
+        dica="A taxonomia não define LSO para 47 dos 104 subtemas; deixar vazio é resposta."
+      >
         <select
           style={estiloDeEntrada}
           value={rascunho.camada_lso}
@@ -367,6 +406,7 @@ export function CadastroDeAssuntos() {
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
   const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
   const [busca, definirBusca] = useState('');
+  const [soDiscordantes, definirSoDiscordantes] = useState(false);
 
   //: O QUE FALTA PARA PODER CADASTRAR. A tela marcava Pilar, Tema estratégico e
   //: LSO com asterisco e deixava gravar só com o nome — achado de revisão de
@@ -375,13 +415,17 @@ export function CadastroDeAssuntos() {
   //: exatamente o estado dos 45 que a `0058` deixou para reconciliar. A tela
   //: não pode fabricar mais deles.
   //:
+  //: O LSO SAIU DA EXIGÊNCIA, e isto é correção da correção: a taxonomia v4
+  //: deixa 47 dos 104 subtemas sem LSO, então exigi-lo travaria 45% das
+  //: classificações válidas. Pilar e Tema estratégico ficam, porque a planilha
+  //: os preenche em 104 de 104.
+  //:
   //: A EDIÇÃO SEGUE PERMISSIVA, de propósito: é por ela que se arruma um órfão,
   //: e exigir tudo de uma vez impediria corrigir só o nome.
   const podeCadastrar =
     Boolean(novo.nome.trim()) &&
     novo.bloco_tema_id !== null &&
-    novo.macro_tema_id !== null &&
-    Boolean(novo.camada_lso);
+    novo.macro_tema_id !== null;
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
   //: porque alimenta filtro e formulário; aqui é preciso ver o que foi
@@ -425,12 +469,28 @@ export function CadastroDeAssuntos() {
     }
   };
 
+  const quantosDiscordam = useMemo(
+    () => (temas ?? []).filter(eixosDiscordam).length,
+    [temas],
+  );
+
+  //: A severidade do enquadramento de um assunto, resolvida pelos dois
+  //: dicionários — o aposentado também, pela mesma razão do seletor: o selo não
+  //: pode desaparecer só porque o risco saiu da planilha.
+  const severidadeDoTema = (tema: TemaCadastrado): string | null => {
+    if (tema.risco_id === null) return null;
+    const r = [...riscos, ...riscosInativos].find((x) => x.id === tema.risco_id);
+    return r?.severidade ?? null;
+  };
+
   const temasFiltrados = useMemo(() => {
     if (!temas) return [];
     const termo = busca.trim().toLowerCase();
-    if (!termo) return temas;
-    return temas.filter((tema) => tema.nome.toLowerCase().includes(termo));
-  }, [temas, busca]);
+    const porTermo = termo
+      ? temas.filter((tema) => tema.nome.toLowerCase().includes(termo))
+      : temas;
+    return soDiscordantes ? porTermo.filter(eixosDiscordam) : porTermo;
+  }, [temas, busca, soDiscordantes]);
 
   if (!temas) return <Carregando rotulo="Carregando os temas…" />;
 
@@ -535,6 +595,30 @@ export function CadastroDeAssuntos() {
             onChange={(e) => definirBusca(e.target.value)}
             placeholder="Buscar por nome…"
           />
+
+          {/* SÓ APARECE QUANDO HÁ DIVERGÊNCIA: num cadastro em que os dois
+              eixos concordam em tudo, este controle seria ruído. */}
+          {quantosDiscordam > 0 ? (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 13,
+                color: 'var(--cinza-2)',
+                marginBottom: 14,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={soDiscordantes}
+                onChange={(e) => definirSoDiscordantes(e.target.checked)}
+              />
+              <span>
+                Só os {quantosDiscordam} em que os dois eixos de risco discordam
+              </span>
+            </label>
+          ) : null}
 
           {temasFiltrados.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
@@ -658,6 +742,18 @@ export function CadastroDeAssuntos() {
                       pessoa faz com o tema. */}
                   {tema.e_risco ? (
                     <Selo rotulo="Risco" fundo="var(--vermelho-pitanga)" texto="var(--branco)" />
+                  ) : null}
+                  {/* O SEGUNDO EIXO, e é o que torna a divergência legível na
+                      lista: o selo "Risco" sem um RepRisk ao lado (ou o
+                      contrário) é a discordância aparecendo sem ninguém abrir o
+                      assunto. Mostra a severidade porque é a parte acionável do
+                      enquadramento. */}
+                  {severidadeDoTema(tema) ? (
+                    <Selo
+                      rotulo={`RepRisk · ${SEVERIDADE[severidadeDoTema(tema)!] ?? severidadeDoTema(tema)}`}
+                      fundo={SELO_DA_SEVERIDADE[severidadeDoTema(tema)!]?.fundo ?? 'var(--bg-trilho)'}
+                      texto={SELO_DA_SEVERIDADE[severidadeDoTema(tema)!]?.texto ?? 'var(--cinza-3)'}
+                    />
                   ) : null}
                   <Botao
                     variante="fantasma"
