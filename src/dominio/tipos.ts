@@ -296,6 +296,10 @@ export interface Tema {
   /** Do mais restrito ao mais aberto. `gerais` se chamava `livre` até a
    *  migração 0022 — o código mudou junto com o rótulo. */
   nivel: 'sensivel' | 'estrategico' | 'gerais';
+  /** O tema estratégico (N2) deste tema — `dicionarios.macro_temas`. A API
+   *  manda todas as colunas do tema; `null` em tema antigo, de antes da
+   *  taxonomia v4. */
+  macro_tema_id?: number | null;
 }
 
 /** Nível 1 da taxonomia de temas v4 — Governança, Eficiência Operacional e

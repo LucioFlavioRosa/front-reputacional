@@ -43,6 +43,9 @@ import {
   alternarCategoriaPublico,
   alternarFormatoInteracao,
   alternarTag,
+  alternarTemaN1,
+  alternarTemaN2,
+  alternar,
   ATALHOS_DE_PERIODO,
 } from '@/dominio/recorte';
 import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte';
@@ -69,8 +72,8 @@ export interface CampoDeFiltro {
 }
 
 /** O campo "Área(s)" por CATEGORIA (`CATEGORIAS_DE_AREA`), não por área
- *  individual — cada categoria hoje é uma área só (Comunicação, Mercado de
- *  Capitais, Relações com Investidores, Relações Institucionais), mas uma
+ *  individual — cada categoria hoje é uma área só (Comunicação, Operações
+ *  financeiras, Relações com Investidores, Relações Institucionais), mas uma
  *  categoria pode somar mais de uma área real (ver `alternarCategoriaDeArea`):
  *  marcar a categoria liga/desliga todas as áreas dela juntas.
  *
@@ -144,11 +147,73 @@ export function campoDeTema(
 ): CampoDeFiltro {
   return {
     chave: 'tags',
-    rotulo: 'Temas',
+    rotulo: 'Subtemas (N3)',
     multiplo: true,
     selecionados: recorte.tags ?? [],
     itens: (catalogo?.dicionarios.temas ?? []).map((t) => ({ valor: t.nome, rotulo: t.nome })),
     aoEscolher: (nome: string) => definirRecorte(alternarTag(recorte, nome)),
+  };
+}
+
+/** O PILAR (N1) da taxonomia de temas, por pedido: a faixa fixa do Painel
+ *  deixou de filtrar pelo tema (que virou o N3, 104 itens) e passou a filtrar
+ *  pelos dois níveis de cima. Multisseleção com OR; ids de `blocos_tema`. */
+export function campoDeTemaN1(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  const macroTemas = catalogo?.dicionarios.macro_temas ?? [];
+  const pilarDoN2 = (idN2: number) => macroTemas.find((m) => m.id === idN2)?.bloco_tema_id;
+  return {
+    chave: 'temasN1',
+    rotulo: 'Pilar (N1)',
+    multiplo: true,
+    selecionados: (recorte.temasN1 ?? []).map(String),
+    itens: (catalogo?.dicionarios.blocos_tema ?? []).map((b) => ({
+      valor: String(b.id),
+      rotulo: b.nome,
+    })),
+    aoEscolher: (valor: string) =>
+      definirRecorte(alternarTemaN1(recorte, Number(valor), pilarDoN2)),
+  };
+}
+
+/** O TEMA ESTRATÉGICO (N2). Com algum pilar escolhido, só oferece os temas
+ *  estratégicos dele: N1 e N2 se combinam com E, e um N2 de outro pilar
+ *  zeraria a tela. */
+export function campoDeTemaN2(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  const pilares = new Set(recorte.temasN1 ?? []);
+  return {
+    chave: 'temasN2',
+    rotulo: 'Tema estratégico (N2)',
+    multiplo: true,
+    selecionados: (recorte.temasN2 ?? []).map(String),
+    itens: (catalogo?.dicionarios.macro_temas ?? [])
+      .filter((m) => !pilares.size || pilares.has(m.bloco_tema_id))
+      .map((m) => ({ valor: String(m.id), rotulo: m.nome })),
+    aoEscolher: (valor: string) => definirRecorte(alternarTemaN2(recorte, Number(valor))),
+  };
+}
+
+/** O CLIMA REGISTRADO como filtro rápido — Positivo, Neutro, Negativo, na
+ *  ordem e com os nomes do dicionário. Um de cada vez, como no avançado:
+ *  clicar de novo no mesmo desliga. */
+export function campoDeClima(
+  recorte: Recorte,
+  definirRecorte: (recorte: Recorte) => void,
+  catalogo: Catalogo | null | undefined,
+): CampoDeFiltro {
+  return {
+    chave: 'clima',
+    rotulo: 'Filtrar por Clima',
+    valorAtual: recorte.clima,
+    itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
+    aoEscolher: (valor: string) => definirRecorte(alternar(recorte, 'clima', valor)),
   };
 }
 
@@ -260,6 +325,15 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     // lugar; o campo continua existindo no `Recorte` e na URL (um link
     // antigo com `?frente=` ainda funciona e ainda aparece como ficha
     // removível na barra do topo), só não é mais oferecido como escolha.
+    // OS TRÊS NÍVEIS DE TEMA. No Painel, N1 e N2 já estão na faixa fixa e
+    // não se repetem aqui; o N3 (subtema) fica só aqui, para quem precisar
+    // descer até ele — e para o clique num gráfico de N3 ter onde se desfazer.
+    ...(view !== 'painel'
+      ? [
+          campoDeTemaN1(recorte, definirRecorte, catalogo),
+          campoDeTemaN2(recorte, definirRecorte, catalogo),
+        ]
+      : []),
     campoDeTema(recorte, definirRecorte, catalogo),
     // NO PAINEL, "Área(s)" mora fixa abaixo da "Síntese Executiva" — ver o
     // comentário no topo do arquivo — e não duplica aqui.
@@ -271,13 +345,23 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
       itens: (catalogo?.dicionarios.esferas ?? []).map((e) => ({ valor: e.codigo, rotulo: e.nome })),
       aoEscolher: (valor: string) => definirOuAlternar('esfera', recorte.esfera, valor, (v) => v),
     },
-    {
-      chave: 'clima',
-      rotulo: 'Clima registrado',
-      valorAtual: recorte.clima,
-      itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
-      aoEscolher: (valor: string) => definirOuAlternar('clima', recorte.clima, valor, (v) => v),
-    },
+    // NO PAINEL O CLIMA REGISTRADO É FILTRO RÁPIDO (faixa fixa), e não
+    // duplica aqui — mesma regra de "Área(s)".
+    ...(view !== 'painel'
+      ? [
+          {
+            chave: 'clima',
+            rotulo: 'Clima registrado',
+            valorAtual: recorte.clima,
+            itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({
+              valor: c.codigo,
+              rotulo: c.nome,
+            })),
+            aoEscolher: (valor: string) =>
+              definirOuAlternar('clima', recorte.clima, valor, (v) => v),
+          },
+        ]
+      : []),
     // DOIS FILTROS DE CLIMA, um por momento: o esperado ao marcar a reunião e
     // o registrado depois dela. Mesmo dicionário, campos distintos do recorte.
     {
