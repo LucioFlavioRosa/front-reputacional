@@ -36,7 +36,17 @@ import {
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
+import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
 import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
+import { SeletorDeJanela } from '@/graficos/SeletorDeJanela';
+import {
+  ajustar,
+  janelaDoAtalho,
+  kpisDaJanela,
+  mesesMedidos,
+  serieDaJanela,
+} from '@/dominio/janelaDaJornada';
+import type { Janela } from '@/dominio/janelaDaJornada';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
@@ -232,7 +242,22 @@ function VisaoGeral({
   // número nenhum, só sobrepõe uma segunda curva. Guardá-la no servidor faria
   // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
   const [comparada, definirComparada] = useState<string | null>(null);
-  const jornada = jornadaDoIndice(serie, indice.mes, comparada);
+  //: A JANELA DA JORNADA, escolhida na mini linha do tempo abaixo do gráfico.
+  //: MORA AQUI, e não no componente do gráfico, porque três coisas a leem e
+  //: precisam andar juntas: a curva, os cartões ao lado e o subtítulo — que é
+  //: escrito nesta tela. Nula = "Tudo", que é o que a tela mostrava antes.
+  //: Também é estado de leitura, como `comparada`: não muda número nenhum.
+  const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
+  const [mostrarPico, definirMostrarPico] = useState(true);
+  const meses = mesesMedidos(serie);
+  //: `ajustar` A CADA RENDER: a série pode crescer (um mês novo ingerido) ou
+  //: encolher, e uma janela guardada com índices de outra série sairia da borda.
+  const janela = janelaEscolhida
+    ? ajustar(janelaEscolhida, meses.length)
+    : janelaDoAtalho('tudo', meses);
+  const serieRecortada = serieDaJanela(serie, janela);
+  const kpis = kpisDaJanela(serieRecortada);
+  const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparada);
   //: DUAS CONTAS, E NÃO UMA. "Medido por poucas lentes" e "fora da escala do
   //: eixo" eram ditos como se fossem a mesma coisa, e não são: um mês parcial
   //: costuma cair DENTRO do eixo, e quando não há nenhum mês completo são os
@@ -358,15 +383,31 @@ function VisaoGeral({
         }
       >
         <Cartao>
-          <JornadaDoIndice
-            serie={serie}
-            mes={indice.mes}
-            comparada={comparada}
-            nomeDaComparada={
-              indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
-            }
-            aoEscolherMes={aoTrocarMes}
-          />
+          {/* GRÁFICO À ESQUERDA, CARTÕES À DIREITA, e os cartões descem para
+              baixo do gráfico quando a tela estreita — o gráfico precisa de
+              largura antes de qualquer coisa. */}
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 560px', minWidth: 0 }}>
+              <JornadaDoIndice
+                serie={serieRecortada}
+                mes={indice.mes}
+                comparada={comparada}
+                nomeDaComparada={
+                  indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
+                }
+                aoEscolherMes={aoTrocarMes}
+                linhaDeReferencia={
+                  mostrarPico && kpis.pico
+                    ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
+                    : null
+                }
+              />
+              <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
+            </div>
+            <aside style={{ flex: '1 1 220px', maxWidth: '100%' }} aria-label="Indicadores da janela">
+              <CartoesDaJanela kpis={kpis} />
+            </aside>
+          </div>
           <div
             style={{
               display: 'flex',
@@ -389,6 +430,37 @@ function VisaoGeral({
                 {rotulo}
               </span>
             ))}
+            {/* A LINHA DO PICO SE LIGA E DESLIGA AQUI, na legenda, por pedido:
+                é o único item dela que é controle, e o botão diz isso pelo
+                estado pressionado. Some quando não há pico (nenhum mês da
+                janela medido por 4 lentes). */}
+            {kpis.pico ? (
+              <button
+                type="button"
+                aria-pressed={mostrarPico}
+                onClick={() => definirMostrarPico((atual) => !atual)}
+                title={mostrarPico ? 'Esconder a linha do pico' : 'Mostrar a linha do pico'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 8px',
+                  border: '1px solid var(--borda)',
+                  borderRadius: 'var(--r-chip)',
+                  background: mostrarPico ? 'var(--branco)' : 'var(--bg-trilho)',
+                  color: mostrarPico ? 'var(--cinza-3)' : 'var(--cinza-2)',
+                  fontSize: 11.5,
+                  cursor: 'pointer',
+                  textDecoration: mostrarPico ? 'none' : 'line-through',
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{ width: 16, height: 0, borderTop: '1.5px dashed var(--laranja-baia)' }}
+                />
+                Pico da janela ({kpis.pico.valor})
+              </button>
+            ) : null}
             {mesesParciais ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span
