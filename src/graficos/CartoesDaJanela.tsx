@@ -21,9 +21,9 @@ import { Ajuda } from '@/componentes/basicos';
 import type { ExtremoParcial, KpisDaJanela, ValorDoMes } from '@/dominio/janelaDaJornada';
 
 const COR_DO_SENTIDO = {
-  alta: { texto: 'var(--ok-fg)', fundo: 'var(--ok-bg)', seta: '▲', palavra: 'alta' },
-  queda: { texto: 'var(--erro-fg)', fundo: 'var(--erro-bg)', seta: '▼', palavra: 'queda' },
-  estavel: { texto: 'var(--cinza-3)', fundo: 'var(--bg-trilho)', seta: '▬', palavra: 'estável' },
+  alta: { texto: 'var(--ok-fg)', seta: '▲', palavra: 'alta' },
+  queda: { texto: 'var(--erro-fg)', seta: '▼', palavra: 'queda' },
+  estavel: { texto: 'var(--cinza-3)', seta: '▬', palavra: 'estável' },
 } as const;
 
 export function CartoesDaJanela({ kpis }: { kpis: KpisDaJanela }) {
@@ -61,17 +61,30 @@ export function CartoesDaJanela({ kpis }: { kpis: KpisDaJanela }) {
   );
 }
 
+const NUMERO = {
+  fontSize: 34,
+  fontWeight: 800,
+  lineHeight: 1.1,
+  letterSpacing: '-0.01em',
+  color: 'var(--cinza-4)',
+  margin: '4px 0 2px',
+} as const;
+
 function Moldura({ children }: { children: ReactNode }) {
   return (
     <div
       role="listitem"
       style={{
-        padding: '9px 12px',
+        padding: '10px 12px 12px',
         borderRadius: 'var(--r-card-int)',
         border: '1px solid var(--borda)',
         background: 'var(--branco)',
         display: 'flex',
         flexDirection: 'column',
+        //: CENTRALIZADO, por pedido: o número é o assunto do cartão, e no
+        //: centro ele se lê como um placar, não como um formulário.
+        alignItems: 'center',
+        textAlign: 'center',
         gap: 2,
         minWidth: 0,
       }}
@@ -83,7 +96,10 @@ function Moldura({ children }: { children: ReactNode }) {
 
 function Rotulo({ texto, ajuda }: { texto: string; ajuda: string }) {
   return (
-    <span className="kicker" style={{ display: 'flex', alignItems: 'center', color: 'var(--cinza-2)' }}>
+    <span
+      className="kicker"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cinza-2)' }}
+    >
       {texto}
       <Ajuda texto={ajuda} />
     </span>
@@ -108,13 +124,10 @@ function Cartao({
       <Rotulo texto={rotulo} ajuda={ajuda} />
       {valor ? (
         <>
-          {/* VALOR E MÊS NA MESMA LINHA: é o que deixa o cartão baixo. */}
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span className="tabular" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: 'var(--cinza-4)' }}>
-              {valor.valor}
-            </span>
-            <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>{valor.rotuloDoMes}</span>
+          <span className="tabular" style={NUMERO}>
+            {valor.valor}
           </span>
+          <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>{valor.rotuloDoMes}</span>
         </>
       ) : (
         <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>{vazio}</span>
@@ -148,29 +161,18 @@ function CartaoDaVariacao({ kpis }: { kpis: KpisDaJanela }) {
   return (
     <Moldura>
       <Rotulo texto="Variação no período" ajuda={ajuda} />
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="tabular" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: cor.texto }}>
-          {sinal}
-          {Math.abs(variacao.pontos)}
+      {/* A SETA JUNTO DO NÚMERO, na cor dele, em vez de uma etiqueta à parte;
+          a palavra (alta, queda, estável) vai na linha de baixo — a cor nunca
+          é a única pista. */}
+      <span className="tabular" style={{ ...NUMERO, color: cor.texto }}>
+        <span aria-hidden style={{ fontSize: 18, marginRight: 6, verticalAlign: '0.25em' }}>
+          {cor.seta}
         </span>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '1px 7px',
-            borderRadius: 'var(--r-chip)',
-            background: cor.fundo,
-            color: cor.texto,
-            fontSize: 11,
-            fontWeight: 700,
-          }}
-        >
-          <span aria-hidden>{cor.seta}</span>
-          {cor.palavra}
-        </span>
+        {sinal}
+        {Math.abs(variacao.pontos)}
       </span>
       <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+        <strong style={{ color: cor.texto, fontWeight: 700 }}>{cor.palavra}</strong> ·{' '}
         {variacao.de.rotuloDoMes} → {variacao.ate.rotuloDoMes}
       </span>
     </Moldura>
