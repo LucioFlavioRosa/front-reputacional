@@ -298,3 +298,38 @@ export const VAZIO: Formulario = {
 //: O QUE O FORMULÁRIO OFERECE. Os outros códigos continuam válidos e
 //: aparecem quando o registro já os tem — ver o campo "Situação".
 export const SITUACOES_OFERECIDAS = ['solicitado', 'confirmada', 'declinado'];
+
+/** As pessoas da Aegea na ordem em que se procura por elas, em "Pela Aegea".
+ *
+ *  A ÁREA DA INTERAÇÃO PRIMEIRO, por pedido: quem registra uma agenda de
+ *  Comunicação quer achar o porta-voz E a equipe de Comunicação que acompanha,
+ *  sem rolar por gente de outras áreas. Os demais continuam na lista, depois —
+ *  uma reunião pode levar alguém de fora da área, e esconder essa pessoa seria
+ *  uma trava que ninguém pediu.
+ *
+ *  O DETALHE DIZ O PAPEL E A ÁREA ("equipe · Comunicação"). Antes só o
+ *  porta-voz ganhava rótulo, e a lista parecia ser só de porta-vozes. Como a
+ *  busca do campo também olha o detalhe, digitar "equipe" ou o nome da área
+ *  filtra por eles.
+ */
+export function opcoesDePessoasDaAegea(
+  pessoas: { id: string; nome: string; eh_porta_voz: boolean; area_id?: number | null }[],
+  areasDaInteracao: number[],
+  nomeDaArea: (id: number) => string,
+): { valor: string; rotulo: string; detalhe: string }[] {
+  const daArea = (p: { area_id?: number | null }) =>
+    p.area_id != null && areasDaInteracao.includes(p.area_id);
+  //: `sort` estável: dentro de cada grupo, a ordem que veio da API (por nome).
+  return [...pessoas]
+    .sort((a, b) => Number(daArea(b)) - Number(daArea(a)))
+    .map((pessoa) => ({
+      valor: pessoa.id,
+      rotulo: pessoa.nome,
+      detalhe: [
+        pessoa.eh_porta_voz ? 'porta-voz' : 'equipe',
+        pessoa.area_id != null ? nomeDaArea(pessoa.area_id) : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    }));
+}

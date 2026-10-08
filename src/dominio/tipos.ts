@@ -474,8 +474,9 @@ export interface PessoaAegea {
   /** Como se aciona a pessoa da casa para articular a agenda. */
   email: string | null;
   eh_porta_voz: boolean;
-  /** De onde esta pessoa fala. `null` em quem foi cadastrado antes de o campo
-   *  existir, ou em quem é equipe (o campo só faz sentido para porta-voz). */
+  /** A área da pessoa, porta-voz ou equipe. No cadastro de interação, quem é
+   *  da área escolhida aparece primeiro em "Pela Aegea". `null` em quem foi
+   *  cadastrado antes de o campo existir. */
   area_id: number | null;
   ativo: boolean;
   /** SOBRE O QUE ESTA PESSOA RESPONDE.
