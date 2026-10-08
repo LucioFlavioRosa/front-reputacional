@@ -157,9 +157,42 @@ export function rotuloDeRelevancia(
   return catalogo?.dicionarios.relevancias.find((n) => n.id === tier)?.nome ?? `Tier ${tier}`;
 }
 
+/** Nome de tema por id, ATIVO OU NÃO.
+ *
+ *  Resolver pelos dois dicionários é o ponto: `dicionarios.temas` traz só os
+ *  ativos, porque alimenta filtro e formulário, mas um registro antigo aponta
+ *  para o tema com que foi classificado — e esse tema pode ter sido aposentado
+ *  desde então. A `0058` desativou 45 de uma vez ao trocar a taxonomia pela v4.
+ *
+ *  O QUE ACONTECIA SEM ISTO era pior que um nome faltando, e foi achado de
+ *  revisão em 08/10/2026: a série mensal vem do servidor, que agrupa por
+ *  `Tema.nome` sem filtrar `ativo`, e mostrava "Regulação"; esta função
+ *  descartava o mesmo id, então a agenda aparecia sem tema na tela e não entrava
+ *  no KPI por tema. O mesmo dado com três respostas no mesmo produto.
+ *
+ *  `?? []` porque o campo é novo: um back mais antigo não o manda, e aí a
+ *  resolução volta a ser só pelos ativos em vez de estourar a tela.
+ */
+function mapaDeTemas(catalogo: Catalogo): Map<number, string> {
+  return new Map(
+    [
+      ...catalogo.dicionarios.temas,
+      ...(catalogo.dicionarios.temas_inativos ?? []),
+    ].map((t) => [t.id, t.nome] as [number, string]),
+  );
+}
+
 export function nomesDosTemas(catalogo: Catalogo, ids: number[]): string[] {
-  const porId = new Map(catalogo.dicionarios.temas.map((t) => [t.id, t.nome]));
+  const porId = mapaDeTemas(catalogo);
   return ids.map((id) => porId.get(id)).filter((n): n is string => Boolean(n));
+}
+
+/** Um id só. Devolve o número como texto quando nem assim resolve — é o que a
+ *  Biblioteca e os Documentos da Reunião já faziam, e vale manter: ali o id
+ *  aparece sozinho numa coluna, e um branco não diria nada a quem administra.
+ */
+export function nomeDoTema(catalogo: Catalogo, id: number): string {
+  return mapaDeTemas(catalogo).get(id) ?? String(id);
 }
 
 export function grupoDoStatus(catalogo: Catalogo, codigo: string): GrupoDeStatus | null {

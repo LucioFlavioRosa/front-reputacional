@@ -194,6 +194,21 @@ export function CadastroDeAssuntos() {
   const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
   const [busca, definirBusca] = useState('');
 
+  //: O QUE FALTA PARA PODER CADASTRAR. A tela marcava Pilar, Tema estratégico e
+  //: LSO com asterisco e deixava gravar só com o nome — achado de revisão de
+  //: 08/10/2026. Um tema criado assim nasce ATIVO e fora da hierarquia v4: ele
+  //: aparece no filtro e no formulário, mas não pertence a pilar nenhum, que é
+  //: exatamente o estado dos 45 que a `0058` deixou para reconciliar. A tela
+  //: não pode fabricar mais deles.
+  //:
+  //: A EDIÇÃO SEGUE PERMISSIVA, de propósito: é por ela que se arruma um órfão,
+  //: e exigir tudo de uma vez impediria corrigir só o nome.
+  const podeCadastrar =
+    Boolean(novo.nome.trim()) &&
+    novo.bloco_tema_id !== null &&
+    novo.macro_tema_id !== null &&
+    Boolean(novo.camada_lso);
+
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
   //: porque alimenta filtro e formulário; aqui é preciso ver o que foi
   //: desativado — senão o assunto some da tela e reaparece como "já existe" na
@@ -293,7 +308,7 @@ export function CadastroDeAssuntos() {
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
-              desabilitado={salvando || !novo.nome.trim()}
+              desabilitado={salvando || !podeCadastrar}
               aoClicar={() =>
                 void executar(
                   () =>
