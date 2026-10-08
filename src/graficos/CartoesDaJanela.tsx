@@ -18,7 +18,7 @@
 import type { ReactNode } from 'react';
 
 import { Ajuda } from '@/componentes/basicos';
-import type { ExtremoParcial, KpisDaJanela, ValorDoMes } from '@/dominio/janelaDaJornada';
+import type { KpisDaJanela, ValorDoMes } from '@/dominio/janelaDaJornada';
 
 const COR_DO_SENTIDO = {
   alta: { texto: 'var(--ok-fg)', seta: '▲', palavra: 'alta' },
@@ -46,14 +46,12 @@ export function CartoesDaJanela({ kpis }: { kpis: KpisDaJanela }) {
         rotulo="Pico"
         ajuda="O maior valor da janela, entre os meses medidos por 4 lentes ou mais. Um mês com menos lentes tem número legítimo pela fórmula, mas não se compara com os outros."
         valor={kpis.pico}
-        parcial={kpis.picoParcial}
         vazio="Nenhum mês medido por 4 lentes ou mais"
       />
       <Cartao
         rotulo="Vale"
         ajuda="O menor valor da janela, entre os meses medidos por 4 lentes ou mais. Um mês com menos lentes tem número legítimo pela fórmula, mas não se compara com os outros."
         valor={kpis.vale}
-        parcial={kpis.valeParcial}
         vazio="Nenhum mês medido por 4 lentes ou mais"
       />
       <CartaoDaVariacao kpis={kpis} />
@@ -62,12 +60,12 @@ export function CartoesDaJanela({ kpis }: { kpis: KpisDaJanela }) {
 }
 
 const NUMERO = {
-  fontSize: 34,
+  fontSize: 30,
   fontWeight: 800,
-  lineHeight: 1.1,
+  lineHeight: 1,
   letterSpacing: '-0.01em',
   color: 'var(--cinza-4)',
-  margin: '4px 0 2px',
+  margin: '3px 0 2px',
 } as const;
 
 function Moldura({ children }: { children: ReactNode }) {
@@ -75,7 +73,7 @@ function Moldura({ children }: { children: ReactNode }) {
     <div
       role="listitem"
       style={{
-        padding: '10px 12px 12px',
+        padding: '6px 12px 7px',
         borderRadius: 'var(--r-card-int)',
         border: '1px solid var(--borda)',
         background: 'var(--branco)',
@@ -85,7 +83,7 @@ function Moldura({ children }: { children: ReactNode }) {
         //: centro ele se lê como um placar, não como um formulário.
         alignItems: 'center',
         textAlign: 'center',
-        gap: 2,
+        gap: 0,
         minWidth: 0,
       }}
     >
@@ -110,13 +108,11 @@ function Cartao({
   rotulo,
   ajuda,
   valor,
-  parcial = null,
   vazio = '—',
 }: {
   rotulo: string;
   ajuda: string;
   valor: ValorDoMes | null;
-  parcial?: ExtremoParcial | null;
   vazio?: string;
 }) {
   return (
@@ -132,14 +128,6 @@ function Cartao({
       ) : (
         <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>{vazio}</span>
       )}
-      {/* O EXTREMO QUE FICOU DE FORA, dito com discrição: quem olha a curva vê
-          aquele ponto mais alto (ou mais baixo), e precisa saber por que o
-          cartão não o escolheu. */}
-      {parcial ? (
-        <span style={{ fontSize: 11, color: 'var(--atencao-fg)', lineHeight: 1.4 }}>
-          {parcial.valor} em {parcial.rotuloDoMes} não entra: medido por {parcial.cobertura}
-        </span>
-      ) : null}
     </Moldura>
   );
 }

@@ -77,14 +77,14 @@ describe('SeletorDeJanela', () => {
 });
 
 describe('CartoesDaJanela', () => {
-  it('mostra os quatro cartões, com a variação em alta e o aviso do pico parcial', () => {
+  it('mostra os quatro cartões; o pico ignora o mês parcial, sem texto de aviso', () => {
     const kpis = kpisDaJanela([ponto('2026-01', 70), ponto('2026-02', 95, 1), ponto('2026-03', 80)]);
     render(<CartoesDaJanela kpis={kpis} />);
     const cartoes = screen.getAllByRole('listitem');
     expect(cartoes).toHaveLength(4);
     expect(within(cartoes[0]).getByText('80')).toBeTruthy();
     expect(within(cartoes[1]).getByText('80')).toBeTruthy(); // o pico considerado
-    expect(within(cartoes[1]).getByText(/95 em fevereiro de 2026 não entra: medido por 1 de 5 lentes/)).toBeTruthy();
+    expect(within(cartoes[1]).queryByText(/não entra/)).toBeNull();
     expect(within(cartoes[3]).getByText('alta')).toBeTruthy();
   });
 });

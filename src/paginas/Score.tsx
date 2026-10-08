@@ -245,7 +245,7 @@ function VisaoGeral({
   //: A JANELA DA JORNADA, escolhida na mini linha do tempo abaixo do gráfico.
   //: MORA AQUI, e não no componente do gráfico, porque três coisas a leem e
   //: precisam andar juntas: a curva, os cartões ao lado e o subtítulo — que é
-  //: escrito nesta tela. Nula = "Tudo", que é o que a tela mostrava antes.
+  //: escrito nesta tela. Nula = os últimos 6 meses, por pedido.
   //: Também é estado de leitura, como `comparada`: não muda número nenhum.
   const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
   const [mostrarPico, definirMostrarPico] = useState(true);
@@ -254,7 +254,7 @@ function VisaoGeral({
   //: encolher, e uma janela guardada com índices de outra série sairia da borda.
   const janela = janelaEscolhida
     ? ajustar(janelaEscolhida, meses.length)
-    : janelaDoAtalho('tudo', meses);
+    : janelaDoAtalho('6m', meses);
   const serieRecortada = serieDaJanela(serie, janela);
   const kpis = kpisDaJanela(serieRecortada);
   const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparada);

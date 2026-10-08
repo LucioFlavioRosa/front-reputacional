@@ -1,10 +1,14 @@
-/** A mini linha do tempo abaixo da Jornada: todo o histórico em barras finas,
+/** A mini linha do tempo abaixo da Jornada: todo o histórico numa linha fina,
  *  e a janela que o gráfico de cima mostra.
  *
- *  UMA BARRA POR MÊS MEDIDO, e não uma sparkline: com poucos meses (a base
- *  nova tem três), uma linha vira um traço sem forma, e a barra continua
- *  dizendo "aqui há um mês, e ele foi alto ou baixo". A altura é relativa ao
- *  histórico inteiro — é um mapa para se achar, não uma régua para medir.
+ *  UMA LINHA, E NÃO BARRAS, por pedido: o trilho é um mapa para se achar no
+ *  tempo, e a linha diz a forma do histórico sem disputar atenção com o
+ *  gráfico de cima. A altura é relativa ao histórico inteiro.
+ *
+ *  A JANELA É A MOLDURA AMARELA do "cortar vídeo" do iPhone, por pedido:
+ *  borda grossa em cima e embaixo, alças largas nas laterais com uma seta
+ *  apontando para dentro. É um gesto que quase todo mundo já fez, e a moldura
+ *  ensina sozinha que as laterais se puxam.
  *
  *  TRÊS GESTOS, os do padrão de mercado: arrastar o bloco desloca, arrastar uma
  *  alça redimensiona, clicar fora da janela a leva para lá. Pelo teclado, no
@@ -27,7 +31,6 @@ import {
   redimensionarJanela,
 } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
-import { coberturaDoMes } from '@/dominio/jornadaDoIndice';
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
 
@@ -54,8 +57,15 @@ export function SeletorDeJanela({
   const valores = meses.map((ponto) => ponto.isr as number);
   const minimo = Math.min(...valores);
   const maximo = Math.max(...valores);
-  const altura = (valor: number) =>
-    maximo === minimo ? 60 : 20 + ((valor - minimo) / (maximo - minimo)) * 80;
+  //: A LINHA NO CENTRO DE CADA MÊS — o mesmo (i + 0,5)/n do gráfico de cima —,
+  //: com folga em cima e embaixo para a moldura não cobrir o traço.
+  const linha = valores
+    .map((valor, i) => {
+      const x = ((i + 0.5) / total) * 1000;
+      const y = maximo === minimo ? 50 : 80 - ((valor - minimo) / (maximo - minimo)) * 60;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
 
   const ativo = atalhoDaJanela(janela, meses);
   const tamanho = janela.fim - janela.inicio + 1;
@@ -171,36 +181,31 @@ export function SeletorDeJanela({
         onPointerCancel={soltar}
         style={{
           position: 'relative',
-          height: 44,
-          display: 'grid',
-          gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`,
-          alignItems: 'end',
-          padding: '0',
-          background: 'var(--bg-trilho)',
-          borderRadius: 6,
+          height: 40,
+          background: 'var(--branco)',
+          border: '1px solid var(--borda)',
+          borderRadius: 8,
           cursor: 'pointer',
           touchAction: 'none',
           userSelect: 'none',
         }}
       >
-        {meses.map((ponto) => (
-          <span
-            key={ponto.mes}
-            aria-hidden
-            title={`${mesComAno(ponto.mes)}: ${ponto.isr}${coberturaDoMes(ponto.lentes) ? ` (${coberturaDoMes(ponto.lentes)})` : ''}`}
-            style={{
-              justifySelf: 'center',
-              width: 'min(70%, 10px)',
-              height: `${altura(ponto.isr as number) * 0.36}px`,
-              borderRadius: '2px 2px 0 0',
-              background: 'var(--azul-mar)',
-              //: O MÊS PARCIAL É MAIS CLARO, como o ponto oco no gráfico: o
-              //: mesmo aviso, na mesma linguagem, nas duas vistas.
-              opacity: coberturaDoMes(ponto.lentes) ? 0.35 : 0.8,
-              marginBottom: 4,
-            }}
+        <svg
+          aria-hidden
+          viewBox="0 0 1000 100"
+          preserveAspectRatio="none"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+        >
+          <polyline
+            points={linha}
+            fill="none"
+            stroke="var(--azul-mar)"
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
           />
-        ))}
+        </svg>
 
         {/* FORA DA JANELA, ESMAECIDO: dois véus, um de cada lado. */}
         <span aria-hidden style={{ ...VEU, left: 0, width: `${esquerda}%` }} />
@@ -219,13 +224,16 @@ export function SeletorDeJanela({
           onKeyDown={teclado('mover')}
           style={{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
+            //: UM PIXEL PARA FORA do trilho, como no iPhone: a moldura abraça a
+            //: faixa em vez de ficar dentro dela.
+            top: -1,
+            bottom: -1,
             left: `${esquerda}%`,
             width: `${largura}%`,
-            border: '2px solid var(--azul-mar)',
-            borderRadius: 6,
-            background: 'rgba(0, 39, 189, 0.06)',
+            borderTop: `3px solid ${AMARELO}`,
+            borderBottom: `3px solid ${AMARELO}`,
+            borderRadius: 8,
+            background: 'transparent',
             cursor: 'grab',
             boxSizing: 'border-box',
           }}
@@ -238,16 +246,19 @@ export function SeletorDeJanela({
   );
 }
 
+//: O AMARELO DA MARCA (Pequi), que é também o do "cortar vídeo" do iPhone.
+const AMARELO = 'var(--amarelo-pequi)';
+
 const VEU = {
   position: 'absolute' as const,
   top: 0,
   bottom: 0,
-  background: 'rgba(244, 246, 252, 0.72)',
+  background: 'rgba(244, 246, 252, 0.78)',
   pointerEvents: 'none' as const,
 };
 
-/** Uma borda da janela, com alvo de 14px — a borda desenhada tem 2px, e
- *  acertá-la seria pontaria. */
+/** Uma lateral da moldura: a alça amarela larga, com a seta para dentro. É o
+ *  alvo grande que a borda fina não seria. */
 function Alca({
   borda,
   meses,
@@ -281,14 +292,14 @@ function Alca({
       }}
       style={{
         position: 'absolute',
-        top: '50%',
-        [borda === 'inicio' ? 'left' : 'right']: -8,
-        transform: 'translateY(-50%)',
+        //: POR CIMA DAS BORDAS DE CIMA E DE BAIXO, para a moldura fechar sem
+        //: emenda nos cantos.
+        top: -3,
+        bottom: -3,
+        [borda === 'inicio' ? 'left' : 'right']: 0,
         width: 14,
-        height: 26,
-        borderRadius: 4,
-        background: 'var(--branco)',
-        border: '2px solid var(--azul-mar)',
+        borderRadius: borda === 'inicio' ? '8px 0 0 8px' : '0 8px 8px 0',
+        background: AMARELO,
         cursor: 'ew-resize',
         boxSizing: 'border-box',
         display: 'flex',
@@ -296,7 +307,16 @@ function Alca({
         justifyContent: 'center',
       }}
     >
-      <span aria-hidden style={{ width: 2, height: 10, borderRadius: 1, background: 'var(--azul-mar)' }} />
+      <svg aria-hidden width="7" height="12" viewBox="0 0 7 12">
+        <path
+          d={borda === 'inicio' ? 'M5.5 1.5 1.5 6l4 4.5' : 'M1.5 1.5 5.5 6l-4 4.5'}
+          fill="none"
+          stroke="var(--cinza-4)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </span>
   );
 }
