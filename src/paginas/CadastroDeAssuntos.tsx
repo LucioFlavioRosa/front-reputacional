@@ -16,8 +16,9 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { criarTema, editarTema, listarTemas } from '@/api/cliente';
+import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/cliente';
 import type { TemaCadastrado } from '@/api/cliente';
+import type { BlocoTema, MacroTema } from '@/dominio/tipos';
 import {
   Botao,
   Campo,
@@ -28,6 +29,18 @@ import {
   Selo,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+
+/** Legitimidade / Credibilidade / Confiança / Não se aplica — a dimensão da
+ *  taxonomia v4 que diz QUE TIPO de reputação o tema afeta: o direito de
+ *  operar, o cumprir o que promete, ou a relação de longo prazo. Ver
+ *  `migrations/0053`/`0058`. */
+const LSO = [
+  { valor: '', rotulo: '— sem classificação —' },
+  { valor: 'legitimidade', rotulo: 'Legitimidade' },
+  { valor: 'credibilidade', rotulo: 'Credibilidade' },
+  { valor: 'confianca', rotulo: 'Confiança' },
+  { valor: 'nao_se_aplica', rotulo: 'Não se aplica' },
+];
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
@@ -64,13 +77,121 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
   gerais: { fundo: 'var(--roxo-acai)', texto: 'var(--branco)' },
 };
 
+/** Um rascunho de tema, no formulário de criar ou de editar.
+ *
+ *  `bloco_tema_id` É SÓ DA TELA, e nunca vai pro back: o banco guarda só
+ *  `macro_tema_id` (nível 2) — o pilar (nível 1) é derivado dele via
+ *  `macro_tema.bloco_tema_id`. Ele existe aqui só para filtrar a lista de
+ *  temas estratégicos sem o usuário ter de procurar entre os 41.
+ */
+interface RascunhoDeTema {
+  nome: string;
+  nivel: string;
+  e_risco: boolean;
+  bloco_tema_id: number | null;
+  macro_tema_id: number | null;
+  camada_lso: string;
+}
+
+const RASCUNHO_VAZIO: RascunhoDeTema = {
+  nome: '',
+  nivel: 'gerais',
+  e_risco: false,
+  bloco_tema_id: null,
+  macro_tema_id: null,
+  camada_lso: '',
+};
+
+/** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
+ *
+ *  UMA ÚNICA VEZ, reaproveitado no formulário de criar e no de editar — a
+ *  lógica de filtrar os 41 temas estratégicos pelo pilar escolhido não vale a
+ *  pena duplicar.
+ */
+function SeletorDeHierarquia({
+  blocos,
+  macros,
+  rascunho,
+  aoMudar,
+}: {
+  blocos: BlocoTema[];
+  macros: MacroTema[];
+  rascunho: RascunhoDeTema;
+  aoMudar: (novo: RascunhoDeTema) => void;
+}) {
+  const macrosDoPilar = macros.filter((m) => m.bloco_tema_id === rascunho.bloco_tema_id);
+  return (
+    <>
+      <Campo rotulo="Pilar (N1)" obrigatorio>
+        <select
+          style={estiloDeEntrada}
+          value={rascunho.bloco_tema_id ?? ''}
+          onChange={(e) =>
+            aoMudar({
+              ...rascunho,
+              bloco_tema_id: e.target.value ? Number(e.target.value) : null,
+              // TROCAR O PILAR DESMARCA O TEMA ESTRATÉGICO: um tema
+              // estratégico de outro pilar ficaria selecionado sem aparecer
+              // mais na lista — o `<select>` mostraria o id errado como se
+              // fosse o primeiro da lista nova, calado.
+              macro_tema_id: null,
+            })
+          }
+        >
+          <option value="">— selecione —</option>
+          {blocos.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.nome}
+            </option>
+          ))}
+        </select>
+      </Campo>
+      <Campo rotulo="Tema estratégico (N2)" obrigatorio>
+        <select
+          style={estiloDeEntrada}
+          value={rascunho.macro_tema_id ?? ''}
+          disabled={rascunho.bloco_tema_id === null}
+          onChange={(e) =>
+            aoMudar({
+              ...rascunho,
+              macro_tema_id: e.target.value ? Number(e.target.value) : null,
+            })
+          }
+        >
+          <option value="">— selecione —</option>
+          {macrosDoPilar.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </select>
+      </Campo>
+      <Campo rotulo="LSO" obrigatorio>
+        <select
+          style={estiloDeEntrada}
+          value={rascunho.camada_lso}
+          onChange={(e) => aoMudar({ ...rascunho, camada_lso: e.target.value })}
+        >
+          {LSO.map((l) => (
+            <option key={l.valor} value={l.valor}>
+              {l.rotulo}
+            </option>
+          ))}
+        </select>
+      </Campo>
+    </>
+  );
+}
+
 export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
+  const [blocos, definirBlocos] = useState<BlocoTema[]>([]);
+  const [macros, definirMacros] = useState<MacroTema[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [novo, definirNovo] = useState({ nome: '', nivel: 'gerais', e_risco: false });
+  const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
-  const [rascunho, definirRascunho] = useState({ nome: '', nivel: 'gerais', e_risco: false });
+  const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
   const [busca, definirBusca] = useState('');
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
@@ -84,6 +205,13 @@ export function CadastroDeAssuntos() {
 
   useEffect(function carregarAssuntos() {
     void carregar();
+    // PILARES E TEMAS ESTRATÉGICOS NÃO MUDAM PELA TELA: `/api/dicionarios` é
+    // só para preencher o seletor em cascata — não há cadastro de pilar/tema
+    // estratégico, só de subtema (a tabela `tema` em si).
+    void obterDicionarios().then((d) => {
+      definirBlocos(d.blocos_tema);
+      definirMacros(d.macro_temas);
+    });
   }, []);
 
   const executar = async (acao: () => Promise<unknown>, aoTerminar: () => void) => {
@@ -150,8 +278,11 @@ export function CadastroDeAssuntos() {
               </select>
             </Campo>
           </div>
+          <div className="grade grade--3" style={{ gap: 16, marginTop: 14 }}>
+            <SeletorDeHierarquia blocos={blocos} macros={macros} rascunho={novo} aoMudar={definirNovo} />
+          </div>
           <div style={{ marginTop: 14 }}>
-            <Campo rotulo="Este é um tema de risco?">
+            <Campo rotulo="Este é um tema de risco?" obrigatorio>
               <input
                 type="checkbox"
                 checked={novo.e_risco}
@@ -165,8 +296,15 @@ export function CadastroDeAssuntos() {
               desabilitado={salvando || !novo.nome.trim()}
               aoClicar={() =>
                 void executar(
-                  () => criarTema({ nome: novo.nome, nivel: novo.nivel, e_risco: novo.e_risco }),
-                  () => definirNovo({ nome: '', nivel: 'gerais', e_risco: false }),
+                  () =>
+                    criarTema({
+                      nome: novo.nome,
+                      nivel: novo.nivel,
+                      e_risco: novo.e_risco,
+                      macro_tema_id: novo.macro_tema_id,
+                      camada_lso: novo.camada_lso || null,
+                    }),
+                  () => definirNovo(RASCUNHO_VAZIO),
                 )
               }
             >
@@ -226,7 +364,13 @@ export function CadastroDeAssuntos() {
                       ))}
                     </select>
                   </Campo>
-                  <Campo rotulo="Este é um tema de risco?">
+                  <SeletorDeHierarquia
+                    blocos={blocos}
+                    macros={macros}
+                    rascunho={rascunho}
+                    aoMudar={definirRascunho}
+                  />
+                  <Campo rotulo="Este é um tema de risco?" obrigatorio>
                     <input
                       type="checkbox"
                       checked={rascunho.e_risco}
@@ -247,6 +391,8 @@ export function CadastroDeAssuntos() {
                               nivel: rascunho.nivel,
                               ativo: tema.ativo,
                               e_risco: rascunho.e_risco,
+                              macro_tema_id: rascunho.macro_tema_id,
+                              camada_lso: rascunho.camada_lso || null,
                             }),
                           () => definirEmEdicao(null),
                         )
@@ -296,10 +442,18 @@ export function CadastroDeAssuntos() {
                     desabilitado={salvando}
                     aoClicar={() => {
                       definirEmEdicao(tema.id);
+                      // O PILAR NÃO VEM DO BACK: só `macro_tema_id` é
+                      // guardado em `tema`. Pra pré-marcar o seletor em
+                      // cascata, acha o tema estratégico pelo id e lê o
+                      // `bloco_tema_id` dele.
+                      const macro = macros.find((m) => m.id === tema.macro_tema_id);
                       definirRascunho({
                         nome: tema.nome,
                         nivel: tema.nivel,
                         e_risco: tema.e_risco ?? false,
+                        bloco_tema_id: macro?.bloco_tema_id ?? null,
+                        macro_tema_id: tema.macro_tema_id,
+                        camada_lso: tema.camada_lso ?? '',
                       });
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}
