@@ -68,6 +68,7 @@ import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
 import { ListaDaAegea, ListaDeParticipantes } from '@/paginas/cadastro/participantes';
 import { AjudaDoCampo } from '@/componentes/AjudaDoCampo';
+import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 import { GuiaDosFormatos } from '@/componentes/GuiaDosFormatos';
 import { GUIA_DO_CADASTRO } from '@/dominio/guiaDoCadastro';
 
@@ -812,21 +813,11 @@ export function Cadastro({
             rotulo="Temas"
             aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.temas} />}
           >
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {catalogo.dicionarios.temas.map((tema) => {
-                const ativo = form.temas.includes(tema.id);
-                return (
-                  <Chip
-                    key={tema.id}
-                    rotulo={tema.nome}
-                    ativo={ativo}
-                    fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                    texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                    aoClicar={() => alternarAssunto(tema.id)}
-                  />
-                );
-              })}
-            </div>
+            <SeletorDeTemas
+              temas={catalogo.dicionarios.temas}
+              selecionados={form.temas}
+              aoAlternar={alternarAssunto}
+            />
           </Campo>
         </div>
       </Secao>
