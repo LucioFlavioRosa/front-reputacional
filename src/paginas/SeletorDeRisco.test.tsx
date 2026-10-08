@@ -49,6 +49,12 @@ const RISCOS: RiscoReputacional[] = [
   { id: 3, cluster: 'Riscos ESG', nome: 'Licenciamento ambiental', severidade: 'moderado' },
 ];
 
+/** Um risco APOSENTADO: fora das opções, mas ainda apontado por assunto antigo.
+ *  É o cenário da próxima versão da planilha. */
+const APOSENTADOS: RiscoReputacional[] = [
+  { id: 9, cluster: 'Riscos de Tecnologia', nome: 'Risco que saiu do mapa', severidade: 'moderado' },
+];
+
 const BASE: RascunhoDeTema = {
   nome: 'Assunto de teste',
   nivel: 'gerais',
@@ -70,17 +76,16 @@ function Em({ inicial }: { inicial: RascunhoDeTema }) {
         <input
           type="checkbox"
           checked={r.e_risco}
-          onChange={(e) =>
-            definirR(
-              e.target.checked
-                ? { ...r, e_risco: true }
-                : { ...r, e_risco: false, risco_id: null, cluster: '' },
-            )
-          }
+          onChange={(e) => definirR({ ...r, e_risco: e.target.checked })}
         />
       </label>
-      {r.e_risco ? (
-        <SeletorDeRisco riscos={RISCOS} rascunho={r} aoMudar={definirR} />
+      {r.e_risco || r.risco_id !== null ? (
+        <SeletorDeRisco
+          riscos={RISCOS}
+          inativos={APOSENTADOS}
+          rascunho={r}
+          aoMudar={definirR}
+        />
       ) : null}
       <output>{JSON.stringify({ e_risco: r.e_risco, risco_id: r.risco_id })}</output>
     </>
@@ -102,7 +107,7 @@ describe('SeletorDeRisco', () => {
     render(<Em inicial={{ ...BASE, e_risco: true }} />);
 
     await usuario.selectOptions(combo(/Risk cluster/), 'Riscos Operacionais');
-    await usuario.selectOptions(combo('Risk'), '2');
+    await usuario.selectOptions(combo(/^Risk(?! cluster)/), '2');
 
     expect(severidade().value).toBe('Crítico');
     expect(gravado().risco_id).toBe(2);
@@ -110,7 +115,7 @@ describe('SeletorDeRisco', () => {
 
   it('o campo de risco fica travado até o cluster ser escolhido', () => {
     render(<Em inicial={{ ...BASE, e_risco: true }} />);
-    expect(combo('Risk').disabled).toBe(true);
+    expect(combo(/^Risk(?! cluster)/).disabled).toBe(true);
   });
 
   it('a lista de riscos é só a do cluster escolhido', async () => {
@@ -118,7 +123,7 @@ describe('SeletorDeRisco', () => {
     render(<Em inicial={{ ...BASE, e_risco: true }} />);
 
     await usuario.selectOptions(combo(/Risk cluster/), 'Riscos ESG');
-    const opcoes = [...combo('Risk').querySelectorAll('option')]
+    const opcoes = [...combo(/^Risk(?! cluster)/).querySelectorAll('option')]
       .map((o) => o.textContent)
       .filter((x) => x !== '— selecione —');
     expect(opcoes).toEqual(['Licenciamento ambiental']);
@@ -129,7 +134,7 @@ describe('SeletorDeRisco', () => {
     render(<Em inicial={{ ...BASE, e_risco: true }} />);
 
     await usuario.selectOptions(combo(/Risk cluster/), 'Riscos Operacionais');
-    await usuario.selectOptions(combo('Risk'), '1');
+    await usuario.selectOptions(combo(/^Risk(?! cluster)/), '1');
     expect(gravado().risco_id).toBe(1);
 
     await usuario.selectOptions(combo(/Risk cluster/), 'Riscos ESG');
@@ -144,7 +149,7 @@ describe('SeletorDeRisco', () => {
     render(<Em inicial={{ ...BASE, e_risco: true, risco_id: 3 }} />);
 
     expect(combo(/Risk cluster/).value).toBe('Riscos ESG');
-    expect(combo('Risk').value).toBe('3');
+    expect(combo(/^Risk(?! cluster)/).value).toBe('3');
     expect(severidade().value).toBe('Moderado');
   });
 
@@ -176,14 +181,40 @@ describe('o checkbox que abre os três campos', () => {
     expect(combo(/Risk cluster/)).toBeTruthy();
   });
 
-  it('desmarcar apaga o enquadramento, e não só o esconde', async () => {
+  it('desmarcar NÃO apaga o enquadramento, e a seção continua visível', async () => {
+    // A versão anterior zerava o `risco_id` aqui, trocando dado invisível por
+    // dado DESTRUÍDO: quem desmarcasse por engano e salvasse perderia o
+    // enquadramento sem aviso nenhum. Os dois eixos são independentes —
+    // desmarcar diz "não é risco pela binária v3", e não "apague o que o
+    // RepRisk enquadrou".
     const usuario = userEvent.setup();
     render(<Em inicial={{ ...BASE, e_risco: true, risco_id: 3 }} />);
-    expect(gravado().risco_id).toBe(3);
 
     await usuario.click(screen.getByRole('checkbox'));
 
-    expect(screen.queryByRole('combobox', { name: 'Risk' })).toBeNull();
-    expect(gravado()).toEqual({ e_risco: false, risco_id: null });
+    expect(gravado()).toEqual({ e_risco: false, risco_id: 3 });
+    expect(combo(/^Risk(?! cluster)/).value).toBe('3');
+  });
+
+  it('a seção aparece com enquadramento gravado mesmo sem o checkbox marcado', () => {
+    // OS 18 SUBTEMAS: a planilha os enquadra e a binária v3 diz que não são
+    // risco. Gatear só pelo checkbox esconderia o enquadramento deles, e salvar
+    // o manteria — o painel afirmando o que a pessoa não viu.
+    render(<Em inicial={{ ...BASE, e_risco: false, risco_id: 1 }} />);
+
+    expect(combo(/Risk cluster/).value).toBe('Riscos Operacionais');
+    expect(severidade().value).toBe('Alto');
+  });
+
+  it('um risco APOSENTADO ainda aparece resolvido na edição', () => {
+    // O cenário da próxima versão da planilha: o risco sai do mapa
+    // (`ativo = false`) e some das opções, mas os assuntos classificados com
+    // ele continuam apontando. Sem resolver pelos inativos, o seletor abriria
+    // vazio e salvar dali apagaria o enquadramento.
+    render(<Em inicial={{ ...BASE, e_risco: true, risco_id: 9 }} />);
+
+    expect(combo(/Risk cluster/).value).toBe('Riscos de Tecnologia');
+    expect(combo(/^Risk(?! cluster)/).value).toBe('9');
+    expect(severidade().value).toBe('Moderado');
   });
 });

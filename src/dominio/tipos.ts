@@ -415,6 +415,14 @@ export interface Dicionarios {
   /** Os 32 riscos do `Risk tracking map`. Alimentam os três campos que
    *  aparecem quando o assunto é marcado como tema de risco. */
   riscos_reputacionais: RiscoReputacional[];
+  /** Os riscos APOSENTADOS, e só para resolver enquadramento antigo.
+   *
+   *  Mesma razão de `temas_inativos`: um assunto classificado em 2026 aponta
+   *  para o risco que o mapa tinha então, e a próxima versão da planilha vai
+   *  aposentar riscos. Sem esta lista, editar um assunto preso a risco
+   *  aposentado abriria o seletor vazio — e salvar dali apagaria o
+   *  enquadramento. NÃO use como opção de formulário. */
+  riscos_inativos: RiscoReputacional[];
   /** As 10 categorias da taxonomia de públicos. Ver `Instituicao.categoria_publico_id`. */
   categorias_publico: CategoriaPublicoDoDicionario[];
   /** As subcategorias, de todas as categorias juntas — filtre por

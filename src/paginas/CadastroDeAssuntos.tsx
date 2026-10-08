@@ -42,6 +42,24 @@ const LSO = [
   { valor: 'nao_se_aplica', rotulo: 'Não se aplica' },
 ];
 
+/** Quando os três campos do RepRisk aparecem.
+ *
+ *  `e_risco` OU enquadramento gravado, e o "ou" é o conserto de um achado de
+ *  revisão de 08/10/2026. Gatear só pelo checkbox esconderia os 18 subtemas que
+ *  a planilha enquadra e cuja binária v3 diz que não são risco: a tela não
+ *  mostraria nada, e salvar manteria o `risco_id` — o painel afirmando um
+ *  enquadramento que a pessoa não viu.
+ *
+ *  OS DOIS EIXOS SÃO INDEPENDENTES, e esta função é onde isso fica explícito:
+ *  `e_risco` é a binária Risco/Outros da taxonomia v3 (Peers/Comms) e o
+ *  enquadramento é o do `Risk tracking map`. Eles divergem em 21 dos 104
+ *  subtemas, nos dois sentidos. O checkbox é a porta de entrada para enquadrar;
+ *  não é dono do eixo.
+ */
+function mostrarRepRisk(r: RascunhoDeTema): boolean {
+  return r.e_risco || r.risco_id !== null;
+}
+
 //: O RÓTULO DE CADA SEVERIDADE. O banco guarda o código sem acento (`critico`)
 //: porque é domínio fechado em `check`; a tela mostra o nome por extenso.
 const SEVERIDADE: Record<string, string> = {
@@ -139,22 +157,46 @@ const RASCUNHO_VAZIO: RascunhoDeTema = {
  */
 export function SeletorDeRisco({
   riscos,
+  inativos = [],
   rascunho,
   aoMudar,
 }: {
   riscos: RiscoReputacional[];
+  /** Os aposentados, só para resolver enquadramento antigo. */
+  inativos?: RiscoReputacional[];
   rascunho: RascunhoDeTema;
   aoMudar: (novo: RascunhoDeTema) => void;
 }) {
-  const clusters = [...new Set(riscos.map((r) => r.cluster))].sort((a, b) =>
-    a.localeCompare(b, 'pt-BR'),
-  );
-  const escolhido = riscos.find((r) => r.id === rascunho.risco_id) ?? null;
+  // AS OPÇÕES SÃO SÓ OS ATIVOS; a RESOLUÇÃO olha os dois. Um risco aposentado
+  // não pode ser escolhido de novo, mas o que já está gravado tem de aparecer
+  // com nome, cluster e severidade — senão editar o assunto apagaria o
+  // enquadramento sem ninguém ver. Achado de revisão de 08/10/2026, a mesma
+  // forma que `nomesDosTemas` usa para tema aposentado.
+  const todos = [...riscos, ...inativos];
+  const escolhido = todos.find((r) => r.id === rascunho.risco_id) ?? null;
+  const aposentado = escolhido !== null && !riscos.some((r) => r.id === escolhido.id);
+  // O CLUSTER DO APOSENTADO ENTRA NAS OPÇÕES quando é o que está selecionado.
+  // Sem isso o `select` não acharia a opção correspondente e o navegador
+  // zeraria o campo — mostrando vazio com o enquadramento gravado por baixo,
+  // que é o defeito que resolver pelos inativos deveria ter evitado. Pego por
+  // teste, não por leitura.
+  const clusters = [
+    ...new Set([
+      ...riscos.map((r) => r.cluster),
+      ...(aposentado ? [escolhido.cluster] : []),
+    ]),
+  ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   // O cluster vem do risco gravado quando há um; o do rascunho só vale enquanto
   // ninguém escolheu risco ainda. Sem isto, abrir um assunto já enquadrado
   // mostraria a lista de riscos vazia até a pessoa reescolher o cluster.
   const clusterAtivo = escolhido?.cluster ?? rascunho.cluster;
-  const riscosDoCluster = riscos.filter((r) => r.cluster === clusterAtivo);
+  // O APOSENTADO ENTRA NA LISTA do próprio cluster, para o `select` ter o que
+  // mostrar como selecionado. Sem isso o campo apareceria vazio com o dado
+  // gravado por baixo.
+  const riscosDoCluster = [
+    ...riscos.filter((r) => r.cluster === clusterAtivo),
+    ...(aposentado && escolhido.cluster === clusterAtivo ? [escolhido] : []),
+  ];
 
   return (
     <>
@@ -177,7 +219,22 @@ export function SeletorDeRisco({
         </select>
       </Campo>
 
-      <Campo rotulo="Risk">
+      <Campo
+        rotulo="Risk"
+        dica={
+          // SEM BLOQUEIO, de propósito, e isto é uma recusa deliberada a um
+          // achado de revisão que pedia exigir o risco quando o checkbox está
+          // marcado. `e_risco = true` com enquadramento nulo é estado LEGÍTIMO
+          // de 3 subtemas hoje: a binária v3 os classifica como risco e o
+          // `Risk tracking map` diz "Sem enquadramento". Exigir tornaria esses
+          // 3 impossíveis de salvar, e quebraria o desenho de dois eixos
+          // independentes. O que faltava era o aviso: salvar sem enquadramento
+          // passa a ser escolha visível, não esquecimento.
+          rascunho.e_risco && rascunho.risco_id === null
+            ? 'Sem enquadramento no RepRisk. É resposta válida — a planilha deixa 4 subtemas assim.'
+            : undefined
+        }
+      >
         <select
           style={estiloDeEntrada}
           value={rascunho.risco_id ?? ''}
@@ -198,7 +255,14 @@ export function SeletorDeRisco({
         </select>
       </Campo>
 
-      <Campo rotulo="Severity" dica="A planilha define a severidade por risco; não se escolhe.">
+      <Campo
+        rotulo="Severity"
+        dica={
+          aposentado
+            ? 'Este risco foi aposentado na planilha; o enquadramento antigo continua valendo.'
+            : 'A planilha define a severidade por risco; não se escolhe.'
+        }
+      >
         <input
           style={{ ...estiloDeEntrada, background: 'var(--cinza-6)' }}
           readOnly
@@ -296,6 +360,7 @@ export function CadastroDeAssuntos() {
   const [blocos, definirBlocos] = useState<BlocoTema[]>([]);
   const [macros, definirMacros] = useState<MacroTema[]>([]);
   const [riscos, definirRiscos] = useState<RiscoReputacional[]>([]);
+  const [riscosInativos, definirRiscosInativos] = useState<RiscoReputacional[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
@@ -338,6 +403,7 @@ export function CadastroDeAssuntos() {
       // `?? []` porque a chave é nova: um back anterior à 0060 não a manda, e
       // aí os três campos de risco abrem vazios em vez de estourar a tela.
       definirRiscos(d.riscos_reputacionais ?? []);
+      definirRiscosInativos(d.riscos_inativos ?? []);
     });
   }, []);
 
@@ -414,21 +480,26 @@ export function CadastroDeAssuntos() {
                 type="checkbox"
                 checked={novo.e_risco}
                 onChange={(e) =>
-                  // DESMARCAR SOLTA O ENQUADRAMENTO: deixar um risco gravado
-                  // atrás de um campo escondido é como o painel passa a afirmar
-                  // o que ninguém vê.
-                  definirNovo(
-                    e.target.checked
-                      ? { ...novo, e_risco: true }
-                      : { ...novo, e_risco: false, risco_id: null, cluster: '' },
-                  )
+                  // DESMARCAR NÃO APAGA O ENQUADRAMENTO, e esta é a correção de
+                  // um achado de revisão: a versão anterior zerava o `risco_id`
+                  // aqui, o que trocava dado invisível por dado DESTRUÍDO —
+                  // quem desmarcasse por engano e salvasse perderia o
+                  // enquadramento sem aviso nenhum. Os dois eixos são
+                  // independentes; tirar o enquadramento é escolher
+                  // "— selecione —" no cluster, que é visível e reversível.
+                  definirNovo({ ...novo, e_risco: e.target.checked })
                 }
               />
             </Campo>
           </div>
-          {novo.e_risco ? (
+          {mostrarRepRisk(novo) ? (
             <div className="grade grade--3" style={{ gap: 16, marginTop: 14 }}>
-              <SeletorDeRisco riscos={riscos} rascunho={novo} aoMudar={definirNovo} />
+              <SeletorDeRisco
+                riscos={riscos}
+                inativos={riscosInativos}
+                rascunho={novo}
+                aoMudar={definirNovo}
+              />
             </div>
           ) : null}
           <div style={{ marginTop: 14 }}>
@@ -517,17 +588,14 @@ export function CadastroDeAssuntos() {
                       type="checkbox"
                       checked={rascunho.e_risco}
                       onChange={(e) =>
-                        definirRascunho(
-                          e.target.checked
-                            ? { ...rascunho, e_risco: true }
-                            : { ...rascunho, e_risco: false, risco_id: null, cluster: '' },
-                        )
+                        definirRascunho({ ...rascunho, e_risco: e.target.checked })
                       }
                     />
                   </Campo>
-                  {rascunho.e_risco ? (
+                  {mostrarRepRisk(rascunho) ? (
                     <SeletorDeRisco
                       riscos={riscos}
+                      inativos={riscosInativos}
                       rascunho={rascunho}
                       aoMudar={definirRascunho}
                     />
