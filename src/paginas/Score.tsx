@@ -383,30 +383,27 @@ function VisaoGeral({
         }
       >
         <Cartao>
-          {/* GRÁFICO À ESQUERDA, CARTÕES À DIREITA, e os cartões descem para
-              baixo do gráfico quando a tela estreita — o gráfico precisa de
-              largura antes de qualquer coisa. */}
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 560px', minWidth: 0 }}>
-              <JornadaDoIndice
-                serie={serieRecortada}
-                mes={indice.mes}
-                comparada={comparada}
-                nomeDaComparada={
-                  indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
-                }
-                aoEscolherMes={aoTrocarMes}
-                linhaDeReferencia={
-                  mostrarPico && kpis.pico
-                    ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
-                    : null
-                }
-              />
-              <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
-            </div>
-            <aside style={{ flex: '1 1 220px', maxWidth: '100%' }} aria-label="Indicadores da janela">
-              <CartoesDaJanela kpis={kpis} />
-            </aside>
+          {/* CARTÕES EM CIMA, EM UMA FAIXA, e o gráfico com a largura inteira
+              logo abaixo — por pedido: ao lado, os cartões roubavam do gráfico
+              justamente a largura que separa um mês do outro. Em cima eles
+              leem como o resumo do que o gráfico vai mostrar. */}
+          <CartoesDaJanela kpis={kpis} />
+          <div style={{ marginTop: 18 }}>
+            <JornadaDoIndice
+              serie={serieRecortada}
+              mes={indice.mes}
+              comparada={comparada}
+              nomeDaComparada={
+                indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
+              }
+              aoEscolherMes={aoTrocarMes}
+              linhaDeReferencia={
+                mostrarPico && kpis.pico
+                  ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
+                  : null
+              }
+            />
+            <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
           </div>
           <div
             style={{

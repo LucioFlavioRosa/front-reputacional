@@ -1,5 +1,8 @@
-/** Os quatro cartões ao lado da Jornada: Índice atual, Pico, Vale e Variação
+/** Os quatro cartões acima da Jornada: Índice atual, Pico, Vale e Variação
  *  no período — todos da janela escolhida na mini linha do tempo.
+ *
+ *  COMPACTOS, NUMA FAIXA SÓ: eles abrem o gráfico como um resumo, e não podem
+ *  pesar mais do que ele. Quatro lado a lado; dois a dois no telefone.
  *
  *  O NÚMERO GRANDE, O RESTO MIÚDO: o cartão existe para o valor ser lido de
  *  longe, e rótulo e mês são o contexto que se lê de perto.
@@ -30,11 +33,8 @@ export function CartoesDaJanela({ kpis }: { kpis: KpisDaJanela }) {
       aria-label="Indicadores da janela"
       style={{
         display: 'grid',
-        //: EMPILHADOS AO LADO DO GRÁFICO, e lado a lado quando a tela estreita e
-        //: o painel desce para baixo dele: a mesma grade decide os dois casos.
-        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
         gap: 10,
-        alignContent: 'start',
       }}
     >
       <Cartao
@@ -66,13 +66,13 @@ function Moldura({ children }: { children: ReactNode }) {
     <div
       role="listitem"
       style={{
-        padding: '12px 14px',
+        padding: '9px 12px',
         borderRadius: 'var(--r-card-int)',
         border: '1px solid var(--borda)',
         background: 'var(--branco)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
+        gap: 2,
         minWidth: 0,
       }}
     >
@@ -108,10 +108,13 @@ function Cartao({
       <Rotulo texto={rotulo} ajuda={ajuda} />
       {valor ? (
         <>
-          <span className="tabular" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1, color: 'var(--cinza-4)' }}>
-            {valor.valor}
+          {/* VALOR E MÊS NA MESMA LINHA: é o que deixa o cartão baixo. */}
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <span className="tabular" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: 'var(--cinza-4)' }}>
+              {valor.valor}
+            </span>
+            <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>{valor.rotuloDoMes}</span>
           </span>
-          <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>{valor.rotuloDoMes}</span>
         </>
       ) : (
         <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>{vazio}</span>
@@ -146,7 +149,7 @@ function CartaoDaVariacao({ kpis }: { kpis: KpisDaJanela }) {
     <Moldura>
       <Rotulo texto="Variação no período" ajuda={ajuda} />
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="tabular" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1, color: cor.texto }}>
+        <span className="tabular" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: cor.texto }}>
           {sinal}
           {Math.abs(variacao.pontos)}
         </span>
@@ -155,11 +158,11 @@ function CartaoDaVariacao({ kpis }: { kpis: KpisDaJanela }) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            padding: '2px 8px',
+            padding: '1px 7px',
             borderRadius: 'var(--r-chip)',
             background: cor.fundo,
             color: cor.texto,
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: 700,
           }}
         >
@@ -167,7 +170,7 @@ function CartaoDaVariacao({ kpis }: { kpis: KpisDaJanela }) {
           {cor.palavra}
         </span>
       </span>
-      <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
         {variacao.de.rotuloDoMes} → {variacao.ate.rotuloDoMes}
       </span>
     </Moldura>
