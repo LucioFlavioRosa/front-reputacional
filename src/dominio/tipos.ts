@@ -298,6 +298,24 @@ export interface Tema {
   nivel: 'sensivel' | 'estrategico' | 'gerais';
 }
 
+/** Nível 1 da taxonomia de temas v4 — Governança, Eficiência Operacional e
+ *  Qualidade etc. 7 pilares. Ver `migrations/0058`. */
+export interface BlocoTema {
+  id: number;
+  codigo: string;
+  nome: string;
+  ordem: number;
+}
+
+/** Nível 2 — o tema estratégico, dentro de um pilar. 41 ao todo. */
+export interface MacroTema {
+  id: number;
+  bloco_tema_id: number;
+  codigo: string;
+  nome: string;
+  ordem: number;
+}
+
 export interface UnidadeDeNegocio {
   id: number;
   nome: string;
@@ -362,6 +380,10 @@ export interface Dicionarios {
   areas_pessoa: ItemDeDicionario[];
   unidades_negocio: UnidadeDeNegocio[];
   temas: Tema[];
+  /** Os 7 pilares da taxonomia v4. Ver `migrations/0058`. */
+  blocos_tema: BlocoTema[];
+  /** Os 41 temas estratégicos, cada um preso a um pilar. */
+  macro_temas: MacroTema[];
   /** As 10 categorias da taxonomia de públicos. Ver `Instituicao.categoria_publico_id`. */
   categorias_publico: CategoriaPublicoDoDicionario[];
   /** As subcategorias, de todas as categorias juntas — filtre por

@@ -640,6 +640,12 @@ export interface TemaCadastrado {
   /** Classificação binária Risco/Outros da taxonomia v3. `null` em quem não
    *  foi reconciliado com a taxonomia v4. */
   e_risco: boolean | null;
+  /** O tema estratégico (nível 2) da taxonomia v4. `null` em quem não foi
+   *  reconciliado com ela. Ver `dicionarios.macro_temas` para a lista e o
+   *  pilar (nível 1) de cada um. */
+  macro_tema_id: number | null;
+  /** `legitimidade` | `credibilidade` | `confianca` | `nao_se_aplica`. */
+  camada_lso: string | null;
 }
 
 export interface TemaEntrada {
@@ -647,6 +653,8 @@ export interface TemaEntrada {
   nivel?: string;
   ativo?: boolean;
   e_risco?: boolean | null;
+  macro_tema_id?: number | null;
+  camada_lso?: string | null;
 }
 
 /** A lista COMPLETA, inclusive os inativos.
