@@ -316,6 +316,26 @@ export interface MacroTema {
   ordem: number;
 }
 
+/** O agrupador dos 32 riscos da matriz de risco corporativo da Aegea — 8
+ *  clusters. Ver `migrations/0059`. */
+export interface RiskCluster {
+  id: number;
+  codigo: string;
+  nome: string;
+  ordem: number;
+}
+
+/** Um dos 32 riscos da matriz corporativa — a severidade já vem atribuída
+ *  pela Aegea, não é derivada. */
+export interface Risco {
+  id: number;
+  risk_cluster_id: number;
+  codigo: string;
+  nome: string;
+  severidade: 'critico' | 'alto' | 'moderado';
+  ordem: number;
+}
+
 export interface UnidadeDeNegocio {
   id: number;
   nome: string;
@@ -384,6 +404,10 @@ export interface Dicionarios {
   blocos_tema: BlocoTema[];
   /** Os 41 temas estratégicos, cada um preso a um pilar. */
   macro_temas: MacroTema[];
+  /** Os 8 clusters da matriz de risco corporativo. Ver `migrations/0059`. */
+  risk_clusters: RiskCluster[];
+  /** Os 32 riscos da matriz, cada um preso a um cluster. */
+  riscos: Risco[];
   /** As 10 categorias da taxonomia de públicos. Ver `Instituicao.categoria_publico_id`. */
   categorias_publico: CategoriaPublicoDoDicionario[];
   /** As subcategorias, de todas as categorias juntas — filtre por

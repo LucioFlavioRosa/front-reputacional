@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/cliente';
 import type { TemaCadastrado } from '@/api/cliente';
-import type { BlocoTema, MacroTema } from '@/dominio/tipos';
+import type { BlocoTema, MacroTema, Risco, RiskCluster } from '@/dominio/tipos';
 import {
   Botao,
   Campo,
@@ -41,6 +41,24 @@ const LSO = [
   { valor: 'confianca', rotulo: 'Confiança' },
   { valor: 'nao_se_aplica', rotulo: 'Não se aplica' },
 ];
+
+//: Rótulo de cada severidade — a matriz da Aegea já vem com "Critico" sem
+//: acento (ver migration 0059); o acento é só de exibição.
+const SEVERIDADE_ROTULO: Record<string, string> = {
+  critico: 'Crítico',
+  alto: 'Alto',
+  moderado: 'Moderado',
+};
+
+//: SELO EM VEZ DE TEXTO ENTRE PARÊNTESES: a severidade é o dado mais
+//: importante pra quem está classificando um risco, e texto pequeno dentro
+//: de um `<details>` fechado passava batido. Semáforo, com as cores da
+//: marca: vermelho = crítico, laranja = alto, amarelo = moderado.
+const SEVERIDADE_SELO: Record<string, { fundo: string; texto: string }> = {
+  critico: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
+  alto: { fundo: 'var(--laranja-baia)', texto: 'var(--sobre-turquesa)' },
+  moderado: { fundo: 'var(--amarelo-pequi)', texto: 'var(--sobre-turquesa)' },
+};
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
@@ -91,6 +109,7 @@ interface RascunhoDeTema {
   bloco_tema_id: number | null;
   macro_tema_id: number | null;
   camada_lso: string;
+  riscos: number[];
 }
 
 const RASCUNHO_VAZIO: RascunhoDeTema = {
@@ -100,6 +119,7 @@ const RASCUNHO_VAZIO: RascunhoDeTema = {
   bloco_tema_id: null,
   macro_tema_id: null,
   camada_lso: '',
+  riscos: [],
 };
 
 /** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
@@ -183,10 +203,78 @@ function SeletorDeHierarquia({
   );
 }
 
+/** Quais riscos da matriz corporativa este tema toca — zero, um ou vários.
+ *
+ *  AGRUPADO POR CLUSTER, e recolhível: 32 riscos numa lista só, sempre
+ *  aberta, seria maior que o resto do formulário inteiro. `<details>` nativo,
+ *  sem estado próprio — o navegador já lembra o que a pessoa abriu.
+ */
+function SeletorDeRiscos({
+  clusters,
+  riscos,
+  selecionados,
+  aoMudar,
+}: {
+  clusters: RiskCluster[];
+  riscos: Risco[];
+  selecionados: number[];
+  aoMudar: (novos: number[]) => void;
+}) {
+  const alternar = (riscoId: number) => {
+    aoMudar(
+      selecionados.includes(riscoId)
+        ? selecionados.filter((id) => id !== riscoId)
+        : [...selecionados, riscoId],
+    );
+  };
+  return (
+    <Campo rotulo="Risco(s) associado(s)" obrigatorio>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {clusters.map((cluster) => {
+          const riscosDoCluster = riscos.filter((r) => r.risk_cluster_id === cluster.id);
+          // ABRE SOZINHO QUANDO JÁ TEM ALGO MARCADO: ao editar um tema que
+          // já tem risco associado, esconder o cluster escondia a própria
+          // resposta de "o que está marcado" atrás de um clique.
+          const temSelecionado = riscosDoCluster.some((r) => selecionados.includes(r.id));
+          return (
+            <details key={cluster.id} open={temSelecionado}>
+              <summary style={{ cursor: 'pointer', fontSize: 13, padding: '4px 0' }}>
+                {cluster.nome}
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 16 }}>
+                {riscosDoCluster.map((risco) => (
+                  <label
+                    key={risco.id}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selecionados.includes(risco.id)}
+                      onChange={() => alternar(risco.id)}
+                    />
+                    <span>{risco.nome}</span>
+                    <Selo
+                      rotulo={SEVERIDADE_ROTULO[risco.severidade] ?? risco.severidade}
+                      fundo={SEVERIDADE_SELO[risco.severidade]?.fundo ?? 'var(--bg-trilho)'}
+                      texto={SEVERIDADE_SELO[risco.severidade]?.texto ?? 'var(--cinza-3)'}
+                    />
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </Campo>
+  );
+}
+
 export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
   const [blocos, definirBlocos] = useState<BlocoTema[]>([]);
   const [macros, definirMacros] = useState<MacroTema[]>([]);
+  const [clusters, definirClusters] = useState<RiskCluster[]>([]);
+  const [riscos, definirRiscos] = useState<Risco[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
@@ -211,6 +299,8 @@ export function CadastroDeAssuntos() {
     void obterDicionarios().then((d) => {
       definirBlocos(d.blocos_tema);
       definirMacros(d.macro_temas);
+      definirClusters(d.risk_clusters);
+      definirRiscos(d.riscos);
     });
   }, []);
 
@@ -286,10 +376,29 @@ export function CadastroDeAssuntos() {
               <input
                 type="checkbox"
                 checked={novo.e_risco}
-                onChange={(e) => definirNovo({ ...novo, e_risco: e.target.checked })}
+                onChange={(e) =>
+                  definirNovo({
+                    ...novo,
+                    e_risco: e.target.checked,
+                    // SEM RISCO MARCADO, NÃO FAZ SENTIDO TER RISCO
+                    // ASSOCIADO: desmarcar some com o seletor e limpa o que
+                    // já tinha sido escolhido, pra não mandar risco escondido.
+                    riscos: e.target.checked ? novo.riscos : [],
+                  })
+                }
               />
             </Campo>
           </div>
+          {novo.e_risco ? (
+            <div style={{ marginTop: 14 }}>
+              <SeletorDeRiscos
+                clusters={clusters}
+                riscos={riscos}
+                selecionados={novo.riscos}
+                aoMudar={(riscosNovos) => definirNovo({ ...novo, riscos: riscosNovos })}
+              />
+            </div>
+          ) : null}
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
@@ -303,6 +412,7 @@ export function CadastroDeAssuntos() {
                       e_risco: novo.e_risco,
                       macro_tema_id: novo.macro_tema_id,
                       camada_lso: novo.camada_lso || null,
+                      riscos: novo.riscos,
                     }),
                   () => definirNovo(RASCUNHO_VAZIO),
                 )
@@ -375,10 +485,26 @@ export function CadastroDeAssuntos() {
                       type="checkbox"
                       checked={rascunho.e_risco}
                       onChange={(e) =>
-                        definirRascunho({ ...rascunho, e_risco: e.target.checked })
+                        definirRascunho({
+                          ...rascunho,
+                          e_risco: e.target.checked,
+                          riscos: e.target.checked ? rascunho.riscos : [],
+                        })
                       }
                     />
                   </Campo>
+                  {rascunho.e_risco ? (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <SeletorDeRiscos
+                        clusters={clusters}
+                        riscos={riscos}
+                        selecionados={rascunho.riscos}
+                        aoMudar={(riscosNovos) =>
+                          definirRascunho({ ...rascunho, riscos: riscosNovos })
+                        }
+                      />
+                    </div>
+                  ) : null}
                   <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
                     <Botao
                       variante="primario"
@@ -393,6 +519,7 @@ export function CadastroDeAssuntos() {
                               e_risco: rascunho.e_risco,
                               macro_tema_id: rascunho.macro_tema_id,
                               camada_lso: rascunho.camada_lso || null,
+                              riscos: rascunho.riscos,
                             }),
                           () => definirEmEdicao(null),
                         )
@@ -454,6 +581,7 @@ export function CadastroDeAssuntos() {
                         bloco_tema_id: macro?.bloco_tema_id ?? null,
                         macro_tema_id: tema.macro_tema_id,
                         camada_lso: tema.camada_lso ?? '',
+                        riscos: tema.riscos,
                       });
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}
