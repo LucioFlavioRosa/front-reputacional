@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/cliente';
 import type { TemaCadastrado } from '@/api/cliente';
-import type { BlocoTema, MacroTema } from '@/dominio/tipos';
+import type { BlocoTema, MacroTema, RiscoReputacional } from '@/dominio/tipos';
 import {
   Botao,
   Campo,
@@ -41,6 +41,14 @@ const LSO = [
   { valor: 'confianca', rotulo: 'Confiança' },
   { valor: 'nao_se_aplica', rotulo: 'Não se aplica' },
 ];
+
+//: O RÓTULO DE CADA SEVERIDADE. O banco guarda o código sem acento (`critico`)
+//: porque é domínio fechado em `check`; a tela mostra o nome por extenso.
+const SEVERIDADE: Record<string, string> = {
+  moderado: 'Moderado',
+  alto: 'Alto',
+  critico: 'Crítico',
+};
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
@@ -84,13 +92,20 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
  *  `macro_tema.bloco_tema_id`. Ele existe aqui só para filtrar a lista de
  *  temas estratégicos sem o usuário ter de procurar entre os 41.
  */
-interface RascunhoDeTema {
+export interface RascunhoDeTema {
   nome: string;
   nivel: string;
   e_risco: boolean;
   bloco_tema_id: number | null;
   macro_tema_id: number | null;
   camada_lso: string;
+  /** O risco do `Risk tracking map`. Nulo = "Sem enquadramento", que é resposta
+   *  e não falta de dado — 4 dos 104 subtemas da planilha vêm assim. */
+  risco_id: number | null;
+  /** SÓ DA TELA, e não vai para a API: é o filtro que estreita a lista de
+   *  riscos, do mesmo jeito que o pilar estreita os temas estratégicos. O
+   *  cluster do que foi gravado se lê do próprio risco. */
+  cluster: string;
 }
 
 const RASCUNHO_VAZIO: RascunhoDeTema = {
@@ -100,7 +115,100 @@ const RASCUNHO_VAZIO: RascunhoDeTema = {
   bloco_tema_id: null,
   macro_tema_id: null,
   camada_lso: '',
+  risco_id: null,
+  cluster: '',
 };
+
+/** Risk Cluster → Risk → Severity, os três campos que abrem quando o assunto é
+ *  marcado como tema de risco.
+ *
+ *  UMA ESCOLHA PREENCHE OS TRÊS, e isso não é conveniência: no
+ *  `Risk tracking map` os 32 riscos são distintos e cada um determina o seu
+ *  cluster e a sua severidade, sem uma única ambiguidade nas 32 linhas. Então o
+ *  risco é a escolha, e os outros dois se leem dele.
+ *
+ *  O CLUSTER FILTRA, como o pilar filtra os temas estratégicos: 32 riscos numa
+ *  lista só é muito para procurar, e 8 grupos de 2 a 7 é o que a planilha já
+ *  organiza. Escolher um risco de outro cluster troca o cluster — não há como
+ *  ficar num par inconsistente.
+ *
+ *  A SEVERIDADE NÃO É ESCOLHIDA, de propósito: a planilha a determina por
+ *  risco. Deixá-la editável criaria divergência entre o painel e a fonte que
+ *  ninguém reconciliaria depois — e a tela não tem como saber qual das duas
+ *  está certa.
+ */
+export function SeletorDeRisco({
+  riscos,
+  rascunho,
+  aoMudar,
+}: {
+  riscos: RiscoReputacional[];
+  rascunho: RascunhoDeTema;
+  aoMudar: (novo: RascunhoDeTema) => void;
+}) {
+  const clusters = [...new Set(riscos.map((r) => r.cluster))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR'),
+  );
+  const escolhido = riscos.find((r) => r.id === rascunho.risco_id) ?? null;
+  // O cluster vem do risco gravado quando há um; o do rascunho só vale enquanto
+  // ninguém escolheu risco ainda. Sem isto, abrir um assunto já enquadrado
+  // mostraria a lista de riscos vazia até a pessoa reescolher o cluster.
+  const clusterAtivo = escolhido?.cluster ?? rascunho.cluster;
+  const riscosDoCluster = riscos.filter((r) => r.cluster === clusterAtivo);
+
+  return (
+    <>
+      <Campo rotulo="Risk cluster" dica="O agrupamento do RepRisk. Estreita a lista de riscos.">
+        <select
+          style={estiloDeEntrada}
+          value={clusterAtivo}
+          onChange={(e) =>
+            // Trocar de cluster SOLTA o risco: manter um risco de outro
+            // cluster deixaria os três campos se contradizendo na tela.
+            aoMudar({ ...rascunho, cluster: e.target.value, risco_id: null })
+          }
+        >
+          <option value="">— selecione —</option>
+          {clusters.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </Campo>
+
+      <Campo rotulo="Risk">
+        <select
+          style={estiloDeEntrada}
+          value={rascunho.risco_id ?? ''}
+          disabled={!clusterAtivo}
+          onChange={(e) =>
+            aoMudar({
+              ...rascunho,
+              risco_id: e.target.value ? Number(e.target.value) : null,
+            })
+          }
+        >
+          <option value="">— selecione —</option>
+          {riscosDoCluster.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nome}
+            </option>
+          ))}
+        </select>
+      </Campo>
+
+      <Campo rotulo="Severity" dica="A planilha define a severidade por risco; não se escolhe.">
+        <input
+          style={{ ...estiloDeEntrada, background: 'var(--cinza-6)' }}
+          readOnly
+          value={escolhido ? SEVERIDADE[escolhido.severidade] ?? escolhido.severidade : ''}
+          placeholder="— escolha o risco —"
+        />
+      </Campo>
+    </>
+  );
+}
 
 /** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
  *
@@ -187,6 +295,7 @@ export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
   const [blocos, definirBlocos] = useState<BlocoTema[]>([]);
   const [macros, definirMacros] = useState<MacroTema[]>([]);
+  const [riscos, definirRiscos] = useState<RiscoReputacional[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
   const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
@@ -226,6 +335,9 @@ export function CadastroDeAssuntos() {
     void obterDicionarios().then((d) => {
       definirBlocos(d.blocos_tema);
       definirMacros(d.macro_temas);
+      // `?? []` porque a chave é nova: um back anterior à 0060 não a manda, e
+      // aí os três campos de risco abrem vazios em vez de estourar a tela.
+      definirRiscos(d.riscos_reputacionais ?? []);
     });
   }, []);
 
@@ -297,14 +409,28 @@ export function CadastroDeAssuntos() {
             <SeletorDeHierarquia blocos={blocos} macros={macros} rascunho={novo} aoMudar={definirNovo} />
           </div>
           <div style={{ marginTop: 14 }}>
-            <Campo rotulo="Este é um tema de risco?" obrigatorio>
+            <Campo rotulo="Este é um tema de risco?">
               <input
                 type="checkbox"
                 checked={novo.e_risco}
-                onChange={(e) => definirNovo({ ...novo, e_risco: e.target.checked })}
+                onChange={(e) =>
+                  // DESMARCAR SOLTA O ENQUADRAMENTO: deixar um risco gravado
+                  // atrás de um campo escondido é como o painel passa a afirmar
+                  // o que ninguém vê.
+                  definirNovo(
+                    e.target.checked
+                      ? { ...novo, e_risco: true }
+                      : { ...novo, e_risco: false, risco_id: null, cluster: '' },
+                  )
+                }
               />
             </Campo>
           </div>
+          {novo.e_risco ? (
+            <div className="grade grade--3" style={{ gap: 16, marginTop: 14 }}>
+              <SeletorDeRisco riscos={riscos} rascunho={novo} aoMudar={definirNovo} />
+            </div>
+          ) : null}
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
@@ -318,6 +444,7 @@ export function CadastroDeAssuntos() {
                       e_risco: novo.e_risco,
                       macro_tema_id: novo.macro_tema_id,
                       camada_lso: novo.camada_lso || null,
+                      risco_id: novo.risco_id,
                     }),
                   () => definirNovo(RASCUNHO_VAZIO),
                 )
@@ -385,15 +512,26 @@ export function CadastroDeAssuntos() {
                     rascunho={rascunho}
                     aoMudar={definirRascunho}
                   />
-                  <Campo rotulo="Este é um tema de risco?" obrigatorio>
+                  <Campo rotulo="Este é um tema de risco?">
                     <input
                       type="checkbox"
                       checked={rascunho.e_risco}
                       onChange={(e) =>
-                        definirRascunho({ ...rascunho, e_risco: e.target.checked })
+                        definirRascunho(
+                          e.target.checked
+                            ? { ...rascunho, e_risco: true }
+                            : { ...rascunho, e_risco: false, risco_id: null, cluster: '' },
+                        )
                       }
                     />
                   </Campo>
+                  {rascunho.e_risco ? (
+                    <SeletorDeRisco
+                      riscos={riscos}
+                      rascunho={rascunho}
+                      aoMudar={definirRascunho}
+                    />
+                  ) : null}
                   <div style={{ display: 'flex', gap: 8, gridColumn: '1 / -1' }}>
                     <Botao
                       variante="primario"
@@ -408,6 +546,7 @@ export function CadastroDeAssuntos() {
                               e_risco: rascunho.e_risco,
                               macro_tema_id: rascunho.macro_tema_id,
                               camada_lso: rascunho.camada_lso || null,
+                              risco_id: rascunho.risco_id,
                             }),
                           () => definirEmEdicao(null),
                         )
@@ -469,6 +608,12 @@ export function CadastroDeAssuntos() {
                         bloco_tema_id: macro?.bloco_tema_id ?? null,
                         macro_tema_id: tema.macro_tema_id,
                         camada_lso: tema.camada_lso ?? '',
+                        risco_id: tema.risco_id ?? null,
+                        // O CLUSTER TAMBÉM NÃO VEM DO BACK, pela mesma razão do
+                        // pilar: `tema` guarda só `risco_id`. O `SeletorDeRisco`
+                        // lê o cluster do risco escolhido, então aqui vazio
+                        // basta — e é o que mantém os dois em acordo.
+                        cluster: '',
                       });
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}

@@ -646,6 +646,15 @@ export interface TemaCadastrado {
   macro_tema_id: number | null;
   /** `legitimidade` | `credibilidade` | `confianca` | `nao_se_aplica`. */
   camada_lso: string | null;
+  /** O risco do `Risk tracking map` que enquadra este assunto.
+   *
+   *  NULO É RESPOSTA: 4 dos 104 subtemas da planilha vêm com "Sem
+   *  enquadramento" — a Aegea olhou e decidiu que não há risco a rastrear ali.
+   *
+   *  NÃO É O MESMO QUE `e_risco`, e os dois existem de propósito: `e_risco` é a
+   *  binária Risco/Outros da taxonomia v3, e isto é o eixo do RepRisk. Divergem
+   *  em 21 dos 104. Ver `migrations/0060`. */
+  risco_id: number | null;
 }
 
 export interface TemaEntrada {
@@ -655,6 +664,7 @@ export interface TemaEntrada {
   e_risco?: boolean | null;
   macro_tema_id?: number | null;
   camada_lso?: string | null;
+  risco_id?: number | null;
 }
 
 /** A lista COMPLETA, inclusive os inativos.

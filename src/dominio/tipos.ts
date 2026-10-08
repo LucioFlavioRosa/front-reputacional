@@ -345,6 +345,22 @@ export interface GrupoDeStatusDoDicionario {
   nome: string;
 }
 
+/** Um risco do `Risk tracking map` da planilha de taxonomia (set/2026).
+ *
+ *  O MAPA É FUNCIONAL, e é disso que a tela depende: os 32 riscos são
+ *  distintos e cada um determina o seu `cluster` e a sua `severidade`. Então
+ *  escolher o risco preenche os outros dois campos, e o formulário grava um id
+ *  só. Ver `migrations/0060`.
+ */
+export interface RiscoReputacional {
+  id: number;
+  /** O agrupamento do RepRisk: 8 valores, de 2 a 7 riscos cada. */
+  cluster: string;
+  nome: string;
+  /** `moderado` | `alto` | `critico` — escala, não texto livre. */
+  severidade: string;
+}
+
 /** Tudo o que o filtro do painel oferece.
  *
  *  NENHUMA opção de filtro pode estar escrita no código desta pasta: toda lista
@@ -396,6 +412,9 @@ export interface Dicionarios {
   blocos_tema: BlocoTema[];
   /** Os 41 temas estratégicos, cada um preso a um pilar. */
   macro_temas: MacroTema[];
+  /** Os 32 riscos do `Risk tracking map`. Alimentam os três campos que
+   *  aparecem quando o assunto é marcado como tema de risco. */
+  riscos_reputacionais: RiscoReputacional[];
   /** As 10 categorias da taxonomia de públicos. Ver `Instituicao.categoria_publico_id`. */
   categorias_publico: CategoriaPublicoDoDicionario[];
   /** As subcategorias, de todas as categorias juntas — filtre por
