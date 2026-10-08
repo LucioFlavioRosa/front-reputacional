@@ -336,6 +336,14 @@ export const GUIA_DOS_FORMATOS: Record<string, VerbeteDoCampo> = {
     exemplo: 'E-mail de jornalista pedindo posicionamento; ofício de órgão pedindo esclarecimento.',
     porQue: 'Escolher este tipo abre um bloco próprio mais abaixo, para registrar o que perguntaram e a premissa por trás da pergunta.',
   },
+  'Encontro de relacionamento': {
+    oQuePreencher: 'Contato informal de manutenção de relacionamento, sem pauta formal definida.',
+    exemplo: 'Café ou almoço de relacionamento, visita de cortesia, contato de manutenção sem assunto específico.',
+  },
+  'Solicitação de Posicionamento/Entrevista': {
+    oQuePreencher: 'Pedido direto de jornalista ou veículo por posicionamento oficial ou entrevista.',
+    exemplo: 'Pedido de entrevista, solicitação de posicionamento sobre um assunto específico, resposta a pauta jornalística.',
+  },
 };
 
 export function verbeteDoCadastro(chave: string): VerbeteDoCampo | null {
