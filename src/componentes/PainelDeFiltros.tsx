@@ -52,6 +52,7 @@ import type { AtalhoDoFuturo, AtalhoDoPassado, Recorte } from '@/dominio/recorte
 import { categoriasDeArea, idsPorCategoriaDeArea } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { GrupoDeStatus } from '@/dominio/tipos';
+import { CORES_DE_CLIMA } from '@/dominio/frentes';
 import type { Destino } from '@/navegacao/rota';
 
 const LIMITE_PADRAO = 10;
@@ -69,6 +70,9 @@ export interface CampoDeFiltro {
   multiplo?: boolean;
   selecionados?: string[];
   aoEscolher: (valor: string) => void;
+  /** Pinta o gatilho fechado (`CampoSuspenso`) quando há escolha — hoje só
+   *  o Clima usa, para a cor dizer de longe qual clima está filtrado. */
+  destaque?: { fundo: string; texto: string };
 }
 
 /** O campo "Área(s)" por CATEGORIA (`CATEGORIAS_DE_AREA`), não por área
@@ -200,6 +204,17 @@ export function campoDeTemaN2(
   };
 }
 
+//: A COR DO CLIMA ESCOLHIDO no gatilho, por pedido: Positivo verde, Negativo
+//: vermelho, Neutro cinza. São as MESMAS cores de clima do resto do Painel
+//: (`CORES_DE_CLIMA` — termômetro, barras, rosca), para o filtro e os
+//: gráficos falarem a mesma língua. O texto é escuro nos três: branco sobre
+//: o vermelho Pitanga não chega ao contraste mínimo de leitura.
+const DESTAQUE_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
+  propositivo: { fundo: CORES_DE_CLIMA.propositivo, texto: 'var(--sobre-turquesa)' },
+  neutro: { fundo: CORES_DE_CLIMA.neutro, texto: 'var(--cinza-4)' },
+  tenso: { fundo: CORES_DE_CLIMA.tenso, texto: 'var(--cinza-4)' },
+};
+
 /** O CLIMA REGISTRADO como filtro rápido — Positivo, Neutro, Negativo, na
  *  ordem e com os nomes do dicionário. Um de cada vez, como no avançado:
  *  clicar de novo no mesmo desliga. */
@@ -212,6 +227,7 @@ export function campoDeClima(
     chave: 'clima',
     rotulo: 'Filtrar por Clima',
     valorAtual: recorte.clima,
+    destaque: recorte.clima ? DESTAQUE_DO_CLIMA[recorte.clima] : undefined,
     itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
     aoEscolher: (valor: string) => definirRecorte(alternar(recorte, 'clima', valor)),
   };
