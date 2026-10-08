@@ -109,8 +109,19 @@ export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) 
 
   if (!catalogo) return <Carregando rotulo="Carregando o catálogo…" />;
 
+  // OS DOIS DICIONÁRIOS: o recorte chega aqui com NOMES de tema, e desde a
+  // correção de 08/10/2026 um nome de tema aposentado pode estar entre eles —
+  // `Base.tsx` monta as tags da agenda por `nomesDosTemas`, que agora os
+  // resolve. Procurar o id só entre os ativos deixaria a reunião de tarifa sem
+  // o material de tarifa justamente quando o tema é dos antigos, que é o
+  // problema que esta tela existe para evitar.
   const idsDosTemas = new Set(
-    catalogo.dicionarios.temas.filter((t) => temas.includes(t.nome)).map((t) => t.id),
+    [
+      ...catalogo.dicionarios.temas,
+      ...(catalogo.dicionarios.temas_inativos ?? []),
+    ]
+      .filter((t) => temas.includes(t.nome))
+      .map((t) => t.id),
   );
   const referencias = catalogo.referencias.filter(
     (r) => r.ativo && r.temas.some((id) => idsDosTemas.has(id)),
