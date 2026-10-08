@@ -35,6 +35,7 @@ import { Linha, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { listarDocumentosDaReuniao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
+import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
 import type { DocumentoDaReuniao } from '@/dominio/tipos';
@@ -157,8 +158,10 @@ export function DocumentosDaReuniao({
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (documentos === null || !catalogo) return <Carregando />;
 
-  const nomeDoTema = (id: number) =>
-    catalogo.dicionarios.temas.find((t) => t.id === id)?.nome ?? String(id);
+  // Pela função do domínio, que junta os temas ativos e os aposentados. A busca
+  // só em `dicionarios.temas` mostrava o ID CRU para todo tema desativado — e a
+  // `0058` desativou 45 de uma vez. Ver `nomeDoTema` em `derivacoes.ts`.
+  const nomeDoTema = (id: number) => nomeDoTemaNoCatalogo(catalogo, id);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

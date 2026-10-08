@@ -22,6 +22,7 @@ import { Linha, Tabela } from '@/componentes/Tabela';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { urlDaVersao } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
+import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { alternarOrdenacao, ordenarPor } from '@/dominio/ordenacao';
 import type { Ordenacao } from '@/dominio/ordenacao';
 import type { Referencia } from '@/dominio/tipos';
@@ -107,8 +108,11 @@ export function MateriaisOficiais() {
 
   if (referencias === null || !catalogo) return <Carregando />;
 
-  const nomeDoTema = (id: number) =>
-    catalogo.dicionarios.temas.find((t) => t.id === id)?.nome ?? String(id);
+  // A TERCEIRA tela com este padrao, e a que ficou de fora na primeira passada:
+  // resolver so pelos ativos mostrava o ID CRU de todo tema aposentado. O filtro
+  // logo abaixo (:143) segue so com os ativos, e esta certo — ninguem marca
+  // material novo com tema desativado. Ver `nomeDoTema` em `derivacoes.ts`.
+  const nomeDoTema = (id: number) => nomeDoTemaNoCatalogo(catalogo, id);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

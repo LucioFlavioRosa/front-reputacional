@@ -226,7 +226,7 @@ interface RascunhoDePessoa {
  *  guarda o que já foi acrescentado. Isso também é o que permite reusar este
  *  componente nos três formulários sem um terceiro `useState` na página de
  *  fora para cada um. */
-function CampoDeRedesSociais({
+export function CampoDeRedesSociais({
   valores,
   aoMudar,
 }: {
@@ -255,6 +255,14 @@ function CampoDeRedesSociais({
               acrescentar();
             }
           }}
+          //: E AO SAIR DO CAMPO. Sem isto, quem digitava `@fulano` e clicava
+          //: direto em "Cadastrar" salvava o contato SEM a rede: o texto era
+          //: estado do widget e só entrava na lista pelo "Adicionar" ou pelo
+          //: Enter. Achado de revisão de 08/10/2026. O clique no botão de fora
+          //: tira o foco daqui antes de disparar, então o chip entra primeiro —
+          //: e `CampoDeRedesSociais.test.tsx` existe para provar essa ordem, que
+          //: é fina demais para ficar só no comentário.
+          onBlur={acrescentar}
           placeholder="Link ou @usuário"
         />
         <Botao

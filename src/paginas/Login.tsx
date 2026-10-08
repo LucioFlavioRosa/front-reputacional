@@ -34,6 +34,23 @@ const MODULOS = [
   { nome: 'Painel de Inteligência de Mercado', estado: 'Em construção' },
 ];
 
+/** A rota que a pessoa estava tentando abrir, para o SSO devolvê-la ali.
+ *
+ *  O `App` pinta esta tela sem mexer na URL quando não há sessão (`if
+ *  (!autenticado) return <Login …>`), então o endereço do navegador AINDA é o
+ *  que ela pediu. Quem recebeu um link do dossiê de outubro e caiu no login
+ *  voltava para a home e tinha de procurar a tela de novo — achado de revisão
+ *  de 08/10/2026, de carona na correção que trocou o destino padrão de
+ *  `/painel` para `/`.
+ *
+ *  RELATIVO, e é condição: o backend recusa destino absoluto (`_destino_seguro`
+ *  em `app/api/acesso.py`), porque aceitá-lo seria redirecionamento aberto.
+ *  `pathname` + `search` nunca traz origem, então a recusa não é alcançada.
+ */
+function destinoAtual(): string {
+  return window.location.pathname + window.location.search;
+}
+
 export function Login({
   aoEntrar,
   carregando = false,
@@ -190,9 +207,13 @@ export function Login({
             type="button"
             disabled={!SSO_LIGADO}
             onClick={() =>
-              entrarNoPainel(aoEntrar, (url) => {
-                window.location.href = url;
-              })
+              entrarNoPainel(
+                aoEntrar,
+                (url) => {
+                  window.location.href = url;
+                },
+                destinoAtual(),
+              )
             }
             style={{
               width: '100%',

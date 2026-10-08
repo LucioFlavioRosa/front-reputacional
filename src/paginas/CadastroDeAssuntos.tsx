@@ -186,7 +186,15 @@ function SeletorDeHierarquia({
           ))}
         </select>
       </Campo>
-      <Campo rotulo="LSO" obrigatorio>
+      {/* NÃO É OBRIGATÓRIO, e a razão está na fonte: a taxonomia v4 deixa 47 dos
+          104 subtemas SEM LSO. Marcá-lo com asterisco e exigi-lo travaria 45%
+          das classificações válidas, e afirmaria uma camada que a Aegea não
+          atribuiu. Pilar e Tema estratégico ficam obrigatórios porque a
+          planilha os preenche em 104 de 104, sem uma exceção. */}
+      <Campo
+        rotulo="LSO"
+        dica="A taxonomia não define LSO para 47 dos 104 subtemas; deixar vazio é resposta."
+      >
         <select
           style={estiloDeEntrada}
           value={rascunho.camada_lso}
@@ -201,6 +209,42 @@ function SeletorDeHierarquia({
       </Campo>
     </>
   );
+}
+
+/** Quando a seção de riscos aparece.
+ *
+ *  `e_risco` OU risco já associado, e o "ou" é o conserto de um achado de
+ *  revisão. Gatear só pelo checkbox esconde o enquadramento de quem tem risco
+ *  associado e a binária v3 marcada como falsa — a tela não mostra nada, e
+ *  salvar MANTÉM os riscos. O painel afirmando o que a pessoa não viu.
+ *
+ *  OS DOIS EIXOS SÃO INDEPENDENTES, e esta função é onde isso fica explícito:
+ *  `e_risco` é a binária Risco/Outros da taxonomia v3 (Peers/Comms) e os riscos
+ *  são da matriz corporativa. O checkbox é a porta de entrada para enquadrar;
+ *  não é dono do eixo.
+ */
+function mostrarRiscos(r: { e_risco: boolean; riscos: number[] }): boolean {
+  return r.e_risco || r.riscos.length > 0;
+}
+
+/** Os dois eixos discordam neste assunto?
+ *
+ *  NÃO É DEFEITO, e é por isso que a tela mostra em vez de corrigir. A binária
+ *  v3 pergunta "este assunto é exposição?"; a matriz pergunta outra coisa: "que
+ *  risco corporativo ele toca?".
+ *
+ *  Uma pauta positiva responde diferente às duas. "Reúso de água", "Educação
+ *  ambiental" e "Geração de empregos" tocam o cluster ESG sem serem, elas
+ *  mesmas, temas de exposição. No desenho anterior os eixos divergiam em 21 dos
+ *  104 subtemas, nos dois sentidos.
+ *
+ *  O QUE A TELA FAZ COM ISSO é deixar achar essas linhas sem abrir 104 assuntos
+ *  um por um. Quem administra olha e decide caso a caso se a divergência é a
+ *  esperada ou se foi alguém marcando o checkbox sem querer. Derivar um eixo do
+ *  outro apagaria uma das duas leituras.
+ */
+function eixosDiscordam(tema: TemaCadastrado): boolean {
+  return Boolean(tema.e_risco) !== (tema.riscos.length > 0);
 }
 
 /** Quais riscos da matriz corporativa este tema toca — zero, um ou vários.
@@ -227,8 +271,14 @@ function SeletorDeRiscos({
         : [...selecionados, riscoId],
     );
   };
+  // NÃO É OBRIGATÓRIO: 4 dos 104 subtemas vêm da planilha com "Sem
+  // enquadramento" — a Aegea olhou e decidiu que não há risco a rastrear ali.
+  // Nenhum risco marcado é resposta, não falta de dado.
   return (
-    <Campo rotulo="Risco(s) associado(s)" obrigatorio>
+    <Campo
+      rotulo="Risco(s) associado(s)"
+      dica="Nenhum marcado é resposta: a planilha deixa 4 subtemas sem enquadramento."
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {clusters.map((cluster) => {
           const riscosDoCluster = riscos.filter((r) => r.risk_cluster_id === cluster.id);
@@ -249,6 +299,15 @@ function SeletorDeRiscos({
                   >
                     <input
                       type="checkbox"
+                      // NOME EXPLÍCITO, e é conserto de acessibilidade: `Campo`
+                      // envolve o conteúdo todo num `<label>`, então o PRIMEIRO
+                      // checkbox da lista herdava aquele rótulo — e o leitor de
+                      // tela anunciava a seção inteira ("Risco(s)
+                      // associado(s)Riscos ESGExternalidadesCrítico…") no lugar
+                      // do nome do risco. Os demais já pegavam o `<label>`
+                      // interno, então o defeito aparecia só no primeiro, o que
+                      // é pior: parecia funcionar.
+                      aria-label={risco.nome}
                       checked={selecionados.includes(risco.id)}
                       onChange={() => alternar(risco.id)}
                     />
@@ -281,6 +340,7 @@ export function CadastroDeAssuntos() {
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
   const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
   const [busca, definirBusca] = useState('');
+  const [soDiscordantes, definirSoDiscordantes] = useState(false);
 
   //: A LISTA COMPLETA, e não a do catálogo. O catálogo traz só os ativos,
   //: porque alimenta filtro e formulário; aqui é preciso ver o que foi
@@ -322,12 +382,63 @@ export function CadastroDeAssuntos() {
     }
   };
 
+  //: O QUE FALTA PARA PODER CADASTRAR. A tela marca Pilar e Tema estratégico
+  //: com asterisco e deixava gravar só com o nome — um assunto criado assim
+  //: nasce ATIVO e fora da hierarquia v4: aparece no filtro e no formulário,
+  //: mas não pertence a pilar nenhum, que é exatamente o estado dos 45 que a
+  //: `0058` deixou para reconciliar. A tela não pode fabricar mais deles.
+  //:
+  //: LSO E RISCO FICAM DE FORA da exigência, cada um pela sua razão, e as duas
+  //: estão na fonte: a taxonomia deixa 47 dos 104 subtemas sem LSO, e 4 sem
+  //: enquadramento de risco. Exigir qualquer um dos dois travaria classificação
+  //: que a planilha considera completa.
+  //:
+  //: A EDIÇÃO SEGUE PERMISSIVA, de propósito: é por ela que se arruma um órfão,
+  //: e exigir tudo de uma vez impediria corrigir só o nome.
+  const podeCadastrar =
+    Boolean(novo.nome.trim()) &&
+    novo.bloco_tema_id !== null &&
+    novo.macro_tema_id !== null;
+
+  //: A MAIOR SEVERIDADE entre os riscos que o assunto toca. Um assunto pode
+  //: tocar vários, e o selo da lista mostra o pior — mostrar a média diluiria
+  //: justamente o que a pessoa precisa ver primeiro.
+  //:
+  //: A ordem é a da escala, não a alfabética.
+  const ESCALA: Risco['severidade'][] = ['moderado', 'alto', 'critico'];
+  const maiorSeveridade = (tema: TemaCadastrado): string => {
+    // O tipo vem de `Risco["severidade"]` e não de `string`: eles fecharam a
+    // severidade numa união literal, e aproveitar isso faz o compilador recusar
+    // um valor fora da escala em vez de deixá-lo cair no `indexOf` como -1.
+    const severidades = tema.riscos
+      .map((id) => riscos.find((r) => r.id === id)?.severidade)
+      .filter((s): s is Risco['severidade'] => s !== undefined);
+    if (severidades.length === 0) return '';
+    return severidades.reduce((pior, s) =>
+      ESCALA.indexOf(s) > ESCALA.indexOf(pior) ? s : pior,
+    );
+  };
+  const rotuloDaMaiorSeveridade = (tema: TemaCadastrado): string => {
+    const s = maiorSeveridade(tema);
+    // Vazio quando nenhum dos riscos associados está no catálogo ativo — um
+    // risco aposentado, por exemplo. O selo ainda aparece, dizendo que há
+    // enquadramento, porque esconder seria pior que não saber a severidade.
+    return s ? (SEVERIDADE_ROTULO[s] ?? s) : 'enquadrado';
+  };
+
+  const quantosDiscordam = useMemo(
+    () => (temas ?? []).filter(eixosDiscordam).length,
+    [temas],
+  );
+
   const temasFiltrados = useMemo(() => {
     if (!temas) return [];
     const termo = busca.trim().toLowerCase();
-    if (!termo) return temas;
-    return temas.filter((tema) => tema.nome.toLowerCase().includes(termo));
-  }, [temas, busca]);
+    const porTermo = termo
+      ? temas.filter((tema) => tema.nome.toLowerCase().includes(termo))
+      : temas;
+    return soDiscordantes ? porTermo.filter(eixosDiscordam) : porTermo;
+  }, [temas, busca, soDiscordantes]);
 
   if (!temas) return <Carregando rotulo="Carregando os temas…" />;
 
@@ -377,19 +488,20 @@ export function CadastroDeAssuntos() {
                 type="checkbox"
                 checked={novo.e_risco}
                 onChange={(e) =>
-                  definirNovo({
-                    ...novo,
-                    e_risco: e.target.checked,
-                    // SEM RISCO MARCADO, NÃO FAZ SENTIDO TER RISCO
-                    // ASSOCIADO: desmarcar some com o seletor e limpa o que
-                    // já tinha sido escolhido, pra não mandar risco escondido.
-                    riscos: e.target.checked ? novo.riscos : [],
-                  })
+                  // DESMARCAR NÃO APAGA OS RISCOS, e isto corrige um achado de
+                  // revisão. Limpar aqui troca dado invisível por dado
+                  // DESTRUÍDO: quem desmarca por engano e salva perde o
+                  // enquadramento sem aviso nenhum. E não é preciso limpar para
+                  // evitar "risco escondido", porque a seção passou a aparecer
+                  // sempre que houver risco associado — ver `mostrarRiscos`.
+                  // Tirar um risco é desmarcá-lo na própria lista, que é
+                  // visível e reversível.
+                  definirNovo({ ...novo, e_risco: e.target.checked })
                 }
               />
             </Campo>
           </div>
-          {novo.e_risco ? (
+          {mostrarRiscos(novo) ? (
             <div style={{ marginTop: 14 }}>
               <SeletorDeRiscos
                 clusters={clusters}
@@ -402,7 +514,7 @@ export function CadastroDeAssuntos() {
           <div style={{ marginTop: 14 }}>
             <Botao
               variante="primario"
-              desabilitado={salvando || !novo.nome.trim()}
+              desabilitado={salvando || !podeCadastrar}
               aoClicar={() =>
                 void executar(
                   () =>
@@ -432,6 +544,30 @@ export function CadastroDeAssuntos() {
             onChange={(e) => definirBusca(e.target.value)}
             placeholder="Buscar por nome…"
           />
+
+          {/* SÓ APARECE QUANDO HÁ DIVERGÊNCIA: num cadastro em que os dois
+              eixos concordam em tudo, este controle seria ruído. */}
+          {quantosDiscordam > 0 ? (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 13,
+                color: 'var(--cinza-2)',
+                marginBottom: 14,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={soDiscordantes}
+                onChange={(e) => definirSoDiscordantes(e.target.checked)}
+              />
+              <span>
+                Só os {quantosDiscordam} em que os dois eixos de risco discordam
+              </span>
+            </label>
+          ) : null}
 
           {temasFiltrados.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
@@ -485,15 +621,12 @@ export function CadastroDeAssuntos() {
                       type="checkbox"
                       checked={rascunho.e_risco}
                       onChange={(e) =>
-                        definirRascunho({
-                          ...rascunho,
-                          e_risco: e.target.checked,
-                          riscos: e.target.checked ? rascunho.riscos : [],
-                        })
+                        // Desmarcar NÃO apaga os riscos — ver `mostrarRiscos`.
+                        definirRascunho({ ...rascunho, e_risco: e.target.checked })
                       }
                     />
                   </Campo>
-                  {rascunho.e_risco ? (
+                  {mostrarRiscos(rascunho) ? (
                     <div style={{ gridColumn: '1 / -1' }}>
                       <SeletorDeRiscos
                         clusters={clusters}
@@ -563,6 +696,18 @@ export function CadastroDeAssuntos() {
                       pessoa faz com o tema. */}
                   {tema.e_risco ? (
                     <Selo rotulo="Risco" fundo="var(--vermelho-pitanga)" texto="var(--branco)" />
+                  ) : null}
+                  {/* O SEGUNDO EIXO, e é o que torna a divergência legível na
+                      lista: o selo "Risco" sem um "Matriz" ao lado — ou o
+                      contrário — é a discordância aparecendo sem ninguém abrir
+                      o assunto. Mostra a maior severidade entre os riscos
+                      associados, porque é a parte acionável. */}
+                  {tema.riscos.length > 0 ? (
+                    <Selo
+                      rotulo={`Matriz · ${rotuloDaMaiorSeveridade(tema)}`}
+                      fundo={SEVERIDADE_SELO[maiorSeveridade(tema)]?.fundo ?? 'var(--bg-trilho)'}
+                      texto={SEVERIDADE_SELO[maiorSeveridade(tema)]?.texto ?? 'var(--cinza-3)'}
+                    />
                   ) : null}
                   <Botao
                     variante="fantasma"

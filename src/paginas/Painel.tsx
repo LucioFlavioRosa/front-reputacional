@@ -332,12 +332,19 @@ export function Painel({
     // O GRÁFICO DE ÁRVORE quer TODOS os temas do dicionário, não só o Top 5
     // de `temas` (que continua servindo "Top 5 temas" e "Temas no tempo",
     // sem mudar) — por pedido, para o treemap mostrar a distribuição
-    // completa. `catalogo.dicionarios.temas.length` em vez de um número
-    // fixo: acompanha o dicionário se um tema for cadastrado ou desativado.
+    // completa. O teto sai do dicionário em vez de um número fixo: acompanha
+    // se um tema for cadastrado ou desativado.
+    //
+    // OS DOIS DICIONÁRIOS, e é correção de revisão de 08/10/2026: desde que
+    // `nomesDosTemas` passou a resolver tema aposentado, `temasMaisRecorrentes`
+    // devolve até 149 temas distintos, e um teto de 104 (só os ativos) cortaria
+    // justamente os históricos — com o comentário acima prometendo
+    // "distribuição completa".
     const todosOsTemas = temasMaisRecorrentes(
       interacoes,
       catalogo,
-      catalogo.dicionarios.temas.length,
+      catalogo.dicionarios.temas.length +
+        (catalogo.dicionarios.temas_inativos?.length ?? 0),
     );
     const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
@@ -550,7 +557,16 @@ export function Painel({
   //: Sensível/Estratégico/Geral, por pedido (sem agrupar as células por
   //: nível, só a cor muda). `temasMaisRecorrentes` devolve a chave como o
   //: NOME do tema, então o lookup é por nome.
-  const nivelPorNomeDoTema = new Map(catalogo.dicionarios.temas.map((tema) => [tema.nome, tema.nivel]));
+  //: OS DOIS DICIONÁRIOS, pelo mesmo motivo do teto acima:
+  //: `temasMaisRecorrentes` devolve nome de tema aposentado desde a correção de
+  //: 08/10/2026, e um mapa só com os ativos deixaria a célula dele SEM COR no
+  //: gráfico — visível na tela, e sem nada ali explicando por quê.
+  const nivelPorNomeDoTema = new Map(
+    [
+      ...catalogo.dicionarios.temas,
+      ...(catalogo.dicionarios.temas_inativos ?? []),
+    ].map((tema) => [tema.nome, tema.nivel] as [string, string]),
+  );
   const corPorNivel = new Map(NIVEIS_DE_TEMA.map((n) => [n.nivel, n.cor]));
 
   return (
