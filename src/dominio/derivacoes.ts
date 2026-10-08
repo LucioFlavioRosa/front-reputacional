@@ -114,7 +114,20 @@ export function nomeDaPessoa(catalogo: Catalogo, id: string): string {
 
 export function nomeDoFormatoDeInteracao(catalogo: Catalogo, id: number | null): string {
   if (id == null) return '—';
-  return catalogo.dicionarios.formatos_interacao.find((f) => f.id === id)?.nome ?? '—';
+  // RESOLVE PELOS DOIS, ativos e aposentados, pela mesma razão de
+  // `nomesDosTemas`: `dicionarios.formatos_interacao` traz só os ativos porque
+  // alimenta filtro e formulário, mas uma agenda de 2025 aponta para o tipo com
+  // que FOI classificada. A `0060` aposentou `midia`, e sem isto cada uma
+  // daquelas agendas mostra '—' — que a tela usa para "não informado", então o
+  // dado não só desaparece: ele passa a afirmar outra coisa.
+  //
+  // `?? []` porque a chave é nova: um back anterior não a manda, e aí a
+  // resolução volta a ser só pelos ativos em vez de estourar.
+  const todos = [
+    ...catalogo.dicionarios.formatos_interacao,
+    ...(catalogo.dicionarios.formatos_interacao_inativos ?? []),
+  ];
+  return todos.find((f) => f.id === id)?.nome ?? '—';
 }
 
 export function nomeDaUnidade(catalogo: Catalogo, id: number | null): string {

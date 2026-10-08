@@ -382,6 +382,10 @@ export interface Dicionarios {
    *  `formatos` (formato de atendimento de imprensa/RI, escopado por
    *  frente) — são conceitos diferentes, com nomes parecidos. */
   formatos_interacao: ItemDeDicionario[];
+  /** Os tipos de interação APOSENTADOS, e só para resolver nome de registro
+   *  antigo — a `0060` aposentou `midia`, e as agendas classificadas com ele
+   *  continuam apontando. NÃO use como opção de filtro nem de formulário. */
+  formatos_interacao_inativos: ItemDeDicionario[];
   /** Por onde uma consulta recebida chegou. */
   canais_consulta: ItemDeDicionario[];
   /** O que a companhia apurou sobre uma alegação — tem cor, como clima. */

@@ -29,6 +29,7 @@ import {
   Vazio,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { usePainel } from '@/estado/painel';
 import type { PessoaAegea } from '@/dominio/tipos';
 
@@ -349,7 +350,13 @@ export function CadastroDePortaVozes() {
                 <LinhaDaPessoa
                   pessoa={pessoa}
                   temas={temasPorPessoa[pessoa.id] ?? []}
-                  nomeDoTema={(id) => assuntos.find((t) => t.id === id)?.nome ?? ''}
+                  // PELOS DOIS DICIONARIOS, e nao por `assuntos`, que e so os
+                  // ativos: um porta-voz classificado antes da 0058 aponta para
+                  // tema aposentado, e aqui o nome saia como STRING VAZIA — o
+                  // assunto desaparecia da ficha da pessoa sem deixar rastro.
+                  // Achado de rodar a conferencia de vocabulario aposentado
+                  // contra a base COM historico, que o teste do CI nao ve.
+                  nomeDoTema={(id) => nomeDoTemaNoCatalogo(catalogo, id)}
                   nomeDaArea={(id) =>
                     catalogo.dicionarios.areas_pessoa.find((a) => a.id === id)?.nome ?? ''
                   }
