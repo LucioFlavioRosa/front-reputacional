@@ -36,7 +36,17 @@ import {
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
+import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
 import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
+import { SeletorDeJanela } from '@/graficos/SeletorDeJanela';
+import {
+  ajustar,
+  janelaDoAtalho,
+  kpisDaJanela,
+  mesesMedidos,
+  serieDaJanela,
+} from '@/dominio/janelaDaJornada';
+import type { Janela } from '@/dominio/janelaDaJornada';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
@@ -232,7 +242,22 @@ function VisaoGeral({
   // número nenhum, só sobrepõe uma segunda curva. Guardá-la no servidor faria
   // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
   const [comparada, definirComparada] = useState<string | null>(null);
-  const jornada = jornadaDoIndice(serie, indice.mes, comparada);
+  //: A JANELA DA JORNADA, escolhida na mini linha do tempo abaixo do gráfico.
+  //: MORA AQUI, e não no componente do gráfico, porque três coisas a leem e
+  //: precisam andar juntas: a curva, os cartões ao lado e o subtítulo — que é
+  //: escrito nesta tela. Nula = os últimos 6 meses, por pedido.
+  //: Também é estado de leitura, como `comparada`: não muda número nenhum.
+  const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
+  const [mostrarPico, definirMostrarPico] = useState(true);
+  const meses = mesesMedidos(serie);
+  //: `ajustar` A CADA RENDER: a série pode crescer (um mês novo ingerido) ou
+  //: encolher, e uma janela guardada com índices de outra série sairia da borda.
+  const janela = janelaEscolhida
+    ? ajustar(janelaEscolhida, meses.length)
+    : janelaDoAtalho('6m', meses);
+  const serieRecortada = serieDaJanela(serie, janela);
+  const kpis = kpisDaJanela(serieRecortada);
+  const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparada);
   //: DUAS CONTAS, E NÃO UMA. "Medido por poucas lentes" e "fora da escala do
   //: eixo" eram ditos como se fossem a mesma coisa, e não são: um mês parcial
   //: costuma cair DENTRO do eixo, e quando não há nenhum mês completo são os
@@ -334,8 +359,19 @@ function VisaoGeral({
       <Secao
         titulo="Jornada do índice"
         subtitulo={jornada.resumo}
-        acao={
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      >
+        <Cartao>
+          {/* CARTÕES EM CIMA, EM UMA FAIXA, e o gráfico com a largura inteira
+              logo abaixo — por pedido: ao lado, os cartões roubavam do gráfico
+              justamente a largura que separa um mês do outro. Em cima eles
+              leem como o resumo do que o gráfico vai mostrar. */}
+          <CartoesDaJanela kpis={kpis} />
+          {/* "COMPARAR COM" COLADO NO GRÁFICO, por pedido — no cabeçalho da seção
+              ele ficava longe da curva que muda, e acima dos cartões, que ele
+              não muda. */}
+          <div
+            style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}
+          >
             <span className="kicker">Comparar com</span>
             <Chip
               rotulo="Só o índice"
@@ -355,18 +391,24 @@ function VisaoGeral({
                 />
               ))}
           </div>
-        }
-      >
-        <Cartao>
-          <JornadaDoIndice
-            serie={serie}
-            mes={indice.mes}
-            comparada={comparada}
-            nomeDaComparada={
-              indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
-            }
-            aoEscolherMes={aoTrocarMes}
-          />
+          <div style={{ marginTop: 12 }}>
+            <JornadaDoIndice
+              semDetalheDoMes
+              serie={serieRecortada}
+              mes={indice.mes}
+              comparada={comparada}
+              nomeDaComparada={
+                indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
+              }
+              aoEscolherMes={aoTrocarMes}
+              linhaDeReferencia={
+                mostrarPico && kpis.pico
+                  ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
+                  : null
+              }
+            />
+            <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
+          </div>
           <div
             style={{
               display: 'flex',
@@ -389,6 +431,37 @@ function VisaoGeral({
                 {rotulo}
               </span>
             ))}
+            {/* A LINHA DO PICO SE LIGA E DESLIGA AQUI, na legenda, por pedido:
+                é o único item dela que é controle, e o botão diz isso pelo
+                estado pressionado. Some quando não há pico (nenhum mês da
+                janela medido por 4 lentes). */}
+            {kpis.pico ? (
+              <button
+                type="button"
+                aria-pressed={mostrarPico}
+                onClick={() => definirMostrarPico((atual) => !atual)}
+                title={mostrarPico ? 'Esconder a linha do pico' : 'Mostrar a linha do pico'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 8px',
+                  border: '1px solid var(--borda)',
+                  borderRadius: 'var(--r-chip)',
+                  background: mostrarPico ? 'var(--branco)' : 'var(--bg-trilho)',
+                  color: mostrarPico ? 'var(--cinza-3)' : 'var(--cinza-2)',
+                  fontSize: 11.5,
+                  cursor: 'pointer',
+                  textDecoration: mostrarPico ? 'none' : 'line-through',
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{ width: 16, height: 0, borderTop: '1.5px dashed var(--laranja-baia)' }}
+                />
+                Pico da janela ({kpis.pico.valor})
+              </button>
+            ) : null}
             {mesesParciais ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span
@@ -402,13 +475,9 @@ function VisaoGeral({
                 {fraseDosParciais(mesesParciais)}
               </span>
             ) : null}
-            {/* ENSINA O GESTO, porque ele deixou de ser só o clique: o detalhe
-                do mês agora se pede apontando. Sem esta linha, quem abre a tela
-                vê uma fita de cores e não descobre que há texto atrás dela. */}
-            <span>
-              Aponte um mês para ver o que aconteceu nele; clique para abrir a
-              lente e o radial daquele mês.
-            </span>
+            {/* ENSINA O GESTO que sobrou: o cartão do mês saiu desta tela, e o
+                clique continua sendo o caminho para o detalhe de um mês. */}
+            <span>Clique num mês para abrir a lente e o radial daquele mês.</span>
           </div>
         </Cartao>
       </Secao>

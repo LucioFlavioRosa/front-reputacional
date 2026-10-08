@@ -26,14 +26,17 @@ import {
 import {
   campoDeAreaPorCategoria,
   campoDeCategoriaPublico,
+  campoDeClima,
   campoDeFormatoInteracao,
-  campoDeTema,
+  campoDeTemaN1,
+  campoDeTemaN2,
 } from '@/componentes/PainelDeFiltros';
 import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
+import { TermometroDeClima } from '@/graficos/TermometroDeClima';
 import {
   dataCompleta,
   numero,
@@ -54,9 +57,14 @@ import {
   intervalo,
   limparAreas,
   limparCategoriaPublico,
+  limparClima,
+  alternarTemaN1,
+  alternarTemaN2,
   limparFormatoInteracao,
-  limparTags,
+  limparTemasN1,
+  limparTemasN2,
 } from '@/dominio/recorte';
+import type { Recorte } from '@/dominio/recorte';
 import type { Interacao } from '@/dominio/tipos';
 import {
   categoriasDeArea,
@@ -67,8 +75,9 @@ import {
   distribuicaoPorUf,
   idsPorCategoriaDeArea,
   kpis as calcularKpis,
+  idDoTemaNoNivel,
   nomeDaInstituicao,
-  nomesDosTemas,
+  nomesDosTemasNoNivel,
   porTier,
   ranking,
   rankingDePortaVozes,
@@ -80,8 +89,9 @@ import {
   temasMaisRecorrentes,
   temasPorPortaVoz,
   topInstituicoesPorTier,
+  ROTULO_DO_NIVEL_DE_TEMA,
 } from '@/dominio/derivacoes';
-import type { Catalogo, Granularidade } from '@/dominio/derivacoes';
+import type { Catalogo, Granularidade, NivelDeTema } from '@/dominio/derivacoes';
 
 //: A MESMA PALETA usada em `temasMaisRecorrentes` — reaproveitada aqui para
 //: colorir as categorias do popup de histórico de tier/público, que não têm
@@ -245,6 +255,13 @@ export function Painel({
   //: link copiado não precisa carregar qual tema extra alguém espiou.
   const [temasExtras, definirTemasExtras] = useState<string[]>([]);
 
+  //: EM QUE NÍVEL DA TAXONOMIA cada gráfico de tema lê — N1 (pilar) primeiro,
+  //: por pedido, e quem quiser desce para N2 e N3 no seletor do cartão. Também
+  //: só da tela: é como enxergar, não o que entra na conta. "Temas no tempo"
+  //: não tem seletor: lê sempre N1, que são 7 séries e cabem lado a lado.
+  const [nivelDaDistribuicao, definirNivelDaDistribuicao] = useState<NivelDeTema>('n1');
+  const [nivelDaDivergente, definirNivelDaDivergente] = useState<NivelDeTema>('n1');
+
   //: MESMA IDEIA DE `temasExtras`, para o Termômetro por público — "mostre
   //: também esta categoria" no gráfico, não um filtro do recorte.
   const [categoriaPublicoExtras, definirCategoriaPublicoExtras] = useState<string[]>([]);
@@ -328,7 +345,16 @@ export function Painel({
       };
     });
 
-    const temas = temasMaisRecorrentes(interacoes, catalogo, 5);
+    const temas = temasMaisRecorrentes(interacoes, catalogo, 5, nivelDaDistribuicao);
+    //: "TEMAS NO TEMPO" SÓ EM N1, por pedido: os 7 pilares inteiros, e não um
+    //: Top 5 — sete séries ainda se leem lado a lado, e cortar dois pilares
+    //: esconderia justamente o que a pergunta "do que se falou" quer ver.
+    const temasN1 = temasMaisRecorrentes(
+      interacoes,
+      catalogo,
+      catalogo.dicionarios.blocos_tema?.length ?? 7,
+      'n1',
+    );
     // O GRÁFICO DE ÁRVORE quer TODOS os temas do dicionário, não só o Top 5
     // de `temas` (que continua servindo "Top 5 temas" e "Temas no tempo",
     // sem mudar) — por pedido, para o treemap mostrar a distribuição
@@ -345,6 +371,7 @@ export function Painel({
       catalogo,
       catalogo.dicionarios.temas.length +
         (catalogo.dicionarios.temas_inativos?.length ?? 0),
+      nivelDaDistribuicao,
     );
     const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
@@ -413,6 +440,7 @@ export function Painel({
       categoriasDeClima,
       temas,
       todosOsTemas,
+      temasN1,
       categoriasPublico,
       categoriasDePublico,
       volumetriaPorPublico: completarPeriodos(
@@ -437,13 +465,13 @@ export function Painel({
       porTema: completarPeriodos(
         serieMensal(
           interacoes,
-          temas,
-          (i) => nomesDosTemas(catalogo, i.temas).filter((nome) => temas.some((tema) => tema.chave === nome)),
+          temasN1,
+          (i) => nomesDosTemasNoNivel(catalogo, i.temas, 'n1'),
           granularidade,
         ),
         granularidade,
       ),
-      scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras),
+      scorePorTema: scorePorTema(interacoes, catalogo, 8, temasExtras, nivelDaDivergente),
       geo,
       // NÃO TÊM CAPITAL PARA MARCAR NO MAPA — a pessoa podia estar em
       // qualquer UF, a reunião foi por chamada. Por isso o total entra à
@@ -475,7 +503,15 @@ export function Painel({
       climaPorPublico: scorePorInstituicao(interacoes, catalogo, 5),
       topInstituicoesPorTier: topInstituicoesPorTier(interacoes, catalogo, 5),
     };
-  }, [interacoes, catalogo, temasExtras, categoriaPublicoExtras, granularidade]);
+  }, [
+    interacoes,
+    catalogo,
+    temasExtras,
+    categoriaPublicoExtras,
+    granularidade,
+    nivelDaDistribuicao,
+    nivelDaDivergente,
+  ]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   // `!catalogo` nunca é `true` aqui na prática — `derivado` só existe quando
@@ -568,6 +604,24 @@ export function Painel({
     ].map((tema) => [tema.nome, tema.nivel] as [string, string]),
   );
   const corPorNivel = new Map(NIVEIS_DE_TEMA.map((n) => [n.nivel, n.cor]));
+
+  //: O CLIQUE NUM TEMA FILTRA NO NÍVEL DELE: subtema (N3) vira `tags`, como
+  //: sempre; pilar (N1) e tema estratégico (N2) viram `temasN1`/`temasN2`,
+  //: os mesmos campos dos filtros rápidos — e por isso aparecem marcados lá.
+  const pilarDoN2 = (idN2: number) =>
+    catalogo.dicionarios.macro_temas?.find((m) => m.id === idN2)?.bloco_tema_id;
+  const alternarTemaNoNivel = (nivel: NivelDeTema, nome: string): Recorte => {
+    if (nivel === 'n3') return alternarTag(recorte, nome);
+    const id = idDoTemaNoNivel(catalogo, nivel, nome);
+    if (id == null) return recorte;
+    return nivel === 'n1' ? alternarTemaN1(recorte, id, pilarDoN2) : alternarTemaN2(recorte, id);
+  };
+  const temaAtivoNoNivel = (nivel: NivelDeTema): string | undefined => {
+    if (nivel === 'n3') return recorte.tags?.[0];
+    const id = (nivel === 'n1' ? recorte.temasN1 : recorte.temasN2)?.[0];
+    const lista = nivel === 'n1' ? catalogo.dicionarios.blocos_tema : catalogo.dicionarios.macro_temas;
+    return id == null ? undefined : lista?.find((item) => item.id === id)?.nome;
+  };
 
   return (
     // 24px entre blocos principais — degrau único de respiro entre seções distintas.
@@ -754,12 +808,20 @@ export function Painel({
           campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
           aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
         />
-        {/* QUARTO GATILHO — `campoDeTema` é o mesmo usado pela faixa da
-            Preparar agenda; só o rótulo muda aqui (era "Temas", por pedido
-            vira "Filtrar por Tema"), o campo do recorte é o mesmo (`tags`). */}
+        {/* O TEMA VIROU N3 (104 subtemas), e a faixa passou a filtrar pelos
+            dois níveis de cima, por pedido: Pilar (N1) e Tema estratégico
+            (N2). O N3 continua em "Filtro avançado". */}
         <CampoSuspenso
-          campo={{ ...campoDeTema(recorte, definirRecorte, catalogo), rotulo: 'Filtrar por Tema' }}
-          aoLimpar={() => definirRecorte(limparTags(recorte))}
+          campo={campoDeTemaN1(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparTemasN1(recorte))}
+        />
+        <CampoSuspenso
+          campo={campoDeTemaN2(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparTemasN2(recorte))}
+        />
+        <CampoSuspenso
+          campo={campoDeClima(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparClima(recorte))}
         />
       </FaixaDeFiltros>
 
@@ -891,7 +953,7 @@ export function Painel({
           (duas em cima, duas embaixo — `grade--2`, não `grade--3`: eram três
           categorias, agora são quatro), uma por categoria de área (ver
           `CATEGORIAS_DE_AREA` em `dominio/derivacoes.ts`, que já define a
-          ordem: Comunicação/Mercado de Capitais na primeira linha, Relações
+          ordem: Comunicação/Operações financeiras na primeira linha, Relações
           com Investidores/Relações Institucionais na segunda). MESMO CARTÃO
           de "Interações mais recentes" (`TabelaDeInteracoes`), só com menos
           colunas: a área já está dita no título, então Área(s) sairia
@@ -902,7 +964,7 @@ export function Painel({
           <ComFaixaDoTopo key={nome}>
             <TabelaDeInteracoes
               titulo={nome}
-              subtitulo="Últimas interações registradas nesta área, da mais recente para a mais antiga"
+              subtitulo="Interações mais recentes registradas pelas áreas"
               ajuda="As interações mais recentes desta área, com data, instituição e pauta — clique numa linha para abrir a ficha completa."
               interacoes={interacoesDaArea}
               catalogo={catalogo}
@@ -1001,9 +1063,17 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="% de Interações por Temas"
-          subtitulo="Distribuição das interações pelos temas mais discutidos no recorte"
-          ajuda="Cada retângulo é um tema, com a área proporcional ao total de interações com aquele tema no recorte — quanto maior o bloco, mais interações. A cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
-          acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />}
+          subtitulo={`Distribuição das interações por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao].toLowerCase()} no recorte`}
+          ajuda="Cada retângulo é um tema no nível escolhido — Pilar (N1), Tema estratégico (N2) ou Subtema (N3) —, com a área proporcional ao total de interações com ele no recorte. Uma interação com dois subtemas do mesmo pilar conta uma vez para o pilar. No N3, a cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
+          acao={
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <SeletorDeNivelDeTema
+                valor={nivelDaDistribuicao}
+                aoEscolher={definirNivelDaDistribuicao}
+              />
+              <BotaoDeHistorico aoClicar={() => definirHistorico('tema')} />
+            </div>
+          }
         >
           {/* GRÁFICO DE ÁRVORE (treemap), não rosca — por pedido: a área de
               cada retângulo entrega de cara "qual tema pesa mais", sem
@@ -1024,11 +1094,22 @@ export function Painel({
             <div style={{ flex: '3 1 420px', minWidth: 320 }}>
               <GraficoDeArvore
                 itens={derivado.todosOsTemas}
-                ativo={recorte.tags?.[0]}
-                aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+                ativo={temaAtivoNoNivel(nivelDaDistribuicao)}
+                aoClicar={(chave) => definirRecorte(alternarTemaNoNivel(nivelDaDistribuicao, chave))}
                 vazio="Nenhum tema registrado neste recorte."
-                corDeItem={(chave) => corPorNivel.get(nivelPorNomeDoTema.get(chave) ?? 'gerais') ?? NIVEIS_DE_TEMA[2].cor}
-                legenda={NIVEIS_DE_TEMA.map(({ cor, rotulo }) => ({ cor, rotulo }))}
+                // A COR POR CLASSIFICAÇÃO (Sensível/Estratégico/Geral) É DO
+                // N3 — é lá que `Tema.nivel` mora. Em N1/N2 cada bloco fica
+                // com a cor da posição, como no ranking ao lado.
+                corDeItem={
+                  nivelDaDistribuicao === 'n3'
+                    ? (chave) => corPorNivel.get(nivelPorNomeDoTema.get(chave) ?? 'gerais') ?? NIVEIS_DE_TEMA[2].cor
+                    : (chave) => derivado.todosOsTemas.find((t) => t.chave === chave)?.cor ?? NIVEIS_DE_TEMA[0].cor
+                }
+                legenda={
+                  nivelDaDistribuicao === 'n3'
+                    ? NIVEIS_DE_TEMA.map(({ cor, rotulo }) => ({ cor, rotulo }))
+                    : undefined
+                }
                 // MAIS ALTO que antes (era 240): com TODOS os temas em vez
                 // do Top 5, cada célula fica menor — a altura extra é o que
                 // mantém espaço pra maioria mostrar rótulo.
@@ -1037,12 +1118,12 @@ export function Painel({
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>
               <div className="kicker" style={{ marginBottom: 12 }}>
-                Top 5 temas
+                Top 5 · {ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao]}
               </div>
               <Ranking
                 itens={comEscalaDeCor(derivado.temas, ESCALA_AZUL_TOP5)}
-                ativo={recorte.tags?.[0]}
-                aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+                ativo={temaAtivoNoNivel(nivelDaDistribuicao)}
+                aoClicar={(chave) => definirRecorte(alternarTemaNoNivel(nivelDaDistribuicao, chave))}
                 vazio="Nenhum tema neste recorte."
               />
             </div>
@@ -1067,7 +1148,12 @@ export function Painel({
       {/* 5. INTERAÇÕES MAIS RECENTES — reaproveita o mesmo cartão de cima,
           agora sem filtro de área nenhum: todo o recorte, colunas completas. */}
       <ComFaixaDoTopo>
-        <TabelaDeInteracoes interacoes={interacoes} catalogo={catalogo} aoAbrirFicha={aoAbrirAgenda} />
+        <TabelaDeInteracoes
+          titulo="Detalhamento por interação"
+          interacoes={interacoes}
+          catalogo={catalogo}
+          aoAbrirFicha={aoAbrirAgenda}
+        />
       </ComFaixaDoTopo>
 
       {/* BLOCO: SÉRIES TEMPORAIS — volumetria, clima e temas compartilham o
@@ -1229,8 +1315,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="Temas no tempo"
-          subtitulo="Recorrência das pautas institucionais mais debatidas ao longo do tempo"
-          ajuda="Interações por período para os 5 temas mais recorrentes do recorte (mesmos do ranking Top 5 temas). Uma interação com mais de um tema conta em cada um deles."
+          subtitulo="Recorrência dos pilares (N1) ao longo do tempo"
+          ajuda="Interações por período em cada pilar (N1) da taxonomia de temas. Uma interação com temas de dois pilares conta em cada um deles; dois temas do mesmo pilar contam uma vez só."
         >
           <BarrasEmpilhadas
             colunas={derivado.porTema}
@@ -1238,9 +1324,9 @@ export function Painel({
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
           />
           <Legenda
-            itens={derivado.temas}
-            ativo={recorte.tags?.[0]}
-            aoClicar={(chave) => definirRecorte(alternarTag(recorte, chave))}
+            itens={derivado.temasN1}
+            ativo={temaAtivoNoNivel('n1')}
+            aoClicar={(chave) => definirRecorte(alternarTemaNoNivel('n1', chave))}
             centralizada
           />
         </Secao>
@@ -1250,8 +1336,19 @@ export function Painel({
       <ComFaixaDoTopo>
       <Secao
         titulo="Barra divergente por tema"
-        subtitulo="Desempenho comparativo de clima por pauta (do pior ao melhor placar)"
-        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        subtitulo={`Desempenho comparativo de clima por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
+        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Comece pelo Pilar (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        acao={
+          <SeletorDeNivelDeTema
+            valor={nivelDaDivergente}
+            aoEscolher={(nivel) => {
+              // OS EXTRAS SÃO NOMES DO NÍVEL ANTERIOR — um pilar escolhido em
+              // "+ Ver outro tema" não existe na lista de subtemas.
+              definirTemasExtras([]);
+              definirNivelDaDivergente(nivel);
+            }}
+          />
+        }
       >
         {temasExtras.length || temasDisponiveis.length ? (
           <div
@@ -1353,6 +1450,20 @@ export function Painel({
                   }))
                 }
               />
+
+              {/* A TEMPERATURA DO RECORTE, por pedido, embaixo do ranking: o
+                  mapa diz onde, o ranking diz quem, e o termômetro diz como
+                  foi — Negativo, Neutro e Positivo numa barra só, com o
+                  saldo. Clicar numa fatia filtra pelo clima, o mesmo campo
+                  do filtro rápido "Filtrar por Clima". */}
+              <div className="kicker" style={{ margin: '24px 0 12px' }}>
+                Termômetro de clima
+              </div>
+              <TermometroDeClima
+                fatias={derivado.categoriasDeClima}
+                ativo={recorte.clima}
+                aoClicar={(codigo) => definirRecorte(alternar(recorte, 'clima', codigo))}
+              />
             </div>
           </div>
         </Secao>
@@ -1412,6 +1523,7 @@ export function Painel({
           catalogo={catalogo}
           porTier={derivado.porTier}
           porTemas={derivado.temas}
+          nivelDosTemas={nivelDaDistribuicao}
           climaPorPublico={derivado.climaPorPublico}
           aoFechar={() => definirHistorico(null)}
         />
@@ -1433,6 +1545,7 @@ function HistoricoDoBloco({
   catalogo,
   porTier: itensDeTier,
   porTemas,
+  nivelDosTemas,
   climaPorPublico,
   aoFechar,
 }: {
@@ -1444,6 +1557,8 @@ function HistoricoDoBloco({
    *  lado dela (`derivado.temas`) — um tema em destaque num é o mesmo no
    *  outro. */
   porTemas: ReturnType<typeof temasMaisRecorrentes>;
+  /** O nível (N1/N2/N3) em que `porTemas` foi contado — o do cartão. */
+  nivelDosTemas: NivelDeTema;
   climaPorPublico: ReturnType<typeof scorePorInstituicao>;
   aoFechar: () => void;
 }) {
@@ -1470,10 +1585,12 @@ function HistoricoDoBloco({
       // três temas conta nos três, e só os temas do top 5 entram na pilha —
       // os demais ficariam ilegíveis num gráfico de 5 categorias.
       return {
-        titulo: 'Interações por temas ao longo do tempo',
+        titulo: `Interações por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDosTemas].toLowerCase()} ao longo do tempo`,
         categorias: porTemas,
         categoriasDe: (i: Interacao) =>
-          nomesDosTemas(catalogo, i.temas).filter((nome) => porTemas.some((tema) => tema.chave === nome)),
+          nomesDosTemasNoNivel(catalogo, i.temas, nivelDosTemas).filter((nome) =>
+            porTemas.some((tema) => tema.chave === nome),
+          ),
       };
     }
     const categoriasDePublico = climaPorPublico.map((item, indice) => ({
@@ -1489,7 +1606,7 @@ function HistoricoDoBloco({
         return categoriasDePublico.some((c) => c.chave === nome) ? [nome] : [];
       },
     };
-  }, [chave, itensDeTier, porTemas, climaPorPublico, catalogo]);
+  }, [chave, itensDeTier, porTemas, nivelDosTemas, climaPorPublico, catalogo]);
 
   const colunas = useMemo(
     () => completarPeriodos(serieMensal(interacoes, categorias, categoriasDe, granularidade), granularidade),
@@ -1584,6 +1701,47 @@ function SeletorDeGranularidade({
             }}
           >
             {ROTULOS_DE_GRANULARIDADE[chave]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** N1 · N2 · N3 — o nível da taxonomia que um gráfico de tema lê. Mesmo
+ *  desenho do `SeletorDeGranularidade`: são controles da mesma natureza
+ *  ("como enxergar"), e dois desenhos para isso confundiriam. */
+function SeletorDeNivelDeTema({
+  valor,
+  aoEscolher,
+}: {
+  valor: NivelDeTema;
+  aoEscolher: (nivel: NivelDeTema) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Nível do tema">
+      {(['n1', 'n2', 'n3'] as NivelDeTema[]).map((chave) => {
+        const ativo = chave === valor;
+        return (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => aoEscolher(chave)}
+            aria-pressed={ativo}
+            title={ROTULO_DO_NIVEL_DE_TEMA[chave]}
+            style={{
+              height: 26,
+              padding: '0 11px',
+              borderRadius: 'var(--r-chip)',
+              border: ativo ? '1px solid var(--azul-mar)' : '1px solid var(--borda-input)',
+              background: ativo ? 'var(--azul-mar)' : 'var(--branco)',
+              color: ativo ? 'var(--branco)' : 'var(--cinza-3)',
+              fontSize: 11.5,
+              fontWeight: ativo ? 700 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            {chave.toUpperCase()}
           </button>
         );
       })}

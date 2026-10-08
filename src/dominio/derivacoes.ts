@@ -187,6 +187,57 @@ export function nomesDosTemas(catalogo: Catalogo, ids: number[]): string[] {
   return ids.map((id) => porId.get(id)).filter((n): n is string => Boolean(n));
 }
 
+/** Os três níveis da taxonomia de temas v4: o pilar (N1, `blocos_tema`), o
+ *  tema estratégico (N2, `macro_temas`) e o tema propriamente dito (N3, os
+ *  104 de `temas`). Uma interação guarda só os N3; os de cima se derivam. */
+export type NivelDeTema = 'n1' | 'n2' | 'n3';
+
+export const ROTULO_DO_NIVEL_DE_TEMA: Record<NivelDeTema, string> = {
+  n1: 'Pilar (N1)',
+  n2: 'Tema estratégico (N2)',
+  n3: 'Subtema (N3)',
+};
+
+/** Os nomes dos temas de uma interação NO NÍVEL pedido, sem repetir: dois N3
+ *  do mesmo pilar contam UMA vez para o pilar — a interação tratou de
+ *  Governança, não "duas vezes de Governança".
+ *
+ *  Tema sem N2 (os aposentados antes da v4) não sobe de nível: ele aparece no
+ *  N3, pelo nome, e fica fora de N1/N2 — não há pilar a inventar para ele. */
+export function nomesDosTemasNoNivel(
+  catalogo: Catalogo,
+  ids: number[],
+  nivel: NivelDeTema = 'n3',
+): string[] {
+  if (nivel === 'n3') return nomesDosTemas(catalogo, ids);
+  const temas = new Map(
+    [...catalogo.dicionarios.temas, ...(catalogo.dicionarios.temas_inativos ?? [])].map(
+      (t) => [t.id, t] as const,
+    ),
+  );
+  const macros = new Map((catalogo.dicionarios.macro_temas ?? []).map((m) => [m.id, m] as const));
+  const blocos = new Map((catalogo.dicionarios.blocos_tema ?? []).map((b) => [b.id, b] as const));
+  const nomes = new Set<string>();
+  for (const id of ids) {
+    const macro = macros.get(temas.get(id)?.macro_tema_id ?? -1);
+    if (!macro) continue;
+    const nome = nivel === 'n2' ? macro.nome : blocos.get(macro.bloco_tema_id)?.nome;
+    if (nome) nomes.add(nome);
+  }
+  return [...nomes];
+}
+
+/** O id de um N1 ou N2 pelo nome — para o clique num gráfico daquele nível
+ *  virar filtro (`temasN1`/`temasN2` no recorte). */
+export function idDoTemaNoNivel(
+  catalogo: Catalogo,
+  nivel: 'n1' | 'n2',
+  nome: string,
+): number | undefined {
+  const lista = nivel === 'n1' ? catalogo.dicionarios.blocos_tema : catalogo.dicionarios.macro_temas;
+  return (lista ?? []).find((item) => item.nome === nome)?.id;
+}
+
 /** Um id só. Devolve o número como texto quando nem assim resolve — é o que a
  *  Biblioteca e os Documentos da Reunião já faziam, e vale manter: ali o id
  *  aparece sozinho numa coluna, e um branco não diria nada a quem administra.
@@ -285,10 +336,11 @@ export interface CategoriaDeArea {
 //: "Interações por áreas" (`porArea`/`climaPorArea`) — antes cada um tinha a
 //: própria lista, e podiam divergir sem ninguém perceber.
 //:
-//: "MERCADO DE CAPITAIS" É SÓ O RÓTULO — o dicionário continua chamando essa
-//: linha de "Operações Financeiras" (`codigo: 'operacoes_financeiras'`); o
-//: nome de exibição mudou por pedido, sem precisar de migration no back,
-//: mesmo padrão de `governo` → "Entidades" em `dominio/frentes.ts`.
+//: O RÓTULO É DA TELA — o dicionário chama essa linha de "Operações
+//: Financeiras" (`codigo: 'operacoes_financeiras'`). Ela foi exibida como
+//: "Mercado de Capitais" por um tempo; por pedido voltou a "Operações
+//: financeiras". Mudar o rótulo aqui não pede migration no back, mesmo padrão
+//: de `governo` → "Entidades" em `dominio/frentes.ts`.
 //: ANTES ERAM TRÊS CATEGORIAS: "Relações com Investidores" e "Operações
 //: Financeiras" viviam somadas numa só ("RI & Oper. Financeiras"); a pedido,
 //: separaram em duas fixas.
@@ -300,7 +352,7 @@ export interface CategoriaDeArea {
 //: gráficos do sistema, e repeti-la aqui confundiria as duas coisas.
 export const CATEGORIAS_DE_AREA: CategoriaDeArea[] = [
   { rotulo: 'Comunicação', nomes: ['Comunicação'], cor: '#E12379' }, // Magenta Pitaia
-  { rotulo: 'Mercado de Capitais', nomes: ['Operações Financeiras'], cor: '#FE952B' }, // Laranja Baía
+  { rotulo: 'Operações financeiras', nomes: ['Operações Financeiras'], cor: '#FE952B' }, // Laranja Baía
   {
     rotulo: 'Relações com Investidores',
     nomes: ['Relações com Investidores'],
@@ -774,11 +826,12 @@ export function temasMaisRecorrentes(
   interacoes: Interacao[],
   catalogo: Catalogo,
   quantos = 5,
+  nivel: NivelDeTema = 'n3',
 ): { chave: string; rotulo: string; cor: string; total: number }[] {
   const contagem = new Map<string, number>();
 
   for (const interacao of interacoes) {
-    for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
+    for (const nome of nomesDosTemasNoNivel(catalogo, interacao.temas, nivel)) {
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
     }
   }
@@ -896,6 +949,7 @@ export function scorePorTema(
   catalogo: Catalogo,
   quantos = 8,
   temasForcados: string[] = [],
+  nivel: NivelDeTema = 'n3',
 ): ScorePorTema {
   const contagem = new Map<
     string,
@@ -908,7 +962,7 @@ export function scorePorTema(
     // fazendo um tema parecer mais "morno" do que os dados de verdade dizem.
     if (!interacao.clima) continue;
 
-    for (const nome of nomesDosTemas(catalogo, interacao.temas)) {
+    for (const nome of nomesDosTemasNoNivel(catalogo, interacao.temas, nivel)) {
       const atual = contagem.get(nome) ?? {
         total: 0,
         positivas: 0,

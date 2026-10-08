@@ -56,7 +56,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { VB, dominioDaJornada, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
+import { VB, dominioDaJornada, escalaDoEixo, jornadaDoIndice } from '@/dominio/jornadaDoIndice';
 import { DURACAO_DA_TRANSICAO, entre, suavidade } from '@/dominio/dominioSuave';
 import type { Dominio } from '@/dominio/dominioSuave';
 import type {
@@ -137,6 +137,8 @@ export function JornadaDoIndice({
   aoEscolherMes,
   aoAprofundarNoMes,
   jornadaPronta,
+  linhaDeReferencia = null,
+  semDetalheDoMes = false,
 }: {
   serie: PontoDaSerie[];
   mes: string;
@@ -162,6 +164,15 @@ export function JornadaDoIndice({
    *  de UMA lente. Presente, ela VENCE `serie`: o desenho é o mesmo dos
    *  dois lados, só a conta de onde ele vem é que muda. */
   jornadaPronta?: Jornada;
+  /** Uma linha horizontal tracejada num valor do índice — hoje, o Pico da
+   *  janela. Nula, não aparece. Fica atrás dos pontos e não recebe o mouse: é
+   *  régua, não dado. */
+  linhaDeReferencia?: { valor: number; rotulo: string } | null;
+  /** Sem o cartão do mês embaixo da fita — o que segue o mouse. A Visão geral
+   *  do Score o tirou, por pedido: lá os cartões de KPI e o subtítulo já contam
+   *  a janela, e o cartão do mês competia com eles. A Jornada de uma lente
+   *  continua com ele. */
+  semDetalheDoMes?: boolean;
 }) {
   //: O ALVO DO EIXO, memorizado pelas duas pontas: sem isto, cada render criaria
   //: um objeto novo e o hook da transição reiniciaria a animação a cada passo do
@@ -262,6 +273,44 @@ export function JornadaDoIndice({
             vectorEffect="non-scaling-stroke"
           />
         </svg>
+
+        {/* A LINHA DO PICO, NA MESMA ESCALA DOS PONTOS: `escalaDoEixo` com o
+            eixo que está desenhado agora (inclusive no meio da transição), e
+            não um cálculo próprio — uma régua que não bate com a curva diz um
+            valor que o gráfico não mostra. */}
+        {linhaDeReferencia ? (
+          <span
+            data-linha-de-referencia={linhaDeReferencia.valor}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: `${(escalaDoEixo(eixo.piso, eixo.teto).y(linhaDeReferencia.valor) / VB.altura) * 100}%`,
+              borderTop: '1.5px dashed var(--laranja-baia)',
+              pointerEvents: 'none',
+              transition: 'top 220ms ease',
+            }}
+          >
+            <span
+              className="tabular"
+              style={{
+                position: 'absolute',
+                right: 0,
+                bottom: 2,
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: 'var(--cinza-3)',
+                background: 'rgba(255, 255, 255, 0.85)',
+                padding: '0 4px',
+                borderRadius: 3,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {linhaDeReferencia.rotulo}
+            </span>
+          </span>
+        ) : null}
 
         {/* A GUIA liga o ponto ao mês lá embaixo. É o gesto que um gráfico de
             linha precisa e que nenhum rótulo substitui: com a curva subindo, o
@@ -407,7 +456,7 @@ export function JornadaDoIndice({
           cima: aqui a altura dele muda de um mês para outro sem mover nada do
           que está acima — pôr o cartão sobre o gráfico faria a curva pular a
           cada passada do mouse. */}
-      {emFoco ? (
+      {emFoco && !semDetalheDoMes ? (
         <div
           className="jornada__margens jornada__detalhe"
           style={{

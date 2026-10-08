@@ -296,6 +296,10 @@ export interface Tema {
   /** Do mais restrito ao mais aberto. `gerais` se chamava `livre` até a
    *  migração 0022 — o código mudou junto com o rótulo. */
   nivel: 'sensivel' | 'estrategico' | 'gerais';
+  /** O tema estratégico (N2) deste tema — `dicionarios.macro_temas`. A API
+   *  manda todas as colunas do tema; `null` em tema antigo, de antes da
+   *  taxonomia v4. */
+  macro_tema_id?: number | null;
 }
 
 /** Nível 1 da taxonomia de temas v4 — Governança, Eficiência Operacional e
@@ -474,8 +478,9 @@ export interface PessoaAegea {
   /** Como se aciona a pessoa da casa para articular a agenda. */
   email: string | null;
   eh_porta_voz: boolean;
-  /** De onde esta pessoa fala. `null` em quem foi cadastrado antes de o campo
-   *  existir, ou em quem é equipe (o campo só faz sentido para porta-voz). */
+  /** A área da pessoa, porta-voz ou equipe. No cadastro de interação, quem é
+   *  da área escolhida aparece primeiro em "Pela Aegea". `null` em quem foi
+   *  cadastrado antes de o campo existir. */
   area_id: number | null;
   ativo: boolean;
   /** SOBRE O QUE ESTA PESSOA RESPONDE.

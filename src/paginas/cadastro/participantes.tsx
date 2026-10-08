@@ -8,7 +8,7 @@ import { useId } from 'react';
 
 import { Botao } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
-import { PAPEIS, PRESENCAS } from '@/paginas/cadastro/formulario';
+import { PAPEIS, PRESENCAS, opcoesDePessoasDaAegea } from '@/paginas/cadastro/formulario';
 import type {
   ParticipanteAegeaNoForm,
   ParticipanteNoForm,
@@ -27,10 +27,15 @@ import type {
 export function ListaDaAegea({
   participantes,
   pessoas,
+  areasDaInteracao = [],
+  nomeDaArea = () => '',
   aoMudar,
 }: {
   participantes: ParticipanteAegeaNoForm[];
-  pessoas: { id: string; nome: string; eh_porta_voz: boolean }[];
+  pessoas: { id: string; nome: string; eh_porta_voz: boolean; area_id?: number | null }[];
+  /** As áreas escolhidas no item 1. Quem é delas vem primeiro na lista. */
+  areasDaInteracao?: number[];
+  nomeDaArea?: (id: number) => string;
   aoMudar: (lista: ParticipanteAegeaNoForm[]) => void;
 }) {
   const trocar = (indice: number, mudanca: Partial<ParticipanteAegeaNoForm>) =>
@@ -40,7 +45,7 @@ export function ListaDaAegea({
     <>
       {participantes.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '0 0 12px' }}>
-          Acrescente quem representa a Aegea.
+          Acrescente os porta-vozes e a equipe da área que acompanha.
         </p>
       )}
 
@@ -66,11 +71,7 @@ export function ListaDaAegea({
                 papel: pessoa?.eh_porta_voz ? 'porta_voz' : 'equipe',
               });
             }}
-            opcoes={pessoas.map((pessoa) => ({
-              valor: pessoa.id,
-              rotulo: pessoa.nome,
-              detalhe: pessoa.eh_porta_voz ? 'porta-voz' : undefined,
-            }))}
+            opcoes={opcoesDePessoasDaAegea(pessoas, areasDaInteracao, nomeDaArea)}
           />
 
           <div style={{ paddingBottom: 4 }}>

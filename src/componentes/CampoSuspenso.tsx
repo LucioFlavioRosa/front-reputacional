@@ -25,6 +25,8 @@ export function CampoSuspenso({
 }) {
   const [aberto, definirAberto] = useState(false);
   const refDoContainer = useRef<HTMLDivElement>(null);
+  const destaque = campo.destaque;
+  const escolhido = campo.itens.find((item) => item.valor === campo.valorAtual)?.rotulo;
 
   const quantidadeSelecionada = campo.multiplo
     ? (campo.selecionados?.length ?? 0)
@@ -51,11 +53,21 @@ export function CampoSuspenso({
         type="button"
         onClick={() => definirAberto((v) => !v)}
         aria-expanded={aberto}
-        style={ESTILO_DO_GATILHO}
+        style={
+          destaque
+            ? { ...ESTILO_DO_GATILHO, background: destaque.fundo, color: destaque.texto }
+            : ESTILO_DO_GATILHO
+        }
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {campo.rotulo}
-          {quantidadeSelecionada ? ` · ${quantidadeSelecionada}` : ''}
+          {/* COM DESTAQUE, O NOME DO ESCOLHIDO no lugar do "· 1": a cor sozinha
+              não pode ser a única pista de qual clima está filtrado. */}
+          {destaque && escolhido
+            ? ` · ${escolhido}`
+            : quantidadeSelecionada
+              ? ` · ${quantidadeSelecionada}`
+              : ''}
         </span>
         <SetaSuspensa aberto={aberto} />
       </button>

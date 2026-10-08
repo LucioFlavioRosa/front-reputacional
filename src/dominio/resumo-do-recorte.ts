@@ -32,6 +32,19 @@ function nomesDosFormatos(ids: number[], catalogo: Catalogo | null): string[] {
   });
 }
 
+/** Os nomes dos pilares (N1) e dos temas estratégicos (N2) escolhidos. */
+function nomesDosTemasN1(ids: number[], catalogo: Catalogo | null): string[] {
+  return ids.map(
+    (id) => catalogo?.dicionarios.blocos_tema?.find((b) => b.id === id)?.nome ?? String(id),
+  );
+}
+
+function nomesDosTemasN2(ids: number[], catalogo: Catalogo | null): string[] {
+  return ids.map(
+    (id) => catalogo?.dicionarios.macro_temas?.find((m) => m.id === id)?.nome ?? String(id),
+  );
+}
+
 function nomesDasCategoriasPublico(ids: number[], catalogo: Catalogo | null): string[] {
   return ids.map((id) => {
     const categoria = catalogo?.dicionarios.categorias_publico.find((c) => c.id === id);
@@ -89,6 +102,8 @@ export function resumirRecorte(recorte: Recorte, catalogo: Catalogo | null): str
     }
   }
 
+  if (recorte.temasN1?.length) partes.push(nomesDosTemasN1(recorte.temasN1, catalogo).join(' ou '));
+  if (recorte.temasN2?.length) partes.push(nomesDosTemasN2(recorte.temasN2, catalogo).join(' ou '));
   if (recorte.tags?.length) partes.push(recorte.tags.join(' ou '));
   if (recorte.areas?.length) partes.push(nomesDasAreas(recorte.areas, catalogo).join(' ou '));
   if (recorte.q) partes.push(`“${recorte.q}”`);
@@ -152,6 +167,8 @@ export function fichasDoRecorte(
     }
   }
 
+  if (recorte.temasN1?.length) por('temasN1', nomesDosTemasN1(recorte.temasN1, catalogo).join(' ou '));
+  if (recorte.temasN2?.length) por('temasN2', nomesDosTemasN2(recorte.temasN2, catalogo).join(' ou '));
   if (recorte.tags?.length) por('tags', recorte.tags.join(' ou '));
   if (recorte.areas?.length) por('areas', nomesDasAreas(recorte.areas, catalogo).join(' ou '));
   if (recorte.formatoInteracao?.length) {
