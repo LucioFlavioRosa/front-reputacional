@@ -249,6 +249,7 @@ function VisaoGeral({
   //: Também é estado de leitura, como `comparada`: não muda número nenhum.
   const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
   const [mostrarPico, definirMostrarPico] = useState(true);
+  const [mostrarVale, definirMostrarVale] = useState(true);
   const meses = mesesMedidos(serie);
   //: `ajustar` A CADA RENDER: a série pode crescer (um mês novo ingerido) ou
   //: encolher, e uma janela guardada com índices de outra série sairia da borda.
@@ -401,11 +402,17 @@ function VisaoGeral({
                 indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
               }
               aoEscolherMes={aoTrocarMes}
-              linhaDeReferencia={
-                mostrarPico && kpis.pico
-                  ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
-                  : null
-              }
+              // MAIS ALTO QUE O PADRÃO (260px), por pedido: com os cartões em
+              // cima e o cartão do mês fora, o gráfico ganhou o espaço.
+              altura={330}
+              linhasDeReferencia={[
+                ...(mostrarPico && kpis.pico
+                  ? [{ chave: 'pico', valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}`, cor: COR_DO_PICO }]
+                  : []),
+                ...(mostrarVale && kpis.vale
+                  ? [{ chave: 'vale', valor: kpis.vale.valor, rotulo: `Vale ${kpis.vale.valor}`, cor: COR_DO_VALE, abaixo: true }]
+                  : []),
+              ]}
             />
             <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
           </div>
@@ -420,47 +427,25 @@ function VisaoGeral({
               color: 'var(--cinza-2)',
             }}
           >
-            {[
-              ['Pressiona', 'var(--erro-fg)'],
-              ['Sustenta', 'var(--turquesa-rio)'],
-              ['Misto', 'var(--cinza-2)'],
-              ['Sem fato', 'var(--borda)'],
-            ].map(([rotulo, cor]) => (
-              <span key={rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 16, height: 3, borderRadius: 2, background: cor }} />
-                {rotulo}
-              </span>
-            ))}
-            {/* A LINHA DO PICO SE LIGA E DESLIGA AQUI, na legenda, por pedido:
-                é o único item dela que é controle, e o botão diz isso pelo
-                estado pressionado. Some quando não há pico (nenhum mês da
-                janela medido por 4 lentes). */}
+            {/* AS LINHAS DE PICO E VALE SE LIGAM E DESLIGAM AQUI, na legenda, por
+                pedido. A legenda das cores da fita (Pressiona, Sustenta, Misto,
+                Sem fato) saiu, também por pedido. Cada linha some quando não há
+                mês da janela medido por 4 lentes. */}
             {kpis.pico ? (
-              <button
-                type="button"
-                aria-pressed={mostrarPico}
-                onClick={() => definirMostrarPico((atual) => !atual)}
-                title={mostrarPico ? 'Esconder a linha do pico' : 'Mostrar a linha do pico'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '2px 8px',
-                  border: '1px solid var(--borda)',
-                  borderRadius: 'var(--r-chip)',
-                  background: mostrarPico ? 'var(--branco)' : 'var(--bg-trilho)',
-                  color: mostrarPico ? 'var(--cinza-3)' : 'var(--cinza-2)',
-                  fontSize: 11.5,
-                  cursor: 'pointer',
-                  textDecoration: mostrarPico ? 'none' : 'line-through',
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{ width: 16, height: 0, borderTop: '1.5px dashed var(--laranja-baia)' }}
-                />
-                Pico da janela ({kpis.pico.valor})
-              </button>
+              <BotaoDaLinha
+                rotulo={`Pico da janela (${kpis.pico.valor})`}
+                cor={COR_DO_PICO}
+                ligada={mostrarPico}
+                aoAlternar={() => definirMostrarPico((atual) => !atual)}
+              />
+            ) : null}
+            {kpis.vale ? (
+              <BotaoDaLinha
+                rotulo={`Vale da janela (${kpis.vale.valor})`}
+                cor={COR_DO_VALE}
+                ligada={mostrarVale}
+                aoAlternar={() => definirMostrarVale((atual) => !atual)}
+              />
             ) : null}
             {mesesParciais ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -483,6 +468,49 @@ function VisaoGeral({
       </Secao>
       </ComFaixaDoTopo>
     </div>
+  );
+}
+
+//: PICO VERDE E VALE VERMELHO, por pedido — nos tons escuros de "ok" e "erro",
+//: que seguem legíveis como traço fino e como rótulo sobre as faixas de fundo.
+const COR_DO_PICO = 'var(--ok-fg)';
+const COR_DO_VALE = 'var(--erro-fg)';
+
+/** Um item da legenda que liga e desliga uma linha de referência. */
+function BotaoDaLinha({
+  rotulo,
+  cor,
+  ligada,
+  aoAlternar,
+}: {
+  rotulo: string;
+  cor: string;
+  ligada: boolean;
+  aoAlternar: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={ligada}
+      onClick={aoAlternar}
+      title={ligada ? 'Esconder a linha' : 'Mostrar a linha'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '2px 8px',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-chip)',
+        background: ligada ? 'var(--branco)' : 'var(--bg-trilho)',
+        color: ligada ? 'var(--cinza-3)' : 'var(--cinza-2)',
+        fontSize: 11.5,
+        cursor: 'pointer',
+        textDecoration: ligada ? 'none' : 'line-through',
+      }}
+    >
+      <span aria-hidden style={{ width: 16, height: 0, borderTop: `1.5px dashed ${cor}` }} />
+      {rotulo}
+    </button>
   );
 }
 

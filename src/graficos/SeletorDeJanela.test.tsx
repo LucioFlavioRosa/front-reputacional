@@ -90,18 +90,29 @@ describe('CartoesDaJanela', () => {
 });
 
 describe('JornadaDoIndice com linha de referência', () => {
-  it('desenha a linha do pico quando pedida, e some quando não', () => {
+  it('desenha as linhas de pico (verde) e vale (vermelho) quando pedidas, e some sem elas', () => {
     const { container, rerender } = render(
       <JornadaDoIndice
         serie={MESES}
         mes="2026-08"
         comparada={null}
         aoEscolherMes={() => {}}
-        linhaDeReferencia={{ valor: 67, rotulo: 'Pico 67' }}
+        altura={330}
+        linhasDeReferencia={[
+          { chave: 'pico', valor: 67, rotulo: 'Pico 67', cor: 'var(--ok-fg)' },
+          { chave: 'vale', valor: 60, rotulo: 'Vale 60', cor: 'var(--erro-fg)', abaixo: true },
+        ]}
       />,
     );
-    expect(container.querySelector('[data-linha-de-referencia="67"]')).toBeTruthy();
+    const pico = container.querySelector<HTMLElement>('[data-linha-de-referencia="pico"]')!;
+    const vale = container.querySelector<HTMLElement>('[data-linha-de-referencia="vale"]')!;
+    expect(pico.style.borderTop).toContain('var(--ok-fg)');
+    expect(vale.style.borderTop).toContain('var(--erro-fg)');
     expect(screen.getByText('Pico 67')).toBeTruthy();
+    expect(screen.getByText('Vale 60')).toBeTruthy();
+    // O vale fica mais embaixo que o pico.
+    expect(parseFloat(vale.style.top)).toBeGreaterThan(parseFloat(pico.style.top));
+    expect((container.querySelector('.jornada') as HTMLElement).style.getPropertyValue('--jornada-altura')).toBe('330px');
     rerender(<JornadaDoIndice serie={MESES} mes="2026-08" comparada={null} aoEscolherMes={() => {}} />);
     expect(container.querySelector('[data-linha-de-referencia]')).toBeNull();
   });
