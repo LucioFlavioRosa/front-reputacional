@@ -400,6 +400,18 @@ export interface Dicionarios {
   areas_pessoa: ItemDeDicionario[];
   unidades_negocio: UnidadeDeNegocio[];
   temas: Tema[];
+  /** Os temas DESATIVADOS, e só para resolver nome de registro antigo.
+   *
+   *  `temas` acima é o que o filtro e o formulário oferecem — ninguém
+   *  classifica nada de novo com um tema aposentado. Mas uma agenda de 2025
+   *  aponta para o tema com que FOI classificada, e a `0058` desativou 45 de
+   *  uma vez ao trocar a taxonomia pela v4. Sem esta lista o nome não resolvia
+   *  e o campo aparecia vazio, como se a agenda nunca tivesse tido tema.
+   *
+   *  NÃO use isto para montar opção de filtro nem de formulário. Para resolver
+   *  nome, use `nomesDosTemas`/`nomeDoTema` de `derivacoes.ts`, que já juntam
+   *  as duas listas. */
+  temas_inativos: Tema[];
   /** Os 7 pilares da taxonomia v4. Ver `migrations/0058`. */
   blocos_tema: BlocoTema[];
   /** Os 41 temas estratégicos, cada um preso a um pilar. */

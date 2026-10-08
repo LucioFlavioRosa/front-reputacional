@@ -38,6 +38,7 @@ import {
   urlDaVersao,
 } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
+import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import type { Referencia, VersaoDaReferencia } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
@@ -185,8 +186,10 @@ export function Biblioteca() {
 
   if (!catalogo) return null;
 
-  const nomeDoTema = (id: number) =>
-    catalogo.dicionarios.temas.find((t) => t.id === id)?.nome ?? String(id);
+  // Pela função do domínio, que junta os temas ativos e os aposentados. A busca
+  // só em `dicionarios.temas` mostrava o ID CRU para todo tema desativado — e a
+  // `0058` desativou 45 de uma vez. Ver `nomeDoTema` em `derivacoes.ts`.
+  const nomeDoTema = (id: number) => nomeDoTemaNoCatalogo(catalogo, id);
 
   //: O QUE FALTA PARA PODER GRAVAR. O Conteúdo entra na conta porque a rota o
   //: exige agora; o Arquivo saiu de cá — a versão pode nascer só do texto.
