@@ -473,8 +473,19 @@ function ListaDasLentes({
               >
                 {lente.score ?? '—'}
               </span>
-              <span style={{ fontSize: 11, color: corDoDelta(lente.delta) }}>
-                {fora ? 'fora do mês' : comoDelta(lente.delta)}
+              {/* O QUE O NÚMERO É, ESCRITO ANTES DELE, por pedido: sozinho, o
+                  "−20" não dizia contra o quê. */}
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+                {fora ? (
+                  'fora do mês'
+                ) : (
+                  <>
+                    Comparação com mês anterior:{' '}
+                    <strong style={{ color: corDoDelta(lente.delta), fontWeight: 700 }}>
+                      {comoDelta(lente.delta)}
+                    </strong>
+                  </>
+                )}
               </span>
             </div>
 
