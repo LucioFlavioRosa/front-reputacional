@@ -1105,8 +1105,9 @@ function Metodologia() {
               com o selo <em>estimado</em> na lente.
             </li>
             <li>
-              <strong>Mercado é proxy</strong> — a imprensa econômica de Tier 1 — até integrar
-              rating e spread de debêntures.
+              <strong>Mercado é proxy</strong> — a imprensa econômica (matérias para
+              investidores), de todos os tiers, cada matéria ponderada pelo tier — até
+              integrar rating e spread de debêntures.
             </li>
             <li>
               <strong>Pendentes:</strong> share of voice de pares, Reclame Aqui,
