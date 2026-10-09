@@ -473,20 +473,9 @@ function ListaDasLentes({
               >
                 {lente.score ?? '—'}
               </span>
-              {/* O QUE O NÚMERO É, ESCRITO ANTES DELE, por pedido: sozinho, o
-                  "−20" não dizia contra o quê. */}
-              <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
-                {fora ? (
-                  'fora do mês'
-                ) : (
-                  <>
-                    Comparação com mês anterior:{' '}
-                    <strong style={{ color: corDoDelta(lente.delta), fontWeight: 700 }}>
-                      {comoDelta(lente.delta)}
-                    </strong>
-                  </>
-                )}
-              </span>
+              {fora ? (
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)' }}>fora do mês</span>
+              ) : null}
             </div>
 
             {descricao ? (
@@ -509,6 +498,19 @@ function ListaDasLentes({
                   {descricao.fonteUtilizada}
                 </span>
               </div>
+            ) : null}
+            {/* A VARIAÇÃO NA ÚLTIMA LINHA DO CARTÃO, por pedido, com o que ela é
+                escrito antes: embaixo da nota, espremida na coluna da direita,
+                ficava ruim de ler. */}
+            {!fora ? (
+              <span style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                <strong style={{ fontWeight: 700, color: 'var(--cinza-3)' }}>
+                  Comparação com mês anterior:
+                </strong>{' '}
+                <strong style={{ color: corDoDelta(lente.delta), fontWeight: 700 }}>
+                  {comoDelta(lente.delta)}
+                </strong>
+              </span>
             ) : null}
           </div>
         );
