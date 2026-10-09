@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/cliente';
 import type { TemaCadastrado } from '@/api/cliente';
 import type { BlocoTema, MacroTema, Risco, RiskCluster } from '@/dominio/tipos';
+import { ImportarSubtemas } from '@/paginas/taxonomia/ImportarSubtemas';
 import {
   Botao,
   Campo,
@@ -536,7 +537,15 @@ export function CadastroDeAssuntos() {
         </Cartao>
       </Secao>
 
-      <Secao titulo={`Cadastrados (${temas.length})`}>
+      <Secao
+        titulo={`Cadastrados (${temas.length})`}
+        /* O BOTAO FICA AQUI, e nao na secao de cadastrar: a planilha nao
+           cadastra UM assunto, ela revisa a LISTA. Posto junto do formulario,
+           ele pareceria um segundo jeito de criar um tema. */
+        acao={
+          <ImportarSubtemas macros={macros} riscos={riscos} aoAplicar={() => void carregar()} />
+        }
+      >
         <Cartao>
           <input
             style={{ ...estiloDeEntrada, marginBottom: 14 }}

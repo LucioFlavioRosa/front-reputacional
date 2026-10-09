@@ -1288,3 +1288,114 @@ export async function confirmarImportacao(id: string): Promise<ConfirmacaoDaImpo
 export async function cancelarImportacao(id: string): Promise<Importacao> {
   return requisitar<Importacao>(`/api/importacoes/${id}/cancelamento`, { method: 'POST' });
 }
+
+// ===========================================================================
+// A REVISÃO DA TAXONOMIA DE SUBTEMAS PELA PLANILHA
+// ===========================================================================
+//
+// TRÊS CHAMADAS, e não as dez da importação de agendas. Lá o rascunho vive no
+// banco (`importacao_linha`) e a pessoa trabalha nele por dias, com rota para
+// resolver divergência, corrigir linha, cancelar e retomar. Aqui nada é
+// gravado entre conferir e confirmar: a pessoa corrige a PLANILHA e sobe de
+// novo, então não há o que cancelar — fechar o modal já é o cancelamento.
+//
+// O PREÇO DISSO É A `impressao`, e ela não é detalhe de implementação que o
+// front possa ignorar: é o que a conferência devolve e a confirmação exige de
+// volta. Sem ela o servidor recusa, porque entre os dois passos alguém pode ter
+// editado um subtema pelo próprio Cadastro de Assuntos — e aí a pessoa teria
+// aprovado uma mudança e aplicado outra.
+
+/** O que a importação faria com uma linha da planilha. */
+export type DecisaoDeSubtema = 'novo' | 'igual' | 'altera' | 'recusada';
+
+/** Por que uma linha foi recusada, na coluna em que a pessoa pode consertar. */
+export interface DivergenciaDeSubtema {
+  coluna: string;
+  valor: string;
+  motivo: string;
+}
+
+/** O estado de um subtema, como o servidor o compara.
+ *
+ *  SÃO IDS E NÃO NOMES, porque é o que o banco guarda — a tela resolve os
+ *  nomes pelo catálogo que ela já tem em mão. Pedir nomes aqui faria o servidor
+ *  repetir, em 149 linhas, o dicionário que a tela carrega uma vez.
+ */
+export interface EstadoDoSubtema {
+  macro_tema_id: number | null;
+  camada_lso: string | null;
+  e_risco: boolean | null;
+  riscos: number[];
+}
+
+export interface PropostaDeSubtema {
+  /** A linha na PLANILHA, para a pessoa achar a célula — não a ordem na lista. */
+  linha: number;
+  nome: string;
+  decisao: DecisaoDeSubtema;
+  /** Preenchidos só em `altera`: é o que permite mostrar o que muda. */
+  antes: EstadoDoSubtema | null;
+  depois: EstadoDoSubtema | null;
+  divergencias: DivergenciaDeSubtema[];
+}
+
+export interface ConferenciaDeSubtemas {
+  /** Uma chave por decisão, sempre as quatro — zero inclusive. */
+  totais: Record<DecisaoDeSubtema, number>;
+  propostas: PropostaDeSubtema[];
+  /** Devolver isto na confirmação é o que prova que se aplica o que foi visto. */
+  impressao: string;
+}
+
+export interface ConfirmacaoDeSubtemas {
+  criados: number;
+  alterados: number;
+  iguais: number;
+  recusadas: number;
+}
+
+/** Baixa a taxonomia atual num `.xlsx`, pronta para editar.
+ *
+ *  O ARQUIVO VEM PREENCHIDO com os subtemas de hoje, e é isso que o torna útil:
+ *  o trabalho não é cadastrar 149 subtemas, é mexer em três. Um modelo vazio
+ *  obrigaria a redigitar 146 linhas certas.
+ */
+export async function baixarModeloDeSubtemas(): Promise<Blob> {
+  return requisitar<Blob>(
+    '/api/taxonomia/subtemas/modelo',
+    { method: 'GET' },
+    { comoBlob: true },
+  );
+}
+
+/** Sobe a planilha e recebe o que mudaria. NADA É GRAVADO. */
+export async function conferirPlanilhaDeSubtemas(
+  arquivo: File,
+): Promise<ConferenciaDeSubtemas> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ConferenciaDeSubtemas>('/api/taxonomia/subtemas/conferencia', {
+    method: 'POST',
+    body: corpo,
+  });
+}
+
+/** Aplica o que foi conferido — tudo, ou nada.
+ *
+ *  O ARQUIVO VAI DE NOVO, e não é desperdício: o servidor relê e reconfere
+ *  contra o banco daquele instante. Mandar só a `impressao` exigiria guardar as
+ *  propostas em algum lugar, que é exatamente a tabela de rascunho que este
+ *  desenho dispensa.
+ */
+export async function confirmarPlanilhaDeSubtemas(
+  arquivo: File,
+  impressao: string,
+): Promise<ConfirmacaoDeSubtemas> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  corpo.append('impressao', impressao);
+  return requisitar<ConfirmacaoDeSubtemas>('/api/taxonomia/subtemas/confirmacao', {
+    method: 'POST',
+    body: corpo,
+  });
+}
