@@ -942,6 +942,8 @@ export interface FiltroDaLente {
   tema_n1?: string;
   tema_n2?: string;
   tema_n3?: string;
+  /** O sentimento da menção: `pos`, `neu` ou `neg`. */
+  sentimento?: string;
 }
 
 /** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
@@ -966,6 +968,8 @@ export interface OpcoesDeFiltroDaLente {
   temas_n1?: string[];
   temas_n2?: string[];
   temas_n3?: string[];
+  /** Os sentimentos do mês (pos/neu/neg). Opcional: um back anterior não o manda. */
+  sentimentos?: string[];
 }
 
 /** Um degrau do caminho até um recorte. */
