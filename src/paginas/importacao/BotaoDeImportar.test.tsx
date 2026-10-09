@@ -50,7 +50,7 @@ describe('BotaoDeImportar', () => {
     // Cada um diz para quem serve: só o nome faria a pessoa escolher pelo que soa
     // mais seguro, que é sempre o primeiro.
     expect(screen.getByText(/74 colunas/)).toBeTruthy();
-    expect(screen.getByText(/22 colunas/)).toBeTruthy();
+    expect(screen.getByText(/37 colunas/)).toBeTruthy();
   });
 
   it('não aparece para quem não administra cadastros', () => {

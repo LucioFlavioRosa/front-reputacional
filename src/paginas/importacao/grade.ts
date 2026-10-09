@@ -1,7 +1,7 @@
 /** A cor de cada célula da grade de conferência.
  *
  *  O PEDIDO DO DONO DO PRODUTO: "as colunas e linhas devem ter um destaque de cor
- *  quando está faltando informação". A cor é o que faz 500 linhas por 22 colunas
+ *  quando está faltando informação". A cor é o que faz 500 linhas por 37 colunas
  *  serem conferíveis — sem ela, a pessoa lê onze mil células procurando o que
  *  falta, e é aí que ela para de conferir e passa a clicar em confirmar.
  *
@@ -37,7 +37,7 @@ export function corDaCelula(linha: LinhaDaImportacao, coluna: string): Cor {
 
 /** Se a linha inteira deve se destacar.
  *
- *  O PEDIDO FALA DE LINHAS E DE COLUNAS, e com 22 colunas a célula vermelha pode
+ *  O PEDIDO FALA DE LINHAS E DE COLUNAS, e com 37 colunas a célula vermelha pode
  *  estar fora da tela: o destaque na linha é o que faz a pessoa rolar até ela.
  *
  *  OLHA TODAS AS DIVERGÊNCIAS, e não só as que apontam coluna — foi um achado da

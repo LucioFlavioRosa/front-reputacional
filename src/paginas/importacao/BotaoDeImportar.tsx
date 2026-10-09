@@ -45,8 +45,8 @@ const MODELOS: {
   {
     chave: 'simplificado',
     titulo: 'Simplificado',
-    para: 'O evento com muitas conversas curtas — 54 agendas no mesmo dia. Três temas por agenda, sem os campos de aceite, expectativa e materiais.',
-    colunas: '22 colunas',
+    para: 'O evento com muitas conversas curtas — 54 agendas no mesmo dia. Mesmos 18 temas do completo, sem os campos de aceite, expectativa e materiais.',
+    colunas: '37 colunas',
   },
 ];
 

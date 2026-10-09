@@ -1,7 +1,7 @@
 /** A cor de cada célula da grade, e o que a grade mostra.
  *
  *  O PEDIDO: "as colunas e linhas devem ter um destaque de cor quando está
- *  faltando informação". A cor é a única coisa que faz 500 linhas por 22 colunas
+ *  faltando informação". A cor é a única coisa que faz 500 linhas por 37 colunas
  *  serem conferíveis: sem ela a pessoa lê 11.000 células procurando o que falta.
  */
 
@@ -69,7 +69,7 @@ describe('corDaCelula', () => {
 
 describe('linhaTemPendencia', () => {
   it('a linha inteira se destaca quando alguma célula trava', () => {
-    // O PEDIDO FALA DE LINHAS E DE COLUNAS: com 22 colunas, a célula vermelha pode
+    // O PEDIDO FALA DE LINHAS E DE COLUNAS: com 37 colunas, a célula vermelha pode
     // estar fora da tela. O destaque na linha é o que faz a pessoa rolar até ela.
     expect(linhaTemPendencia(linha([divergencia()]))).toBe(true);
   });
