@@ -4,14 +4,15 @@
  *
  *  O CRITÉRIO MUDOU DE LUGAR: a lente Mercado se separava por uma coluna do
  *  fornecedor (`Público-alvo = Investidores`) e passou a se separar pela
- *  subcategoria de público do cadastro. Esta tela é o único jeito de manter a
+ *  subcategoria de público do cadastro. Esta aba é o único jeito de manter a
  *  lista, então o que ela erra ninguém corrige — a conta do mês sai errada e
  *  parece mês ruim.
  *
- *  OS TRÊS ERROS QUE OS TESTES PEGAM: salvar a lista errada (manda os ids de
- *  quem está marcado, e não a página visível), deixar marcar quem o servidor
- *  não vai aceitar (veículo já classificado em outra subcategoria) e perder a
- *  edição em silêncio (sem dizer que há alteração sem salvar).
+ *  A ABA É SÓ DO MERCADO FINANCEIRO: ela mostra a lista, e não os 2.670
+ *  veículos do cadastro. Acrescentar é um gesto à parte, e tem de servir aos
+ *  dois casos — o veículo que já está no cadastro compartilhado e o que ainda
+ *  não está (dos 81 da planilha, 9 existiam antes da primeira carga da Clipei
+ *  e 72 nasceram dela).
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -23,9 +24,10 @@ import type { Instituicao } from '@/dominio/tipos';
 
 vi.mock('@/api/cliente', () => ({
   definirVeiculosDeInvestidores: vi.fn(),
+  criarInstituicao: vi.fn(),
 }));
 
-const { definirVeiculosDeInvestidores } = await import('@/api/cliente');
+const { criarInstituicao, definirVeiculosDeInvestidores } = await import('@/api/cliente');
 
 //: A IMPRENSA É A CATEGORIA 4 e o Mercado a SUBCATEGORIA 12 nesta fixture —
 //: números quaisquer, de propósito: o componente tem de achá-los pelo NOME, e
@@ -65,7 +67,10 @@ const DICIONARIOS = {
       categoria_publico_id: IMPRENSA,
     },
   ],
-  ufs: [],
+  ufs: [
+    { codigo: 'SP', nome: 'São Paulo' },
+    { codigo: 'NA', nome: 'Nacional' },
+  ],
 };
 
 function veiculo(
@@ -78,7 +83,7 @@ function veiculo(
     nome,
     tipo,
     nome_completo: null,
-    uf: 'São Paulo',
+    uf: 'SP',
     esfera_id: null,
     tier: null,
     categoria_publico_id: tipo === 'veiculo' ? IMPRENSA : null,
@@ -87,19 +92,16 @@ function veiculo(
   };
 }
 
-let catalogoAtual: {
-  instituicoes: Map<string, Instituicao>;
-  dicionarios: typeof DICIONARIOS;
-} | null = null;
+let catalogoAtual: ReturnType<typeof catalogoCom> | null = null;
 
-function catalogoCom(instituicoes: Instituicao[]) {
+function catalogoCom(instituicoes: Instituicao[], dicionarios = DICIONARIOS) {
   return {
     instituicoes: new Map(instituicoes.map((i) => [i.id, i])),
     interlocutores: new Map(),
     pessoas: new Map(),
     referencias: [],
     alegacoes: [],
-    dicionarios: DICIONARIOS,
+    dicionarios,
   };
 }
 
@@ -123,6 +125,7 @@ const CADASTRO = [
   veiculo('Valor Econômico', MERCADO),
   veiculo('InfoMoney', MERCADO),
   veiculo('Folha de S.Paulo'),
+  veiculo('Estadão'),
   veiculo('Jornal do Bairro', 13),
   veiculo('Ministério das Cidades', null, 'orgao'),
 ];
@@ -134,29 +137,23 @@ beforeEach(() => {
     marcados: 0,
     desmarcados: 0,
   });
+  vi.mocked(criarInstituicao).mockResolvedValue({} as Instituicao);
 });
 
+/** Os nomes que a lista mostra. */
+function naTela(): string[] {
+  return screen
+    .getAllByRole('listitem')
+    .map((l) => l.textContent ?? '')
+    .map((t) => t.replace(/SP|—|Remover|Desfazer|sai ao salvar|entra ao salvar/g, '').trim());
+}
+
 describe('VeiculosDeInvestidores', () => {
-  it('ABRE MOSTRANDO SÓ A LISTA: são 81 contra 2.670 veículos', () => {
+  it('MOSTRA SÓ OS DA LENTE MERCADO: a aba é sobre eles, não sobre o cadastro', () => {
     render(<VeiculosDeInvestidores />);
 
     expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
-    expect(screen.getByLabelText('Valor Econômico conta na lente Mercado')).toBeTruthy();
-    // A Folha está cadastrada e NÃO está na lista: não aparece até a pessoa
-    // pedir para ver todos.
-    expect(screen.queryByLabelText('Folha de S.Paulo conta na lente Mercado')).toBeNull();
-  });
-
-  it('não oferece quem não é veículo: a lente lê menção, e menção vem de veículo', async () => {
-    const pessoa = userEvent.setup();
-    render(<VeiculosDeInvestidores />);
-
-    await pessoa.click(screen.getByLabelText('Mostrar só os da lista'));
-
-    expect(screen.getByLabelText('Folha de S.Paulo conta na lente Mercado')).toBeTruthy();
-    expect(
-      screen.queryByLabelText('Ministério das Cidades conta na lente Mercado'),
-    ).toBeNull();
+    expect(naTela()).toEqual(['InfoMoney', 'Valor Econômico']);
   });
 
   it('A SUBCATEGORIA É ACHADA PELO PAR (categoria, subcategoria)', () => {
@@ -168,58 +165,138 @@ describe('VeiculosDeInvestidores', () => {
     expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
   });
 
-  it('salva a lista INTEIRA, e não a página visível', async () => {
+  it('REMOVER RISCA A LINHA e dá como desfazer — tirar o errado de 81 é fácil', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('InfoMoney conta na lente Mercado'));
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+
+    expect(screen.getByText('sai ao salvar')).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(1\)/)).toBeTruthy();
+    // A LINHA CONTINUA EM TELA: quem remove e vê o nome desaparecer não tem
+    // como saber qual removeu.
+    expect(naTela()).toEqual(['InfoMoney', 'Valor Econômico']);
+
+    await pessoa.click(screen.getByText('Desfazer'));
+    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
+  });
+
+  it('salva a lista INTEIRA, e não só o que mudou', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
     await pessoa.click(screen.getByText(/Salvar a lista/));
 
     await waitFor(() => expect(definirVeiculosDeInvestidores).toHaveBeenCalledTimes(1));
-    // DESMARCAR O INFOMONEY manda a lista SEM ele — é o que a rota declarativa
-    // entende por "saiu". Mandar só o que mudou apagaria os outros 80.
+    // A lista sai SEM o InfoMoney — é o que a rota declarativa entende por
+    // "saiu". Mandar só o que mudou apagaria os outros 80.
     expect(vi.mocked(definirVeiculosDeInvestidores).mock.calls[0][0]).toEqual([
       'id-Valor Econômico',
     ]);
   });
 
-  it('acrescentar um veículo manda o id dele junto', async () => {
+  it('ACRESCENTAR acha no cadastro compartilhado quem está fora da lista', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('Mostrar só os da lista'));
-    await pessoa.click(screen.getByLabelText('Folha de S.Paulo conta na lente Mercado'));
-    await pessoa.click(screen.getByText(/Salvar a lista/));
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'estadao');
 
-    await waitFor(() => expect(definirVeiculosDeInvestidores).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(definirVeiculosDeInvestidores).mock.calls[0][0]).toEqual([
-      'id-Folha de S.Paulo',
-      'id-InfoMoney',
-      'id-Valor Econômico',
-    ]);
+    // SEM ACENTO E SEM CAIXA: quem digita "estadao" tem de achar "Estadão".
+    await pessoa.click(screen.getByText('Acrescentar'));
+
+    expect(screen.getByText('acrescentado')).toBeTruthy();
+    await pessoa.click(screen.getByText('Concluir'));
+    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
+    expect(screen.getByText('entra ao salvar')).toBeTruthy();
   });
 
-  it('NÃO DEIXA MARCAR quem já tem outra subcategoria — o servidor não sobrescreve', async () => {
+  it('a busca do acrescentar NÃO oferece quem já está na lista', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('Mostrar só os da lista'));
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'infomoney');
 
-    const caixa = screen.getByLabelText(
-      'Jornal do Bairro conta na lente Mercado',
-    ) as HTMLInputElement;
-    expect(caixa.disabled).toBe(true);
-    expect(screen.getByText('já classificado em outra subcategoria')).toBeTruthy();
+    expect(screen.getByText(/Nenhum veículo com esse nome fora da lista/)).toBeTruthy();
+  });
+
+  it('não oferece quem não é veículo: a lente lê menção, e menção vem de veículo', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Ministério');
+
+    expect(screen.getByText(/Nenhum veículo com esse nome fora da lista/)).toBeTruthy();
+  });
+
+  it('CADASTRA O QUE NÃO EXISTE já como imprensa econômica', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Expert XP');
+    await pessoa.selectOptions(screen.getByLabelText('Abrangência'), 'NA');
+    await pessoa.click(screen.getByText(/Cadastrar "Expert XP" como veículo/));
+
+    await waitFor(() => expect(criarInstituicao).toHaveBeenCalledTimes(1));
+    // JÁ COM A SUBCATEGORIA DO MERCADO: foi isto que a pessoa pediu ao
+    // cadastrar um veículo AQUI. Nascer sem ela obrigaria a marcar depois.
+    expect(vi.mocked(criarInstituicao).mock.calls[0][0]).toEqual({
+      nome: 'Expert XP',
+      tipo: 'veiculo',
+      uf: 'NA',
+      categoria_publico_id: IMPRENSA,
+      subcategoria_publico_id: MERCADO,
+    });
+  });
+
+  it('o veículo pode nascer SEM abrangência', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Times Brasil');
+    await pessoa.click(screen.getByText(/Cadastrar "Times Brasil" como veículo/));
+
+    await waitFor(() => expect(criarInstituicao).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(criarInstituicao).mock.calls[0][0]).toMatchObject({ uf: null });
+  });
+
+  it('NÃO OFERECE CADASTRAR o nome que já existe — o índice único recusaria', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Estadão');
+
+    expect(screen.queryByText(/Cadastrar "Estadão" como veículo/)).toBeNull();
+    expect(screen.getByText('Acrescentar')).toBeTruthy();
+  });
+
+  it('a recusa do cadastro aparece na janela', async () => {
+    vi.mocked(criarInstituicao).mockRejectedValue(
+      new Error('Já existe uma instituição com esse nome.'),
+    );
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Expert XP');
+    await pessoa.click(screen.getByText(/Cadastrar "Expert XP" como veículo/));
+
+    await waitFor(() => expect(screen.getByText(/Já existe uma instituição/)).toBeTruthy());
   });
 
   it('DIZ QUE HÁ ALTERAÇÃO SEM SALVAR, e o botão só liga quando há', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    const botao = screen.getByText(/Salvar a lista/).closest('button');
-    expect(botao?.disabled).toBe(true);
+    expect(screen.getByText(/Salvar a lista/).closest('button')?.disabled).toBe(true);
 
-    await pessoa.click(screen.getByLabelText('InfoMoney conta na lente Mercado'));
+    await pessoa.click(screen.getAllByText('Remover')[0]);
 
     expect(screen.getByText('1 alteração sem salvar')).toBeTruthy();
     expect(screen.getByText(/Salvar a lista/).closest('button')?.disabled).toBe(false);
@@ -229,7 +306,7 @@ describe('VeiculosDeInvestidores', () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('InfoMoney conta na lente Mercado'));
+    await pessoa.click(screen.getAllByText('Remover')[0]);
     await pessoa.click(screen.getByText('Descartar'));
 
     expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
@@ -244,12 +321,10 @@ describe('VeiculosDeInvestidores', () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('InfoMoney conta na lente Mercado'));
+    await pessoa.click(screen.getAllByText('Remover')[0]);
     await pessoa.click(screen.getByText(/Salvar a lista/));
 
-    await waitFor(() =>
-      expect(screen.getByText('3 entraram, 1 saíram.')).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText('3 entraram, 1 saíram.')).toBeTruthy());
   });
 
   it('a recusa do servidor aparece, e a edição NÃO é descartada', async () => {
@@ -259,7 +334,7 @@ describe('VeiculosDeInvestidores', () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('InfoMoney conta na lente Mercado'));
+    await pessoa.click(screen.getAllByText('Remover')[0]);
     await pessoa.click(screen.getByText(/Salvar a lista/));
 
     await waitFor(() => expect(screen.getByText(/não está cadastrada/)).toBeTruthy());
@@ -268,27 +343,23 @@ describe('VeiculosDeInvestidores', () => {
     expect(screen.getByText('1 alteração sem salvar')).toBeTruthy();
   });
 
-  it('a busca procura no cadastro inteiro, e não só na lista', async () => {
+  it('a busca filtra DENTRO da lista', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
 
-    await pessoa.click(screen.getByLabelText('Mostrar só os da lista'));
-    await pessoa.type(screen.getByLabelText('Buscar um veículo'), 'folha');
+    await pessoa.type(screen.getByLabelText('Buscar nesta lista'), 'valor');
 
-    expect(screen.getByLabelText('Folha de S.Paulo conta na lente Mercado')).toBeTruthy();
-    expect(screen.queryByLabelText('InfoMoney conta na lente Mercado')).toBeNull();
+    expect(naTela()).toEqual(['Valor Econômico']);
+    expect(screen.getByText('1 de 2')).toBeTruthy();
   });
 
   it('SEM A SUBCATEGORIA CADASTRADA, a tela diz o que falta em vez de mostrar lista vazia', () => {
-    catalogoAtual = {
-      instituicoes: new Map(CADASTRO.map((i) => [i.id, i])),
-      dicionarios: {
-        ...DICIONARIOS,
-        subcategorias_publico: DICIONARIOS.subcategorias_publico.filter(
-          (s) => s.id !== MERCADO,
-        ),
-      },
-    };
+    catalogoAtual = catalogoCom(CADASTRO, {
+      ...DICIONARIOS,
+      subcategorias_publico: DICIONARIOS.subcategorias_publico.filter(
+        (s) => s.id !== MERCADO,
+      ),
+    });
 
     render(<VeiculosDeInvestidores />);
 
