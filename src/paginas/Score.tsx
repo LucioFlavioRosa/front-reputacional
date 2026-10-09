@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   obterDriversDoScore,
@@ -24,6 +25,8 @@ import {
   obterScore,
   obterSerieDoScore,
 } from '@/api/cliente';
+import type { FiltroDaLente } from '@/api/cliente';
+import { BuscaDoRadar } from '@/paginas/score/BuscaDoRadar';
 import {
   Carregando,
   Cartao,
@@ -33,7 +36,8 @@ import {
   Secao,
   Vazio,
 } from '@/componentes/basicos';
-import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { SeletorDeMes } from '@/componentes/SeletorDeMes';
+import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
@@ -83,6 +87,19 @@ export function Score({
 }) {
   const [mes, definirMes] = useState<string | null>(null);
   const [lenteAberta, definirLenteAberta] = useState<string>('imprensa');
+  //: O RECORTE DA LENTE ABERTA. Mora aqui, e não no dossiê, para a busca
+  //: inteligente abrir uma lente já filtrada. TROCAR DE LENTE OU DE MÊS O ZERA:
+  //: um veículo da Imprensa não existe no vocabulário de Clientes, e as opções
+  //: de filtro são do mês.
+  const [filtroDaLente, definirFiltroDaLente] = useState<FiltroDaLente>({});
+  const trocarLente = (codigo: string) => {
+    definirLenteAberta(codigo);
+    definirFiltroDaLente({});
+  };
+  const trocarMes = (novo: string) => {
+    definirMes(novo);
+    definirFiltroDaLente({});
+  };
 
   const [opcoes, definirOpcoes] = useState<OpcoesDoScore | null>(null);
   const [indice, definirIndice] = useState<IndiceDoScore | null>(null);
@@ -154,37 +171,60 @@ export function Score({
   }
   if (!indice || !mes) return <Carregando rotulo="Calculando o índice…" />;
 
+  //: O MÊS E O AVISO DE CALIBRAÇÃO, montados uma vez e postos onde a aba pede.
+  const controlesDoMes = (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      {!indice.calibracao.padrao ? (
+        <Chip
+          rotulo="calibração ajustada"
+          fundo="var(--atencao-bg)"
+          texto="var(--atencao-fg)"
+          titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
+        />
+      ) : null}
+      <SeletorDeMes
+        meses={opcoes.meses}
+        valor={mes}
+        sugerido={opcoes.mes_sugerido}
+        aoEscolher={trocarMes}
+      />
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <ComFaixaDoTopo>
-      <Secao
-        titulo="KPIs Reputacionais"
-        subtitulo="O Índice de Saúde Reputacional: uma nota por mês, média ponderada de cinco lentes. Vale para a companhia inteira — não segue os filtros do Painel."
-        nivelDoTitulo={1}
-      >
-        {/* O SELETOR DE MÊS DESCEU DE `acao` PARA O CORPO. A tira de abas que
-            ficava aqui subiu para a barra do cabeçalho — sem ela, a seção
-            ficaria com cabeçalho e nada embaixo. */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 150 }}>
-            <CampoQueCompleta
-              rotulo="Mês"
-              valor={mes}
-              aoEscolher={(valor) => valor && definirMes(valor)}
-              opcoes={[...opcoes.meses].reverse().map((m) => ({ valor: m, rotulo: m }))}
-            />
-          </div>
-          {!indice.calibracao.padrao ? (
-            <Chip
-              rotulo="calibração ajustada"
-              fundo="var(--atencao-bg)"
-              texto="var(--atencao-fg)"
-              titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
-            />
-          ) : null}
-        </div>
-      </Secao>
-      </ComFaixaDoTopo>
+      {/* SEM O CARTÃO DE ABERTURA, por pedido: ele gastava a primeira dobra da
+          tela com um título e um campo, e o que a pessoa veio ver — o radar —
+          ficava para baixo. O título continua existindo para leitor de tela,
+          que precisa do h1.
+
+          O MÊS MORA NO CARD DO RADAR na Visão geral, por pedido; nas outras
+          abas (Lentes, Drivers) ele continua aqui em cima, porque vale para
+          elas também e elas não têm o radar. */}
+      <h1 style={SO_PARA_LEITOR_DE_TELA}>KPIs Reputacionais</h1>
+      {aba !== 'geral' ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{controlesDoMes}</div>
+      ) : null}
+
+      {/* A BUSCA INTELIGENTE, no topo da Visão geral e das Lentes: na Visão
+          geral ela leva para a lente certa; nas Lentes, também recorta a
+          aberta. Escolher uma sugestão sempre abre a aba Lentes. */}
+      {aba === 'geral' || aba === 'lentes' ? (
+        <BuscaDoRadar
+          mes={mes}
+          lentes={opcoes.lentes}
+          lenteAberta={lenteAberta}
+          filtro={aba === 'lentes' ? filtroDaLente : {}}
+          aoMudarFiltro={definirFiltroDaLente}
+          aoEscolher={(sugestao) => {
+            definirLenteAberta(sugestao.lente);
+            definirFiltroDaLente(
+              sugestao.filtro ? { [sugestao.filtro.chave]: sugestao.filtro.valor } : {},
+            );
+            aoTrocarAba('lentes');
+          }}
+        />
+      ) : null}
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -193,10 +233,11 @@ export function Score({
           indice={indice}
           serie={serie}
           aoAbrirLente={(codigo) => {
-            definirLenteAberta(codigo);
+            trocarLente(codigo);
             aoTrocarAba('lentes');
           }}
-          aoTrocarMes={definirMes}
+          aoTrocarMes={trocarMes}
+          controlesDoMes={controlesDoMes}
         />
       ) : null}
 
@@ -204,9 +245,11 @@ export function Score({
         <DossieDaLente
           mes={mes}
           lente={lenteAberta}
-          aoTrocarLente={definirLenteAberta}
+          aoTrocarLente={trocarLente}
           serie={serie}
-          aoTrocarMes={definirMes}
+          aoTrocarMes={trocarMes}
+          filtro={filtroDaLente}
+          definirFiltro={definirFiltroDaLente}
         />
       ) : null}
 
@@ -224,11 +267,14 @@ function VisaoGeral({
   serie,
   aoAbrirLente,
   aoTrocarMes,
+  controlesDoMes,
 }: {
   indice: IndiceDoScore;
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
   aoTrocarMes: (mes: string) => void;
+  /** O seletor de mês (e o aviso de calibração), para o cabeçalho do radar. */
+  controlesDoMes: ReactNode;
 }) {
   const ordenadas = lentesOrdenadas(indice.lentes);
   const sustenta = ordenadas[0];
@@ -249,6 +295,7 @@ function VisaoGeral({
   //: Também é estado de leitura, como `comparada`: não muda número nenhum.
   const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
   const [mostrarPico, definirMostrarPico] = useState(true);
+  const [mostrarVale, definirMostrarVale] = useState(true);
   const meses = mesesMedidos(serie);
   //: `ajustar` A CADA RENDER: a série pode crescer (um mês novo ingerido) ou
   //: encolher, e uma janela guardada com índices de outra série sairia da borda.
@@ -283,11 +330,15 @@ function VisaoGeral({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <ComFaixaDoTopo>
       <Secao
-        titulo="Cinco lentes, um índice"
-        subtitulo={`Índice de Saúde Reputacional · ${indice.mes}`}
+        titulo="Radar Reputacional"
+        subtitulo="Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais. Vale para a companhia inteira — não segue os filtros do CRM."
+        acao={controlesDoMes}
       >
         <Cartao>
-          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'start' }}>
+          {/* `stretch`: a coluna das lentes acompanha a altura do radar, e os
+              cartões dividem essa altura entre si — por pedido, do mesmo
+              tamanho do radar. */}
+          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'stretch' }}>
             <div>
               <RadialDasLentes
                 lentes={indice.lentes}
@@ -401,11 +452,17 @@ function VisaoGeral({
                 indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
               }
               aoEscolherMes={aoTrocarMes}
-              linhaDeReferencia={
-                mostrarPico && kpis.pico
-                  ? { valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}` }
-                  : null
-              }
+              // MAIS ALTO QUE O PADRÃO (260px), por pedido: com os cartões em
+              // cima e o cartão do mês fora, o gráfico ganhou o espaço.
+              altura={330}
+              linhasDeReferencia={[
+                ...(mostrarPico && kpis.pico
+                  ? [{ chave: 'pico', valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}`, cor: COR_DO_PICO }]
+                  : []),
+                ...(mostrarVale && kpis.vale
+                  ? [{ chave: 'vale', valor: kpis.vale.valor, rotulo: `Vale ${kpis.vale.valor}`, cor: COR_DO_VALE, abaixo: true }]
+                  : []),
+              ]}
             />
             <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
           </div>
@@ -420,47 +477,25 @@ function VisaoGeral({
               color: 'var(--cinza-2)',
             }}
           >
-            {[
-              ['Pressiona', 'var(--erro-fg)'],
-              ['Sustenta', 'var(--turquesa-rio)'],
-              ['Misto', 'var(--cinza-2)'],
-              ['Sem fato', 'var(--borda)'],
-            ].map(([rotulo, cor]) => (
-              <span key={rotulo} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 16, height: 3, borderRadius: 2, background: cor }} />
-                {rotulo}
-              </span>
-            ))}
-            {/* A LINHA DO PICO SE LIGA E DESLIGA AQUI, na legenda, por pedido:
-                é o único item dela que é controle, e o botão diz isso pelo
-                estado pressionado. Some quando não há pico (nenhum mês da
-                janela medido por 4 lentes). */}
+            {/* AS LINHAS DE PICO E VALE SE LIGAM E DESLIGAM AQUI, na legenda, por
+                pedido. A legenda das cores da fita (Pressiona, Sustenta, Misto,
+                Sem fato) saiu, também por pedido. Cada linha some quando não há
+                mês da janela medido por 4 lentes. */}
             {kpis.pico ? (
-              <button
-                type="button"
-                aria-pressed={mostrarPico}
-                onClick={() => definirMostrarPico((atual) => !atual)}
-                title={mostrarPico ? 'Esconder a linha do pico' : 'Mostrar a linha do pico'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '2px 8px',
-                  border: '1px solid var(--borda)',
-                  borderRadius: 'var(--r-chip)',
-                  background: mostrarPico ? 'var(--branco)' : 'var(--bg-trilho)',
-                  color: mostrarPico ? 'var(--cinza-3)' : 'var(--cinza-2)',
-                  fontSize: 11.5,
-                  cursor: 'pointer',
-                  textDecoration: mostrarPico ? 'none' : 'line-through',
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{ width: 16, height: 0, borderTop: '1.5px dashed var(--laranja-baia)' }}
-                />
-                Pico da janela ({kpis.pico.valor})
-              </button>
+              <BotaoDaLinha
+                rotulo={`Pico da janela (${kpis.pico.valor})`}
+                cor={COR_DO_PICO}
+                ligada={mostrarPico}
+                aoAlternar={() => definirMostrarPico((atual) => !atual)}
+              />
+            ) : null}
+            {kpis.vale ? (
+              <BotaoDaLinha
+                rotulo={`Vale da janela (${kpis.vale.valor})`}
+                cor={COR_DO_VALE}
+                ligada={mostrarVale}
+                aoAlternar={() => definirMostrarVale((atual) => !atual)}
+              />
             ) : null}
             {mesesParciais ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -486,11 +521,79 @@ function VisaoGeral({
   );
 }
 
-/** A lista das cinco lentes, ao lado do gráfico.
+//: PICO VERDE E VALE VERMELHO, por pedido — nos tons escuros de "ok" e "erro",
+//: que seguem legíveis como traço fino e como rótulo sobre as faixas de fundo.
+const COR_DO_PICO = 'var(--ok-fg)';
+const COR_DO_VALE = 'var(--erro-fg)';
+
+/** Um item da legenda que liga e desliga uma linha de referência. */
+function BotaoDaLinha({
+  rotulo,
+  cor,
+  ligada,
+  aoAlternar,
+}: {
+  rotulo: string;
+  cor: string;
+  ligada: boolean;
+  aoAlternar: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={ligada}
+      onClick={aoAlternar}
+      title={ligada ? 'Esconder a linha' : 'Mostrar a linha'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '2px 8px',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-chip)',
+        background: ligada ? 'var(--branco)' : 'var(--bg-trilho)',
+        color: ligada ? 'var(--cinza-3)' : 'var(--cinza-2)',
+        fontSize: 11.5,
+        cursor: 'pointer',
+        textDecoration: ligada ? 'none' : 'line-through',
+      }}
+    >
+      <span aria-hidden style={{ width: 16, height: 0, borderTop: `1.5px dashed ${cor}` }} />
+      {rotulo}
+    </button>
+  );
+}
+
+//: O PADRÃO "VISUALMENTE OCULTO": fora da tela, mas na árvore de
+//: acessibilidade. `display: none` tiraria o h1 de quem precisa dele.
+const SO_PARA_LEITOR_DE_TELA = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+} as const;
+
+/** A lista das cinco lentes, ao lado do radar.
  *
  *  ABRE PELO STAKEHOLDER, e não pelo nome da lente: quem lê o índice pergunta
- *  "de quem é este 37?" antes de perguntar de que fonte ele saiu. O nome da
- *  lente é jargão da ferramenta; "Formadores de opinião" é gente.
+ *  "de quem é este 37?" antes de perguntar de que fonte ele saiu.
+ *
+ *  CADA CARTÃO SE EXPLICA SOZINHO: o peso ao lado do nome, o objetivo da lente
+ *  numa frase e a fonte em uso hoje. Textos em `DESCRICAO_DAS_LENTES`; peso e
+ *  nota, do cálculo.
+ *
+ *  CONTORNO CINZA, sem faixa colorida: a ligação com a fatia do radar fica
+ *  por conta do número do peso, na cor da lente.
+ *
+ *  COMPACTOS E DIVIDINDO A ALTURA DO RADAR (`flex: 1`), por pedido: a coluna
+ *  inteira tem a altura do radar ao lado, em vez de passar dele.
+ *
+ *  O CLIQUE NO CARTÃO ABRE A LENTE; para o teclado, o nome da lente é o botão.
  */
 function ListaDasLentes({
   lentes,
@@ -504,81 +607,77 @@ function ListaDasLentes({
   aoAbrir: (codigo: string) => void;
 }) {
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {lentes.map((lente) => (
-          <button
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+      {lentes.map((lente) => {
+        const descricao = DESCRICAO_DAS_LENTES[lente.codigo];
+        const acesa = destacada === lente.codigo;
+        const fora = lente.score === null;
+        const cor = corDaLente(lente.codigo);
+        return (
+          <div
             key={lente.codigo}
-            type="button"
             onMouseEnter={() => aoDestacar(lente.codigo)}
             onMouseLeave={() => aoDestacar(null)}
-            onFocus={() => aoDestacar(lente.codigo)}
-            onBlur={() => aoDestacar(null)}
             onClick={() => aoAbrir(lente.codigo)}
-            title={`Abrir a lente ${lente.nome}`}
             style={{
+              flex: '1 1 auto',
               display: 'grid',
-              gridTemplateColumns: '14px minmax(0, 1fr) auto',
-              gap: 14,
-              alignItems: 'center',
-              padding: '12px 14px',
-              borderRadius: 12,
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              alignContent: 'center',
+              gap: '3px 14px',
+              padding: '9px 12px',
+              borderRadius: 6,
+              //: CONTORNO CINZA, por pedido (o da cor da lente não agradou); aceso,
+              //: ele fica azul, como nos outros controles da tela.
+              border: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
+              background: acesa ? 'var(--bg-trilho)' : 'var(--branco)',
               cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              font: 'inherit',
-              background: destacada === lente.codigo ? 'var(--bg-trilho)' : 'var(--branco)',
-              border: `1px solid ${
-                destacada === lente.codigo ? 'var(--azul-mar)' : 'var(--borda)'
-              }`,
-              opacity: lente.score === null ? 0.55 : 1,
+              opacity: fora ? 0.6 : 1,
             }}
           >
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 4,
-                background: corDaLente(lente.codigo),
-              }}
-            />
-            <span style={{ minWidth: 0 }}>
-              {/* EM LINHA PRÓPRIA, e com reticências: na mesma linha da fonte
-                  ele cobria o texto ao lado quando o nome era comprido. */}
-              <span
-                className="kicker"
-                style={{
-                  display: 'block',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
+            <div style={{ minWidth: 0 }}>
+              <span className="kicker" style={{ display: 'block', fontSize: 10.5 }}>
                 {lente.stakeholder}
               </span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>
-                {lente.nome}
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    aoAbrir(lente.codigo);
+                  }}
+                  onFocus={() => aoDestacar(lente.codigo)}
+                  onBlur={() => aoDestacar(null)}
+                  title={`Abrir a lente ${lente.nome}`}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    fontSize: 15.5,
+                    fontWeight: 800,
+                    color: 'var(--cinza-4)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {lente.nome}
+                </button>
+                {/* O PESO NA FRENTE DO TÍTULO, por pedido. */}
+                <span style={{ fontSize: 12, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+                  Peso{' '}
+                  <strong className="tabular" style={{ fontSize: 14, fontWeight: 800, color: cor }}>
+                    {fora ? '—' : `${lente.peso_efetivo}%`}
+                  </strong>
+                  {!fora && lente.peso_efetivo !== lente.peso ? ` (calibrado ${lente.peso}%)` : ''}
+                </span>
               </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 11.5,
-                  color: 'var(--cinza-2)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {pesoDaLente(lente)}
-                {lente.fontes.length ? ` · ${lente.fontes.join(', ')}` : ''}
-              </span>
-            </span>
-            <span style={{ textAlign: 'right' }}>
+            </div>
+            <div style={{ textAlign: 'right', alignSelf: 'center' }}>
               <span
                 className="tabular"
                 style={{
                   display: 'block',
-                  fontSize: 26,
+                  fontSize: 24,
                   fontWeight: 800,
                   lineHeight: 1,
                   color: corDaFaixa(lente.score),
@@ -586,16 +685,35 @@ function ListaDasLentes({
               >
                 {lente.score ?? '—'}
               </span>
-              <span style={{ fontSize: 11.5, color: corDoDelta(lente.delta) }}>
-                {comoDelta(lente.delta)}
+              <span style={{ fontSize: 11, color: corDoDelta(lente.delta) }}>
+                {fora ? 'fora do mês' : comoDelta(lente.delta)}
               </span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-        Passe o mouse para destacar a fatia; clique para abrir a lente.
-      </p>
+            </div>
+
+            {descricao ? (
+              <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 12.5, lineHeight: 1.4, color: 'var(--cinza-3)' }}>
+                  {descricao.objetivo}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--cinza-2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <strong style={{ fontWeight: 700, marginRight: 4, color: 'var(--cinza-3)' }}>
+                    Fonte utilizada:
+                  </strong>
+                  {descricao.fonteUtilizada}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,157 +1,167 @@
-/** O recorte da aba Lentes: tier, veículo, atributo e tema.
+/** Os filtros da aba Lentes: "Filtro avançado" recolhível em cima, filtros
+ *  rápidos na faixa azul embaixo — a mesma ordem e os mesmos componentes do
+ *  CRM dos Stakeholders (`PainelDeFiltros` + `FaixaDeFiltros`).
  *
- *  MESMA FAIXA, MESMO GATILHO, MESMA LISTA DE PÍLULAS do Painel (CRM) — a
- *  `FaixaDeFiltros` (degradê azul-mar → turquesa) e o `CampoSuspenso` (botão
- *  fechado que abre um painel de pílulas), os dois REAPROVEITADOS direto, e
- *  não reconstruídos: quem já aprendeu a filtrar numa tela filtra igual na
- *  outra. Uma versão anterior deste arquivo abria uma busca por texto em vez
- *  de pílulas, achando que veículo/atributo/tema teriam opções demais para
- *  pílula — mas `GrupoDeCampo` já resolve isso sozinho (mostra as 10
- *  primeiras com um "+N, expandir"), o mesmo mecanismo que o filtro de Tema
- *  do Painel já usa para uma lista bem maior que a nossa.
+ *  MESMA FAIXA, MESMO GATILHO, MESMA LISTA DE PÍLULAS do Painel: `FaixaDeFiltros`
+ *  e `CampoSuspenso` reaproveitados direto, e não reconstruídos — quem já
+ *  aprendeu a filtrar numa tela filtra igual na outra.
  *
- *  FICA ACIMA DA FAIXA GRADIENTE do destaque (a de `ComFaixaDoTopo`), e não
- *  dentro dela: é um recorte de TELA, não parte do que o destaque mostra —
- *  mexe no que entra na conta de todos os blocos abaixo (nota, KPIs,
- *  evolução, os dois painéis), e por isso pede uma posição que avise antes
- *  de a pessoa chegar na nota.
+ *  QUAIS FILTROS, E ONDE, MUDAM POR LENTE (`FILTROS_DAS_LENTES`): Imprensa
+ *  filtra por tier e veículo, Sociedade digital por rede e perfil de quem fala,
+ *  Clientes por concessionária. A barra só percorre a tabela.
  *
- *  OS QUATRO SÃO INDEPENDENTES e DE ESCOLHA ÚNICA (não é multisseleção, ao
- *  contrário de "Filtro Áreas" do Painel): escolher um veículo não implica
- *  tier nenhum, e clicar numa pílula já escolhida a desmarca — mesmo padrão
- *  de `definirOuAlternar` em `PainelDeFiltros.tsx`.
+ *  ESCOLHA ÚNICA POR CAMPO, e os campos se somam (E): escolher um veículo não
+ *  implica tier nenhum, e clicar numa pílula já escolhida a desmarca — é como o
+ *  servidor recebe (`FiltroDaLente`, um valor por campo).
+ *
+ *  CAMPO SEM OPÇÃO NO MÊS NÃO É DESENHADO: um seletor que abre vazio faz a
+ *  pessoa concluir que o dado sumiu, quando a fonte nunca mandou o campo.
  */
+
+import { useState } from 'react';
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { CampoSuspenso } from '@/componentes/CampoSuspenso';
+import { GrupoDeCampo, SetaDaAegea } from '@/componentes/PainelDeFiltros';
 import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
+import { FILTROS_DAS_LENTES, rotuloDoValor } from '@/dominio/filtrosDasLentes';
+import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
 
-const ROTULO_DO_TIER: Record<string, string> = {
-  muito_relevante: 'Tier 1',
-  relevante: 'Tier 2',
-  menos_relevante: 'Tier 3',
-};
-
-function comoItens(valores: string[], rotulos?: Record<string, string>) {
-  return valores.map((valor) => ({ valor, rotulo: rotulos?.[valor] ?? valor }));
-}
-
-/** Escolhe de novo o que já estava ativo para DESMARCAR — mesma regra de
- *  `definirOuAlternar` do Painel: sem isso, cada campo só ganharia valor,
- *  nunca voltaria para "Todos" clicando na própria pílula marcada. */
-function campoDeEscolhaUnica(
-  chave: string,
-  rotulo: string,
-  itens: { valor: string; rotulo: string }[],
-  valorAtual: string | undefined,
-  aoEscolher: (valor: string | undefined) => void,
-): CampoDeFiltro {
-  return {
-    chave,
-    rotulo,
-    itens,
-    valorAtual,
-    aoEscolher: (valor) => aoEscolher(valorAtual === valor ? undefined : valor),
-  };
-}
-
-/** ATIVO É QUALQUER CAMPO PREENCHIDO, perguntado ao próprio objeto.
- *
- *  Era uma lista escrita à mão com os quatro campos de então, e é exatamente o
- *  tipo de lista que esquece o campo acrescentado depois: o recorte ficaria ativo
- *  e o botão de limpar não apareceria, deixando a pessoa presa num recorte que
- *  ela não sabe como desfazer. */
+/** ATIVO É QUALQUER CAMPO PREENCHIDO, perguntado ao próprio objeto — uma lista
+ *  escrita à mão esqueceria o campo acrescentado depois. */
 function filtroAtivo(filtro: FiltroDaLente): boolean {
   return Object.values(filtro).some(Boolean);
 }
 
-/** As dimensões da barra, na ordem em que aparecem.
- *
- *  UMA LINHA POR DIMENSÃO, e a barra as percorre: eram quatro blocos de JSX
- *  quase idênticos, e com as oito do padrão Aegea seriam oito — cento e sessenta
- *  linhas onde a única diferença entre elas é o nome do campo.
- *
- *  A ORDEM É A DO PACOTE para a lente que tem tudo: o que explica o assunto
- *  primeiro (tema, subtema), depois onde (UF), depois quem falou (perfil, autor),
- *  e por fim as de clipping (tier, veículo, atributo). Campo sem opção no mês não
- *  é desenhado, então cada lente mostra só as dela sem precisar saber de nenhuma
- *  regra por lente. */
-const DIMENSOES: {
-  chave: keyof FiltroDaLente;
-  rotulo: string;
-  de: keyof OpcoesDeFiltroDaLente;
-  rotulos?: Record<string, string>;
-}[] = [
-  { chave: 'tema', rotulo: 'Tema', de: 'temas' },
-  { chave: 'subtema', rotulo: 'Subtema', de: 'subtemas' },
-  { chave: 'uf', rotulo: 'UF', de: 'ufs' },
-  { chave: 'perfil_autor', rotulo: 'Perfil do autor', de: 'perfis' },
-  { chave: 'autor', rotulo: 'Autor', de: 'autores' },
-  //: A CONCESSIONÁRIA, e ela faltava: o servidor aceita `?empresa=`, devolve
-  //: `opcoes.empresas` e marca o painel de concessionárias com
-  //: `recorta: "empresa"` — só a barra não oferecia o campo. Achado de revisão.
-  { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' },
-  { chave: 'tier', rotulo: 'Tier', de: 'tiers', rotulos: ROTULO_DO_TIER },
-  { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
-  { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
-];
+/** Um campo de escolha única: escolher de novo o que já estava ativo DESMARCA. */
+function campoDa(
+  dimensao: DimensaoDaLente,
+  valores: string[],
+  filtro: FiltroDaLente,
+  definirFiltro: (filtro: FiltroDaLente) => void,
+): CampoDeFiltro {
+  const valorAtual = filtro[dimensao.chave];
+  return {
+    chave: dimensao.chave,
+    rotulo: dimensao.rotulo,
+    itens: valores.map((valor) => ({ valor, rotulo: rotuloDoValor(dimensao, valor) })),
+    valorAtual,
+    aoEscolher: (valor) =>
+      definirFiltro({ ...filtro, [dimensao.chave]: valorAtual === valor ? undefined : valor }),
+  };
+}
 
 export function BarraDeFiltroDaLente({
+  lente,
   filtro,
   definirFiltro,
   opcoes,
 }: {
+  lente: string;
   filtro: FiltroDaLente;
   definirFiltro: (filtro: FiltroDaLente) => void;
   opcoes: OpcoesDeFiltroDaLente | null;
 }) {
+  const [abertoAvancado, definirAbertoAvancado] = useState(false);
+  const config = FILTROS_DAS_LENTES[lente];
+  if (!config) return null;
+
+  const comValores = (lista: DimensaoDaLente[]) =>
+    lista
+      .map((dimensao) => ({ dimensao, valores: opcoes?.[dimensao.de] ?? [] }))
+      .filter(({ valores }) => valores.length > 0);
+  const rapidos = comValores(config.rapidos);
+  const avancados = comValores(config.avancados);
+  const ativosNoAvancado = avancados.filter(({ dimensao }) => filtro[dimensao.chave]).length;
+
   return (
-    <FaixaDeFiltros>
-      {DIMENSOES.map(({ chave, rotulo, de, rotulos }) => {
-        const valores = opcoes?.[de] ?? [];
-        //: CAMPO VAZIO É PIOR QUE CAMPO AUSENTE: um seletor que abre sem opção
-        //: nenhuma faz a pessoa concluir que o dado sumiu, quando a verdade é
-        //: que aquela fonte nunca mandou o campo.
-        if (!valores.length) return null;
-        const valorAtual = filtro[chave];
-        return (
-          <CampoSuspenso
-            key={chave}
-            campo={campoDeEscolhaUnica(
-              chave,
-              rotulo,
-              comoItens(valores, rotulos),
-              valorAtual,
-              (valor) => definirFiltro({ ...filtro, [chave]: valor }),
-            )}
-            aoLimpar={
-              valorAtual
-                ? () => definirFiltro({ ...filtro, [chave]: undefined })
-                : undefined
-            }
-          />
-        );
-      })}
-      {filtroAtivo(filtro) ? (
-        <button
-          type="button"
-          onClick={() => definirFiltro({})}
+    <div className="sem-impressao">
+      {avancados.length ? (
+        <div
           style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--branco)',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            padding: '0 4px',
-            textDecoration: 'underline',
-            flexShrink: 0,
+            border: '1px solid var(--borda)',
+            borderRadius: 'var(--r-card-int)',
+            background: 'var(--branco)',
+            marginBottom: 8,
           }}
         >
-          Limpar recorte
-        </button>
+          <button
+            type="button"
+            onClick={() => definirAbertoAvancado((v) => !v)}
+            aria-expanded={abertoAvancado}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '3px 12px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--cinza-3)',
+            }}
+          >
+            <span>Filtro avançado{ativosNoAvancado ? ` · ${ativosNoAvancado}` : ''}</span>
+            <SetaDaAegea aberto={abertoAvancado} />
+          </button>
+          {abertoAvancado ? (
+            <div
+              style={{
+                padding: '4px 12px 10px',
+                borderTop: '1px solid var(--borda)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              {avancados.map(({ dimensao, valores }) => (
+                <GrupoDeCampo
+                  key={dimensao.chave}
+                  campo={campoDa(dimensao, valores, filtro, definirFiltro)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
-    </FaixaDeFiltros>
+
+      {rapidos.length ? (
+        <FaixaDeFiltros>
+          {rapidos.map(({ dimensao, valores }) => (
+            <CampoSuspenso
+              key={dimensao.chave}
+              campo={campoDa(dimensao, valores, filtro, definirFiltro)}
+              aoLimpar={
+                filtro[dimensao.chave]
+                  ? () => definirFiltro({ ...filtro, [dimensao.chave]: undefined })
+                  : undefined
+              }
+            />
+          ))}
+          {filtroAtivo(filtro) ? (
+            <button
+              type="button"
+              onClick={() => definirFiltro({})}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--branco)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '0 4px',
+                textDecoration: 'underline',
+                flexShrink: 0,
+              }}
+            >
+              Limpar recorte
+            </button>
+          ) : null}
+        </FaixaDeFiltros>
+      ) : null}
+    </div>
   );
 }

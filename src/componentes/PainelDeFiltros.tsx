@@ -722,7 +722,7 @@ function CaixaDeDias({
 /** A seta que abre/fecha "Filtro avançado" — maior e na cor da marca, e não
  *  o `▾` pequeno e cinza de antes. O selo circular é o que dá peso ao gesto de
  *  clicar; a rotação de 180° continua sendo o que diz "já está aberto". */
-function SetaDaAegea({ aberto }: { aberto: boolean }) {
+export function SetaDaAegea({ aberto }: { aberto: boolean }) {
   return (
     <span
       aria-hidden

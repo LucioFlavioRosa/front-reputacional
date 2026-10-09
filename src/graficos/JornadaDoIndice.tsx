@@ -137,8 +137,9 @@ export function JornadaDoIndice({
   aoEscolherMes,
   aoAprofundarNoMes,
   jornadaPronta,
-  linhaDeReferencia = null,
+  linhasDeReferencia = [],
   semDetalheDoMes = false,
+  altura,
 }: {
   serie: PontoDaSerie[];
   mes: string;
@@ -164,10 +165,14 @@ export function JornadaDoIndice({
    *  de UMA lente. Presente, ela VENCE `serie`: o desenho é o mesmo dos
    *  dois lados, só a conta de onde ele vem é que muda. */
   jornadaPronta?: Jornada;
-  /** Uma linha horizontal tracejada num valor do índice — hoje, o Pico da
-   *  janela. Nula, não aparece. Fica atrás dos pontos e não recebe o mouse: é
-   *  régua, não dado. */
-  linhaDeReferencia?: { valor: number; rotulo: string } | null;
+  /** Linhas horizontais tracejadas em valores do índice — hoje, o Pico (verde)
+   *  e o Vale (vermelho) da janela. Ficam atrás dos pontos e não recebem o
+   *  mouse: são régua, não dado. `abaixo` põe o rótulo embaixo da linha, para
+   *  pico e vale próximos não escreverem um por cima do outro. */
+  linhasDeReferencia?: { chave: string; valor: number; rotulo: string; cor: string; abaixo?: boolean }[];
+  /** A altura do gráfico em px, quando a tela quer outra que não a padrão do
+   *  CSS (`--jornada-altura`). A Visão geral usa um gráfico mais alto. */
+  altura?: number;
   /** Sem o cartão do mês embaixo da fita — o que segue o mouse. A Visão geral
    *  do Score o tirou, por pedido: lá os cartões de KPI e o subtítulo já contam
    *  a janela, e o cartão do mês competia com eles. A Jornada de uma lente
@@ -216,7 +221,10 @@ export function JornadaDoIndice({
   return (
     <div
       className="jornada"
-      style={{ ['--jornada-meses' as string]: String(jornada.colunas.length) }}
+      style={{
+        ['--jornada-meses' as string]: String(jornada.colunas.length),
+        ...(altura ? { ['--jornada-altura' as string]: `${altura}px` } : {}),
+      }}
     >
       <div className="jornada__margens jornada__grafico">
         <svg
@@ -274,20 +282,21 @@ export function JornadaDoIndice({
           />
         </svg>
 
-        {/* A LINHA DO PICO, NA MESMA ESCALA DOS PONTOS: `escalaDoEixo` com o
-            eixo que está desenhado agora (inclusive no meio da transição), e
-            não um cálculo próprio — uma régua que não bate com a curva diz um
+        {/* AS LINHAS DE PICO E VALE, NA MESMA ESCALA DOS PONTOS: `escalaDoEixo`
+            com o eixo que está desenhado agora (inclusive no meio da transição),
+            e não um cálculo próprio — uma régua que não bate com a curva diz um
             valor que o gráfico não mostra. */}
-        {linhaDeReferencia ? (
+        {linhasDeReferencia.map((linha) => (
           <span
-            data-linha-de-referencia={linhaDeReferencia.valor}
+            key={linha.chave}
+            data-linha-de-referencia={linha.chave}
             aria-hidden
             style={{
               position: 'absolute',
               left: 0,
               right: 0,
-              top: `${(escalaDoEixo(eixo.piso, eixo.teto).y(linhaDeReferencia.valor) / VB.altura) * 100}%`,
-              borderTop: '1.5px dashed var(--laranja-baia)',
+              top: `${(escalaDoEixo(eixo.piso, eixo.teto).y(linha.valor) / VB.altura) * 100}%`,
+              borderTop: `1.5px dashed ${linha.cor}`,
               pointerEvents: 'none',
               transition: 'top 220ms ease',
             }}
@@ -297,20 +306,20 @@ export function JornadaDoIndice({
               style={{
                 position: 'absolute',
                 right: 0,
-                bottom: 2,
+                ...(linha.abaixo ? { top: 2 } : { bottom: 2 }),
                 fontSize: 10.5,
                 fontWeight: 700,
-                color: 'var(--cinza-3)',
+                color: linha.cor,
                 background: 'rgba(255, 255, 255, 0.85)',
                 padding: '0 4px',
                 borderRadius: 3,
                 whiteSpace: 'nowrap',
               }}
             >
-              {linhaDeReferencia.rotulo}
+              {linha.rotulo}
             </span>
           </span>
-        ) : null}
+        ))}
 
         {/* A GUIA liga o ponto ao mês lá embaixo. É o gesto que um gráfico de
             linha precisa e que nenhum rótulo substitui: com a curva subindo, o
