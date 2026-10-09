@@ -124,7 +124,7 @@ const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number>
   Modalidade: (linha) => linha.modalidade,
   Local: (linha) => linha.local,
   Esfera: (linha) => linha.esfera,
-  Clima: (linha) => linha.clima,
+  Termômetro: (linha) => linha.clima,
   Desfecho: (linha) => linha.resultado,
   Iniciativa: (linha) => linha.iniciativa,
 };
