@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   obterDriversDoScore,
@@ -49,7 +50,6 @@ import {
   serieDaJanela,
 } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
-import { mesComAno } from '@/dominio/janelaDaJornada';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
@@ -157,44 +157,40 @@ export function Score({
   }
   if (!indice || !mes) return <Carregando rotulo="Calculando o índice…" />;
 
+  //: O MÊS E O AVISO DE CALIBRAÇÃO, montados uma vez e postos onde a aba pede.
+  const controlesDoMes = (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      {!indice.calibracao.padrao ? (
+        <Chip
+          rotulo="calibração ajustada"
+          fundo="var(--atencao-bg)"
+          texto="var(--atencao-fg)"
+          titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
+        />
+      ) : null}
+      <SeletorDeMes
+        meses={opcoes.meses}
+        valor={mes}
+        sugerido={opcoes.mes_sugerido}
+        aoEscolher={definirMes}
+      />
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* SEM O CARTÃO DE ABERTURA, por pedido: ele gastava a primeira dobra da
           tela com um título e um campo, e o que a pessoa veio ver — o radar —
-          ficava para baixo. O que ele carregava virou uma barra de controles
-          enxuta: o mês (vale para todas as abas) e o aviso de calibração.
-          O título continua existindo para leitor de tela, que precisa do h1. */}
+          ficava para baixo. O título continua existindo para leitor de tela,
+          que precisa do h1.
+
+          O MÊS MORA NO CARD DO RADAR na Visão geral, por pedido; nas outras
+          abas (Lentes, Drivers) ele continua aqui em cima, porque vale para
+          elas também e elas não têm o radar. */}
       <h1 style={SO_PARA_LEITOR_DE_TELA}>KPIs Reputacionais</h1>
-      <div
-        style={{
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-        }}
-      >
-        <span style={{ fontSize: 12.5, color: 'var(--cinza-2)', maxWidth: 520 }}>
-          Índice de Saúde Reputacional: uma nota por mês, de cinco lentes. Vale para a
-          companhia inteira — não segue os filtros do CRM.
-        </span>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {!indice.calibracao.padrao ? (
-            <Chip
-              rotulo="calibração ajustada"
-              fundo="var(--atencao-bg)"
-              texto="var(--atencao-fg)"
-              titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
-            />
-          ) : null}
-          <SeletorDeMes
-            meses={opcoes.meses}
-            valor={mes}
-            sugerido={opcoes.mes_sugerido}
-            aoEscolher={definirMes}
-          />
-        </div>
-      </div>
+      {aba !== 'geral' ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{controlesDoMes}</div>
+      ) : null}
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -207,6 +203,7 @@ export function Score({
             aoTrocarAba('lentes');
           }}
           aoTrocarMes={definirMes}
+          controlesDoMes={controlesDoMes}
         />
       ) : null}
 
@@ -234,11 +231,14 @@ function VisaoGeral({
   serie,
   aoAbrirLente,
   aoTrocarMes,
+  controlesDoMes,
 }: {
   indice: IndiceDoScore;
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
   aoTrocarMes: (mes: string) => void;
+  /** O seletor de mês (e o aviso de calibração), para o cabeçalho do radar. */
+  controlesDoMes: ReactNode;
 }) {
   const ordenadas = lentesOrdenadas(indice.lentes);
   const sustenta = ordenadas[0];
@@ -294,11 +294,15 @@ function VisaoGeral({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <ComFaixaDoTopo>
       <Secao
-        titulo="Radar Reputacional da Aegea"
-        subtitulo={`Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais · ${mesComAno(indice.mes)}`}
+        titulo="Radar Reputacional"
+        subtitulo="Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais. Vale para a companhia inteira — não segue os filtros do CRM."
+        acao={controlesDoMes}
       >
         <Cartao>
-          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'start' }}>
+          {/* `stretch`: a coluna das lentes acompanha a altura do radar, e os
+              cartões dividem essa altura entre si — por pedido, do mesmo
+              tamanho do radar. */}
+          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'stretch' }}>
             <div>
               <RadialDasLentes
                 lentes={indice.lentes}
@@ -543,14 +547,19 @@ const SO_PARA_LEITOR_DE_TELA = {
  *  ABRE PELO STAKEHOLDER, e não pelo nome da lente: quem lê o índice pergunta
  *  "de quem é este 37?" antes de perguntar de que fonte ele saiu.
  *
- *  CADA CARTÃO SE EXPLICA SOZINHO, por pedido: o objetivo da lente numa frase,
- *  a fonte em uso hoje (com um "?" para o que ela ganha nas próximas ondas) e o
- *  peso em destaque. O texto vem de `DESCRICAO_DAS_LENTES`; o peso e a nota, do
- *  cálculo do mês.
+ *  CADA CARTÃO SE EXPLICA SOZINHO: o peso ao lado do nome, o objetivo da lente
+ *  numa frase e a fonte em uso hoje, com um "?" para o que ela ganha nas
+ *  próximas ondas. Textos em `DESCRICAO_DAS_LENTES`; peso e nota, do cálculo.
+ *
+ *  O CONTORNO INTEIRO NA COR DA LENTE, por pedido, e não uma faixa só à
+ *  esquerda: é a mesma cor da fatia no radar, e é ela que liga um ao outro.
+ *
+ *  COMPACTOS E DIVIDINDO A ALTURA DO RADAR (`flex: 1`), por pedido: a coluna
+ *  inteira tem a altura do radar ao lado, em vez de passar dele.
  *
  *  O CARTÃO NÃO É UM BOTÃO, e por isso pode ter o "?" dentro — um controle
- *  dentro de outro é HTML inválido e confunde o leitor de tela. O clique no
- *  cartão continua abrindo a lente; para o teclado, há o "Abrir lente →".
+ *  dentro de outro é HTML inválido. O clique no cartão abre a lente; para o
+ *  teclado, o nome da lente é o botão.
  */
 function ListaDasLentes({
   lentes,
@@ -564,11 +573,12 @@ function ListaDasLentes({
   aoAbrir: (codigo: string) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
       {lentes.map((lente) => {
         const descricao = DESCRICAO_DAS_LENTES[lente.codigo];
         const acesa = destacada === lente.codigo;
         const fora = lente.score === null;
+        const cor = corDaLente(lente.codigo);
         return (
           <div
             key={lente.codigo}
@@ -576,92 +586,27 @@ function ListaDasLentes({
             onMouseLeave={() => aoDestacar(null)}
             onClick={() => aoAbrir(lente.codigo)}
             style={{
+              flex: '1 1 auto',
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) auto',
-              gap: '6px 16px',
-              padding: '14px 16px 12px',
-              //: MAIS QUADRADA, por pedido: canto de 4px, e a cor da lente
-              //: numa barra à esquerda em vez do quadradinho solto.
-              borderRadius: 4,
-              borderLeft: `5px solid ${corDaLente(lente.codigo)}`,
-              borderTop: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
-              borderRight: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
-              borderBottom: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
+              alignContent: 'center',
+              gap: '3px 14px',
+              padding: '9px 12px',
+              borderRadius: 6,
+              border: `1.5px solid ${cor}`,
+              //: ACESO, O CONTORNO ENGROSSA em vez de mudar de cor: a cor é a
+              //: identidade da lente e não pode trocar com o mouse.
+              boxShadow: acesa ? `0 0 0 2px ${cor}` : 'none',
               background: acesa ? 'var(--bg-trilho)' : 'var(--branco)',
               cursor: 'pointer',
               opacity: fora ? 0.6 : 1,
             }}
           >
             <div style={{ minWidth: 0 }}>
-              <span className="kicker" style={{ display: 'block' }}>
+              <span className="kicker" style={{ display: 'block', fontSize: 10.5 }}>
                 {lente.stakeholder}
               </span>
-              <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--cinza-4)' }}>
-                {lente.nome}
-              </span>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <span
-                className="tabular"
-                style={{
-                  display: 'block',
-                  fontSize: 30,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  color: corDaFaixa(lente.score),
-                }}
-              >
-                {lente.score ?? '—'}
-              </span>
-              <span style={{ fontSize: 12, color: corDoDelta(lente.delta) }}>
-                {comoDelta(lente.delta)}
-              </span>
-            </div>
-
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {descricao ? (
-                <>
-                  <span style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--cinza-3)' }}>
-                    {descricao.objetivo}
-                  </span>
-                  <span style={{ fontSize: 12.5, color: 'var(--cinza-3)', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong style={{ fontWeight: 700, marginRight: 4 }}>Fonte utilizada:</strong>
-                    {descricao.fonteUtilizada}
-                    <span onClick={(evento) => evento.stopPropagation()}>
-                      <Ajuda texto={descricao.proximasOndas} />
-                    </span>
-                  </span>
-                </>
-              ) : lente.fontes.length ? (
-                <span style={{ fontSize: 12.5, color: 'var(--cinza-3)' }}>
-                  <strong style={{ fontWeight: 700 }}>Fonte utilizada:</strong> {lente.fontes.join(', ')}
-                </span>
-              ) : null}
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  marginTop: 2,
-                  paddingTop: 8,
-                  borderTop: '1px solid var(--borda)',
-                }}
-              >
-                <span style={{ fontSize: 13, color: 'var(--cinza-3)' }}>
-                  Peso utilizado:{' '}
-                  <strong className="tabular" style={{ fontSize: 18, fontWeight: 800, color: 'var(--azul-mar)' }}>
-                    {fora ? '—' : `${lente.peso_efetivo}%`}
-                  </strong>
-                  {/* O PESO DA CALIBRAÇÃO, quando o efetivo é outro: com uma
-                      lente fora do mês, as demais sobem para fechar 100%. */}
-                  {!fora && lente.peso_efetivo !== lente.peso ? (
-                    <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}> (calibrado: {lente.peso}%)</span>
-                  ) : null}
-                  {fora ? <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}> fora do cálculo neste mês</span> : null}
-                </span>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={(evento) => {
@@ -670,21 +615,72 @@ function ListaDasLentes({
                   }}
                   onFocus={() => aoDestacar(lente.codigo)}
                   onBlur={() => aoDestacar(null)}
-                  aria-label={`Abrir a lente ${lente.nome}`}
+                  title={`Abrir a lente ${lente.nome}`}
                   style={{
                     border: 'none',
                     background: 'transparent',
                     padding: 0,
-                    color: 'var(--azul-mar)',
-                    fontSize: 12,
-                    fontWeight: 700,
+                    fontSize: 15.5,
+                    fontWeight: 800,
+                    color: 'var(--cinza-4)',
                     cursor: 'pointer',
+                    textAlign: 'left',
                   }}
                 >
-                  Abrir lente →
+                  {lente.nome}
                 </button>
-              </div>
+                {/* O PESO NA FRENTE DO TÍTULO, por pedido. */}
+                <span style={{ fontSize: 12, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+                  Peso{' '}
+                  <strong className="tabular" style={{ fontSize: 14, fontWeight: 800, color: cor }}>
+                    {fora ? '—' : `${lente.peso_efetivo}%`}
+                  </strong>
+                  {!fora && lente.peso_efetivo !== lente.peso ? ` (calibrado ${lente.peso}%)` : ''}
+                </span>
+              </span>
             </div>
+            <div style={{ textAlign: 'right', alignSelf: 'center' }}>
+              <span
+                className="tabular"
+                style={{
+                  display: 'block',
+                  fontSize: 24,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  color: corDaFaixa(lente.score),
+                }}
+              >
+                {lente.score ?? '—'}
+              </span>
+              <span style={{ fontSize: 11, color: corDoDelta(lente.delta) }}>
+                {fora ? 'fora do mês' : comoDelta(lente.delta)}
+              </span>
+            </div>
+
+            {descricao ? (
+              <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 12.5, lineHeight: 1.4, color: 'var(--cinza-3)' }}>
+                  {descricao.objetivo}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--cinza-2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <strong style={{ fontWeight: 700, marginRight: 4, color: 'var(--cinza-3)' }}>
+                    Fonte utilizada:
+                  </strong>
+                  {descricao.fonteUtilizada}
+                  <span onClick={(evento) => evento.stopPropagation()}>
+                    <Ajuda texto={descricao.proximasOndas} />
+                  </span>
+                </span>
+              </div>
+            ) : null}
           </div>
         );
       })}
