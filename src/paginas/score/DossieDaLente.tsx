@@ -124,8 +124,8 @@ export function DossieDaLente({
   }, [lente, mes]);
 
   useEffect(() => {
-    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): Mercado e
-    // Institucional não têm recorte, e buscar opções que a tela nem desenha
+    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
+    // tem recorte, e buscar opções que a tela nem desenha
     // seria uma chamada de rede sem efeito nenhum.
     if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
@@ -183,9 +183,9 @@ export function DossieDaLente({
 
       {/* OS FILTROS NO TOPO, CONGELADOS, como no CRM: logo abaixo das abas, e
           grudados sob o cabeçalho ao rolar. */}
-      {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
-          cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
-          não têm recorte, e a barra não aparece para elas. */}
+      {/* OS FILTROS DE CADA LENTE: Imprensa, Mercado, Sociedade digital e
+          Clientes, cada uma com os seus (`FILTROS_DAS_LENTES`). A Institucional
+          não tem recorte, e a barra não aparece para ela. */}
       <BarraDeFiltroDaLente
         lente={lente}
         filtro={filtro}
@@ -269,7 +269,9 @@ function Conteudo({
 
   return (
     <>
-      <Destaque dossie={dossie} />
+      {/* SEM O CARTÃO DA NOTA NA IMPRENSA E NO MERCADO, por pedido: a Jornada
+          do índice, logo acima, já mostra a nota e a variação da lente. */}
+      {LENTES_SEM_CARTAO_DA_NOTA.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
@@ -442,6 +444,8 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
 }
 
 /* -- 1. o destaque ------------------------------------------------------------- */
+
+const LENTES_SEM_CARTAO_DA_NOTA = ['imprensa', 'mercado'];
 
 function Destaque({ dossie }: { dossie: Dossie }) {
   const delta =

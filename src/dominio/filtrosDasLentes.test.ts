@@ -6,7 +6,7 @@ import { camposDaBase } from '@/dominio/baseDasLentes';
 import { FILTROS_DAS_LENTES } from '@/dominio/filtrosDasLentes';
 
 describe('filtros de tema no painel de KPIs', () => {
-  //: A Imprensa ficou enxuta por pedido (Concessionária, Tier, Sentimento).
+  //: Imprensa e Mercado ficaram enxutas por pedido (Concessionária, Tier, Sentimento).
   it.each(['sociedade', 'clientes'])('%s tem Pilar (N1) e Tema estratégico (N2) nos rápidos', (lente) => {
     const rotulos = FILTROS_DAS_LENTES[lente].rapidos.map((d) => d.rotulo);
     expect(rotulos).toContain('Pilar (N1)');
