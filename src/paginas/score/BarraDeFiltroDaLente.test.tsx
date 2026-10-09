@@ -40,14 +40,14 @@ const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
 };
 
 describe('BarraDeFiltroDaLente', () => {
-  it('Sociedade digital: rápidos com os nomes da lente ("Rede", "Perfil de quem fala")', () => {
+  it('Sociedade digital: rápidos com os nomes da lente, e sem "Filtro avançado"', () => {
     render(<BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />);
     expect(screen.getByText('Rede')).toBeTruthy();
     expect(screen.getByText('Perfil de quem fala')).toBeTruthy();
     expect(screen.getByText('Concessionária')).toBeTruthy();
-    // Subtema, Autor e UF ficam no avançado, que começa fechado.
-    expect(screen.queryByText('Subtema')).toBeNull();
-    expect(screen.getByRole('button', { name: /Filtro avançado/ })).toBeTruthy();
+    // O que era do avançado não aparece mais na barra.
+    expect(screen.queryByText('Subtema (fornecedor)')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Filtro avançado/ })).toBeNull();
   });
 
   it('Sociedade digital: Pilar (N1), Tema estratégico (N2) e Subtema (N3) quando as menções estão ligadas', async () => {
@@ -68,22 +68,17 @@ describe('BarraDeFiltroDaLente', () => {
     expect(definirFiltro).toHaveBeenCalledWith({ tema_n1: 'Governança' });
   });
 
-  it('Sociedade digital sem menção ligada: os três não aparecem; o tema do fornecedor vai para o avançado', async () => {
+  it('Sociedade digital sem menção ligada: os três níveis não aparecem', () => {
     render(<BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />);
     expect(screen.queryByText('Pilar (N1)')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: /Filtro avançado/ }));
-    expect(screen.getByText('Tema (fornecedor)')).toBeTruthy();
-    expect(screen.getByText('Subtema (fornecedor)')).toBeTruthy();
+    expect(screen.queryByText('Subtema (N3)')).toBeNull();
   });
 
-  it('Imprensa: tier e veículo nos rápidos; campo sem opção não aparece', async () => {
+  it('Imprensa: tier e veículo nos rápidos; o que era do avançado não aparece', () => {
     render(<BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />);
     expect(screen.getByText('Tier do veículo')).toBeTruthy();
     expect(screen.getByText('Veículo')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: /Filtro avançado/ }));
-    expect(screen.getByText('UF')).toBeTruthy();
-    // A Imprensa não mandou jornalista neste mês: o campo não é desenhado.
-    expect(screen.queryByText('Jornalista')).toBeNull();
+    expect(screen.queryByText('UF')).toBeNull();
   });
 
   it('Mercado não tem filtros: a barra não aparece', () => {
@@ -108,14 +103,14 @@ describe('BarraDeFiltroDaLente', () => {
     expect(definirFiltro).toHaveBeenCalledWith({ perfil_autor: 'Figura pública', veiculo: 'Instagram' });
   });
 
-  it('no avançado, escolher de novo o que já está marcado DESMARCA, e o contador aparece', async () => {
+  it('escolher de novo o que já está marcado DESMARCA', async () => {
     const definirFiltro = vi.fn();
     render(
-      <BarraDeFiltroDaLente lente="sociedade" filtro={{ uf: 'RJ' }} definirFiltro={definirFiltro} opcoes={DA_SOCIEDADE} />,
+      <BarraDeFiltroDaLente lente="sociedade" filtro={{ veiculo: 'Instagram' }} definirFiltro={definirFiltro} opcoes={DA_SOCIEDADE} />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Filtro avançado · 1' }));
-    await userEvent.click(screen.getByText('RJ'));
-    expect(definirFiltro).toHaveBeenCalledWith({ uf: undefined });
+    await userEvent.click(screen.getByText(/^Rede/));
+    await userEvent.click(screen.getByText('Instagram'));
+    expect(definirFiltro).toHaveBeenCalledWith({ veiculo: undefined });
   });
 
   it('o "Limpar recorte" aparece quando QUALQUER dimensão está ativa', () => {

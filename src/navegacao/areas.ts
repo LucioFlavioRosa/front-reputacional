@@ -36,13 +36,20 @@ const DO_SCORE: ItemDoMenu[] = [
   { view: 'score', rotulo: 'Lentes', aba: 'lentes' },
   { view: 'score', rotulo: 'Drivers e riscos', aba: 'drivers' },
   { view: 'score', rotulo: 'Metodologia', aba: 'metodologia' },
+  //: A BASE DE DADOS É A CONSULTA: as menções de cada lente como chegaram da
+  //: fonte, para quem quer entrar no detalhe. Não confundir com a Importação,
+  //: logo ao lado, que é por onde as planilhas entram.
+  { view: 'score', rotulo: 'Base de dados', aba: 'base-de-dados' },
   //: A BASE VEM POR ÚLTIMO, e é de propósito: ela é a porta de entrada do dado,
   //: e quem abre os KPIs quer LER o índice. Quem sobe planilha vai atrás dela.
   //:
   //: O CRM também tem uma "Base", e as duas convivem porque os menus são de
   //: divisões diferentes: lá é a lista de agendas, aqui são as planilhas dos
   //: fornecedores. O título da tela diz qual é qual.
-  { view: 'score', rotulo: 'Base', aba: 'base' },
+  //: ERA "Base"; virou "Importação" quando a Base de dados (a consulta)
+  //: chegou — duas abas chamadas "Base" lado a lado seriam a mesma coisa para
+  //: quem lê o menu. A rota (`aba: 'base'`) continua a mesma.
+  { view: 'score', rotulo: 'Importação', aba: 'base' },
 ];
 
 /** Em que divisão esta tela está. A configuração conta como a área que ela

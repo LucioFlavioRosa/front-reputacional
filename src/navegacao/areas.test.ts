@@ -54,9 +54,11 @@ describe('a divisão do Score', () => {
       'Lentes',
       'Drivers e riscos',
       'Metodologia',
-      // A BASE VEM POR ÚLTIMO: ela é a porta de entrada do dado, e quem abre
-      // os KPIs quer LER o índice. Quem sobe planilha vai atrás dela.
-      'Base',
+      // A BASE DE DADOS é a consulta das menções na fonte; a IMPORTAÇÃO (que
+      // se chamava "Base") vem por último: é a porta de entrada do dado, e
+      // quem abre os KPIs quer LER o índice.
+      'Base de dados',
+      'Importação',
     ]);
   });
 
@@ -85,6 +87,7 @@ describe('a divisão do Score', () => {
       'lentes',
       'drivers',
       'metodologia',
+      'base-de-dados',
       'base',
     ]);
   });

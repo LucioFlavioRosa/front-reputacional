@@ -24,6 +24,7 @@ export function Abas<T extends string>({
   aoTrocar,
   rotulo,
   prefixo = 'aba',
+  corDaAba,
 }: {
   abas: readonly Aba<T>[];
   ativa: T;
@@ -32,6 +33,9 @@ export function Abas<T extends string>({
   rotulo: string;
   /** Distingue duas réguas na mesma página; entra nos `id` do DOM. */
   prefixo?: string;
+  /** A cor de cada aba quando ativa (as lentes usam a cor da lente). Sem ela,
+   *  o azul da marca. */
+  corDaAba?: (id: T) => string;
 }) {
   return (
     <div
@@ -70,8 +74,8 @@ export function Abas<T extends string>({
               padding: '12px 18px',
               fontSize: 16,
               fontWeight: selecionada ? 700 : 500,
-              color: selecionada ? 'var(--azul-mar)' : 'var(--cinza-3)',
-              borderBottom: `2px solid ${selecionada ? 'var(--azul-mar)' : 'transparent'}`,
+              color: selecionada ? (corDaAba?.(opcao.id) ?? 'var(--azul-mar)') : 'var(--cinza-3)',
+              borderBottom: `2px solid ${selecionada ? (corDaAba?.(opcao.id) ?? 'var(--azul-mar)') : 'transparent'}`,
               marginBottom: -1,
               cursor: 'pointer',
             }}

@@ -32,11 +32,22 @@ export const ROTULO_DO_TIER: Record<string, string> = {
 };
 
 const tier: DimensaoDaLente = { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER };
-const tema: DimensaoDaLente = { chave: 'tema', rotulo: 'Tema', de: 'temas' };
-const subtema: DimensaoDaLente = { chave: 'subtema', rotulo: 'Subtema', de: 'subtemas' };
+//: "TEMA" SEMPRE DIZ QUAL É, por pedido. O TEMA QUE O FORNECEDOR ESCREVE É O
+//: PILAR (N1): o filtro de Pilar o encontra (o servidor casa os dois). O
+//: subtema do fornecedor é o N3, e fica "(fornecedor)" até o de-para entrar.
+const pilar: DimensaoDaLente = { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' };
+const temaEstrategico: DimensaoDaLente = { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' };
+const subtemaN3: DimensaoDaLente = { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' };
+const subtemaDoFornecedor: DimensaoDaLente = { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' };
 const uf: DimensaoDaLente = { chave: 'uf', rotulo: 'UF', de: 'ufs' };
 const concessionaria: DimensaoDaLente = { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' };
 
+//: PILAR (N1) E TEMA ESTRATÉGICO (N2) NOS RÁPIDOS DE TODA LENTE, por pedido —
+//: logo depois da dimensão própria da lente. O servidor oferece a taxonomia
+//: inteira dos dois, então eles aparecem mesmo antes de haver menção ligada.
+//:
+//: OS "AVANÇADOS" NÃO TÊM MAIS BARRA (saíram, por pedido): continuam aqui porque
+//: a busca inteligente sugere os valores deles.
 export const FILTROS_DAS_LENTES: Record<
   string,
   { rapidos: DimensaoDaLente[]; avancados: DimensaoDaLente[] }
@@ -45,34 +56,32 @@ export const FILTROS_DAS_LENTES: Record<
     rapidos: [
       tier,
       { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
-      tema,
+      pilar,
+      temaEstrategico,
       { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
     ],
-    avancados: [uf, { chave: 'autor', rotulo: 'Jornalista', de: 'autores' }, subtema, concessionaria],
+    avancados: [
+      subtemaN3,
+      uf,
+      { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
+      subtemaDoFornecedor,
+      concessionaria,
+    ],
   },
-  //: A SOCIEDADE FILTRA PELA TAXONOMIA DO CRM, por pedido, com os mesmos nomes
-  //: de lá: Pilar (N1), Tema estratégico (N2), Subtema (N3). O tema e o subtema
-  //: QUE O FORNECEDOR ESCREVE vão para o avançado, com "(fornecedor)" no nome —
-  //: dois "Subtema" lado a lado seriam lidos como o mesmo filtro.
   sociedade: {
     rapidos: [
       { chave: 'veiculo', rotulo: 'Rede', de: 'veiculos' },
-      { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' },
-      { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' },
-      { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' },
+      pilar,
+      temaEstrategico,
+      subtemaN3,
       { chave: 'perfil_autor', rotulo: 'Perfil de quem fala', de: 'perfis' },
       concessionaria,
     ],
-    avancados: [
-      { chave: 'tema', rotulo: 'Tema (fornecedor)', de: 'temas' },
-      { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' },
-      { chave: 'autor', rotulo: 'Autor', de: 'autores' },
-      uf,
-    ],
+    avancados: [subtemaDoFornecedor, { chave: 'autor', rotulo: 'Autor', de: 'autores' }, uf],
   },
   clientes: {
-    rapidos: [concessionaria, tema, subtema],
-    avancados: [uf],
+    rapidos: [concessionaria, pilar, temaEstrategico],
+    avancados: [subtemaN3, subtemaDoFornecedor, uf],
   },
 };
 

@@ -38,27 +38,14 @@ import {
   Vazio,
 } from '@/componentes/basicos';
 import { SeletorDeMes } from '@/componentes/SeletorDeMes';
+import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
+import { BaseDeDadosDoScore } from '@/paginas/score/BaseDeDadosDoScore';
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
-import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
-import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
-import { SeletorDeJanela } from '@/graficos/SeletorDeJanela';
-import {
-  ajustar,
-  janelaDoAtalho,
-  kpisDaJanela,
-  mesesMedidos,
-  serieDaJanela,
-} from '@/dominio/janelaDaJornada';
-import type { Janela } from '@/dominio/janelaDaJornada';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
-import {
-  fraseDosParciais,
-  jornadaDoIndice,
-} from '@/dominio/jornadaDoIndice';
 import {
   FAIXAS,
   comoDelta,
@@ -170,6 +157,16 @@ export function Score({
   if (!indice || !mes) return <Carregando rotulo="Calculando o índice…" />;
 
   //: O MÊS E O AVISO DE CALIBRAÇÃO, montados uma vez e postos onde a aba pede.
+  //: O SELETOR DE MÊS SOZINHO vai para o cabeçalho do Radar (sem o aviso de
+  //: calibração, por pedido); com o aviso, para o topo de Drivers.
+  const seletorDoMes = (
+    <SeletorDeMes
+      meses={opcoes.meses}
+      valor={mes}
+      sugerido={opcoes.mes_sugerido}
+      aoEscolher={trocarMes}
+    />
+  );
   const controlesDoMes = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       {!indice.calibracao.padrao ? (
@@ -180,12 +177,7 @@ export function Score({
           titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
         />
       ) : null}
-      <SeletorDeMes
-        meses={opcoes.meses}
-        valor={mes}
-        sugerido={opcoes.mes_sugerido}
-        aoEscolher={trocarMes}
-      />
+      {seletorDoMes}
     </div>
   );
 
@@ -196,11 +188,15 @@ export function Score({
           ficava para baixo. O título continua existindo para leitor de tela,
           que precisa do h1.
 
-          O MÊS MORA NO CARD DO RADAR na Visão geral, por pedido; nas outras
-          abas (Lentes, Drivers) ele continua aqui em cima, porque vale para
-          elas também e elas não têm o radar. */}
+          O MÊS MORA NO CARD DO RADAR na Visão geral, por pedido; em Drivers
+          ele fica aqui em cima; nas Lentes não aparece (ver abaixo). */}
       <h1 style={SO_PARA_LEITOR_DE_TELA}>KPIs Reputacionais</h1>
-      {aba !== 'geral' ? (
+      {/* NAS LENTES, NADA ACIMA DA BUSCA, por pedido: sem o mês e sem o aviso
+          de calibração — a busca inteligente fica colada no cabeçalho. O mês é
+          o que foi escolhido na Visão geral (e a Jornada da lente troca de mês
+          ao clicar). Em Drivers, que não tem outro lugar para escolher o mês,
+          o seletor continua aqui. */}
+      {aba === 'drivers' ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{controlesDoMes}</div>
       ) : null}
 
@@ -235,7 +231,7 @@ export function Score({
             aoTrocarAba('lentes');
           }}
           aoTrocarMes={trocarMes}
-          controlesDoMes={controlesDoMes}
+          controlesDoMes={seletorDoMes}
         />
       ) : null}
 
@@ -259,6 +255,8 @@ export function Score({
           que e a REGUA do indice — la se decide quanto o dado pesa, aqui ele
           entra. Ver o cabecalho de `BaseDoScore`. */}
       {aba === 'base' ? <BaseDoScore /> : null}
+
+      {aba === 'base-de-dados' ? <BaseDeDadosDoScore /> : null}
     </div>
   );
 }
@@ -276,7 +274,7 @@ function VisaoGeral({
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
   aoTrocarMes: (mes: string) => void;
-  /** O seletor de mês (e o aviso de calibração), para o cabeçalho do radar. */
+  /** O seletor de mês, para o cabeçalho do radar — sem o aviso de calibração. */
   controlesDoMes: ReactNode;
 }) {
   // O DESTAQUE MORA AQUI, e não em cada metade: gráfico e lista são duas
@@ -284,169 +282,22 @@ function VisaoGeral({
   // na lista não acender a fatia — que é o único jeito de ligar a terceira
   // linha à segunda fatia, quando as larguras são diferentes.
   const [destacada, definirDestacada] = useState<string | null>(null);
-  // A LENTE COMPARADA É ESTADO DE LEITURA, e não de calibração: ela não muda
-  // número nenhum, só sobrepõe uma segunda curva. Guardá-la no servidor faria
-  // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
-  //: VÁRIAS LENTES DE UMA VEZ, por pedido: cada clique acrescenta a linha de
-  //: uma lente, e ela fica até sair pelo ×. Na ordem em que foram escolhidas.
-  const [comparadas, definirComparadas] = useState<string[]>([]);
-  const alternarComparada = (codigo: string) =>
-    definirComparadas((atuais) =>
-      atuais.includes(codigo) ? atuais.filter((c) => c !== codigo) : [...atuais, codigo],
-    );
-  const nomesDasLentes = Object.fromEntries(indice.lentes.map((lente) => [lente.codigo, lente.nome]));
-  //: A JANELA DA JORNADA, escolhida na mini linha do tempo abaixo do gráfico.
-  //: MORA AQUI, e não no componente do gráfico, porque três coisas a leem e
-  //: precisam andar juntas: a curva, os cartões ao lado e o subtítulo — que é
-  //: escrito nesta tela. Nula = os últimos 6 meses, por pedido.
-  //: Também é estado de leitura, como `comparada`: não muda número nenhum.
-  const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
-  const [mostrarPico, definirMostrarPico] = useState(true);
-  const [mostrarVale, definirMostrarVale] = useState(true);
-  const meses = mesesMedidos(serie);
-  //: `ajustar` A CADA RENDER: a série pode crescer (um mês novo ingerido) ou
-  //: encolher, e uma janela guardada com índices de outra série sairia da borda.
-  const janela = janelaEscolhida
-    ? ajustar(janelaEscolhida, meses.length)
-    : janelaDoAtalho('6m', meses);
-  const serieRecortada = serieDaJanela(serie, janela);
-  const kpis = kpisDaJanela(serieRecortada);
-  const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparadas, nomesDasLentes);
-  //: DUAS CONTAS, E NÃO UMA. "Medido por poucas lentes" e "fora da escala do
-  //: eixo" eram ditos como se fossem a mesma coisa, e não são: um mês parcial
-  //: costuma cair DENTRO do eixo, e quando não há nenhum mês completo são os
-  //: parciais que REGEM o eixo. A frase antiga afirmava o oposto do desenho
-  //: justamente na base nova — três meses, duas lentes cada —, que é a primeira
-  //: coisa que um cliente vê.
-  //:
-  //: A CONTAGEM VEM DA JORNADA, e não de uma releitura da série com o `4`
-  //: escrito à mão aqui: dois lugares decidindo o que é "parcial" é um a mais
-  //: do que se consegue manter de acordo.
-  const mesesParciais = jornada.pontos.filter((ponto) => ponto.parcial).length;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* A JORNADA DO ÍNDICE ABRE A TELA, por pedido: a pergunta de quem chega
           é "para onde o índice está indo", e o radar do mês vem logo depois
           para explicar de que lentes o número é feito. */}
-      <ComFaixaDoTopo>
-      <Secao
+      <PainelDaJornada
         titulo="Jornada do índice"
-        subtitulo={jornada.resumo}
-      >
-        <Cartao>
-          {/* CARTÕES EM CIMA, EM UMA FAIXA, e o gráfico com a largura inteira
-              logo abaixo — por pedido: ao lado, os cartões roubavam do gráfico
-              justamente a largura que separa um mês do outro. Em cima eles
-              leem como o resumo do que o gráfico vai mostrar. */}
-          <CartoesDaJanela kpis={kpis} />
-          {/* "COMPARAR COM" COLADO NO GRÁFICO, por pedido — no cabeçalho da seção
-              ele ficava longe da curva que muda, e acima dos cartões, que ele
-              não muda. */}
-          <div
-            style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}
-          >
-            <span className="kicker">Comparar com</span>
-            <Chip
-              rotulo="Só o índice"
-              ativo={comparadas.length === 0}
-              aoClicar={() => definirComparadas([])}
-            />
-            {/* CADA CHIP NA COR DA LENTE, a mesma da curva e do radar: com a
-                borda antes de escolher (para se saber que cor virá) e cheio
-                depois, com o × para tirar. */}
-            {indice.lentes
-              .filter((lente) => lente.score !== null)
-              .map((lente) => {
-                const ativa = comparadas.includes(lente.codigo);
-                const cor = corDaLente(lente.codigo);
-                return (
-                  <Chip
-                    key={lente.codigo}
-                    rotulo={lente.nome}
-                    ativo={ativa}
-                    fundo={ativa ? cor : 'var(--branco)'}
-                    texto={ativa ? (TEXTO_SOBRE_A_LENTE[lente.codigo] ?? 'var(--branco)') : 'var(--cinza-3)'}
-                    titulo={ativa ? `Tirar a linha de ${lente.nome}` : `Mostrar a linha de ${lente.nome}`}
-                    estilo={{ border: `1.5px solid ${cor}` }}
-                    aoClicar={() => alternarComparada(lente.codigo)}
-                  />
-                );
-              })}
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <JornadaDoIndice
-              semDetalheDoMes
-              serie={serieRecortada}
-              mes={indice.mes}
-              comparada={comparadas}
-              nomeDaComparada={nomesDasLentes}
-              aoEscolherMes={aoTrocarMes}
-              // MAIS ALTO QUE O PADRÃO (260px), por pedido: com os cartões em
-              // cima e o cartão do mês fora, o gráfico ganhou o espaço.
-              altura={330}
-              linhasDeReferencia={[
-                ...(mostrarPico && kpis.pico
-                  ? [{ chave: 'pico', valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}`, cor: COR_DO_PICO }]
-                  : []),
-                ...(mostrarVale && kpis.vale
-                  ? [{ chave: 'vale', valor: kpis.vale.valor, rotulo: `Vale ${kpis.vale.valor}`, cor: COR_DO_VALE, abaixo: true }]
-                  : []),
-              ]}
-            />
-            <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 14,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              marginTop: 16,
-              fontSize: 11.5,
-              color: 'var(--cinza-2)',
-            }}
-          >
-            {/* AS LINHAS DE PICO E VALE SE LIGAM E DESLIGAM AQUI, na legenda, por
-                pedido. A legenda das cores da fita (Pressiona, Sustenta, Misto,
-                Sem fato) saiu, também por pedido. Cada linha some quando não há
-                mês da janela medido por 4 lentes. */}
-            {kpis.pico ? (
-              <BotaoDaLinha
-                rotulo={`Pico da janela (${kpis.pico.valor})`}
-                cor={COR_DO_PICO}
-                ligada={mostrarPico}
-                aoAlternar={() => definirMostrarPico((atual) => !atual)}
-              />
-            ) : null}
-            {kpis.vale ? (
-              <BotaoDaLinha
-                rotulo={`Vale da janela (${kpis.vale.valor})`}
-                cor={COR_DO_VALE}
-                ligada={mostrarVale}
-                aoAlternar={() => definirMostrarVale((atual) => !atual)}
-              />
-            ) : null}
-            {mesesParciais ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span
-                  style={{
-                    width: 11,
-                    height: 11,
-                    borderRadius: '50%',
-                    border: '2px dashed var(--cinza-2)',
-                  }}
-                />
-                {fraseDosParciais(mesesParciais)}
-              </span>
-            ) : null}
-            {/* ENSINA O GESTO que sobrou: o cartão do mês saiu desta tela, e o
-                clique continua sendo o caminho para o detalhe de um mês. */}
-            <span>Clique num mês para abrir a lente e o radial daquele mês.</span>
-          </div>
-        </Cartao>
-      </Secao>
-      </ComFaixaDoTopo>
+        sujeito="O índice"
+        serie={serie}
+        mes={indice.mes}
+        aoEscolherMes={aoTrocarMes}
+        lentesParaComparar={indice.lentes
+          .filter((lente) => lente.score !== null)
+          .map((lente) => ({ codigo: lente.codigo, nome: lente.nome }))}
+        dica="Clique num mês para abrir a lente e o radial daquele mês."
+      />
 
       <ComFaixaDoTopo>
       <Secao
@@ -499,56 +350,6 @@ function VisaoGeral({
       </ComFaixaDoTopo>
 
     </div>
-  );
-}
-
-//: O TEXTO DO CHIP CHEIO, sobre a cor da lente: escuro nas cores claras
-//: (turquesa, laranja), branco nas escuras — legível nas cinco.
-const TEXTO_SOBRE_A_LENTE: Record<string, string> = {
-  imprensa: 'var(--sobre-turquesa)',
-  sociedade: 'var(--cinza-4)',
-};
-
-//: PICO VERDE E VALE VERMELHO, por pedido — nos tons escuros de "ok" e "erro",
-//: que seguem legíveis como traço fino e como rótulo sobre as faixas de fundo.
-const COR_DO_PICO = 'var(--ok-fg)';
-const COR_DO_VALE = 'var(--erro-fg)';
-
-/** Um item da legenda que liga e desliga uma linha de referência. */
-function BotaoDaLinha({
-  rotulo,
-  cor,
-  ligada,
-  aoAlternar,
-}: {
-  rotulo: string;
-  cor: string;
-  ligada: boolean;
-  aoAlternar: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={ligada}
-      onClick={aoAlternar}
-      title={ligada ? 'Esconder a linha' : 'Mostrar a linha'}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 5,
-        padding: '2px 8px',
-        border: '1px solid var(--borda)',
-        borderRadius: 'var(--r-chip)',
-        background: ligada ? 'var(--branco)' : 'var(--bg-trilho)',
-        color: ligada ? 'var(--cinza-3)' : 'var(--cinza-2)',
-        fontSize: 11.5,
-        cursor: 'pointer',
-        textDecoration: ligada ? 'none' : 'line-through',
-      }}
-    >
-      <span aria-hidden style={{ width: 16, height: 0, borderTop: `1.5px dashed ${cor}` }} />
-      {rotulo}
-    </button>
   );
 }
 
@@ -672,9 +473,9 @@ function ListaDasLentes({
               >
                 {lente.score ?? '—'}
               </span>
-              <span style={{ fontSize: 11, color: corDoDelta(lente.delta) }}>
-                {fora ? 'fora do mês' : comoDelta(lente.delta)}
-              </span>
+              {fora ? (
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)' }}>fora do mês</span>
+              ) : null}
             </div>
 
             {descricao ? (
@@ -697,6 +498,19 @@ function ListaDasLentes({
                   {descricao.fonteUtilizada}
                 </span>
               </div>
+            ) : null}
+            {/* A VARIAÇÃO NA ÚLTIMA LINHA DO CARTÃO, por pedido, com o que ela é
+                escrito antes: embaixo da nota, espremida na coluna da direita,
+                ficava ruim de ler. */}
+            {!fora ? (
+              <span style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                <strong style={{ fontWeight: 700, color: 'var(--cinza-3)' }}>
+                  Comparação com mês anterior:
+                </strong>{' '}
+                <strong style={{ color: corDoDelta(lente.delta), fontWeight: 700 }}>
+                  {comoDelta(lente.delta)}
+                </strong>
+              </span>
             ) : null}
           </div>
         );
