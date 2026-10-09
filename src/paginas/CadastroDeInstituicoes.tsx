@@ -43,6 +43,7 @@ import {
 import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { Paginacao } from '@/componentes/Paginacao';
 import { usePainel } from '@/estado/painel';
 import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
@@ -346,6 +347,28 @@ export function CadastroDeInstituicoes() {
       .filter((i) => !termo || i.nome.toLowerCase().includes(termo))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [catalogo, busca]);
+
+  //: PAGINAÇÃO DA LISTA "CADASTRADOS" — client-side, de propósito: a lista
+  //: inteira já vem do catálogo carregado uma vez no boot do app (usado por
+  //: outras telas também), então não há por que paginar no servidor. Só
+  //: corta o que a tela MOSTRA.
+  const POR_PAGINA = 10;
+  const [pagina, definirPagina] = useState(1);
+  // NOVA BUSCA VOLTA PRA PÁGINA 1 — ajuste durante a renderização, mesmo
+  // padrão de `CampoDePeriodo` (`PainelDeFiltros.tsx`): sem isto, filtrar por
+  // um nome raro podia deixar a tela numa página que não existe mais para
+  // aquele resultado.
+  const [buscaAnterior, definirBuscaAnterior] = useState(busca);
+  if (busca !== buscaAnterior) {
+    definirBuscaAnterior(busca);
+    definirPagina(1);
+  }
+  const totalDePaginas = Math.max(1, Math.ceil(instituicoes.length / POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalDePaginas);
+  const instituicoesDaPagina = instituicoes.slice(
+    (paginaAtual - 1) * POR_PAGINA,
+    paginaAtual * POR_PAGINA,
+  );
 
   //: Todas, sem o filtro de busca da lista "Cadastrados" — o rótulo de opção
   //: leva o nome completo na busca pelo mesmo motivo do formulário de agenda:
@@ -716,7 +739,7 @@ export function CadastroDeInstituicoes() {
             </div>
           ) : null}
 
-          {instituicoes.map((instituicao) => (
+          {instituicoesDaPagina.map((instituicao) => (
             <LinhaDeInstituicao
               key={instituicao.id}
               instituicao={instituicao}
@@ -884,6 +907,12 @@ export function CadastroDeInstituicoes() {
               }
             />
           ))}
+
+          <Paginacao
+            pagina={paginaAtual}
+            totalDePaginas={totalDePaginas}
+            aoMudarPagina={definirPagina}
+          />
         </Cartao>
       </Secao>
     </div>

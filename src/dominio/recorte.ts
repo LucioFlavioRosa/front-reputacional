@@ -83,6 +83,13 @@ export interface Recorte {
    *  elas, mesmo comportamento de `categoriaPublico`; vai ao backend como
    *  `formatoInteracao=7`. */
   formatoInteracao?: number[];
+  /** Tema estratégico (N2) da taxonomia de temas — ids de
+   *  `catalogo.dicionarios.macro_temas`. OR entre eles; vai ao backend como
+   *  `temasN2=3,12`, e lá entra quem tiver algum tema (N3) abaixo deles. */
+  temasN2?: number[];
+  /** Pilar (N1) — ids de `catalogo.dicionarios.blocos_tema`. Mesma regra de
+   *  `temasN2`; entre os dois níveis (e com `tags`) é E, não OU. */
+  temasN1?: number[];
   q?: string;
 }
 
@@ -101,6 +108,8 @@ export function quantidadeDeFiltros(recorte: Recorte): number {
   if (recorte.areas?.length) ativos += 1;
   if (recorte.categoriaPublico?.length) ativos += 1;
   if (recorte.formatoInteracao?.length) ativos += 1;
+  if (recorte.temasN2?.length) ativos += 1;
+  if (recorte.temasN1?.length) ativos += 1;
   return ativos;
 }
 
@@ -205,6 +214,66 @@ export function alternarFormatoInteracao(recorte: Recorte, id: number): Recorte 
 export function limparFormatoInteracao(recorte: Recorte): Recorte {
   const proximo = { ...recorte };
   delete proximo.formatoInteracao;
+  return proximo;
+}
+
+/** Liga ou desliga um id numa lista do recorte (N1, N2...), multisseleção
+ *  com OR — a mesma regra de `alternarFormatoInteracao`. */
+function alternarNaLista(
+  recorte: Recorte,
+  campo: 'temasN1' | 'temasN2',
+  id: number,
+): Recorte {
+  const atuais = new Set(recorte[campo] ?? []);
+  if (atuais.has(id)) atuais.delete(id);
+  else atuais.add(id);
+  const lista = [...atuais].sort((a, b) => a - b);
+  const proximo = { ...recorte };
+  if (lista.length) proximo[campo] = lista;
+  else delete proximo[campo];
+  return proximo;
+}
+
+/** Um pilar (N1) liga/desliga. Os temas estratégicos (N2) escolhidos que não
+ *  são de nenhum pilar ainda marcado saem junto: N1 e N2 se combinam com E, e
+ *  manter um N2 de fora dos pilares escolhidos zeraria a tela sem explicação. */
+export function alternarTemaN1(
+  recorte: Recorte,
+  id: number,
+  pilarDoN2: (idN2: number) => number | undefined,
+): Recorte {
+  const proximo = alternarNaLista(recorte, 'temasN1', id);
+  const pilares = new Set(proximo.temasN1 ?? []);
+  if (pilares.size && proximo.temasN2?.length) {
+    const n2 = proximo.temasN2.filter((idN2) => pilares.has(pilarDoN2(idN2) ?? -1));
+    if (n2.length) proximo.temasN2 = n2;
+    else delete proximo.temasN2;
+  }
+  return proximo;
+}
+
+/** Um tema estratégico (N2) liga/desliga. */
+export function alternarTemaN2(recorte: Recorte, id: number): Recorte {
+  return alternarNaLista(recorte, 'temasN2', id);
+}
+
+/** Só os campos N1 e N2, sem afastar o resto — o "Limpar" de cada gatilho. */
+export function limparTemasN1(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.temasN1;
+  return proximo;
+}
+
+export function limparTemasN2(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.temasN2;
+  return proximo;
+}
+
+/** Só o clima registrado — o "Limpar" do gatilho Clima da faixa fixa. */
+export function limparClima(recorte: Recorte): Recorte {
+  const proximo = { ...recorte };
+  delete proximo.clima;
   return proximo;
 }
 

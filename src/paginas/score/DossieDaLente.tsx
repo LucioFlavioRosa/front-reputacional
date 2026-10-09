@@ -55,6 +55,7 @@ import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { jornadaDaLente } from '@/dominio/jornadaDaLente';
+import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -85,10 +86,17 @@ export function DossieDaLente({
   aoTrocarLente,
   serie,
   aoTrocarMes,
+  filtro,
+  definirFiltro,
 }: {
   mes: string;
   lente: string;
   aoTrocarLente: (codigo: string) => void;
+  /** O recorte da lente. MORA NA TELA DO SCORE, e não aqui, para a busca
+   *  inteligente do topo poder abrir uma lente já filtrada ("Imprensa ›
+   *  Veículo = Folha"). Quem troca lente ou mês também zera o filtro, lá. */
+  filtro: FiltroDaLente;
+  definirFiltro: (filtro: FiltroDaLente) => void;
   /** A mesma série que alimenta a Jornada do índice na Visão geral — aqui só
    *  lida de outro jeito (a nota de UMA lente, não o ISR). Mesmo dado, sem
    *  segunda chamada de rede. */
@@ -97,29 +105,33 @@ export function DossieDaLente({
 }) {
   const [dossie, definirDossie] = useState<Dossie | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
-  const [filtro, definirFiltro] = useState<FiltroDaLente>({});
-  const [opcoes, definirOpcoes] = useState<OpcoesDeFiltroDaLente | null>(null);
+  //: AS OPÇÕES COM A LENTE E O MÊS DE QUE SÃO: assim a tela usa só as que
+  //: batem com a lente aberta, sem precisar zerá-las a cada troca — e nunca
+  //: mostra, por um instante, os veículos da Imprensa na barra de Clientes.
+  const [carregadas, definirCarregadas] = useState<{
+    chave: string;
+    opcoes: OpcoesDeFiltroDaLente | null;
+  } | null>(null);
+  const opcoes = carregadas?.chave === `${lente}|${mes}` ? carregadas.opcoes : null;
 
-  // TROCAR DE LENTE OU DE MÊS ZERA O RECORTE E O DOSSIÊ: um veículo escolhido
-  // na Imprensa não existe no vocabulário do Mercado, e um filtro que
-  // sobrevive à troca calado deixaria a tela nova parecer sem dado por um
-  // motivo que não é o que a pessoa vê. Zerar `dossie` aqui também — e só
-  // aqui — é o que evita mostrar, por um instante, o número da lente ANTERIOR
-  // como se já fosse da nova.
+  // TROCAR DE LENTE OU DE MÊS ZERA O DOSSIÊ: é o que evita mostrar, por um
+  // instante, o número da lente ANTERIOR como se já fosse da nova. O RECORTE
+  // é zerado por quem troca (a tela do Score), e não aqui: zerar aqui apagaria
+  // o filtro que a busca inteligente acabou de pôr junto com a lente.
   useEffect(() => {
-    definirFiltro({});
     definirDossie(null);
   }, [lente, mes]);
 
   useEffect(() => {
-    // SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): mesma
-    // restrição da tela logo abaixo. Buscar opções que a tela nem desenha
+    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): Mercado e
+    // Institucional não têm recorte, e buscar opções que a tela nem desenha
     // seria uma chamada de rede sem efeito nenhum.
-    if (lente !== 'imprensa') return;
+    if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
+    const chave = `${lente}|${mes}`;
     obterOpcoesDeFiltroDaLente(lente, mes)
-      .then((carregadas) => ativo && definirOpcoes(carregadas))
-      .catch(() => ativo && definirOpcoes(null));
+      .then((recebidas) => ativo && definirCarregadas({ chave, opcoes: recebidas }))
+      .catch(() => ativo && definirCarregadas({ chave, opcoes: null }));
     return () => {
       ativo = false;
     };
@@ -155,13 +167,15 @@ export function DossieDaLente({
         prefixo="lente"
       />
 
-      {/* SÓ NA IMPRENSA — POR HORA: tier/veículo/atributo são vocabulário da
-          clipagem de imprensa (ver as restrições de `_volume_por_tier` e
-          companhia em `app/api/lentes.py`) — filtrar por eles nas outras
-          lentes não tem o que filtrar. */}
-      {lente === 'imprensa' ? (
-        <BarraDeFiltroDaLente filtro={filtro} definirFiltro={definirFiltro} opcoes={opcoes} />
-      ) : null}
+      {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
+          cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
+          não têm recorte, e a barra não aparece para elas. */}
+      <BarraDeFiltroDaLente
+        lente={lente}
+        filtro={filtro}
+        definirFiltro={definirFiltro}
+        opcoes={opcoes}
+      />
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
       {!dossie && !erro ? <Carregando /> : null}

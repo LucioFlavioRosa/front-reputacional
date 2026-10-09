@@ -68,6 +68,7 @@ import { ListaDeMateriais } from '@/paginas/cadastro/ListaDeMateriais';
 import { DepoisDaReuniao } from '@/paginas/cadastro/DepoisDaReuniao';
 import { ListaDaAegea, ListaDeParticipantes } from '@/paginas/cadastro/participantes';
 import { AjudaDoCampo } from '@/componentes/AjudaDoCampo';
+import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 import { GuiaDosFormatos } from '@/componentes/GuiaDosFormatos';
 import { GUIA_DO_CADASTRO } from '@/dominio/guiaDoCadastro';
 
@@ -607,12 +608,37 @@ export function Cadastro({
         aria-labelledby="etapa-antes"
         style={COLUNA_DA_ETAPA(etapa === 'antes')}
       >
+      {/* ÁREA PRIMEIRO, por pedido: quem registra começa dizendo de que área
+          é a interação, e só depois que tipo de interação ela foi. */}
+      <Secao
+        titulo="1. Área(s)"
+        acao={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.area} />}
+        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {catalogo.dicionarios.areas_pessoa.map((area) => {
+            const ativo = form.areas.includes(area.id);
+            return (
+              <Chip
+                key={area.id}
+                rotulo={area.nome}
+                ativo={ativo}
+                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
+                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
+                aoClicar={() => alternarArea(area.id)}
+                estilo={ESTILO_DO_CHIP_MAIOR}
+              />
+            );
+          })}
+        </div>
+      </Secao>
+
       {/* A FRENTE SAIU DAQUI — quem se escolhe agora é o Formato, e só ele.
           A frente é DERIVADA da instituição (seção 3) e deste formato; a
           tela mostra o resultado como leitura, junto do campo "Público", em
           vez de perguntar de novo o que a instituição já responde. */}
       <Secao
-        titulo="1. Tipo de interação"
+        titulo="2. Tipo de interação"
         acao={<GuiaDosFormatos formatos={catalogo.dicionarios.formatos_interacao} />}
         estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
       >
@@ -628,29 +654,6 @@ export function Cadastro({
                 fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
                 texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
                 aoClicar={() => escolherFormato(ativo ? '' : valor)}
-                estilo={ESTILO_DO_CHIP_MAIOR}
-              />
-            );
-          })}
-        </div>
-      </Secao>
-
-      <Secao
-        titulo="2. Área(s)"
-        acao={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.area} />}
-        estiloDoTitulo={ESTILO_DO_TITULO_DO_CADASTRO}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {catalogo.dicionarios.areas_pessoa.map((area) => {
-            const ativo = form.areas.includes(area.id);
-            return (
-              <Chip
-                key={area.id}
-                rotulo={area.nome}
-                ativo={ativo}
-                fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                aoClicar={() => alternarArea(area.id)}
                 estilo={ESTILO_DO_CHIP_MAIOR}
               />
             );
@@ -812,21 +815,11 @@ export function Cadastro({
             rotulo="Temas"
             aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.temas} />}
           >
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {catalogo.dicionarios.temas.map((tema) => {
-                const ativo = form.temas.includes(tema.id);
-                return (
-                  <Chip
-                    key={tema.id}
-                    rotulo={tema.nome}
-                    ativo={ativo}
-                    fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                    texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                    aoClicar={() => alternarAssunto(tema.id)}
-                  />
-                );
-              })}
-            </div>
+            <SeletorDeTemas
+              temas={catalogo.dicionarios.temas}
+              selecionados={form.temas}
+              aoAlternar={alternarAssunto}
+            />
           </Campo>
         </div>
       </Secao>
@@ -865,6 +858,10 @@ export function Cadastro({
             <ListaDaAegea
               participantes={form.aegea}
               pessoas={[...catalogo.pessoas.values()]}
+              areasDaInteracao={form.areas}
+              nomeDaArea={(idDaArea) =>
+                catalogo.dicionarios.areas_pessoa.find((a) => a.id === idDaArea)?.nome ?? ''
+              }
               aoMudar={(aegea) => alterar('aegea', aegea)}
             />
           </Cartao>

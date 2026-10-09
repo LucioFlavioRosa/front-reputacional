@@ -243,7 +243,7 @@ describe('porArea', () => {
     const dados = [
       interacao({ areas: [1] }), // Comunicação
       interacao({ areas: [2] }), // Relações Institucionais
-      interacao({ areas: [3] }), // Operações Financeiras -> "Mercado de Capitais"
+      interacao({ areas: [3] }), // Operações Financeiras -> "Operações financeiras"
       interacao({ areas: [5] }), // Relações com Investidores
     ];
     const resultado = porArea(dados, CATALOGO);
@@ -255,14 +255,14 @@ describe('porArea', () => {
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.total).toBe(1);
     // Operações Financeiras (3) e Relações com Investidores (5) são
     // categorias separadas agora — cada uma soma 1, não mais uma composta.
-    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Operações financeiras')!.total).toBe(1);
     expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.total).toBe(1);
   });
 
   it('uma interação com áreas de duas categorias diferentes conta em cada uma', () => {
     const dados = [interacao({ areas: [3, 5] })]; // Operações Financeiras + RI, mesma interação
     const resultado = porArea(dados, CATALOGO);
-    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.total).toBe(1);
+    expect(resultado.find((c) => c.rotulo === 'Operações financeiras')!.total).toBe(1);
     expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.total).toBe(1);
   });
 
@@ -272,7 +272,7 @@ describe('porArea', () => {
     // 1ª cor.
     const resultado = porArea([interacao({ areas: [5] })], CATALOGO);
     expect(resultado.find((c) => c.rotulo === 'Relações com Investidores')!.cor).toBe('#A11FFF');
-    expect(resultado.find((c) => c.rotulo === 'Mercado de Capitais')!.cor).toBe('#FE952B');
+    expect(resultado.find((c) => c.rotulo === 'Operações financeiras')!.cor).toBe('#FE952B');
     expect(resultado.find((c) => c.rotulo === 'Comunicação')!.cor).toBe('#E12379');
     expect(resultado.find((c) => c.rotulo === 'Relações Institucionais')!.cor).toBe('#17E3CB');
   });
@@ -765,7 +765,7 @@ describe('categoriasDeArea', () => {
     const rotulos = categoriasDeArea(CATALOGO).map((c) => c.rotulo);
     expect(rotulos).toEqual([
       'Comunicação',
-      'Mercado de Capitais',
+      'Operações financeiras',
       'Relações com Investidores',
       'Relações Institucionais',
       'Performance e Dados',

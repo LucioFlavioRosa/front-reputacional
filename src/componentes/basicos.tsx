@@ -87,6 +87,12 @@ export function Ajuda({ texto }: { texto: string }) {
             lineHeight: 1.45,
             textAlign: 'left',
             whiteSpace: 'normal',
+            // O BALÃO É TEXTO CORRIDO, onde quer que o "?" more. Dentro de um
+            // `.kicker` (rótulo em caixa alta, como nos cartões da Jornada) ele
+            // herdava a caixa alta e o espaçamento das letras, e um parágrafo
+            // inteiro em maiúsculas se lê como grito.
+            textTransform: 'none',
+            letterSpacing: 'normal',
           }}
         >
           {texto}
