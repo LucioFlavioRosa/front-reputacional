@@ -3,7 +3,10 @@
  *  PARA QUEM QUER ENTRAR NO DETALHE: o índice e os dossiês resumem; aqui estão
  *  as linhas — cada matéria, post ou mensagem, com o texto e o link quando a
  *  fonte os mandou. Mesmo desenho da Base do CRM dos Stakeholders: busca
- *  inteligente, faixa de filtros congelada, colunas escolhíveis, exportação.
+ *  inteligente, período, colunas escolhíveis, exportação.
+ *
+ *  SEM FILTROS RÁPIDOS POR ENQUANTO, por pedido — a primeira versão é a busca e
+ *  o período; os filtros por campo entram depois (o servidor já os aceita).
  *
  *  UMA SUBABA POR LENTE. Institucional não tem menções — ela lê o CRM, que tem
  *  a Base dele —, e a subaba diz isso em vez de mostrar uma tabela vazia.
@@ -15,20 +18,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { listarMencoesDaBase, obterOpcoesDaBase } from '@/api/cliente';
-import type { ConsultaDaBase, OpcoesDaBase, PaginaDaBase } from '@/api/cliente';
+import { listarMencoesDaBase } from '@/api/cliente';
+import type { ConsultaDaBase, PaginaDaBase } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
-import { Botao, Cartao, Chip, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
-import { CampoSuspenso } from '@/componentes/CampoSuspenso';
-import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
-import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
+import { Botao, Cartao, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
 import {
   COLUNAS_OCULTAS_POR_PADRAO,
   LENTES_DA_BASE,
-  camposDaBase,
   colunasDaBase,
   csvDaBase,
   periodoDoAtalho,
@@ -65,11 +64,9 @@ export function BaseDeDadosDoScore() {
   const [ateManual, definirAteManual] = useState('');
   const [texto, definirTexto] = useState('');
   const [busca, definirBusca] = useState('');
-  const [filtros, definirFiltros] = useState<Record<string, string | undefined>>({});
   const [pagina, definirPagina] = useState(1);
   const [ordem, definirOrdem] = useState<Ordem>({ coluna: 'Data', direcao: 'desc' });
   const [resposta, definirResposta] = useState<{ chave: string; dados: PaginaDaBase } | null>(null);
-  const [opcoes, definirOpcoes] = useState<{ chave: string; dados: OpcoesDaBase } | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [exportando, definirExportando] = useState(false);
 
@@ -102,13 +99,11 @@ export function BaseDeDadosDoScore() {
   const consulta: ConsultaDaBase = {
     ...periodo,
     q: busca,
-    filtros,
     pagina,
     tamanho: TAMANHO_DA_PAGINA,
     ordenacao,
   };
   const chaveDaConsulta = `${lente}|${JSON.stringify(consulta)}`;
-  const chaveDasOpcoes = `${lente}|${periodo.de ?? ''}|${periodo.ate ?? ''}`;
   const ehMencoes = lente !== 'institucional';
 
   useEffect(() => {
@@ -128,42 +123,20 @@ export function BaseDeDadosDoScore() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveDaConsulta, ehMencoes]);
 
-  useEffect(() => {
-    if (!ehMencoes) return;
-    let ativo = true;
-    obterOpcoesDaBase(lente, periodo.de, periodo.ate)
-      .then((dados) => ativo && definirOpcoes({ chave: chaveDasOpcoes, dados }))
-      .catch(() => undefined);
-    return () => {
-      ativo = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chaveDasOpcoes, ehMencoes]);
 
   const dados = resposta?.chave.startsWith(`${lente}|`) ? resposta.dados : null;
   const atualizando = resposta?.chave !== chaveDaConsulta;
-  const opcoesDaLente = opcoes?.chave === chaveDasOpcoes ? opcoes.dados : null;
 
   const trocarLente = (nova: string) => {
     definirLente(nova);
-    definirFiltros({});
-    definirPagina(1);
-  };
-  const mudarFiltro = (chave: string, valor: string | undefined) => {
-    definirFiltros((atuais) => ({ ...atuais, [chave]: valor }));
     definirPagina(1);
   };
   const limparTudo = () => {
-    definirFiltros({});
     definirTexto('');
     definirBusca('');
     definirPagina(1);
   };
 
-  const campos = camposDaBase(lente)
-    .map((campo) => ({ campo, valores: opcoesDaLente?.[campo.de] ?? [] }))
-    .filter(({ valores }) => valores.length > 0);
-  const ativos = camposDaBase(lente).filter((campo) => filtros[campo.chave]);
 
   const exportar = async () => {
     definirExportando(true);
@@ -243,21 +216,10 @@ export function BaseDeDadosDoScore() {
               placeholder="Buscar no texto, veículo, jornalista, tema, concessionária, UF…"
               style={{ ...estiloDeEntrada, height: 30, flex: '1 1 300px', minWidth: 220, fontSize: 12.5 }}
             />
-            {ativos.map((campo) => (
-              <Chip
-                key={campo.chave}
-                rotulo={`${campo.rotulo}: ${campo.rotulos?.[filtros[campo.chave] as string] ?? filtros[campo.chave]}`}
-                ativo
-                fundo="var(--branco)"
-                texto="var(--cinza-3)"
-                titulo={`Remover o filtro ${campo.rotulo}`}
-                aoClicar={() => mudarFiltro(campo.chave, undefined)}
-              />
-            ))}
             <span className="tabular" style={{ fontSize: 12, color: 'var(--cinza-2)' }} aria-live="polite">
               {atualizando ? 'atualizando…' : `${total.toLocaleString('pt-BR')} ${total === 1 ? 'menção' : 'menções'}`}
             </span>
-            {ativos.length || busca ? (
+            {busca ? (
               <span style={{ marginLeft: 'auto' }}>
                 <Botao variante="fantasma" aoClicar={limparTudo}>
                   Limpar
@@ -324,30 +286,6 @@ export function BaseDeDadosDoScore() {
             </label>
           </div>
 
-          {/* OS FILTROS NA FAIXA DO CRM, congelada sob o cabeçalho ao rolar.
-              Um por campo, escolha única; o campo sem valor no período não
-              aparece. */}
-          {campos.length ? (
-            <FaixaDeFiltros colada={false}>
-              {campos.map(({ campo, valores }) => {
-                const valorAtual = filtros[campo.chave];
-                const campoDeFiltro: CampoDeFiltro = {
-                  chave: campo.chave,
-                  rotulo: campo.rotulo,
-                  itens: valores.map((valor) => ({ valor, rotulo: campo.rotulos?.[valor] ?? valor })),
-                  valorAtual,
-                  aoEscolher: (valor) => mudarFiltro(campo.chave, valorAtual === valor ? undefined : valor),
-                };
-                return (
-                  <CampoSuspenso
-                    key={campo.chave}
-                    campo={campoDeFiltro}
-                    aoLimpar={valorAtual ? () => mudarFiltro(campo.chave, undefined) : undefined}
-                  />
-                );
-              })}
-            </FaixaDeFiltros>
-          ) : null}
 
           {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -433,7 +371,7 @@ export function BaseDeDadosDoScore() {
             </Tabela>
             {dados && !dados.itens.length ? (
               <p style={{ fontSize: 13, color: 'var(--cinza-2)', padding: '16px 4px' }}>
-                Nenhuma menção com esses filtros no período.
+                Nenhuma menção com essa busca no período.
               </p>
             ) : null}
           </div>

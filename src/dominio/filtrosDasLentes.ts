@@ -32,12 +32,12 @@ export const ROTULO_DO_TIER: Record<string, string> = {
 };
 
 const tier: DimensaoDaLente = { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER };
-//: "TEMA" SEMPRE DIZ QUAL É, por pedido: Pilar (N1) e Tema estratégico (N2) são
-//: a taxonomia do CRM; o que o fornecedor escreve leva "(fornecedor)" no nome.
+//: "TEMA" SEMPRE DIZ QUAL É, por pedido. O TEMA QUE O FORNECEDOR ESCREVE É O
+//: PILAR (N1): o filtro de Pilar o encontra (o servidor casa os dois). O
+//: subtema do fornecedor é o N3, e fica "(fornecedor)" até o de-para entrar.
 const pilar: DimensaoDaLente = { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' };
 const temaEstrategico: DimensaoDaLente = { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' };
 const subtemaN3: DimensaoDaLente = { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' };
-const temaDoFornecedor: DimensaoDaLente = { chave: 'tema', rotulo: 'Tema (fornecedor)', de: 'temas' };
 const subtemaDoFornecedor: DimensaoDaLente = { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' };
 const uf: DimensaoDaLente = { chave: 'uf', rotulo: 'UF', de: 'ufs' };
 const concessionaria: DimensaoDaLente = { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' };
@@ -62,7 +62,6 @@ export const FILTROS_DAS_LENTES: Record<
     ],
     avancados: [
       subtemaN3,
-      temaDoFornecedor,
       uf,
       { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
       subtemaDoFornecedor,
@@ -78,11 +77,11 @@ export const FILTROS_DAS_LENTES: Record<
       { chave: 'perfil_autor', rotulo: 'Perfil de quem fala', de: 'perfis' },
       concessionaria,
     ],
-    avancados: [temaDoFornecedor, subtemaDoFornecedor, { chave: 'autor', rotulo: 'Autor', de: 'autores' }, uf],
+    avancados: [subtemaDoFornecedor, { chave: 'autor', rotulo: 'Autor', de: 'autores' }, uf],
   },
   clientes: {
     rapidos: [concessionaria, pilar, temaEstrategico],
-    avancados: [subtemaN3, temaDoFornecedor, subtemaDoFornecedor, uf],
+    avancados: [subtemaN3, subtemaDoFornecedor, uf],
   },
 };
 

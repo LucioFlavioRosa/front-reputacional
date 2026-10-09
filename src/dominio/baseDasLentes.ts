@@ -57,7 +57,6 @@ export function camposDaBase(lente: string): CampoDaBase[] {
     { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER },
     { chave: 'veiculo', rotulo: rotuloDoVeiculo(lente), de: 'veiculos' },
     { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' },
-    { chave: 'tema', rotulo: 'Tema (fornecedor)', de: 'temas' },
     { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' },
     { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
     { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' },
@@ -89,7 +88,6 @@ export function colunasDaBase(lente: string): ColunaDaBase[] {
       ordena: 'sentimento',
     },
     { rotulo: 'Matéria / post', valor: (m) => m.titulo ?? '' },
-    { rotulo: 'Tema (fornecedor)', valor: (m) => m.tema ?? '' },
     { rotulo: 'Pilar (N1)', valor: (m) => m.tema_n1 ?? '' },
     { rotulo: 'Tema estratégico (N2)', valor: (m) => m.tema_n2 ?? '' },
     { rotulo: 'Subtema (N3)', valor: (m) => m.tema_n3 ?? '' },
@@ -110,7 +108,6 @@ export function colunasDaBase(lente: string): ColunaDaBase[] {
 
 /** As colunas que nascem escondidas — dá para ligar no seletor de colunas. */
 export const COLUNAS_OCULTAS_POR_PADRAO = [
-  'Pilar (N1)',
   'Tema estratégico (N2)',
   'Subtema (fornecedor)',
   'Perfil de quem fala',

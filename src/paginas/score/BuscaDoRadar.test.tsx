@@ -13,8 +13,9 @@ const vazio: OpcoesDeFiltroDaLente = {
   tiers: [], veiculos: [], atributos: [], temas: [], perfis: [], ufs: [], subtemas: [], autores: [], empresas: [],
 };
 const OPCOES: Record<string, OpcoesDeFiltroDaLente> = {
-  imprensa: { ...vazio, veiculos: ['Folha de S.Paulo', 'Valor'], tiers: ['muito_relevante'], temas: ['Tarifa social'] },
-  sociedade: { ...vazio, veiculos: ['Instagram'], temas: ['Tarifa social'] },
+  //: O TEMA DO FORNECEDOR CHEGA COMO PILAR (N1) — o servidor o põe em `temas_n1`.
+  imprensa: { ...vazio, veiculos: ['Folha de S.Paulo', 'Valor'], tiers: ['muito_relevante'], temas_n1: ['Tarifa social'] },
+  sociedade: { ...vazio, veiculos: ['Instagram'], temas_n1: ['Tarifa social'] },
   clientes: { ...vazio, empresas: ['Águas do Rio'] },
 };
 
@@ -37,9 +38,10 @@ describe('sugestões do Radar', () => {
     expect(aguas).toMatchObject({ rotulo: 'Águas do Rio', grupo: 'Concessionária', lente: 'clientes' });
   });
 
-  it('o mesmo tema em duas lentes vira duas sugestões', () => {
+  it('o mesmo tema em duas lentes vira duas sugestões, como Pilar (N1)', () => {
     const tarifa = filtrarSugestoes(todas, 'tarifa');
     expect(tarifa.map((s) => s.lente).sort()).toEqual(['imprensa', 'sociedade']);
+    expect(tarifa.every((s) => s.grupo === 'Pilar (N1)')).toBe(true);
   });
 
   it('a lente vem antes dos filtros, e acha pelo público', () => {

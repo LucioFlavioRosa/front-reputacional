@@ -47,19 +47,22 @@ describe('BaseDeDadosDoScore', () => {
     expect(screen.getByText('1 menção')).toBeTruthy();
   });
 
-  it('mostra só os filtros que têm valor, e escolher vira chip e filtra no servidor', async () => {
+  it('não tem faixa de filtros rápidos (por enquanto): só busca e período', async () => {
     const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
     render(<BaseDeDadosDoScore />);
-    //: O CABEÇALHO DA COLUNA também é um botão (ordena): o da faixa vem antes.
-    const gatilho = () => screen.getAllByRole('button', { name: /^Concessionária/ })[0];
-    await waitFor(() => expect(gatilho()).toBeTruthy());
-    expect(screen.queryAllByRole('button', { name: /Perfil de quem fala/ })).toHaveLength(0);
-    await userEvent.click(gatilho());
-    await userEvent.click(screen.getByText('Águas do Rio', { selector: 'button' }));
+    await waitFor(() => expect(screen.getByText('Falta d’água em São Gonçalo')).toBeTruthy());
+    expect(screen.queryByText('Filtros:')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Buscar nas menções' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '90 dias' })).toBeTruthy();
+  });
+
+  it('a busca vai ao servidor depois que a pessoa para de digitar', async () => {
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    render(<BaseDeDadosDoScore />);
+    await userEvent.type(screen.getByRole('textbox', { name: 'Buscar nas menções' }), 'agua');
     await waitFor(() =>
-      expect(listar).toHaveBeenLastCalledWith('imprensa', expect.objectContaining({ filtros: { empresa: 'Águas do Rio' } })),
+      expect(listar).toHaveBeenLastCalledWith('imprensa', expect.objectContaining({ q: 'agua', pagina: 1 })),
     );
-    expect(screen.getByText('Concessionária: Águas do Rio')).toBeTruthy();
   });
 
   it('Institucional explica que a consulta está na Base do CRM', async () => {
