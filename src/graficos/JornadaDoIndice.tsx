@@ -66,7 +66,7 @@ import type {
   LinhaDoMes,
   PontoDaJornada,
 } from '@/dominio/jornadaDoIndice';
-import { COR_DO_EFEITO } from '@/dominio/score';
+import { COR_DO_EFEITO, corDaLente } from '@/dominio/score';
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
 
@@ -143,8 +143,12 @@ export function JornadaDoIndice({
 }: {
   serie: PontoDaSerie[];
   mes: string;
-  comparada: string | null;
-  nomeDaComparada?: string;
+  /** Uma lente, várias (a Visão geral sobrepõe quantas forem escolhidas), ou
+   *  nenhuma. Cada curva sai na cor da lente — a mesma do radar. */
+  comparada: string | string[] | null;
+  /** O nome para o rótulo no fim da curva: texto para uma lente, mapa código →
+   *  nome para várias. */
+  nomeDaComparada?: string | Record<string, string>;
   aoEscolherMes: (mes: string) => void;
   /** Quando presente, clicar no gráfico abre o aprofundamento daquele mês em
    *  vez de trocar o mês da tela — NO PONTO E NA FAIXA, os dois.
@@ -245,21 +249,26 @@ export function JornadaDoIndice({
             />
           ))}
 
-          {jornada.curvaDaLente ? (
+          {/* UMA CURVA POR LENTE, NA COR DELA NO RADAR, tracejada para não
+              competir com a do índice (cheia e mais grossa).
+
+              A FORMA NÃO INTERPOLA entre uma lente e outra — dois caminhos com
+              o mesmo número de pontos ainda são duas curvas diferentes, e
+              animar de uma para a outra desenharia valores que não existiram.
+              O que aparece e some é a curva inteira. */}
+          {jornada.curvasDasLentes.map((lente) => (
             <path
-              // A FORMA NÃO INTERPOLA entre uma lente e outra — dois caminhos
-              // com o mesmo número de pontos ainda são duas curvas diferentes,
-              // e animar de uma para a outra desenharia valores que não
-              // existiram. O que aparece e some é a curva inteira.
-              d={jornada.curvaDaLente}
+              key={lente.codigo}
+              data-curva-da-lente={lente.codigo}
+              d={lente.curva}
               fill="none"
-              stroke="var(--cinza-2)"
-              strokeWidth={2}
-              strokeDasharray="6 6"
+              stroke={corDaLente(lente.codigo)}
+              strokeWidth={2.25}
+              strokeDasharray="7 5"
               vectorEffect="non-scaling-stroke"
               style={{ animation: 'jornada-entra 220ms ease' }}
             />
-          ) : null}
+          ))}
 
           {/* O HALO dá à curva um contorno claro contra as faixas: sem ele o
               traço azul sobre a faixa Estável quase desaparece. */}
@@ -342,24 +351,26 @@ export function JornadaDoIndice({
           />
         ))}
 
-        {jornada.pontosDaLente.map((ponto) => (
-          <span
-            key={`${ponto.cx}-${ponto.cy}`}
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: `${(ponto.cx / VB.largura) * 100}%`,
-              top: `${(ponto.cy / VB.altura) * 100}%`,
-              transform: 'translate(-50%, -50%)',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: 'var(--branco)',
-              border: '2px solid var(--cinza-2)',
-              pointerEvents: 'none',
-            }}
-          />
-        ))}
+        {jornada.curvasDasLentes.flatMap((lente) =>
+          lente.pontos.map((ponto) => (
+            <span
+              key={`${lente.codigo}-${ponto.cx}-${ponto.cy}`}
+              aria-hidden
+              style={{
+                position: 'absolute',
+                left: `${(ponto.cx / VB.largura) * 100}%`,
+                top: `${(ponto.cy / VB.altura) * 100}%`,
+                transform: 'translate(-50%, -50%)',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--branco)',
+                border: `2px solid ${corDaLente(lente.codigo)}`,
+                pointerEvents: 'none',
+              }}
+            />
+          )),
+        )}
 
         {jornada.pontos.map((ponto) => (
           <Ponto
@@ -417,27 +428,30 @@ export function JornadaDoIndice({
           </span>
         ))}
 
-        {jornada.fimDaLente ? (
+        {jornada.curvasDasLentes.map((lente) => (
           <span
+            key={`fim-${lente.codigo}`}
             className="tabular jornada__fim-da-lente"
             style={{
               position: 'absolute',
-              left: `${jornada.fimDaLente.esquerda}%`,
-              top: `${jornada.fimDaLente.topo}%`,
+              left: `${lente.fim.esquerda}%`,
+              top: `${lente.fim.topo}%`,
               fontSize: 12,
               fontWeight: 700,
-              color: 'var(--cinza-3)',
+              color: 'var(--cinza-4)',
               whiteSpace: 'nowrap',
               background: 'var(--branco)',
               padding: '2px 6px',
               borderRadius: 5,
-              border: '1px solid var(--borda)',
+              //: A BORDA NA COR DA LENTE é o que liga o número à curva: com
+              //: várias lentes, o texto sozinho obrigaria a ler cada nome.
+              border: `1.5px solid ${corDaLente(lente.codigo)}`,
               pointerEvents: 'none',
             }}
           >
-            {jornada.fimDaLente.texto}
+            {lente.fim.texto}
           </span>
-        ) : null}
+        ))}
       </div>
 
       {/* A FITA: um mês por célula, alinhada ao gráfico. O filete é o sinal que

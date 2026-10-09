@@ -62,6 +62,7 @@ const JORNADA_VAZIA: Jornada = {
   curvaDaLente: '',
   pontosDaLente: [],
   fimDaLente: null,
+  curvasDasLentes: [],
 };
 
 /** A frase que abre o bloco — mesmo texto de `resumoDa`, mas sobre a nota da
@@ -199,6 +200,7 @@ export function jornadaDaLente(
     curvaDaLente: '',
     pontosDaLente: [],
     fimDaLente: null,
+    curvasDasLentes: [],
   };
 }
 

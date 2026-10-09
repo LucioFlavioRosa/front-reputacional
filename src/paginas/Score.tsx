@@ -281,7 +281,14 @@ function VisaoGeral({
   // A LENTE COMPARADA É ESTADO DE LEITURA, e não de calibração: ela não muda
   // número nenhum, só sobrepõe uma segunda curva. Guardá-la no servidor faria
   // duas pessoas olhando a mesma tela disputarem o gráfico uma da outra.
-  const [comparada, definirComparada] = useState<string | null>(null);
+  //: VÁRIAS LENTES DE UMA VEZ, por pedido: cada clique acrescenta a linha de
+  //: uma lente, e ela fica até sair pelo ×. Na ordem em que foram escolhidas.
+  const [comparadas, definirComparadas] = useState<string[]>([]);
+  const alternarComparada = (codigo: string) =>
+    definirComparadas((atuais) =>
+      atuais.includes(codigo) ? atuais.filter((c) => c !== codigo) : [...atuais, codigo],
+    );
+  const nomesDasLentes = Object.fromEntries(indice.lentes.map((lente) => [lente.codigo, lente.nome]));
   //: A JANELA DA JORNADA, escolhida na mini linha do tempo abaixo do gráfico.
   //: MORA AQUI, e não no componente do gráfico, porque três coisas a leem e
   //: precisam andar juntas: a curva, os cartões ao lado e o subtítulo — que é
@@ -298,7 +305,7 @@ function VisaoGeral({
     : janelaDoAtalho('6m', meses);
   const serieRecortada = serieDaJanela(serie, janela);
   const kpis = kpisDaJanela(serieRecortada);
-  const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparada);
+  const jornada = jornadaDoIndice(serieRecortada, indice.mes, comparadas, nomesDasLentes);
   //: DUAS CONTAS, E NÃO UMA. "Medido por poucas lentes" e "fora da escala do
   //: eixo" eram ditos como se fossem a mesma coisa, e não são: um mês parcial
   //: costuma cair DENTRO do eixo, e quando não há nenhum mês completo são os
@@ -336,31 +343,38 @@ function VisaoGeral({
             <span className="kicker">Comparar com</span>
             <Chip
               rotulo="Só o índice"
-              ativo={comparada === null}
-              aoClicar={() => definirComparada(null)}
+              ativo={comparadas.length === 0}
+              aoClicar={() => definirComparadas([])}
             />
+            {/* CADA CHIP NA COR DA LENTE, a mesma da curva e do radar: com a
+                borda antes de escolher (para se saber que cor virá) e cheio
+                depois, com o × para tirar. */}
             {indice.lentes
               .filter((lente) => lente.score !== null)
-              .map((lente) => (
-                <Chip
-                  key={lente.codigo}
-                  rotulo={lente.nome}
-                  ativo={comparada === lente.codigo}
-                  aoClicar={() =>
-                    definirComparada(comparada === lente.codigo ? null : lente.codigo)
-                  }
-                />
-              ))}
+              .map((lente) => {
+                const ativa = comparadas.includes(lente.codigo);
+                const cor = corDaLente(lente.codigo);
+                return (
+                  <Chip
+                    key={lente.codigo}
+                    rotulo={lente.nome}
+                    ativo={ativa}
+                    fundo={ativa ? cor : 'var(--branco)'}
+                    texto={ativa ? (TEXTO_SOBRE_A_LENTE[lente.codigo] ?? 'var(--branco)') : 'var(--cinza-3)'}
+                    titulo={ativa ? `Tirar a linha de ${lente.nome}` : `Mostrar a linha de ${lente.nome}`}
+                    estilo={{ border: `1.5px solid ${cor}` }}
+                    aoClicar={() => alternarComparada(lente.codigo)}
+                  />
+                );
+              })}
           </div>
           <div style={{ marginTop: 12 }}>
             <JornadaDoIndice
               semDetalheDoMes
               serie={serieRecortada}
               mes={indice.mes}
-              comparada={comparada}
-              nomeDaComparada={
-                indice.lentes.find((lente) => lente.codigo === comparada)?.nome ?? ''
-              }
+              comparada={comparadas}
+              nomeDaComparada={nomesDasLentes}
               aoEscolherMes={aoTrocarMes}
               // MAIS ALTO QUE O PADRÃO (260px), por pedido: com os cartões em
               // cima e o cartão do mês fora, o gráfico ganhou o espaço.
@@ -481,6 +495,13 @@ function VisaoGeral({
     </div>
   );
 }
+
+//: O TEXTO DO CHIP CHEIO, sobre a cor da lente: escuro nas cores claras
+//: (turquesa, laranja), branco nas escuras — legível nas cinco.
+const TEXTO_SOBRE_A_LENTE: Record<string, string> = {
+  imprensa: 'var(--sobre-turquesa)',
+  sociedade: 'var(--cinza-4)',
+};
 
 //: PICO VERDE E VALE VERMELHO, por pedido — nos tons escuros de "ok" e "erro",
 //: que seguem legíveis como traço fino e como rótulo sobre as faixas de fundo.
