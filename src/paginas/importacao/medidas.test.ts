@@ -1,7 +1,7 @@
 /** A largura e o alinhamento de cada coluna vêm do TIPO do dado.
  *
  *  O PEDIDO: "divisão de células para ter alinhamento e espaço adequados para cada
- *  coluna". Com 22 colunas, uma largura chutada em uma vira rolagem horizontal em
+ *  coluna". Com 37 colunas, uma largura chutada em uma vira rolagem horizontal em
  *  todas.
  */
 

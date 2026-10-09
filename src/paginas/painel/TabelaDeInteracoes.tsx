@@ -37,6 +37,7 @@ import {
   nomesDosTemas,
   rotuloDeCodigo,
   rotuloDeRelevancia,
+  nomeDoFormatoDeInteracao,
 } from '@/dominio/derivacoes';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type { Interacao } from '@/dominio/tipos';
@@ -185,9 +186,15 @@ function nomeDoPublico(catalogo: Catalogo, instituicaoId: string): string {
 //: `formato_interacao` (Mídia/Agenda de mercado/Evento/Reunião...) — ver
 //: `0038_formato_interacao.sql`. Ortogonal a `frente`, mora direto na
 //: interação, nulável em quem foi cadastrado antes do campo existir.
+//: DELEGA PARA O DOMINIO, em vez de repetir a busca.
+//:
+//: Esta funcao era uma copia de `nomeDoFormatoDeInteracao` de `derivacoes.ts`, e
+//: a copia e que custava: quando aquela passou a resolver tambem pelos formatos
+//: APOSENTADOS (a 0060 aposentou `midia`, e as agendas classificadas com ele
+//: continuam apontando), esta aqui seguiu devolvendo "—" — na tabela de agendas,
+//: que e onde mais gente olha. Achado de revisao.
 function nomeDoFormatoInteracao(catalogo: Catalogo, id: number | null): string {
-  if (id == null) return '—';
-  return catalogo.dicionarios.formatos_interacao.find((f) => f.id === id)?.nome ?? '—';
+  return nomeDoFormatoDeInteracao(catalogo, id);
 }
 
 export function TabelaDeInteracoes({

@@ -30,8 +30,8 @@ export interface DecisaoDaCelula {
 /** A decisão que resolve esta célula, ou `null` se não houver uma.
  *
  *  CASA PELO CAMPO E PELO VALOR, não pela coluna: duas colunas alimentam o mesmo
- *  campo (`Área 1` e `Área 2`, `Tema 1` a `Tema 3`), então casar por coluna
- *  ofereceria dentro de `Tema 3` a decisão que é de `Tema 1`.
+ *  campo (`Área 1` e `Área 2`, `Tema 1` a `Tema 18`), então casar por coluna
+ *  ofereceria dentro de `Tema 18` a decisão que é de `Tema 1`.
  */
 export function decisaoDaCelula(
   linha: LinhaDaImportacao,

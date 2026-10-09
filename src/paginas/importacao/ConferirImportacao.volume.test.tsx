@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
-/** O teto do arquivo é 500 agendas por 58 colunas: 29 mil células.
+/** O teto do arquivo é 500 agendas por 74 colunas: 37 mil células.
+ *
+ *  ERA 58 ATÉ AS COLUNAS DE TEMA IREM DE 3 PARA 18. A largura do pior caso é
+ *  parte da medição: deixá-la em 58 faria este teste medir um arquivo que não
+ *  existe mais, e passar enquanto o de verdade engasga.
  *
  *  POR QUE MEDIR ANTES DE OTIMIZAR: "vai ficar lento" é palpite, e otimizar por
  *  palpite acrescenta complexidade que ninguém pediu. Este teste mede o caso do teto e
@@ -27,7 +31,7 @@ import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import type { ColunaDaImportacao, Importacao, LinhaDaImportacao } from '@/api/cliente';
 
 const TETO_DE_AGENDAS = 500;
-const COLUNAS_DO_COMPLETO = 58;
+const COLUNAS_DO_COMPLETO = 74;
 
 /** Quantas linhas a primeira tela pode montar. O bloco é de 80; o teto folgado aqui
  *  deixa passar um ajuste do tamanho do bloco sem deixar passar "montou tudo". */

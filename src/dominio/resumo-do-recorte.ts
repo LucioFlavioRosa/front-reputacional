@@ -26,10 +26,13 @@ function nomesDasAreas(ids: number[], catalogo: Catalogo | null): string[] {
  *  `campoDeFormatoInteracao`/`campoDeCategoriaPublico`) nunca aparecia na
  *  barra fixa do topo, e o botão "Limpar" dali não os reconhecia. */
 function nomesDosFormatos(ids: number[], catalogo: Catalogo | null): string[] {
-  return ids.map((id) => {
-    const formato = catalogo?.dicionarios.formatos_interacao.find((f) => f.id === id);
-    return formato?.nome ?? String(id);
-  });
+  // Pelos dois dicionários — ver `nomeDoFormatoDeInteracao`. Aqui o id cru
+  // aparecia no resumo do recorte quando o tipo era aposentado.
+  const todos = [
+    ...(catalogo?.dicionarios.formatos_interacao ?? []),
+    ...(catalogo?.dicionarios.formatos_interacao_inativos ?? []),
+  ];
+  return ids.map((id) => todos.find((f) => f.id === id)?.nome ?? String(id));
 }
 
 /** Os nomes dos pilares (N1) e dos temas estratégicos (N2) escolhidos. */

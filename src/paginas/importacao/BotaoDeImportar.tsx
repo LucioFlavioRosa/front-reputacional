@@ -24,12 +24,12 @@ import { Botao, Cartao, FaixaDeErro, Modal } from '@/componentes/basicos';
  *
  *  O PEDIDO: "quando eu clicar em importar a planilha eu quero ter um modal com
  *  opções de fazer o download de dois modelos distintos". A razão é o EVENTO —
- *  54 agendas num mesmo dia são muitas conversas curtas, e as 58 colunas do
+ *  54 agendas num mesmo dia são muitas conversas curtas, e as 74 colunas do
  *  completo viram rolagem horizontal para preencher quatro coisas por linha.
  *
  *  CADA UM DIZ PARA QUEM SERVE, e não só o nome: "completo" e "simplificado"
  *  sozinhos fazem a pessoa escolher pelo que soa mais seguro, que é sempre o
- *  primeiro — e ela baixa 58 colunas para registrar um evento. */
+ *  primeiro — e ela baixa 74 colunas para registrar um evento. */
 const MODELOS: {
   chave: ModeloDePlanilha;
   titulo: string;
@@ -39,14 +39,14 @@ const MODELOS: {
   {
     chave: 'completo',
     titulo: 'Completo',
-    para: 'A agenda que merece registro inteiro: o antes e o depois da reunião, até quatro interlocutores e três materiais.',
-    colunas: '58 colunas',
+    para: 'A agenda que merece registro inteiro: o antes e o depois da reunião, até 18 temas, quatro interlocutores e três materiais.',
+    colunas: '74 colunas',
   },
   {
     chave: 'simplificado',
     titulo: 'Simplificado',
-    para: 'O evento com muitas conversas curtas — 54 agendas no mesmo dia. Sem os campos de aceite, expectativa e materiais.',
-    colunas: '22 colunas',
+    para: 'O evento com muitas conversas curtas — 54 agendas no mesmo dia. Mesmos 18 temas do completo, sem os campos de aceite, expectativa e materiais.',
+    colunas: '37 colunas',
   },
 ];
 
