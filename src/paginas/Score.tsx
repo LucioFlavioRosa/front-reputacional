@@ -550,8 +550,8 @@ const SO_PARA_LEITOR_DE_TELA = {
  *  numa frase e a fonte em uso hoje. Textos em `DESCRICAO_DAS_LENTES`; peso e
  *  nota, do cálculo.
  *
- *  O CONTORNO INTEIRO NA COR DA LENTE, por pedido, e não uma faixa só à
- *  esquerda: é a mesma cor da fatia no radar, e é ela que liga um ao outro.
+ *  CONTORNO CINZA, sem faixa colorida: a ligação com a fatia do radar fica
+ *  por conta do número do peso, na cor da lente.
  *
  *  COMPACTOS E DIVIDINDO A ALTURA DO RADAR (`flex: 1`), por pedido: a coluna
  *  inteira tem a altura do radar ao lado, em vez de passar dele.
@@ -590,10 +590,9 @@ function ListaDasLentes({
               gap: '3px 14px',
               padding: '9px 12px',
               borderRadius: 6,
-              border: `1.5px solid ${cor}`,
-              //: ACESO, O CONTORNO ENGROSSA em vez de mudar de cor: a cor é a
-              //: identidade da lente e não pode trocar com o mouse.
-              boxShadow: acesa ? `0 0 0 2px ${cor}` : 'none',
+              //: CONTORNO CINZA, por pedido (o da cor da lente não agradou); aceso,
+              //: ele fica azul, como nos outros controles da tela.
+              border: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
               background: acesa ? 'var(--bg-trilho)' : 'var(--branco)',
               cursor: 'pointer',
               opacity: fora ? 0.6 : 1,
