@@ -55,7 +55,6 @@ import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
 import {
-  coberturaDoMes,
   fraseDosParciais,
   jornadaDoIndice,
 } from '@/dominio/jornadaDoIndice';
@@ -65,8 +64,6 @@ import {
   corDaFaixa,
   corDaLente,
   corDoDelta,
-  lentesOrdenadas,
-  pesoDaLente,
 } from '@/dominio/score';
 import type {
   DriversDoScore,
@@ -276,9 +273,6 @@ function VisaoGeral({
   /** O seletor de mês (e o aviso de calibração), para o cabeçalho do radar. */
   controlesDoMes: ReactNode;
 }) {
-  const ordenadas = lentesOrdenadas(indice.lentes);
-  const sustenta = ordenadas[0];
-  const corroi = ordenadas.filter((lente) => lente.score !== null).at(-1);
   // O DESTAQUE MORA AQUI, e não em cada metade: gráfico e lista são duas
   // vistas do mesmo conjunto, e cada um com o seu estado faria passar o mouse
   // na lista não acender a fatia — que é o único jeito de ligar a terceira
@@ -316,96 +310,12 @@ function VisaoGeral({
   //: escrito à mão aqui: dois lugares decidindo o que é "parcial" é um a mais
   //: do que se consegue manter de acordo.
   const mesesParciais = jornada.pontos.filter((ponto) => ponto.parcial).length;
-  //: O MESMO AVISO ONDE O NÚMERO É MAIOR. A Jornada já o carrega na etiqueta do
-  //: ponto; aqui ele qualifica a faixa, que é a frase mais forte da tela —
-  //: "Referência · reputação é ativo de valor" é uma afirmação sobre a
-  //: companhia, e com quatro lentes sem medir ela descreve outra coisa.
-  //: `coberturaDoMes` é a regra, e não um `< 4` reescrito: duas telas com
-  //: cortes diferentes para o mesmo mês seria uma delas mentindo.
-  const coberturaDoMesEmTela = coberturaDoMes(
-    indice.lentes.filter((lente) => lente.score !== null).length,
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <ComFaixaDoTopo>
-      <Secao
-        titulo="Radar Reputacional"
-        subtitulo="Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais. Vale para a companhia inteira — não segue os filtros do CRM."
-        acao={controlesDoMes}
-      >
-        <Cartao>
-          {/* `stretch`: a coluna das lentes acompanha a altura do radar, e os
-              cartões dividem essa altura entre si — por pedido, do mesmo
-              tamanho do radar. */}
-          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'stretch' }}>
-            <div>
-              <RadialDasLentes
-                lentes={indice.lentes}
-                isr={indice.isr}
-                faixa={indice.faixa}
-                corDoIsr={corDaFaixa(indice.isr)}
-                porPeso={indice.calibracao.radial_por_peso}
-                destacada={destacada}
-                aoDestacar={definirDestacada}
-                aoAbrir={aoAbrirLente}
-              />
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  marginTop: 14,
-                }}
-              >
-                <ChipDeVariacao rotulo="vs. mês anterior" delta={indice.delta_mes} />
-                <ChipDeVariacao rotulo="vs. início da série" delta={indice.delta_inicio} />
-              </div>
-
-              <LegendaDasFaixas />
-            </div>
-
-            <ListaDasLentes
-              lentes={indice.lentes}
-              destacada={destacada}
-              aoDestacar={definirDestacada}
-              aoAbrir={aoAbrirLente}
-            />
-          </div>
-        </Cartao>
-      </Secao>
-      </ComFaixaDoTopo>
-
-      <ComFaixaDoTopo>
-      <Secao titulo="Leitura do período">
-        {/* `alignItems: 'stretch'` (o padrão do grid): o texto da leitura à
-            esquerda costuma ser mais alto que "O que sustenta"/"O que corrói"
-            à direita, e com `'start'` os dois cartões da direita paravam
-            mais baixos que o da esquerda. */}
-        <div className="grade grade--mapa" style={{ gap: 16 }}>
-          <Cartao estilo={{ height: '100%' }}>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>{indice.leitura}</p>
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-              {indice.faixa} · {indice.leitura_da_faixa}
-            </p>
-            {coberturaDoMesEmTela ? (
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--atencao-fg)' }}>
-                Medido por {coberturaDoMesEmTela} — a faixa acima descreve um mês
-                que as outras não mediram.
-              </p>
-            ) : null}
-          </Cartao>
-
-          <div className="grade grade--2" style={{ gap: 16 }}>
-            <Extremo rotulo="O que sustenta" lente={sustenta} />
-            <Extremo rotulo="O que corrói" lente={corroi} />
-          </div>
-        </div>
-      </Secao>
-      </ComFaixaDoTopo>
-
+      {/* A JORNADA DO ÍNDICE ABRE A TELA, por pedido: a pergunta de quem chega
+          é "para onde o índice está indo", e o radar do mês vem logo depois
+          para explicar de que lentes o número é feito. */}
       <ComFaixaDoTopo>
       <Secao
         titulo="Jornada do índice"
@@ -517,6 +427,57 @@ function VisaoGeral({
         </Cartao>
       </Secao>
       </ComFaixaDoTopo>
+
+      <ComFaixaDoTopo>
+      <Secao
+        titulo="Radar Reputacional"
+        subtitulo="Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais. Vale para a companhia inteira — não segue os filtros do CRM."
+        acao={controlesDoMes}
+      >
+        <Cartao>
+          {/* `stretch`: a coluna das lentes acompanha a altura do radar, e os
+              cartões dividem essa altura entre si — por pedido, do mesmo
+              tamanho do radar. */}
+          <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'stretch' }}>
+            <div>
+              <RadialDasLentes
+                lentes={indice.lentes}
+                isr={indice.isr}
+                faixa={indice.faixa}
+                corDoIsr={corDaFaixa(indice.isr)}
+                porPeso={indice.calibracao.radial_por_peso}
+                destacada={destacada}
+                aoDestacar={definirDestacada}
+                aoAbrir={aoAbrirLente}
+              />
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  marginTop: 14,
+                }}
+              >
+                <ChipDeVariacao rotulo="vs. mês anterior" delta={indice.delta_mes} />
+                <ChipDeVariacao rotulo="vs. início da série" delta={indice.delta_inicio} />
+              </div>
+
+              <LegendaDasFaixas />
+            </div>
+
+            <ListaDasLentes
+              lentes={indice.lentes}
+              destacada={destacada}
+              aoDestacar={definirDestacada}
+              aoAbrir={aoAbrirLente}
+            />
+          </div>
+        </Cartao>
+      </Secao>
+      </ComFaixaDoTopo>
+
     </div>
   );
 }
@@ -668,7 +629,6 @@ function ListaDasLentes({
                   <strong className="tabular" style={{ fontSize: 14, fontWeight: 800, color: cor }}>
                     {fora ? '—' : `${lente.peso_efetivo}%`}
                   </strong>
-                  {!fora && lente.peso_efetivo !== lente.peso ? ` (calibrado ${lente.peso}%)` : ''}
                 </span>
               </span>
             </div>
@@ -764,29 +724,6 @@ function ChipDeVariacao({ rotulo, delta }: { rotulo: string; delta: number | nul
       fundo={sobe ? 'var(--ok-bg)' : cai ? 'var(--erro-bg)' : 'var(--bg-trilho)'}
       texto={sobe ? 'var(--ok-fg)' : cai ? 'var(--erro-fg)' : 'var(--cinza-3)'}
     />
-  );
-}
-
-/** A lente que mais sustenta, ou a que mais corrói. */
-function Extremo({ rotulo, lente }: { rotulo: string; lente: LenteDoScore | undefined }) {
-  return (
-    <Cartao estilo={{ height: '100%' }}>
-      <p className="kicker" style={{ marginBottom: 6 }}>
-        {rotulo}
-      </p>
-      {lente?.score != null ? (
-        <>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>{lente.nome}</div>
-          <div style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
-            {lente.score} · peso {pesoDaLente(lente)}
-          </div>
-        </>
-      ) : (
-        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-          Nenhuma lente medida.
-        </p>
-      )}
-    </Cartao>
   );
 }
 
