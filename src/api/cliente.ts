@@ -804,12 +804,19 @@ export function importarPlanilhaDoScore(
 ): Promise<ImportacaoDoScore[]> {
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
-  // UM CAMPO POR NOME, que é como o `Form(list[str])` do FastAPI os lê. E a
-  // lista VAZIA não manda nada: o padrão do servidor é não criar veículo
+  // UM CAMPO COM A LISTA EM JSON, e não um campo por nome.
+  //
+  // A primeira versão mandava `veiculos_a_criar` repetido, uma vez por veículo.
+  // Com 2.628 veículos na primeira carga da Clipei, o parser multipart do
+  // servidor recusou o pedido inteiro: "Too many fields. Maximum number of
+  // fields is 1000". O limite é proteção do servidor e está certo — quem estava
+  // errado era o formato.
+  //
+  // A LISTA VAZIA NÃO MANDA NADA: o padrão do servidor é não criar veículo
   // nenhum, e é esse padrão que protege o botão "Importar planilha" da
   // Calibração de criar 2.631 instituições sem ninguém ter visto.
-  for (const nome of veiculosACriar) {
-    corpo.append('veiculos_a_criar', nome);
+  if (veiculosACriar.length) {
+    corpo.append('veiculos_a_criar', JSON.stringify(veiculosACriar));
   }
   return requisitar<ImportacaoDoScore[]>(`/api/score/fontes/${codigo}/planilha`, {
     method: 'POST',
