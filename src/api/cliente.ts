@@ -835,6 +835,12 @@ export interface FiltroDaLente {
    *  prioritária do pacote, e era a única dos dois painéis da lente sem lugar
    *  aqui: clicar na barra de uma concessionária não tinha para onde ir. */
   empresa?: string;
+  /** A taxonomia de temas do CRM, pelo nome de cada nível: Pilar (N1), Tema
+   *  estratégico (N2) e Subtema (N3). Casam pela menção ligada a um tema do
+   *  cadastro — a que só traz o texto do fornecedor não entra. */
+  tema_n1?: string;
+  tema_n2?: string;
+  tema_n3?: string;
 }
 
 /** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
@@ -853,6 +859,12 @@ export interface OpcoesDeFiltroDaLente {
   subtemas: string[];
   autores: string[];
   empresas: string[];
+  //: A taxonomia do CRM que as menções ligadas a ela alcançam no mês. VAZIAS
+  //: enquanto as menções só trazem o texto do fornecedor — e aí a barra não
+  //: oferece os três filtros. Opcionais: um back anterior não as manda.
+  temas_n1?: string[];
+  temas_n2?: string[];
+  temas_n3?: string[];
 }
 
 /** Um degrau do caminho até um recorte. */

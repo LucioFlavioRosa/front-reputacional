@@ -50,6 +50,32 @@ describe('BarraDeFiltroDaLente', () => {
     expect(screen.getByRole('button', { name: /Filtro avançado/ })).toBeTruthy();
   });
 
+  it('Sociedade digital: Pilar (N1), Tema estratégico (N2) e Subtema (N3) quando as menções estão ligadas', async () => {
+    const definirFiltro = vi.fn();
+    render(
+      <BarraDeFiltroDaLente
+        lente="sociedade"
+        filtro={{}}
+        definirFiltro={definirFiltro}
+        opcoes={{ ...DA_SOCIEDADE, temas_n1: ['Governança'], temas_n2: ['Ética'], temas_n3: ['Compliance'] }}
+      />,
+    );
+    expect(screen.getByText('Pilar (N1)')).toBeTruthy();
+    expect(screen.getByText('Tema estratégico (N2)')).toBeTruthy();
+    expect(screen.getByText('Subtema (N3)')).toBeTruthy();
+    await userEvent.click(screen.getByText('Pilar (N1)'));
+    await userEvent.click(screen.getByText('Governança'));
+    expect(definirFiltro).toHaveBeenCalledWith({ tema_n1: 'Governança' });
+  });
+
+  it('Sociedade digital sem menção ligada: os três não aparecem; o tema do fornecedor vai para o avançado', async () => {
+    render(<BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />);
+    expect(screen.queryByText('Pilar (N1)')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Filtro avançado/ }));
+    expect(screen.getByText('Tema (fornecedor)')).toBeTruthy();
+    expect(screen.getByText('Subtema (fornecedor)')).toBeTruthy();
+  });
+
   it('Imprensa: tier e veículo nos rápidos; campo sem opção não aparece', async () => {
     render(<BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />);
     expect(screen.getByText('Tier do veículo')).toBeTruthy();
