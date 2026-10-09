@@ -25,6 +25,7 @@ import {
   obterSerieDoScore,
 } from '@/api/cliente';
 import {
+  Ajuda,
   Carregando,
   Cartao,
   Chip,
@@ -34,6 +35,7 @@ import {
   Vazio,
 } from '@/componentes/basicos';
 import { SeletorDeMes } from '@/componentes/SeletorDeMes';
+import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
@@ -536,11 +538,19 @@ const SO_PARA_LEITOR_DE_TELA = {
   border: 0,
 } as const;
 
-/** A lista das cinco lentes, ao lado do gráfico.
+/** A lista das cinco lentes, ao lado do radar.
  *
  *  ABRE PELO STAKEHOLDER, e não pelo nome da lente: quem lê o índice pergunta
- *  "de quem é este 37?" antes de perguntar de que fonte ele saiu. O nome da
- *  lente é jargão da ferramenta; "Formadores de opinião" é gente.
+ *  "de quem é este 37?" antes de perguntar de que fonte ele saiu.
+ *
+ *  CADA CARTÃO SE EXPLICA SOZINHO, por pedido: o objetivo da lente numa frase,
+ *  a fonte em uso hoje (com um "?" para o que ela ganha nas próximas ondas) e o
+ *  peso em destaque. O texto vem de `DESCRICAO_DAS_LENTES`; o peso e a nota, do
+ *  cálculo do mês.
+ *
+ *  O CARTÃO NÃO É UM BOTÃO, e por isso pode ter o "?" dentro — um controle
+ *  dentro de outro é HTML inválido e confunde o leitor de tela. O clique no
+ *  cartão continua abrindo a lente; para o teclado, há o "Abrir lente →".
  */
 function ListaDasLentes({
   lentes,
@@ -554,81 +564,48 @@ function ListaDasLentes({
   aoAbrir: (codigo: string) => void;
 }) {
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {lentes.map((lente) => (
-          <button
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {lentes.map((lente) => {
+        const descricao = DESCRICAO_DAS_LENTES[lente.codigo];
+        const acesa = destacada === lente.codigo;
+        const fora = lente.score === null;
+        return (
+          <div
             key={lente.codigo}
-            type="button"
             onMouseEnter={() => aoDestacar(lente.codigo)}
             onMouseLeave={() => aoDestacar(null)}
-            onFocus={() => aoDestacar(lente.codigo)}
-            onBlur={() => aoDestacar(null)}
             onClick={() => aoAbrir(lente.codigo)}
-            title={`Abrir a lente ${lente.nome}`}
             style={{
               display: 'grid',
-              gridTemplateColumns: '14px minmax(0, 1fr) auto',
-              gap: 14,
-              alignItems: 'center',
-              padding: '12px 14px',
-              borderRadius: 12,
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              gap: '6px 16px',
+              padding: '14px 16px 12px',
+              //: MAIS QUADRADA, por pedido: canto de 4px, e a cor da lente
+              //: numa barra à esquerda em vez do quadradinho solto.
+              borderRadius: 4,
+              borderLeft: `5px solid ${corDaLente(lente.codigo)}`,
+              borderTop: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
+              borderRight: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
+              borderBottom: `1px solid ${acesa ? 'var(--azul-mar)' : 'var(--borda)'}`,
+              background: acesa ? 'var(--bg-trilho)' : 'var(--branco)',
               cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              font: 'inherit',
-              background: destacada === lente.codigo ? 'var(--bg-trilho)' : 'var(--branco)',
-              border: `1px solid ${
-                destacada === lente.codigo ? 'var(--azul-mar)' : 'var(--borda)'
-              }`,
-              opacity: lente.score === null ? 0.55 : 1,
+              opacity: fora ? 0.6 : 1,
             }}
           >
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 4,
-                background: corDaLente(lente.codigo),
-              }}
-            />
-            <span style={{ minWidth: 0 }}>
-              {/* EM LINHA PRÓPRIA, e com reticências: na mesma linha da fonte
-                  ele cobria o texto ao lado quando o nome era comprido. */}
-              <span
-                className="kicker"
-                style={{
-                  display: 'block',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
+            <div style={{ minWidth: 0 }}>
+              <span className="kicker" style={{ display: 'block' }}>
                 {lente.stakeholder}
               </span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>
+              <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: 'var(--cinza-4)' }}>
                 {lente.nome}
               </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 11.5,
-                  color: 'var(--cinza-2)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {pesoDaLente(lente)}
-                {lente.fontes.length ? ` · ${lente.fontes.join(', ')}` : ''}
-              </span>
-            </span>
-            <span style={{ textAlign: 'right' }}>
+            </div>
+            <div style={{ textAlign: 'right' }}>
               <span
                 className="tabular"
                 style={{
                   display: 'block',
-                  fontSize: 26,
+                  fontSize: 30,
                   fontWeight: 800,
                   lineHeight: 1,
                   color: corDaFaixa(lente.score),
@@ -636,16 +613,81 @@ function ListaDasLentes({
               >
                 {lente.score ?? '—'}
               </span>
-              <span style={{ fontSize: 11.5, color: corDoDelta(lente.delta) }}>
+              <span style={{ fontSize: 12, color: corDoDelta(lente.delta) }}>
                 {comoDelta(lente.delta)}
               </span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <p style={{ fontSize: 11.5, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
-        Passe o mouse para destacar a fatia; clique para abrir a lente.
-      </p>
+            </div>
+
+            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {descricao ? (
+                <>
+                  <span style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--cinza-3)' }}>
+                    {descricao.objetivo}
+                  </span>
+                  <span style={{ fontSize: 12.5, color: 'var(--cinza-3)', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <strong style={{ fontWeight: 700, marginRight: 4 }}>Fonte utilizada:</strong>
+                    {descricao.fonteUtilizada}
+                    <span onClick={(evento) => evento.stopPropagation()}>
+                      <Ajuda texto={descricao.proximasOndas} />
+                    </span>
+                  </span>
+                </>
+              ) : lente.fontes.length ? (
+                <span style={{ fontSize: 12.5, color: 'var(--cinza-3)' }}>
+                  <strong style={{ fontWeight: 700 }}>Fonte utilizada:</strong> {lente.fontes.join(', ')}
+                </span>
+              ) : null}
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  marginTop: 2,
+                  paddingTop: 8,
+                  borderTop: '1px solid var(--borda)',
+                }}
+              >
+                <span style={{ fontSize: 13, color: 'var(--cinza-3)' }}>
+                  Peso utilizado:{' '}
+                  <strong className="tabular" style={{ fontSize: 18, fontWeight: 800, color: 'var(--azul-mar)' }}>
+                    {fora ? '—' : `${lente.peso_efetivo}%`}
+                  </strong>
+                  {/* O PESO DA CALIBRAÇÃO, quando o efetivo é outro: com uma
+                      lente fora do mês, as demais sobem para fechar 100%. */}
+                  {!fora && lente.peso_efetivo !== lente.peso ? (
+                    <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}> (calibrado: {lente.peso}%)</span>
+                  ) : null}
+                  {fora ? <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}> fora do cálculo neste mês</span> : null}
+                </span>
+                <button
+                  type="button"
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    aoAbrir(lente.codigo);
+                  }}
+                  onFocus={() => aoDestacar(lente.codigo)}
+                  onBlur={() => aoDestacar(null)}
+                  aria-label={`Abrir a lente ${lente.nome}`}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    color: 'var(--azul-mar)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Abrir lente →
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
