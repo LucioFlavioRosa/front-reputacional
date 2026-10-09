@@ -119,10 +119,9 @@ export function PainelDaJornada({
               fontSize: 15,
               lineHeight: 1.5,
               color: 'var(--cinza-4)',
-              maxWidth: 920,
             }}
           >
-            {fraseDaJanela(kpis, sujeito)}
+            <ComNumerosEmNegrito texto={fraseDaJanela(kpis, sujeito)} />
           </p>
           <CartoesDaJanela kpis={kpis} />
 
@@ -241,6 +240,22 @@ export function PainelDaJornada({
         </Cartao>
       </Secao>
     </ComFaixaDoTopo>
+  );
+}
+
+/** A frase com os números em negrito, por pedido — são eles que se procuram
+ *  ao ler. OS ANOS FICAM FORA ("abril de 2026"): quatro dígitos depois de "de"
+ *  são data, e em negrito a frase ficaria pesada sem dizer nada a mais. */
+function ComNumerosEmNegrito({ texto }: { texto: string }) {
+  const pedacos = texto.split(/([−-]?\d+(?:,\d+)?)/);
+  return (
+    <>
+      {pedacos.map((pedaco, i) => {
+        const ehNumero = i % 2 === 1;
+        const ehAno = ehNumero && /^\d{4}$/.test(pedaco) && /de $/.test(pedacos[i - 1] ?? '');
+        return ehNumero && !ehAno ? <strong key={i}>{pedaco}</strong> : <span key={i}>{pedaco}</span>;
+      })}
+    </>
   );
 }
 

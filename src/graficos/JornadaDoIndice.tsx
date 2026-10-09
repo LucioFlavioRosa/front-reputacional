@@ -295,7 +295,9 @@ export function JornadaDoIndice({
           <path
             d={jornada.curva}
             fill="none"
-            stroke="var(--azul-mar)"
+            // NA COR DA LENTE dentro da aba dela (`--cor-da-lente`); o azul da
+            // marca na Visão geral, onde a curva é o ISR.
+            stroke="var(--cor-da-lente, var(--azul-mar))"
             strokeWidth={3}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"

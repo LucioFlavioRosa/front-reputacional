@@ -63,7 +63,7 @@ describe('PainelDaJornada', () => {
     );
     const rotulo = screen.getByText('Comparar com');
     expect((rotulo.parentElement as HTMLElement).style.justifyContent).toBe('center');
-    expect(screen.getByText(/O índice está em 64/)).toBeTruthy();
+    expect(document.querySelector('p[aria-live]')?.textContent).toMatch(/^O índice está em 64/);
   });
 
   it('na lente não há "Comparar com", e o cabeçalho fala da lente', () => {
@@ -78,7 +78,7 @@ describe('PainelDaJornada', () => {
       />,
     );
     expect(screen.queryByText('Comparar com')).toBeNull();
-    expect(screen.getByText(/A lente Imprensa está em 55/)).toBeTruthy();
+    expect(document.querySelector('p[aria-live]')?.textContent).toMatch(/^A lente Imprensa está em 55/);
   });
 });
 
@@ -98,5 +98,17 @@ describe('índice geral pontilhado na Jornada da lente', () => {
     const curva = container.querySelector('[data-curva-da-lente="indice_geral"]');
     expect(curva?.getAttribute('stroke-dasharray')).toBe('1 5');
     expect(screen.getByText('Índice geral')).toBeTruthy();
+  });
+});
+
+describe('leitura com os números em negrito', () => {
+  it('põe os números em negrito, mas não o ano', () => {
+    const { container } = render(
+      <PainelDaJornada titulo="Jornada do índice" sujeito="O índice" serie={SERIE} mes="2026-04" aoEscolherMes={() => {}} dica="x" />,
+    );
+    const negritos = [...container.querySelectorAll('p strong')].map((n) => n.textContent);
+    expect(negritos).toContain('64');
+    expect(negritos).toContain('61');
+    expect(negritos).not.toContain('2026');
   });
 });

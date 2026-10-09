@@ -179,7 +179,9 @@ export function Secao({
   // uma tela para outra.
   const estiloDaMarca: CSSProperties = {
     fontSize: nivelDoTitulo === 1 ? 26 : 21,
-    color: 'var(--azul-mar)',
+    //: `--cor-dos-titulos` é definida por uma tela que tem cor própria (a aba
+    //: de uma lente usa a cor da lente); fora dela, o azul da marca de sempre.
+    color: 'var(--cor-dos-titulos, var(--azul-mar))',
     marginTop: 4,
   };
 

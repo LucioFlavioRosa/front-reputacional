@@ -57,7 +57,7 @@ import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { serieDaLente } from '@/dominio/janelaDaJornada';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
-import { corDaFaixa } from '@/dominio/score';
+import { corDaFaixa, corForteDaLente } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
@@ -159,13 +159,26 @@ export function DossieDaLente({
   }, [lente, mes, filtro]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 20,
+        //: A COR DA LENTE VALE PARA A ABA INTEIRA, por pedido: títulos das
+        //: seções ("Jornada do Mercado"), curva da Jornada e barras dos
+        //: rankings. Variáveis, e não uma prop em cada gráfico, para o que for
+        //: acrescentado depois já nascer na cor certa.
+        ['--cor-da-lente' as string]: corForteDaLente(lente),
+        ['--cor-dos-titulos' as string]: corForteDaLente(lente),
+      }}
+    >
       <Abas
         abas={LENTES}
         ativa={lente}
         aoTrocar={aoTrocarLente}
         rotulo="Lente do Score"
         prefixo="lente"
+        corDaAba={corForteDaLente}
       />
 
       {/* OS FILTROS NO TOPO, CONGELADOS, como no CRM: logo abaixo das abas, e
@@ -901,7 +914,7 @@ function Painel({
           chave: comoTexto(linha.rotulo),
           rotulo: comoTexto(linha.rotulo),
           total: comoNumero(linha.valor ?? 0),
-          cor: 'var(--azul-mar)',
+          cor: 'var(--cor-da-lente, var(--azul-mar))',
         }))}
         vazio="Nada registrado no período."
         ativo={recortado}

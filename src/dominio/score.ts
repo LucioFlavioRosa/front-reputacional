@@ -416,6 +416,25 @@ export function corDaLente(codigo: string): string {
   return CORES_DA_LENTE[codigo] ?? 'var(--cinza-2)';
 }
 
+/** A cor da lente para TEXTO e LINHA FINA — título da seção, curva, barra.
+ *
+ *  POR QUE UMA SEGUNDA PALETA: o turquesa da Imprensa (1,6:1) e o laranja da
+ *  Sociedade (2,2:1) somem como texto ou traço fino sobre o branco. A versão
+ *  forte é o mesmo matiz, escurecido até passar de 4:1; as outras três já
+ *  passavam e ficam iguais. A fatia do radar segue com a cor original, que
+ *  como área cheia se lê bem. */
+export const CORES_FORTES_DA_LENTE: Record<string, string> = {
+  imprensa: '#0B8A7C',
+  mercado: '#0027BD',
+  sociedade: '#C25E00',
+  clientes: '#E12379',
+  institucional: '#A11FFF',
+};
+
+export function corForteDaLente(codigo: string): string {
+  return CORES_FORTES_DA_LENTE[codigo] ?? 'var(--azul-mar)';
+}
+
 /** Os rótulos das réguas, em português de gente.
  *
  *  O servidor manda o CÓDIGO (`so_tier1`), porque é ele que se grava; o nome
