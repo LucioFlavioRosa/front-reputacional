@@ -21,7 +21,7 @@ export interface DescricaoDaLente {
 
 export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
   imprensa: {
-    objetivo: 'Mostra como os formadores de opinião retratam a Aegea na imprensa.',
+    objetivo: 'Mostra como jornalistas e a mídia retratam a Aegea na imprensa.',
     fonteUtilizada: 'Clipei, ponderado pelo tier do veículo',
     proximasOndas:
       'Próximas ondas: somar as interações com essas instituições registradas no CRM dos Stakeholders.',
