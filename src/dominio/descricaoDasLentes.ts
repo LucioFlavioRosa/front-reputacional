@@ -6,9 +6,9 @@
  *  (`LENTES_NO_MODELO`). O PESO NÃO MORA AQUI: ele é da calibração, que pode
  *  ser ajustada, e vem do servidor em cada cálculo.
  *
- *  `proximasOndas` é o que a lente ganha nas próximas ondas do projeto — vai
- *  para o "?" da fonte, para a tela dizer o que mede hoje sem prometer o que
- *  ainda não mede.
+ *  `proximasOndas` é o que a lente ganha nas próximas ondas do projeto. NÃO
+ *  APARECE NA TELA hoje — o "?" que o mostrava saiu do cartão, por pedido —,
+ *  e fica aqui registrado, junto do resto da lâmina, para quando voltar.
  */
 
 export interface DescricaoDaLente {

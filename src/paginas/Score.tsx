@@ -26,7 +26,6 @@ import {
   obterSerieDoScore,
 } from '@/api/cliente';
 import {
-  Ajuda,
   Carregando,
   Cartao,
   Chip,
@@ -548,8 +547,8 @@ const SO_PARA_LEITOR_DE_TELA = {
  *  "de quem é este 37?" antes de perguntar de que fonte ele saiu.
  *
  *  CADA CARTÃO SE EXPLICA SOZINHO: o peso ao lado do nome, o objetivo da lente
- *  numa frase e a fonte em uso hoje, com um "?" para o que ela ganha nas
- *  próximas ondas. Textos em `DESCRICAO_DAS_LENTES`; peso e nota, do cálculo.
+ *  numa frase e a fonte em uso hoje. Textos em `DESCRICAO_DAS_LENTES`; peso e
+ *  nota, do cálculo.
  *
  *  O CONTORNO INTEIRO NA COR DA LENTE, por pedido, e não uma faixa só à
  *  esquerda: é a mesma cor da fatia no radar, e é ela que liga um ao outro.
@@ -557,9 +556,7 @@ const SO_PARA_LEITOR_DE_TELA = {
  *  COMPACTOS E DIVIDINDO A ALTURA DO RADAR (`flex: 1`), por pedido: a coluna
  *  inteira tem a altura do radar ao lado, em vez de passar dele.
  *
- *  O CARTÃO NÃO É UM BOTÃO, e por isso pode ter o "?" dentro — um controle
- *  dentro de outro é HTML inválido. O clique no cartão abre a lente; para o
- *  teclado, o nome da lente é o botão.
+ *  O CLIQUE NO CARTÃO ABRE A LENTE; para o teclado, o nome da lente é o botão.
  */
 function ListaDasLentes({
   lentes,
@@ -675,9 +672,6 @@ function ListaDasLentes({
                     Fonte utilizada:
                   </strong>
                   {descricao.fonteUtilizada}
-                  <span onClick={(evento) => evento.stopPropagation()}>
-                    <Ajuda texto={descricao.proximasOndas} />
-                  </span>
                 </span>
               </div>
             ) : null}
