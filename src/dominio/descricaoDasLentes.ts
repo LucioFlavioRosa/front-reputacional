@@ -28,7 +28,7 @@ export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
   },
   mercado: {
     objetivo: 'Mostra como investidores e agências de rating leem a companhia.',
-    fonteUtilizada: 'Clipei Tier 1 econômico (proxy) + SOV',
+    fonteUtilizada: 'Clipei, imprensa econômica de todos os tiers (proxy)',
     proximasOndas:
       'Próximas ondas: somar as interações com essas instituições registradas no CRM dos Stakeholders.',
   },

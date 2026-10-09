@@ -236,10 +236,36 @@ export interface Jornada {
   curva: string;
   pontos: PontoDaJornada[];
   colunas: ColunaDoMes[];
-  /** A curva tracejada da lente comparada, e o rótulo no fim dela. */
+  /** A curva tracejada da lente comparada, e o rótulo no fim dela — a
+   *  PRIMEIRA, quando há várias. Ficou para quem lê uma lente só. */
   curvaDaLente: string;
   pontosDaLente: { cx: number; cy: number }[];
   fimDaLente: { esquerda: number; topo: number; texto: string } | null;
+  /** UMA CURVA POR LENTE COMPARADA, na ordem em que foram escolhidas. A Visão
+   *  geral sobrepõe várias ao mesmo tempo, cada uma na cor da lente. */
+  curvasDasLentes: CurvaDaLente[];
+}
+
+export interface CurvaDaLente {
+  codigo: string;
+  curva: string;
+  pontos: { cx: number; cy: number }[];
+  fim: { esquerda: number; topo: number; texto: string };
+}
+
+/** Uma lente ou várias, sempre como lista — a forma de dentro. */
+function comoLista(comparada: string | string[] | null | undefined): string[] {
+  if (!comparada) return [];
+  return Array.isArray(comparada) ? comparada : [comparada];
+}
+
+/** Os meses que a lente TEM, cada um com o seu índice na série — o que a põe
+ *  no x certo. Com menos de dois, não há curva, e a lente sai inteira. */
+function notasDaLente(medidos: PontoDaSerie[], codigo: string): { i: number; nota: number }[] {
+  const pares = medidos
+    .map((ponto, i) => ({ i, nota: ponto.notas_das_lentes[codigo] }))
+    .filter((par): par is { i: number; nota: number } => par.nota !== undefined);
+  return pares.length >= 2 ? pares : [];
 }
 
 /** "2026-06" → "junho". Devolve a própria chave quando não reconhece.
@@ -467,19 +493,16 @@ function valoresDoEixo(
  *  com o desenho. */
 export function dominioDaJornada(
   serie: PontoDaSerie[],
-  comparada: string | null = null,
+  comparada: string | string[] | null = null,
 ): { piso: number; teto: number } {
   const medidos = serie.filter((ponto) => ponto.isr !== null);
   if (!medidos.length) return dominioDe([]);
-  const daLente = comparada
-    ? medidos
-        .map((ponto, i) => ({ i, nota: ponto.notas_das_lentes[comparada] }))
-        .filter((par): par is { i: number; nota: number } => par.nota !== undefined)
-    : [];
   //: DOIS PONTOS É O MÍNIMO para existir curva da lente — o mesmo corte que
-  //: `jornadaDoIndice` usa. Com um só, a nota não é desenhada, então ela também
-  //: não pode mandar no eixo.
-  return dominioDe(valoresDoEixo(medidos, daLente.length >= 2 ? daLente : []));
+  //: `jornadaDoIndice` usa (`notasDaLente`). Com um só, a nota não é desenhada,
+  //: então ela também não pode mandar no eixo. Com várias lentes, o eixo cabe
+  //: todas.
+  const dasLentes = comoLista(comparada).flatMap((codigo) => notasDaLente(medidos, codigo));
+  return dominioDe(valoresDoEixo(medidos, dasLentes));
 }
 
 /** A curva suave que passa por todos os pontos.
@@ -542,8 +565,10 @@ export function resumoDa(serie: PontoDaSerie[]): string {
 export function jornadaDoIndice(
   serie: PontoDaSerie[],
   mesSelecionado: string,
-  comparada: string | null = null,
-  nomeDaComparada = '',
+  comparada: string | string[] | null = null,
+  //: O NOME DA LENTE para o rótulo no fim da curva: um texto quando há uma
+  //: lente, ou um mapa código → nome quando há várias.
+  nomeDaComparada: string | Record<string, string> = '',
   //: O EIXO VINDO DE FORA, para a tela poder animá-lo. Quando não vem, é
   //: calculado aqui como sempre — nenhum chamador precisou mudar.
   //:
@@ -567,6 +592,7 @@ export function jornadaDoIndice(
     curvaDaLente: '',
     pontosDaLente: [],
     fimDaLente: null,
+    curvasDasLentes: [],
   };
   if (!total) return vazia;
 
@@ -579,14 +605,15 @@ export function jornadaDoIndice(
   // todos os meses. Selecionar qualquer outra não desenhava nada, sem dizer por
   // quê. Uma curva que começa depois ou termina antes mostra na hora até onde a
   // lente foi medida.
-  const daLente = comparada
-    ? medidos
-        .map((ponto, i) => ({ i, nota: ponto.notas_das_lentes[comparada] }))
-        .filter((par): par is { i: number; nota: number } => par.nota !== undefined)
-    : [];
-  // DOIS PONTOS É O MÍNIMO para existir curva. Com um só, o traço seria um
-  // ponto solto que ninguém liga a lente nenhuma.
+  //: DOIS PONTOS É O MÍNIMO para existir curva (`notasDaLente`). Com um só, o
+  //: traço seria um ponto solto que ninguém liga a lente nenhuma.
+  const comparadas = comoLista(comparada)
+    .map((codigo) => ({ codigo, notas: notasDaLente(medidos, codigo) }))
+    .filter(({ notas }) => notas.length);
+  const daLente = comparadas[0]?.notas ?? [];
   const temLente = daLente.length >= 2;
+  const nomeDe = (codigo: string) =>
+    typeof nomeDaComparada === 'string' ? nomeDaComparada : (nomeDaComparada[codigo] ?? '');
 
   // O EIXO ACOMPANHA TODO PONTO DESENHADO, e isto é uma inversão de decisão do
   // dono do produto — a anterior era dele também.
@@ -605,7 +632,9 @@ export function jornadaDoIndice(
   // O AVISO NÃO MUDOU: o mês de poucas lentes continua marcado como parcial e
   // continua dizendo "1 de 5 lentes" ao lado do número. O que mudou é onde ele
   // é desenhado: no lugar dele.
-  const { piso, teto } = dominioAnimado ?? dominioDe(valoresDoEixo(medidos, daLente));
+  const { piso, teto } =
+    dominioAnimado ??
+    dominioDe(valoresDoEixo(medidos, comparadas.flatMap(({ notas }) => notas)));
   //: A ESCALA É A MESMA DAS DUAS JORNADAS (ver `escalaDoEixo`), e nela mora a
   //: folga extra de cada lado em que o eixo encostou no limite do índice.
   const { y, folgaDaBase } = escalaDoEixo(piso, teto);
@@ -723,8 +752,21 @@ export function jornadaDoIndice(
           // O NOME JUNTO DA NOTA: um número solto no fim de uma curva
           // tracejada não diz de quem ele é, e com cinco lentes possíveis a
           // pessoa teria de lembrar qual chip apertou.
-          texto: `${nomeDaComparada} ${daLente[daLente.length - 1].nota}`.trim(),
+          texto: `${nomeDe(comparadas[0].codigo)} ${daLente[daLente.length - 1].nota}`.trim(),
         }
       : null,
+    curvasDasLentes: comparadas.map(({ codigo, notas }) => {
+      const ultima = notas[notas.length - 1];
+      return {
+        codigo,
+        curva: curvaPor(notas.map((par) => [x(par.i), y(par.nota)])),
+        pontos: notas.map((par) => ({ cx: x(par.i), cy: y(par.nota) })),
+        fim: {
+          esquerda: (x(ultima.i) / VB.largura) * 100,
+          topo: (y(ultima.nota) / VB.altura) * 100,
+          texto: `${nomeDe(codigo)} ${ultima.nota}`.trim(),
+        },
+      };
+    }),
   };
 }

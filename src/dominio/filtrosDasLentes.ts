@@ -50,14 +50,25 @@ export const FILTROS_DAS_LENTES: Record<
     ],
     avancados: [uf, { chave: 'autor', rotulo: 'Jornalista', de: 'autores' }, subtema, concessionaria],
   },
+  //: A SOCIEDADE FILTRA PELA TAXONOMIA DO CRM, por pedido, com os mesmos nomes
+  //: de lá: Pilar (N1), Tema estratégico (N2), Subtema (N3). O tema e o subtema
+  //: QUE O FORNECEDOR ESCREVE vão para o avançado, com "(fornecedor)" no nome —
+  //: dois "Subtema" lado a lado seriam lidos como o mesmo filtro.
   sociedade: {
     rapidos: [
       { chave: 'veiculo', rotulo: 'Rede', de: 'veiculos' },
-      tema,
+      { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' },
+      { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' },
+      { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' },
       { chave: 'perfil_autor', rotulo: 'Perfil de quem fala', de: 'perfis' },
       concessionaria,
     ],
-    avancados: [subtema, { chave: 'autor', rotulo: 'Autor', de: 'autores' }, uf],
+    avancados: [
+      { chave: 'tema', rotulo: 'Tema (fornecedor)', de: 'temas' },
+      { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' },
+      { chave: 'autor', rotulo: 'Autor', de: 'autores' },
+      uf,
+    ],
   },
   clientes: {
     rapidos: [concessionaria, tema, subtema],
