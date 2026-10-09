@@ -412,6 +412,12 @@ function AcrescentarVeiculo({
   const [uf, definirUf] = useState('');
   const [criando, definirCriando] = useState(false);
   const [erro, definirErro] = useState<string | null>(null);
+  //: O QUE ACABOU DE SER CADASTRADO, pelo nome. Sem isto o clique em
+  //: "Cadastrar" só limpava o campo: a pessoa não tinha como saber se o
+  //: veículo nasceu, e menos ainda que o cadastro NÃO traz menção nenhuma com
+  //: ele — a menção vem da planilha. Foi exatamente essa a dúvida de quem
+  //: usou a tela ("adicionei um veículo e a base não foi atualizada").
+  const [cadastrado, definirCadastrado] = useState<string | null>(null);
   //: QUEM ENTROU NESTA JANELA, para a linha dizer "acrescentado" em vez de
   //: sumir. Sem isto, acrescentar dois seguidos parece não ter funcionado.
   const [acrescentados, definirAcrescentados] = useState<Set<string>>(new Set());
@@ -451,6 +457,7 @@ function AcrescentarVeiculo({
         categoria_publico_id: idDaImprensa,
         subcategoria_publico_id: idDaSubcategoria,
       });
+      definirCadastrado(termo);
       definirBusca('');
       definirUf('');
     } catch (falha) {
@@ -483,9 +490,26 @@ function AcrescentarVeiculo({
           autoFocus
           placeholder="Valor Econômico, InfoMoney…"
           aria-label="Nome do veículo"
-          onChange={(evento) => definirBusca(evento.target.value)}
+          onChange={(evento) => {
+            definirBusca(evento.target.value);
+            definirCadastrado(null);
+          }}
         />
       </Campo>
+
+      {cadastrado ? (
+        <p
+          role="status"
+          style={{ fontSize: 12, color: 'var(--ok-fg)', margin: '10px 0 0' }}
+        >
+          {/* AS DUAS COISAS, porque só a primeira engana: o veículo entra na
+              lista, e a lista decide o que CONTA na lente — mas a menção em si
+              vem da planilha do fornecedor. Um veículo cadastrado hoje começa
+              a aparecer quando uma planilha da Clipei o mencionar. */}
+          {cadastrado} entrou na lista. O cadastro não traz menção: ele passa a
+          contar quando uma planilha da Clipei o mencionar.
+        </p>
+      ) : null}
 
       {termo ? (
         <>

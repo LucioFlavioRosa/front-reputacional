@@ -253,6 +253,20 @@ describe('VeiculosDeInvestidores', () => {
     });
   });
 
+  it('DEPOIS DE CADASTRAR, diz que a menção vem da planilha', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Expert XP');
+    await pessoa.click(screen.getByText(/Cadastrar "Expert XP" como veículo/));
+
+    await waitFor(() => expect(screen.getByRole('status')).toBeTruthy());
+    expect(screen.getByRole('status').textContent).toContain(
+      'passa a contar quando uma planilha da Clipei o mencionar',
+    );
+  });
+
   it('o veículo pode nascer SEM abrangência', async () => {
     const pessoa = userEvent.setup();
     render(<VeiculosDeInvestidores />);
