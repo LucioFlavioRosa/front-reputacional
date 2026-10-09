@@ -44,6 +44,7 @@ import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { Paginacao } from '@/componentes/Paginacao';
+import { numero } from '@/dominio/formato';
 import { usePainel } from '@/estado/painel';
 import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
@@ -340,13 +341,49 @@ export function CadastroDeInstituicoes() {
   const [pessoaEmEdicao, definirPessoaEmEdicao] = useState<string | null>(null);
   const [rascunhoDaPessoa, definirRascunhoDaPessoa] = useState(SEM_PESSOA);
 
+  //: O FILTRO POR TIPO, e por que ele passou a ser necessário.
+  //:
+  //: A lista era só nome e busca por texto. Funcionava com 99 instituições; a
+  //: importação da Clipei cadastrou 2.631 VEÍCULOS de uma vez, e aí "ver as
+  //: instituições cadastradas" virou percorrer 273 páginas ordenadas por nome,
+  //: com os veículos espalhados entre órgãos e entidades.
+  //:
+  //: Quem acabou de autorizar a criação quer ver O QUE CRIOU, e o tipo é
+  //: exatamente esse corte — cada linha já o mostra, só não dava para filtrar.
+  const [tipoEscolhido, definirTipoEscolhido] = useState('');
+
   const instituicoes = useMemo(() => {
     const todas = [...(catalogo?.instituicoes.values() ?? [])];
     const termo = busca.trim().toLowerCase();
     return todas
       .filter((i) => !termo || i.nome.toLowerCase().includes(termo))
+      .filter((i) => !tipoEscolhido || i.tipo === tipoEscolhido)
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  }, [catalogo, busca]);
+  }, [catalogo, busca, tipoEscolhido]);
+
+  //: QUANTAS DE CADA TIPO EXISTEM, para o seletor dizer o tamanho de cada corte
+  //: antes de a pessoa escolher. "Veículo (2.670)" responde a pergunta dela sem
+  //: precisar filtrar para descobrir.
+  const quantasPorTipo = useMemo(() => {
+    const conta = new Map<string, number>();
+    for (const i of catalogo?.instituicoes.values() ?? []) {
+      conta.set(i.tipo, (conta.get(i.tipo) ?? 0) + 1);
+    }
+    return [...conta.entries()].sort((a, b) => b[1] - a[1]);
+  }, [catalogo]);
+
+  //: QUANTAS EXISTEM, e não quantas a página mostra.
+  //:
+  //: A lista mostra 10 por página e o título dizia só "Cadastrados". Com 2.730
+  //: instituições — a importação da Clipei cadastrou 2.631 veículos de uma vez
+  //: — isso são 273 páginas, e quem acabou de autorizar a criação abriu a tela,
+  //: viu dez nomes e concluiu que os outros não tinham entrado. Estavam todos
+  //: lá; a tela não dizia.
+  //:
+  //: O TOTAL VEM DO CATÁLOGO, não da lista filtrada: durante uma busca, "12 de
+  //: 2.730" responde as duas perguntas que a pessoa tem — quantas casaram e
+  //: quantas existem. Só o filtrado faria o número despencar e parecer perda.
+  const totalCadastrado = catalogo?.instituicoes.size ?? 0;
 
   //: PAGINAÇÃO DA LISTA "CADASTRADOS" — client-side, de propósito: a lista
   //: inteira já vem do catálogo carregado uma vez no boot do app (usado por
@@ -358,9 +395,11 @@ export function CadastroDeInstituicoes() {
   // padrão de `CampoDePeriodo` (`PainelDeFiltros.tsx`): sem isto, filtrar por
   // um nome raro podia deixar a tela numa página que não existe mais para
   // aquele resultado.
-  const [buscaAnterior, definirBuscaAnterior] = useState(busca);
-  if (busca !== buscaAnterior) {
-    definirBuscaAnterior(busca);
+  //: O TIPO ENTRA NA MESMA REGRA DA BUSCA: trocar o corte na página 200 deixaria
+  //: a tela numa página que não existe mais para o resultado novo.
+  const [recorteAnterior, definirRecorteAnterior] = useState(busca + '|' + tipoEscolhido);
+  if (busca + '|' + tipoEscolhido !== recorteAnterior) {
+    definirRecorteAnterior(busca + '|' + tipoEscolhido);
     definirPagina(1);
   }
   const totalDePaginas = Math.max(1, Math.ceil(instituicoes.length / POR_PAGINA));
@@ -722,20 +761,54 @@ export function CadastroDeInstituicoes() {
         </Cartao>
       </Secao>
 
-      <Secao titulo="Cadastrados">
+      <Secao
+        titulo={
+          instituicoes.length !== totalCadastrado
+            ? `Cadastrados (${numero(instituicoes.length)} de ${numero(totalCadastrado)})`
+            : `Cadastrados (${numero(totalCadastrado)})`
+        }
+      >
         <Cartao>
-          <Campo rotulo="Buscar">
-            <input
-              style={estiloDeEntrada}
-              value={busca}
-              onChange={(e) => definirBusca(e.target.value)}
-              placeholder="Parte do nome"
-            />
-          </Campo>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(200px, 2fr) minmax(180px, 1fr)',
+              gap: 12,
+            }}
+          >
+            <Campo rotulo="Buscar">
+              <input
+                style={estiloDeEntrada}
+                value={busca}
+                onChange={(e) => definirBusca(e.target.value)}
+                placeholder="Parte do nome"
+              />
+            </Campo>
+            <Campo rotulo="Tipo">
+              <select
+                style={estiloDeEntrada}
+                value={tipoEscolhido}
+                onChange={(e) => definirTipoEscolhido(e.target.value)}
+              >
+                <option value="">Todos os tipos</option>
+                {quantasPorTipo.map(([tipo, quantas]) => (
+                  <option key={tipo} value={tipo}>
+                    {`${ROTULO_DO_TIPO[tipo] ?? tipo} (${numero(quantas)})`}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
 
           {instituicoes.length === 0 ? (
             <div style={{ marginTop: 14 }}>
-              <Vazio mensagem="Nenhuma instituição com esse nome." />
+              <Vazio
+                mensagem={
+                  tipoEscolhido
+                    ? `Nenhuma instituição desse tipo${busca.trim() ? ' com esse nome' : ''}.`
+                    : 'Nenhuma instituição com esse nome.'
+                }
+              />
             </div>
           ) : null}
 
