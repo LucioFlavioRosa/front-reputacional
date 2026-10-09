@@ -50,7 +50,7 @@ const COLUNAS_COMPLETAS = [
   'Pauta',
   'Área(s)',
   'Relevância',
-  'Clima',
+  'Termômetro',
 ];
 
 //: A VERSÃO REDUZIDA serve às quatro tabelas de área fixa do Painel: a área
@@ -480,7 +480,7 @@ const CONTEUDO: { campo: keyof Interacao; rotulo: string }[] = [
   { campo: 'observacoes', rotulo: 'Observações' },
 ];
 
-const COLUNAS_DA_LINHA_DO_TEMPO = ['Data', 'Pauta', 'Área(s)', 'Clima'];
+const COLUNAS_DA_LINHA_DO_TEMPO = ['Data', 'Pauta', 'Área(s)', 'Termômetro'];
 
 function PopupDaInteracao({
   interacao,
@@ -541,7 +541,7 @@ function PopupDaInteracao({
                 campo antigo nunca foi preenchido por tela nenhuma. */}
             <Metadado rotulo="Categoria do Público" valor={nomeDoPublico(catalogo, interacao.instituicao_id)} />
             <Metadado rotulo="Relevância" valor={rotuloDeRelevancia(catalogo, interacao.tier)} />
-            <Metadado rotulo="Clima" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
+            <Metadado rotulo="Termômetro" valor={<SeloDeClima codigo={interacao.clima} catalogo={catalogo} />} />
             <Metadado rotulo="UF" valor={rotuloDeAbrangencia(interacao.uf)} />
             <Metadado rotulo="Situação" valor={rotuloDeCodigo(catalogo, 'status', interacao.status)} />
             <Metadado rotulo="Área(s)" valor={nomesDasAreas(interacao, catalogo)} />

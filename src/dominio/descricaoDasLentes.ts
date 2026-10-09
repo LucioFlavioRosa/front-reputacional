@@ -44,8 +44,8 @@ export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
     proximasOndas: 'Próximas ondas: SAC, Reclame Aqui e pesquisas com clientes.',
   },
   institucional: {
-    objetivo: 'Mostra o clima da relação com governo, eventos e entidades.',
-    fonteUtilizada: 'CRM — clima das interações com governo e entidades',
+    objetivo: 'Mostra o termômetro da relação com governo, eventos e entidades.',
+    fonteUtilizada: 'CRM — termômetro das interações com governo e entidades',
     proximasOndas:
       'Próximas ondas: nenhuma fonte nova prevista até aqui — a lente segue lendo o CRM dos Stakeholders.',
   },

@@ -47,7 +47,7 @@ export function TermometroDeClima({
   if (!total) {
     return (
       <div style={{ fontSize: 13, color: 'var(--cinza-2)', padding: '8px 0' }}>
-        Nenhuma interação com clima registrado neste recorte.
+        Nenhuma interação com termômetro registrado neste recorte.
       </div>
     );
   }
@@ -61,13 +61,13 @@ export function TermometroDeClima({
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
         <span
           style={{ fontSize: 26, fontWeight: 800, color: 'var(--cinza-4)', lineHeight: 1 }}
-          aria-label={`Saldo de clima ${saldo > 0 ? '+' : ''}${saldo}`}
+          aria-label={`Saldo do termômetro ${saldo > 0 ? '+' : ''}${saldo}`}
         >
           {saldo > 0 ? '+' : ''}
           {saldo}
         </span>
         <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-          saldo de clima · {total} {total === 1 ? 'interação' : 'interações'} com clima
+          saldo do termômetro · {total} {total === 1 ? 'interação' : 'interações'} com termômetro
         </span>
       </div>
 

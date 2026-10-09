@@ -313,7 +313,7 @@ export function RegistrarConsulta({ catalogo }: { catalogo: Catalogo }) {
               </Campo>
 
               <CampoQueCompleta
-                rotulo="Clima da abordagem"
+                rotulo="Termômetro da abordagem"
                 valor={rascunho.clima}
                 aoEscolher={(valor) => alterar('clima', valor)}
                 opcoes={catalogo.dicionarios.climas.map((clima) => ({

@@ -209,7 +209,7 @@ describe('kpis', () => {
 });
 
 describe('resumoDeClimaPorFrente', () => {
-  it('conta positivas e negativas de uma frente, ignorando neutro e sem clima', () => {
+  it('conta positivas e negativas de uma frente, ignorando neutro e sem termômetro', () => {
     const dados = [
       interacao({ frente: 'eventos', clima: 'propositivo' }),
       interacao({ frente: 'eventos', clima: 'propositivo' }),
@@ -835,7 +835,7 @@ describe('divergenciasDoCatalogo', () => {
 });
 
 describe('climaPorTema', () => {
-  it('conta propositivo/neutro/tenso por tema, ignorando quem não tem clima', () => {
+  it('conta propositivo/neutro/tenso por tema, ignorando quem não tem termômetro', () => {
     const dados = [
       interacao({ temas: [10], clima: 'propositivo' }),
       interacao({ temas: [10], clima: 'tenso' }),
@@ -851,7 +851,7 @@ describe('climaPorTema', () => {
     expect(resultado.IPO.neutro).toBe(1);
   });
 
-  it('tema sem nenhuma interação com clima não aparece no resultado', () => {
+  it('tema sem nenhuma interação com termômetro não aparece no resultado', () => {
     expect(climaPorTema([], CATALOGO)).toEqual({});
   });
 });
@@ -877,7 +877,7 @@ describe('scorePorCategoriaPublico', () => {
     PESSOAS,
   );
 
-  it('conta positivas e negativas por categoria; neutro entra no total, sem clima não', () => {
+  it('conta positivas e negativas por categoria; neutro entra no total, sem termômetro não', () => {
     const dados = [
       interacao({ instituicao_id: 'i1', clima: 'propositivo' }),
       interacao({ instituicao_id: 'i1', clima: 'propositivo' }),

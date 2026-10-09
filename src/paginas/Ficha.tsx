@@ -179,7 +179,7 @@ export function Ficha({
               rotulo="Situação"
               valor={rotuloDeCodigo(catalogo, 'status', interacao.status)}
             />
-            <Metadado rotulo="Clima" valor={rotuloDeCodigo(catalogo, 'climas', interacao.clima)} />
+            <Metadado rotulo="Termômetro" valor={rotuloDeCodigo(catalogo, 'climas', interacao.clima)} />
             <Metadado
               rotulo="Desfecho"
               valor={rotuloDeCodigo(catalogo, 'resultados', interacao.resultado)}
@@ -578,7 +578,7 @@ function CicloDaAgenda({
           ) : null}
           {interacao.clima_esperado ? (
             <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 8 }}>
-              Clima esperado:{' '}
+              Termômetro esperado:{' '}
               <strong>{rotuloDeCodigo(catalogo, 'climas', interacao.clima_esperado)}</strong>
               {interacao.clima ? (
                 <>

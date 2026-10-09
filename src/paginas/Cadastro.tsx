@@ -1101,7 +1101,7 @@ export function Cadastro({
               existe. */}
           <div className="grade grade--2" style={{ gap: 16, marginTop: 16 }}>
             <CampoDeDicionario
-              rotulo="Clima esperado"
+              rotulo="Termômetro esperado"
               aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.clima_esperado} />}
               itens={catalogo.dicionarios.climas}
               valor={form.clima_esperado}

@@ -881,8 +881,8 @@ export function Painel({
       <ComFaixaDoTopo>
       <Secao
         titulo="Termômetro por público"
-        subtitulo="Volume de interações por público e o clima percebido em cada um"
-        ajuda="Placar de clima por categoria de público: (interações positivas − negativas) ÷ total × 100, de −100 (só negativas) a +100 (só positivas). Considera só interações com clima registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
+        subtitulo="Volume de interações por público e o termômetro percebido em cada um"
+        ajuda="Placar do termômetro por categoria de público: (interações positivas − negativas) ÷ total × 100, de −100 (só negativas) a +100 (só positivas). Considera só interações com termômetro registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
       >
         {categoriaPublicoExtras.length || categoriaPublicoDisponiveis.length ? (
           <div
@@ -943,7 +943,7 @@ export function Painel({
         <BarraDivergente
           itens={derivado.scorePorCategoriaPublico.itens}
           aoAbrirAgenda={aoAbrirAgenda}
-          vazio="Nenhum público com clima registrado neste recorte."
+          vazio="Nenhum público com termômetro registrado neste recorte."
           variante="termometro"
         />
       </Secao>
@@ -1044,9 +1044,9 @@ export function Painel({
 
           <ComFaixaDoTopo>
           <Secao
-            titulo="Clima por Instituições"
-            subtitulo="Placar de clima das instituições mais presentes no recorte"
-            ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
+            titulo="Termômetro por Instituições"
+            subtitulo="Placar do termômetro das instituições mais presentes no recorte"
+            ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
             estilo={{ height: '100%' }}
           >
@@ -1208,9 +1208,9 @@ export function Painel({
 
         <ComFaixaDoTopo>
         <Secao
-          titulo="Clima das interações no tempo"
-          subtitulo="Evolução da classificação de clima (Positivo, Neutro e Negativo) no período"
-          ajuda="Cada coluna soma 100% das interações com clima registrado naquele período, divididas entre Positivo, Neutro e Negativo — mostra como a PROPORÇÃO de clima muda no tempo, não o volume total de interações."
+          titulo="Termômetro das interações no tempo"
+          subtitulo="Evolução da classificação do termômetro (Positivo, Neutro e Negativo) no período"
+          ajuda="Cada coluna soma 100% das interações com termômetro registrado naquele período, divididas entre Positivo, Neutro e Negativo — mostra como a PROPORÇÃO do termômetro muda no tempo, não o volume total de interações."
         >
           {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
               que varia é a fatia de cada clima — a pergunta aqui é "como o
@@ -1236,8 +1236,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="Net Sentiment Score no tempo"
-          subtitulo="Placar de clima do recorte, período a período, contra a média geral"
-          ajuda="NSS = (interações positivas − negativas) ÷ total com clima registrado × 100, de −100 a +100 — a mesma fórmula do placar de clima usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem clima registrado, o período fica sem ponto."
+          subtitulo="Placar do termômetro do recorte, período a período, contra a média geral"
+          ajuda="NSS = (interações positivas − negativas) ÷ total com termômetro registrado × 100, de −100 a +100 — a mesma fórmula do placar do termômetro usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem termômetro registrado, o período fica sem ponto."
         >
           {nssPublicosExtras.length || nssPublicosDisponiveis.length ? (
             <div
@@ -1336,8 +1336,8 @@ export function Painel({
       <ComFaixaDoTopo>
       <Secao
         titulo="Barra divergente por tema"
-        subtitulo={`Desempenho comparativo de clima por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
-        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com clima registrado. Comece pelo Pilar (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        subtitulo={`Desempenho comparativo do termômetro por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
+        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Pilar (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
         acao={
           <SeletorDeNivelDeTema
             valor={nivelDaDivergente}
@@ -1457,7 +1457,7 @@ export function Painel({
                   saldo. Clicar numa fatia filtra pelo clima, o mesmo campo
                   do filtro rápido "Filtrar por Clima". */}
               <div className="kicker" style={{ margin: '24px 0 12px' }}>
-                Termômetro de clima
+                Termômetro
               </div>
               <TermometroDeClima
                 fatias={derivado.categoriasDeClima}
@@ -1793,7 +1793,7 @@ function ResumoExecutivoDoRecorte({
 
       {climaPrincipal ? (
         <div>
-          <span style={{ color: 'var(--cinza-2)' }}>Clima predominante: </span>
+          <span style={{ color: 'var(--cinza-2)' }}>Termômetro predominante: </span>
           <strong style={{ color: 'var(--cinza-4)' }}>{climaPrincipal.rotulo}</strong>{' '}
           <span className="tabular" style={{ color: 'var(--cinza-2)' }}>({climaPrincipal.pct}%)</span>
         </div>
