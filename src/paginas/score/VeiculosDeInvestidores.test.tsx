@@ -207,7 +207,7 @@ describe('VeiculosDeInvestidores', () => {
     await pessoa.click(screen.getByText('Acrescentar'));
 
     expect(screen.getByText('acrescentado')).toBeTruthy();
-    await pessoa.click(screen.getByText('Concluir'));
+    await pessoa.click(screen.getByText('Fechar'));
     expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
     expect(screen.getByText('entra ao salvar')).toBeTruthy();
   });
@@ -265,6 +265,46 @@ describe('VeiculosDeInvestidores', () => {
     expect(screen.getByRole('status').textContent).toContain(
       'passa a contar quando uma planilha da Clipei o mencionar',
     );
+  });
+
+  it('O RODAPÉ FECHA, e não é um "Concluir" que descarta o que foi digitado', async () => {
+    // O QUE ISTO PEGOU: o rodapé tinha um "Concluir" primário — o botão mais
+    // visível da janela — que só fechava. Quem preencheu nome e abrangência
+    // clicou nele, e o veículo nunca foi cadastrado, sem erro em tela.
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+
+    expect(screen.queryByText('Concluir')).toBeNull();
+    expect(screen.getByText('Fechar')).toBeTruthy();
+  });
+
+  it('ENTER no nome cadastra, que é o gesto de quem está cadastrando', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(
+      screen.getByLabelText('Nome do veículo'),
+      'Revista do Lúcio{Enter}',
+    );
+
+    await waitFor(() => expect(criarInstituicao).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(criarInstituicao).mock.calls[0][0]).toMatchObject({
+      nome: 'Revista do Lúcio',
+      tipo: 'veiculo',
+    });
+  });
+
+  it('ENTER não cadastra de novo o nome que já existe', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getByText('Acrescentar veículo'));
+    await pessoa.type(screen.getByLabelText('Nome do veículo'), 'Estadão{Enter}');
+
+    expect(criarInstituicao).not.toHaveBeenCalled();
   });
 
   it('o veículo pode nascer SEM abrangência', async () => {

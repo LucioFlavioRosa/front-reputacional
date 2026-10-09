@@ -476,8 +476,13 @@ function AcrescentarVeiculo({
       aoFechar={aoFechar}
       largura={620}
       rodape={
-        <Botao variante="primario" aoClicar={aoFechar}>
-          Concluir
+        /* FECHAR NÃO É A AÇÃO PRINCIPAL, e era: um "Concluir" primário no
+           rodapé é o botão mais visível da janela, e ele DESCARTA o que a
+           pessoa digitou. Quem preencheu nome e abrangência clicou nele —
+           e o veículo nunca foi cadastrado, sem erro nenhum em tela. Agora o
+           único botão em destaque é o que cadastra. */
+        <Botao variante="fantasma" aoClicar={aoFechar}>
+          Fechar
         </Botao>
       }
     >
@@ -493,6 +498,14 @@ function AcrescentarVeiculo({
           onChange={(evento) => {
             definirBusca(evento.target.value);
             definirCadastrado(null);
+          }}
+          onKeyDown={(evento) => {
+            //: ENTER CADASTRA quando é isso que há para fazer. Digitar o nome
+            //: e teclar Enter é o gesto de quem está cadastrando, e sem isto o
+            //: Enter não fazia nada — a janela ficava parada parecendo travada.
+            if (evento.key !== 'Enter') return;
+            evento.preventDefault();
+            if (termo && !jaExiste && !criando) void cadastrar();
           }}
         />
       </Campo>
@@ -604,7 +617,7 @@ function AcrescentarVeiculo({
                 </select>
               </Campo>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Botao variante="secundario" aoClicar={cadastrar} desabilitado={criando}>
+                <Botao variante="primario" aoClicar={cadastrar} desabilitado={criando}>
                   {criando ? 'Cadastrando…' : `Cadastrar "${termo}" como veículo`}
                 </Botao>
               </div>
