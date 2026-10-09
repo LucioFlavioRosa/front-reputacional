@@ -81,8 +81,8 @@ describe('decisaoDaCelula', () => {
   });
 
   it('casa o grupo pelo CAMPO e pelo VALOR, não só pela coluna', () => {
-    // Duas colunas podem alimentar o mesmo campo (Área 1 e Área 2, Tema 1 a 3):
-    // casar só pela coluna ofereceria a decisão de `Tema 1` dentro de `Tema 3`.
+    // Várias colunas podem alimentar o mesmo campo (Área 1 e 2, Tema 1 a 18):
+    // casar só pela coluna ofereceria a decisão de `Tema 1` dentro de `Tema 18`.
     const daLinha = linha({
       dados_brutos: { 'Instituição': 'Outro Órgão' },
     });

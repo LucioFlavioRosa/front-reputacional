@@ -2,7 +2,7 @@
  *
  *  A LARGURA VEM DO TIPO DO DADO, que o servidor manda junto com o nome da coluna.
  *  Não é estética: "Relato" guarda um parágrafo e "UF" guarda duas letras, e a mesma
- *  largura nas duas desperdiça a tela numa e trunca a outra. Com 22 ou 58 colunas, o
+ *  largura nas duas desperdiça a tela numa e trunca a outra. Com 22 ou 74 colunas, o
  *  desperdício de uma virou rolagem horizontal de todas.
  *
  *  ALINHAMENTO TAMBÉM É INFORMAÇÃO. O que tem tamanho fixo e curto — a marca de

@@ -97,7 +97,7 @@ const LARGURA_DAS_ACOES = 168;
 
 /** Quantas linhas a grade monta por vez.
  *
- *  MEDIDO, NÃO CHUTADO: montar o teto de 500 agendas por 58 colunas — 29 mil células —
+ *  MEDIDO, NÃO CHUTADO: montar o teto de 500 agendas por 74 colunas — 37 mil células —
  *  levava ~12 segundos num ambiente que nem faz layout nem pintura. A pessoa veria o
  *  modal congelado depois de subir o arquivo, que é o pior momento possível para a tela
  *  parar de responder.
@@ -276,7 +276,7 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   const [montadas, setMontadas] = useState(LINHAS_POR_BLOCO);
 
   //: A MEDIDA DE CADA COLUNA, PELO CONTEÚDO DAQUELE ARQUIVO. Uma vez por carga e não
-  //: por render: são até 500 linhas por 58 colunas para percorrer, e refazer isso a cada
+  //: por render: são até 500 linhas por 74 colunas para percorrer, e refazer isso a cada
   //: tecla digitada na edição travaria a digitação.
   const medidas = useMemo<Map<string, Medida>>(() => {
     if (!importacao) return new Map();
