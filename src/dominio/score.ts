@@ -215,6 +215,14 @@ export interface FonteDoScore {
   nome: string;
   fornecedor: string;
   lente: string;
+  /** Qual export esta fonte lê — `clipei`, `approach`, `bites`.
+   *
+   *  EXISTE PARA A BASE AGRUPAR. `score_fonte` é a alimentação de uma LENTE,
+   *  não um fornecedor: `clipei` alimenta Imprensa (peso 30) e
+   *  `clipei_investidores` alimenta Mercado (peso 20), com o MESMO arquivo.
+   *  Ninguém sobe pela segunda — ela é alimentada junto —, e oferecer as duas
+   *  num seletor de upload seria oferecer uma escolha que não existe. */
+  arquivo?: string | null;
   interna: boolean;
   ativo: boolean;
   ligada: boolean;
@@ -258,10 +266,25 @@ export interface ImportacaoDoScore {
   /** O que entrou, mas merece um olhar: `tier_nao_reconhecido`. */
   avisos: Record<string, number>;
   meses: string[];
+  /** Quantos veículos nasceram no cadastro nesta subida.
+   *
+   *  É DA SUBIDA, NÃO DESTA FONTE: os veículos são criados uma vez, antes das
+   *  fontes irmãs, porque as duas leem o mesmo arquivo. O número vem repetido
+   *  em cada linha da lista, com o mesmo valor — SOMAR A LISTA dá 5.256 onde
+   *  nasceram 2.628. A tela mostra uma vez. */
+  veiculos_criados?: number;
+  /** Quantas menções desta fonte acharam veículo no cadastro. Esta é por
+   *  fonte, e é o número que diz o quanto a ponte para o cadastro cobre. */
+  mencoes_ligadas?: number;
 }
 
 export const ROTULO_DO_DESCARTE: Record<string, string> = {
   fora_do_filtro: 'fora do recorte desta fonte',
+  //: MOTIVO PRÓPRIO, e não "fora do recorte": as duas causas se consertam em
+  //: lugares diferentes. Filtro de coluna é cadastro da fonte; lista de
+  //: veículos é o Cadastro compartilhado — e quem vê este número grande sabe
+  //: que o caminho é a aba "Veículos de investidores".
+  fora_da_lista_de_veiculos: 'de veículo fora da lista de investidores',
   sem_data: 'sem data',
   sem_sentimento: 'sem classificação de sentimento',
 };

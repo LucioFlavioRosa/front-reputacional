@@ -800,12 +800,113 @@ export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
 export function importarPlanilhaDoScore(
   codigo: string,
   arquivo: File,
+  veiculosACriar: string[] = [],
 ): Promise<ImportacaoDoScore[]> {
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
+  // UM CAMPO COM A LISTA EM JSON, e não um campo por nome.
+  //
+  // A primeira versão mandava `veiculos_a_criar` repetido, uma vez por veículo.
+  // Com 2.628 veículos na primeira carga da Clipei, o parser multipart do
+  // servidor recusou o pedido inteiro: "Too many fields. Maximum number of
+  // fields is 1000". O limite é proteção do servidor e está certo — quem estava
+  // errado era o formato.
+  //
+  // A LISTA VAZIA NÃO MANDA NADA: o padrão do servidor é não criar veículo
+  // nenhum, e é esse padrão que protege o botão "Importar planilha" da
+  // Calibração de criar 2.631 instituições sem ninguém ter visto.
+  if (veiculosACriar.length) {
+    corpo.append('veiculos_a_criar', JSON.stringify(veiculosACriar));
+  }
   return requisitar<ImportacaoDoScore[]>(`/api/score/fontes/${codigo}/planilha`, {
     method: 'POST',
     body: corpo,
+  });
+}
+
+/** Um veículo que a planilha traz e o cadastro compartilhado não tem. */
+export interface VeiculoNovo {
+  nome: string;
+  /** A praça, como o fornecedor a manda — "Santa Catarina", não "SC". */
+  uf: string | null;
+  /** O alcance derivado da coluna `Abrangência`: Municipal, Regional,
+   *  Nacional, Internacional. Nulo quando o fornecedor não disse. */
+  esfera: string | null;
+  /** Quantas menções da planilha o citam. É por aqui que a lista ordena. */
+  mencoes: number;
+}
+
+export interface ConferenciaDaPlanilhaDoScore {
+  /** Uma linha por fonte irmã — o que a subida FARIA. */
+  previsao: ImportacaoDoScore[];
+  /** O que nasceria no cadastro. Na primeira carga da Clipei, 2.631. */
+  veiculos_novos: VeiculoNovo[];
+  /** Quantos veículos da planilha o cadastro já reconhece. */
+  veiculos_reconhecidos: number;
+}
+
+/** Lê o export do fornecedor e diz o que a subida faria. NADA É GRAVADO.
+ *
+ *  POR QUE ELA EXISTE. O veículo sem cadastro nasce junto com a subida, e a
+ *  conta aparece antes — foi o pedido, nas duas metades. A segunda é o que
+ *  torna a primeira segura: a importação de agendas tem escrito no próprio
+ *  código que "importação de planilha sem conferência humana cria duplicata de
+ *  instituição em massa, e desfazer isso depois é pior que digitar de novo".
+ *
+ *  O ARQUIVO SOBE DUAS VEZES — aqui e na confirmação. É o preço de não ter
+ *  tabela de rascunho, e o mesmo desenho da revisão da taxonomia: guardar as
+ *  propostas exigiria a tabela que este fluxo dispensa.
+ */
+export function conferirPlanilhaDoScore(
+  codigo: string,
+  arquivo: File,
+): Promise<ConferenciaDaPlanilhaDoScore> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ConferenciaDaPlanilhaDoScore>(
+    `/api/score/fontes/${codigo}/conferencia`,
+    { method: 'POST', body: corpo },
+  );
+}
+
+/** O que a gravação da lista de veículos de investidores mudou. */
+export interface VeiculosDeInvestidoresSalvos {
+  /** Quantos entraram na lente Mercado agora. */
+  marcados: number;
+  /** Quantos saíram. É o número que a tela repete de volta: remover é a
+   *  operação que a pessoa quer ver confirmada. */
+  desmarcados: number;
+  /** OS QUE NÃO ENTRARAM, pelo nome, por já terem outra classificação de
+   *  público. O servidor não sobrescreve classificação feita à mão — e antes
+   *  disto a recusa era muda: a tela dizia "Nada mudou" e limpava a edição. */
+  recusados?: string[];
+}
+
+/** Define QUAIS veículos a lente Mercado considera — a lista inteira.
+ *
+ *  DECLARATIVA, e não um alternador por veículo. `editarInstituicao` exige o
+ *  cadastro inteiro, e reenviar nome, tipo, UF e tier para mudar um campo
+ *  apagaria o que a tela esquecesse. E é assim que a pessoa pensa: ela tem uma
+ *  lista de veículos de mercado, mantida numa planilha, e quer que o sistema a
+ *  reflita.
+ *
+ *  ESCREVE NO CATÁLOGO: muda `instituicao.subcategoria_publico_id`. Por isso o
+ *  caminho está em `ROTAS_DO_CATALOGO` — é o que faz o Cadastro compartilhado,
+ *  os filtros e as fichas verem a mudança sem F5.
+ *
+ *  `conhecidos` É A LISTA QUE A TELA TINHA EM MÃO quando a pessoa começou a
+ *  editar, e o servidor recusa com 409 se ela mudou. Sem isso, duas pessoas
+ *  editando a mesma lista se destroem em silêncio: A abre a aba de manhã, B
+ *  acrescenta um veículo à tarde, A remove outro e salva — e o pedido de A, que
+ *  afirma a lista INTEIRA, desmarca o veículo de B.
+ */
+export function definirVeiculosDeInvestidores(
+  ids: string[],
+  conhecidos: string[],
+): Promise<VeiculosDeInvestidoresSalvos> {
+  return requisitar<VeiculosDeInvestidoresSalvos>('/api/score/veiculos-de-investidores', {
+    method: 'PUT',
+    body: JSON.stringify({ ids, conhecidos }),
   });
 }
 

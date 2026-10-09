@@ -36,6 +36,13 @@ const DO_SCORE: ItemDoMenu[] = [
   { view: 'score', rotulo: 'Lentes', aba: 'lentes' },
   { view: 'score', rotulo: 'Drivers e riscos', aba: 'drivers' },
   { view: 'score', rotulo: 'Metodologia', aba: 'metodologia' },
+  //: A BASE VEM POR ÚLTIMO, e é de propósito: ela é a porta de entrada do dado,
+  //: e quem abre os KPIs quer LER o índice. Quem sobe planilha vai atrás dela.
+  //:
+  //: O CRM também tem uma "Base", e as duas convivem porque os menus são de
+  //: divisões diferentes: lá é a lista de agendas, aqui são as planilhas dos
+  //: fornecedores. O título da tela diz qual é qual.
+  { view: 'score', rotulo: 'Base', aba: 'base' },
 ];
 
 /** Em que divisão esta tela está. A configuração conta como a área que ela

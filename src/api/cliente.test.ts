@@ -95,6 +95,8 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
     }),
   subirVersaoDaReferencia: () =>
     cliente.subirVersaoDaReferencia('id-4', arquivo(), 'O texto da versão.', '2026-09-02'),
+  definirVeiculosDeInvestidores: () =>
+    cliente.definirVeiculosDeInvestidores(['id-6', 'id-7'], ['id-6']),
   criarAlegacao: () =>
     cliente.criarAlegacao({ texto: 'O Banco X não renegociaria a dívida', temas: [] }),
   editarAlegacao: () =>
