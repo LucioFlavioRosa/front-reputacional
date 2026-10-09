@@ -112,6 +112,22 @@ export function VeiculosDeInvestidores() {
     [catalogo],
   );
 
+  //: A LISTA COMO O CATÁLOGO A TEM, sem o que a pessoa mexeu nesta sessão.
+  //: É o que vai no pedido como `conhecidos`, e é com ela que o servidor
+  //: confere se alguém mudou a lista no meio da edição.
+  const doCatalogo = useMemo(
+    () =>
+      [...(catalogo?.instituicoes.values() ?? [])]
+        .filter(
+          (i) =>
+            i.tipo === 'veiculo' &&
+            idDaSubcategoria !== null &&
+            i.subcategoria_publico_id === idDaSubcategoria,
+        )
+        .map((i) => i.id),
+    [catalogo, idDaSubcategoria],
+  );
+
   /** Está na lista de mercado? O que a pessoa mudou vence o catálogo. */
   const naLista = useMemo(() => {
     return (instituicao: Instituicao) => {
@@ -170,18 +186,39 @@ export function VeiculosDeInvestidores() {
     try {
       const saida = await definirVeiculosDeInvestidores(
         veiculos.filter((v) => naLista(v)).map((v) => v.id),
+        doCatalogo,
       );
       //: LIMPA A DIFERENÇA: o que foi gravado agora vem do catálogo, que o
       //: cliente da API já mandou recarregar (a rota está em
       //: `ROTAS_DO_CATALOGO`). Manter a diferença faria a tela mostrar o mesmo
       //: estado por dois caminhos, e discordar de si mesma se um falhasse.
       definirMudados(new Map());
+      //: OS RECUSADOS APARECEM, e não somem num "Nada mudou". O servidor não
+      //: sobrescreve classificação de público feita à mão — está certo —, e
+      //: quem acrescentou aquele veículo precisa saber que ele NÃO entrou e
+      //: onde isso se resolve. Antes, a tela dizia "Nada mudou", limpava a
+      //: edição, e a pessoa saía achando que tinha salvado.
+      const recusados = saida.recusados ?? [];
+      if (recusados.length) {
+        definirErro(
+          `${recusados.length === 1 ? 'Este veículo' : 'Estes veículos'} não ` +
+            'entrou na lista porque já tem outra classificação de público: ' +
+            `${recusados.join(', ')}. Mude a classificação no Cadastro ` +
+            'compartilhado e volte aqui.',
+        );
+      }
       definirResultado(
         saida.marcados || saida.desmarcados
           ? `${numero(saida.marcados)} entraram, ${numero(saida.desmarcados)} saíram.`
-          : 'Nada mudou — a lista já estava assim.',
+          : recusados.length
+            ? null
+            : 'Nada mudou — a lista já estava assim.',
       );
     } catch (falha) {
+      //: O 409 ("a lista mudou desde que esta tela carregou") chega aqui com a
+      //: mensagem do servidor, que já diz o que fazer. A EDIÇÃO NÃO É
+      //: DESCARTADA: a pessoa recarrega a aba quando quiser e refaz — perder o
+      //: que ela marcou por causa de uma corrida seria punir quem acertou.
       definirErro(
         falha instanceof Error ? falha.message : 'Não consegui salvar a lista.',
       );
@@ -284,6 +321,15 @@ export function VeiculosDeInvestidores() {
                   >
                     {instituicao.nome}
                   </span>
+                  {/* DESATIVADO NO CADASTRO NÃO CONTA NA LENTE, e a aba diz
+                      isso: `ativo=false` é o gesto de "não é veículo corrente",
+                      e a ingestão o ignora. Sem a marca, ele apareceria aqui
+                      como membro vivo de uma lista que não o inclui. */}
+                  {instituicao.ativo === false ? (
+                    <span style={{ fontSize: 11, color: 'var(--cinza-3)' }}>
+                      inativo — não conta na lente
+                    </span>
+                  ) : null}
                   {sai || entra ? (
                     <span style={{ fontSize: 11, color: 'var(--atencao-fg)' }}>
                       {sai ? 'sai ao salvar' : 'entra ao salvar'}
@@ -400,8 +446,11 @@ function AcrescentarVeiculo({
    *  lista — e mantém em tela o que acabou de entrar por ela. */
   veiculos: Instituicao[];
   naLista: (instituicao: Instituicao) => boolean;
-  /** A categoria de público do veículo novo. `null` se a Imprensa não está
-   *  cadastrada — aí o cadastro nasce sem categoria, e não deixa de nascer. */
+  /** A categoria de público do veículo novo.
+   *
+   *  NUNCA É `null` AQUI: `idDaSubcategoria` deriva da Imprensa, e sem ela a
+   *  aba mostra a faixa de erro em vez desta janela. O tipo guarda o `null`
+   *  porque é o que a busca no dicionário devolve; o caso não é alcançável. */
   idDaImprensa: number | null;
   idDaSubcategoria: number;
   ufs: { codigo: string; nome: string }[];

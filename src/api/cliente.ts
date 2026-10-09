@@ -876,6 +876,10 @@ export interface VeiculosDeInvestidoresSalvos {
   /** Quantos saíram. É o número que a tela repete de volta: remover é a
    *  operação que a pessoa quer ver confirmada. */
   desmarcados: number;
+  /** OS QUE NÃO ENTRARAM, pelo nome, por já terem outra classificação de
+   *  público. O servidor não sobrescreve classificação feita à mão — e antes
+   *  disto a recusa era muda: a tela dizia "Nada mudou" e limpava a edição. */
+  recusados?: string[];
 }
 
 /** Define QUAIS veículos a lente Mercado considera — a lista inteira.
@@ -889,13 +893,20 @@ export interface VeiculosDeInvestidoresSalvos {
  *  ESCREVE NO CATÁLOGO: muda `instituicao.subcategoria_publico_id`. Por isso o
  *  caminho está em `ROTAS_DO_CATALOGO` — é o que faz o Cadastro compartilhado,
  *  os filtros e as fichas verem a mudança sem F5.
+ *
+ *  `conhecidos` É A LISTA QUE A TELA TINHA EM MÃO quando a pessoa começou a
+ *  editar, e o servidor recusa com 409 se ela mudou. Sem isso, duas pessoas
+ *  editando a mesma lista se destroem em silêncio: A abre a aba de manhã, B
+ *  acrescenta um veículo à tarde, A remove outro e salva — e o pedido de A, que
+ *  afirma a lista INTEIRA, desmarca o veículo de B.
  */
 export function definirVeiculosDeInvestidores(
   ids: string[],
+  conhecidos: string[],
 ): Promise<VeiculosDeInvestidoresSalvos> {
   return requisitar<VeiculosDeInvestidoresSalvos>('/api/score/veiculos-de-investidores', {
     method: 'PUT',
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, conhecidos }),
   });
 }
 

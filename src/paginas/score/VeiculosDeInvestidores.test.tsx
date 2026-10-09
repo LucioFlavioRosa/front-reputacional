@@ -124,6 +124,9 @@ vi.mock('@/estado/painel', () => ({
 const CADASTRO = [
   veiculo('Valor Econômico', MERCADO),
   veiculo('InfoMoney', MERCADO),
+  //: NA LISTA E DESATIVADO no cadastro: a ingestão o ignora, e a aba tem de
+  //: dizer isso em vez de exibi-lo como membro vivo.
+  { ...veiculo('Gazeta Aposentada', MERCADO), ativo: false },
   veiculo('Folha de S.Paulo'),
   veiculo('Estadão'),
   veiculo('Jornal do Bairro', 13),
@@ -145,15 +148,22 @@ function naTela(): string[] {
   return screen
     .getAllByRole('listitem')
     .map((l) => l.textContent ?? '')
-    .map((t) => t.replace(/SP|—|Remover|Desfazer|sai ao salvar|entra ao salvar/g, '').trim());
+    .map((t) =>
+      t
+        .replace(
+          /SP|inativo — não conta na lente|—|Remover|Desfazer|sai ao salvar|entra ao salvar/g,
+          '',
+        )
+        .trim(),
+    );
 }
 
 describe('VeiculosDeInvestidores', () => {
   it('MOSTRA SÓ OS DA LENTE MERCADO: a aba é sobre eles, não sobre o cadastro', () => {
     render(<VeiculosDeInvestidores />);
 
-    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
-    expect(naTela()).toEqual(['InfoMoney', 'Valor Econômico']);
+    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
+    expect(naTela()).toEqual(['Gazeta Aposentada', 'InfoMoney', 'Valor Econômico']);
   });
 
   it('A SUBCATEGORIA É ACHADA PELO PAR (categoria, subcategoria)', () => {
@@ -162,7 +172,7 @@ describe('VeiculosDeInvestidores', () => {
     // casasse só pelo nome, acharia a 7 e a lista sairia vazia.
     render(<VeiculosDeInvestidores />);
 
-    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
   });
 
   it('REMOVER RISCA A LINHA e dá como desfazer — tirar o errado de 81 é fácil', async () => {
@@ -172,13 +182,13 @@ describe('VeiculosDeInvestidores', () => {
     await pessoa.click(screen.getAllByText('Remover')[0]);
 
     expect(screen.getByText('sai ao salvar')).toBeTruthy();
-    expect(screen.getByText(/Veículos de investidores \(1\)/)).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
     // A LINHA CONTINUA EM TELA: quem remove e vê o nome desaparecer não tem
     // como saber qual removeu.
-    expect(naTela()).toEqual(['InfoMoney', 'Valor Econômico']);
+    expect(naTela()).toEqual(['Gazeta Aposentada', 'InfoMoney', 'Valor Econômico']);
 
     await pessoa.click(screen.getByText('Desfazer'));
-    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
   });
 
   it('salva a lista INTEIRA, e não só o que mudou', async () => {
@@ -189,9 +199,10 @@ describe('VeiculosDeInvestidores', () => {
     await pessoa.click(screen.getByText(/Salvar a lista/));
 
     await waitFor(() => expect(definirVeiculosDeInvestidores).toHaveBeenCalledTimes(1));
-    // A lista sai SEM o InfoMoney — é o que a rota declarativa entende por
+    // A lista sai SEM o removido — é o que a rota declarativa entende por
     // "saiu". Mandar só o que mudou apagaria os outros 80.
     expect(vi.mocked(definirVeiculosDeInvestidores).mock.calls[0][0]).toEqual([
+      'id-InfoMoney',
       'id-Valor Econômico',
     ]);
   });
@@ -208,7 +219,7 @@ describe('VeiculosDeInvestidores', () => {
 
     expect(screen.getByText('acrescentado')).toBeTruthy();
     await pessoa.click(screen.getByText('Fechar'));
-    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(4\)/)).toBeTruthy();
     expect(screen.getByText('entra ao salvar')).toBeTruthy();
   });
 
@@ -363,7 +374,7 @@ describe('VeiculosDeInvestidores', () => {
     await pessoa.click(screen.getAllByText('Remover')[0]);
     await pessoa.click(screen.getByText('Descartar'));
 
-    expect(screen.getByText(/Veículos de investidores \(2\)/)).toBeTruthy();
+    expect(screen.getByText(/Veículos de investidores \(3\)/)).toBeTruthy();
     expect(screen.queryByText(/sem salvar/)).toBeNull();
   });
 
@@ -404,7 +415,77 @@ describe('VeiculosDeInvestidores', () => {
     await pessoa.type(screen.getByLabelText('Buscar nesta lista'), 'valor');
 
     expect(naTela()).toEqual(['Valor Econômico']);
-    expect(screen.getByText('1 de 2')).toBeTruthy();
+    expect(screen.getByText('1 de 3')).toBeTruthy();
+  });
+
+  it('MANDA A LISTA QUE O CATÁLOGO TEM como `conhecidos`', async () => {
+    // O achado Médio do lost update: sem isso, A (que abriu a aba de manhã)
+    // apaga em silêncio o veículo que B acrescentou à tarde. O servidor compara
+    // e devolve 409 quando a lista mudou no meio.
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    await waitFor(() => expect(definirVeiculosDeInvestidores).toHaveBeenCalledTimes(1));
+    // SEM o que a pessoa mexeu: é a lista como o catálogo a entregou.
+    expect(vi.mocked(definirVeiculosDeInvestidores).mock.calls[0][1]).toEqual([
+      'id-Valor Econômico',
+      'id-InfoMoney',
+      'id-Gazeta Aposentada',
+    ]);
+  });
+
+  it('O RECUSADO APARECE COM NOME, e a tela não diz "Nada mudou"', async () => {
+    // O achado Alto: o servidor não sobrescreve classificação feita à mão, e a
+    // recusa era muda — a tela dizia "Nada mudou", limpava a edição, e a pessoa
+    // saía achando que tinha salvado.
+    vi.mocked(definirVeiculosDeInvestidores).mockResolvedValue({
+      marcados: 0,
+      desmarcados: 0,
+      recusados: ['Jornal do Bairro'],
+    });
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    await waitFor(() =>
+      expect(screen.getByText(/já tem outra classificação de público/)).toBeTruthy(),
+    );
+    expect(screen.getByText(/Jornal do Bairro/)).toBeTruthy();
+    expect(screen.queryByText(/Nada mudou/)).toBeNull();
+  });
+
+  it('a lista que mudou no meio aparece com a explicação do servidor', async () => {
+    vi.mocked(definirVeiculosDeInvestidores).mockRejectedValue(
+      new Error(
+        'A lista de veículos de investidores mudou desde que esta tela carregou (agora são 83).',
+      ),
+    );
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    await waitFor(() =>
+      expect(screen.getByText(/mudou desde que esta tela carregou/)).toBeTruthy(),
+    );
+    // A EDIÇÃO FICA: perder o que a pessoa marcou por causa de uma corrida
+    // seria punir quem acertou.
+    expect(screen.getByText('1 alteração sem salvar')).toBeTruthy();
+  });
+
+  it('O VEÍCULO INATIVO é marcado: ele não conta na lente', () => {
+    // `ativo=false` é o gesto de "não é veículo corrente", e a ingestão o
+    // ignora. Sem a marca, ele apareceria aqui como membro vivo de uma lista
+    // que não o inclui.
+    render(<VeiculosDeInvestidores />);
+
+    expect(screen.getByText('inativo — não conta na lente')).toBeTruthy();
   });
 
   it('SEM A SUBCATEGORIA CADASTRADA, a tela diz o que falta em vez de mostrar lista vazia', () => {
