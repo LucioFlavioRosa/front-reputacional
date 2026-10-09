@@ -21,6 +21,7 @@ import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
 import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import { SeletorDeJanela } from '@/graficos/SeletorDeJanela';
 import {
+  CODIGO_DO_INDICE,
   ajustar,
   fraseDaJanela,
   janelaDoAtalho,
@@ -53,6 +54,7 @@ export function PainelDaJornada({
   aoEscolherMes,
   aoAprofundarNoMes,
   lentesParaComparar,
+  comIndiceGeral = false,
   dica,
 }: {
   titulo: string;
@@ -65,6 +67,9 @@ export function PainelDaJornada({
   aoAprofundarNoMes?: (mes: string) => void;
   /** Presente, aparece o "Comparar com" com estas lentes. Ausente, não. */
   lentesParaComparar?: { codigo: string; nome: string }[];
+  /** Desenha sempre o índice geral, pontilhado, para comparar — na Jornada de
+   *  uma lente. A série precisa vir de `serieDaLente`, que o carrega. */
+  comIndiceGeral?: boolean;
   /** A linha que ensina o gesto, no fim da legenda. */
   dica: string;
 }) {
@@ -75,9 +80,13 @@ export function PainelDaJornada({
     definirComparadas((atuais) =>
       atuais.includes(codigo) ? atuais.filter((c) => c !== codigo) : [...atuais, codigo],
     );
-  const nomesDasLentes = Object.fromEntries(
-    (lentesParaComparar ?? []).map((lente) => [lente.codigo, lente.nome]),
-  );
+  const nomesDasLentes: Record<string, string> = {
+    ...Object.fromEntries((lentesParaComparar ?? []).map((lente) => [lente.codigo, lente.nome])),
+    [CODIGO_DO_INDICE]: 'Índice geral',
+  };
+  //: AS CURVAS DE COMPARAÇÃO: o índice geral primeiro, quando pedido, e as
+  //: lentes que a pessoa escolheu.
+  const curvas = comIndiceGeral ? [CODIGO_DO_INDICE, ...comparadas] : comparadas;
 
   //: A JANELA, escolhida na mini linha do tempo. Nula = os últimos 6 meses.
   const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
@@ -91,15 +100,30 @@ export function PainelDaJornada({
     : janelaDoAtalho('6m', meses);
   const serieRecortada = serieDaJanela(serie, janela);
   const kpis = kpisDaJanela(serieRecortada);
-  const jornada = jornadaDoIndice(serieRecortada, mes, comparadas, nomesDasLentes);
+  const jornada = jornadaDoIndice(serieRecortada, mes, curvas, nomesDasLentes);
   //: A CONTAGEM DE PARCIAIS VEM DA JORNADA, e não de uma releitura da série com
   //: o `4` escrito à mão: dois lugares decidindo o que é "parcial" é um a mais.
   const mesesParciais = jornada.pontos.filter((ponto) => ponto.parcial).length;
 
   return (
     <ComFaixaDoTopo>
-      <Secao titulo={titulo} subtitulo={fraseDaJanela(kpis, sujeito)}>
+      <Secao titulo={titulo}>
         <Cartao>
+          {/* A LEITURA, EM FONTE DE TEXTO, por pedido: é a frase que se lê
+              antes dos números — em que pé o índice está —, e não um subtítulo
+              que descreve a tela. Muda com a janela, junto dos cartões. */}
+          <p
+            aria-live="polite"
+            style={{
+              margin: '0 0 16px',
+              fontSize: 17,
+              lineHeight: 1.55,
+              color: 'var(--cinza-4)',
+              maxWidth: 920,
+            }}
+          >
+            {fraseDaJanela(kpis, sujeito)}
+          </p>
           <CartoesDaJanela kpis={kpis} />
 
           {/* "COMPARAR COM" CENTRALIZADO SOBRE O GRÁFICO, por pedido. Só na
@@ -147,7 +171,7 @@ export function PainelDaJornada({
               semDetalheDoMes
               serie={serieRecortada}
               mes={mes}
-              comparada={comparadas}
+              comparada={curvas}
               nomeDaComparada={nomesDasLentes}
               aoEscolherMes={aoEscolherMes}
               aoAprofundarNoMes={aoAprofundarNoMes}
@@ -194,6 +218,15 @@ export function PainelDaJornada({
                 ligada={mostrarVale}
                 aoAlternar={() => definirMostrarVale((atual) => !atual)}
               />
+            ) : null}
+            {comIndiceGeral ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span
+                  aria-hidden
+                  style={{ width: 18, height: 0, borderTop: '2px dotted var(--cinza-3)' }}
+                />
+                Índice geral
+              </span>
             ) : null}
             {mesesParciais ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

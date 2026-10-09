@@ -81,3 +81,22 @@ describe('PainelDaJornada', () => {
     expect(screen.getByText(/A lente Imprensa está em 55/)).toBeTruthy();
   });
 });
+
+describe('índice geral pontilhado na Jornada da lente', () => {
+  it('desenha o índice geral como curva pontilhada e põe na legenda', () => {
+    const { container } = render(
+      <PainelDaJornada
+        titulo="Jornada da Imprensa"
+        sujeito="A lente Imprensa"
+        serie={serieDaLente(SERIE, 'imprensa')}
+        mes="2026-04"
+        aoEscolherMes={() => {}}
+        comIndiceGeral
+        dica="Clique num mês."
+      />,
+    );
+    const curva = container.querySelector('[data-curva-da-lente="indice_geral"]');
+    expect(curva?.getAttribute('stroke-dasharray')).toBe('1 5');
+    expect(screen.getByText('Índice geral')).toBeTruthy();
+  });
+});

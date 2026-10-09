@@ -277,6 +277,10 @@ export function fraseDaJanela(kpis: KpisDaJanela, sujeito = 'O índice'): string
   return partes.join(' ');
 }
 
+/** O código com que o índice geral entra na série de uma lente, para ser
+ *  desenhado como curva de comparação. Não é lente nenhuma do modelo. */
+export const CODIGO_DO_INDICE = 'indice_geral';
+
 /** A série de UMA lente no formato da série do índice: `isr` passa a ser a
  *  nota da lente no mês. É o que deixa a Jornada da lente usar o mesmo gráfico,
  *  os mesmos cartões e a mesma janela da Visão geral.
@@ -288,6 +292,12 @@ export function serieDaLente(serie: PontoDaSerie[], codigo: string): PontoDaSeri
   return serie.map((ponto) => ({
     ...ponto,
     isr: ponto.notas_das_lentes[codigo] ?? null,
+    //: O ÍNDICE GERAL VIAJA COMO MAIS UMA "LENTE" (`CODIGO_DO_INDICE`), para a
+    //: Jornada da lente desenhá-lo como curva de comparação, pontilhada.
+    notas_das_lentes:
+      ponto.isr === null
+        ? ponto.notas_das_lentes
+        : { ...ponto.notas_das_lentes, [CODIGO_DO_INDICE]: ponto.isr },
     lentes: 5,
     fatos: [],
     delta: null,

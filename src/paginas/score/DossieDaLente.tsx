@@ -179,6 +179,7 @@ export function DossieDaLente({
         serie={serieDaLente(serie, lente)}
         mes={mes}
         aoEscolherMes={aoTrocarMes}
+        comIndiceGeral
         dica="Clique num mês para ver a lente naquele mês."
       />
 
