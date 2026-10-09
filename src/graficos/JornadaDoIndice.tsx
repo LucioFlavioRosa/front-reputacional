@@ -263,8 +263,10 @@ export function JornadaDoIndice({
               d={lente.curva}
               fill="none"
               stroke={corDaLente(lente.codigo)}
-              strokeWidth={2.25}
-              strokeDasharray="7 5"
+              // MAIS FINA, por pedido: com várias lentes ao mesmo tempo, o traço
+              // de 2,25px pesava mais que a curva do índice.
+              strokeWidth={1.5}
+              strokeDasharray="6 4"
               vectorEffect="non-scaling-stroke"
               style={{ animation: 'jornada-entra 220ms ease' }}
             />

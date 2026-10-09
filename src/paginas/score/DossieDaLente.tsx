@@ -54,13 +54,13 @@ import {
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
-import { jornadaDaLente } from '@/dominio/jornadaDaLente';
+import { serieDaLente } from '@/dominio/janelaDaJornada';
+import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
-import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import {
   BarrasCemPorCento,
   BarrasPareadas,
@@ -104,6 +104,7 @@ export function DossieDaLente({
   aoTrocarMes: (mes: string) => void;
 }) {
   const [dossie, definirDossie] = useState<Dossie | null>(null);
+  const nomeDaLente = LENTES.find((item) => item.id === lente)?.rotulo ?? lente;
   const [erro, definirErro] = useState<string | null>(null);
   //: AS OPÇÕES COM A LENTE E O MÊS DE QUE SÃO: assim a tela usa só as que
   //: batem com a lente aberta, sem precisar zerá-las a cada troca — e nunca
@@ -167,6 +168,20 @@ export function DossieDaLente({
         prefixo="lente"
       />
 
+      {/* A JORNADA DA LENTE ABRE A ABA, por pedido: o mesmo bloco da Visão
+          geral (cartões, janela, pico e vale, frase de cabeçalho), sobre a
+          nota DESTA lente — e sem "Comparar com": dentro da lente só se vê a
+          jornada dela. Não segue os filtros abaixo: é a nota do mês da lente. */}
+      <PainelDaJornada
+        key={lente}
+        titulo={`Jornada da ${nomeDaLente}`}
+        sujeito={`A lente ${nomeDaLente}`}
+        serie={serieDaLente(serie, lente)}
+        mes={mes}
+        aoEscolherMes={aoTrocarMes}
+        dica="Clique num mês para ver a lente naquele mês."
+      />
+
       {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
           cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
           não têm recorte, e a barra não aparece para elas. */}
@@ -185,8 +200,6 @@ export function DossieDaLente({
           filtro={filtro}
           definirFiltro={definirFiltro}
           serie={serie}
-          mes={mes}
-          aoTrocarMes={aoTrocarMes}
         />
       ) : null}
     </div>
@@ -198,15 +211,11 @@ function Conteudo({
   filtro,
   definirFiltro,
   serie,
-  mes,
-  aoTrocarMes,
 }: {
   dossie: Dossie;
   filtro: FiltroDaLente;
   definirFiltro: (filtro: FiltroDaLente) => void;
   serie: PontoDaSerie[];
-  mes: string;
-  aoTrocarMes: (mes: string) => void;
 }) {
   //: O RECORTE ABERTO NO MODAL — nulo com o modal fechado. É um estado À PARTE
   //: do `filtro` da tela, e a separação é o ponto: a barra de filtros refaz a
@@ -245,13 +254,6 @@ function Conteudo({
     <>
       <Destaque dossie={dossie} />
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
-      <JornadaDaLente
-        dossie={dossie}
-        serie={serie}
-        mes={mes}
-        aoTrocarMes={aoTrocarMes}
-        aoAprofundarNoMes={aoAprofundarNoMes}
-      />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
           devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
@@ -576,53 +578,6 @@ function Evolucao({
           </ul>
         ) : null}
 
-      </Cartao>
-    </Secao>
-    </ComFaixaDoTopo>
-  );
-}
-
-/* -- 1.4b. a jornada desta lente ------------------------------------------------ */
-
-/** A nota desta lente, 0 a 100, mês a mês — mesmo desenho da "Jornada do
- *  índice" da Visão geral, só que a curva principal é a da própria lente,
- *  não o ISR. Reaproveita o MESMO componente de desenho
- *  (`graficos/JornadaDoIndice`) e a MESMA série já carregada pela tela —
- *  `dominio/jornadaDaLente` só monta a geometria de outro jeito.
- *
- *  CLICAR NUM MÊS TROCA O MÊS DA TELA INTEIRA — o mesmo `aoTrocarMes` do
- *  seletor "Mês" lá no topo do Score Executivo: não é um segundo jeito de
- *  escolher mês, é o mesmo estado, alcançado de um lugar a mais. */
-function JornadaDaLente({
-  dossie,
-  serie,
-  mes,
-  aoTrocarMes,
-  aoAprofundarNoMes,
-}: {
-  dossie: Dossie;
-  serie: PontoDaSerie[];
-  mes: string;
-  aoTrocarMes: (mes: string) => void;
-  /** Clicar num PONTO abre o aprofundamento daquele mês — o mesmo painel da
-   *  Evolução e dos outros gráficos. A faixa de meses embaixo continua trocando
-   *  o mês da tela. */
-  aoAprofundarNoMes: (mes: string) => void;
-}) {
-  const jornada = jornadaDaLente(serie, dossie.codigo, dossie.nome, mes);
-
-  return (
-    <ComFaixaDoTopo>
-    <Secao titulo={`Jornada da ${dossie.nome}`} subtitulo={jornada.resumo}>
-      <Cartao>
-        <JornadaDoIndice
-          serie={serie}
-          mes={mes}
-          comparada={null}
-          aoEscolherMes={aoTrocarMes}
-          aoAprofundarNoMes={aoAprofundarNoMes}
-          jornadaPronta={jornada}
-        />
       </Cartao>
     </Secao>
     </ComFaixaDoTopo>
