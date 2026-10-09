@@ -44,7 +44,10 @@ import {
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { Abas } from '@/componentes/Abas';
+import type { Aba } from '@/componentes/Abas';
 import { Paginacao } from '@/componentes/Paginacao';
+import { VeiculosDeInvestidores } from '@/paginas/score/VeiculosDeInvestidores';
 import { numero } from '@/dominio/formato';
 import { ROTULO_DO_AVISO, ROTULO_DO_DESCARTE } from '@/dominio/score';
 
@@ -56,20 +59,84 @@ import { ROTULO_DO_AVISO, ROTULO_DO_DESCARTE } from '@/dominio/score';
  */
 const POR_PAGINA = 50;
 
-/** O rótulo de cada fonte no seletor, com o que ela alimenta.
+/** O SELETOR OFERECE ARQUIVOS, E NÃO FONTES.
  *
- *  O CÓDIGO DA FONTE NÃO DIZ NADA a quem sobe a planilha: `approach_cm` é o
- *  Community Management, e quem recebe o anexo por e-mail conhece "Approach" e
- *  "a aba CM". O nome vem do servidor; esta tabela acrescenta de qual ARQUIVO
- *  cada uma lê, que é o que a pessoa tem na mão.
+ *  `score_fonte` é a alimentação de uma LENTE, não um fornecedor: o export da
+ *  Clipei alimenta `clipei` (Imprensa, peso 30) E `clipei_investidores`
+ *  (Mercado, peso 20) — o mesmo arquivo, contado em duas lentes com pesos
+ *  diferentes. Oferecer as duas num seletor de upload oferecia uma escolha que
+ *  não existe: ninguém tem "a planilha da Clipei de investidores" na mão, e
+ *  quem escolhesse a segunda subiria o arquivo inteiro achando que subia um
+ *  recorte. O servidor já ingere em todas as fontes irmãs de uma vez.
+ *
+ *  O ARQUIVO VEM DO SERVIDOR, em `FonteDoScore.arquivo` — é a chave `arquivo`
+ *  do `mapeamento_colunas` de cada fonte. Esta tabela só lhe dá o nome que a
+ *  pessoa usa ao falar do anexo que recebeu.
  */
-const ARQUIVO_DA_FONTE: Record<string, string> = {
-  clipei: 'o export da Clipei',
-  clipei_investidores: 'o export da Clipei (recortado)',
-  bites: 'o export da Bites',
-  approach_sl: 'o export da Approach, aba SL',
-  approach_cm: 'o export da Approach, aba CM',
+const NOME_DO_ARQUIVO: Record<string, string> = {
+  clipei: 'Clipei',
+  bites: 'Bites',
+  approach: 'Approach',
 };
+
+/** O nome de cada lente, para dizer o que a subida vai mexer.
+ *
+ *  AQUI, E NÃO DO SERVIDOR: a lista de fontes manda o CÓDIGO da lente, e os
+ *  nomes moram em `/api/score/opcoes` — que esta tela não busca. Buscar as
+ *  opções inteiras para escrever três palavras num aviso seria uma requisição
+ *  a mais em cada abertura da Base.
+ */
+const NOME_DA_LENTE: Record<string, string> = {
+  imprensa: 'Imprensa',
+  mercado: 'Mercado',
+  sociedade: 'Sociedade digital',
+  clientes: 'Clientes',
+  institucional: 'Institucional',
+};
+
+/** Um arquivo de fornecedor, com as fontes que ele alimenta. */
+interface ArquivoDeFornecedor {
+  /** O código da fonte por onde a subida é feita. Qualquer irmã serviria — o
+   *  servidor ingere o arquivo em todas as fontes do mesmo arquivo —, e é a
+   *  PRIMEIRA que o servidor manda, para a tela não escolher por conta. */
+  codigo: string;
+  rotulo: string;
+  /** Os nomes das lentes que este arquivo alimenta, na ordem do servidor. */
+  lentes: string[];
+}
+
+/** Agrupa as fontes pelo arquivo que cada uma lê.
+ *
+ *  A FONTE SEM `arquivo` FICA SOZINHA, com o próprio nome: é o que acontece
+ *  numa fonte nova cujo mapeamento ainda não traz a chave, e esconder o upload
+ *  dela seria pior do que mostrá-la separada.
+ */
+function porArquivo(fontes: FonteDoScore[]): ArquivoDeFornecedor[] {
+  const agrupadas: ArquivoDeFornecedor[] = [];
+  const indice = new Map<string, ArquivoDeFornecedor>();
+  for (const fonte of fontes) {
+    //: A LENTE SEM NOME NÃO ENTRA NA FRASE. Uma lente nova no servidor chega
+    //: aqui como código, e "Alimenta a lente undefined" seria pior do que não
+    //: dizer nada — o seletor continua funcionando sem o aviso.
+    const nomeDaLente = NOME_DA_LENTE[fonte.lente] ?? '';
+    const chave = fonte.arquivo ?? `fonte:${fonte.codigo}`;
+    const existente = indice.get(chave);
+    if (existente) {
+      if (nomeDaLente && !existente.lentes.includes(nomeDaLente)) {
+        existente.lentes.push(nomeDaLente);
+      }
+      continue;
+    }
+    const grupo: ArquivoDeFornecedor = {
+      codigo: fonte.codigo,
+      rotulo: fonte.arquivo ? (NOME_DO_ARQUIVO[fonte.arquivo] ?? fonte.arquivo) : fonte.nome,
+      lentes: nomeDaLente ? [nomeDaLente] : [],
+    };
+    indice.set(chave, grupo);
+    agrupadas.push(grupo);
+  }
+  return agrupadas;
+}
 
 /** O resumo de uma fonte, como a tela o lê — de uma conferência ou de uma
  *  subida. O MESMO MOLDE para as duas, porque a conferência promete o que a
@@ -119,7 +186,22 @@ function LinhaDoResumo({ resumo }: { resumo: ImportacaoDoScore }) {
   );
 }
 
+/** As duas coisas que se faz na Base.
+ *
+ *  DUAS ABAS, e não uma seção embaixo da outra: subir uma planilha é um gesto
+ *  de todo mês, e manter a lista de veículos de investidores é raro e de outra
+ *  natureza — é curadoria de cadastro. Empilhadas, a lista de 81 nomes ficaria
+ *  entre quem sobe a planilha e o resultado da conferência.
+ */
+type IdDaSubaba = 'planilha' | 'investidores';
+
+const ABAS_DA_BASE: readonly Aba<IdDaSubaba>[] = [
+  { id: 'planilha', rotulo: 'Subir planilha' },
+  { id: 'investidores', rotulo: 'Veículos de investidores' },
+];
+
 export function BaseDoScore() {
+  const [subaba, definirSubaba] = useState<IdDaSubaba>('planilha');
   const [fontes, definirFontes] = useState<FonteDoScore[] | null>(null);
   const [codigo, definirCodigo] = useState('');
   const [arquivo, definirArquivo] = useState<File | null>(null);
@@ -164,9 +246,6 @@ export function BaseDoScore() {
     return termo ? novos.filter((v) => v.nome.toLowerCase().includes(termo)) : novos;
   }, [novos, busca]);
 
-  if (fontes === null) {
-    return erro ? <FaixaDeErro mensagem={erro} /> : <Cartao>Carregando as fontes…</Cartao>;
-  }
   const totalDePaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
   const daPagina = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
   const marcados = novos.filter((v) => !desmarcados.has(v.nome));
@@ -225,236 +304,277 @@ export function BaseDoScore() {
     });
   }
 
-  const fonte = fontes.find((f) => f.codigo === codigo);
+  //: O PAINEL DA PLANILHA NUMA FUNÇÃO, e não direto no `return`: a régua de
+  //: abas tem de aparecer enquanto as fontes carregam — senão a aba dos
+  //: veículos de investidores, que não depende delas, ficaria inacessível
+  //: atrás de um "Carregando as fontes…".
+  function painelDaPlanilha() {
+    if (fontes === null) {
+      return erro ? (
+        <FaixaDeErro mensagem={erro} />
+      ) : (
+        <Cartao>Carregando as fontes…</Cartao>
+      );
+    }
+    //: DENTRO DA FUNÇÃO, depois da guarda: o agrupamento só existe quando as
+    //: fontes chegaram, e lá fora `fontes` ainda pode ser `null`.
+    const arquivos = porArquivo(fontes);
+    const arquivoEscolhido = arquivos.find((a) => a.codigo === codigo);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {erro ? <FaixaDeErro mensagem={erro} /> : null}
+
+        <Secao
+          titulo="Subir a planilha do fornecedor"
+          subtitulo="Subir SUBSTITUI os meses que a planilha traz — o mês que ela não traz fica intacto. Conferir não grava nada."
+        >
+          <Cartao>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(220px, 1fr) minmax(240px, 1.2fr)',
+                gap: 14,
+                alignItems: 'end',
+              }}
+            >
+              <label style={{ display: 'grid', gap: 5 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>1. De qual fornecedor</span>
+                <select
+                  style={estiloDeEntrada}
+                  value={codigo}
+                  disabled={ocupado}
+                  onChange={(evento) => {
+                    definirCodigo(evento.target.value);
+                    limpar();
+                    definirArquivo(null);
+                  }}
+                >
+                  {arquivos.map((a) => (
+                    <option key={a.codigo} value={a.codigo}>
+                      {a.rotulo}
+                    </option>
+                  ))}
+                </select>
+                {arquivoEscolhido?.lentes.length ? (
+                  <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
+                    {/* QUAIS LENTES ESTE ARQUIVO ALIMENTA, dito antes de subir:
+                        o export da Clipei atualiza Imprensa E Mercado, e quem
+                        sobe precisa saber que mexeu nos dois. */}
+                    {arquivoEscolhido.lentes.length > 1
+                      ? `Alimenta as lentes ${arquivoEscolhido.lentes.join(' e ')}.`
+                      : `Alimenta a lente ${arquivoEscolhido.lentes[0]}.`}
+                  </span>
+                ) : null}
+              </label>
+
+              <div style={{ display: 'grid', gap: 5 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>2. A planilha</span>
+                <CampoDeArquivo
+                  valor={arquivo}
+                  aceitar=".xlsx"
+                  desabilitado={ocupado || !codigo}
+                  ariaLabel="Planilha do fornecedor"
+                  rotuloDoBotao="Escolher a planilha"
+                  textoVazio="Nenhuma planilha escolhida"
+                  aoEscolher={(escolhido) => {
+                    if (escolhido) void conferir(escolhido);
+                    else definirArquivo(null);
+                  }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
+                  Escolher já mostra o que mudaria. Nada é gravado neste passo.
+                </span>
+              </div>
+            </div>
+
+            {ocupado && !conferencia ? (
+              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
+                Lendo a planilha…
+              </p>
+            ) : null}
+
+            {aplicado ? (
+              <div
+                role="status"
+                style={{
+                  marginTop: 14,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--r-card-int)',
+                  background: 'var(--ok-bg)',
+                  color: 'var(--ok-fg)',
+                  fontSize: 13,
+                }}
+              >
+                Pronto.{' '}
+                {/* O NÚMERO DE VEÍCULOS VEM DE UMA LINHA SÓ, e não da soma: ele é
+                    da SUBIDA, e vem repetido em cada fonte irmã com o mesmo
+                    valor. Somar diria o dobro do que nasceu. */}
+                {aplicado[0]?.veiculos_criados
+                  ? `${numero(aplicado[0].veiculos_criados)} veículos cadastrados. `
+                  : null}
+                {aplicado
+                  .map((r) => `${r.nome}: ${numero(r.ingeridas)} menções`)
+                  .join(' · ')}
+                .
+              </div>
+            ) : null}
+          </Cartao>
+        </Secao>
+
+        {conferencia ? (
+          <>
+            <Secao titulo="O que vai entrar">
+              <Cartao>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {conferencia.previsao.map((resumo) => (
+                    <LinhaDoResumo key={resumo.fonte} resumo={resumo} />
+                  ))}
+                </ul>
+              </Cartao>
+            </Secao>
+
+            <Secao
+              titulo={`Veículos novos (${numero(marcados.length)} de ${numero(novos.length)} marcados)`}
+              subtitulo={
+                novos.length
+                  ? 'Eles não estão no Cadastro compartilhado e serão criados como Imprensa, com a praça e o alcance que o fornecedor informou. A lógica editorial (econômica, geral, regional) fica para você definir no cadastro — é dela que a lente de Mercado depende.'
+                  : 'Todos os veículos desta planilha já estão no Cadastro compartilhado.'
+              }
+            >
+              <Cartao>
+                {novos.length === 0 ? (
+                  <p style={{ fontSize: 13, margin: 0 }}>
+                    Nada a cadastrar: o cadastro já reconhece os{' '}
+                    {numero(conferencia.veiculos_reconhecidos)} veículos da planilha.
+                  </p>
+                ) : (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <input
+                        style={{ ...estiloDeEntrada, maxWidth: 280 }}
+                        value={busca}
+                        placeholder="Buscar um veículo…"
+                        aria-label="Buscar um veículo na lista"
+                        onChange={(evento) => {
+                          definirBusca(evento.target.value);
+                          definirPagina(1);
+                        }}
+                      />
+                      {/* MARCAR E DESMARCAR TODOS, porque desmarcar 2.600 um a um
+                          não é uma opção — e o caso de quem quer só alguns é
+                          "desmarcar todos, buscar, marcar os três". */}
+                      <Botao
+                        aoClicar={() => definirDesmarcados(new Set())}
+                        desabilitado={ocupado || desmarcados.size === 0}
+                      >
+                        Marcar todos
+                      </Botao>
+                      <Botao
+                        aoClicar={() => definirDesmarcados(new Set(novos.map((v) => v.nome)))}
+                        desabilitado={ocupado || desmarcados.size === novos.length}
+                      >
+                        Desmarcar todos
+                      </Botao>
+                      <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+                        {numero(conferencia.veiculos_reconhecidos)} já cadastrados
+                      </span>
+                    </div>
+
+                    <ul
+                      style={{
+                        listStyle: 'none',
+                        margin: 0,
+                        padding: 0,
+                        border: '1px solid var(--borda)',
+                        borderRadius: 'var(--r-card-int)',
+                        background: 'var(--branco)',
+                      }}
+                    >
+                      {daPagina.map((veiculo) => (
+                        <LinhaDoVeiculo
+                          key={veiculo.nome}
+                          veiculo={veiculo}
+                          marcado={!desmarcados.has(veiculo.nome)}
+                          aoAlternar={() => alternar(veiculo.nome)}
+                        />
+                      ))}
+                    </ul>
+
+                    {filtrados.length === 0 ? (
+                      <p style={{ fontSize: 13, margin: '10px 0 0' }}>
+                        Nenhum veículo novo com esse nome.
+                      </p>
+                    ) : null}
+
+                    {totalDePaginas > 1 ? (
+                      <div style={{ marginTop: 12 }}>
+                        <Paginacao
+                          pagina={pagina}
+                          totalDePaginas={totalDePaginas}
+                          aoMudarPagina={definirPagina}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    justifyContent: 'flex-end',
+                    marginTop: 16,
+                  }}
+                >
+                  <Botao variante="fantasma" aoClicar={limpar} desabilitado={ocupado}>
+                    Cancelar
+                  </Botao>
+                  <Botao variante="primario" aoClicar={aplicar} desabilitado={ocupado}>
+                    {/* O RÓTULO DIZ AS DUAS COISAS QUE VÃO ACONTECER: as menções
+                        entram e os veículos nascem. Um "Confirmar" sozinho
+                        esconderia a criação de 2.631 cadastros atrás de uma
+                        palavra. */}
+                    {marcados.length
+                      ? `Subir e cadastrar ${numero(marcados.length)} veículos`
+                      : 'Subir sem cadastrar veículo'}
+                  </Botao>
+                </div>
+              </Cartao>
+            </Secao>
+          </>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {erro ? <FaixaDeErro mensagem={erro} /> : null}
-
-      <Secao
-        titulo="Subir a planilha do fornecedor"
-        subtitulo="Subir SUBSTITUI os meses que a planilha traz — o mês que ela não traz fica intacto. Conferir não grava nada."
+      <Abas
+        abas={ABAS_DA_BASE}
+        ativa={subaba}
+        aoTrocar={definirSubaba}
+        rotulo="O que fazer na Base"
+        prefixo="base"
+      />
+      {/* MONTA E DESMONTA, como a Administração: a lista de veículos lê o
+          catálogo a cada volta, e o painel da planilha guarda a conferência
+          em estado — que é justamente o que se quer descartar ao sair dele. */}
+      <div
+        role="tabpanel"
+        id={`painel-${subaba}`}
+        aria-labelledby={`base-${subaba}`}
+        tabIndex={-1}
       >
-        <Cartao>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(220px, 1fr) minmax(240px, 1.2fr)',
-              gap: 14,
-              alignItems: 'end',
-            }}
-          >
-            <label style={{ display: 'grid', gap: 5 }}>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>1. De qual fonte</span>
-              <select
-                style={estiloDeEntrada}
-                value={codigo}
-                disabled={ocupado}
-                onChange={(evento) => {
-                  definirCodigo(evento.target.value);
-                  limpar();
-                  definirArquivo(null);
-                }}
-              >
-                {fontes.map((f) => (
-                  <option key={f.codigo} value={f.codigo}>
-                    {f.nome}
-                  </option>
-                ))}
-              </select>
-              {fonte ? (
-                <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
-                  Lê {ARQUIVO_DA_FONTE[fonte.codigo] ?? 'o export deste fornecedor'}.
-                  {/* UM ARQUIVO ALIMENTA MAIS DE UMA FONTE, e a pessoa precisa
-                      saber antes: subir pela Clipei também atualiza o Mercado. */}
-                </span>
-              ) : null}
-            </label>
-
-            <div style={{ display: 'grid', gap: 5 }}>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>2. A planilha</span>
-              <CampoDeArquivo
-                valor={arquivo}
-                aceitar=".xlsx"
-                desabilitado={ocupado || !codigo}
-                ariaLabel="Planilha do fornecedor"
-                rotuloDoBotao="Escolher a planilha"
-                textoVazio="Nenhuma planilha escolhida"
-                aoEscolher={(escolhido) => {
-                  if (escolhido) void conferir(escolhido);
-                  else definirArquivo(null);
-                }}
-              />
-              <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
-                Escolher já mostra o que mudaria. Nada é gravado neste passo.
-              </span>
-            </div>
-          </div>
-
-          {ocupado && !conferencia ? (
-            <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
-              Lendo a planilha…
-            </p>
-          ) : null}
-
-          {aplicado ? (
-            <div
-              role="status"
-              style={{
-                marginTop: 14,
-                padding: '12px 14px',
-                borderRadius: 'var(--r-card-int)',
-                background: 'var(--ok-bg)',
-                color: 'var(--ok-fg)',
-                fontSize: 13,
-              }}
-            >
-              Pronto.{' '}
-              {/* O NÚMERO DE VEÍCULOS VEM DE UMA LINHA SÓ, e não da soma: ele é
-                  da SUBIDA, e vem repetido em cada fonte irmã com o mesmo
-                  valor. Somar diria o dobro do que nasceu. */}
-              {aplicado[0]?.veiculos_criados
-                ? `${numero(aplicado[0].veiculos_criados)} veículos cadastrados. `
-                : null}
-              {aplicado
-                .map((r) => `${r.nome}: ${numero(r.ingeridas)} menções`)
-                .join(' · ')}
-              .
-            </div>
-          ) : null}
-        </Cartao>
-      </Secao>
-
-      {conferencia ? (
-        <>
-          <Secao titulo="O que vai entrar">
-            <Cartao>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {conferencia.previsao.map((resumo) => (
-                  <LinhaDoResumo key={resumo.fonte} resumo={resumo} />
-                ))}
-              </ul>
-            </Cartao>
-          </Secao>
-
-          <Secao
-            titulo={`Veículos novos (${numero(marcados.length)} de ${numero(novos.length)} marcados)`}
-            subtitulo={
-              novos.length
-                ? 'Eles não estão no Cadastro compartilhado e serão criados como Imprensa, com a praça e o alcance que o fornecedor informou. A lógica editorial (econômica, geral, regional) fica para você definir no cadastro — é dela que a lente de Mercado depende.'
-                : 'Todos os veículos desta planilha já estão no Cadastro compartilhado.'
-            }
-          >
-            <Cartao>
-              {novos.length === 0 ? (
-                <p style={{ fontSize: 13, margin: 0 }}>
-                  Nada a cadastrar: o cadastro já reconhece os{' '}
-                  {numero(conferencia.veiculos_reconhecidos)} veículos da planilha.
-                </p>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 10,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      marginBottom: 12,
-                    }}
-                  >
-                    <input
-                      style={{ ...estiloDeEntrada, maxWidth: 280 }}
-                      value={busca}
-                      placeholder="Buscar um veículo…"
-                      aria-label="Buscar um veículo na lista"
-                      onChange={(evento) => {
-                        definirBusca(evento.target.value);
-                        definirPagina(1);
-                      }}
-                    />
-                    {/* MARCAR E DESMARCAR TODOS, porque desmarcar 2.600 um a um
-                        não é uma opção — e o caso de quem quer só alguns é
-                        "desmarcar todos, buscar, marcar os três". */}
-                    <Botao
-                      aoClicar={() => definirDesmarcados(new Set())}
-                      desabilitado={ocupado || desmarcados.size === 0}
-                    >
-                      Marcar todos
-                    </Botao>
-                    <Botao
-                      aoClicar={() => definirDesmarcados(new Set(novos.map((v) => v.nome)))}
-                      desabilitado={ocupado || desmarcados.size === novos.length}
-                    >
-                      Desmarcar todos
-                    </Botao>
-                    <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                      {numero(conferencia.veiculos_reconhecidos)} já cadastrados
-                    </span>
-                  </div>
-
-                  <ul
-                    style={{
-                      listStyle: 'none',
-                      margin: 0,
-                      padding: 0,
-                      border: '1px solid var(--borda)',
-                      borderRadius: 'var(--r-card-int)',
-                      background: 'var(--branco)',
-                    }}
-                  >
-                    {daPagina.map((veiculo) => (
-                      <LinhaDoVeiculo
-                        key={veiculo.nome}
-                        veiculo={veiculo}
-                        marcado={!desmarcados.has(veiculo.nome)}
-                        aoAlternar={() => alternar(veiculo.nome)}
-                      />
-                    ))}
-                  </ul>
-
-                  {filtrados.length === 0 ? (
-                    <p style={{ fontSize: 13, margin: '10px 0 0' }}>
-                      Nenhum veículo novo com esse nome.
-                    </p>
-                  ) : null}
-
-                  {totalDePaginas > 1 ? (
-                    <div style={{ marginTop: 12 }}>
-                      <Paginacao
-                        pagina={pagina}
-                        totalDePaginas={totalDePaginas}
-                        aoMudarPagina={definirPagina}
-                      />
-                    </div>
-                  ) : null}
-                </>
-              )}
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 10,
-                  justifyContent: 'flex-end',
-                  marginTop: 16,
-                }}
-              >
-                <Botao variante="fantasma" aoClicar={limpar} desabilitado={ocupado}>
-                  Cancelar
-                </Botao>
-                <Botao variante="primario" aoClicar={aplicar} desabilitado={ocupado}>
-                  {/* O RÓTULO DIZ AS DUAS COISAS QUE VÃO ACONTECER: as menções
-                      entram e os veículos nascem. Um "Confirmar" sozinho
-                      esconderia a criação de 2.631 cadastros atrás de uma
-                      palavra. */}
-                  {marcados.length
-                    ? `Subir e cadastrar ${numero(marcados.length)} veículos`
-                    : 'Subir sem cadastrar veículo'}
-                </Botao>
-              </div>
-            </Cartao>
-          </Secao>
-        </>
-      ) : null}
+        {subaba === 'investidores' ? <VeiculosDeInvestidores /> : painelDaPlanilha()}
+      </div>
     </div>
   );
 }

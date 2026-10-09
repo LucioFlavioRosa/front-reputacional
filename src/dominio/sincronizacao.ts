@@ -35,6 +35,13 @@ export const ROTAS_DO_CATALOGO = [
   '/api/pessoas-aegea',
   '/api/referencias',
   '/api/alegacoes',
+  // UMA ROTA DO SCORE NA LISTA DO CATÁLOGO, e não é engano: definir quais
+  // veículos a lente Mercado considera escreve em `instituicao` — a mesma
+  // tabela que o Cadastro compartilhado edita. A regra aqui é "a escrita muda
+  // o catálogo?", e não "o endereço começa com o nome de um cadastro". Sem
+  // esta linha, marcar um veículo na aba Base não chegaria ao Cadastro
+  // compartilhado nem aos filtros até um F5.
+  '/api/score/veiculos-de-investidores',
 ] as const;
 
 /** As rotas cujas escritas criam ou alteram AGENDAS.

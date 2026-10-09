@@ -215,6 +215,14 @@ export interface FonteDoScore {
   nome: string;
   fornecedor: string;
   lente: string;
+  /** Qual export esta fonte lê — `clipei`, `approach`, `bites`.
+   *
+   *  EXISTE PARA A BASE AGRUPAR. `score_fonte` é a alimentação de uma LENTE,
+   *  não um fornecedor: `clipei` alimenta Imprensa (peso 30) e
+   *  `clipei_investidores` alimenta Mercado (peso 20), com o MESMO arquivo.
+   *  Ninguém sobe pela segunda — ela é alimentada junto —, e oferecer as duas
+   *  num seletor de upload seria oferecer uma escolha que não existe. */
+  arquivo?: string | null;
   interna: boolean;
   ativo: boolean;
   ligada: boolean;

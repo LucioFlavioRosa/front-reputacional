@@ -869,6 +869,36 @@ export function conferirPlanilhaDoScore(
   );
 }
 
+/** O que a gravação da lista de veículos de investidores mudou. */
+export interface VeiculosDeInvestidoresSalvos {
+  /** Quantos entraram na lente Mercado agora. */
+  marcados: number;
+  /** Quantos saíram. É o número que a tela repete de volta: remover é a
+   *  operação que a pessoa quer ver confirmada. */
+  desmarcados: number;
+}
+
+/** Define QUAIS veículos a lente Mercado considera — a lista inteira.
+ *
+ *  DECLARATIVA, e não um alternador por veículo. `editarInstituicao` exige o
+ *  cadastro inteiro, e reenviar nome, tipo, UF e tier para mudar um campo
+ *  apagaria o que a tela esquecesse. E é assim que a pessoa pensa: ela tem uma
+ *  lista de veículos de mercado, mantida numa planilha, e quer que o sistema a
+ *  reflita.
+ *
+ *  ESCREVE NO CATÁLOGO: muda `instituicao.subcategoria_publico_id`. Por isso o
+ *  caminho está em `ROTAS_DO_CATALOGO` — é o que faz o Cadastro compartilhado,
+ *  os filtros e as fichas verem a mudança sem F5.
+ */
+export function definirVeiculosDeInvestidores(
+  ids: string[],
+): Promise<VeiculosDeInvestidoresSalvos> {
+  return requisitar<VeiculosDeInvestidoresSalvos>('/api/score/veiculos-de-investidores', {
+    method: 'PUT',
+    body: JSON.stringify({ ids }),
+  });
+}
+
 /** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */
 export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);

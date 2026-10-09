@@ -25,12 +25,24 @@ vi.mock('@/api/cliente', () => ({
 const { listarFontesDoScore, conferirPlanilhaDoScore, importarPlanilhaDoScore } =
   await import('@/api/cliente');
 
+// AS FONTES COMO O SERVIDOR AS MANDA, com `arquivo` e `lente`: são elas que
+// fazem o seletor oferecer ARQUIVOS em vez de fontes, e sem elas a fixture
+// provaria um agrupamento que o servidor não alimenta.
 const FONTES = [
-  { codigo: 'clipei', nome: 'Clipei', interna: false },
-  { codigo: 'bites', nome: 'Bites', interna: false },
+  { codigo: 'clipei', nome: 'Clipei', arquivo: 'clipei', lente: 'imprensa', interna: false },
+  // A SEGUNDA FONTE DO MESMO ARQUIVO: alimenta o Mercado com o MESMO export, e
+  // é por isso que ela não pode virar uma opção de upload.
+  {
+    codigo: 'clipei_investidores',
+    nome: 'Clipei · público investidores',
+    arquivo: 'clipei',
+    lente: 'mercado',
+    interna: false,
+  },
+  { codigo: 'bites', nome: 'Bites', arquivo: 'bites', lente: 'sociedade', interna: false },
   // A INTERNA NÃO PODE APARECER: o dado dela já está neste banco, e o servidor
   // recusa o upload. Oferecer no seletor seria oferecer um caminho sem saída.
-  { codigo: 'crm', nome: 'CRM', interna: true },
+  { codigo: 'crm', nome: 'CRM', lente: 'institucional', interna: true },
 ] as unknown as FonteDoScore[];
 
 function resumo(parcial: Partial<ImportacaoDoScore> = {}): ImportacaoDoScore {
@@ -83,14 +95,63 @@ describe('BaseDoScore', () => {
     vi.clearAllMocks();
   });
 
+  it('A BASE TEM DUAS ABAS: subir a planilha e a curadoria dos veículos', async () => {
+    // A lista de veículos de investidores é curadoria de cadastro, e não um
+    // gesto do fechamento do mês. Embaixo do upload, os 81 nomes ficariam
+    // entre quem sobe a planilha e o resultado da conferência.
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    render(<BaseDoScore />);
+
+    const abas = screen.getAllByRole('tab').map((a) => a.textContent);
+    expect(abas).toEqual(['Subir planilha', 'Veículos de investidores']);
+    // ABRE NA DO UPLOAD: é o que se faz todo mês.
+    await waitFor(() => expect(screen.getByLabelText(/De qual fornecedor/)).toBeTruthy());
+  });
+
   it('o seletor NÃO oferece a fonte interna', async () => {
     vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
     render(<BaseDoScore />);
-    await waitFor(() => expect(screen.getByLabelText(/De qual fonte/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText(/De qual fornecedor/)).toBeTruthy());
 
-    const seletor = screen.getByLabelText(/De qual fonte/) as HTMLSelectElement;
+    const seletor = screen.getByLabelText(/De qual fornecedor/) as HTMLSelectElement;
     const codigos = [...seletor.options].map((o) => o.value);
     expect(codigos).toEqual(['clipei', 'bites']);
+  });
+
+  it('O SELETOR OFERECE ARQUIVOS: as duas fontes da Clipei são UMA opção', async () => {
+    // A pergunta que originou isto: "por que tem clipei e clipei público
+    // investidores? Deve haver apenas clipei". As duas leem o mesmo export, e
+    // quem escolhesse a segunda subiria o arquivo inteiro achando que subia um
+    // recorte.
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText(/De qual fornecedor/)).toBeTruthy());
+
+    const seletor = screen.getByLabelText(/De qual fornecedor/) as HTMLSelectElement;
+    const rotulos = [...seletor.options].map((o) => o.textContent);
+    expect(rotulos).toEqual(['Clipei', 'Bites']);
+  });
+
+  it('diz as DUAS lentes que o arquivo da Clipei alimenta', async () => {
+    // Subir pela Clipei mexe na Imprensa (peso 30) e no Mercado (peso 20), e
+    // quem sobe precisa saber antes que mexeu nos dois.
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    render(<BaseDoScore />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Alimenta as lentes Imprensa e Mercado.')).toBeTruthy(),
+    );
+  });
+
+  it('a fonte de um arquivo só diz UMA lente', async () => {
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText(/De qual fornecedor/)).toBeTruthy());
+
+    await pessoa.selectOptions(screen.getByLabelText(/De qual fornecedor/), 'bites');
+
+    expect(screen.getByText('Alimenta a lente Sociedade digital.')).toBeTruthy();
   });
 
   it('CONFERIR NÃO IMPORTA: escolher o arquivo só mostra o que mudaria', async () => {
@@ -113,9 +174,9 @@ describe('BaseDoScore', () => {
       }),
     );
 
-    // PELOS ITENS DA LISTA: "Clipei" também é o rótulo da opção no seletor e
-    // aparece em "Lê o export da Clipei" — uma busca global acharia três. Sem
-    // veículo novo neste caso, os únicos `listitem` são os dois resumos.
+    // PELOS ITENS DA LISTA: "Clipei" também é o rótulo da opção no seletor —
+    // uma busca global acharia as duas. Sem veículo novo neste caso, os únicos
+    // `listitem` são os dois resumos.
     const linhas = screen.getAllByRole('listitem').map((l) => l.textContent ?? '');
     expect(linhas).toHaveLength(2);
     expect(linhas.some((l) => l.includes('25.457 de 25.597 linhas'))).toBe(true);
@@ -298,7 +359,7 @@ describe('BaseDoScore', () => {
     const pessoa = await subir(conferencia({ veiculos_novos: [veiculo('Rádio A')] }));
     expect(screen.getAllByRole('checkbox')).toHaveLength(1);
 
-    await pessoa.selectOptions(screen.getByLabelText(/De qual fonte/), 'bites');
+    await pessoa.selectOptions(screen.getByLabelText(/De qual fornecedor/), 'bites');
 
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
