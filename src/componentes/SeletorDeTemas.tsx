@@ -12,6 +12,21 @@
  *  só o que bateu com o texto digitado, e só os que ainda não foram
  *  escolhidos (um tema já selecionado some da busca, porque já está visível
  *  logo abaixo).
+ *
+ *  DUAS LISTAS, E NÃO UMA. `temas` são os ativos, e é só deles que a busca
+ *  sugere: um assunto aposentado não pode entrar em agenda nova. `temasInativos`
+ *  serve apenas para MOSTRAR o que já está escolhido.
+ *
+ *  POR QUE ISSO É NECESSÁRIO, medido na base: 60 agendas têm 80 vínculos com 17
+ *  assuntos que a `0058` aposentou. Com uma lista só — a de ativos, que é o que
+ *  `/api/dicionarios` devolve —, abrir uma dessas agendas mostrava MENOS temas
+ *  do que ela tem: o chip não aparecia, a pessoa não via a classificação e nem
+ *  podia removê-la, porque sem chip não há o × do gesto de remover. O dado
+ *  continuava gravado, e o formulário afirmava outra coisa.
+ *
+ *  É o mesmo defeito que `nomeDoTema` e `nomeDoFormatoDeInteracao` resolvem no
+ *  domínio, e a razão é a mesma: preservar o vínculo histórico e esconder o
+ *  nome é meia preservação.
  */
 
 import { useState } from 'react';
@@ -24,10 +39,16 @@ const LIMITE_DE_SUGESTOES = 8;
 
 export function SeletorDeTemas({
   temas,
+  temasInativos = [],
   selecionados,
   aoAlternar,
 }: {
+  /** Os ativos: aparecem na busca e podem ser escolhidos. */
   temas: Tema[];
+  /** Os aposentados: NÃO aparecem na busca, e aparecem como chip quando a
+   *  agenda já os tem. Opcional para não quebrar quem ainda não os passa — e
+   *  o padrão vazio reproduz o comportamento antigo, não um erro silencioso. */
+  temasInativos?: Tema[];
   selecionados: number[];
   /** Alterna UM id por vez — mesmo gesto de `alternarAssunto`/
    *  `alternarNaLista` usados nos formulários que chamam este componente,
@@ -37,7 +58,11 @@ export function SeletorDeTemas({
 }) {
   const [busca, definirBusca] = useState('');
 
-  const marcados = temas.filter((tema) => selecionados.includes(tema.id));
+  // OS MARCADOS SAEM DAS DUAS LISTAS; as sugestões, só dos ativos.
+  const marcados = [...temas, ...temasInativos].filter((tema) =>
+    selecionados.includes(tema.id),
+  );
+  const aposentados = new Set(temasInativos.map((tema) => tema.id));
 
   const sugestoes = busca.trim()
     ? filtrar(
@@ -87,17 +112,28 @@ export function SeletorDeTemas({
           </p>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-            {marcados.map((tema) => (
-              <Chip
-                key={tema.id}
-                rotulo={tema.nome}
-                ativo
-                fundo="var(--turquesa-rio)"
-                texto="var(--sobre-turquesa)"
-                titulo="Clique para remover"
-                aoClicar={() => aoAlternar(tema.id)}
-              />
-            ))}
+            {marcados.map((tema) => {
+              // O APOSENTADO SE DISTINGUE, em vez de se disfarçar de ativo: ele
+              // não está na busca, então quem tentar reencontrá-lo depois de
+              // remover não vai achar. Dizer isso no chip é o aviso antes do
+              // gesto irreversível.
+              const aposentado = aposentados.has(tema.id);
+              return (
+                <Chip
+                  key={tema.id}
+                  rotulo={aposentado ? `${tema.nome} (aposentado)` : tema.nome}
+                  ativo
+                  fundo={aposentado ? 'var(--bg-trilho)' : 'var(--turquesa-rio)'}
+                  texto={aposentado ? 'var(--cinza-2)' : 'var(--sobre-turquesa)'}
+                  titulo={
+                    aposentado
+                      ? 'Assunto aposentado: continua valendo nesta agenda, mas não está mais na busca. Clique para remover.'
+                      : 'Clique para remover'
+                  }
+                  aoClicar={() => aoAlternar(tema.id)}
+                />
+              );
+            })}
           </div>
         )}
       </div>

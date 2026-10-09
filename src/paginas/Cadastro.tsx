@@ -817,6 +817,10 @@ export function Cadastro({
           >
             <SeletorDeTemas
               temas={catalogo.dicionarios.temas}
+              // OS APOSENTADOS VÃO JUNTO, só para exibição: 60 agendas da base
+              // têm vínculo com assunto que a `0058` aposentou, e sem esta
+              // lista o formulário as mostrava com menos temas do que têm.
+              temasInativos={catalogo.dicionarios.temas_inativos}
               selecionados={form.temas}
               aoAlternar={alternarAssunto}
             />
