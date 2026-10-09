@@ -119,9 +119,19 @@ describe('BarraDeFiltroDaLente', () => {
     expect(gatilho.textContent).toContain('Negativo');
   });
 
-  it('Mercado não tem filtros: a barra não aparece', () => {
+  it('Mercado: os mesmos filtros da Imprensa — Concessionária, Tier e Sentimento', () => {
     const { container } = render(
       <BarraDeFiltroDaLente lente="mercado" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
+    );
+    const texto = container.textContent ?? '';
+    expect(texto.indexOf('Concessionária')).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf('Concessionária')).toBeLessThan(texto.indexOf('Tier do veículo'));
+    expect(texto.indexOf('Tier do veículo')).toBeLessThan(texto.indexOf('Sentimento'));
+  });
+
+  it('Institucional não tem filtros: a barra não aparece', () => {
+    const { container } = render(
+      <BarraDeFiltroDaLente lente="institucional" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
     );
     expect(container.textContent).toBe('');
   });

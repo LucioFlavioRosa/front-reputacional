@@ -10,9 +10,10 @@
  *  "veículo" é a rede social, e o "autor" da Imprensa é o jornalista. O campo
  *  do servidor é o mesmo (`FiltroDaLente`); só o rótulo é da lente.
  *
- *  MERCADO E INSTITUCIONAL NÃO TÊM FILTROS AQUI: Mercado vem de estudos, e não
- *  de menções; Institucional lê o CRM, que tem os filtros dele. O servidor não
- *  aceita recorte para nenhum dos dois.
+ *  MERCADO TEM OS MESMOS FILTROS DA IMPRENSA, por pedido: a nota dele vem das
+ *  matérias da imprensa econômica (Clipei), que trazem concessionária, tier e
+ *  sentimento como as outras. INSTITUCIONAL NÃO TEM FILTRO AQUI: lê o CRM, que
+ *  tem os filtros dele, e o servidor não aceita recorte para ela.
  */
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
@@ -98,6 +99,10 @@ export const FILTROS_DAS_LENTES: Record<
       { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
       subtemaDoFornecedor,
     ],
+  },
+  mercado: {
+    rapidos: [concessionaria, tier, sentimento],
+    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
   },
   sociedade: {
     rapidos: [
