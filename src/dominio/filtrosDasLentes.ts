@@ -16,6 +16,7 @@
  */
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
+import { CORES_DE_CLIMA } from '@/dominio/frentes';
 
 export interface DimensaoDaLente {
   chave: keyof FiltroDaLente;
@@ -23,6 +24,11 @@ export interface DimensaoDaLente {
   /** De qual lista de `opcoes-de-filtro` saem os valores. */
   de: keyof OpcoesDeFiltroDaLente;
   rotulos?: Record<string, string>;
+  /** A ordem fixa dos valores (Tier 1, 2, 3; Positivo, Neutro, Negativo). Sem
+   *  ela, vale a ordem do servidor. */
+  ordem?: string[];
+  /** A cor do gatilho conforme o valor escolhido — o termômetro do CRM. */
+  destaques?: Record<string, { fundo: string; texto: string }>;
 }
 
 export const ROTULO_DO_TIER: Record<string, string> = {
@@ -31,7 +37,34 @@ export const ROTULO_DO_TIER: Record<string, string> = {
   menos_relevante: 'Tier 3',
 };
 
-const tier: DimensaoDaLente = { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER };
+export const ROTULO_DO_SENTIMENTO: Record<string, string> = {
+  pos: 'Positivo',
+  neu: 'Neutro',
+  neg: 'Negativo',
+};
+
+const tier: DimensaoDaLente = {
+  chave: 'tier',
+  rotulo: 'Tier do veículo',
+  de: 'tiers',
+  rotulos: ROTULO_DO_TIER,
+  ordem: ['muito_relevante', 'relevante', 'menos_relevante'],
+};
+//: O SENTIMENTO COM A COR DO TERMÔMETRO DO CRM, por pedido: Positivo verde,
+//: Neutro cinza, Negativo vermelho — as mesmas cores (`CORES_DE_CLIMA`) e o
+//: mesmo texto escuro, que é o que dá contraste sobre o vermelho.
+const sentimento: DimensaoDaLente = {
+  chave: 'sentimento',
+  rotulo: 'Sentimento',
+  de: 'sentimentos',
+  rotulos: ROTULO_DO_SENTIMENTO,
+  ordem: ['pos', 'neu', 'neg'],
+  destaques: {
+    pos: { fundo: CORES_DE_CLIMA.propositivo, texto: 'var(--sobre-turquesa)' },
+    neu: { fundo: CORES_DE_CLIMA.neutro, texto: 'var(--cinza-4)' },
+    neg: { fundo: CORES_DE_CLIMA.tenso, texto: 'var(--cinza-4)' },
+  },
+};
 //: "TEMA" SEMPRE DIZ QUAL É, por pedido. O TEMA QUE O FORNECEDOR ESCREVE É O
 //: PILAR (N1): o filtro de Pilar o encontra (o servidor casa os dois). O
 //: subtema do fornecedor é o N3, e fica "(fornecedor)" até o de-para entrar.
@@ -42,8 +75,10 @@ const subtemaDoFornecedor: DimensaoDaLente = { chave: 'subtema', rotulo: 'Subtem
 const uf: DimensaoDaLente = { chave: 'uf', rotulo: 'UF', de: 'ufs' };
 const concessionaria: DimensaoDaLente = { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' };
 
-//: PILAR (N1) E TEMA ESTRATÉGICO (N2) NOS RÁPIDOS DE TODA LENTE, por pedido —
-//: logo depois da dimensão própria da lente. O servidor oferece a taxonomia
+//: PILAR (N1) E TEMA ESTRATÉGICO (N2) NOS RÁPIDOS DE SOCIEDADE E CLIENTES, por
+//: pedido — logo depois da dimensão própria da lente. A IMPRENSA FICOU ENXUTA,
+//: também por pedido: Concessionária, Tier e Sentimento, nessa ordem; veículo e
+//: temas seguem alcançáveis pela busca inteligente. O servidor oferece a taxonomia
 //: inteira dos dois, então eles aparecem mesmo antes de haver menção ligada.
 //:
 //: OS "AVANÇADOS" NÃO TÊM MAIS BARRA (saíram, por pedido): continuam aqui porque
@@ -53,19 +88,15 @@ export const FILTROS_DAS_LENTES: Record<
   { rapidos: DimensaoDaLente[]; avancados: DimensaoDaLente[] }
 > = {
   imprensa: {
-    rapidos: [
-      tier,
+    rapidos: [concessionaria, tier, sentimento],
+    avancados: [
       { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
       pilar,
       temaEstrategico,
-      { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
-    ],
-    avancados: [
       subtemaN3,
       uf,
       { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
       subtemaDoFornecedor,
-      concessionaria,
     ],
   },
   sociedade: {
@@ -92,6 +123,18 @@ export const LENTES_COM_FILTRO = Object.keys(FILTROS_DAS_LENTES);
 export function dimensoesDaLente(lente: string): DimensaoDaLente[] {
   const filtros = FILTROS_DAS_LENTES[lente];
   return filtros ? [...filtros.rapidos, ...filtros.avancados] : [];
+}
+
+/** Os valores na ordem fixa da dimensão, quando ela tem uma; os desconhecidos
+ *  vão para o fim, na ordem em que vieram. */
+export function ordenarValores(dimensao: DimensaoDaLente, valores: string[]): string[] {
+  const ordem = dimensao.ordem;
+  if (!ordem) return valores;
+  const posicao = (valor: string) => {
+    const i = ordem.indexOf(valor);
+    return i < 0 ? ordem.length : i;
+  };
+  return [...valores].sort((a, b) => posicao(a) - posicao(b));
 }
 
 /** "Folha de S.Paulo" → o nome que a tela mostra para aquele valor ("Tier 1"

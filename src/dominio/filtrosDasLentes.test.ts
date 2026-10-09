@@ -6,7 +6,8 @@ import { camposDaBase } from '@/dominio/baseDasLentes';
 import { FILTROS_DAS_LENTES } from '@/dominio/filtrosDasLentes';
 
 describe('filtros de tema no painel de KPIs', () => {
-  it.each(Object.keys(FILTROS_DAS_LENTES))('%s tem Pilar (N1) e Tema estratégico (N2) nos rápidos', (lente) => {
+  //: A Imprensa ficou enxuta por pedido (Concessionária, Tier, Sentimento).
+  it.each(['sociedade', 'clientes'])('%s tem Pilar (N1) e Tema estratégico (N2) nos rápidos', (lente) => {
     const rotulos = FILTROS_DAS_LENTES[lente].rapidos.map((d) => d.rotulo);
     expect(rotulos).toContain('Pilar (N1)');
     expect(rotulos).toContain('Tema estratégico (N2)');

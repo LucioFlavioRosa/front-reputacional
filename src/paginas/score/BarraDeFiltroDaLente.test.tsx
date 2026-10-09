@@ -28,7 +28,7 @@ const DA_SOCIEDADE: OpcoesDeFiltroDaLente = {
 };
 
 const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
-  tiers: ['muito_relevante'],
+  tiers: ['menos_relevante', 'muito_relevante', 'relevante'],
   veiculos: ['Folha'],
   atributos: ['Qualidade'],
   temas: ['Tarifa'],
@@ -36,7 +36,10 @@ const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
   ufs: ['SP'],
   subtemas: [],
   autores: [],
-  empresas: [],
+  empresas: ['Águas do Rio', 'Aegea Holding'],
+  sentimentos: ['neg', 'pos', 'neu'],
+  temas_n1: ['Governança'],
+  temas_n2: ['Ética'],
 };
 
 describe('BarraDeFiltroDaLente', () => {
@@ -74,11 +77,46 @@ describe('BarraDeFiltroDaLente', () => {
     expect(screen.queryByText('Subtema (N3)')).toBeNull();
   });
 
-  it('Imprensa: tier e veículo nos rápidos; o que era do avançado não aparece', () => {
+  it('Imprensa: Concessionária, Tier e Sentimento, nessa ordem — sem veículo, temas nem atributo', () => {
+    const { container } = render(
+      <BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
+    );
+    const texto = container.textContent ?? '';
+    expect(texto.indexOf('Concessionária')).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf('Concessionária')).toBeLessThan(texto.indexOf('Tier do veículo'));
+    expect(texto.indexOf('Tier do veículo')).toBeLessThan(texto.indexOf('Sentimento'));
+    for (const fora of ['Veículo', 'Atributo', 'Pilar (N1)', 'Tema estratégico (N2)', 'UF']) {
+      expect(screen.queryByText(fora)).toBeNull();
+    }
+  });
+
+  it('Imprensa: os tiers em ordem — Tier 1, Tier 2, Tier 3', async () => {
     render(<BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />);
-    expect(screen.getByText('Tier do veículo')).toBeTruthy();
-    expect(screen.getByText('Veículo')).toBeTruthy();
-    expect(screen.queryByText('UF')).toBeNull();
+    await userEvent.click(screen.getByText('Tier do veículo'));
+    const tiers = screen.getAllByText(/^Tier \d$/).map((item) => item.textContent);
+    expect(tiers).toEqual(['Tier 1', 'Tier 2', 'Tier 3']);
+  });
+
+  it('Imprensa: o sentimento escolhido pinta o gatilho, como o termômetro do CRM', async () => {
+    const definirFiltro = vi.fn();
+    const { rerender } = render(
+      <BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={definirFiltro} opcoes={DA_IMPRENSA} />,
+    );
+    await userEvent.click(screen.getByText('Sentimento'));
+    expect(screen.getAllByText(/^(Positivo|Neutro|Negativo)$/).map((item) => item.textContent)).toEqual([
+      'Positivo',
+      'Neutro',
+      'Negativo',
+    ]);
+    await userEvent.click(screen.getByText('Negativo'));
+    expect(definirFiltro).toHaveBeenCalledWith({ sentimento: 'neg' });
+
+    rerender(
+      <BarraDeFiltroDaLente lente="imprensa" filtro={{ sentimento: 'neg' }} definirFiltro={definirFiltro} opcoes={DA_IMPRENSA} />,
+    );
+    const gatilho = screen.getByRole('button', { name: /Sentimento/ });
+    expect(gatilho.style.background).toBe('rgb(255, 92, 96)');
+    expect(gatilho.textContent).toContain('Negativo');
   });
 
   it('Mercado não tem filtros: a barra não aparece', () => {

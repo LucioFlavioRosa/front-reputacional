@@ -10,7 +10,7 @@
  */
 
 import type { MencaoDaBase, OpcoesDaBase } from '@/api/cliente';
-import { ROTULO_DO_TIER } from '@/dominio/filtrosDasLentes';
+import { ROTULO_DO_SENTIMENTO, ROTULO_DO_TIER } from '@/dominio/filtrosDasLentes';
 
 export const LENTES_DA_BASE = [
   { id: 'imprensa', rotulo: 'Imprensa' },
@@ -20,11 +20,7 @@ export const LENTES_DA_BASE = [
   { id: 'institucional', rotulo: 'Institucional' },
 ] as const;
 
-export const ROTULO_DO_SENTIMENTO: Record<string, string> = {
-  pos: 'Positivo',
-  neu: 'Neutro',
-  neg: 'Negativo',
-};
+export { ROTULO_DO_SENTIMENTO };
 
 /** Como a "fonte" de cada linha se chama nesta lente. */
 export function rotuloDoVeiculo(lente: string): string {
