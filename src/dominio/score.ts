@@ -280,6 +280,11 @@ export interface ImportacaoDoScore {
 
 export const ROTULO_DO_DESCARTE: Record<string, string> = {
   fora_do_filtro: 'fora do recorte desta fonte',
+  //: MOTIVO PRÓPRIO, e não "fora do recorte": as duas causas se consertam em
+  //: lugares diferentes. Filtro de coluna é cadastro da fonte; lista de
+  //: veículos é o Cadastro compartilhado — e quem vê este número grande sabe
+  //: que o caminho é a aba "Veículos de investidores".
+  fora_da_lista_de_veiculos: 'de veículo fora da lista de investidores',
   sem_data: 'sem data',
   sem_sentimento: 'sem classificação de sentimento',
 };
