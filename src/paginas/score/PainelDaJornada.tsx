@@ -116,8 +116,8 @@ export function PainelDaJornada({
             aria-live="polite"
             style={{
               margin: '0 0 16px',
-              fontSize: 17,
-              lineHeight: 1.55,
+              fontSize: 15,
+              lineHeight: 1.5,
               color: 'var(--cinza-4)',
               maxWidth: 920,
             }}
