@@ -33,7 +33,7 @@ import {
   Secao,
   Vazio,
 } from '@/componentes/basicos';
-import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { SeletorDeMes } from '@/componentes/SeletorDeMes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { CartoesDaJanela } from '@/graficos/CartoesDaJanela';
@@ -47,6 +47,7 @@ import {
   serieDaJanela,
 } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
+import { mesComAno } from '@/dominio/janelaDaJornada';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
 import { numero } from '@/dominio/formato';
@@ -156,24 +157,26 @@ export function Score({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <ComFaixaDoTopo>
-      <Secao
-        titulo="KPIs Reputacionais"
-        subtitulo="O Índice de Saúde Reputacional: uma nota por mês, média ponderada de cinco lentes. Vale para a companhia inteira — não segue os filtros do Painel."
-        nivelDoTitulo={1}
+      {/* SEM O CARTÃO DE ABERTURA, por pedido: ele gastava a primeira dobra da
+          tela com um título e um campo, e o que a pessoa veio ver — o radar —
+          ficava para baixo. O que ele carregava virou uma barra de controles
+          enxuta: o mês (vale para todas as abas) e o aviso de calibração.
+          O título continua existindo para leitor de tela, que precisa do h1. */}
+      <h1 style={SO_PARA_LEITOR_DE_TELA}>KPIs Reputacionais</h1>
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+        }}
       >
-        {/* O SELETOR DE MÊS DESCEU DE `acao` PARA O CORPO. A tira de abas que
-            ficava aqui subiu para a barra do cabeçalho — sem ela, a seção
-            ficaria com cabeçalho e nada embaixo. */}
+        <span style={{ fontSize: 12.5, color: 'var(--cinza-2)', maxWidth: 520 }}>
+          Índice de Saúde Reputacional: uma nota por mês, de cinco lentes. Vale para a
+          companhia inteira — não segue os filtros do CRM.
+        </span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 150 }}>
-            <CampoQueCompleta
-              rotulo="Mês"
-              valor={mes}
-              aoEscolher={(valor) => valor && definirMes(valor)}
-              opcoes={[...opcoes.meses].reverse().map((m) => ({ valor: m, rotulo: m }))}
-            />
-          </div>
           {!indice.calibracao.padrao ? (
             <Chip
               rotulo="calibração ajustada"
@@ -182,9 +185,14 @@ export function Score({
               titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
             />
           ) : null}
+          <SeletorDeMes
+            meses={opcoes.meses}
+            valor={mes}
+            sugerido={opcoes.mes_sugerido}
+            aoEscolher={definirMes}
+          />
         </div>
-      </Secao>
-      </ComFaixaDoTopo>
+      </div>
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -284,8 +292,8 @@ function VisaoGeral({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <ComFaixaDoTopo>
       <Secao
-        titulo="Cinco lentes, um índice"
-        subtitulo={`Índice de Saúde Reputacional · ${indice.mes}`}
+        titulo="Radar Reputacional da Aegea"
+        subtitulo={`Como a companhia é vista por imprensa, mercado, sociedade digital, clientes e parceiros institucionais · ${mesComAno(indice.mes)}`}
       >
         <Cartao>
           <div className="grade grade--mapa" style={{ gap: 24, alignItems: 'start' }}>
@@ -513,6 +521,20 @@ function BotaoDaLinha({
     </button>
   );
 }
+
+//: O PADRÃO "VISUALMENTE OCULTO": fora da tela, mas na árvore de
+//: acessibilidade. `display: none` tiraria o h1 de quem precisa dele.
+const SO_PARA_LEITOR_DE_TELA = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+} as const;
 
 /** A lista das cinco lentes, ao lado do gráfico.
  *
