@@ -157,6 +157,16 @@ export function Score({
   if (!indice || !mes) return <Carregando rotulo="Calculando o índice…" />;
 
   //: O MÊS E O AVISO DE CALIBRAÇÃO, montados uma vez e postos onde a aba pede.
+  //: O SELETOR DE MÊS SOZINHO vai para o cabeçalho do Radar (sem o aviso de
+  //: calibração, por pedido); com o aviso, para o topo de Drivers.
+  const seletorDoMes = (
+    <SeletorDeMes
+      meses={opcoes.meses}
+      valor={mes}
+      sugerido={opcoes.mes_sugerido}
+      aoEscolher={trocarMes}
+    />
+  );
   const controlesDoMes = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       {!indice.calibracao.padrao ? (
@@ -167,12 +177,7 @@ export function Score({
           titulo="A régua em vigor é diferente da de fábrica — ver a engrenagem do Score."
         />
       ) : null}
-      <SeletorDeMes
-        meses={opcoes.meses}
-        valor={mes}
-        sugerido={opcoes.mes_sugerido}
-        aoEscolher={trocarMes}
-      />
+      {seletorDoMes}
     </div>
   );
 
@@ -226,7 +231,7 @@ export function Score({
             aoTrocarAba('lentes');
           }}
           aoTrocarMes={trocarMes}
-          controlesDoMes={controlesDoMes}
+          controlesDoMes={seletorDoMes}
         />
       ) : null}
 
@@ -269,7 +274,7 @@ function VisaoGeral({
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
   aoTrocarMes: (mes: string) => void;
-  /** O seletor de mês (e o aviso de calibração), para o cabeçalho do radar. */
+  /** O seletor de mês, para o cabeçalho do radar — sem o aviso de calibração. */
   controlesDoMes: ReactNode;
 }) {
   // O DESTAQUE MORA AQUI, e não em cada metade: gráfico e lista são duas
