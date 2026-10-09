@@ -16,10 +16,12 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Botao, Chip } from '@/componentes/basicos';
+import { ID_DA_BUSCA_NO_CABECALHO } from '@/componentes/espacoNoCabecalho';
 import { filtrarSugestoes, montarSugestoes } from '@/dominio/buscaDoRadar';
 import type { LenteParaBusca, SugestaoDoRadar } from '@/dominio/buscaDoRadar';
 import { LENTES_COM_FILTRO, dimensoesDaLente, rotuloDoValor } from '@/dominio/filtrosDasLentes';
@@ -93,7 +95,13 @@ export function BuscaDoRadar({
       rotulo: `${nomeDaLente} · ${dimensao.rotulo}: ${rotuloDoValor(dimensao, filtro[dimensao.chave] as string)}`,
     }));
 
-  return (
+  //: NO CABEÇALHO AZUL, como a busca do CRM, quando o cabeçalho reserva o lugar
+  //: (`ID_DA_BUSCA_NO_CABECALHO`); sem ele (num teste, numa tela sem o
+  //: cabeçalho), no próprio lugar.
+  const alvo =
+    typeof document !== 'undefined' ? document.getElementById(ID_DA_BUSCA_NO_CABECALHO) : null;
+
+  const barra = (
     <div
       className="sem-impressao"
       style={{
@@ -101,6 +109,7 @@ export function BuscaDoRadar({
         alignItems: 'center',
         gap: 10,
         flexWrap: 'wrap',
+        marginBottom: alvo ? 12 : 0,
         padding: '10px 14px',
         background: 'var(--bg-trilho)',
         border: '1px solid var(--borda)',
@@ -248,4 +257,6 @@ export function BuscaDoRadar({
       ) : null}
     </div>
   );
+
+  return alvo ? createPortal(barra, alvo) : barra;
 }

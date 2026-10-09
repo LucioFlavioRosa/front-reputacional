@@ -168,10 +168,22 @@ export function DossieDaLente({
         prefixo="lente"
       />
 
+      {/* OS FILTROS NO TOPO, CONGELADOS, como no CRM: logo abaixo das abas, e
+          grudados sob o cabeçalho ao rolar. */}
+      {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
+          cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
+          não têm recorte, e a barra não aparece para elas. */}
+      <BarraDeFiltroDaLente
+        lente={lente}
+        filtro={filtro}
+        definirFiltro={definirFiltro}
+        opcoes={opcoes}
+      />
+
       {/* A JORNADA DA LENTE ABRE A ABA, por pedido: o mesmo bloco da Visão
           geral (cartões, janela, pico e vale, frase de cabeçalho), sobre a
           nota DESTA lente — e sem "Comparar com": dentro da lente só se vê a
-          jornada dela. Não segue os filtros abaixo: é a nota do mês da lente. */}
+          jornada dela. Não segue os filtros acima: é a nota do mês da lente. */}
       <PainelDaJornada
         key={lente}
         titulo={`Jornada da ${nomeDaLente}`}
@@ -183,15 +195,6 @@ export function DossieDaLente({
         dica="Clique num mês para ver a lente naquele mês."
       />
 
-      {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
-          cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
-          não têm recorte, e a barra não aparece para elas. */}
-      <BarraDeFiltroDaLente
-        lente={lente}
-        filtro={filtro}
-        definirFiltro={definirFiltro}
-        opcoes={opcoes}
-      />
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
       {!dossie && !erro ? <Carregando /> : null}

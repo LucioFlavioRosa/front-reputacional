@@ -90,3 +90,17 @@ describe('BuscaDoRadar', () => {
     expect(aoMudarFiltro).toHaveBeenCalledWith({});
   });
 });
+
+describe('BuscaDoRadar no cabeçalho', () => {
+  it('entra no espaço que o cabeçalho reserva, como a busca do CRM', async () => {
+    const { BuscaDoRadar } = await import('@/paginas/score/BuscaDoRadar');
+    const espaco = document.createElement('div');
+    espaco.id = 'busca-no-cabecalho';
+    document.body.appendChild(espaco);
+    render(
+      <BuscaDoRadar mes="2026-06" lentes={LENTES} lenteAberta="imprensa" filtro={{}} aoEscolher={vi.fn()} aoMudarFiltro={vi.fn()} />,
+    );
+    expect(espaco.querySelector('input[role="combobox"]')).toBeTruthy();
+    espaco.remove();
+  });
+});
