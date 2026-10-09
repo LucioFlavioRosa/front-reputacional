@@ -25,6 +25,8 @@ import {
   obterScore,
   obterSerieDoScore,
 } from '@/api/cliente';
+import type { FiltroDaLente } from '@/api/cliente';
+import { BuscaDoRadar } from '@/paginas/score/BuscaDoRadar';
 import {
   Carregando,
   Cartao,
@@ -85,6 +87,19 @@ export function Score({
 }) {
   const [mes, definirMes] = useState<string | null>(null);
   const [lenteAberta, definirLenteAberta] = useState<string>('imprensa');
+  //: O RECORTE DA LENTE ABERTA. Mora aqui, e não no dossiê, para a busca
+  //: inteligente abrir uma lente já filtrada. TROCAR DE LENTE OU DE MÊS O ZERA:
+  //: um veículo da Imprensa não existe no vocabulário de Clientes, e as opções
+  //: de filtro são do mês.
+  const [filtroDaLente, definirFiltroDaLente] = useState<FiltroDaLente>({});
+  const trocarLente = (codigo: string) => {
+    definirLenteAberta(codigo);
+    definirFiltroDaLente({});
+  };
+  const trocarMes = (novo: string) => {
+    definirMes(novo);
+    definirFiltroDaLente({});
+  };
 
   const [opcoes, definirOpcoes] = useState<OpcoesDoScore | null>(null);
   const [indice, definirIndice] = useState<IndiceDoScore | null>(null);
@@ -171,7 +186,7 @@ export function Score({
         meses={opcoes.meses}
         valor={mes}
         sugerido={opcoes.mes_sugerido}
-        aoEscolher={definirMes}
+        aoEscolher={trocarMes}
       />
     </div>
   );
@@ -191,6 +206,26 @@ export function Score({
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{controlesDoMes}</div>
       ) : null}
 
+      {/* A BUSCA INTELIGENTE, no topo da Visão geral e das Lentes: na Visão
+          geral ela leva para a lente certa; nas Lentes, também recorta a
+          aberta. Escolher uma sugestão sempre abre a aba Lentes. */}
+      {aba === 'geral' || aba === 'lentes' ? (
+        <BuscaDoRadar
+          mes={mes}
+          lentes={opcoes.lentes}
+          lenteAberta={lenteAberta}
+          filtro={aba === 'lentes' ? filtroDaLente : {}}
+          aoMudarFiltro={definirFiltroDaLente}
+          aoEscolher={(sugestao) => {
+            definirLenteAberta(sugestao.lente);
+            definirFiltroDaLente(
+              sugestao.filtro ? { [sugestao.filtro.chave]: sugestao.filtro.valor } : {},
+            );
+            aoTrocarAba('lentes');
+          }}
+        />
+      ) : null}
+
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
       {aba === 'geral' ? (
@@ -198,10 +233,10 @@ export function Score({
           indice={indice}
           serie={serie}
           aoAbrirLente={(codigo) => {
-            definirLenteAberta(codigo);
+            trocarLente(codigo);
             aoTrocarAba('lentes');
           }}
-          aoTrocarMes={definirMes}
+          aoTrocarMes={trocarMes}
           controlesDoMes={controlesDoMes}
         />
       ) : null}
@@ -210,9 +245,11 @@ export function Score({
         <DossieDaLente
           mes={mes}
           lente={lenteAberta}
-          aoTrocarLente={definirLenteAberta}
+          aoTrocarLente={trocarLente}
           serie={serie}
-          aoTrocarMes={definirMes}
+          aoTrocarMes={trocarMes}
+          filtro={filtroDaLente}
+          definirFiltro={definirFiltroDaLente}
         />
       ) : null}
 

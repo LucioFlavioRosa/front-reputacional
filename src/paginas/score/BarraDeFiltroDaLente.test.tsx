@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 
-/** A barra de recorte da lente.
+/** Os filtros da aba Lentes: rápidos na faixa, o resto no "Filtro avançado".
  *
- *  POR QUE ELA CRESCEU: a carga do padrão Aegea trouxe perfil do autor, UF,
- *  subtema e autor, e o servidor passou a aceitar recorte por qualquer uma delas
- *  — oito dimensões, contra as quatro de clipping que a barra tinha.
- *
- *  O QUE ESTE ARQUIVO TRAVA é o que a barra promete: só aparece o campo que a
- *  lente TEM no mês, os recortes se empilham em vez de se substituírem, e
- *  escolher de novo o que já está marcado desmarca.
+ *  O QUE ESTE ARQUIVO TRAVA é o que a barra promete: cada lente com os seus
+ *  filtros e os seus nomes, só aparece o campo que a lente TEM no mês, os
+ *  recortes se empilham em vez de se substituírem, e escolher de novo o que já
+ *  está marcado desmarca.
  */
 
 import { render, screen } from '@testing-library/react';
@@ -36,89 +33,73 @@ const DA_IMPRENSA: OpcoesDeFiltroDaLente = {
   atributos: ['Qualidade'],
   temas: ['Tarifa'],
   perfis: [],
-  ufs: [],
+  ufs: ['SP'],
   subtemas: [],
   autores: [],
   empresas: [],
 };
 
 describe('BarraDeFiltroDaLente', () => {
-  it('mostra as dimensões que a lente TEM, e esconde as que ela não tem', () => {
-    /** CAMPO VAZIO É PIOR QUE CAMPO AUSENTE: um seletor que abre sem opção
-     *  nenhuma faz a pessoa concluir que o dado sumiu, quando a verdade é que
-     *  aquela fonte nunca mandou o campo. A Imprensa não tem perfil de autor. */
-    render(
-      <BarraDeFiltroDaLente filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />,
-    );
+  it('Sociedade digital: rápidos com os nomes da lente ("Rede", "Perfil de quem fala")', () => {
+    render(<BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />);
+    expect(screen.getByText('Rede')).toBeTruthy();
+    expect(screen.getByText('Perfil de quem fala')).toBeTruthy();
+    expect(screen.getByText('Concessionária')).toBeTruthy();
+    // Subtema, Autor e UF ficam no avançado, que começa fechado.
+    expect(screen.queryByText('Subtema')).toBeNull();
+    expect(screen.getByRole('button', { name: /Filtro avançado/ })).toBeTruthy();
+  });
 
-    expect(screen.getByText('Perfil do autor')).toBeTruthy();
+  it('Imprensa: tier e veículo nos rápidos; campo sem opção não aparece', async () => {
+    render(<BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />);
+    expect(screen.getByText('Tier do veículo')).toBeTruthy();
+    expect(screen.getByText('Veículo')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: /Filtro avançado/ }));
     expect(screen.getByText('UF')).toBeTruthy();
-    expect(screen.getByText('Subtema')).toBeTruthy();
-    expect(screen.getByText('Autor')).toBeTruthy();
-    //: A Sociedade não tem tier nem atributo — os dois campos não aparecem.
-    expect(screen.queryByText('Tier')).toBeNull();
-    expect(screen.queryByText('Atributo')).toBeNull();
+    // A Imprensa não mandou jornalista neste mês: o campo não é desenhado.
+    expect(screen.queryByText('Jornalista')).toBeNull();
   });
 
-  it('na Imprensa, as dimensões de clipping continuam lá', () => {
-    render(
-      <BarraDeFiltroDaLente filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
+  it('Mercado não tem filtros: a barra não aparece', () => {
+    const { container } = render(
+      <BarraDeFiltroDaLente lente="mercado" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
     );
-
-    expect(screen.getByText('Tier')).toBeTruthy();
-    expect(screen.getByText('Atributo')).toBeTruthy();
-    expect(screen.queryByText('Perfil do autor')).toBeNull();
+    expect(container.textContent).toBe('');
   });
 
-  it('escolher uma UF ACRESCENTA ao recorte, sem apagar o que já havia', async () => {
-    /** É O EMPILHAMENTO do nível 3 do pacote: perfil E UF valem juntos. Uma barra
-     *  que substituísse o filtro a cada escolha tornaria impossível perguntar
-     *  "figuras públicas no Rio". */
+  it('escolher ACRESCENTA ao recorte, sem apagar o que já havia', async () => {
     const definirFiltro = vi.fn();
     render(
       <BarraDeFiltroDaLente
+        lente="sociedade"
         filtro={{ perfil_autor: 'Figura pública' }}
         definirFiltro={definirFiltro}
         opcoes={DA_SOCIEDADE}
       />,
     );
-
-    await userEvent.click(screen.getByText('UF'));
-    await userEvent.click(screen.getByText('RJ'));
-
-    expect(definirFiltro).toHaveBeenCalledWith({ perfil_autor: 'Figura pública', uf: 'RJ' });
+    await userEvent.click(screen.getByText('Rede'));
+    await userEvent.click(screen.getByText('Instagram'));
+    expect(definirFiltro).toHaveBeenCalledWith({ perfil_autor: 'Figura pública', veiculo: 'Instagram' });
   });
 
-  it('escolher de novo o que já está marcado DESMARCA', async () => {
+  it('no avançado, escolher de novo o que já está marcado DESMARCA, e o contador aparece', async () => {
     const definirFiltro = vi.fn();
     render(
-      <BarraDeFiltroDaLente
-        filtro={{ uf: 'RJ' }}
-        definirFiltro={definirFiltro}
-        opcoes={DA_SOCIEDADE}
-      />,
+      <BarraDeFiltroDaLente lente="sociedade" filtro={{ uf: 'RJ' }} definirFiltro={definirFiltro} opcoes={DA_SOCIEDADE} />,
     );
-
-    //: COM VALOR ESCOLHIDO, o gatilho mostra "UF · 1" — o componente acrescenta
-    //: a contagem ao rótulo. Por isso o matcher é por começo de texto, e não
-    //: exato: um `getByText('UF')` aqui falharia por causa do sufixo.
-    await userEvent.click(screen.getByText(/^UF/));
+    await userEvent.click(screen.getByRole('button', { name: 'Filtro avançado · 1' }));
     await userEvent.click(screen.getByText('RJ'));
-
     expect(definirFiltro).toHaveBeenCalledWith({ uf: undefined });
   });
 
-  it('o botão de limpar aparece quando QUALQUER dimensão está ativa', () => {
+  it('o "Limpar recorte" aparece quando QUALQUER dimensão está ativa', () => {
     const { rerender } = render(
-      <BarraDeFiltroDaLente filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />,
+      <BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />,
     );
     expect(screen.queryByRole('button', { name: /limpar/i })).toBeNull();
-
-    //: COM UMA DIMENSÃO NOVA, e não com uma das quatro antigas: o teste existe
-    //: porque o "está ativo?" era uma lista escrita à mão, e uma lista assim
-    //: esquece o campo que se acrescenta depois.
     rerender(
       <BarraDeFiltroDaLente
+        lente="sociedade"
         filtro={{ subtema: 'Falta de água' }}
         definirFiltro={vi.fn()}
         opcoes={DA_SOCIEDADE}
