@@ -39,6 +39,7 @@ import {
 } from '@/componentes/basicos';
 import { SeletorDeMes } from '@/componentes/SeletorDeMes';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
+import { BaseDeDadosDoScore } from '@/paginas/score/BaseDeDadosDoScore';
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -249,6 +250,8 @@ export function Score({
           que e a REGUA do indice — la se decide quanto o dado pesa, aqui ele
           entra. Ver o cabecalho de `BaseDoScore`. */}
       {aba === 'base' ? <BaseDoScore /> : null}
+
+      {aba === 'base-de-dados' ? <BaseDeDadosDoScore /> : null}
     </div>
   );
 }
