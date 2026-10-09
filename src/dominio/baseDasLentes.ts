@@ -48,12 +48,14 @@ export interface CampoDaBase {
 /** Os filtros da Base, na ordem da faixa. */
 export function camposDaBase(lente: string): CampoDaBase[] {
   return [
+    //: PILAR E TEMA ESTRATÉGICO PRIMEIRO, por pedido: são os filtros de tema
+    //: que valem em todo o painel, e o nome diz o nível.
+    { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' },
+    { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' },
     { chave: 'sentimento', rotulo: 'Sentimento', de: 'sentimentos', rotulos: ROTULO_DO_SENTIMENTO },
     { chave: 'fonte', rotulo: 'Fonte', de: 'fontes' },
     { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER },
     { chave: 'veiculo', rotulo: rotuloDoVeiculo(lente), de: 'veiculos' },
-    { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' },
-    { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' },
     { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' },
     { chave: 'tema', rotulo: 'Tema (fornecedor)', de: 'temas' },
     { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' },
@@ -87,7 +89,7 @@ export function colunasDaBase(lente: string): ColunaDaBase[] {
       ordena: 'sentimento',
     },
     { rotulo: 'Matéria / post', valor: (m) => m.titulo ?? '' },
-    { rotulo: 'Tema', valor: (m) => m.tema ?? '' },
+    { rotulo: 'Tema (fornecedor)', valor: (m) => m.tema ?? '' },
     { rotulo: 'Pilar (N1)', valor: (m) => m.tema_n1 ?? '' },
     { rotulo: 'Tema estratégico (N2)', valor: (m) => m.tema_n2 ?? '' },
     { rotulo: 'Subtema (N3)', valor: (m) => m.tema_n3 ?? '' },
