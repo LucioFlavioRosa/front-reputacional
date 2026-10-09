@@ -26,6 +26,7 @@ import {
   obterSerieDoScore,
 } from '@/api/cliente';
 import type { FiltroDaLente } from '@/api/cliente';
+import { BaseDoScore } from '@/paginas/score/BaseDoScore';
 import { BuscaDoRadar } from '@/paginas/score/BuscaDoRadar';
 import {
   Carregando,
@@ -256,6 +257,11 @@ export function Score({
       {aba === 'drivers' ? <DriversERiscos mes={mes} /> : null}
 
       {aba === 'metodologia' ? <Metodologia /> : null}
+
+      {/* A BASE E A PORTA DE ENTRADA DO DADO. O upload morava na Calibracao,
+          que e a REGUA do indice — la se decide quanto o dado pesa, aqui ele
+          entra. Ver o cabecalho de `BaseDoScore`. */}
+      {aba === 'base' ? <BaseDoScore /> : null}
     </div>
   );
 }

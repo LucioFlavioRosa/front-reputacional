@@ -800,13 +800,66 @@ export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
 export function importarPlanilhaDoScore(
   codigo: string,
   arquivo: File,
+  veiculosACriar: string[] = [],
 ): Promise<ImportacaoDoScore[]> {
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
+  // UM CAMPO POR NOME, que é como o `Form(list[str])` do FastAPI os lê. E a
+  // lista VAZIA não manda nada: o padrão do servidor é não criar veículo
+  // nenhum, e é esse padrão que protege o botão "Importar planilha" da
+  // Calibração de criar 2.631 instituições sem ninguém ter visto.
+  for (const nome of veiculosACriar) {
+    corpo.append('veiculos_a_criar', nome);
+  }
   return requisitar<ImportacaoDoScore[]>(`/api/score/fontes/${codigo}/planilha`, {
     method: 'POST',
     body: corpo,
   });
+}
+
+/** Um veículo que a planilha traz e o cadastro compartilhado não tem. */
+export interface VeiculoNovo {
+  nome: string;
+  /** A praça, como o fornecedor a manda — "Santa Catarina", não "SC". */
+  uf: string | null;
+  /** O alcance derivado da coluna `Abrangência`: Municipal, Regional,
+   *  Nacional, Internacional. Nulo quando o fornecedor não disse. */
+  esfera: string | null;
+  /** Quantas menções da planilha o citam. É por aqui que a lista ordena. */
+  mencoes: number;
+}
+
+export interface ConferenciaDaPlanilhaDoScore {
+  /** Uma linha por fonte irmã — o que a subida FARIA. */
+  previsao: ImportacaoDoScore[];
+  /** O que nasceria no cadastro. Na primeira carga da Clipei, 2.631. */
+  veiculos_novos: VeiculoNovo[];
+  /** Quantos veículos da planilha o cadastro já reconhece. */
+  veiculos_reconhecidos: number;
+}
+
+/** Lê o export do fornecedor e diz o que a subida faria. NADA É GRAVADO.
+ *
+ *  POR QUE ELA EXISTE. O veículo sem cadastro nasce junto com a subida, e a
+ *  conta aparece antes — foi o pedido, nas duas metades. A segunda é o que
+ *  torna a primeira segura: a importação de agendas tem escrito no próprio
+ *  código que "importação de planilha sem conferência humana cria duplicata de
+ *  instituição em massa, e desfazer isso depois é pior que digitar de novo".
+ *
+ *  O ARQUIVO SOBE DUAS VEZES — aqui e na confirmação. É o preço de não ter
+ *  tabela de rascunho, e o mesmo desenho da revisão da taxonomia: guardar as
+ *  propostas exigiria a tabela que este fluxo dispensa.
+ */
+export function conferirPlanilhaDoScore(
+  codigo: string,
+  arquivo: File,
+): Promise<ConferenciaDaPlanilhaDoScore> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ConferenciaDaPlanilhaDoScore>(
+    `/api/score/fontes/${codigo}/conferencia`,
+    { method: 'POST', body: corpo },
+  );
 }
 
 /** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */

@@ -258,6 +258,16 @@ export interface ImportacaoDoScore {
   /** O que entrou, mas merece um olhar: `tier_nao_reconhecido`. */
   avisos: Record<string, number>;
   meses: string[];
+  /** Quantos veículos nasceram no cadastro nesta subida.
+   *
+   *  É DA SUBIDA, NÃO DESTA FONTE: os veículos são criados uma vez, antes das
+   *  fontes irmãs, porque as duas leem o mesmo arquivo. O número vem repetido
+   *  em cada linha da lista, com o mesmo valor — SOMAR A LISTA dá 5.256 onde
+   *  nasceram 2.628. A tela mostra uma vez. */
+  veiculos_criados?: number;
+  /** Quantas menções desta fonte acharam veículo no cadastro. Esta é por
+   *  fonte, e é o número que diz o quanto a ponte para o cadastro cobre. */
+  mencoes_ligadas?: number;
 }
 
 export const ROTULO_DO_DESCARTE: Record<string, string> = {

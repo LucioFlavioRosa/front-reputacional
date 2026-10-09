@@ -54,6 +54,9 @@ describe('a divisão do Score', () => {
       'Lentes',
       'Drivers e riscos',
       'Metodologia',
+      // A BASE VEM POR ÚLTIMO: ela é a porta de entrada do dado, e quem abre
+      // os KPIs quer LER o índice. Quem sobe planilha vai atrás dela.
+      'Base',
     ]);
   });
 
@@ -82,6 +85,7 @@ describe('a divisão do Score', () => {
       'lentes',
       'drivers',
       'metodologia',
+      'base',
     ]);
   });
 });
