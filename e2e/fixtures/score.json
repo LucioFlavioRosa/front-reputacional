@@ -1,0 +1,92 @@
+{
+  "mes": "2026-08",
+  "isr": 60,
+  "faixa": "Estável",
+  "leitura_da_faixa": "Índice sintético do teste ponta a ponta.",
+  "delta_mes": -1,
+  "delta_inicio": 2,
+  "lentes": [
+    {
+      "codigo": "imprensa",
+      "nome": "Imprensa",
+      "stakeholder": "Jornalistas",
+      "peso": 0.25,
+      "peso_efetivo": 0.25,
+      "score": 62,
+      "ns": 0,
+      "delta": 0,
+      "fontes": [],
+      "estimado": false,
+      "ausencia": null
+    },
+    {
+      "codigo": "mercado",
+      "nome": "Mercado",
+      "stakeholder": "Investidores",
+      "peso": 0.2,
+      "peso_efetivo": 0.2,
+      "score": 71,
+      "ns": 0,
+      "delta": 0,
+      "fontes": [],
+      "estimado": false,
+      "ausencia": null
+    },
+    {
+      "codigo": "sociedade",
+      "nome": "Sociedade digital",
+      "stakeholder": "Sociedade",
+      "peso": 0.2,
+      "peso_efetivo": 0.2,
+      "score": 48,
+      "ns": 0,
+      "delta": 0,
+      "fontes": [],
+      "estimado": false,
+      "ausencia": null
+    },
+    {
+      "codigo": "clientes",
+      "nome": "Clientes",
+      "stakeholder": "Clientes",
+      "peso": 0.2,
+      "peso_efetivo": 0.2,
+      "score": 55,
+      "ns": 0,
+      "delta": 0,
+      "fontes": [],
+      "estimado": false,
+      "ausencia": null
+    },
+    {
+      "codigo": "institucional",
+      "nome": "Institucional",
+      "stakeholder": "Poder público",
+      "peso": 0.15,
+      "peso_efetivo": 0.15,
+      "score": 66,
+      "ns": 0,
+      "delta": 0,
+      "fontes": [],
+      "estimado": false,
+      "ausencia": null
+    }
+  ],
+  "calibracao": {
+    "pesos": {
+      "imprensa": 0.25,
+      "mercado": 0.2,
+      "sociedade": 0.2,
+      "clientes": 0.2,
+      "institucional": 0.15
+    },
+    "regua_tier": "padrao",
+    "regua_engajamento": "padrao",
+    "fontes_desligadas": [],
+    "limites": [],
+    "radial_por_peso": false,
+    "padrao": true
+  },
+  "fatos": [],
+  "leitura": "Dados sintéticos do teste ponta a ponta."
+}

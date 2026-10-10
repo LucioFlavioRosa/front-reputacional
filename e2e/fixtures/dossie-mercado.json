@@ -1,0 +1,171 @@
+{
+  "codigo": "mercado",
+  "nome": "Mercado",
+  "stakeholder": "Investidores",
+  "mes": "2026-08",
+  "nota": 71,
+  "ns": 0,
+  "delta": 0,
+  "delta_versus": "mes_anterior",
+  "recorte_filtrado": false,
+  "peso": 0.2,
+  "estimado": false,
+  "ausencia": null,
+  "fontes": [],
+  "formula": "",
+  "kpis": [],
+  "ficha_do_destaque": {
+    "origem": "planilha",
+    "fonte": "Sintética (teste ponta a ponta)",
+    "colunas": [],
+    "lacunas": [],
+    "exemplo": false,
+    "conceitos": []
+  },
+  "manchete": null,
+  "evolucao": {
+    "tipo": "linha",
+    "subtipo": null,
+    "titulo": "Evolução",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "sinais_da_evolucao": [],
+  "volume_por_tier": {
+    "tipo": "barras",
+    "subtipo": null,
+    "titulo": "Volume por tier",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "top_veiculos": {
+    "tipo": "ranking",
+    "subtipo": null,
+    "titulo": "Top veículos",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "clima_por_veiculos": {
+    "tipo": "barras",
+    "subtipo": null,
+    "titulo": "Clima por veículos",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "drivers_e_riscos": {
+    "tipo": "barras",
+    "subtipo": null,
+    "titulo": "Drivers e riscos",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "temas_mais_falados": {
+    "tipo": "barras",
+    "subtipo": null,
+    "titulo": "Temas mais falados",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "materias_recentes": {
+    "tipo": "tabela",
+    "subtipo": null,
+    "titulo": "Matérias recentes",
+    "conclusao": null,
+    "dados": [],
+    "legenda": [],
+    "cores": [],
+    "colunas": [],
+    "coluna_do_link": null,
+    "recorta": null,
+    "ficha": {
+      "origem": "planilha",
+      "fonte": "Sintética (teste ponta a ponta)",
+      "colunas": [],
+      "lacunas": [],
+      "exemplo": false,
+      "conceitos": []
+    }
+  },
+  "fatos": [],
+  "paineis": [],
+  "onde_esta_a_causa": [],
+  "sinais": []
+}

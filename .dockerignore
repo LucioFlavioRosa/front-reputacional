@@ -8,6 +8,11 @@
 .claude/
 .agents/
 test-results/
+# Teste de ponta a ponta (Playwright): só desenvolvimento, fora do build (D4
+# de docs/consulta-profundidade/DECISOES.md).
+e2e/
+playwright.config.ts
+playwright-report/
 Claude outputs/
 node_modules/
 dist/

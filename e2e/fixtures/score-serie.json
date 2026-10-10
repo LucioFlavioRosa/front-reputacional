@@ -1,0 +1,62 @@
+[
+  {
+    "mes": "2026-06",
+    "isr": 58,
+    "lentes": 5,
+    "tem_estimativa": false,
+    "delta": null,
+    "fatos": [],
+    "sustentou": null,
+    "pressionou": null,
+    "pontos_sem_tema": 0,
+    "maior_movimento": null,
+    "notas_das_lentes": {
+      "imprensa": 60,
+      "mercado": 69,
+      "sociedade": 46,
+      "clientes": 53,
+      "institucional": 64
+    },
+    "temas_das_lentes": {}
+  },
+  {
+    "mes": "2026-07",
+    "isr": 61,
+    "lentes": 5,
+    "tem_estimativa": false,
+    "delta": 3,
+    "fatos": [],
+    "sustentou": null,
+    "pressionou": null,
+    "pontos_sem_tema": 0,
+    "maior_movimento": null,
+    "notas_das_lentes": {
+      "imprensa": 63,
+      "mercado": 72,
+      "sociedade": 49,
+      "clientes": 56,
+      "institucional": 67
+    },
+    "temas_das_lentes": {}
+  },
+  {
+    "mes": "2026-08",
+    "isr": 60,
+    "lentes": 5,
+    "tem_estimativa": false,
+    "delta": -1,
+    "fatos": [],
+    "sustentou": null,
+    "pressionou": null,
+    "pontos_sem_tema": 0,
+    "maior_movimento": null,
+    "notas_das_lentes": {
+      "imprensa": 62,
+      "mercado": 71,
+      "sociedade": 48,
+      "clientes": 55,
+      "institucional": 66
+    },
+    "temas_das_lentes": {}
+  }
+]

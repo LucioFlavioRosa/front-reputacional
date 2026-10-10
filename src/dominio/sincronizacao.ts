@@ -156,3 +156,31 @@ export const agendasMudaram = new Sincronizador(
   canalDoNavegador('agendas'),
   MENSAGEM_DAS_AGENDAS,
 );
+
+/** As rotas cujas escritas mudam os NÚMEROS DO SCORE: a planilha do mês, a
+ *  calibração (régua de tier, pesos), os veículos do Mercado, os fatos.
+ *
+ *  O PREFIXO INTEIRO, e não rota por rota: quem lê o Score (hoje, o cache da
+ *  Consulta em profundidade) não sabe qual escrita mexe em qual número, e
+ *  rebuscar uma árvore a mais custa muito menos que mostrar a árvore velha
+ *  ao lado de uma Jornada já atualizada. */
+export const ROTAS_DO_SCORE = ['/api/score'] as const;
+
+/** Esta requisição, se der certo, muda algum número do Score? */
+export function escreveNoScore(metodo: string, caminho: string): boolean {
+  if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
+  const soOCaminho = caminho.split('?')[0];
+  return ROTAS_DO_SCORE.some(
+    (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
+  );
+}
+
+/** A mensagem do canal do Score. */
+export const MENSAGEM_DO_SCORE = 'score-mudou';
+
+/** Os dados do Score mudaram (planilha, calibração…) — nesta aba ou em outra.
+ *
+ *  O CACHE DA CONSULTA EM PROFUNDIDADE escuta aqui: sem o aviso, subir a
+ *  planilha do mês na aba Base deixava o drill mostrando a árvore antiga a
+ *  sessão inteira, enquanto a Jornada logo acima já mostrava a nota nova. */
+export const scoreMudou = new Sincronizador(canalDoNavegador('score'), MENSAGEM_DO_SCORE);

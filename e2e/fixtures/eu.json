@@ -1,0 +1,23 @@
+{
+  "id": "00000000-0000-4000-8000-0000000000e2",
+  "nome": "Teste ponta a ponta",
+  "email": "e2e.score.leitura@exemplo.invalid",
+  "papel": {
+    "codigo": "score_leitura",
+    "nome": "Score · leitura",
+    "pode_criar": false,
+    "pode_editar_proprio": false,
+    "pode_editar_tudo": false,
+    "administra_dicionarios": false,
+    "administra_acessos": false,
+    "ve_campos_sensiveis": false,
+    "ve_diretorio": false,
+    "pode_exportar": false,
+    "acessa_crm": false,
+    "acessa_sintese": false,
+    "acessa_score": true
+  },
+  "externo": false,
+  "acesso_expira_em": null,
+  "csrf_token": ""
+}

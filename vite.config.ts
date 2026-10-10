@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
@@ -37,8 +37,13 @@ export default defineConfig({
   //
   // `setupFiles` roda para todos, e é barato: só acrescenta os matchers de
   // `jest-dom` quando há DOM, e não faz nada quando não há.
+  //
+  // `e2e/` FICA DE FORA: são os testes de ponta a ponta do Playwright
+  // (`npm run test:e2e`), e o padrão do Vitest pega `*.spec.ts`. Rodá-los aqui
+  // daria erro de `test()` fora do Playwright.
   // -------------------------------------------------------------------------
   test: {
     setupFiles: ['./src/testes/preparar.ts'],
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })

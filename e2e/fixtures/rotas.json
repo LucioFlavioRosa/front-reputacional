@@ -1,0 +1,67 @@
+[
+  {
+    "metodo": "GET",
+    "caminho": "/api/eu",
+    "arquivo": "eu.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/opcoes",
+    "arquivo": "score-opcoes.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score",
+    "arquivo": "score.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/serie",
+    "arquivo": "score-serie.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/dossie",
+    "arquivo": "dossie-imprensa.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/mercado/dossie",
+    "arquivo": "dossie-mercado.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/sociedade/dossie",
+    "arquivo": "dossie-sociedade.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/clientes/dossie",
+    "arquivo": "dossie-clientes.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/institucional/dossie",
+    "arquivo": "dossie-institucional.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/dossie/opcoes-de-filtro",
+    "arquivo": "opcoes-de-filtro-imprensa.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/mercado/dossie/opcoes-de-filtro",
+    "arquivo": "opcoes-de-filtro-mercado.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/sociedade/dossie/opcoes-de-filtro",
+    "arquivo": "opcoes-de-filtro-sociedade.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/clientes/dossie/opcoes-de-filtro",
+    "arquivo": "opcoes-de-filtro-clientes.json"
+  }
+]

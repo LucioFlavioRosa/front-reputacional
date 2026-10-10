@@ -1,0 +1,53 @@
+{
+  "reguas_de_tier": [
+    {
+      "codigo": "padrao",
+      "pesos": {
+        "1": 3,
+        "2": 2,
+        "3": 1
+      }
+    }
+  ],
+  "reguas_de_engajamento": [
+    "padrao"
+  ],
+  "lentes": [
+    {
+      "codigo": "imprensa",
+      "nome": "Imprensa",
+      "stakeholder": "Jornalistas",
+      "peso_padrao": 0.25
+    },
+    {
+      "codigo": "mercado",
+      "nome": "Mercado",
+      "stakeholder": "Investidores",
+      "peso_padrao": 0.2
+    },
+    {
+      "codigo": "sociedade",
+      "nome": "Sociedade digital",
+      "stakeholder": "Sociedade",
+      "peso_padrao": 0.2
+    },
+    {
+      "codigo": "clientes",
+      "nome": "Clientes",
+      "stakeholder": "Clientes",
+      "peso_padrao": 0.2
+    },
+    {
+      "codigo": "institucional",
+      "nome": "Institucional",
+      "stakeholder": "Poder público",
+      "peso_padrao": 0.15
+    }
+  ],
+  "meses": [
+    "2026-06",
+    "2026-07",
+    "2026-08"
+  ],
+  "mes_sugerido": "2026-08"
+}
