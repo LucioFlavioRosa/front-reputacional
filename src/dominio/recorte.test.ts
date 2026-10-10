@@ -84,7 +84,7 @@ describe('quantidadeDeFiltros', () => {
     expect(quantidadeDeFiltros({})).toBe(0);
   });
 
-  it('clima esperado e clima registrado são dois filtros', () => {
+  it('termômetro esperado e termômetro registrado são dois filtros', () => {
     const recorte: Recorte = { clima: 'propositivo', climaEsperado: 'tenso' };
     expect(quantidadeDeFiltros(recorte)).toBe(2);
     expect(paraParametros(recorte).get('climaEsperado')).toBe('tenso');

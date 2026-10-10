@@ -17,21 +17,21 @@ const FATIAS = [
 describe('TermometroDeClima', () => {
   it('mostra o saldo (positivas − negativas) ÷ total e o percentual de cada fatia', () => {
     render(<TermometroDeClima fatias={FATIAS} />);
-    expect(screen.getByLabelText('Saldo de clima +40')).toBeTruthy();
+    expect(screen.getByLabelText('Saldo do termômetro +40')).toBeTruthy();
     expect(screen.getByRole('img').getAttribute('aria-label')).toBe(
       'Negativo 20%, Neutro 20%, Positivo 60%',
     );
   });
 
-  it('clicar numa fatia filtra por aquele clima', async () => {
+  it('clicar numa fatia filtra por aquele termômetro', async () => {
     const aoClicar = vi.fn();
     render(<TermometroDeClima fatias={FATIAS} aoClicar={aoClicar} />);
     await userEvent.click(screen.getByTitle(/^Negativo: 20%/));
     expect(aoClicar).toHaveBeenCalledWith('tenso');
   });
 
-  it('sem clima registrado, diz isso em vez de desenhar uma barra vazia', () => {
+  it('sem termômetro registrado, diz isso em vez de desenhar uma barra vazia', () => {
     render(<TermometroDeClima fatias={FATIAS.map((f) => ({ ...f, total: 0 }))} />);
-    expect(screen.getByText('Nenhuma interação com clima registrado neste recorte.')).toBeTruthy();
+    expect(screen.getByText('Nenhuma interação com termômetro registrado neste recorte.')).toBeTruthy();
   });
 });

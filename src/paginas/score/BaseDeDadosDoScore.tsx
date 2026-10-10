@@ -183,7 +183,7 @@ export function BaseDeDadosDoScore() {
         <Cartao>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--cinza-3)' }}>
             A lente Institucional não vem de menções: ela lê as interações do{' '}
-            <strong>CRM dos Stakeholders</strong> (reuniões, audiências e eventos, com o clima
+            <strong>CRM dos Stakeholders</strong> (reuniões, audiências e eventos, com o termômetro
             registrado). A consulta dessas interações, com todos os filtros, está na{' '}
             <strong>Base do CRM</strong> — menu CRM dos Stakeholders › Base.
           </p>

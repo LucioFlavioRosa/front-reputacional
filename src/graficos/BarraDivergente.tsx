@@ -55,14 +55,14 @@ function composicao(item: ScoreDivergente): string {
 //: um traço solto sem nada depois, se um chamador futuro (ou um item
 //: forçado sem nenhuma ocorrência) produzir `total === 0`.
 function descricaoDaLinha(item: ScoreDivergente): string {
-  if (item.total === 0) return 'Nenhuma interação com clima registrado ainda';
+  if (item.total === 0) return 'Nenhuma interação com termômetro registrado ainda';
   return `${item.total} ${item.total === 1 ? 'interação' : 'interações'} — ${composicao(item)}`;
 }
 
 export function BarraDivergente({
   itens,
   aoAbrirAgenda,
-  vazio = 'Nenhum tema com clima registrado neste recorte.',
+  vazio = 'Nenhum tema com termômetro registrado neste recorte.',
   variante = 'padrao',
 }: {
   itens: ScoreDivergente[];

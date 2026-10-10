@@ -150,7 +150,7 @@ export function Score({
     return (
       <Vazio
         mensagem="Nenhum mês com dado"
-        dica="O índice nasce quando as planilhas dos fornecedores são ingeridas, ou quando há interação com clima registrado no CRM."
+        dica="O índice nasce quando as planilhas dos fornecedores são ingeridas, ou quando há interação com termômetro registrado no CRM."
       />
     );
   }

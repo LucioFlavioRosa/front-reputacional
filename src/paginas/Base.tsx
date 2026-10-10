@@ -90,13 +90,13 @@ const COLUNAS = [
   // Nasce OCULTO (ver `NOVAS_COLUNAS_OCULTAS_POR_PADRAO` logo abaixo): são
   // campos reais do formulário de cadastro, mas menos lidos no dia a dia do
   // que os de cima. Quem quiser, liga em "Colunas".
-  'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
+  'Modalidade', 'Local', 'Esfera', 'Termômetro', 'Desfecho', 'Iniciativa',
 ];
 
 //: Some destas colunas de propósito na primeira visita — ver o comentário de
 //: `useColunasVisiveis` em `SeletorDeColunas.tsx`.
 const NOVAS_COLUNAS_OCULTAS_POR_PADRAO = [
-  'Modalidade', 'Local', 'Esfera', 'Clima', 'Desfecho', 'Iniciativa',
+  'Modalidade', 'Local', 'Esfera', 'Termômetro', 'Desfecho', 'Iniciativa',
 ];
 
 //: TODAS MENOS "CADEIA": ela é só o ícone de encadeamento, sem texto para
@@ -124,7 +124,7 @@ const EXTRATORES_DE_ORDENACAO: Record<string, (linha: Linha) => string | number>
   Modalidade: (linha) => linha.modalidade,
   Local: (linha) => linha.local,
   Esfera: (linha) => linha.esfera,
-  Clima: (linha) => linha.clima,
+  Termômetro: (linha) => linha.clima,
   Desfecho: (linha) => linha.resultado,
   Iniciativa: (linha) => linha.iniciativa,
 };
@@ -364,7 +364,7 @@ export function Base({
             {!visiveis.includes('Modalidade') ? null : <td style={celula}>{linha.modalidade}</td>}
             {!visiveis.includes('Local') ? null : <td style={celula}>{linha.local}</td>}
             {!visiveis.includes('Esfera') ? null : <td style={celula}>{linha.esfera}</td>}
-            {!visiveis.includes('Clima') ? null : <td style={celula}>{linha.clima}</td>}
+            {!visiveis.includes('Termômetro') ? null : <td style={celula}>{linha.clima}</td>}
             {!visiveis.includes('Desfecho') ? null : <td style={celula}>{linha.resultado}</td>}
             {!visiveis.includes('Iniciativa') ? null : <td style={celula}>{linha.iniciativa}</td>}
             </LinhaDaTabela>

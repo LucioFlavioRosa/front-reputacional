@@ -30,15 +30,12 @@
  */
 
 import {
-  ALTURA_DO_ROTULO,
   FAIXAS_DE_FUNDO,
-  PAD_BASE,
   VB,
   curvaPor,
   dominioDe,
   emPontos,
   escalaDoEixo,
-  ladosDosRotulos,
   mesPorExtenso,
 } from '@/dominio/jornadaDoIndice';
 import type {
@@ -116,10 +113,7 @@ export function jornadaDaLente(
   //: A MESMA ESCALA DA JORNADA DO ÍNDICE, e não uma cópia da conta: as duas telas
   //: são o mesmo gráfico, e foi por cada uma ter a sua conta de `y` que a folga no
   //: limite do índice entrou numa e não na outra.
-  const { y, folgaDaBase } = escalaDoEixo(piso, teto);
-  //: O LADO DE CADA RÓTULO, varrido de uma vez — a mesma regra e a mesma
-  //: estabilidade da do índice: um mês novo no fim não mexe nos anteriores.
-  const ladoDeCada = ladosDosRotulos(notas);
+  const { y } = escalaDoEixo(piso, teto);
   const x = (i: number) => ((i + 0.5) / total) * VB.largura;
 
   const faixas: FaixaDeFundo[] = FAIXAS_DE_FUNDO.filter(
@@ -144,9 +138,6 @@ export function jornadaDaLente(
 
   const pontos: PontoDaJornada[] = medidos.map((ponto, i) => {
     const nota = ponto.nota;
-    const preferaAcima = ladoDeCada[i];
-    const cabeAbaixo = y(nota) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE - folgaDaBase;
-    const cabeAcima = y(nota) - ALTURA_DO_ROTULO >= 0;
     return {
       mes: ponto.mes,
       esquerda: (x(i) / VB.largura) * 100,
@@ -163,7 +154,9 @@ export function jornadaDaLente(
       // mediram" — conceitos do ISR agregado, sem equivalente aqui na Fase 1.
       tag: '',
       corDaTag: 'transparent',
-      acima: preferaAcima ? cabeAcima || !cabeAbaixo : !cabeAbaixo,
+      //: O NÚMERO SEMPRE ACIMA DO PONTO, por pedido — a leitura fica numa linha
+      //: só, e a folga do topo (`PAD_TOPO`) reserva o lugar dele no mês mais alto.
+      acima: true,
       selecionado: ponto.mes === mesSelecionado,
       parcial: false,
       cobertura: '',

@@ -334,7 +334,7 @@ export function Inicio({
         >
           {[
             ['Registro', 'o cadastro único que substitui a planilha'],
-            ['Classificação', 'formato, público, tier, clima, resultado e temas'],
+            ['Classificação', 'formato, público, tier, termômetro, resultado e temas'],
             ['Derivação', 'os indicadores saem do recorte filtrado'],
             ['Leitura', 'painéis por status e desfecho'],
             ['Decisão', 'o que precisa de resposta, e de quem'],

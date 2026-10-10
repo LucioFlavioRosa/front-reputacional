@@ -710,7 +710,7 @@ function ClimaPorVeiculos({
 
   return (
     <ComFaixaDoTopo>
-    <Secao titulo="Clima por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
+    <Secao titulo="Termômetro por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
       <Cartao>
         <BarraDivergentePorItem
           itens={bloco.dados.map((linha) => ({

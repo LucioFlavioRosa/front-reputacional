@@ -275,7 +275,7 @@ function EntradaNarrativa({
 
       <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: 'var(--cinza-4)', fontWeight: 700 }}>
         {cabecalho}
-        {entrada.clima ? ` (Clima ${entrada.clima})` : ''}
+        {entrada.clima ? ` (Termômetro ${entrada.clima})` : ''}
       </p>
       {entrada.temas ? (
         <p style={{ margin: '4px 0 0', fontSize: 13.5, lineHeight: 1.6, color: 'var(--cinza-3)' }}>

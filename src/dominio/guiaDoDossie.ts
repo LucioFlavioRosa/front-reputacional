@@ -23,7 +23,7 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
   clientes:
     'Nota de 0 a 100 com o saldo de sentimento das mensagens recebidas nos canais próprios da Aegea (atendimento e redes oficiais).',
   institucional:
-    'Nota de 0 a 100 com o saldo de clima das interações registradas com governo e entidades no CRM.',
+    'Nota de 0 a 100 com o saldo do termômetro das interações registradas com governo e entidades no CRM.',
 };
 
 /** Pelo título exato do bloco (`evolucao.titulo` ou `painel.titulo`) — os
@@ -31,8 +31,8 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
 export const GUIA_DO_BLOCO: Record<string, string> = {
   'Evolução mensal':
     'Recorte com o volume de menções classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como o sentimento medido nesta lente muda ao longo do tempo.',
-  'Clima das agendas, mês a mês':
-    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, mês a mês. Essa visão permite acompanhar como o clima das nossas interações evolui ao longo do tempo.',
+  'Termômetro das agendas, mês a mês':
+    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, mês a mês. Essa visão permite acompanhar como o termômetro das nossas interações evolui ao longo do tempo.',
   'Eventograma · mercado e rating':
     'Linha do tempo dos fatos de mercado e rating registrados mês a mês — não é uma contagem de menções, é a sequência de eventos e como cada um afeta a reputação: sustenta, pressiona ou é misto.',
   'Mensagens recebidas e respondidas':
@@ -49,8 +49,8 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Recorte com o volume de mensagens de clientes classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como está a satisfação dos clientes ao longo do tempo.',
   'Teor das mensagens':
     'Classifica as mensagens de clientes pelo motivo — reclamação, dúvida, elogio ou informação — mês a mês. Essa visão mostra o que os clientes mais procuram ao entrar em contato.',
-  'Temas × clima':
-    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, por tema. Essa visão nos permite enxergar como está o clima das nossas interações sobre cada tema.',
+  'Temas × termômetro':
+    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, por tema. Essa visão nos permite enxergar como está o termômetro das nossas interações sobre cada tema.',
   'Temas × sentimento':
     'Recorte com o volume de menções classificadas como positivo, neutro e negativo, por tema debatido nas redes. Essa visão mostra qual tema concentra mais rejeição ou aprovação.',
   'Órgãos com mais interações':
@@ -59,8 +59,8 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Ranking das concessionárias/unidades com mais menções no período, somando positivas, neutras e negativas. Essa visão mostra onde a repercussão se concentra.',
   'Volume por tier':
     'Rosca com o volume de matérias do mês por tier do veículo (Tier 1, Tier 2, Tier 3). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
-  'Clima por veículos':
-    'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar de clima por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
+  'Termômetro por veículos':
+    'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar do termômetro por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
   'Drivers e riscos':
     'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume positivo, neutro e negativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
   'Temas mais falados':
