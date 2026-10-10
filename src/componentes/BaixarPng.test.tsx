@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { nomeDoArquivo } from '@/dominio/nomeDoArquivo';
 import { Secao } from '@/componentes/basicos';
+import { ContextoDoPng } from '@/componentes/contextoDoPng';
 
 describe('Baixar PNG', () => {
   it('o arquivo leva o título do card, sem acento nem espaço', () => {
@@ -16,18 +17,27 @@ describe('Baixar PNG', () => {
   });
 
   it('todo card com título tem o botão, que não entra na própria imagem', () => {
-    render(<Secao titulo="Radar Reputacional">conteúdo</Secao>);
+    render(
+      <ContextoDoPng.Provider value>
+        <Secao titulo="Radar Reputacional">conteúdo</Secao>
+      </ContextoDoPng.Provider>,
+    );
     const botao = screen.getByRole('button', { name: 'Baixar "Radar Reputacional" em PNG' });
     expect(botao.classList.contains('sem-png')).toBe(true);
   });
 
   it('o título da tela e a seção marcada com semPng não têm o botão', () => {
     render(
-      <>
+      <ContextoDoPng.Provider value>
         <Secao titulo="Painel" nivelDoTitulo={1}>a</Secao>
         <Secao titulo="Formulário" semPng>b</Secao>
-      </>,
+      </ContextoDoPng.Provider>,
     );
+    expect(screen.queryByRole('button', { name: /PNG/ })).toBeNull();
+  });
+
+  it('fora das telas habilitadas (Visão geral, Painel, Lentes) nenhum card tem o botão', () => {
+    render(<Secao titulo="Cadastro de instituições">conteúdo</Secao>);
     expect(screen.queryByRole('button', { name: /PNG/ })).toBeNull();
   });
 });

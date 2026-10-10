@@ -17,6 +17,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+
+import { ContextoDoPng } from '@/componentes/contextoDoPng';
 import type { ReactNode } from 'react';
 
 import {
@@ -273,6 +275,10 @@ export function Score({
   );
 
   return (
+    //: O "PNG" SÓ NA VISÃO GERAL E NAS LENTES, por pedido (e no Painel do CRM, em
+    //: App.tsx): Drivers, Metodologia, Base e Importação não têm card que se leve
+    //: para uma apresentação.
+    <ContextoDoPng.Provider value={aba === 'geral' || aba === 'lentes'}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* SEM O CARTÃO DE ABERTURA, por pedido: ele gastava a primeira dobra da
           tela com um título e um campo, e o que a pessoa veio ver — o radar —
@@ -357,6 +363,7 @@ export function Score({
 
       {aba === 'base-de-dados' ? <BaseDeDadosDoScore /> : null}
     </div>
+    </ContextoDoPng.Provider>
   );
 }
 

@@ -12,6 +12,13 @@ import { LimiteDoBloco } from './LimiteDoBloco';
 import { ResumoDoNivel } from './ResumoDoNivel';
 import { Trilha } from './Trilha';
 
+//: Estes cartões vivem na aba Lentes, onde o botão "PNG" está ligado
+//: (`ContextoDoPng`); soltos num teste, o padrão é desligado.
+vi.mock('@/componentes/contextoDoPng', async () => {
+  const { createContext } = await import('react');
+  return { ContextoDoPng: createContext(true) };
+});
+
 vi.mock('@/observabilidade/telemetria', () => ({ registrarErro: vi.fn() }));
 const { registrarErro } = await import('@/observabilidade/telemetria');
 

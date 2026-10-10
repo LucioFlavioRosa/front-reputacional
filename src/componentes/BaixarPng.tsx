@@ -14,7 +14,9 @@
  *  peso dela ao abrir a tela.
  */
 
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
+
+import { ContextoDoPng } from '@/componentes/contextoDoPng';
 
 import { nomeDoArquivo } from '@/dominio/nomeDoArquivo';
 
@@ -24,6 +26,7 @@ function ficaNaImagem(no: HTMLElement): boolean {
 }
 
 export function BaixarPng({ titulo }: { titulo: string }) {
+  const habilitado = useContext(ContextoDoPng);
   const botao = useRef<HTMLButtonElement>(null);
   const [gerando, definirGerando] = useState(false);
 
@@ -45,6 +48,8 @@ export function BaixarPng({ titulo }: { titulo: string }) {
       definirGerando(false);
     }
   };
+
+  if (!habilitado) return null;
 
   return (
     <button
