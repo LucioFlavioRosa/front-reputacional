@@ -12,6 +12,12 @@ import type { Bloco, Dossie } from '@/dominio/dossie';
 import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
+  FiltroDoRisco,
+  OpcoesDoRisco,
+  PaginaDeIncidentes,
+  PainelDeRisco,
+} from '@/dominio/riscos';
+import type {
   Calibracao,
   CalibracaoEntrada,
   DriversDoScore,
@@ -1704,4 +1710,65 @@ export async function confirmarPlanilhaDeSubtemas(
     method: 'POST',
     body: corpo,
   });
+}
+
+/* -- o rastreio de risco ------------------------------------------------------- */
+
+/** O recorte da aba de risco virando consulta.
+ *
+ *  AS DIMENSÕES VÃO COMO PARÂMETRO REPETIDO (`dimensao=tier:relevante`), e não
+ *  um parâmetro por dimensão: as dimensões que existem saem do DADO, e um campo
+ *  fixo por dimensão obrigaria a mexer aqui a cada base nova — exatamente a
+ *  rigidez que a tela deixou de ter. O servidor recusa chave que não conhece,
+ *  com a lista das válidas, em vez de ignorar em silêncio.
+ *
+ *  E AS FONTES VÃO REPETIDAS TAMBÉM (`fonte=clipei&fonte=bites`): são várias ao
+ *  mesmo tempo, não uma escolha.
+ */
+function paraConsultaDoRisco(filtro: FiltroDoRisco = {}): string {
+  const parametros = new URLSearchParams();
+  if (filtro.cluster) parametros.set('cluster', filtro.cluster);
+  if (filtro.risco) parametros.set('risco', filtro.risco);
+  for (const fonte of filtro.fontes ?? []) parametros.append('fonte', fonte);
+  for (const lente of filtro.lentes ?? []) parametros.append('lente', lente);
+  if (filtro.severidade) parametros.set('severidade', filtro.severidade);
+  if (filtro.bloco) parametros.set('bloco', filtro.bloco);
+  if (filtro.macro) parametros.set('macro', filtro.macro);
+  if (filtro.tema) parametros.set('tema', filtro.tema);
+  if (filtro.de) parametros.set('de', filtro.de);
+  if (filtro.ate) parametros.set('ate', filtro.ate);
+  if (filtro.busca?.trim()) parametros.set('busca', filtro.busca.trim());
+  for (const [chave, valor] of Object.entries(filtro.dimensoes ?? {})) {
+    if (valor) parametros.append('dimensao', `${chave}:${valor}`);
+  }
+  return parametros.toString();
+}
+
+/** A tela inteira num pedido: série do índice, três KPIs, matriz e totais. */
+export function obterPainelDeRisco(filtro?: FiltroDoRisco): Promise<PainelDeRisco> {
+  return requisitar<PainelDeRisco>(`/api/score/riscos?${paraConsultaDoRisco(filtro)}`);
+}
+
+/** O "Relatório de incidentes", paginado. */
+export function listarIncidentesDeRisco(
+  filtro: FiltroDoRisco,
+  pagina = 1,
+  tamanho = 50,
+): Promise<PaginaDeIncidentes> {
+  const parametros = new URLSearchParams(paraConsultaDoRisco(filtro));
+  parametros.set('pagina', String(pagina));
+  parametros.set('tamanho', String(tamanho));
+  return requisitar<PaginaDeIncidentes>(
+    `/api/score/riscos/incidentes?${parametros.toString()}`,
+  );
+}
+
+/** O que a tela pode oferecer como filtro NESTE recorte.
+ *
+ *  PEDIDO A CADA MUDANÇA DE RECORTE de propósito: a lista de dimensões e de
+ *  fontes é o dado respondendo, e não uma lista fixa — fonte sem incidente no
+ *  recorte é filtro que volta vazio.
+ */
+export function obterOpcoesDoRisco(filtro?: FiltroDoRisco): Promise<OpcoesDoRisco> {
+  return requisitar<OpcoesDoRisco>(`/api/score/riscos/opcoes?${paraConsultaDoRisco(filtro)}`);
 }

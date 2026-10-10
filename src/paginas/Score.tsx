@@ -41,6 +41,7 @@ import {
 import { SeletorDeMes } from '@/componentes/SeletorDeMes';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { BaseDeDadosDoScore } from '@/paginas/score/BaseDeDadosDoScore';
+import { RastreioDeRisco } from '@/paginas/score/RastreioDeRisco';
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -144,6 +145,13 @@ export function Score({
   useEffect(() => {
     void recarregar();
   }, [recarregar]);
+
+  //: O RASTREIO DE RISCO VEM ANTES DAS GUARDAS DO ÍNDICE, e de propósito: ele
+  //: não usa o ISR, nem o mês escolhido, nem as opções do Score — tem a própria
+  //: série, a própria janela e o próprio recorte. Deixá-lo abaixo faria a aba
+  //: esperar o cálculo de um índice que ela não mostra, e morrer no "Nenhum mês
+  //: com dado" quando houvesse agenda tensa no CRM e nenhuma planilha subida.
+  if (aba === 'riscos') return <RastreioDeRisco />;
 
   if (erro && !indice) return <FaixaDeErro mensagem={erro} />;
   if (!opcoes) return <Carregando rotulo="Carregando o Score…" />;

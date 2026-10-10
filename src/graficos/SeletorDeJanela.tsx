@@ -32,7 +32,16 @@ import {
 } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
 import { mesCurto } from '@/dominio/dossie';
-import type { PontoDaSerie } from '@/dominio/score';
+
+/** Um mês do trilho: o mês e a altura da linha naquele mês.
+ *
+ *  `valor` E NÃO `isr`: o trilho desenha a forma de QUALQUER série mensal — o
+ *  índice do Score e o Índice de Exposição a Risco usam o mesmo controle, e
+ *  pedir o tipo do Score era o que impedia o segundo de reusá-lo. */
+export interface MesDoTrilho {
+  mes: string;
+  valor: number | null;
+}
 
 type Gesto = 'mover' | 'inicio' | 'fim';
 
@@ -42,7 +51,7 @@ export function SeletorDeJanela({
   aoMudar,
 }: {
   /** Só os meses medidos, na ordem — os mesmos que a curva desenha. */
-  meses: PontoDaSerie[];
+  meses: MesDoTrilho[];
   janela: Janela;
   aoMudar: (janela: Janela) => void;
 }) {
@@ -54,7 +63,7 @@ export function SeletorDeJanela({
   const total = meses.length;
   if (total < 2) return null;
 
-  const valores = meses.map((ponto) => ponto.isr as number);
+  const valores = meses.map((ponto) => ponto.valor ?? 0);
   const minimo = Math.min(...valores);
   const maximo = Math.max(...valores);
   //: A LINHA NO CENTRO DE CADA MÊS — o mesmo (i + 0,5)/n do gráfico de cima —,
@@ -268,7 +277,7 @@ function Alca({
   aoTeclar,
 }: {
   borda: 'inicio' | 'fim';
-  meses: PontoDaSerie[];
+  meses: MesDoTrilho[];
   janela: Janela;
   total: number;
   aoComecar: (evento: PointerDoReact<HTMLElement>) => void;

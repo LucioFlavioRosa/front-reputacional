@@ -34,6 +34,14 @@ const DO_CRM: ItemDoMenu[] = [
 const DO_SCORE: ItemDoMenu[] = [
   { view: 'score', rotulo: 'Visão geral', aba: 'geral' },
   { view: 'score', rotulo: 'Lentes', aba: 'lentes' },
+  //: DEPOIS DE LENTES, por pedido: a aba desce do índice para os incidentes que
+  //: tocam a matriz de risco corporativo, e quem acabou de ler uma lente é
+  //: quem pergunta "e disto, o que é risco".
+  //:
+  //: NÃO CONFUNDIR COM "Drivers e riscos", logo ao lado: lá são os drivers do
+  //: ÍNDICE (o que empurra a nota), aqui são os RISCOS DA MATRIZ corporativa —
+  //: 32 riscos em 8 clusters, com severidade atribuída pela companhia.
+  { view: 'score', rotulo: 'Risk Tracking', aba: 'riscos' },
   { view: 'score', rotulo: 'Drivers e riscos', aba: 'drivers' },
   { view: 'score', rotulo: 'Metodologia', aba: 'metodologia' },
   //: A BASE DE DADOS É A CONSULTA: as menções de cada lente como chegaram da

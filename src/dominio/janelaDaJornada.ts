@@ -13,6 +13,16 @@ import { coberturaDoMes, mesPorExtenso } from '@/dominio/jornadaDoIndice';
 import type { PontoDaSerie } from '@/dominio/score';
 
 /** Do primeiro ao último mês da janela, inclusive, em índices dos medidos. */
+/** O mínimo que as contas da janela precisam de um mês da série.
+ *
+ *  SÓ O MÊS: `janelaDoAtalho` e `atalhoDaJanela` nunca leem o valor, e pedir a
+ *  série inteira do Score (`PontoDaSerie`) impedia o rastreio de risco de
+ *  reusá-las — foi o que me levou a escrever uma segunda cópia dos cinco
+ *  atalhos. Achado de revisão. */
+export interface MesDaSerie {
+  mes: string;
+}
+
 export interface Janela {
   inicio: number;
   fim: number;
@@ -58,7 +68,7 @@ export function ajustar(janela: Janela, total: number): Janela {
  *  do relógio: em janeiro, sem o mês ingerido ainda, o ano do relógio seria
  *  uma janela vazia. Com menos de 3 meses no ano, `ajustar` completa com o fim
  *  do ano anterior — a regra do mínimo vale para todo atalho. */
-export function janelaDoAtalho(atalho: AtalhoDaJanela, meses: PontoDaSerie[]): Janela {
+export function janelaDoAtalho(atalho: AtalhoDaJanela, meses: MesDaSerie[]): Janela {
   const total = meses.length;
   const fim = total - 1;
   switch (atalho) {
@@ -79,7 +89,10 @@ export function janelaDoAtalho(atalho: AtalhoDaJanela, meses: PontoDaSerie[]): J
 }
 
 /** O atalho que a janela corresponde, se corresponder — é o que acende o botão. */
-export function atalhoDaJanela(janela: Janela, meses: PontoDaSerie[]): AtalhoDaJanela | null {
+export function atalhoDaJanela(
+  janela: Janela,
+  meses: MesDaSerie[],
+): AtalhoDaJanela | null {
   //: "TUDO" PRIMEIRO: com uma série curta, 12M e Tudo são a mesma janela, e o
   //: nome mais honesto para "a série inteira" é Tudo.
   const ordem: AtalhoDaJanela[] = ['tudo', '12m', 'ano', '6m', '3m'];
