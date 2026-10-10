@@ -10,8 +10,9 @@
  *  aprendeu a filtrar numa tela filtra igual na outra.
  *
  *  QUAIS FILTROS, E ONDE, MUDAM POR LENTE (`FILTROS_DAS_LENTES`): Imprensa
- *  filtra por tier e veículo, Sociedade digital por rede e perfil de quem fala,
- *  Clientes por concessionária. A barra só percorre a tabela.
+ *  filtra por concessionária, tier e sentimento, Sociedade digital por rede e
+ *  perfil de quem fala, Clientes por concessionária. A barra só percorre a
+ *  tabela — inclusive a ordem fixa dos valores e a cor do sentimento escolhido.
  *
  *  ESCOLHA ÚNICA POR CAMPO, e os campos se somam (E): escolher um veículo não
  *  implica tier nenhum, e clicar numa pílula já escolhida a desmarca — é como o
@@ -25,7 +26,7 @@ import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { CampoSuspenso } from '@/componentes/CampoSuspenso';
 import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
-import { FILTROS_DAS_LENTES, rotuloDoValor } from '@/dominio/filtrosDasLentes';
+import { FILTROS_DAS_LENTES, ordenarValores, rotuloDoValor } from '@/dominio/filtrosDasLentes';
 import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
 
 /** ATIVO É QUALQUER CAMPO PREENCHIDO, perguntado ao próprio objeto — uma lista
@@ -45,8 +46,9 @@ function campoDa(
   return {
     chave: dimensao.chave,
     rotulo: dimensao.rotulo,
-    itens: valores.map((valor) => ({ valor, rotulo: rotuloDoValor(dimensao, valor) })),
+    itens: ordenarValores(dimensao, valores).map((valor) => ({ valor, rotulo: rotuloDoValor(dimensao, valor) })),
     valorAtual,
+    destaque: valorAtual ? dimensao.destaques?.[valorAtual] : undefined,
     aoEscolher: (valor) =>
       definirFiltro({ ...filtro, [dimensao.chave]: valorAtual === valor ? undefined : valor }),
   };
