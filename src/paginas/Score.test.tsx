@@ -134,6 +134,30 @@ describe('Score · lente pelo hash (A4)', () => {
     window.dispatchEvent(new PopStateEvent('popstate'));
     await waitFor(() => expect(abaDaLente('Mercado').getAttribute('aria-selected')).toBe('true'));
   });
+
+  it('voltar para uma entrada de outra lente não regrava o hash: a lente sai do próprio hash', async () => {
+    window.history.replaceState(null, '', '/score/lentes#consulta&lente=imprensa&pilar=governanca');
+    await montar('lentes');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    window.history.pushState(null, '', '/score/lentes#consulta&lente=mercado');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(abaDaLente('Mercado').getAttribute('aria-selected')).toBe('true'));
+    expect(window.location.hash).toBe('#consulta&lente=mercado');
+    expect(replace).not.toHaveBeenCalled();
+    replace.mockRestore();
+  });
+
+  it('clicar na aba da lente que já está aberta não mexe no hash nem na história', async () => {
+    const profundo =
+      '#consulta&lente=imprensa&pilar=eficiencia-operacional&tema=abastecimento-agua&subtema=rompimento-adutora&sent=negativas';
+    window.history.replaceState(null, '', `/score/lentes${profundo}`);
+    await montar('lentes');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    await userEvent.click(abaDaLente('Imprensa'));
+    expect(window.location.hash).toBe(profundo);
+    expect(replace).not.toHaveBeenCalled();
+    replace.mockRestore();
+  });
 });
 
 describe('Score · busca do cabeçalho leva ao drill (D3)', () => {
@@ -184,6 +208,20 @@ describe('Score · busca do cabeçalho leva ao drill (D3)', () => {
     expect(abaDaLente('Mercado').getAttribute('aria-selected')).toBe('true');
     expect(window.location.pathname).toBe('/score/lentes');
     expect(window.location.hash).toBe('#consulta&lente=mercado');
+    expect(window.history.length).toBe(antes);
+  });
+
+  it('escolher o nó em que a pessoa já está não empilha uma entrada igual', async () => {
+    const destino =
+      '#consulta&lente=imprensa&pilar=eficiencia-operacional&tema=abastecimento-agua&subtema=rompimento-adutora';
+    window.history.replaceState(null, '', `/score/lentes${destino}`);
+    await montar('lentes');
+    const antes = window.history.length;
+
+    await userEvent.type(screen.getByRole('combobox'), 'adutora');
+    await userEvent.keyboard('{Enter}');
+
+    expect(window.location.hash).toBe(destino);
     expect(window.history.length).toBe(antes);
   });
 });

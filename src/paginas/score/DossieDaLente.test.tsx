@@ -117,3 +117,16 @@ describe('DossieDaLente · bloco Drill down', () => {
     expect(botaoDoDrill()?.getAttribute('aria-expanded')).toBe('true');
   });
 });
+
+describe('DossieDaLente · título da Jornada', () => {
+  it.each([
+    ['imprensa', 'Jornada da Imprensa'],
+    ['mercado', 'Jornada do Mercado'],
+    ['sociedade', 'Jornada da Sociedade digital'],
+    ['clientes', 'Jornada dos Clientes'],
+    ['institucional', 'Jornada do Institucional'],
+  ])('na lente %s, o título concorda com o nome: %s', (lente, titulo) => {
+    montar(lente);
+    expect(screen.getByText(titulo)).toBeTruthy();
+  });
+});

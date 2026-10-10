@@ -26,14 +26,48 @@ import type { EnderecoDoDrill } from './endereco';
 /** Disparado em `window` a cada navegação programática do drill. */
 export const EVENTO_DO_ENDERECO = 'consulta:endereco';
 
+// ---------------------------------------------------------------------------
+// Pedido de foco (decisões A5 e A6)
+// ---------------------------------------------------------------------------
+//
+// QUEM ESCOLHE UM NÓ FORA DO DRILL (a busca do cabeçalho) PEDE FOCO: a raiz
+// rola até o topo do bloco e foca o título do nível MESMO QUANDO MONTA AGORA
+// (o bloco estava fechado, ou a busca veio da Visão geral) ou quando a lente
+// muda junto. Sem o pedido, a raiz não distingue essa montagem da de quem
+// abriu o bloco à mão ou recarregou a página, e nesses casos não deve pular
+// a tela.
+//
+// UM CONTADOR NO MÓDULO, e não uma marca no `history.state`: recarregar zera
+// o módulo (recarregar não rola), voltar e avançar não pedem nada, e cada
+// pedido é atendido uma vez só (`atenderPedidoDeFoco`). Pedir de novo o nó em
+// que a pessoa já está também rola, porque o contador muda mesmo sem o hash
+// mudar.
+
+let pedidosDeFoco = 0;
+let pedidosAtendidos = 0;
+
 /** Leva o drill a `novo`, preservando caminho e consulta do endereço (a
  *  consulta é do recorte do CRM). `push` empilha na história; `replace`
- *  substitui a entrada atual. */
-export function navegarNoDrill(novo: EnderecoDoDrill, modo: 'push' | 'replace'): void {
+ *  substitui a entrada atual. `focar` pede à raiz que role até o bloco e
+ *  foque o título do nível, mesmo se ela montar agora ou a lente mudar. */
+export function navegarNoDrill(
+  novo: EnderecoDoDrill,
+  modo: 'push' | 'replace',
+  opcoes: { focar?: boolean } = {},
+): void {
   const url = window.location.pathname + window.location.search + escreverEndereco(novo);
   if (modo === 'push') window.history.pushState(null, '', url);
   else window.history.replaceState(null, '', url);
+  if (opcoes.focar) pedidosDeFoco += 1;
   window.dispatchEvent(new CustomEvent(EVENTO_DO_ENDERECO));
+}
+
+/** Atende o pedido de foco pendente, se houver: devolve `true` uma vez por
+ *  pedido. A raiz chama num efeito, com o nível já na tela. */
+export function atenderPedidoDeFoco(): boolean {
+  if (pedidosAtendidos === pedidosDeFoco) return false;
+  pedidosAtendidos = pedidosDeFoco;
+  return true;
 }
 
 function assinar(avisar: () => void): () => void {
@@ -59,4 +93,19 @@ function hashNoServidor(): string {
 export function useEnderecoDoDrill(): EnderecoDoDrill {
   const hash = useSyncExternalStore(assinar, lerHash, hashNoServidor);
   return useMemo(() => lerEndereco(hash), [hash]);
+}
+
+function lerPedidos(): number {
+  return pedidosDeFoco;
+}
+
+function semPedidosNoServidor(): number {
+  return 0;
+}
+
+/** O número do último pedido de foco: muda a cada `navegarNoDrill` com
+ *  `focar`, mesmo quando o hash não muda, e faz a raiz renderizar e rodar o
+ *  efeito que atende o pedido. */
+export function usePedidoDeFoco(): number {
+  return useSyncExternalStore(assinar, lerPedidos, semPedidosNoServidor);
 }

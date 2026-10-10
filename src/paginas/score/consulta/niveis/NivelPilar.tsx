@@ -127,10 +127,16 @@ export function NivelPilar({
                 subtitulo={destaque.concentracao.subtitulo}
                 estilo={{ flex: '1 1 auto' }}
               >
+                {/* AS DUAS LISTAS EMPILHAM ANTES DE A COLUNA DO NOME SUMIR: com
+                    a grade da F.6 (1,3fr do nome contra 1,6fr da barra e
+                    144px fixos), duas listas lado a lado num cartão de
+                    ~560px deixavam o nome com 41px, e "Águas do Pará" quebrava
+                    em três linhas. Com 300px de mínimo, elas ficam lado a lado
+                    só quando o cartão tem uns 630px úteis. */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
                     gap: '16px 28px',
                   }}
                 >

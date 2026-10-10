@@ -43,9 +43,9 @@ import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { BaseDeDadosDoScore } from '@/paginas/score/BaseDeDadosDoScore';
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { DossieDaLente } from '@/paginas/score/DossieDaLente';
-import { lerEndereco } from '@/paginas/score/consulta/endereco';
+import { escreverEndereco } from '@/paginas/score/consulta/endereco';
 import type { EnderecoDoDrill } from '@/paginas/score/consulta/endereco';
-import { navegarNoDrill } from '@/paginas/score/consulta/useEnderecoDoDrill';
+import { navegarNoDrill, useEnderecoDoDrill } from '@/paginas/score/consulta/useEnderecoDoDrill';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
@@ -76,9 +76,8 @@ const LENTES_DO_SCORE: readonly string[] = [
   'institucional',
 ];
 
-/** A lente do hash do drill, se o hash é do drill e a lente existe. */
-function lenteDoEndereco(): string | null {
-  const endereco = lerEndereco(window.location.hash);
+/** A lente do endereço do drill, se ele está ativo e a lente existe. */
+function lenteValida(endereco: EnderecoDoDrill): string | null {
   if (!endereco.ativo || !endereco.lente) return null;
   return LENTES_DO_SCORE.includes(endereco.lente) ? endereco.lente : null;
 }
@@ -92,43 +91,50 @@ export function Score({
   aoTrocarAba: (aba: string) => void;
 }) {
   const [mes, definirMes] = useState<string | null>(null);
-  //: A LENTE NASCE DO HASH DO DRILL quando ele está no endereço (decisão A4
-  //: da Consulta em profundidade): recarregar `/score/lentes#consulta&lente=
-  //: mercado` reabre o Mercado. Sem hash, a Imprensa, como sempre.
-  const [lenteAberta, definirLenteAberta] = useState<string>(
-    () => lenteDoEndereco() ?? 'imprensa',
-  );
-  //: O RECORTE DA LENTE ABERTA. Mora aqui, e não no dossiê, para a busca
-  //: inteligente abrir uma lente já filtrada. TROCAR DE LENTE OU DE MÊS O ZERA:
-  //: um veículo da Imprensa não existe no vocabulário de Clientes, e as opções
-  //: de filtro são do mês.
-  const [filtroDaLente, definirFiltroDaLente] = useState<FiltroDaLente>({});
+  //: A LENTE ABERTA SAI DO HASH DO DRILL QUANDO ELE ESTÁ NO ENDEREÇO (decisão
+  //: A4 da Consulta em profundidade), e só cai no estado quando não está.
+  //: UMA FONTE SÓ, e não um estado copiado do hash por um ouvinte de
+  //: `popstate`: com duas, voltar do navegador para uma entrada de outra lente
+  //: fazia a raiz do drill renderizar com a lente ANTIGA antes do ouvinte do
+  //: Score rodar, achar o hash "errado" e regravá-lo com `replace`, apagando a
+  //: entrada da história. Lendo o hash aqui, lente e hash mudam no mesmo
+  //: render. O ESTADO É A RESERVA para quando não há hash do drill (abrir a
+  //: aba, trocar de lente sem drill), e acompanha o hash enquanto ele existe:
+  //: se o hash sumir (outra navegação), a aba fica na última lente vista.
+  const endereco = useEnderecoDoDrill();
+  const lenteDoHash = lenteValida(endereco);
+  const [lenteDaAba, definirLenteDaAba] = useState<string>(() => lenteDoHash ?? 'imprensa');
+  // AJUSTE DURANTE O RENDER (padrão do React para estado que depende de outro
+  // valor), e não num efeito.
+  if (lenteDoHash && lenteDoHash !== lenteDaAba) definirLenteDaAba(lenteDoHash);
+  const lenteAberta = lenteDoHash ?? lenteDaAba;
+  //: O RECORTE DA LENTE ABERTA, GUARDADO COM A LENTE DE QUE É. Mora aqui, e
+  //: não no dossiê, para a busca inteligente abrir uma lente já filtrada.
+  //: TROCAR DE LENTE OU DE MÊS O ZERA: um veículo da Imprensa não existe no
+  //: vocabulário de Clientes, e as opções de filtro são do mês. A lente vem
+  //: junto porque ela também muda pelo hash (voltar do navegador), sem passar
+  //: por quem zera: um recorte de outra lente é descartado no render.
+  const [recorte, definirRecorteDaLente] = useState<{ lente: string; filtro: FiltroDaLente }>(() => ({
+    lente: lenteAberta,
+    filtro: {},
+  }));
+  if (recorte.lente !== lenteAberta) definirRecorteDaLente({ lente: lenteAberta, filtro: {} });
+  const filtroDaLente = recorte.lente === lenteAberta ? recorte.filtro : {};
+  const definirFiltroDe = (lente: string, filtro: FiltroDaLente) => definirRecorteDaLente({ lente, filtro });
+  const definirFiltroDaLente = (filtro: FiltroDaLente) => definirFiltroDe(lenteAberta, filtro);
   //: TROCAR DE LENTE REESCREVE O HASH, só se ele já for do drill (A4): a lente
   //: nova e nenhum nível, que equivale a "trocar de lente vai para o Nível 1"
   //: (D.3). Com `replace`, porque a aba da lente não empilha história. Sem o
   //: hash no endereço, nada se escreve: abrir a aba não cria hash.
+  //: A LENTE QUE JÁ ESTÁ ABERTA NÃO É TROCA: as abas avisam também o clique na
+  //: aba ativa, e reescrever o hash aí levaria o drill do Nível 4 ao 1 e
+  //: apagaria a entrada da história.
   const trocarLente = (codigo: string) => {
-    definirLenteAberta(codigo);
-    definirFiltroDaLente({});
-    if (lerEndereco(window.location.hash).ativo) {
-      navegarNoDrill({ ativo: true, lente: codigo }, 'replace');
-    }
+    if (codigo === lenteAberta) return;
+    definirLenteDaAba(codigo);
+    definirFiltroDe(codigo, {});
+    if (endereco.ativo) navegarNoDrill({ ativo: true, lente: codigo }, 'replace');
   };
-
-  //: VOLTAR E AVANÇAR DO NAVEGADOR LEVAM A LENTE JUNTO: uma escolha da busca
-  //: que trocou o Mercado pela Imprensa empilhou o hash da Imprensa, e voltar
-  //: devolve um hash com `lente=mercado`. Assina o `popstate`; quem muda o
-  //: estado é o handler, e só quando a lente do hash difere da aberta.
-  useEffect(() => {
-    const aoVoltar = () => {
-      const doEndereco = lenteDoEndereco();
-      if (!doEndereco || doEndereco === lenteAberta) return;
-      definirLenteAberta(doEndereco);
-      definirFiltroDaLente({});
-    };
-    window.addEventListener('popstate', aoVoltar);
-    return () => window.removeEventListener('popstate', aoVoltar);
-  }, [lenteAberta]);
 
   //: UMA SUGESTÃO DO DRILL NA BUSCA (decisão D3): abre a aba Lentes, a lente
   //: do destino (a Imprensa, única com níveis) com o filtro zerado, e leva o
@@ -138,18 +144,24 @@ export function Score({
   //: `/score/lentes`, e o drill só lhe acrescenta o hash (`replace`): uma
   //: escolha, uma entrada na história, e a entrada final tem o hash. Já nas
   //: Lentes, a aba não é regravada (seria uma entrada repetida e sem hash) e
-  //: o drill empilha o destino (`push`).
+  //: o drill empilha o destino (`push`), a menos que o destino seja a tela em
+  //: que a pessoa já está: aí `replace`, para não empilhar uma entrada igual.
+  //: COM PEDIDO DE FOCO (A5, A6): a pessoa escolheu um nó, e a raiz do drill
+  //: rola até o bloco e foca o título do nível mesmo quando monta agora (o
+  //: bloco estava fechado, ou a busca veio da Visão geral) ou quando a lente
+  //: muda junto (do Mercado para a Imprensa).
   const abrirNoDrill = (destino: EnderecoDoDrill) => {
     const lente =
       destino.lente && LENTES_DO_SCORE.includes(destino.lente) ? destino.lente : 'imprensa';
-    definirLenteAberta(lente);
-    definirFiltroDaLente({});
+    definirLenteDaAba(lente);
+    definirFiltroDe(lente, {});
     const alvo: EnderecoDoDrill = { ...destino, ativo: true, lente };
     if (aba !== 'lentes') {
       aoTrocarAba('lentes');
-      navegarNoDrill(alvo, 'replace');
+      navegarNoDrill(alvo, 'replace', { focar: true });
     } else {
-      navegarNoDrill(alvo, 'push');
+      const mesmaTela = escreverEndereco(alvo) === window.location.hash;
+      navegarNoDrill(alvo, mesmaTela ? 'replace' : 'push', { focar: true });
     }
   };
   const trocarMes = (novo: string) => {
@@ -287,7 +299,8 @@ export function Score({
             // regravada: `irPara` na mesma rota só empilharia uma entrada
             // repetida, e sem o hash do drill.
             if (sugestao.lente !== lenteAberta) trocarLente(sugestao.lente);
-            definirFiltroDaLente(
+            definirFiltroDe(
+              sugestao.lente,
               sugestao.filtro ? { [sugestao.filtro.chave]: sugestao.filtro.valor } : {},
             );
             if (aba !== 'lentes') aoTrocarAba('lentes');

@@ -185,6 +185,17 @@ describe('grupo "Consulta em profundidade" (D3, A15, E.9)', () => {
     expect(aoEscolherNoDrill).toHaveBeenCalledTimes(1);
   });
 
+  it('matéria com o impacto em 2 casas, como na lista do Nível 4 e na prévia (E.2, F.9)', async () => {
+    const { campo } = await montarBusca();
+    await userEvent.type(campo, 'Canoas');
+    const materias = screen.getByRole('group', { name: 'Consulta em profundidade · Matéria' });
+    const opcao = within(materias).getByRole('option', {
+      name: /Rompimento em rede de Canoas deixa bairros sem água por 20 horas/,
+    });
+    expect(opcao.textContent).toContain('−0,06 pt');
+    expect(opcao.textContent).not.toContain('−0,1 pt');
+  });
+
   it('Esc fecha a lista', async () => {
     const { campo } = await montarBusca();
     await userEvent.type(campo, 'adutora');

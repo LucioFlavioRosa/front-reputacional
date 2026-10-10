@@ -42,8 +42,12 @@ export function BarraSentimento({ sentimento }: { sentimento: DistSentimento }) 
         )}
       </div>
       <div className="tabular" style={{ marginTop: 6, fontSize: 12, color: 'var(--cinza-3)' }}>
-        {fmtPct(pos)} pos · {fmtPct(neg)} neg · saldo{' '}
-        <strong style={{ fontWeight: 700, color: corDoSinal(pos - neg) }}>{fmtSaldo(pos, neg)}</strong>
+        {fmtPct(pos)} pos · {fmtPct(neg)} neg ·{' '}
+        {/* "saldo" e o número presos juntos: sem largura, a linha quebra
+            antes de "saldo", e nunca deixa o número sozinho embaixo. */}
+        <span style={{ whiteSpace: 'nowrap' }}>
+          saldo <strong style={{ fontWeight: 700, color: corDoSinal(pos - neg) }}>{fmtSaldo(pos, neg)}</strong>
+        </span>
       </div>
     </div>
   );

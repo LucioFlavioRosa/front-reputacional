@@ -7,7 +7,17 @@ import { Selo } from '@/componentes/basicos';
 import { SELO_DE_TIER_1, SELO_NEUTRO } from '../cores';
 import type { Tier } from '../dados/tipos';
 
-export function SeloDeTier({ tier }: { tier: Tier }) {
+export function SeloDeTier({
+  tier,
+  sobreDestaque = false,
+}: {
+  tier: Tier;
+  /** A linha em volta tem o fundo de destaque (F.9, `COR_LINHA_DESTACADA`),
+   *  que é o mesmo azul claro do selo do Tier 1: ali o selo vai em branco,
+   *  senão a pílula some na linha e sobra o texto solto. */
+  sobreDestaque?: boolean;
+}) {
   const cores = tier === 'Tier 1' ? SELO_DE_TIER_1 : SELO_NEUTRO;
-  return <Selo rotulo={tier} fundo={cores.fundo} texto={cores.texto} />;
+  const fundo = sobreDestaque && tier === 'Tier 1' ? 'var(--branco)' : cores.fundo;
+  return <Selo rotulo={tier} fundo={fundo} texto={cores.texto} />;
 }

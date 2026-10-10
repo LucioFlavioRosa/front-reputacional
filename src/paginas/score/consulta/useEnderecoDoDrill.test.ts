@@ -2,7 +2,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EVENTO_DO_ENDERECO, navegarNoDrill, useEnderecoDoDrill } from './useEnderecoDoDrill';
+import {
+  EVENTO_DO_ENDERECO,
+  atenderPedidoDeFoco,
+  navegarNoDrill,
+  useEnderecoDoDrill,
+  usePedidoDeFoco,
+} from './useEnderecoDoDrill';
 
 beforeEach(() => {
   window.history.replaceState(null, '', '/score/lentes?inicio=2026-08-01&fim=2026-08-31');
@@ -155,5 +161,31 @@ describe('useEnderecoDoDrill', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(renders).toBe(antes);
+  });
+});
+
+describe('pedido de foco (A5, A6)', () => {
+  beforeEach(() => {
+    // Nenhum pedido de outro teste fica pendente.
+    atenderPedidoDeFoco();
+  });
+
+  it('navegar sem `focar` não pede nada', () => {
+    navegarNoDrill({ ativo: true, lente: 'imprensa', pilar: 'governanca' }, 'push');
+    expect(atenderPedidoDeFoco()).toBe(false);
+  });
+
+  it('com `focar`, o pedido é atendido uma vez só', () => {
+    navegarNoDrill({ ativo: true, lente: 'imprensa', pilar: 'governanca' }, 'push', { focar: true });
+    expect(atenderPedidoDeFoco()).toBe(true);
+    expect(atenderPedidoDeFoco()).toBe(false);
+  });
+
+  it('o número do pedido muda mesmo quando o hash não muda', () => {
+    navegarNoDrill({ ativo: true, lente: 'imprensa' }, 'replace');
+    const { result } = renderHook(() => usePedidoDeFoco());
+    const antes = result.current;
+    act(() => navegarNoDrill({ ativo: true, lente: 'imprensa' }, 'replace', { focar: true }));
+    expect(result.current).toBe(antes + 1);
   });
 });

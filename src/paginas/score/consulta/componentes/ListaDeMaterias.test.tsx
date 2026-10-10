@@ -238,6 +238,16 @@ describe('ListaDeMaterias (F.9)', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(destacada);
   });
 
+  it('na linha destacada, o selo Tier 1 vai em branco para não sumir no fundo de destaque', () => {
+    montar({ item: 'rom-03' });
+    const fundoDoTier = (linha: HTMLElement) =>
+      within(linha).getByText('Tier 1').closest<HTMLElement>('[style*="background"]')!.style.background;
+    const destacada = linhas().find((l) => l.getAttribute('data-item') === 'rom-03')!;
+    const outra = linhas().find((l) => l.getAttribute('data-item') === 'rom-01')!;
+    expect(fundoDoTier(destacada)).toBe('var(--branco)');
+    expect(fundoDoTier(outra)).toBe('rgb(230, 234, 251)');
+  });
+
   it('sem item no endereço, nada é destacado nem rolado', () => {
     montar();
     expect(linhas().filter((l) => l.style.background !== '')).toHaveLength(0);

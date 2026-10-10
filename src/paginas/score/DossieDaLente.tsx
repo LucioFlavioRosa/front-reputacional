@@ -76,12 +76,15 @@ import {
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 
+//: `de` É A CONTRAÇÃO DO TÍTULO DA JORNADA, que concorda com o nome da lente:
+//: "Jornada da Imprensa", "do Mercado", "dos Clientes". Sem ela, um "da" fixo
+//: escrevia "Jornada da Mercado".
 const LENTES = [
-  { id: 'imprensa', rotulo: 'Imprensa' },
-  { id: 'mercado', rotulo: 'Mercado' },
-  { id: 'sociedade', rotulo: 'Sociedade digital' },
-  { id: 'clientes', rotulo: 'Clientes' },
-  { id: 'institucional', rotulo: 'Institucional' },
+  { id: 'imprensa', rotulo: 'Imprensa', de: 'da' },
+  { id: 'mercado', rotulo: 'Mercado', de: 'do' },
+  { id: 'sociedade', rotulo: 'Sociedade digital', de: 'da' },
+  { id: 'clientes', rotulo: 'Clientes', de: 'dos' },
+  { id: 'institucional', rotulo: 'Institucional', de: 'do' },
 ];
 
 //: AS LENTES QUE TÊM DRILL DOWN (decisão D2 da Consulta em profundidade): a
@@ -121,7 +124,9 @@ export function DossieDaLente({
   aoTrocarMes: (mes: string) => void;
 }) {
   const [dossie, definirDossie] = useState<Dossie | null>(null);
-  const nomeDaLente = LENTES.find((item) => item.id === lente)?.rotulo ?? lente;
+  const daLente = LENTES.find((item) => item.id === lente);
+  const nomeDaLente = daLente?.rotulo ?? lente;
+  const contracao = daLente?.de ?? 'da';
   const [erro, definirErro] = useState<string | null>(null);
   //: AS OPÇÕES COM A LENTE E O MÊS DE QUE SÃO: assim a tela usa só as que
   //: batem com a lente aberta, sem precisar zerá-las a cada troca — e nunca
@@ -253,7 +258,7 @@ export function DossieDaLente({
           jornada dela. Não segue os filtros acima: é a nota do mês da lente. */}
       <PainelDaJornada
         key={lente}
-        titulo={`Jornada da ${nomeDaLente}`}
+        titulo={`Jornada ${contracao} ${nomeDaLente}`}
         sujeito={`A lente ${nomeDaLente}`}
         serie={serieDaLente(serie, lente)}
         mes={mes}

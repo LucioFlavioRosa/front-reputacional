@@ -334,7 +334,7 @@ export function ListaDeMaterias({
                   <div role="cell" style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                       <SeloDeSentimento sentimento={item.sentimento} />
-                      <SeloDeTier tier={item.tier} />
+                      <SeloDeTier tier={item.tier} sobreDestaque={destacado} />
                     </div>
                     <div id={idDoTitulo} style={{ fontSize: 15, lineHeight: 1.4, color: 'var(--cinza-4)' }}>
                       {item.titulo}

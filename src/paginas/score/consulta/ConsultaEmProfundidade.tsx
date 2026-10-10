@@ -14,12 +14,14 @@
  *  `corrigido` para ele), e porque o efeito só roda quando o texto do
  *  endereço corrigido muda e o hash ainda não é ele.
  *
- *  AO TROCAR DE NÍVEL OU DE NÓ (A5), e só então, a janela rola até o topo do
- *  bloco, logo abaixo do cabeçalho e da faixa de filtros fixos, e o foco vai
- *  para o `h2` do nível. Não no primeiro render (abrir o bloco não pula a
- *  tela), não quando só mudam `sent`, `ordem` ou filtros (a pessoa está
- *  mexendo na lista) e não quando o endereço tem `item`: aí é a lista que
- *  rola até a linha (F.9).
+ *  AO TROCAR DE NÍVEL OU DE NÓ NA MESMA LENTE (A5), ou quando a busca do
+ *  cabeçalho pede foco (A6, `navegarNoDrill(…, { focar: true })`), a janela
+ *  rola até o topo do bloco, logo abaixo do cabeçalho e da faixa de filtros
+ *  fixos, e o foco vai para o `h2` do nível. Não no primeiro render sem
+ *  pedido (abrir o bloco à mão ou recarregar não pula a tela), não ao trocar
+ *  a aba da lente, não quando só mudam `sent`, `ordem` ou filtros (a pessoa
+ *  está mexendo na lista) e, com `item` no endereço, só o foco: é a lista
+ *  que rola até a linha (F.9).
  *
  *  O MODAL DE PRÉVIA MORA AQUI, e não em cada nível: cartões laterais e lista
  *  de matérias abrem a mesma prévia, e o botão que abriu recebe o foco de
@@ -46,7 +48,7 @@ import { NivelLente } from './niveis/NivelLente';
 import { NivelPilar } from './niveis/NivelPilar';
 import { NivelSubtema } from './niveis/NivelSubtema';
 import { NivelTema } from './niveis/NivelTema';
-import { navegarNoDrill, useEnderecoDoDrill } from './useEnderecoDoDrill';
+import { atenderPedidoDeFoco, navegarNoDrill, useEnderecoDoDrill, usePedidoDeFoco } from './useEnderecoDoDrill';
 
 interface PreviaAberta {
   alvo: AlvoDaPrevia;
@@ -86,17 +88,38 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
   const refDoTitulo = useRef<HTMLHeadingElement>(null);
   const anterior = useRef({ nivel: chaveDoNivel, lente: caminho.lente.id });
   const idDaLente = caminho.lente.id;
+  const pedidoDeFoco = usePedidoDeFoco();
   useEffect(() => {
     const antes = anterior.current;
-    if (antes.nivel === chaveDoNivel) return;
     anterior.current = { nivel: chaveDoNivel, lente: idDaLente };
+    // A BUSCA DO CABEÇALHO PEDE FOCO (A6): rola e foca também na montagem
+    // (o bloco abriu agora) e quando a lente muda junto. `pedidoDeFoco` está
+    // nas dependências para o efeito rodar também quando o pedido é para a
+    // tela que já está aberta.
+    const pedido = atenderPedidoDeFoco();
     // TROCAR A ABA DA LENTE NÃO É DESCER NO DRILL: a pessoa está no topo da
     // página, nas abas, e levá-la até o bloco seria um salto que ela não
-    // pediu (A4: trocar de lente só volta ao Nível 1).
-    if (antes.lente !== idDaLente) return;
+    // pediu (A4: trocar de lente só volta ao Nível 1). Montar sem pedido
+    // (abrir o bloco à mão, recarregar) também não rola.
+    const desceuNaMesmaLente = antes.nivel !== chaveDoNivel && antes.lente === idDaLente;
+    if (!pedido && !desceuNaMesmaLente) return;
     if (!temItem && refDoBloco.current) rolarAteOTopoDoBloco(refDoBloco.current);
     refDoTitulo.current?.focus({ preventScroll: true });
-  }, [chaveDoNivel, idDaLente, temItem]);
+  }, [chaveDoNivel, idDaLente, temItem, pedidoDeFoco]);
+
+  // --- Restauração de rolagem do navegador --------------------------------
+  // MANUAL ENQUANTO O DRILL ESTÁ NA TELA: no voltar e no avançar, o navegador
+  // restaurava a posição antiga da entrada DEPOIS da rolagem da A5, e o
+  // título focado ficava fora da janela ou sob o cabeçalho fixo. As entradas
+  // criadas com o drill montado herdam o modo; ao desmontar, o modo anterior
+  // volta para a entrada atual.
+  useEffect(() => {
+    const antes = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => {
+      window.history.scrollRestoration = antes;
+    };
+  }, []);
 
   // --- Modal de prévia ----------------------------------------------------
   const [previa, definirPrevia] = useState<PreviaAberta | null>(null);
@@ -152,7 +175,12 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
         }}
       >
         <Trilha caminho={caminho} aoIr={descer} />
-        <IndicadorDeNivel nivel={nivel} aviso={DADOS.meta.aviso} />
+        {/* SEMPRE À DIREITA (E.3.4), mesmo quando a trilha longa do Nível 4
+            o empurra para a linha de baixo: sozinho na linha, o
+            `space-between` o deixaria colado à esquerda. */}
+        <div style={{ marginLeft: 'auto' }}>
+          <IndicadorDeNivel nivel={nivel} aviso={DADOS.meta.aviso} />
+        </div>
       </div>
 
       {/* UM LIMITE PARA O NÍVEL INTEIRO, além dos de cada bloco: uma conta

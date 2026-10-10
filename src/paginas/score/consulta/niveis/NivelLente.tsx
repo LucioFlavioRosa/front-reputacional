@@ -9,9 +9,14 @@
  *  único título do Nível 1, e por isso é o `h2` focável que recebe o foco ao
  *  voltar para cá.
  *
- *  A LATERAL DESCE SOZINHA abaixo de ~1180px: tabela `flex: 999 1 760px` e
- *  coluna `flex: 1 1 380px` numa linha com quebra (760 + 20 + 380 = 1160px
- *  de mínimo), sem media query.
+ *  A LATERAL DESCE SOZINHA quando falta largura para as duas colunas: tabela
+ *  `flex: 999 1 840px` e coluna `flex: 1 1 380px` numa linha com quebra
+ *  (840 + 20 + 380 = 1240px de mínimo), sem media query. OS 840px NÃO SÃO
+ *  ARBITRÁRIOS: a tabela tem `min-width: 820px` e rola por dentro abaixo
+ *  disso. Com 760px, em 1280px com a barra de rolagem vertical do navegador
+ *  (1199px úteis), ela ficava com 799px e rolava na horizontal, cortando a
+ *  coluna da seta. Descida, a lateral põe os cartões lado a lado
+ *  (`CartoesLaterais`), em vez de dois cartões da largura inteira.
  *
  *  NO MERCADO (`drill: false`) nenhum pilar é navegável (C.3): a tabela sai
  *  sem setas e sem link, e os cartões são os do JSON (`divergentes`,
@@ -42,7 +47,7 @@ export function NivelLente({
 }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 20 }}>
-      <div style={{ flex: '999 1 760px', minWidth: 0 }}>
+      <div style={{ flex: '999 1 840px', minWidth: 0 }}>
         <LimiteDoBloco nome="Tabela de pilares" chaveDeReinicio={chaveDeReinicio}>
           <TabelaDeImpacto
             titulo={lente.tabelaPilares.titulo}

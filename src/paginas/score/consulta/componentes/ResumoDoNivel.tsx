@@ -106,6 +106,8 @@ export function ResumoDoNivel({
               fontWeight: 800,
               lineHeight: 1.2,
               color: 'var(--cor-dos-titulos, var(--azul-mar))',
+              // Linhas equilibradas: sem uma palavra sozinha na segunda linha.
+              textWrap: 'balance',
             }}
           >
             {titulo}

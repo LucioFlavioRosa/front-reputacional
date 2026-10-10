@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConsultaEmProfundidade } from './ConsultaEmProfundidade';
 import { DADOS } from './dados/dados';
-import { navegarNoDrill } from './useEnderecoDoDrill';
+import { atenderPedidoDeFoco, navegarNoDrill } from './useEnderecoDoDrill';
 
 vi.mock('@/observabilidade/telemetria', () => ({ registrarErro: vi.fn() }));
 
@@ -44,6 +44,8 @@ let rolar: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   irPara('');
+  // Nenhum pedido de foco de outro teste fica pendente.
+  atenderPedidoDeFoco();
   rolar = vi.fn();
   window.scrollTo = rolar as unknown as typeof window.scrollTo;
 });
@@ -148,7 +150,10 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     expect(screen.getByRole('button', { name: 'Negativas 71' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Data' })).toHaveAttribute('aria-pressed', 'true');
     expect(linhasDaLista()).toHaveLength(9);
-  });
+    // O ROTEIRO INTEIRO NUM TESTE SÓ passa dos 5s padrão na suíte cheia (o
+    // jsdom divide a máquina com os outros arquivos): tempo próprio, como os
+    // outros testes longos do repositório.
+  }, 20_000);
 
   it('passo 17: endereço profundo direto abre o Nível 4 de Fiscalização regulatória com 7 linhas, sem rolar', () => {
     irPara('#consulta&lente=imprensa&pilar=governanca&tema=contratos-regulacao&subtema=fiscalizacao-regulatoria');
@@ -222,6 +227,55 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     } finally {
       faixa.remove();
     }
+  });
+
+  it('montar com pedido de foco da busca (A6) rola até o bloco e foca o título do nível', () => {
+    navegarNoDrill(
+      { ativo: true, lente: 'imprensa', pilar: 'governanca', tema: 'contratos-regulacao', subtema: 'fiscalizacao-regulatoria' },
+      'replace',
+      { focar: true },
+    );
+    render(<ConsultaEmProfundidade lente="imprensa" />);
+    expect(rolar).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Fiscalização regulatória' })).toHaveFocus();
+  });
+
+  it('trocar de lente sem pedido não rola; com o pedido da busca (Mercado → Imprensa), rola e foca', () => {
+    irPara('#consulta&lente=mercado');
+    const { rerender } = render(<ConsultaEmProfundidade lente="mercado" />);
+    // HASH E PROP NO MESMO RENDER, como o Score faz (a lente sai do hash):
+    // separados, a raiz veria um hash de outra lente e o corrigiria.
+    const navegar = (lente: string, endereco: Parameters<typeof navegarNoDrill>[0], focar = false) =>
+      act(() => {
+        navegarNoDrill(endereco, focar ? 'push' : 'replace', { focar });
+        rerender(<ConsultaEmProfundidade lente={lente} />);
+      });
+    // A aba da lente: sem pedido.
+    navegar('imprensa', { ativo: true, lente: 'imprensa' });
+    expect(rolar).not.toHaveBeenCalled();
+    // A busca: do Mercado para um nível profundo da Imprensa.
+    navegar('mercado', { ativo: true, lente: 'mercado' });
+    navegar('imprensa', { ativo: true, lente: 'imprensa', pilar: 'governanca' }, true);
+    expect(screen.getByText(/Nível 2 de 4/)).toBeInTheDocument();
+    expect(rolar).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Governança' })).toHaveFocus();
+  });
+
+  it('pedir de novo a tela que já está aberta também rola e foca', () => {
+    irPara('#consulta&lente=imprensa&pilar=governanca');
+    render(<ConsultaEmProfundidade lente="imprensa" />);
+    expect(rolar).not.toHaveBeenCalled();
+    act(() => navegarNoDrill({ ativo: true, lente: 'imprensa', pilar: 'governanca' }, 'replace', { focar: true }));
+    expect(rolar).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Governança' })).toHaveFocus();
+  });
+
+  it('restauração de rolagem manual enquanto o drill está montado, e a anterior volta ao desmontar', () => {
+    window.history.scrollRestoration = 'auto';
+    const { unmount } = render(<ConsultaEmProfundidade lente="imprensa" />);
+    expect(window.history.scrollRestoration).toBe('manual');
+    unmount();
+    expect(window.history.scrollRestoration).toBe('auto');
   });
 
   it('voltar do navegador com a prévia aberta descarta a prévia', async () => {

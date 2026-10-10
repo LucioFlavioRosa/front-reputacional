@@ -108,15 +108,43 @@ async function abrir(page: Page, caminho: string): Promise<void> {
   await page.goto(caminho);
 }
 
-/** A página não rola na horizontal (Parte G, em todo passo). */
+/** A página não rola na horizontal (Parte G, em todo passo), e nenhum bloco
+ *  do drill com `overflow-x` rola por dentro: a tabela de pilares tem
+ *  `min-width` e um transbordo dela aparece só como barra no próprio cartão,
+ *  não na página. */
 async function semRolagemHorizontal(page: Page): Promise<void> {
   const { largura, janela } = await page.evaluate(() => ({
     largura: document.documentElement.scrollWidth,
-    janela: window.innerWidth,
+    janela: document.documentElement.clientWidth,
   }));
-  expect(largura, `rolagem horizontal: scrollWidth ${largura} > innerWidth ${janela}`).toBeLessThanOrEqual(
+  expect(largura, `rolagem horizontal: scrollWidth ${largura} > clientWidth ${janela}`).toBeLessThanOrEqual(
     janela,
   );
+  const transbordos = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('[data-consulta-profundidade] *')]
+      .filter((el) => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX))
+      .filter((el) => el.scrollWidth > el.clientWidth)
+      .map((el) => `${el.tagName} ${el.scrollWidth} > ${el.clientWidth}`),
+  );
+  expect(transbordos, 'bloco do drill rolando na horizontal').toEqual([]);
+}
+
+/** A pessoa VÊ o nível que escolheu (A5, A6): o título está dentro da
+ *  janela, abaixo do cabeçalho fixo, e tem o foco. */
+async function conferirTituloNaJanela(titulo: Locator, descricao: string): Promise<void> {
+  await expect(titulo).toBeFocused();
+  const { topo, base, cabecalho, janela } = await titulo.evaluate((el) => {
+    const caixa = el.getBoundingClientRect();
+    return {
+      topo: caixa.top,
+      base: caixa.bottom,
+      cabecalho:
+        Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--altura-cabecalho')) || 0,
+      janela: window.innerHeight,
+    };
+  });
+  expect(topo, `${descricao}: título abaixo do cabeçalho fixo (${cabecalho}px)`).toBeGreaterThanOrEqual(cabecalho);
+  expect(base, `${descricao}: título dentro da janela (${janela}px)`).toBeLessThanOrEqual(janela);
 }
 
 /** Tira a captura PARA A MEMÓRIA, sem gravar (ver `gravar`), depois de
@@ -135,7 +163,10 @@ async function fotografar(page: Page, { paginaInteira = true } = {}): Promise<Bu
     await document.fonts.ready;
   });
   await semRolagemHorizontal(page);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  // SÓ A PÁGINA INTEIRA VOLTA AO TOPO: na captura da janela (modal aberto),
+  // rolar ao topo mostraria o modal sobre a Jornada, longe da lista de onde
+  // ele abriu.
+  if (paginaInteira) await page.evaluate(() => window.scrollTo(0, 0));
   return page.screenshot({ fullPage: paginaInteira });
 }
 
@@ -398,6 +429,7 @@ test('roteiro G, passos 1 a 12: a descida da Imprensa, a história e a busca', a
   await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
   await conferirNivel(page, 4);
   await expect(tituloDoNivel(page, 'Rompimento de adutora')).toBeVisible();
+  await conferirTituloNaJanela(tituloDoNivel(page, 'Rompimento de adutora'), 'passo 11');
   expect(new URL(page.url()).hash).toBe(
     '#consulta&lente=imprensa&pilar=eficiencia-operacional&tema=abastecimento-agua&subtema=rompimento-adutora',
   );
@@ -416,6 +448,7 @@ test('roteiro G, passos 1 a 12: a descida da Imprensa, a história e a busca', a
   await expect(page).toHaveURL(/subtema=fiscalizacao-regulatoria/);
   await conferirNivel(page, 4);
   await expect(tituloDoNivel(page, 'Fiscalização regulatória')).toBeVisible();
+  await conferirTituloNaJanela(tituloDoNivel(page, 'Fiscalização regulatória'), 'passo 12');
   await expect(linhasDaLista(page)).toHaveCount(7);
   await capturar(page, '12-busca-fiscalizacao', vigias);
 });
@@ -542,6 +575,153 @@ test('roteiro G, passo 19: Mercado com pilar no endereço fica no Nível 1', asy
   await conferirNivel1DoMercado(page);
   await expect.poll(() => new URL(page.url()).hash).toBe('#consulta&lente=mercado');
   await capturar(page, '19-mercado-com-pilar-no-endereco', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Navegação: busca com o bloco fechado, voltar entre lentes, aba ativa
+// ---------------------------------------------------------------------------
+
+/** Registra cada `pushState`/`replaceState` da página em `window.registro`. */
+async function registrarHistoria(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const registro: string[] = [];
+    (window as unknown as { registro: string[] }).registro = registro;
+    for (const nome of ['pushState', 'replaceState'] as const) {
+      const original = history[nome].bind(history);
+      history[nome] = (dado: unknown, titulo: string, url?: string | URL | null) => {
+        registro.push(`${nome === 'pushState' ? 'push' : 'replace'} ${String(url)}`);
+        original(dado, titulo, url);
+      };
+    }
+  });
+}
+
+async function registroDaHistoria(page: Page): Promise<string[]> {
+  return page.evaluate(() => [...(window as unknown as { registro: string[] }).registro]);
+}
+
+test('A6: a busca abre o bloco e mostra o nível escolhido, vindo da Visão geral ou do Mercado', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  const titulo = tituloDoNivel(page, 'Rompimento de adutora');
+
+  // Da Visão geral.
+  await abrir(page, '/score/geral');
+  await busca(page).click();
+  await busca(page).fill('adutora');
+  await expect(page.getByRole('group', { name: 'Consulta em profundidade · Subtema' })).toBeVisible();
+  await busca(page).press('Enter');
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel(page, 4);
+  await conferirTituloNaJanela(titulo, 'da Visão geral');
+
+  // Das Lentes com o bloco fechado, no Mercado.
+  await abrir(page, '/score/lentes');
+  await abaDaLente(page, 'Mercado').click();
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'false');
+  await busca(page).click();
+  await busca(page).fill('adutora');
+  await expect(page.getByRole('group', { name: 'Consulta em profundidade · Subtema' })).toBeVisible();
+  await busca(page).press('Enter');
+  await expect(abaDaLente(page, 'Imprensa')).toHaveAttribute('aria-selected', 'true');
+  await conferirNivel(page, 4);
+  await conferirTituloNaJanela(titulo, 'do Mercado com o bloco fechado');
+
+  expect(api.naoGravadas).toEqual([]);
+  expect(problemas).toEqual([]);
+});
+
+test('voltar do navegador depois de trocar de lente volta à lente e ao nível, sem regravar a história', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  await registrarHistoria(page);
+  await abrir(page, '/score/lentes');
+  await botaoDoDrill(page).click();
+  await linhaDaTabela(page, 'Eficiência Operacional e Qualidade').click();
+  await conferirNivel(page, 2);
+  const enderecoDoNivel2 = new URL(page.url()).hash;
+  await linhaDaTabela(page, 'Abastecimento de água').click();
+  await conferirNivel(page, 3);
+
+  // A ABA DA LENTE SUBSTITUI a entrada do Nível 3 (A4: replace), então
+  // voltar leva à entrada anterior, a do Nível 2 da Imprensa.
+  await abaDaLente(page, 'Mercado').click();
+  await conferirNivel1DoMercado(page);
+  expect(new URL(page.url()).hash).toBe('#consulta&lente=mercado');
+
+  const antes = (await registroDaHistoria(page)).length;
+  await page.goBack();
+  await expect(abaDaLente(page, 'Imprensa')).toHaveAttribute('aria-selected', 'true');
+  await conferirNivel(page, 2);
+  expect(new URL(page.url()).hash).toBe(enderecoDoNivel2);
+  expect((await registroDaHistoria(page)).slice(antes), 'voltar não regrava a história').toEqual([]);
+
+  // E avançar devolve o Mercado.
+  await page.goForward();
+  await expect(abaDaLente(page, 'Mercado')).toHaveAttribute('aria-selected', 'true');
+  expect(new URL(page.url()).hash).toBe('#consulta&lente=mercado');
+
+  expect(api.naoGravadas).toEqual([]);
+  expect(problemas).toEqual([]);
+});
+
+test('voltar do navegador com a página rolada deixa o título do nível à vista (A5)', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  await abrir(page, '/score/lentes');
+  await botaoDoDrill(page).click();
+  await linhaDaTabela(page, 'Eficiência Operacional e Qualidade').click();
+  await linhaDaTabela(page, 'Abastecimento de água').click();
+  await drillDe(page).getByRole('button', { name: 'Ver as 96 matérias' }).click();
+  await conferirNivel(page, 4);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+  await page.goBack();
+  await conferirNivel(page, 3);
+  await conferirTituloNaJanela(tituloDoNivel(page, 'Abastecimento de água'), 'voltar ao Nível 3');
+
+  await page.goBack();
+  await conferirNivel(page, 2);
+  await conferirTituloNaJanela(tituloDoNivel(page, 'Eficiência Operacional e Qualidade'), 'voltar ao Nível 2');
+
+  await page.goForward();
+  await conferirNivel(page, 3);
+  await conferirTituloNaJanela(tituloDoNivel(page, 'Abastecimento de água'), 'avançar ao Nível 3');
+
+  expect(api.naoGravadas).toEqual([]);
+  expect(problemas).toEqual([]);
+});
+
+test('clicar na aba ativa ou em "Lentes" no cabeçalho não tira o drill do nível', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  await abrir(page, `/score/lentes${ENDERECO_DA_FISCALIZACAO}`);
+  await conferirNivel(page, 4);
+  const historia = await page.evaluate(() => history.length);
+
+  await abaDaLente(page, 'Imprensa').click();
+  await conferirNivel(page, 4);
+  expect(new URL(page.url()).hash).toBe(ENDERECO_DA_FISCALIZACAO);
+
+  await page.getByRole('button', { name: 'Lentes', exact: true }).click();
+  await conferirNivel(page, 4);
+  expect(new URL(page.url()).hash).toBe(ENDERECO_DA_FISCALIZACAO);
+  expect(await page.evaluate(() => history.length)).toBe(historia);
+
+  expect(api.naoGravadas).toEqual([]);
+  expect(problemas).toEqual([]);
 });
 
 // ---------------------------------------------------------------------------

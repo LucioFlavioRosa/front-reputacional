@@ -33,7 +33,7 @@ import { CadeiaDaAgenda } from '@/componentes/CadeiaDaAgenda';
 import type { Eu } from '@/dominio/tipos';
 import { Layout } from '@/componentes/Layout';
 import { useNavegacao } from '@/navegacao/useNavegacao';
-import { nomeDaTela } from '@/navegacao/rota';
+import { caminhoDe, nomeDaTela } from '@/navegacao/rota';
 import type { Destino } from '@/navegacao/rota';
 
 export function App() {
@@ -165,7 +165,15 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
   //: A ABA ENTRA NA ROTA porque as telas do Score viraram a barra de cima
   //: daquela divisão: uma barra cujos itens não são endereços não se
   //: compartilha, não volta no histórico e não recarrega onde estava.
-  const irParaDestino = (destino: Destino, aba?: string) => irPara({ destino, aba });
+  //:
+  //: A ABA DO SCORE QUE JÁ ESTÁ ABERTA NÃO NAVEGA: clicar em "Lentes" estando
+  //: nas Lentes empilhava `/score/lentes` sem o hash do drill da Consulta em
+  //: profundidade, que caía para o Nível 1 e perdia a entrada da história.
+  //: Só no Score, para não mudar o que as outras divisões fazem.
+  const irParaDestino = (destino: Destino, aba?: string) => {
+    if (destino === 'score' && rota.destino === 'score' && caminhoDe({ destino, aba }) === caminhoDe(rota)) return;
+    irPara({ destino, aba });
+  };
   const abrirAgenda = (id: string) =>
     irPara({ destino: 'base', agenda: id, sobre: 'ficha' });
 

@@ -66,7 +66,13 @@ export function CartaoDoDrill({
           marginBottom: children ? 16 : 0,
         }}
       >
-        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+        {/* O TEXTO CEDE, O PNG FICA NO CANTO SUPERIOR DIREITO: com base de
+            320px, nos cartões laterais (380px, 338px úteis) o texto e o PNG
+            não cabiam na mesma linha, e a quebra jogava o PNG para o meio do
+            cartão, entre o kicker e o conteúdo. Com 200px, 200 + 16 + o PNG
+            cabem; a quebra só acontece em cartão muito estreito ou com uma
+            ação larga ao lado (o botão do cartão de recortes). */}
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           {kicker && titulo ? (
             <div className="kicker" style={estiloDoKicker}>
               {kicker}
@@ -94,6 +100,9 @@ export function CartaoDoDrill({
                 fontWeight: 700,
                 lineHeight: 1.3,
                 color: 'var(--cor-dos-titulos, var(--azul-mar))',
+                // Linhas equilibradas: o número que fecha o título ("3,1")
+                // não fica sozinho na segunda linha.
+                textWrap: 'balance',
               }}
             >
               {titulo}

@@ -42,7 +42,7 @@ import { DADOS } from '@/paginas/score/consulta/dados/dados';
 import { buscarNoDrill, montarIndiceDeBusca } from '@/paginas/score/consulta/dados/seletores';
 import type { ResultadoDeBusca } from '@/paginas/score/consulta/dados/seletores';
 import type { EnderecoDoDrill } from '@/paginas/score/consulta/endereco';
-import { corDoSinal, fmtPt } from '@/paginas/score/consulta/formatacao';
+import { arred, corDoSinal, fmtPt, fmtPtItem } from '@/paginas/score/consulta/formatacao';
 
 export function BuscaDoRadar({
   mes,
@@ -333,6 +333,18 @@ function mensagemSemResultado(termo: string, carregou: boolean, comDrill: boolea
  *  Matéria), na ordem que `buscarNoDrill` já devolve. As opções continuam na
  *  MESMA LISTA (`role="listbox"`) das sugestões reais: o índice de cada uma é
  *  `deslocamento + posição`, e é ele que as setas e o `Enter` usam. */
+//: O IMPACTO DE UMA MATÉRIA COM 2 CASAS, como na lista do Nível 4 e na
+//: prévia (E.2, F.8, F.9): com 1 casa, −0,06 e −0,12 sairiam os dois "−0,1
+//: pt", e a mesma matéria teria três números na tela. Pilar, tema e subtema
+//: seguem com 1 casa. A cor é a do número ESCRITO, como no resto do drill.
+function casasDoImpacto(resultado: ResultadoDeBusca): number {
+  return resultado.tipo === 'Matéria' ? 2 : 1;
+}
+
+function textoDoImpacto(resultado: ResultadoDeBusca, impacto: number): string {
+  return resultado.tipo === 'Matéria' ? `${fmtPtItem(impacto)} pt` : fmtPt(impacto);
+}
+
 function GrupoDaConsulta({
   idBase,
   doDrill,
@@ -442,10 +454,10 @@ function GrupoDaConsulta({
                       fontSize: 12.5,
                       fontWeight: 700,
                       whiteSpace: 'nowrap',
-                      color: corDoSinal(resultado.impacto),
+                      color: corDoSinal(arred(resultado.impacto, casasDoImpacto(resultado))),
                     }}
                   >
-                    {fmtPt(resultado.impacto)}
+                    {textoDoImpacto(resultado, resultado.impacto)}
                   </span>
                 ) : (
                   <span />

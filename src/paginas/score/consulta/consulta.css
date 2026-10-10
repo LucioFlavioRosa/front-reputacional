@@ -15,6 +15,18 @@
   color: var(--azul-mar-sombra);
 }
 
+/* LINK EM ITEM DE LISTA (os nomes de pilar do "O que mudou desde julho"): sem
+   sublinhado em repouso; ele volta no hover e no foco. O componente tira o
+   sublinhado inline para esta regra valer. */
+.consulta-link--lista {
+  text-decoration: none;
+}
+.consulta-link--lista:hover,
+.consulta-link--lista:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .consulta-botao-primario {
   background: var(--azul-mar);
   color: var(--branco);

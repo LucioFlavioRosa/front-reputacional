@@ -164,7 +164,10 @@ function LinhaDeImpacto({
       style={{
         ...LINHA,
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.1fr)',
+        // O RÓTULO COM MAIS ESPAÇO QUE A BARRA: nomes de pilar longos
+        // ("Responsabilidade Ambiental") quebravam em duas linhas no cartão
+        // de 380px, e a barra não perde leitura por ser um pouco mais curta.
+        gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr)',
         alignItems: 'center',
         gap: 12,
       }}
@@ -192,7 +195,18 @@ function OQueMudou({ cartao, lente, aoIr }: { cartao: De<'oQueMudou'>; lente: Le
         {cartao.linhas.map((linha) => {
           const pilar = pilarNavegavelPeloNome(lente, linha.rotulo);
           const rotulo = pilar ? (
-            <LinkDoDrill destino={enderecoDoPilar(lente, pilar)} aoIr={aoIr} estilo={{ fontWeight: 500 }}>
+            // SEM SUBLINHADO EM REPOUSO: são itens de lista, não um link no
+            // meio de texto corrido, e sete nomes azuis sublinhados pesavam
+            // mais que as barras e os valores, que são o conteúdo do cartão.
+            // O azul basta como sinal; o sublinhado volta no hover e no foco
+            // (`.consulta-link--lista` em `consulta.css`). `undefined` tira o
+            // sublinhado inline do link, que venceria o `:hover` da classe.
+            <LinkDoDrill
+              destino={enderecoDoPilar(lente, pilar)}
+              aoIr={aoIr}
+              className="consulta-link--lista"
+              estilo={{ fontWeight: 500, textDecoration: undefined }}
+            >
               {linha.rotulo}
             </LinkDoDrill>
           ) : (
@@ -586,7 +600,20 @@ export function CartoesLaterais(props: Props) {
   const { lente } = props;
   if (lente.cartoesLaterais.length === 0) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    // UMA COLUNA AO LADO DA TABELA, LADO A LADO QUANDO DESCEM: com a coluna
+    // estreita (380px) cabe um cartão por linha; quando a lateral desce para
+    // baixo da tabela (largura inteira), os cartões dividem a linha em vez de
+    // virarem dois cartões de 1.200px empilhados. `start`: cada cartão com a
+    // própria altura.
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
+        alignItems: 'start',
+        gap: 20,
+        minWidth: 0,
+      }}
+    >
       {lente.cartoesLaterais.map((cartao, i) => (
         <CartaoLateralDoTipo key={`${cartao.tipo}-${i}`} {...props} cartao={cartao} />
       ))}
