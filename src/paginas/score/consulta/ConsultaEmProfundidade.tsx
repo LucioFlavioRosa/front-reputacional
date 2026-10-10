@@ -1,0 +1,174 @@
+/** Consulta em profundidade: a raiz do drill, montada dentro do bloco
+ *  expansível "Drill down" da aba Lentes (decisões A1 e D2).
+ *
+ *  O ENDEREÇO É A ÚNICA FONTE DA VERDADE (A3): o nível, o nó e os filtros da
+ *  lista saem do hash (`useEnderecoDoDrill`), resolvidos contra a base com a
+ *  LENTE DA ABA (A4). Descer e subir de nível faz `pushState`; filtros da
+ *  lista e correção de endereço inválido fazem `replaceState`. Por isso
+ *  recarregar, voltar e avançar do navegador reabrem exatamente a mesma tela.
+ *
+ *  ENDEREÇO QUE NÃO É O CANÔNICO É CORRIGIDO COM `replace` (D.2, A20), num
+ *  efeito: chamar `history` não é `setState`, e a correção dispara o evento
+ *  do endereço, que faz o hook reler o hash. Não entra em laço porque o
+ *  canônico do canônico é ele mesmo (`resolverCaminho` não devolve
+ *  `corrigido` para ele), e porque o efeito só roda quando o texto do
+ *  endereço corrigido muda e o hash ainda não é ele.
+ *
+ *  AO TROCAR DE NÍVEL OU DE NÓ (A5), e só então, a janela rola até o topo do
+ *  bloco, logo abaixo do cabeçalho e da faixa de filtros fixos, e o foco vai
+ *  para o `h2` do nível. Não no primeiro render (abrir o bloco não pula a
+ *  tela), não quando só mudam `sent`, `ordem` ou filtros (a pessoa está
+ *  mexendo na lista) e não quando o endereço tem `item`: aí é a lista que
+ *  rola até a linha (F.9).
+ *
+ *  O MODAL DE PRÉVIA MORA AQUI, e não em cada nível: cartões laterais e lista
+ *  de matérias abrem a mesma prévia, e o botão que abriu recebe o foco de
+ *  volta ao fechar (F.8, A8). Trocar de nível com o modal aberto (o voltar do
+ *  navegador) o descarta, porque a prévia guarda a chave do nível em que
+ *  abriu.
+ */
+
+import { useEffect, useRef, useState } from 'react';
+
+import type { AlvoDaPrevia } from './componentes/apoioDosCartoes';
+import { CabecalhoDoDrill } from './componentes/CabecalhoDoDrill';
+import { IndicadorDeNivel } from './componentes/IndicadorDeNivel';
+import { LimiteDoBloco } from './componentes/LimiteDoBloco';
+import { ModalDePrevia } from './componentes/ModalDePrevia';
+import { Trilha } from './componentes/Trilha';
+import { DADOS } from './dados/dados';
+import { resolverCaminho } from './dados/seletores';
+import { escreverEndereco, lerEndereco } from './endereco';
+import type { EnderecoDoDrill } from './endereco';
+import { enderecoDoNivel, rolarAteOTopoDoBloco } from './niveis/apoioDosNiveis';
+import type { AcoesDoNivel } from './niveis/apoioDosNiveis';
+import { NivelLente } from './niveis/NivelLente';
+import { NivelPilar } from './niveis/NivelPilar';
+import { NivelSubtema } from './niveis/NivelSubtema';
+import { NivelTema } from './niveis/NivelTema';
+import { navegarNoDrill, useEnderecoDoDrill } from './useEnderecoDoDrill';
+
+interface PreviaAberta {
+  alvo: AlvoDaPrevia;
+  /** O botão que abriu: recebe o foco de volta ao fechar. */
+  botao: HTMLElement | null;
+  /** A chave do nível em que a prévia abriu. */
+  nivel: string;
+}
+
+function descer(endereco: EnderecoDoDrill) {
+  navegarNoDrill(endereco, 'push');
+}
+
+export function ConsultaEmProfundidade({ lente }: { lente: string }) {
+  const endereco = useEnderecoDoDrill();
+  const caminho = resolverCaminho(DADOS, lente, endereco);
+
+  // O ENDEREÇO DA TELA, já canônico: é dele que a lista do Nível 4 lê os
+  // filtros, e é ele a chave de reinício dos limites de erro (um bloco que
+  // quebrou tenta de novo quando a tela muda).
+  const enderecoDaTela: EnderecoDoDrill = caminho.corrigido ?? (endereco.ativo ? endereco : enderecoDoNivel(caminho));
+  const chaveDaTela = escreverEndereco(enderecoDaTela);
+  // A CHAVE DO NÍVEL ignora os filtros da lista: muda só quando muda o nível
+  // ou o nó (A5).
+  const chaveDoNivel = escreverEndereco(enderecoDoNivel(caminho));
+  const temItem = enderecoDaTela.item !== undefined;
+
+  // --- Correção do endereço (D.2, A20) ------------------------------------
+  const textoCorrigido = caminho.corrigido ? escreverEndereco(caminho.corrigido) : '';
+  useEffect(() => {
+    if (!textoCorrigido || window.location.hash === textoCorrigido) return;
+    navegarNoDrill(lerEndereco(textoCorrigido), 'replace');
+  }, [textoCorrigido]);
+
+  // --- Rolagem e foco ao trocar de nível (A5) -----------------------------
+  const refDoBloco = useRef<HTMLDivElement>(null);
+  const refDoTitulo = useRef<HTMLHeadingElement>(null);
+  const anterior = useRef({ nivel: chaveDoNivel, lente: caminho.lente.id });
+  const idDaLente = caminho.lente.id;
+  useEffect(() => {
+    const antes = anterior.current;
+    if (antes.nivel === chaveDoNivel) return;
+    anterior.current = { nivel: chaveDoNivel, lente: idDaLente };
+    // TROCAR A ABA DA LENTE NÃO É DESCER NO DRILL: a pessoa está no topo da
+    // página, nas abas, e levá-la até o bloco seria um salto que ela não
+    // pediu (A4: trocar de lente só volta ao Nível 1).
+    if (antes.lente !== idDaLente) return;
+    if (!temItem && refDoBloco.current) rolarAteOTopoDoBloco(refDoBloco.current);
+    refDoTitulo.current?.focus({ preventScroll: true });
+  }, [chaveDoNivel, idDaLente, temItem]);
+
+  // --- Modal de prévia ----------------------------------------------------
+  const [previa, definirPrevia] = useState<PreviaAberta | null>(null);
+  // AJUSTE DURANTE O RENDER, e não num efeito (padrão do React para estado
+  // que depende de outro valor): a prévia de outro nível é descartada, e não
+  // só escondida, para não reaparecer quando o avançar do navegador trouxer
+  // aquele nível de volta.
+  if (previa && previa.nivel !== chaveDoNivel) definirPrevia(null);
+  const previaVisivel = previa && previa.nivel === chaveDoNivel ? previa : null;
+  const acoes: AcoesDoNivel = {
+    aoIr: descer,
+    aoAbrirItem: (item, botao) => definirPrevia({ alvo: { tipo: 'item', item }, botao, nivel: chaveDoNivel }),
+    aoAbrirPost: (post, titulo, botao) =>
+      definirPrevia({ alvo: { tipo: 'post', post, titulo }, botao, nivel: chaveDoNivel }),
+  };
+
+  const { lente: lenteDoCaminho, pilar, tema, subtema, nivel } = caminho;
+  const comum = { refDoTitulo, chaveDeReinicio: chaveDaTela };
+
+  let conteudoDoNivel;
+  if (nivel === 4 && pilar && tema && subtema) {
+    conteudoDoNivel = (
+      <NivelSubtema
+        {...comum}
+        lente={lenteDoCaminho}
+        pilar={pilar}
+        tema={tema}
+        subtema={subtema}
+        endereco={enderecoDaTela}
+        aoIr={acoes.aoIr}
+        aoAbrirItem={acoes.aoAbrirItem}
+        aoMudarLista={(parcial) => navegarNoDrill({ ...enderecoDaTela, ...parcial }, 'replace')}
+      />
+    );
+  } else if (nivel === 3 && pilar && tema) {
+    conteudoDoNivel = <NivelTema {...comum} lente={lenteDoCaminho} pilar={pilar} tema={tema} aoIr={acoes.aoIr} />;
+  } else if (nivel === 2 && pilar) {
+    conteudoDoNivel = <NivelPilar {...comum} lente={lenteDoCaminho} pilar={pilar} aoIr={acoes.aoIr} />;
+  } else {
+    conteudoDoNivel = <NivelLente {...comum} {...acoes} lente={lenteDoCaminho} />;
+  }
+
+  return (
+    <div ref={refDoBloco} data-consulta-profundidade style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <CabecalhoDoDrill meta={DADOS.meta} />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px 20px',
+        }}
+      >
+        <Trilha caminho={caminho} aoIr={descer} />
+        <IndicadorDeNivel nivel={nivel} aviso={DADOS.meta.aviso} />
+      </div>
+
+      {/* UM LIMITE PARA O NÍVEL INTEIRO, além dos de cada bloco: uma conta
+          que falhe fora de um bloco (no próprio nível) também fica contida
+          aqui, sem derrubar a aba Lentes. */}
+      <LimiteDoBloco nome={`Nível ${nivel}`} chaveDeReinicio={chaveDaTela}>
+        {conteudoDoNivel}
+      </LimiteDoBloco>
+
+      {previaVisivel ? (
+        <ModalDePrevia
+          alvo={previaVisivel.alvo}
+          devolverFocoPara={previaVisivel.botao}
+          aoFechar={() => definirPrevia(null)}
+        />
+      ) : null}
+    </div>
+  );
+}

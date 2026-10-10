@@ -28,6 +28,9 @@ import { Abas } from '@/componentes/Abas';
 import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
 import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
 import { RecorteDaLente } from '@/paginas/score/RecorteDaLente';
+import { ConsultaEmProfundidade } from '@/paginas/score/consulta/ConsultaEmProfundidade';
+import { lerEndereco } from '@/paginas/score/consulta/endereco';
+import { EVENTO_DO_ENDERECO } from '@/paginas/score/consulta/useEnderecoDoDrill';
 import {
   Cartao,
   Carregando,
@@ -80,6 +83,19 @@ const LENTES = [
   { id: 'clientes', rotulo: 'Clientes' },
   { id: 'institucional', rotulo: 'Institucional' },
 ];
+
+//: AS LENTES QUE TÊM DRILL DOWN (decisão D2 da Consulta em profundidade): a
+//: Imprensa com os quatro níveis e o Mercado com o Nível 1. Nas outras três o
+//: bloco "Drill down" NÃO APARECE, em vez de aparecer vazio ou "em
+//: construção" — elas ficam para uma próxima rodada.
+const LENTES_COM_DRILL: readonly string[] = ['imprensa', 'mercado'];
+
+/** O endereço pede um nível abaixo do primeiro (há `pilar` no hash do drill).
+ *  É o que faz o bloco abrir sozinho (decisão A6). */
+function enderecoProfundo(): boolean {
+  const endereco = lerEndereco(window.location.hash);
+  return endereco.ativo && Boolean(endereco.pilar);
+}
 
 export function DossieDaLente({
   mes,
@@ -163,9 +179,38 @@ export function DossieDaLente({
   //: o resto da lente se divide em "Síntese executiva" (os gráficos de sempre)
   //: e "Drill down". AQUI, E NÃO DENTRO DE CADA BLOCO, para o que a pessoa abriu
   //: continuar aberto quando ela troca de lente ou de mês.
-  const [abertos, definirAbertos] = useState({ sintese: false, drill: false });
+  //:
+  //: O DRILL ABRE SOZINHO QUANDO O ENDEREÇO DESCE NELE (decisão A6), e fechar
+  //: à mão continua valendo. Duas entradas, nenhuma delas `setState` no corpo
+  //: de um efeito:
+  //:  - AO MONTAR (recarregar a página, voltar de outra aba), o estado já
+  //:    nasce aberto se o hash tem `pilar` (inicialização preguiçosa).
+  //:  - DEPOIS, ASSINANDO OS EVENTOS do endereço (`popstate` e
+  //:    `EVENTO_DO_ENDERECO`, que toda navegação programática dispara, como a
+  //:    da busca do cabeçalho): o handler abre o bloco se o novo endereço é
+  //:    profundo. O efeito só assina; quem muda o estado é o handler.
+  //: POR QUE NÃO DERIVAR DO ENDEREÇO (aberto = nível > 1): subir pela trilha
+  //: até o Nível 1 fecharia o bloco debaixo do clique, e depois de fechar à
+  //: mão uma busca nova não o reabriria. É a NAVEGAÇÃO que abre, não o nível.
+  const [abertos, definirAbertos] = useState(() => ({
+    sintese: false,
+    drill: enderecoProfundo(),
+  }));
   const alternar = (bloco: 'sintese' | 'drill') =>
     definirAbertos((atual) => ({ ...atual, [bloco]: !atual[bloco] }));
+
+  useEffect(() => {
+    const aoNavegar = () => {
+      if (!enderecoProfundo()) return;
+      definirAbertos((atual) => (atual.drill ? atual : { ...atual, drill: true }));
+    };
+    window.addEventListener('popstate', aoNavegar);
+    window.addEventListener(EVENTO_DO_ENDERECO, aoNavegar);
+    return () => {
+      window.removeEventListener('popstate', aoNavegar);
+      window.removeEventListener(EVENTO_DO_ENDERECO, aoNavegar);
+    };
+  }, []);
 
   return (
     <div
@@ -237,14 +282,16 @@ export function DossieDaLente({
         ) : null}
       </BlocoExpansivel>
 
-      <BlocoExpansivel
-        titulo="Drill down"
-        descricao="Do pilar ao tema e ao subtema, descendo até a menção."
-        aberto={abertos.drill}
-        aoAlternar={() => alternar('drill')}
-      >
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)' }}>Em construção.</p>
-      </BlocoExpansivel>
+      {LENTES_COM_DRILL.includes(lente) ? (
+        <BlocoExpansivel
+          titulo="Drill down"
+          descricao="Do pilar ao tema e ao subtema, descendo até a menção."
+          aberto={abertos.drill}
+          aoAlternar={() => alternar('drill')}
+        >
+          <ConsultaEmProfundidade lente={lente} />
+        </BlocoExpansivel>
+      ) : null}
     </div>
   );
 }

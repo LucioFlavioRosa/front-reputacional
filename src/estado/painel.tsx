@@ -94,15 +94,31 @@ export function ProvedorDoPainel({
     lerRecorte(window.location.search),
   );
 
+  //: O HASH VIAJA JUNTO. Ele é do drill da aba Lentes (`#consulta&…`, decisão
+  //: A3 da Consulta em profundidade), e regravar o endereço sem ele devolveria
+  //: o drill ao Nível 1 a cada ajuste da barra de filtros, em silêncio e sem
+  //: volta pelo navegador (é `replaceState`).
   const definirRecorte = useCallback((novo: Recorte) => {
     definirRecorteEstado(novo);
-    window.history.replaceState(null, '', window.location.pathname + consultaDe(novo));
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + consultaDe(novo) + window.location.hash,
+    );
   }, []);
 
   useEffect(function ouvirOBotaoDeVoltar() {
     // O caminho é escrito pela navegação; a consulta, aqui. Mas o botão de
     // voltar move os DOIS de uma vez — então este lado também precisa reler.
-    const aoVoltar = () => definirRecorteEstado(lerRecorte(window.location.search));
+    //
+    // SÓ TROCA O RECORTE QUANDO A CONSULTA MUDOU: voltar dentro do drill (que
+    // mexe só no hash) também dispara `popstate`, e um recorte novo, mesmo
+    // igual, rebuscaria a base inteira do CRM a cada voltar. Compara pela
+    // forma canônica (`consultaDe`), para a ordem dos parâmetros não contar.
+    const aoVoltar = () => {
+      const lido = lerRecorte(window.location.search);
+      definirRecorteEstado((atual) => (consultaDe(atual) === consultaDe(lido) ? atual : lido));
+    };
     window.addEventListener('popstate', aoVoltar);
     return () => window.removeEventListener('popstate', aoVoltar);
   }, []);

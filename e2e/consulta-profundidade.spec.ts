@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, test as testeBase } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { simularApi } from './apiSimulada.ts';
 import type { ApiSimulada } from './apiSimulada.ts';
@@ -10,9 +10,16 @@ import type { ApiSimulada } from './apiSimulada.ts';
 // -------------------------------------------------------------------------
 // CONSULTA EM PROFUNDIDADE · ponta a ponta
 //
-// Por enquanto, só a FUMAÇA: a aba Lentes abre na Imprensa com a API simulada,
-// o bloco "Drill down" existe e abre. O roteiro da Parte G da spec entra aqui
-// quando o drill existir.
+// O ROTEIRO DA PARTE G DA SPEC, adaptado pelas decisões de
+// `docs/consulta-profundidade/DECISOES.md`: o drill mora no bloco "Drill
+// down" da aba Lentes (A1), sem cartão da nota (D1: nenhum "42" de nota), só
+// na Imprensa (4 níveis) e no Mercado (Nível 1) (D2: os passos 13 a 15 viram
+// "o bloco não aparece" nas outras lentes), a busca é a do cabeçalho (D3) e
+// o estado vai no hash `#consulta&…` (A3).
+//
+// UMA CAPTURA POR PASSO em `docs/consulta-profundidade/qa/NN-descricao.png`,
+// gravada só se o passo passou (ver `gravar`). Em cada captura também se
+// confere que a página não rola na horizontal.
 //
 // QUALQUER `console.error`, `pageerror` ou aviso do React reprova, como pede a
 // Parte G: um aviso de chave (`key`) passa despercebido na tela e só aparece
@@ -24,6 +31,20 @@ const CAPTURAS = join(import.meta.dirname, '..', 'docs', 'consulta-profundidade'
 //: Avisos do React que chegam como `console.warn` (os de desenvolvimento do
 //: React 19 vêm quase todos por `console.error`, já coberto acima).
 const AVISO_DO_REACT = /react|warning:|\bkey\b/i;
+
+//: MENOS É U+2212 em todo texto de tela (E.2); o teste escreve o mesmo.
+const MENOS = '−';
+
+//: Os títulos que o roteiro confere, literais do JSON da consulta.
+const TITULO_DOS_PILARES_DA_IMPRENSA =
+  'Eficiência Operacional e Governança tiram 10,5 pontos; o que sustenta devolve só 3,1';
+const TITULO_DOS_PILARES_DO_MERCADO =
+  'Crescimento e Solidez Financeira sustenta o Mercado; Governança é o único freio relevante';
+
+//: Um "42" ou "48" SOLTO (D1): a nota ilustrativa da Imprensa e a de julho.
+//: Não casa com "142", "4,2" nem "1.428".
+const NOTA_42 = /(?<![\d,.])42(?![\d,.])/;
+const NOTA_48 = /(?<![\d,.])48(?![\d,.])/;
 
 interface Vigias {
   /** Respostas simuladas; `naoGravadas` lista o que o front pediu sem resposta. */
@@ -75,22 +96,55 @@ const test = testeBase.extend<Vigias>({
   },
 });
 
-/** Captura de QA em `docs/consulta-profundidade/qa/<nome>.png`.
- *
- *  A EVIDÊNCIA SÓ É GRAVADA DEPOIS DAS CONFERÊNCIAS: a imagem é tirada para a
- *  memória, as vigias são conferidas e só então o arquivo versionado é
- *  sobrescrito. Uma execução que reprova não troca a captura boa por uma tela
- *  quebrada.
+// ---------------------------------------------------------------------------
+// Apoio
+// ---------------------------------------------------------------------------
+
+/** Abre uma rota com a DATA FIXA: o mês da tela vem de `mes_sugerido`
+ *  (fixture), mas qualquer texto relativo a "hoje" mudaria a captura de um
+ *  dia para o outro. */
+async function abrir(page: Page, caminho: string): Promise<void> {
+  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00-03:00'));
+  await page.goto(caminho);
+}
+
+/** A página não rola na horizontal (Parte G, em todo passo). */
+async function semRolagemHorizontal(page: Page): Promise<void> {
+  const { largura, janela } = await page.evaluate(() => ({
+    largura: document.documentElement.scrollWidth,
+    janela: window.innerWidth,
+  }));
+  expect(largura, `rolagem horizontal: scrollWidth ${largura} > innerWidth ${janela}`).toBeLessThanOrEqual(
+    janela,
+  );
+}
+
+/** Tira a captura PARA A MEMÓRIA, sem gravar (ver `gravar`), depois de
+ *  conferir a rolagem horizontal.
  *
  *  CAPTURA DA PÁGINA INTEIRA A PARTIR DO TOPO: com a página rolada, o cabeçalho
- *  fixo sai desenhado no meio da imagem. */
-async function capturar(page: Page, nome: string, { api, problemas }: Vigias): Promise<void> {
+ *  fixo sai desenhado no meio da imagem. AS FONTES CARREGADAS ANTES: sem isso
+ *  a imagem pode sair com a fonte reserva. COM UM MODAL ABERTO, só a janela
+ *  (`paginaInteira: false`): o fundo escuro do modal é fixo e, na página
+ *  inteira, cobriria só a primeira altura de janela. */
+async function fotografar(page: Page, { paginaInteira = true } = {}): Promise<Buffer> {
   // A REDE PARADA ANTES DE CONFERIR: uma chamada sem resposta gravada que saísse
   // depois da conferência passaria.
   await page.waitForLoadState('networkidle');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await semRolagemHorizontal(page);
   await page.evaluate(() => window.scrollTo(0, 0));
-  const imagem = await page.screenshot({ fullPage: true });
+  return page.screenshot({ fullPage: paginaInteira });
+}
 
+/** Grava a captura em `docs/consulta-profundidade/qa/<nome>.png`.
+ *
+ *  A EVIDÊNCIA SÓ É GRAVADA DEPOIS DAS CONFERÊNCIAS: as vigias são conferidas
+ *  e só então o arquivo versionado é sobrescrito. Uma execução que reprova
+ *  não troca a captura boa por uma tela quebrada. */
+function gravar(nome: string, imagem: Buffer, { api, problemas }: Vigias): void {
   expect(api.naoGravadas, 'chamadas sem resposta gravada em e2e/fixtures').toEqual([]);
   expect(problemas, 'console limpo').toEqual([]);
 
@@ -98,22 +152,490 @@ async function capturar(page: Page, nome: string, { api, problemas }: Vigias): P
   writeFileSync(join(CAPTURAS, `${nome}.png`), imagem);
 }
 
-test('fumaça: aba Lentes na Imprensa, bloco Drill down abre', async ({ page, api, problemas }) => {
-  // DATA FIXA: o mês da tela vem de `mes_sugerido` (fixture), mas qualquer texto
-  // relativo a "hoje" mudaria a captura de um dia para o outro.
-  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00-03:00'));
+/** Fotografa e grava: o passo inteiro já foi conferido antes de chamar. */
+async function capturar(page: Page, nome: string, vigias: Vigias): Promise<void> {
+  gravar(nome, await fotografar(page), vigias);
+}
 
-  await page.goto('/score/lentes');
+/** O conteúdo do drill (a raiz `ConsultaEmProfundidade`). */
+function drillDe(page: Page): Locator {
+  return page.locator('[data-consulta-profundidade]');
+}
 
-  await expect(page.getByRole('tab', { name: /Imprensa/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
+function botaoDoDrill(page: Page): Locator {
+  return page.getByRole('button', { name: /^Drill down/ });
+}
+
+function abaDaLente(page: Page, nome: string): Locator {
+  return page.getByRole('tablist', { name: 'Lente do Score' }).getByRole('tab', { name: nome });
+}
+
+function trilhaDe(page: Page): Locator {
+  return page.getByRole('navigation', { name: 'Trilha da consulta' });
+}
+
+/** Linha navegável da tabela de impacto (é um link com `data-linha`). Os
+ *  nomes de pilar também são links no cartão "O que mudou" (A16), por isso a
+ *  busca é pela linha, e não pelo papel. */
+function linhaDaTabela(page: Page, nome: string): Locator {
+  return drillDe(page).locator('a[data-linha="navegavel"]', { hasText: nome });
+}
+
+/** Linhas da lista de matérias do Nível 4. */
+function linhasDaLista(page: Page): Locator {
+  return drillDe(page).locator('[role="row"][data-item]');
+}
+
+function busca(page: Page): Locator {
+  return page.getByRole('combobox', { name: 'Buscar uma lente, veículo, rede, tema ou concessionária' });
+}
+
+/** O h2 do nível, que leva o nome do nó (ou o título da tabela no Nível 1). */
+function tituloDoNivel(page: Page, nome: string): Locator {
+  return drillDe(page).getByRole('heading', { level: 2, name: nome, exact: true });
+}
+
+async function conferirNivel(page: Page, nivel: 1 | 2 | 3 | 4): Promise<void> {
+  await expect(drillDe(page).getByText(`Nível ${nivel} de 4`)).toBeVisible();
+}
+
+/** Nível 1 da Imprensa (passo 1): tabela de pilares, os dois grupos com as
+ *  somas, o selo e NENHUM número de nota (D1). */
+async function conferirNivel1DaImprensa(page: Page): Promise<void> {
+  const drill = drillDe(page);
+  await conferirNivel(page, 1);
+  await expect(tituloDoNivel(page, TITULO_DOS_PILARES_DA_IMPRENSA)).toBeVisible();
+  // O grupo é o cabeçalho (h4) mais a soma ao lado, no mesmo pai.
+  await expect(drill.getByRole('heading', { level: 4, name: 'O que pressiona' }).locator('xpath=..')).toContainText(
+    `${MENOS}11,1 pt`,
   );
+  await expect(drill.getByRole('heading', { level: 4, name: 'O que sustenta' }).locator('xpath=..')).toContainText(
+    '+3,1 pt',
+  );
+  await expect(drill.getByText('Dados ilustrativos').first()).toBeVisible();
+  expect(await drill.innerText(), 'nenhum "42" de nota no drill (D1)').not.toMatch(NOTA_42);
+  await expect(drill.getByText('= nota')).toHaveCount(0);
+}
 
-  const drill = page.getByRole('button', { name: /^Drill down/ });
+/** Nível 1 do Mercado (passo 13): cartões do JSON e tabela sem link nem seta. */
+async function conferirNivel1DoMercado(page: Page): Promise<void> {
+  const drill = drillDe(page);
+  await expect(abaDaLente(page, 'Mercado')).toHaveAttribute('aria-selected', 'true');
+  await conferirNivel(page, 1);
+  await expect(tituloDoNivel(page, TITULO_DOS_PILARES_DO_MERCADO)).toBeVisible();
+  await expect(drill.getByText('Temas financeiros', { exact: true })).toBeVisible();
+  await expect(drill.getByText('Sinais do mercado no mês', { exact: true })).toBeVisible();
+  await expect(drill.locator('[data-linha="fixa"]')).toHaveCount(7);
+  await expect(drill.locator('a[data-linha]')).toHaveCount(0);
+  await expect(drill.locator('[data-seta]')).toHaveCount(0);
+}
+
+/** Pressiona Tab até o foco chegar em `alvo`; reprova se não chegar. */
+async function tabAte(page: Page, alvo: Locator, descricao: string, maximo = 250): Promise<void> {
+  const alvoUnico = alvo.first();
+  await expect(alvoUnico).toBeAttached();
+  for (let i = 0; i < maximo; i += 1) {
+    await page.keyboard.press('Tab');
+    if (await alvoUnico.evaluate((el) => el === document.activeElement)) return;
+  }
+  throw new Error(`Tab não alcançou ${descricao} em ${maximo} toques`);
+}
+
+/** O elemento focado mostra o anel de foco (`:focus-visible` do `index.css`). */
+async function conferirFocoVisivel(alvo: Locator, descricao: string): Promise<void> {
+  const visivel = await alvo.first().evaluate((el) => {
+    const estilo = getComputedStyle(el);
+    return (
+      el === document.activeElement &&
+      el.matches(':focus-visible') &&
+      estilo.outlineStyle !== 'none' &&
+      Number.parseFloat(estilo.outlineWidth) > 0
+    );
+  });
+  expect(visivel, `foco visível em ${descricao}`).toBe(true);
+}
+
+// ---------------------------------------------------------------------------
+// Fumaça
+// ---------------------------------------------------------------------------
+
+test('fumaça: aba Lentes na Imprensa, bloco Drill down abre', async ({ page, api, problemas }) => {
+  await abrir(page, '/score/lentes');
+
+  await expect(abaDaLente(page, 'Imprensa')).toHaveAttribute('aria-selected', 'true');
+
+  const drill = botaoDoDrill(page);
   await expect(drill).toHaveAttribute('aria-expanded', 'false');
   await drill.click();
   await expect(drill).toHaveAttribute('aria-expanded', 'true');
 
   await capturar(page, '00-fumaca', { api, problemas });
 });
+
+// ---------------------------------------------------------------------------
+// Roteiro G · passos 1 a 12 (Imprensa, em sequência: cada passo parte do
+// estado do anterior, como na demonstração)
+// ---------------------------------------------------------------------------
+
+test('roteiro G, passos 1 a 12: a descida da Imprensa, a história e a busca', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(180_000);
+  const vigias = { api, problemas };
+  const drill = drillDe(page);
+
+  // 1 · abrir a aba Lentes e expandir o "Drill down": Nível 1 da Imprensa.
+  await abrir(page, '/score/lentes');
+  await expect(abaDaLente(page, 'Imprensa')).toHaveAttribute('aria-selected', 'true');
+  await botaoDoDrill(page).click();
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel1DaImprensa(page);
+  // ABRIR O BLOCO NÃO ESCREVE HASH (A20): só navegar no drill escreve.
+  expect(new URL(page.url()).hash).toBe('');
+  await capturar(page, '01-nivel1-imprensa', vigias);
+
+  // 2 · cartões laterais: "O que mudou" sem o par de notas (D1) e a história.
+  const oQueMudou = drill.locator('.cartao', { hasText: 'O que mudou desde julho' });
+  await expect(oQueMudou).toBeVisible();
+  const textoDoQueMudou = await oQueMudou.innerText();
+  expect(textoDoQueMudou, 'sem "48" no cartão O que mudou (D1)').not.toMatch(NOTA_48);
+  expect(textoDoQueMudou, 'sem "42" no cartão O que mudou (D1)').not.toMatch(NOTA_42);
+  await expect(drill.getByText('Rompimento de adutora na Zona Norte do Rio', { exact: true })).toBeVisible();
+  await capturar(page, '02-cartoes-laterais', vigias);
+
+  // 3 · a linha de Eficiência desce ao Nível 2.
+  await linhaDaTabela(page, 'Eficiência Operacional e Qualidade').click();
+  await expect(page).toHaveURL(/#consulta&.*pilar=eficiencia-operacional/);
+  await conferirNivel(page, 2);
+  await expect(trilhaDe(page).getByRole('listitem')).toHaveCount(2);
+  await expect(tituloDoNivel(page, 'Eficiência Operacional e Qualidade')).toBeFocused();
+  await expect(linhaDaTabela(page, 'Abastecimento de água')).toContainText('Em destaque');
+  await expect(drill.locator('p', { hasText: 'A conta fecha' })).toContainText(`${MENOS}7,4 pt`);
+  await capturar(page, '03-nivel2-eficiencia', vigias);
+
+  // 4 · Abastecimento de água desce ao Nível 3.
+  await linhaDaTabela(page, 'Abastecimento de água').click();
+  await expect(page).toHaveURL(/tema=abastecimento-agua/);
+  await conferirNivel(page, 3);
+  await expect(
+    drill.getByRole('heading', { name: 'Rompimento de adutora responde por dois terços da perda do tema' }),
+  ).toBeVisible();
+  const verAsMaterias = drill.getByRole('button', { name: 'Ver as 96 matérias' });
+  await expect(verAsMaterias).toBeVisible();
+  await capturar(page, '04-nivel3-abastecimento', vigias);
+
+  // 5 · "Ver as 96 matérias" abre o Nível 4 com a amostra inteira.
+  await verAsMaterias.click();
+  await expect(page).toHaveURL(/subtema=rompimento-adutora/);
+  await conferirNivel(page, 4);
+  await expect(tituloDoNivel(page, 'Rompimento de adutora')).toBeFocused();
+  await expect(linhasDaLista(page)).toHaveCount(11);
+  await expect(linhasDaLista(page).first()).toContainText('Rompimento de adutora deixa 14 bairros');
+  await capturar(page, '05-nivel4-rompimento', vigias);
+
+  // 6 · Negativas e depois Data: 9 linhas, a primeira é a de 19/08 (Zero Hora).
+  await drill.getByRole('button', { name: 'Negativas 71' }).click();
+  await drill.getByRole('button', { name: 'Data', exact: true }).click();
+  await expect(page).toHaveURL(/sent=negativas/);
+  await expect(page).toHaveURL(/ordem=data/);
+  await expect(linhasDaLista(page)).toHaveCount(9);
+  const primeira = linhasDaLista(page).first();
+  await expect(primeira).toContainText('19/08');
+  await expect(primeira).toContainText('Zero Hora');
+  await capturar(page, '06-negativas-por-data', vigias);
+
+  // 7 · "Abrir matéria" da primeira linha abre a prévia; Esc fecha e o foco
+  // volta ao botão. A captura é da prévia aberta, gravada só depois de o
+  // fechamento também passar.
+  const abrirMateria = primeira.getByRole('button', { name: /Abrir matéria/ });
+  await abrirMateria.click();
+  const previa = page.getByRole('dialog', {
+    name: /Rompimento em rede de Canoas deixa bairros sem água por 20 horas/,
+  });
+  await expect(previa).toBeVisible();
+  await expect(previa).toContainText('O link para a fonte original entra com a integração do clipping.');
+  const imagemDaPrevia = await fotografar(page, { paginaInteira: false });
+  await page.keyboard.press('Escape');
+  await expect(previa).toBeHidden();
+  await expect(abrirMateria).toBeFocused();
+  gravar('07-previa-da-materia', imagemDaPrevia, vigias);
+
+  // 8 · "Imprensa" na trilha volta ao Nível 1.
+  await trilhaDe(page).getByRole('link', { name: 'Imprensa', exact: true }).click();
+  await conferirNivel1DaImprensa(page);
+  expect(new URL(page.url()).hash).toBe('#consulta&lente=imprensa');
+  await capturar(page, '08-trilha-volta-ao-nivel1', vigias);
+
+  // 9 · voltar do navegador: Nível 4 com Negativas e Data preservados.
+  await page.goBack();
+  await conferirNivel(page, 4);
+  await expect(drill.getByRole('button', { name: 'Negativas 71' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(drill.getByRole('button', { name: 'Data', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(linhasDaLista(page)).toHaveCount(9);
+  await expect(linhasDaLista(page).first()).toContainText('Zero Hora');
+  await capturar(page, '09-voltar-do-navegador', vigias);
+
+  // 10 · "adutora" na busca do cabeçalho: o grupo do drill com o subtema.
+  await busca(page).click();
+  await busca(page).fill('adutora');
+  const lista = page.getByRole('listbox');
+  await expect(lista).toBeVisible();
+  await expect(lista.getByText('Consulta em profundidade', { exact: true })).toBeVisible();
+  const opcaoDoSubtema = page
+    .getByRole('group', { name: 'Consulta em profundidade · Subtema' })
+    .getByRole('option')
+    .filter({ hasText: 'Rompimento de adutora' });
+  await expect(opcaoDoSubtema).toHaveCount(1);
+  await expect(opcaoDoSubtema).toContainText(`${MENOS}3,1 pt`);
+  await capturar(page, '10-busca-adutora', vigias);
+
+  // 11 · Enter abre o primeiro resultado: o Nível 4 de Rompimento de adutora,
+  // com a lista limpa (a busca leva ao subtema, sem os filtros de antes).
+  await busca(page).press('Enter');
+  await expect(lista).toBeHidden();
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel(page, 4);
+  await expect(tituloDoNivel(page, 'Rompimento de adutora')).toBeVisible();
+  expect(new URL(page.url()).hash).toBe(
+    '#consulta&lente=imprensa&pilar=eficiencia-operacional&tema=abastecimento-agua&subtema=rompimento-adutora',
+  );
+  await expect(drill.getByRole('button', { name: 'Todas 96' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(linhasDaLista(page)).toHaveCount(11);
+  await capturar(page, '11-enter-abre-o-nivel4', vigias);
+
+  // 12 · "fiscalizacao" (sem acento) e clique no subtema: 7 linhas.
+  await busca(page).click();
+  await busca(page).fill('fiscalizacao');
+  await page
+    .getByRole('group', { name: 'Consulta em profundidade · Subtema' })
+    .getByRole('option')
+    .filter({ hasText: 'Fiscalização regulatória' })
+    .click();
+  await expect(page).toHaveURL(/subtema=fiscalizacao-regulatoria/);
+  await conferirNivel(page, 4);
+  await expect(tituloDoNivel(page, 'Fiscalização regulatória')).toBeVisible();
+  await expect(linhasDaLista(page)).toHaveCount(7);
+  await capturar(page, '12-busca-fiscalizacao', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Roteiro G · passos 13 a 16 (adaptados pela D2)
+// ---------------------------------------------------------------------------
+
+test('roteiro G, passos 13 a 16: Mercado no Nível 1; nas outras lentes o bloco não aparece', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  const vigias = { api, problemas };
+  const drill = drillDe(page);
+
+  await abrir(page, '/score/lentes');
+  await botaoDoDrill(page).click();
+  await conferirNivel1DaImprensa(page);
+
+  // 13 · aba Mercado: o drill continua aberto, no Nível 1 do Mercado.
+  await abaDaLente(page, 'Mercado').click();
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel1DoMercado(page);
+  await capturar(page, '13-mercado-nivel1', vigias);
+
+  // 14 · Sociedade digital: sem bloco "Drill down" (D2).
+  await abaDaLente(page, 'Sociedade digital').click();
+  await expect(abaDaLente(page, 'Sociedade digital')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: /^Síntese executiva/ })).toBeVisible();
+  await expect(botaoDoDrill(page)).toHaveCount(0);
+  await expect(drill).toHaveCount(0);
+  await capturar(page, '14-sociedade-sem-drill', vigias);
+
+  // 15 · Clientes e Institucional: idem.
+  for (const [nome, arquivo] of [
+    ['Clientes', '15a-clientes-sem-drill'],
+    ['Institucional', '15b-institucional-sem-drill'],
+  ] as const) {
+    await abaDaLente(page, nome).click();
+    await expect(abaDaLente(page, nome)).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('button', { name: /^Síntese executiva/ })).toBeVisible();
+    await expect(botaoDoDrill(page)).toHaveCount(0);
+    await expect(drill).toHaveCount(0);
+    await capturar(page, arquivo, vigias);
+  }
+
+  // 16 · no Mercado, a linha de pilar não navega, não tem seta nem cursor de
+  // mão.
+  await abaDaLente(page, 'Mercado').click();
+  await conferirNivel1DoMercado(page);
+  const linha = drill.locator('[data-linha="fixa"]', { hasText: 'Governança' });
+  await expect(linha).toHaveCount(1);
+  const antes = page.url();
+  const historiaAntes = await page.evaluate(() => history.length);
+  await linha.click();
+  expect(page.url()).toBe(antes);
+  expect(await page.evaluate(() => history.length)).toBe(historiaAntes);
+  await conferirNivel1DoMercado(page);
+  expect(await linha.evaluate((el) => getComputedStyle(el).cursor)).toBe('default');
+  await expect(linha.locator('[data-seta]')).toHaveCount(0);
+  await capturar(page, '16-mercado-linha-sem-navegacao', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Roteiro G · passos 17 a 19 (endereço direto)
+// ---------------------------------------------------------------------------
+
+const ENDERECO_DA_FISCALIZACAO =
+  '#consulta&lente=imprensa&pilar=governanca&tema=contratos-regulacao&subtema=fiscalizacao-regulatoria';
+
+test('roteiro G, passo 17: endereço direto do Nível 4 e recarregar reabrem a mesma tela', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  const vigias = { api, problemas };
+
+  const conferir = async () => {
+    await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+    await conferirNivel(page, 4);
+    await expect(tituloDoNivel(page, 'Fiscalização regulatória')).toBeVisible();
+    await expect(linhasDaLista(page)).toHaveCount(7);
+    expect(new URL(page.url()).hash).toBe(ENDERECO_DA_FISCALIZACAO);
+  };
+
+  await abrir(page, `/score/lentes${ENDERECO_DA_FISCALIZACAO}`);
+  await conferir();
+  await page.reload();
+  await conferir();
+  await capturar(page, '17-endereco-direto-recarregado', vigias);
+});
+
+test('roteiro G, passo 18: endereço inválido cai no Nível 1, corrigido com replace', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  const vigias = { api, problemas };
+  // O TAMANHO DA HISTÓRIA NO INÍCIO DO DOCUMENTO, antes de o React montar: a
+  // correção roda logo na montagem, e medir depois já seria tarde.
+  await page.addInitScript(() => {
+    (window as unknown as { historiaNoInicio: number }).historiaNoInicio = history.length;
+  });
+
+  await abrir(page, '/score/lentes#consulta&lente=imprensa&pilar=xyz&tema=abc');
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel1DaImprensa(page);
+  await expect.poll(() => new URL(page.url()).hash).toBe('#consulta&lente=imprensa');
+  const { agora, noInicio } = await page.evaluate(() => ({
+    agora: history.length,
+    noInicio: (window as unknown as { historiaNoInicio: number }).historiaNoInicio,
+  }));
+  expect(agora, 'a correção usa replace: a história não cresce').toBe(noInicio);
+  await capturar(page, '18-endereco-invalido-corrigido', vigias);
+});
+
+test('roteiro G, passo 19: Mercado com pilar no endereço fica no Nível 1', async ({ page, api, problemas }) => {
+  const vigias = { api, problemas };
+
+  await abrir(page, '/score/lentes#consulta&lente=mercado&pilar=governanca');
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel1DoMercado(page);
+  await expect.poll(() => new URL(page.url()).hash).toBe('#consulta&lente=mercado');
+  await capturar(page, '19-mercado-com-pilar-no-endereco', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Roteiro G · passo 20 (só teclado, do passo 1 ao 5)
+// ---------------------------------------------------------------------------
+
+test('roteiro G, passo 20: do Nível 1 ao 4 só com o teclado, com foco visível', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  test.setTimeout(120_000);
+  const vigias = { api, problemas };
+
+  await abrir(page, '/score/lentes');
+  await expect(abaDaLente(page, 'Imprensa')).toHaveAttribute('aria-selected', 'true');
+
+  // O bloco: Tab até o cabeçalho "Drill down" e Enter.
+  await tabAte(page, botaoDoDrill(page), 'o botão "Drill down"');
+  await conferirFocoVisivel(botaoDoDrill(page), 'o botão "Drill down"');
+  await page.keyboard.press('Enter');
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel1DaImprensa(page);
+
+  // Nível 1 → 2: a linha de Eficiência.
+  const eficiencia = linhaDaTabela(page, 'Eficiência Operacional e Qualidade');
+  await tabAte(page, eficiencia, 'a linha de Eficiência Operacional e Qualidade');
+  await conferirFocoVisivel(eficiencia, 'a linha de Eficiência Operacional e Qualidade');
+  await page.keyboard.press('Enter');
+  await conferirNivel(page, 2);
+  await expect(tituloDoNivel(page, 'Eficiência Operacional e Qualidade')).toBeFocused();
+
+  // Nível 2 → 3: a linha de Abastecimento de água.
+  const abastecimento = linhaDaTabela(page, 'Abastecimento de água');
+  await tabAte(page, abastecimento, 'a linha de Abastecimento de água');
+  await conferirFocoVisivel(abastecimento, 'a linha de Abastecimento de água');
+  await page.keyboard.press('Enter');
+  await conferirNivel(page, 3);
+  await expect(tituloDoNivel(page, 'Abastecimento de água')).toBeFocused();
+
+  // Nível 3 → 4: o botão "Ver as 96 matérias" do cartão de recortes.
+  const verAsMaterias = drillDe(page).getByRole('button', { name: 'Ver as 96 matérias' });
+  await tabAte(page, verAsMaterias, 'o botão "Ver as 96 matérias"');
+  await conferirFocoVisivel(verAsMaterias, 'o botão "Ver as 96 matérias"');
+  await page.keyboard.press('Enter');
+  await conferirNivel(page, 4);
+  await expect(tituloDoNivel(page, 'Rompimento de adutora')).toBeFocused();
+  await expect(linhasDaLista(page)).toHaveCount(11);
+
+  // E a lista continua no teclado: o primeiro "Abrir matéria" é alcançável.
+  const abrirMateria = linhasDaLista(page).first().getByRole('button', { name: /Abrir matéria/ });
+  await tabAte(page, abrirMateria, 'o primeiro "Abrir matéria"');
+  await conferirFocoVisivel(abrirMateria, 'o primeiro "Abrir matéria"');
+  await capturar(page, '20-teclado-ate-o-nivel4', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Outras resoluções: passos 1, 3, 5 e 13, só captura e rolagem horizontal
+// ---------------------------------------------------------------------------
+
+for (const { width, height } of [
+  { width: 1280, height: 720 },
+  { width: 1366, height: 768 },
+  { width: 1920, height: 1080 },
+]) {
+  const sufixo = `${width}x${height}`;
+
+  test.describe(`em ${sufixo}`, () => {
+    test.use({ viewport: { width, height } });
+
+    test(`passos 1, 3, 5 e 13 em ${sufixo}`, async ({ page, api, problemas }) => {
+      test.setTimeout(120_000);
+      const vigias = { api, problemas };
+
+      await abrir(page, '/score/lentes');
+      await botaoDoDrill(page).click();
+      await conferirNivel(page, 1);
+      await capturar(page, `01-nivel1-imprensa-${sufixo}`, vigias);
+
+      await linhaDaTabela(page, 'Eficiência Operacional e Qualidade').click();
+      await conferirNivel(page, 2);
+      await capturar(page, `03-nivel2-eficiencia-${sufixo}`, vigias);
+
+      await linhaDaTabela(page, 'Abastecimento de água').click();
+      await conferirNivel(page, 3);
+      await drillDe(page).getByRole('button', { name: 'Ver as 96 matérias' }).click();
+      await conferirNivel(page, 4);
+      await expect(linhasDaLista(page)).toHaveCount(11);
+      await capturar(page, `05-nivel4-rompimento-${sufixo}`, vigias);
+
+      await abaDaLente(page, 'Mercado').click();
+      await conferirNivel(page, 1);
+      await expect(drillDe(page).getByText('Temas financeiros', { exact: true })).toBeVisible();
+      await capturar(page, `13-mercado-nivel1-${sufixo}`, vigias);
+    });
+  });
+}

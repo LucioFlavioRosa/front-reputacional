@@ -26,8 +26,16 @@ import type { Page, Route } from '@playwright/test';
 // mínimo para a aba Lentes abrir. Quando houver um caminho autorizado, troque
 // cada arquivo pela resposta gravada, mantendo os nomes de `rotas.json`.
 //
-// AS FONTES DO GOOGLE recebem uma folha vazia: o teste não depende de rede
-// externa, e a tela cai na fonte reserva do `index.css`.
+// AS FONTES DO GOOGLE PASSAM PARA A REDE, com tolerância a falha: as
+// capturas de QA (`docs/consulta-profundidade/qa/`) precisam mostrar a DM Sans
+// da aplicação, e não a Arial da fonte reserva, para servirem de comparação
+// com o mockup. A rede aqui é só para a FONTE: nenhum dado da tela vem dela.
+// O pedido sai pelo próprio Playwright (`route.fetch`), e não pelo navegador
+// (`route.continue`), porque assim a falha fica do nosso lado: sem rede (ou
+// com a rede lenta), a resposta vira uma folha vazia e a tela cai na fonte
+// reserva do `index.css`, como antes. Deixar o navegador falhar sozinho poria
+// um "Failed to load resource" no console, e o teste reprovaria por algo que
+// não é defeito da aplicação.
 // -------------------------------------------------------------------------
 
 /** Base que o Vite do teste recebe em `VITE_API_URL`. Nada responde nela. */
@@ -50,6 +58,32 @@ function carregarRotas(): Map<string, { status: number; corpo: string }> {
       { status: r.status ?? 200, corpo: readFileSync(join(PASTA, r.arquivo), 'utf-8') },
     ]),
   );
+}
+
+/** Tempo máximo para a fonte chegar; passou disso, segue sem ela. */
+const ESPERA_DA_FONTE = 10_000;
+
+/** Fonte do Google pela rede; se a rede falhar, folha ou arquivo vazio (ver
+ *  o comentário do topo). O `access-control-allow-origin` vai sempre: o
+ *  arquivo da fonte é pedido com CORS pela folha do Google. */
+async function entregarFonte(route: Route, ehFolha: boolean): Promise<void> {
+  try {
+    const resposta = await route.fetch({ timeout: ESPERA_DA_FONTE });
+    if (resposta.ok()) {
+      return await route.fulfill({
+        response: resposta,
+        headers: { ...resposta.headers(), 'access-control-allow-origin': '*' },
+      });
+    }
+  } catch {
+    // Sem rede: cai na resposta vazia abaixo.
+  }
+  return route.fulfill({
+    status: 200,
+    contentType: ehFolha ? 'text/css' : 'font/woff2',
+    headers: { 'access-control-allow-origin': '*' },
+    body: '',
+  });
 }
 
 export interface ApiSimulada {
@@ -80,11 +114,8 @@ export async function simularApi(page: Page, origemDoFront: string): Promise<Api
     if (local || url.protocol === 'data:' || url.protocol === 'blob:') {
       return route.fallback();
     }
-    if (url.hostname === 'fonts.googleapis.com') {
-      return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
-    }
-    if (url.hostname === 'fonts.gstatic.com') {
-      return route.fulfill({ status: 200, contentType: 'font/woff2', body: '' });
+    if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+      return entregarFonte(route, url.hostname === 'fonts.googleapis.com');
     }
     naoGravadas.push(`${route.request().method()} ${url.href}`);
     return route.abort('blockedbyclient');
