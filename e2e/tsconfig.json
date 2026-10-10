@@ -1,0 +1,33 @@
+{
+  // TIPOS DO TESTE DE PONTA A PONTA (decisão D4: fora do build e do CI).
+  //
+  // FICA FORA DAS `references` do `tsconfig.json` da raiz, de propósito: o
+  // `tsc -b` do build (`npm run build`, Dockerfile) e dos dois CIs não passa
+  // por aqui, então um erro de tipo no e2e ou uma mudança nos tipos do
+  // `@playwright/test` não quebra a imagem nem o pipeline. A checagem é à mão:
+  // `npm run typecheck:e2e`.
+  //
+  // MORA EM `e2e/`, e não na raiz, para o editor achá-lo sozinho para os specs.
+  //
+  // `DOM` NA `lib`: o que roda dentro de `page.evaluate` é código de navegador
+  // e precisa dos tipos de `window` e `document`.
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    "module": "nodenext",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["./**/*.ts", "../playwright.config.ts"]
+}

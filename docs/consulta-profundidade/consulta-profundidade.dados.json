@@ -1,0 +1,2789 @@
+{
+ "meta": {
+  "versao": "1.0",
+  "mesReferencia": "2026-08",
+  "rotuloMes": "Agosto de 2026",
+  "mesAnterior": "julho",
+  "dataCorte": "2026-08-31",
+  "aviso": "Dados ilustrativos",
+  "meses": [
+   "mar/26",
+   "abr/26",
+   "mai/26",
+   "jun/26",
+   "jul/26",
+   "ago/26"
+  ]
+ },
+ "faixas": [
+  {
+   "id": "referencia",
+   "rotulo": "Referência",
+   "min": 85,
+   "max": 100,
+   "fundo": "#DFFAF6",
+   "texto": "#06574E",
+   "fundoGrafico": "#E0F7F4"
+  },
+  {
+   "id": "solido",
+   "rotulo": "Sólido",
+   "min": 70,
+   "max": 84,
+   "fundo": "#DFFAF6",
+   "texto": "#0A6B60",
+   "fundoGrafico": "#E9FBF8"
+  },
+  {
+   "id": "estavel",
+   "rotulo": "Estável",
+   "min": 55,
+   "max": 69,
+   "fundo": "#E6EAFB",
+   "texto": "#0027BD",
+   "fundoGrafico": "#EEF1F8"
+  },
+  {
+   "id": "atencao",
+   "rotulo": "Atenção",
+   "min": 40,
+   "max": 54,
+   "fundo": "#FFF1DC",
+   "texto": "#8A4E00",
+   "fundoGrafico": "#FFF5E6"
+  },
+  {
+   "id": "critico",
+   "rotulo": "Crítico",
+   "min": 0,
+   "max": 39,
+   "fundo": "#FFE7E8",
+   "texto": "#B32328",
+   "fundoGrafico": "#FFEDEE"
+  }
+ ],
+ "pesoTier": {
+  "Tier 1": 10,
+  "Tier 2": 5,
+  "Tier 3": 1
+ },
+ "lentes": [
+  {
+   "id": "imprensa",
+   "nome": "Imprensa",
+   "publico": "Formadores de opinião",
+   "cor": "#17E3CB",
+   "peso": 0.3,
+   "nota": 42,
+   "serie": [
+    55,
+    66,
+    51,
+    44,
+    48,
+    42
+   ],
+   "fonte": "Clipei, ponderado pelo tier do veículo",
+   "unidade": "matérias",
+   "volumeTotal": 1284,
+   "totalPonderado": 4120,
+   "drill": true,
+   "filtroProprio": {
+    "id": "tier",
+    "rotulo": "Tier",
+    "opcoes": [
+     "Todos",
+     "Tier 1",
+     "Tier 2",
+     "Tier 3"
+    ]
+   },
+   "kpis": [
+    {
+     "rotulo": "Matérias no mês",
+     "valor": "1.284",
+     "nota": "+18% vs. julho"
+    },
+    {
+     "rotulo": "Grande imprensa (Tier 1)",
+     "valor": "212",
+     "nota": "saldo −31, o pior do semestre"
+    },
+    {
+     "rotulo": "Matérias negativas",
+     "valor": "34%",
+     "nota": "+7 p.p. vs. julho"
+    },
+    {
+     "rotulo": "Distância do índice geral",
+     "valor": "−7 pt",
+     "nota": "Imprensa 42 · índice 49"
+    }
+   ],
+   "leitura": "A Imprensa está em 42, 9 pontos abaixo da média do semestre e 7 abaixo do índice geral. O que mais pesou foi Abastecimento de água no Rio de Janeiro: sozinho, o tema tirou 4,6 pontos da nota, quase tudo por um rompimento de adutora na Zona Norte.",
+   "tabelaPilares": {
+    "titulo": "Eficiência Operacional e Governança tiram 10,5 pontos; o que sustenta devolve só 3,1",
+    "subtitulo": "Quanto cada pilar empurrou a nota acima ou abaixo do neutro (50). Volume em matérias; impacto ponderado pelo tier do veículo. Clique num pilar para abrir os temas."
+   },
+   "pilares": [
+    {
+     "id": "eficiencia-operacional",
+     "nome": "Eficiência Operacional e Qualidade",
+     "volume": 512,
+     "sentimento": {
+      "pos": 14,
+      "neu": 36,
+      "neg": 50
+     },
+     "impacto": -7.4,
+     "impactoMesAnterior": -4.6,
+     "filhos": [
+      {
+       "id": "abastecimento-agua",
+       "nome": "Abastecimento de água",
+       "volume": 214,
+       "sentimento": {
+        "pos": 12,
+        "neu": 28,
+        "neg": 60
+       },
+       "impacto": -4.6,
+       "impactoMesAnterior": -2.7,
+       "filhos": [
+        {
+         "id": "rompimento-adutora",
+         "nome": "Rompimento de adutora",
+         "volume": 96,
+         "sentimento": {
+          "pos": 8,
+          "neu": 18,
+          "neg": 74
+         },
+         "impacto": -3.1,
+         "contagens": {
+          "pos": 8,
+          "neu": 17,
+          "neg": 71
+         },
+         "tier1": 34,
+         "nivel4": {
+          "leitura": "Sete em cada dez matérias saíram entre 12 e 18 de agosto, logo depois do rompimento na Zona Norte do Rio. As oito de maior impacto são todas de grande imprensa. A única virada positiva veio no dia 21, com o anúncio da troca de rede, e ainda não compensou um décimo da perda.",
+          "tituloLista": "As 8 matérias de maior impacto são de grande imprensa; a única positiva saiu no dia 21",
+          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando negativa e +0,12 quando positiva.",
+          "porDia": {
+           "total": [
+            0,
+            1,
+            0,
+            3,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            2,
+            14,
+            16,
+            12,
+            10,
+            8,
+            5,
+            4,
+            2,
+            1,
+            3,
+            2,
+            1,
+            1,
+            0,
+            1,
+            2,
+            1,
+            1,
+            0,
+            2
+           ],
+           "negativas": [
+            0,
+            1,
+            0,
+            2,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            1,
+            12,
+            13,
+            10,
+            8,
+            6,
+            3,
+            2,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+           ],
+           "destaque": {
+            "inicio": 12,
+            "fim": 18
+           }
+          },
+          "itens": [
+           {
+            "id": "rom-01",
+            "data": "2026-08-12",
+            "veiculo": "O Globo",
+            "jornalista": "Renata Moura",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Rompimento de adutora deixa 14 bairros da Zona Norte sem água por três dias",
+            "trecho": "Moradores relatam torneiras secas desde a madrugada de segunda. A concessionária informou que equipes trabalham no reparo, sem previsão inicial de normalização.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-02",
+            "data": "2026-08-12",
+            "veiculo": "g1 Rio",
+            "jornalista": "Caio Teixeira",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Moradores da Zona Norte dependem de caminhão-pipa após rompimento de adutora",
+            "trecho": "Filas se formaram em pontos de distribuição. Associações de moradores cobram um plano de contingência mais rápido.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-03",
+            "data": "2026-08-13",
+            "veiculo": "Folha de S.Paulo",
+            "jornalista": "Marcos Pinheiro",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Falhas em adutoras pressionam concessão de saneamento no Rio",
+            "trecho": "Especialistas ouvidos pela reportagem apontam a idade da rede como fator de risco e cobram cronograma de substituição.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-04",
+            "data": "2026-08-13",
+            "veiculo": "O Globo",
+            "jornalista": "Renata Moura",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Terceiro dia sem água: comércio da Zona Norte calcula prejuízo",
+            "trecho": "Restaurantes e salões fecharam as portas. Entidade do comércio local estima perdas e fala em pedir ressarcimento.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-05",
+            "data": "2026-08-14",
+            "veiculo": "CNN Brasil",
+            "jornalista": "Redação",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Rio registra segundo rompimento de adutora em menos de um mês",
+            "trecho": "O novo episódio ocorreu em trecho próximo ao anterior. A concessionária afirma que os casos não têm relação técnica.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-06",
+            "data": "2026-08-14",
+            "veiculo": "g1 Rio",
+            "jornalista": "Caio Teixeira",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Abastecimento na Zona Norte só deve ser normalizado no fim de semana",
+            "trecho": "Segundo a concessionária, o reparo foi concluído, mas a rede leva até 48 horas para recuperar a pressão nos pontos mais altos.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-07",
+            "data": "2026-08-15",
+            "veiculo": "Valor Econômico",
+            "jornalista": "Redação",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Episódios de desabastecimento entram no radar de investidores do setor",
+            "trecho": "Analistas avaliam que eventos operacionais recorrentes podem pesar na relação com o regulador, sem efeito imediato sobre o crédito.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "rom-08",
+            "data": "2026-08-21",
+            "veiculo": "O Globo",
+            "jornalista": "Renata Moura",
+            "tier": "Tier 1",
+            "sentimento": "positivo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Concessionária antecipa troca de 2 km de rede na Zona Norte após falhas",
+            "trecho": "A obra, prevista para 2027, foi antecipada para setembro. A empresa diz que o trecho concentra a maior parte das ocorrências recentes.",
+            "url": null,
+            "impacto": 0.12
+           },
+           {
+            "id": "rom-09",
+            "data": "2026-08-15",
+            "veiculo": "Extra",
+            "jornalista": "Júlia Barcellos",
+            "tier": "Tier 2",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Sem água há 72 horas, moradores de Irajá fecham avenida em protesto",
+            "trecho": "O protesto durou cerca de duas horas. A Polícia Militar acompanhou a manifestação, que terminou sem incidentes.",
+            "url": null,
+            "impacto": -0.06
+           },
+           {
+            "id": "rom-10",
+            "data": "2026-08-19",
+            "veiculo": "Zero Hora",
+            "jornalista": "Redação",
+            "tier": "Tier 2",
+            "sentimento": "negativo",
+            "concessionaria": "Corsan",
+            "uf": "RS",
+            "titulo": "Rompimento em rede de Canoas deixa bairros sem água por 20 horas",
+            "trecho": "A Corsan informou que o rompimento foi causado por obra de terceiros e que o abastecimento foi restabelecido na madrugada.",
+            "url": null,
+            "impacto": -0.06
+           },
+           {
+            "id": "rom-11",
+            "data": "2026-08-16",
+            "veiculo": "O Dia",
+            "jornalista": "Redação",
+            "tier": "Tier 2",
+            "sentimento": "neutro",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Águas do Rio informa conclusão do reparo na adutora da Zona Norte",
+            "trecho": "Nota da concessionária detalha o cronograma de retomada da pressão por bairro e orienta moradores sobre caixas-d’água.",
+            "url": null,
+            "impacto": 0.0
+           }
+          ]
+         }
+        },
+        {
+         "id": "frequencia-continuidade",
+         "nome": "Frequência e continuidade",
+         "volume": 71,
+         "sentimento": {
+          "pos": 6,
+          "neu": 34,
+          "neg": 60
+         },
+         "impacto": -1.4
+        },
+        {
+         "id": "plano-contingencia",
+         "nome": "Plano de contingência",
+         "volume": 18,
+         "sentimento": {
+          "pos": 11,
+          "neu": 33,
+          "neg": 56
+         },
+         "impacto": -0.3
+        },
+        {
+         "id": "perdas-fraudes",
+         "nome": "Perdas, fraudes e ligações irregulares",
+         "volume": 29,
+         "sentimento": {
+          "pos": 41,
+          "neu": 45,
+          "neg": 14
+         },
+         "impacto": 0.2
+        }
+       ],
+       "nivel3": {
+        "leitura": "Rompimento de adutora explica dois terços da perda do tema. O negativo veio da grande imprensa: o Tier 1 é 35% das matérias do subtema e 74% do impacto, puxado por O Globo e g1 Rio, quase tudo sobre a Zona Norte do Rio. Perdas e fraudes é o único subtema positivo, pelas operações contra ligações irregulares.",
+        "tituloTabela": "Rompimento de adutora responde por dois terços da perda do tema",
+        "subtituloTabela": "Subtemas de Abastecimento de água, com o impacto de cada um na nota da Imprensa. O subtema em destaque abre os recortes abaixo. Clique num subtema para ver as matérias.",
+        "destaque": {
+         "subtemaId": "rompimento-adutora",
+         "titulo": "A grande imprensa fez o estrago: Tier 1 é 35% das matérias e 74% do impacto",
+         "subtitulo": "96 matérias, 71 negativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
+         "tiers": {
+          "titulo": "Cada matéria de Tier 1 pesa 10 vezes uma de Tier 3",
+          "linhas": [
+           {
+            "tier": "Tier 1",
+            "volume": 34,
+            "impacto": -2.3
+           },
+           {
+            "tier": "Tier 2",
+            "volume": 38,
+            "impacto": -0.7
+           },
+           {
+            "tier": "Tier 3",
+            "volume": 24,
+            "impacto": -0.1
+           }
+          ]
+         },
+         "concessionarias": {
+          "titulo": "Águas do Rio, no RJ, concentra 84% das matérias e 90% do impacto",
+          "linhas": [
+           {
+            "nome": "Águas do Rio",
+            "uf": "RJ",
+            "volume": 81,
+            "impacto": -2.8
+           },
+           {
+            "nome": "Corsan",
+            "uf": "RS",
+            "volume": 9,
+            "impacto": -0.2
+           },
+           {
+            "nome": "Águas do Pará",
+            "uf": "PA",
+            "volume": 6,
+            "impacto": -0.1
+           }
+          ]
+         },
+         "veiculos": {
+          "titulo": "O Globo e g1 Rio somam 1,4 ponto, quase metade do subtema",
+          "linhas": [
+           {
+            "nome": "O Globo",
+            "tier": "Tier 1",
+            "volume": 12,
+            "negativas": 8,
+            "impacto": -0.7
+           },
+           {
+            "nome": "g1 Rio",
+            "tier": "Tier 1",
+            "volume": 11,
+            "negativas": 7,
+            "impacto": -0.7
+           },
+           {
+            "nome": "Extra",
+            "tier": "Tier 2",
+            "volume": 13,
+            "negativas": 8,
+            "impacto": -0.4
+           },
+           {
+            "nome": "Folha de S.Paulo",
+            "tier": "Tier 1",
+            "volume": 4,
+            "negativas": 3,
+            "impacto": -0.4
+           },
+           {
+            "nome": "O Dia",
+            "tier": "Tier 2",
+            "volume": 10,
+            "negativas": 5,
+            "impacto": -0.2
+           }
+          ]
+         },
+         "jornalistas": {
+          "titulo": "Duas assinaturas respondem por 9 das 71 matérias negativas",
+          "linhas": [
+           {
+            "nome": "Renata Moura",
+            "veiculo": "O Globo",
+            "volume": 5,
+            "negativas": 5,
+            "impacto": -0.6
+           },
+           {
+            "nome": "Caio Teixeira",
+            "veiculo": "g1 Rio",
+            "volume": 4,
+            "negativas": 4,
+            "impacto": -0.5
+           },
+           {
+            "nome": "Marcos Pinheiro",
+            "veiculo": "Folha de S.Paulo",
+            "volume": 2,
+            "negativas": 2,
+            "impacto": -0.2
+           },
+           {
+            "nome": "Júlia Barcellos",
+            "veiculo": "Extra",
+            "volume": 6,
+            "negativas": 4,
+            "impacto": -0.2
+           }
+          ]
+         }
+        }
+       }
+      },
+      {
+       "id": "esgoto",
+       "nome": "Esgoto",
+       "volume": 98,
+       "sentimento": {
+        "pos": 10,
+        "neu": 38,
+        "neg": 52
+       },
+       "impacto": -1.5
+      },
+      {
+       "id": "faturamento-cobranca",
+       "nome": "Faturamento e cobrança",
+       "volume": 71,
+       "sentimento": {
+        "pos": 8,
+        "neu": 41,
+        "neg": 51
+       },
+       "impacto": -1.0
+      },
+      {
+       "id": "obras-intervencoes",
+       "nome": "Obras e intervenções",
+       "volume": 63,
+       "sentimento": {
+        "pos": 21,
+        "neu": 44,
+        "neg": 35
+       },
+       "impacto": -0.4
+      },
+      {
+       "id": "atendimento-cliente",
+       "nome": "Atendimento ao cliente",
+       "volume": 38,
+       "sentimento": {
+        "pos": 18,
+        "neu": 45,
+        "neg": 37
+       },
+       "impacto": -0.3
+      },
+      {
+       "id": "qualidade-agua",
+       "nome": "Qualidade da água",
+       "volume": 28,
+       "sentimento": {
+        "pos": 46,
+        "neu": 43,
+        "neg": 11
+       },
+       "impacto": 0.4
+      }
+     ],
+     "nivel2": {
+      "leitura": "Eficiência Operacional e Qualidade tirou 7,4 pontos da Imprensa em agosto, 2,8 a mais que em julho. Abastecimento de água responde por 62% da perda e se concentra em Águas do Rio. Qualidade da água é o único tema que sustenta.",
+      "tituloTabela": "Abastecimento de água sozinho custa 4,6 pontos, mais que todos os outros temas do pilar somados",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "abastecimento-agua",
+       "evolucao": {
+        "titulo": "Abastecimento de água piorou 3,8 pontos desde abril e chegou ao pior nível do semestre",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. O volume dobrou entre maio e junho e não voltou ao patamar anterior.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         -1.2,
+         -0.8,
+         -2.1,
+         -3.9,
+         -2.7,
+         -4.6
+        ],
+        "volumes": [
+         88,
+         76,
+         131,
+         190,
+         152,
+         214
+        ]
+       },
+       "concentracao": {
+        "titulo": "Águas do Rio concentra 61% das matérias e 74% do impacto",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Águas do Rio",
+          "volume": 131,
+          "impacto": -3.4
+         },
+         {
+          "nome": "Corsan",
+          "volume": 38,
+          "impacto": -0.7
+         },
+         {
+          "nome": "Águas do Pará",
+          "volume": 19,
+          "impacto": -0.3
+         },
+         {
+          "nome": "Águas Guariroba",
+          "volume": 11,
+          "impacto": -0.1
+         },
+         {
+          "nome": "Outras",
+          "volume": 15,
+          "impacto": -0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RJ",
+          "volume": 131,
+          "impacto": -3.4
+         },
+         {
+          "nome": "RS",
+          "volume": 38,
+          "impacto": -0.7
+         },
+         {
+          "nome": "PA",
+          "volume": 19,
+          "impacto": -0.3
+         },
+         {
+          "nome": "MS",
+          "volume": 11,
+          "impacto": -0.1
+         },
+         {
+          "nome": "Outras UFs",
+          "volume": 15,
+          "impacto": -0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "governanca",
+     "nome": "Governança",
+     "volume": 238,
+     "sentimento": {
+      "pos": 12,
+      "neu": 47,
+      "neg": 41
+     },
+     "impacto": -3.1,
+     "impactoMesAnterior": -1.0,
+     "filhos": [
+      {
+       "id": "contratos-regulacao",
+       "nome": "Contratos e Regulação",
+       "volume": 132,
+       "sentimento": {
+        "pos": 6,
+        "neu": 40,
+        "neg": 54
+       },
+       "impacto": -2.6,
+       "impactoMesAnterior": -0.8,
+       "filhos": [
+        {
+         "id": "fiscalizacao-regulatoria",
+         "nome": "Fiscalização regulatória",
+         "volume": 64,
+         "sentimento": {
+          "pos": 3,
+          "neu": 33,
+          "neg": 64
+         },
+         "impacto": -1.6,
+         "contagens": {
+          "pos": 2,
+          "neu": 21,
+          "neg": 41
+         },
+         "tier1": 22,
+         "nivel4": {
+          "leitura": "A cobertura começou no dia 13, com a abertura do processo, e voltou a crescer no dia 20, com a notificação. A única matéria positiva de grande imprensa saiu no dia 22, quando o regulador aceitou o prazo de adequação.",
+          "tituloLista": "A pauta teve dois picos, abertura do processo e notificação; a resposta positiva veio no dia 22",
+          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando negativa e +0,12 quando positiva.",
+          "porDia": {
+           "total": [
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            1,
+            9,
+            8,
+            5,
+            4,
+            3,
+            2,
+            2,
+            7,
+            6,
+            3,
+            2,
+            1,
+            1,
+            1,
+            0,
+            1,
+            1,
+            2,
+            1
+           ],
+           "negativas": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            7,
+            6,
+            3,
+            3,
+            2,
+            1,
+            1,
+            5,
+            3,
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+           ],
+           "destaque": {
+            "inicio": 13,
+            "fim": 21
+           }
+          },
+          "itens": [
+           {
+            "id": "fis-01",
+            "data": "2026-08-13",
+            "veiculo": "O Globo",
+            "jornalista": "Renata Moura",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Agência reguladora abre processo para apurar falta de água na Zona Norte",
+            "trecho": "O processo administrativo vai avaliar o cumprimento das metas de continuidade previstas no contrato de concessão.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "fis-02",
+            "data": "2026-08-14",
+            "veiculo": "Valor Econômico",
+            "jornalista": "Paula Andrade",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Regulador do Rio cobra plano de investimento emergencial da concessionária",
+            "trecho": "A agência pediu detalhamento de investimentos em renovação de rede para os próximos 24 meses.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "fis-03",
+            "data": "2026-08-16",
+            "veiculo": "Folha de S.Paulo",
+            "jornalista": "Marcos Pinheiro",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Fiscalização no Rio expõe atrito entre concessionária e agência reguladora",
+            "trecho": "Reportagem relata divergência sobre o prazo de resposta e sobre a metodologia de medição de continuidade.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "fis-04",
+            "data": "2026-08-20",
+            "veiculo": "O Globo",
+            "jornalista": "Renata Moura",
+            "tier": "Tier 1",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Agência reguladora notifica concessionária e dá 30 dias para resposta",
+            "trecho": "A notificação é etapa anterior a eventual multa. A empresa afirma que responderá dentro do prazo.",
+            "url": null,
+            "impacto": -0.12
+           },
+           {
+            "id": "fis-05",
+            "data": "2026-08-22",
+            "veiculo": "Valor Econômico",
+            "jornalista": "Paula Andrade",
+            "tier": "Tier 1",
+            "sentimento": "positivo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Concessionária apresenta cronograma e regulador aceita prazo de adequação",
+            "trecho": "O cronograma prevê a troca de trechos críticos até o primeiro trimestre de 2027, com relatórios mensais à agência.",
+            "url": null,
+            "impacto": 0.12
+           },
+           {
+            "id": "fis-06",
+            "data": "2026-08-18",
+            "veiculo": "Extra",
+            "jornalista": "Júlia Barcellos",
+            "tier": "Tier 2",
+            "sentimento": "negativo",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Deputados pedem audiência sobre falta de água e fiscalização da concessão",
+            "trecho": "Requerimento na Assembleia Legislativa convoca a agência reguladora e a concessionária para prestar esclarecimentos.",
+            "url": null,
+            "impacto": -0.06
+           },
+           {
+            "id": "fis-07",
+            "data": "2026-08-21",
+            "veiculo": "O Dia",
+            "jornalista": "Redação",
+            "tier": "Tier 2",
+            "sentimento": "neutro",
+            "concessionaria": "Águas do Rio",
+            "uf": "RJ",
+            "titulo": "Concessionária diz que responderá à agência reguladora dentro do prazo",
+            "trecho": "Em nota, a empresa afirma colaborar com a fiscalização e cita investimentos já realizados na Zona Norte.",
+            "url": null,
+            "impacto": 0.0
+           }
+          ]
+         }
+        },
+        {
+         "id": "multa-processos",
+         "nome": "Multa e processos",
+         "volume": 28,
+         "sentimento": {
+          "pos": 4,
+          "neu": 36,
+          "neg": 60
+         },
+         "impacto": -0.6
+        },
+        {
+         "id": "reequilibrio",
+         "nome": "Reequilíbrio econômico-financeiro",
+         "volume": 26,
+         "sentimento": {
+          "pos": 15,
+          "neu": 54,
+          "neg": 31
+         },
+         "impacto": -0.3
+        },
+        {
+         "id": "agencias-reguladoras",
+         "nome": "Agências reguladoras",
+         "volume": 14,
+         "sentimento": {
+          "pos": 14,
+          "neu": 72,
+          "neg": 14
+         },
+         "impacto": -0.1
+        }
+       ],
+       "nivel3": {
+        "leitura": "Fiscalização regulatória explica 62% da perda do tema. O negativo veio da grande imprensa no RJ, com O Globo e Valor Econômico à frente. Reequilíbrio econômico-financeiro aparece em tom mais neutro.",
+        "tituloTabela": "Fiscalização regulatória responde por 1,6 dos 2,6 pontos perdidos no tema",
+        "subtituloTabela": "Subtemas de Contratos e Regulação, com o impacto de cada um na nota da Imprensa. O subtema em destaque abre os recortes abaixo. Clique num subtema para ver as matérias.",
+        "destaque": {
+         "subtemaId": "fiscalizacao-regulatoria",
+         "titulo": "Tier 1 é 34% das matérias e 75% do impacto da fiscalização",
+         "subtitulo": "64 matérias, 41 negativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
+         "tiers": {
+          "titulo": "Cada matéria de Tier 1 pesa 10 vezes uma de Tier 3",
+          "linhas": [
+           {
+            "tier": "Tier 1",
+            "volume": 22,
+            "impacto": -1.2
+           },
+           {
+            "tier": "Tier 2",
+            "volume": 26,
+            "impacto": -0.3
+           },
+           {
+            "tier": "Tier 3",
+            "volume": 16,
+            "impacto": -0.1
+           }
+          ]
+         },
+         "concessionarias": {
+          "titulo": "Águas do Rio, no RJ, concentra 81% das matérias e 88% do impacto",
+          "linhas": [
+           {
+            "nome": "Águas do Rio",
+            "uf": "RJ",
+            "volume": 52,
+            "impacto": -1.4
+           },
+           {
+            "nome": "Corsan",
+            "uf": "RS",
+            "volume": 8,
+            "impacto": -0.1
+           },
+           {
+            "nome": "Águas do Pará",
+            "uf": "PA",
+            "volume": 4,
+            "impacto": -0.1
+           }
+          ]
+         },
+         "veiculos": {
+          "titulo": "O Globo e Valor Econômico somam 0,9 ponto, mais da metade do subtema",
+          "linhas": [
+           {
+            "nome": "O Globo",
+            "tier": "Tier 1",
+            "volume": 9,
+            "negativas": 7,
+            "impacto": -0.6
+           },
+           {
+            "nome": "Valor Econômico",
+            "tier": "Tier 1",
+            "volume": 6,
+            "negativas": 4,
+            "impacto": -0.3
+           },
+           {
+            "nome": "Folha de S.Paulo",
+            "tier": "Tier 1",
+            "volume": 4,
+            "negativas": 3,
+            "impacto": -0.2
+           },
+           {
+            "nome": "Extra",
+            "tier": "Tier 2",
+            "volume": 8,
+            "negativas": 5,
+            "impacto": -0.2
+           },
+           {
+            "nome": "O Dia",
+            "tier": "Tier 2",
+            "volume": 7,
+            "negativas": 4,
+            "impacto": -0.1
+           }
+          ]
+         },
+         "jornalistas": {
+          "titulo": "Uma assinatura de O Globo responde por 4 das 41 matérias negativas",
+          "linhas": [
+           {
+            "nome": "Renata Moura",
+            "veiculo": "O Globo",
+            "volume": 4,
+            "negativas": 4,
+            "impacto": -0.4
+           },
+           {
+            "nome": "Paula Andrade",
+            "veiculo": "Valor Econômico",
+            "volume": 3,
+            "negativas": 2,
+            "impacto": -0.2
+           },
+           {
+            "nome": "Marcos Pinheiro",
+            "veiculo": "Folha de S.Paulo",
+            "volume": 2,
+            "negativas": 2,
+            "impacto": -0.2
+           }
+          ]
+         }
+        }
+       }
+      },
+      {
+       "id": "politico-institucional",
+       "nome": "Político-institucional",
+       "volume": 48,
+       "sentimento": {
+        "pos": 10,
+        "neu": 55,
+        "neg": 35
+       },
+       "impacto": -0.5
+      },
+      {
+       "id": "integridade",
+       "nome": "Integridade",
+       "volume": 22,
+       "sentimento": {
+        "pos": 14,
+        "neu": 50,
+        "neg": 36
+       },
+       "impacto": -0.2
+      },
+      {
+       "id": "governanca-corporativa",
+       "nome": "Governança corporativa",
+       "volume": 24,
+       "sentimento": {
+        "pos": 33,
+        "neu": 58,
+        "neg": 9
+       },
+       "impacto": 0.2
+      },
+      {
+       "id": "modelo-negocio",
+       "nome": "Modelo de negócio",
+       "volume": 12,
+       "sentimento": {
+        "pos": 25,
+        "neu": 67,
+        "neg": 8
+       },
+       "impacto": 0.0
+      }
+     ],
+     "nivel2": {
+      "leitura": "Governança tirou 3,1 pontos da Imprensa em agosto, contra 1,0 em julho. Contratos e Regulação responde por 84% da perda, puxado pelo processo aberto pela agência reguladora do RJ. Governança corporativa é o único tema que sustenta.",
+      "tituloTabela": "Contratos e Regulação concentra 2,6 dos 3,1 pontos perdidos no pilar",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "contratos-regulacao",
+       "evolucao": {
+        "titulo": "Contratos e Regulação ficou perto de −1 ponto até julho e mais que triplicou a perda em agosto",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. O volume dobrou em agosto com a pauta de fiscalização no RJ.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         -0.9,
+         -0.7,
+         -1.0,
+         -1.1,
+         -0.8,
+         -2.6
+        ],
+        "volumes": [
+         61,
+         55,
+         70,
+         74,
+         66,
+         132
+        ]
+       },
+       "concentracao": {
+        "titulo": "Águas do Rio concentra 59% das matérias e 69% do impacto",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Águas do Rio",
+          "volume": 78,
+          "impacto": -1.8
+         },
+         {
+          "nome": "Corsan",
+          "volume": 26,
+          "impacto": -0.5
+         },
+         {
+          "nome": "Águas do Pará",
+          "volume": 14,
+          "impacto": -0.2
+         },
+         {
+          "nome": "Aegea (holding)",
+          "volume": 14,
+          "impacto": -0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RJ",
+          "volume": 78,
+          "impacto": -1.8
+         },
+         {
+          "nome": "RS",
+          "volume": 26,
+          "impacto": -0.5
+         },
+         {
+          "nome": "PA",
+          "volume": 14,
+          "impacto": -0.2
+         },
+         {
+          "nome": "Nacional",
+          "volume": 14,
+          "impacto": -0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "responsabilidade-ambiental",
+     "nome": "Responsabilidade Ambiental",
+     "volume": 96,
+     "sentimento": {
+      "pos": 22,
+      "neu": 47,
+      "neg": 31
+     },
+     "impacto": -0.6,
+     "impactoMesAnterior": 0.3,
+     "filhos": [
+      {
+       "id": "licenciamento-ambiental",
+       "nome": "Licenciamento ambiental",
+       "volume": 31,
+       "sentimento": {
+        "pos": 10,
+        "neu": 42,
+        "neg": 48
+       },
+       "impacto": -0.5
+      },
+      {
+       "id": "mudancas-climaticas",
+       "nome": "Mudanças climáticas",
+       "volume": 19,
+       "sentimento": {
+        "pos": 26,
+        "neu": 58,
+        "neg": 16
+       },
+       "impacto": 0.1
+      },
+      {
+       "id": "protecao-ambiental",
+       "nome": "Proteção ambiental",
+       "volume": 34,
+       "sentimento": {
+        "pos": 18,
+        "neu": 44,
+        "neg": 38
+       },
+       "impacto": -0.4
+      },
+      {
+       "id": "economia-circular",
+       "nome": "Economia circular e reúso",
+       "volume": 12,
+       "sentimento": {
+        "pos": 58,
+        "neu": 42,
+        "neg": 0
+       },
+       "impacto": 0.2
+      }
+     ],
+     "nivel2": {
+      "leitura": "Responsabilidade Ambiental tirou 0,6 ponto da Imprensa. Licenciamento ambiental e Proteção ambiental pressionam, concentrados na Corsan. Economia circular e reúso é o tema que mais sustenta.",
+      "tituloTabela": "Licenciamento e Proteção ambiental tiram 0,9 ponto; reúso devolve 0,2",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "licenciamento-ambiental",
+       "evolucao": {
+        "titulo": "Licenciamento ambiental teve o pior mês do semestre, com quase o dobro de matérias de julho",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. Acima das colunas, o número de matérias do mês.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         -0.1,
+         -0.2,
+         -0.1,
+         -0.3,
+         -0.2,
+         -0.5
+        ],
+        "volumes": [
+         12,
+         15,
+         11,
+         18,
+         16,
+         31
+        ]
+       },
+       "concentracao": {
+        "titulo": "Corsan concentra 55% das matérias e 60% do impacto",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Corsan",
+          "volume": 17,
+          "impacto": -0.3
+         },
+         {
+          "nome": "Águas do Pará",
+          "volume": 9,
+          "impacto": -0.1
+         },
+         {
+          "nome": "Águas do Rio",
+          "volume": 5,
+          "impacto": -0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RS",
+          "volume": 17,
+          "impacto": -0.3
+         },
+         {
+          "nome": "PA",
+          "volume": 9,
+          "impacto": -0.1
+         },
+         {
+          "nome": "RJ",
+          "volume": 5,
+          "impacto": -0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "crescimento-solidez",
+     "nome": "Crescimento e Solidez Financeira",
+     "volume": 164,
+     "sentimento": {
+      "pos": 38,
+      "neu": 47,
+      "neg": 15
+     },
+     "impacto": 1.2,
+     "impactoMesAnterior": 1.6,
+     "filhos": [
+      {
+       "id": "tarifa",
+       "nome": "Tarifa",
+       "volume": 38,
+       "sentimento": {
+        "pos": 8,
+        "neu": 45,
+        "neg": 47
+       },
+       "impacto": -0.6
+      },
+      {
+       "id": "credito-rating",
+       "nome": "Crédito e rating",
+       "volume": 34,
+       "sentimento": {
+        "pos": 56,
+        "neu": 41,
+        "neg": 3
+       },
+       "impacto": 0.8
+      },
+      {
+       "id": "desempenho-financeiro",
+       "nome": "Desempenho financeiro",
+       "volume": 42,
+       "sentimento": {
+        "pos": 50,
+        "neu": 43,
+        "neg": 7
+       },
+       "impacto": 0.6
+      },
+      {
+       "id": "estrutura-capital",
+       "nome": "Estrutura de capital",
+       "volume": 28,
+       "sentimento": {
+        "pos": 43,
+        "neu": 50,
+        "neg": 7
+       },
+       "impacto": 0.3
+      },
+      {
+       "id": "novos-negocios",
+       "nome": "Novos negócios",
+       "volume": 22,
+       "sentimento": {
+        "pos": 50,
+        "neu": 45,
+        "neg": 5
+       },
+       "impacto": 0.1
+      }
+     ],
+     "nivel2": {
+      "leitura": "Crescimento e Solidez Financeira devolveu 1,2 ponto à Imprensa em agosto. Crédito e rating e Desempenho financeiro sustentam o pilar. Tarifa é o único tema no negativo, com a pauta de reajuste no RS.",
+      "tituloTabela": "Crédito e rating lidera o que sustenta; Tarifa tira 0,6 ponto",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "credito-rating",
+       "evolucao": {
+        "titulo": "Crédito e rating sobe há três meses e chegou ao melhor nível do semestre",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. Acima das colunas, o número de matérias do mês.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         0.5,
+         0.6,
+         0.4,
+         0.6,
+         0.7,
+         0.8
+        ],
+        "volumes": [
+         22,
+         25,
+         20,
+         27,
+         30,
+         34
+        ]
+       },
+       "concentracao": {
+        "titulo": "A pauta é corporativa: 88% das matérias citam a holding",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Aegea (holding)",
+          "volume": 30,
+          "impacto": 0.7
+         },
+         {
+          "nome": "Águas do Rio",
+          "volume": 4,
+          "impacto": 0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "Nacional",
+          "volume": 30,
+          "impacto": 0.7
+         },
+         {
+          "nome": "RJ",
+          "volume": 4,
+          "impacto": 0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "responsabilidade-social",
+     "nome": "Responsabilidade Social",
+     "volume": 118,
+     "sentimento": {
+      "pos": 41,
+      "neu": 50,
+      "neg": 9
+     },
+     "impacto": 0.9,
+     "impactoMesAnterior": 0.8,
+     "filhos": [
+      {
+       "id": "relacionamento-comunitario",
+       "nome": "Relacionamento comunitário",
+       "volume": 34,
+       "sentimento": {
+        "pos": 41,
+        "neu": 47,
+        "neg": 12
+       },
+       "impacto": 0.3
+      },
+      {
+       "id": "inclusao-sanitaria",
+       "nome": "Inclusão sanitária",
+       "volume": 28,
+       "sentimento": {
+        "pos": 50,
+        "neu": 46,
+        "neg": 4
+       },
+       "impacto": 0.4
+      },
+      {
+       "id": "saude-seguranca",
+       "nome": "Saúde e segurança",
+       "volume": 18,
+       "sentimento": {
+        "pos": 22,
+        "neu": 50,
+        "neg": 28
+       },
+       "impacto": -0.1
+      },
+      {
+       "id": "relacoes-trabalho",
+       "nome": "Relações de trabalho",
+       "volume": 14,
+       "sentimento": {
+        "pos": 21,
+        "neu": 57,
+        "neg": 22
+       },
+       "impacto": 0.0
+      },
+      {
+       "id": "acoes-sociais",
+       "nome": "Ações sociais",
+       "volume": 24,
+       "sentimento": {
+        "pos": 58,
+        "neu": 42,
+        "neg": 0
+       },
+       "impacto": 0.3
+      }
+     ],
+     "nivel2": {
+      "leitura": "Responsabilidade Social devolveu 0,9 ponto à Imprensa. Inclusão sanitária e Ações sociais lideram. Saúde e segurança é o único tema no negativo, ainda marginal.",
+      "tituloTabela": "Inclusão sanitária e Ações sociais sustentam o pilar; nenhum tema pressiona de forma relevante",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "inclusao-sanitaria",
+       "evolucao": {
+        "titulo": "Inclusão sanitária cresce de forma consistente e dobrou o impacto desde março",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. Acima das colunas, o número de matérias do mês.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         0.2,
+         0.3,
+         0.2,
+         0.3,
+         0.3,
+         0.4
+        ],
+        "volumes": [
+         18,
+         21,
+         17,
+         22,
+         24,
+         28
+        ]
+       },
+       "concentracao": {
+        "titulo": "A cobertura positiva se distribui entre Águas do Rio, Corsan e Águas do Pará",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Águas do Rio",
+          "volume": 12,
+          "impacto": 0.2
+         },
+         {
+          "nome": "Corsan",
+          "volume": 9,
+          "impacto": 0.1
+         },
+         {
+          "nome": "Águas do Pará",
+          "volume": 7,
+          "impacto": 0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RJ",
+          "volume": 12,
+          "impacto": 0.2
+         },
+         {
+          "nome": "RS",
+          "volume": 9,
+          "impacto": 0.1
+         },
+         {
+          "nome": "PA",
+          "volume": 7,
+          "impacto": 0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "prosperidade-compartilhada",
+     "nome": "Prosperidade Compartilhada",
+     "volume": 115,
+     "sentimento": {
+      "pos": 36,
+      "neu": 52,
+      "neg": 12
+     },
+     "impacto": 0.7,
+     "impactoMesAnterior": 0.6,
+     "filhos": [
+      {
+       "id": "universalizacao",
+       "nome": "Universalização",
+       "volume": 42,
+       "sentimento": {
+        "pos": 40,
+        "neu": 50,
+        "neg": 10
+       },
+       "impacto": 0.3
+      },
+      {
+       "id": "investimento-infraestrutura",
+       "nome": "Investimento em infraestrutura",
+       "volume": 38,
+       "sentimento": {
+        "pos": 37,
+        "neu": 50,
+        "neg": 13
+       },
+       "impacto": 0.3
+      },
+      {
+       "id": "emprego-renda",
+       "nome": "Emprego e renda",
+       "volume": 19,
+       "sentimento": {
+        "pos": 32,
+        "neu": 58,
+        "neg": 10
+       },
+       "impacto": 0.1
+      },
+      {
+       "id": "legado-impacto",
+       "nome": "Legado e impacto",
+       "volume": 16,
+       "sentimento": {
+        "pos": 25,
+        "neu": 56,
+        "neg": 19
+       },
+       "impacto": 0.0
+      }
+     ],
+     "nivel2": {
+      "leitura": "Prosperidade Compartilhada devolveu 0,7 ponto à Imprensa. Universalização e Investimento em infraestrutura sustentam o pilar, e nenhum tema está no negativo.",
+      "tituloTabela": "Universalização e Investimento em infraestrutura sustentam o pilar",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "universalizacao",
+       "evolucao": {
+        "titulo": "Universalização perdeu força desde abril e se estabilizou em 0,3 ponto",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. Acima das colunas, o número de matérias do mês.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         0.4,
+         0.6,
+         0.3,
+         0.2,
+         0.3,
+         0.3
+        ],
+        "volumes": [
+         38,
+         44,
+         35,
+         31,
+         36,
+         42
+        ]
+       },
+       "concentracao": {
+        "titulo": "Águas do Rio lidera a cobertura de universalização, seguida de Águas do Pará",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Águas do Rio",
+          "volume": 18,
+          "impacto": 0.1
+         },
+         {
+          "nome": "Águas do Pará",
+          "volume": 14,
+          "impacto": 0.1
+         },
+         {
+          "nome": "Corsan",
+          "volume": 10,
+          "impacto": 0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RJ",
+          "volume": 18,
+          "impacto": 0.1
+         },
+         {
+          "nome": "PA",
+          "volume": 14,
+          "impacto": 0.1
+         },
+         {
+          "nome": "RS",
+          "volume": 10,
+          "impacto": 0.1
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "id": "inovacao-tecnologia",
+     "nome": "Inovação e Tecnologia",
+     "volume": 41,
+     "sentimento": {
+      "pos": 44,
+      "neu": 46,
+      "neg": 10
+     },
+     "impacto": 0.3,
+     "impactoMesAnterior": 0.3,
+     "filhos": [
+      {
+       "id": "seguranca-informacao",
+       "nome": "Segurança da informação",
+       "volume": 9,
+       "sentimento": {
+        "pos": 11,
+        "neu": 45,
+        "neg": 44
+       },
+       "impacto": -0.1
+      },
+      {
+       "id": "experiencia-digital",
+       "nome": "Experiência digital do cliente",
+       "volume": 18,
+       "sentimento": {
+        "pos": 50,
+        "neu": 44,
+        "neg": 6
+       },
+       "impacto": 0.2
+      },
+      {
+       "id": "automacao-ia",
+       "nome": "Automação e IA",
+       "volume": 14,
+       "sentimento": {
+        "pos": 57,
+        "neu": 43,
+        "neg": 0
+       },
+       "impacto": 0.2
+      }
+     ],
+     "nivel2": {
+      "leitura": "Inovação e Tecnologia devolveu 0,3 ponto à Imprensa, com Experiência digital do cliente e Automação e IA. Segurança da informação aparece pouco, mas é o único tema negativo.",
+      "tituloTabela": "Experiência digital e Automação sustentam o pilar, ainda com volume baixo",
+      "subtituloTabela": "Temas estratégicos do pilar, com o impacto de cada um na nota da Imprensa. O tema em destaque abre a evolução e a concentração logo abaixo. Clique num tema para descer aos subtemas.",
+      "destaque": {
+       "temaId": "experiencia-digital",
+       "evolucao": {
+        "titulo": "Experiência digital do cliente dobrou de volume desde março e segue positiva",
+        "subtitulo": "Impacto na nota da Imprensa, em pontos. Acima das colunas, o número de matérias do mês.",
+        "meses": [
+         "mar/26",
+         "abr/26",
+         "mai/26",
+         "jun/26",
+         "jul/26",
+         "ago/26"
+        ],
+        "impactos": [
+         0.1,
+         0.1,
+         0.1,
+         0.2,
+         0.1,
+         0.2
+        ],
+        "volumes": [
+         9,
+         10,
+         8,
+         14,
+         12,
+         18
+        ]
+       },
+       "concentracao": {
+        "titulo": "Águas do Rio e Corsan dividem a cobertura",
+        "subtitulo": "Matérias e impacto na nota, em pontos.",
+        "concessionarias": [
+         {
+          "nome": "Águas do Rio",
+          "volume": 10,
+          "impacto": 0.1
+         },
+         {
+          "nome": "Corsan",
+          "volume": 8,
+          "impacto": 0.1
+         }
+        ],
+        "ufs": [
+         {
+          "nome": "RJ",
+          "volume": 10,
+          "impacto": 0.1
+         },
+         {
+          "nome": "RS",
+          "volume": 8,
+          "impacto": 0.1
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "cartoesLaterais": [
+    {
+     "tipo": "oQueMudou",
+     "rotulo": "O que mudou desde julho",
+     "titulo": "A nota caiu 6 pontos, e 4,9 vieram de Eficiência e Governança",
+     "de": 48,
+     "para": 42,
+     "linhas": [
+      {
+       "rotulo": "Eficiência Operacional e Qualidade",
+       "valor": -2.8
+      },
+      {
+       "rotulo": "Governança",
+       "valor": -2.1
+      },
+      {
+       "rotulo": "Responsabilidade Ambiental",
+       "valor": -0.9
+      },
+      {
+       "rotulo": "Crescimento e Solidez Financeira",
+       "valor": -0.4
+      },
+      {
+       "rotulo": "Responsabilidade Social",
+       "valor": 0.1
+      },
+      {
+       "rotulo": "Prosperidade Compartilhada",
+       "valor": 0.1
+      },
+      {
+       "rotulo": "Inovação e Tecnologia",
+       "valor": 0.0
+      }
+     ],
+     "nota": "Governança saiu de −1,0 para −3,1 pt com a abertura de processo da agência reguladora no RJ, pauta que não existia em julho."
+    },
+    {
+     "tipo": "historia",
+     "rotulo": "A história do mês",
+     "titulo": "Rompimento de adutora na Zona Norte do Rio",
+     "texto": "Um único evento gerou 96 matérias, sete em cada dez entre 12 e 18 de agosto, e tirou 3,1 pontos da nota.",
+     "metricas": [
+      {
+       "valor": "96",
+       "rotulo": "matérias"
+      },
+      {
+       "valor": "34",
+       "rotulo": "no Tier 1"
+      },
+      {
+       "valor": "−3,1",
+       "rotulo": "pontos na nota",
+       "negativo": true
+      }
+     ],
+     "itemId": "rom-01",
+     "destino": {
+      "lente": "imprensa",
+      "pilar": "eficiencia-operacional",
+      "tema": "abastecimento-agua",
+      "subtema": "rompimento-adutora"
+     }
+    }
+   ]
+  },
+  {
+   "id": "mercado",
+   "nome": "Mercado",
+   "publico": "Investidores e rating",
+   "cor": "#0027BD",
+   "peso": 0.2,
+   "nota": 73,
+   "serie": [
+    66,
+    70,
+    69,
+    68,
+    69,
+    73
+   ],
+   "fonte": "Clipei (imprensa econômica de todos os tiers), eventos de rating e estudo de percepção",
+   "unidade": "matérias",
+   "volumeTotal": 318,
+   "drill": false,
+   "filtroProprio": {
+    "id": "fonte",
+    "rotulo": "Fonte",
+    "opcoes": [
+     "Todas",
+     "Imprensa econômica",
+     "Eventos de rating",
+     "Estudo de percepção"
+    ]
+   },
+   "kpis": [
+    {
+     "rotulo": "Matérias econômicas",
+     "valor": "318",
+     "nota": "+9% vs. julho"
+    },
+    {
+     "rotulo": "Eventos de rating",
+     "valor": "1",
+     "nota": "reafirmação, perspectiva estável"
+    },
+    {
+     "rotulo": "Matérias negativas",
+     "valor": "14%",
+     "nota": "−3 p.p. vs. julho"
+    },
+    {
+     "rotulo": "Distância do índice geral",
+     "valor": "+24 pt",
+     "nota": "Mercado 73 · índice 49"
+    }
+   ],
+   "leitura": "O Mercado está em 73, faixa Sólido, 4 pontos acima de julho e o melhor resultado do semestre. Crédito e rating e Desempenho financeiro somam 9,1 pontos. O único tema financeiro no negativo é Tarifa, ainda pequeno, puxado pela pauta de reajuste no RS.",
+   "tabelaPilares": {
+    "titulo": "Crescimento e Solidez Financeira sustenta o Mercado; Governança é o único freio relevante",
+    "subtitulo": "Quanto cada pilar empurrou a nota acima ou abaixo do neutro (50). Entre investidores e agências de rating, com matérias ponderadas pelo tier do veículo."
+   },
+   "pilares": [
+    {
+     "id": "crescimento-solidez",
+     "nome": "Crescimento e Solidez Financeira",
+     "volume": 142,
+     "sentimento": {
+      "pos": 58,
+      "neu": 34,
+      "neg": 8
+     },
+     "impacto": 12.4
+    },
+    {
+     "id": "prosperidade-compartilhada",
+     "nome": "Prosperidade Compartilhada",
+     "volume": 61,
+     "sentimento": {
+      "pos": 54,
+      "neu": 40,
+      "neg": 6
+     },
+     "impacto": 6.8
+    },
+    {
+     "id": "responsabilidade-social",
+     "nome": "Responsabilidade Social",
+     "volume": 22,
+     "sentimento": {
+      "pos": 50,
+      "neu": 45,
+      "neg": 5
+     },
+     "impacto": 2.9
+    },
+    {
+     "id": "inovacao-tecnologia",
+     "nome": "Inovação e Tecnologia",
+     "volume": 18,
+     "sentimento": {
+      "pos": 61,
+      "neu": 33,
+      "neg": 6
+     },
+     "impacto": 2.8
+    },
+    {
+     "id": "responsabilidade-ambiental",
+     "nome": "Responsabilidade Ambiental",
+     "volume": 21,
+     "sentimento": {
+      "pos": 48,
+      "neu": 43,
+      "neg": 9
+     },
+     "impacto": 2.6
+    },
+    {
+     "id": "eficiencia-operacional",
+     "nome": "Eficiência Operacional e Qualidade",
+     "volume": 24,
+     "sentimento": {
+      "pos": 17,
+      "neu": 46,
+      "neg": 37
+     },
+     "impacto": -1.6
+    },
+    {
+     "id": "governanca",
+     "nome": "Governança",
+     "volume": 30,
+     "sentimento": {
+      "pos": 20,
+      "neu": 43,
+      "neg": 37
+     },
+     "impacto": -2.9
+    }
+   ],
+   "cartoesLaterais": [
+    {
+     "tipo": "divergentes",
+     "rotulo": "Temas financeiros",
+     "titulo": "Rating e resultado explicam 9,1 dos 12,4 pontos do pilar financeiro",
+     "subtitulo": "Impacto na nota do Mercado, em pontos. Tarifa é o tema a vigiar.",
+     "linhas": [
+      {
+       "rotulo": "Crédito e rating",
+       "valor": 5.1
+      },
+      {
+       "rotulo": "Desempenho financeiro",
+       "valor": 4.0
+      },
+      {
+       "rotulo": "Estrutura de capital",
+       "valor": 2.1
+      },
+      {
+       "rotulo": "Novos negócios",
+       "valor": 1.6
+      },
+      {
+       "rotulo": "Tarifa",
+       "valor": -0.4
+      }
+     ]
+    },
+    {
+     "tipo": "eventos",
+     "rotulo": "Sinais do mercado no mês",
+     "titulo": "Nenhum evento de mercado contra a companhia em agosto",
+     "eventos": [
+      {
+       "sentimento": "positivo",
+       "selo": "Positivo",
+       "meta": "18/08/2026 · evento de rating",
+       "titulo": "Rating nacional reafirmado em AA, perspectiva estável",
+       "nota": "Evento ilustrativo. Pesa como fato do mês, não como matéria."
+      },
+      {
+       "sentimento": "neutro",
+       "selo": "Sem nova leitura",
+       "meta": "estudo de percepção",
+       "titulo": "Última onda em junho/26: 71 de 100. Próxima em dezembro",
+       "nota": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sociedade",
+   "nome": "Sociedade digital",
+   "publico": "Redes em mar aberto",
+   "cor": "#FE952B",
+   "peso": 0.2,
+   "nota": 38,
+   "serie": [
+    49,
+    55,
+    44,
+    40,
+    44,
+    38
+   ],
+   "fonte": "Approach (social listening) e Bites",
+   "unidade": "menções",
+   "volumeTotal": 18420,
+   "drill": false,
+   "filtroProprio": [
+    {
+     "id": "rede",
+     "rotulo": "Rede",
+     "opcoes": [
+      "Todas",
+      "Instagram",
+      "X",
+      "Facebook",
+      "TikTok",
+      "YouTube"
+     ]
+    },
+    {
+     "id": "perfil",
+     "rotulo": "Perfil de quem fala",
+     "opcoes": [
+      "Todos",
+      "Cidadão",
+      "Figura pública",
+      "Imprensa",
+      "Perfil institucional"
+     ]
+    }
+   ],
+   "kpis": [
+    {
+     "rotulo": "Menções",
+     "valor": "18.420",
+     "nota": "+22% vs. julho"
+    },
+    {
+     "rotulo": "Engajamento",
+     "valor": "2,1 mi",
+     "nota": "interações nas menções"
+    },
+    {
+     "rotulo": "Menções negativas",
+     "valor": "52%",
+     "nota": "+6 p.p. vs. julho"
+    },
+    {
+     "rotulo": "Distância do índice geral",
+     "valor": "−11 pt",
+     "nota": "Sociedade 38 · índice 49"
+    }
+   ],
+   "leitura": "A Sociedade digital está em 38, faixa Crítico, 6 pontos abaixo de julho. Cidadãos fazem 71% das menções, mas dois posts de figuras públicas sobre falta de água em Belém concentraram 41% do engajamento negativo do mês.",
+   "tabelaPilares": {
+    "titulo": "Eficiência Operacional responde por dois terços da pressão nas redes",
+    "subtitulo": "Quanto cada pilar empurrou a nota acima ou abaixo do neutro (50). Menções ponderadas pelo engajamento."
+   },
+   "pilares": [
+    {
+     "id": "eficiencia-operacional",
+     "nome": "Eficiência Operacional e Qualidade",
+     "volume": 10240,
+     "sentimento": {
+      "pos": 6,
+      "neu": 31,
+      "neg": 63
+     },
+     "impacto": -8.9
+    },
+    {
+     "id": "governanca",
+     "nome": "Governança",
+     "volume": 2110,
+     "sentimento": {
+      "pos": 5,
+      "neu": 52,
+      "neg": 43
+     },
+     "impacto": -1.7
+    },
+    {
+     "id": "responsabilidade-social",
+     "nome": "Responsabilidade Social",
+     "volume": 1630,
+     "sentimento": {
+      "pos": 12,
+      "neu": 45,
+      "neg": 43
+     },
+     "impacto": -1.4
+    },
+    {
+     "id": "responsabilidade-ambiental",
+     "nome": "Responsabilidade Ambiental",
+     "volume": 1380,
+     "sentimento": {
+      "pos": 9,
+      "neu": 50,
+      "neg": 41
+     },
+     "impacto": -1.1
+    },
+    {
+     "id": "crescimento-solidez",
+     "nome": "Crescimento e Solidez Financeira",
+     "volume": 1150,
+     "sentimento": {
+      "pos": 7,
+      "neu": 62,
+      "neg": 31
+     },
+     "impacto": -0.6
+    },
+    {
+     "id": "prosperidade-compartilhada",
+     "nome": "Prosperidade Compartilhada",
+     "volume": 1290,
+     "sentimento": {
+      "pos": 34,
+      "neu": 52,
+      "neg": 14
+     },
+     "impacto": 1.2
+    },
+    {
+     "id": "inovacao-tecnologia",
+     "nome": "Inovação e Tecnologia",
+     "volume": 620,
+     "sentimento": {
+      "pos": 38,
+      "neu": 48,
+      "neg": 14
+     },
+     "impacto": 0.5
+    }
+   ],
+   "cartoesLaterais": [
+    {
+     "tipo": "tabela",
+     "rotulo": "Quem fala",
+     "titulo": "Figura pública faz 6% das menções e 41% do engajamento negativo",
+     "colunas": [
+      "Perfil",
+      "Menções",
+      "Engaj. neg."
+     ],
+     "linhas": [
+      [
+       "Cidadão",
+       "71%",
+       "38%"
+      ],
+      [
+       "Figura pública",
+       "6%",
+       "41%"
+      ],
+      [
+       "Imprensa",
+       "15%",
+       "17%"
+      ],
+      [
+       "Perfil institucional",
+       "8%",
+       "4%"
+      ]
+     ],
+     "linhaDestaque": 1,
+     "barras": {
+      "rotulo": "Menções por rede",
+      "linhas": [
+       {
+        "rotulo": "Instagram",
+        "valor": 44
+       },
+       {
+        "rotulo": "X",
+        "valor": 21
+       },
+       {
+        "rotulo": "Facebook",
+        "valor": 18
+       },
+       {
+        "rotulo": "TikTok",
+        "valor": 12
+       },
+       {
+        "rotulo": "YouTube",
+        "valor": 5
+       }
+      ],
+      "sufixo": "%"
+     }
+    },
+    {
+     "tipo": "post",
+     "rotulo": "O que viralizou",
+     "titulo": "O post mais compartilhado do mês veio de Belém, não do Rio",
+     "post": {
+      "sentimento": "negativo",
+      "perfil": "Figura pública",
+      "rede": "Instagram",
+      "data": "2026-08-14",
+      "concessionaria": "Águas do Pará",
+      "uf": "PA",
+      "texto": "Terceiro dia sem água no bairro e nenhuma resposta da concessionária. Quem paga a conta em dia merece mais respeito.",
+      "metricas": [
+       {
+        "valor": "182 mil",
+        "rotulo": "interações"
+       },
+       {
+        "valor": "410 mil",
+        "rotulo": "seguidores"
+       }
+      ],
+      "url": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "clientes",
+   "nome": "Clientes",
+   "publico": "Canais próprios",
+   "cor": "#E12379",
+   "peso": 0.15,
+   "nota": 49,
+   "serie": [
+    52,
+    58,
+    47,
+    45,
+    44,
+    49
+   ],
+   "fonte": "mensagens nos canais próprios (community management)",
+   "unidade": "mensagens",
+   "volumeTotal": 9860,
+   "drill": false,
+   "filtroProprio": {
+    "id": "canal",
+    "rotulo": "Canal",
+    "opcoes": [
+     "Todos",
+     "WhatsApp",
+     "Instagram",
+     "Facebook",
+     "Site"
+    ]
+   },
+   "kpis": [
+    {
+     "rotulo": "Mensagens",
+     "valor": "9.860",
+     "nota": "−4% vs. julho"
+    },
+    {
+     "rotulo": "Respondidas",
+     "valor": "87%",
+     "nota": "+3 p.p. vs. julho"
+    },
+    {
+     "rotulo": "Tempo mediano de resposta",
+     "valor": "3h40",
+     "nota": "meta interna: 4h"
+    },
+    {
+     "rotulo": "Negativas sem resposta",
+     "valor": "412",
+     "nota": "62% delas na Corsan"
+    }
+   ],
+   "leitura": "Clientes está em 49, 5 pontos acima de julho, puxado pela experiência no app. Conta errada e falta de água seguem como as maiores reclamações e tiram 5,5 pontos. A Corsan concentra 38% das mensagens negativas e tem a menor taxa de resposta do grupo, 71%.",
+   "tabelaPilares": {
+    "titulo": "Faturamento e abastecimento explicam quase toda a perda; o app devolve 2 pontos",
+    "subtitulo": "Quanto cada pilar empurrou a nota acima ou abaixo do neutro (50). A partir das mensagens recebidas nos canais da Aegea."
+   },
+   "pilares": [
+    {
+     "id": "eficiencia-operacional",
+     "nome": "Eficiência Operacional e Qualidade",
+     "volume": 6120,
+     "sentimento": {
+      "pos": 9,
+      "neu": 35,
+      "neg": 56
+     },
+     "impacto": -6.2
+    },
+    {
+     "id": "crescimento-solidez",
+     "nome": "Crescimento e Solidez Financeira",
+     "volume": 640,
+     "sentimento": {
+      "pos": 6,
+      "neu": 62,
+      "neg": 32
+     },
+     "impacto": -0.3
+    },
+    {
+     "id": "inovacao-tecnologia",
+     "nome": "Inovação e Tecnologia",
+     "volume": 1290,
+     "sentimento": {
+      "pos": 41,
+      "neu": 44,
+      "neg": 15
+     },
+     "impacto": 2.1
+    },
+    {
+     "id": "responsabilidade-social",
+     "nome": "Responsabilidade Social",
+     "volume": 860,
+     "sentimento": {
+      "pos": 38,
+      "neu": 47,
+      "neg": 15
+     },
+     "impacto": 1.4
+    },
+    {
+     "id": "prosperidade-compartilhada",
+     "nome": "Prosperidade Compartilhada",
+     "volume": 520,
+     "sentimento": {
+      "pos": 34,
+      "neu": 50,
+      "neg": 16
+     },
+     "impacto": 0.9
+    },
+    {
+     "id": "responsabilidade-ambiental",
+     "nome": "Responsabilidade Ambiental",
+     "volume": 310,
+     "sentimento": {
+      "pos": 30,
+      "neu": 52,
+      "neg": 18
+     },
+     "impacto": 0.9
+    },
+    {
+     "id": "governanca",
+     "nome": "Governança",
+     "volume": 120,
+     "sentimento": {
+      "pos": 22,
+      "neu": 63,
+      "neg": 15
+     },
+     "impacto": 0.2
+    }
+   ],
+   "cartoesLaterais": [
+    {
+     "tipo": "tabela",
+     "rotulo": "Estamos respondendo?",
+     "titulo": "A Corsan concentra o problema: mais reclamação e menos resposta",
+     "subtitulo": "Participação nas mensagens negativas, taxa de resposta às negativas e tempo mediano.",
+     "colunas": [
+      "Concessionária",
+      "Negativas",
+      "Resposta",
+      "Tempo"
+     ],
+     "linhas": [
+      [
+       "Corsan",
+       "38%",
+       "71%",
+       "9h10"
+      ],
+      [
+       "Águas do Rio",
+       "31%",
+       "93%",
+       "2h05"
+      ],
+      [
+       "Águas do Pará",
+       "14%",
+       "88%",
+       "3h30"
+      ],
+      [
+       "Águas Guariroba",
+       "6%",
+       "96%",
+       "1h20"
+      ],
+      [
+       "Outras",
+       "11%",
+       "90%",
+       "3h00"
+      ]
+     ],
+     "linhaDestaque": 0
+    },
+    {
+     "tipo": "divergentes",
+     "rotulo": "Do que mais reclamam",
+     "titulo": "Conta errada lidera, à frente de falta de água",
+     "subtitulo": "Temas estratégicos, impacto em pontos na nota de Clientes.",
+     "linhas": [
+      {
+       "rotulo": "Faturamento e cobrança",
+       "valor": -3.1
+      },
+      {
+       "rotulo": "Abastecimento de água",
+       "valor": -2.4
+      },
+      {
+       "rotulo": "Atendimento ao cliente",
+       "valor": -0.5
+      },
+      {
+       "rotulo": "Esgoto",
+       "valor": -0.4
+      },
+      {
+       "rotulo": "Experiência digital (app)",
+       "valor": 2.1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "institucional",
+   "nome": "Institucional",
+   "publico": "Governo e entidades",
+   "cor": "#A11FFF",
+   "peso": 0.15,
+   "nota": 44,
+   "serie": [
+    51,
+    60,
+    52,
+    50,
+    49,
+    44
+   ],
+   "fonte": "CRM de stakeholders, clima registrado nas interações",
+   "unidade": "interações",
+   "volumeTotal": 126,
+   "drill": false,
+   "filtroProprio": {
+    "id": "tipoInteracao",
+    "rotulo": "Tipo de interação",
+    "opcoes": [
+     "Todos",
+     "Reunião",
+     "Audiência pública",
+     "Evento",
+     "Visita técnica"
+    ]
+   },
+   "kpis": [
+    {
+     "rotulo": "Interações registradas",
+     "valor": "126",
+     "nota": "+11 vs. julho"
+    },
+    {
+     "rotulo": "Instituições",
+     "valor": "48",
+     "nota": "12 novas no mês"
+    },
+    {
+     "rotulo": "Clima negativo",
+     "valor": "33%",
+     "nota": "+8 p.p. vs. julho"
+    },
+    {
+     "rotulo": "Interações com clima preenchido",
+     "valor": "81%",
+     "nota": "qualidade do registro"
+    }
+   ],
+   "leitura": "O clima institucional está em 44, 5 pontos abaixo de julho. A tensão está no regulador e no Legislativo e tem um tema dominante: 7 das 9 reuniões com a agência reguladora do RJ tiveram clima negativo, todas com fiscalização regulatória na pauta.",
+   "tabelaPilares": {
+    "titulo": "Governança sozinha tira 5,8 pontos do clima institucional",
+    "subtitulo": "Quanto cada pilar empurrou a nota acima ou abaixo do neutro (50). A partir do clima registrado em reuniões, audiências e eventos."
+   },
+   "pilares": [
+    {
+     "id": "governanca",
+     "nome": "Governança",
+     "volume": 48,
+     "sentimento": {
+      "pos": 15,
+      "neu": 37,
+      "neg": 48
+     },
+     "impacto": -5.8
+    },
+    {
+     "id": "eficiencia-operacional",
+     "nome": "Eficiência Operacional e Qualidade",
+     "volume": 22,
+     "sentimento": {
+      "pos": 14,
+      "neu": 45,
+      "neg": 41
+     },
+     "impacto": -2.4
+    },
+    {
+     "id": "crescimento-solidez",
+     "nome": "Crescimento e Solidez Financeira",
+     "volume": 14,
+     "sentimento": {
+      "pos": 21,
+      "neu": 50,
+      "neg": 29
+     },
+     "impacto": -0.9
+    },
+    {
+     "id": "prosperidade-compartilhada",
+     "nome": "Prosperidade Compartilhada",
+     "volume": 18,
+     "sentimento": {
+      "pos": 50,
+      "neu": 39,
+      "neg": 11
+     },
+     "impacto": 1.6
+    },
+    {
+     "id": "responsabilidade-social",
+     "nome": "Responsabilidade Social",
+     "volume": 11,
+     "sentimento": {
+      "pos": 45,
+      "neu": 36,
+      "neg": 19
+     },
+     "impacto": 0.8
+    },
+    {
+     "id": "responsabilidade-ambiental",
+     "nome": "Responsabilidade Ambiental",
+     "volume": 9,
+     "sentimento": {
+      "pos": 33,
+      "neu": 45,
+      "neg": 22
+     },
+     "impacto": 0.5
+    },
+    {
+     "id": "inovacao-tecnologia",
+     "nome": "Inovação e Tecnologia",
+     "volume": 4,
+     "sentimento": {
+      "pos": 50,
+      "neu": 50,
+      "neg": 0
+     },
+     "impacto": 0.2
+    }
+   ],
+   "cartoesLaterais": [
+    {
+     "tipo": "saldos",
+     "rotulo": "Onde o clima está mais tenso",
+     "titulo": "Regulador do RJ tem o pior saldo do mês, à frente de ALMG e ABDIB",
+     "subtitulo": "Instituições com mais interações no recorte. Saldo = % positivas menos % negativas.",
+     "linhas": [
+      {
+       "nome": "Agência reguladora (RJ)",
+       "interacoes": 9,
+       "saldo": -56
+      },
+      {
+       "nome": "ALMG",
+       "interacoes": 12,
+       "saldo": -25
+      },
+      {
+       "nome": "ABDIB",
+       "interacoes": 13,
+       "saldo": -23
+      },
+      {
+       "nome": "ABCON",
+       "interacoes": 25,
+       "saldo": -18
+      },
+      {
+       "nome": "CNI",
+       "interacoes": 11,
+       "saldo": 0
+      }
+     ]
+    },
+    {
+     "tipo": "contagens",
+     "rotulo": "Conversas negativas com o regulador",
+     "titulo": "Uma pauta só aparece em 7 das 9 reuniões",
+     "subtitulo": "Temas e porta-vozes das reuniões com clima negativo.",
+     "secoes": [
+      {
+       "rotulo": "Temas na pauta",
+       "linhas": [
+        [
+         "Fiscalização regulatória",
+         "7 de 9"
+        ],
+        [
+         "Reequilíbrio econômico-financeiro",
+         "4 de 9"
+        ],
+        [
+         "Frequência e continuidade",
+         "3 de 9"
+        ]
+       ]
+      },
+      {
+       "rotulo": "Porta-vozes nessas reuniões",
+       "linhas": [
+        [
+         "Diretoria de Relações Institucionais",
+         "5"
+        ],
+        [
+         "Presidência Águas do Rio",
+         "3"
+        ],
+        [
+         "Diretoria Jurídica",
+         "1"
+        ]
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

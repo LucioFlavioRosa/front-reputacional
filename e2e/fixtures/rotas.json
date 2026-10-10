@@ -1,0 +1,32 @@
+[
+  {
+    "metodo": "GET",
+    "caminho": "/api/eu",
+    "arquivo": "eu.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/opcoes",
+    "arquivo": "score-opcoes.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score",
+    "arquivo": "score.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/serie",
+    "arquivo": "score-serie.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/dossie",
+    "arquivo": "dossie-imprensa.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/dossie/opcoes-de-filtro",
+    "arquivo": "opcoes-de-filtro-imprensa.json"
+  }
+]

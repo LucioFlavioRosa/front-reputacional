@@ -1,0 +1,149 @@
+# Consulta em profundidade · contrato de arquitetura
+
+Documento de trabalho para quem constrói. A spec (`SPEC_consulta_profundidade.md`) diz **o quê**; `DECISOES.md` diz **o que mudou** por causa do encaixe; este arquivo diz **onde e com que forma**. Se este arquivo e a spec divergirem num ponto que `DECISOES.md` não cobre, vale a spec.
+
+## Convenções do repositório (obrigatórias)
+
+- React 19 + TypeScript estrito; `verbatimModuleSyntax` (use `import type`), `noUnusedLocals`, `erasableSyntaxOnly` (sem `enum`).
+- Nomes em português, comentários no estilo do repositório (blocos explicativos com a razão da decisão em CAIXA ALTA no início da frase; não exagere).
+- Estilo inline com os tokens de `src/index.css` (`var(--azul-mar)`, `var(--borda)`, `var(--bg-trilho)`, `var(--erro-fg)`, `var(--ok-fg)`, `var(--cinza-2|3|4)`, `var(--bg-rodape-card)`, `var(--bg-hover)`, `var(--borda-input)`, `var(--r-card)`…). Cor sem token (ex.: `#8C91A4`, `#B0B9C8`, `#F1F4FD`, `#E6EAFB`, `#FFB8BA`, `#A2F1E8`) vai como constante nomeada em `consulta/cores.ts`.
+- Classes utilitárias: `.kicker`, `.tabular`, `.cartao` (via `Cartao`), `.sem-png` / `.sem-impressao` em todo controle interativo que não deve sair no PNG.
+- Lint (`oxlint`): arquivo `.tsx` exporta **só componentes**; funções puras e constantes não-componente ficam em `.ts`. Não chamar `setState` de forma síncrona dentro de `useEffect` (derive no render, ou atualize no handler/assinatura de evento).
+- Testes: Vitest sem `globals` (importar `describe/it/expect` de `vitest`); testes de componente com `// @vitest-environment jsdom` na 1ª linha; Testing Library + user-event.
+- Texto de tela: só o que vem do JSON ou da spec, literal. Sinal de menos é `−` (U+2212). Sem travessão `—` em texto de tela, sem emoji. Nenhum link para `#` nem URL inventada.
+- Títulos de cartão usam `var(--cor-dos-titulos, var(--azul-mar))` (A9). Links, trilha, setas, botões primários e curvas usam `var(--azul-mar)`.
+
+## Pastas
+
+```
+src/paginas/score/consulta/
+  dados/consulta-profundidade.dados.json   cópia literal de docs/consulta-profundidade/
+  dados/tipos.ts                           tipos da spec C.2 (Dados, Lente, Pilar, Tema, Subtema, Item, CartaoLateral…)
+  dados/dados.ts                           export const DADOS: Dados (import do JSON com o tipo afirmado)
+  dados/seletores.ts                       navegabilidade, resolverCaminho, irmãos, grupos, escalas, lista, busca
+  dados/seletores.test.ts
+  dados/invariantes.test.ts                as 12 regras da C.4 (mesmas de validar_dados.py)
+  formatacao.ts / formatacao.test.ts       E.2 (+ arred da C.5, faixaDe da E.1)
+  endereco.ts / endereco.test.ts           ler/escrever o hash (puro) — A3
+  useEnderecoDoDrill.ts                    hook: estado do hash + navegar(push|replace) + popstate
+  cores.ts                                 constantes de cor sem token
+  ConsultaEmProfundidade.tsx               raiz montada dentro do BlocoExpansivel "Drill down"
+  componentes/
+    CabecalhoDoDrill.tsx                   linha "Agosto de 2026 · corte em …" + selo (A11)
+    Trilha.tsx                             E.3.4 (sem chip de nota na lente — D1)
+    IndicadorDeNivel.tsx                   5 segmentos + "Nível N de 4 · <nome>" + selo
+    SeloIlustrativo.tsx
+    CartaoDoDrill.tsx                      cartão base: kicker, título 20px, subtítulo, botão PNG
+    TabelaDeImpacto.tsx                    E.4.2 (Níveis 1, 2, 3)
+    ResumoDoNivel.tsx                      E.5.2 / E.6.2 / E.7.2
+    CartoesLaterais.tsx                    E.4.3 + E.8 (oQueMudou, historia, divergentes, eventos)
+    CartaoDeRecortes.tsx                   E.6.4 (quatro quadros)
+    ListaDeMaterias.tsx                    F.9
+    ModalDePrevia.tsx                      F.8 (usa Modal de basicos)
+    LimiteDoBloco.tsx                      A7
+  graficos/
+    BarraSentimento.tsx  BarraVolume.tsx  BarraImpacto.tsx
+    GraficoColunasImpacto.tsx  ListaConcentracao.tsx  GraficoDiario.tsx
+  niveis/
+    NivelLente.tsx  NivelPilar.tsx  NivelTema.tsx  NivelSubtema.tsx
+e2e/consulta-profundidade.spec.ts  (+ e2e/fixtures/*.json, e2e/tsconfig.json fora das references, playwright.config.ts na raiz)
+```
+
+## Tipos-chave (dados/tipos.ts)
+
+Os da spec C.2, literalmente, com `Lente['id']` = `'imprensa' | 'mercado' | 'sociedade' | 'clientes' | 'institucional'`.
+
+## formatacao.ts
+
+```ts
+export const MENOS = '−';
+export function arred(x: number, casas = 0): number;          // C.5 (Math.round + EPSILON)
+export function fmtPt(x: number): string;                     // −7,4 pt | +1,2 pt | 0,0 pt
+export function fmtPtItem(x: number): string;                 // −0,12 | +0,12 | 0,00
+export function fmtPtCurto(x: number): string;                // −3,4 | +0,7 | 0,0  (1 casa, sem "pt": F.6, recortes)
+export function fmtInt(n: number): string;                    // 18.420
+export function fmtPct(n: number): string;                    // 61%
+export function fmtSaldo(pos: number, neg: number): string;   // −36 | +23 | 0
+export function fmtDelta(d: number): { texto: string; cor: string };  // ▼ 6 pt / ▲ 4 pt
+export function fmtDataCurta(iso: string): string;            // 12/08
+export function fmtDataLonga(iso: string): string;            // 12/08/2026
+export function corDoSinal(x: number): string;                // var(--erro-fg) | var(--ok-fg) | var(--cinza-3)
+export function faixaDe(nota: number, faixas: Dados['faixas']): Dados['faixas'][number];
+```
+Zero exato não leva sinal; valor que arredonda para zero mostra `0,0` (ou `0,00`).
+
+## endereco.ts (puro)
+
+```ts
+export interface EnderecoDoDrill {
+  ativo: boolean;                 // o hash tem o marcador "consulta"
+  lente?: string; pilar?: string; tema?: string; subtema?: string;
+  sent?: 'todas' | 'negativas' | 'neutras' | 'positivas';
+  ordem?: 'impacto' | 'data';
+  tier?: string; conc?: string; uf?: string; item?: string;
+}
+export function lerEndereco(hash: string): EnderecoDoDrill;          // '#consulta&pilar=x' → {...}
+export function escreverEndereco(e: EnderecoDoDrill): string;        // → '#consulta&lente=…&pilar=…' (ordem fixa de chaves, omite vazios e padrões sent=todas/ordem=impacto)
+```
+
+## useEnderecoDoDrill.ts
+
+```ts
+export const EVENTO_DO_ENDERECO = 'consulta:endereco';   // CustomEvent disparado em toda navegação programática
+export function navegarNoDrill(novo: EnderecoDoDrill, modo: 'push' | 'replace'): void;
+//   history[pushState|replaceState](null, '', location.pathname + location.search + escreverEndereco(novo))
+//   + window.dispatchEvent(new CustomEvent(EVENTO_DO_ENDERECO))
+export function useEnderecoDoDrill(): EnderecoDoDrill;
+//   useSyncExternalStore assinando 'popstate' e EVENTO_DO_ENDERECO; snapshot = location.hash
+```
+(funções não-componente: o arquivo é `.ts`.)
+
+## dados/seletores.ts
+
+```ts
+export type Nivel = 1 | 2 | 3 | 4;
+export const NOMES_DOS_NIVEIS: Record<Nivel, string>;   // 1 Lente e pilares, 2 Temas estratégicos, 3 Subtemas, 4 Matérias
+export function lenteDoDrill(dados: Dados, id: string): Lente | undefined;
+export function pilarNavegavel(lente: Lente, pilar: Pilar): boolean;   // lente.drill && pilar.filhos?.length
+export function temaNavegavel(tema: Tema): boolean;                     // filhos?.length && nivel3
+export function subtemaNavegavel(subtema: Subtema): boolean;            // !!nivel4
+export interface Caminho { lente: Lente; pilar?: Pilar; tema?: Tema; subtema?: Subtema; nivel: Nivel; corrigido?: EnderecoDoDrill }
+export function resolverCaminho(dados: Dados, lenteId: string, e: EnderecoDoDrill): Caminho;   // D.2 adaptada (lente vem da aba); `corrigido` sempre que o endereço não é o canônico do caminho (A20)
+export interface GruposDeImpacto<T> { pressiona: T[]; sustenta: T[]; somaPressiona: number; somaSustenta: number }
+export function agruparPorImpacto<T extends No>(nos: T[]): GruposDeImpacto<T>;   // ordenações da E.4.2
+export function escalaDeImpacto(valores: number[], folga = 1.05): number;        // max(|v|) × folga (1 se tudo zero)
+export function participacao(volume: number, total: number): number;             // round(volume ÷ total × 100)
+export function mediaArredondada(valores: number[]): number;
+export function ordenarItens(itens: Item[], ordem: 'impacto' | 'data'): Item[];   // F.9
+export function filtrarItens(itens: Item[], f: { sent?: string; tier?: string; conc?: string; uf?: string }): Item[];   // sent desconhecido não filtra (Map, imune a 'constructor')
+export function opcoesDaAmostra(itens: Item[]): { tiers: string[]; concessionarias: string[]; ufs: string[] };
+export interface ResultadoDeBusca { id: string; tipo: 'Subtema' | 'Tema' | 'Pilar' | 'Matéria'; nome: string; impacto?: number; caminho: string; destino: EnderecoDoDrill }
+export interface EntradaDoIndice { resultado: ResultadoDeBusca; textos: readonly string[] }   // textos pesquisáveis crus (matéria: título, veículo, jornalista, concessionária)
+export type IndiceDeBusca = readonly EntradaDoIndice[];
+export function montarIndiceDeBusca(dados: Dados): IndiceDeBusca;
+export function buscarNoDrill(indice: IndiceDeBusca, termo: string): ResultadoDeBusca[];   // E.9 (normalização, ordem, máx 8, máx 3 matérias)
+export function normalizarBusca(texto: string): string;
+```
+
+## Componentes (props)
+
+```ts
+<ConsultaEmProfundidade lente={codigoDaAba} />                       // raiz; lê o hash, resolve o caminho, corrige com replace, rola/foca ao mudar de nível
+<Trilha caminho={Caminho} aoIr={(e: EnderecoDoDrill) => void} />
+<IndicadorDeNivel nivel={Nivel} aviso={DADOS.meta.aviso} />
+<CartaoDoDrill kicker? titulo? subtitulo? acao?: ReactNode children estilo? />   // é um Cartao (.cartao) e põe <BaixarPng titulo=…/> no cabeçalho
+<TabelaDeImpacto titulo subtitulo rotuloColuna="Pilar"|"Tema estratégico"|"Subtema" unidade nos={No[]} destaqueId? navegavel={(no) => boolean} aoAbrir={(no) => void} rodape?: ReactNode />
+<BarraImpacto valor escala compacta? />   <BarraSentimento sentimento={DistSentimento} />   <BarraVolume volume maximo />
+<GraficoColunasImpacto meses impactos volumes />   <ListaConcentracao linhas={{nome,volume,impacto}[]} volumeTotal />   <GraficoDiario porDia mes="08" />
+<ListaDeMaterias subtema={Subtema} unidade endereco={EnderecoDoDrill} aoMudar={(parcial) => void} aoAbrirItem={(item, botao) => void} />
+<ModalDePrevia alvo={{ tipo: 'item'; item: Item } | { tipo: 'post'; post: … }} aoFechar />
+<LimiteDoBloco>{…}</LimiteDoBloco>
+```
+
+## Integração (arquivos existentes que mudam)
+
+- **Ninguém pode apagar o hash.** Hoje dois pontos regravam o endereço sem ele (A3). Os ajustes abaixo em `painel.tsx` e em `Score.tsx` são obrigatórios, com teste jsdom.
+- `src/paginas/score/DossieDaLente.tsx`: o bloco "Drill down" só aparece para `imprensa` e `mercado` (D2) e monta `<ConsultaEmProfundidade lente={lente} />`. O estado `abertos.drill` passa a abrir sozinho quando o endereço tem nível > 1 ou quando a busca navega para o drill (A6).
+- `src/paginas/Score.tsx`: `lenteAberta` inicia pela `lente` do hash quando houver (A4); `trocarLente` reescreve o hash com a lente nova e sem níveis, só se o hash tiver o marcador; a escolha de uma sugestão do drill na busca abre Lentes, a lente Imprensa e navega no drill. **`navegarNoDrill` roda DEPOIS de `irPara`**: `irPara` (`src/navegacao/useNavegacao.ts`) grava `caminho + consulta` sem o hash e apagaria o destino.
+- `src/dominio/buscaDoRadar.ts` e `src/paginas/score/BuscaDoRadar.tsx`: grupo do drill (D3, A15).
+- `src/estado/painel.tsx`: (1) `definirRecorte` preserva o hash: `replaceState(null, '', pathname + consultaDe(novo) + window.location.hash)`. Hoje ele grava sem o hash, e mexer em período, concessionária ou chip da barra de filtros real devolveria o drill ao Nível 1 em silêncio, sem volta pelo navegador (é `replaceState`). Teste: com `#consulta&lente=imprensa&pilar=governanca` no endereço, chamar `definirRecorte` e conferir que `location.hash` se mantém. (2) No `popstate`, não trocar o recorte quando a consulta não mudou (evita rebuscar a base do CRM a cada voltar dentro do drill).
