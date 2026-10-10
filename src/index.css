@@ -188,6 +188,44 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 /* Rolagem interna dos blocos densos (base, filas, tabelas). */
 .rolagem-interna { overflow: auto; }
 
+/* AS DUAS BARRAS DE ROLAGEM NA TELA AO MESMO TEMPO.
+
+   O DEFEITO que isto corrige: uma tabela larga com `overflow-x: auto` e sem
+   limite de altura cresce com o conteúdo, e a barra horizontal dela fica no FIM
+   DO DOCUMENTO. Para arrastar a barra e ver as colunas da direita, a pessoa
+   tinha de rolar a página toda para baixo — e aí perdia de vista as linhas que
+   queria ler.
+
+   `72vh` E NÃO `calc(100vh - Npx)`: o valor em `vh` não depende de quanto
+   cabeçalho e filtro existem acima, então a mesma classe serve às seis tabelas
+   deste produto sem um número diferente em cada uma. E só age quando precisa —
+   tabela curta não tem altura suficiente para o limite valer.
+
+   O CABEÇALHO VAI JUNTO (`.cabecalho-que-fica`): rolar por dentro sem o nome
+   das colunas trocaria um incômodo por outro. A classe é explícita, e não um
+   seletor que alcança o primeiro filho, porque cada tabela tem uma estrutura
+   diferente (`<thead>` em algumas, `role="row"` em outras). */
+.rolagem-das-duas-barras {
+  overflow: auto;
+  max-height: 72vh;
+}
+
+.cabecalho-que-fica {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--branco);
+}
+
+/* A MESMA BARRA DISCRETA da rolagem interna, para as duas não se parecerem
+   diferentes na mesma tela. */
+.rolagem-das-duas-barras::-webkit-scrollbar { width: 10px; height: 10px; }
+.rolagem-das-duas-barras::-webkit-scrollbar-thumb {
+  background: var(--cinza-1);
+  border-radius: 5px;
+  border: 3px solid var(--branco);
+}
+
 /* A ALÇA DE REDIMENSIONAR DA TABELA: uma linha discreta na borda do cabeçalho
    que acende ao passar o mouse e durante o arraste — antes era invisível, e
    ninguém sabia onde pegar. A área clicável é larga (11px) e a linha, fina. */

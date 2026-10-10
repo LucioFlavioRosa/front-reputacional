@@ -119,7 +119,11 @@ describe('ListaDeMaterias (F.9)', () => {
     montar();
     const tabela = screen.getByRole('table');
     expect(tabela.style.minWidth).toBe('1000px');
-    expect(tabela.parentElement!.style.overflowX).toBe('auto');
+    //: PELA CLASSE, e não pelo estilo inline: a regra da rolagem saiu do
+    //: `style` e foi para `.rolagem-das-duas-barras` (em `index.css`), que
+    //: acrescenta o limite de altura — sem ele a barra horizontal ficava no fim
+    //: do documento, e para arrastá-la a pessoa tinha de rolar a página toda.
+    expect(tabela.parentElement!.className).toContain('rolagem-das-duas-barras');
     const linha = linhas()[0];
     expect(linha.style.gridTemplateColumns).toBe('62px minmax(0,1.25fr) minmax(0,3.2fr) minmax(0,1fr) 76px 156px');
     expect(linha.style.gap).toBe('16px');

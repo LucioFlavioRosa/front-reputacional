@@ -520,9 +520,9 @@ export function MatrizDePrioridade({ linhas }: { linhas: LinhaDaMatriz[] }) {
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="rolagem-das-duas-barras">
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead className="cabecalho-que-fica">
           <tr>
             {['Jornalista', 'Relevância', 'Exposição', 'Proximidade', 'Prioridade'].map((titulo, i) => (
               <th
@@ -700,9 +700,9 @@ export function TabelaDeLeitura({
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="rolagem-das-duas-barras">
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead className="cabecalho-que-fica">
           <tr>
             {colunas.map((coluna) => (
               <th

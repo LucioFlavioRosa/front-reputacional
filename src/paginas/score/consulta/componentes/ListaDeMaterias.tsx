@@ -287,7 +287,7 @@ export function ListaDeMaterias({
 
       {/* A TABELA VAI DE BORDA A BORDA DO CARTÃO, como no mockup: a margem
           negativa desfaz o padding de 20px do `Cartao`. */}
-      <div style={{ overflowX: 'auto', margin: '0 -20px' }}>
+      <div className="rolagem-das-duas-barras" style={{ margin: '0 -20px' }}>
         <div role="table" aria-label={tituloLista} style={{ minWidth: 1000 }}>
           <div role="rowgroup">
             <div

@@ -103,9 +103,9 @@ export function RelatorioDeIncidentes({
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="rolagem-das-duas-barras">
             <div role="table" aria-label="Lista de incidentes" style={{ minWidth: 1180 }}>
-              <div role="row" style={{ ...LINHA, ...CABECALHO }}>
+              <div role="row" className="cabecalho-que-fica" style={{ ...LINHA, ...CABECALHO }}>
                 <span role="columnheader">Data</span>
                 <span role="columnheader">Tipo</span>
                 <span role="columnheader">Quem</span>
