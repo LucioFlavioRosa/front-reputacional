@@ -254,10 +254,22 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  overflow-wrap: anywhere;
 }
 
-.tres-linhas { -webkit-line-clamp: 3; }
+/* `anywhere` NO TÍTULO, `break-word` NO NOME PRÓPRIO — e a diferença importa.
+
+   `anywhere` quebra a palavra em qualquer ponto. Num título isso é o certo: ele
+   pode trazer uma URL ou um token sem espaço que estouraria a coluna de 380px, e
+   conter o dano vale mais que a sílaba perfeita.
+
+   Num NOME PRÓPRIO é errado: "Prefeitura Municipal de Barra do Garças" tem
+   espaços de sobra onde quebrar, e `anywhere` cortaria no meio de "Municipal"
+   mesmo assim. `break-word` só parte a palavra quando não existe alternativa.
+   Achado de revisão. */
+.tres-linhas {
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
 
 /* DUAS LINHAS, para a coluna do veículo.
 
@@ -270,7 +282,10 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
    E AS RETICÊNCIAS ESTAVAM NO PIOR LUGAR: o que distingue "Prefeitura Municipal
    de Sinop" de "Prefeitura Municipal de Timon" é o FIM. Duas linhas mostram ~40
    caracteres, que é onde esses nomes se separam. */
-.duas-linhas { -webkit-line-clamp: 2; }
+.duas-linhas {
+  -webkit-line-clamp: 2;
+  overflow-wrap: break-word;
+}
 
 .cabecalho-que-fica {
   position: sticky;

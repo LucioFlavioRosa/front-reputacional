@@ -198,12 +198,33 @@ export function ConsultasRecebidas({ aoAbrirFicha }: { aoAbrirFicha: (id: string
               <td style={celula}>{linha.remetente}</td>
             )}
             {!visiveis.includes('Canal') ? null : <td style={celula}>{linha.canal}</td>}
+            {/* AS DUAS COLUNAS DE TEXTO LIVRE PARAM EM TRÊS LINHAS.
+
+                Elas têm a mesma forma da "Matéria / post" da Base de dados:
+                texto que a pessoa digita, largura fixa, nenhum limite — e foi
+                essa forma que lá produziu uma célula de 39 linhas, que estica a
+                linha inteira da tabela. Aqui o teor vem de um ofício, então o
+                teto é o que o remetente escrever.
+
+                O limite vai num EMBRULHO dentro da célula, nunca na célula:
+                `-webkit-line-clamp` precisa de `display: -webkit-box`, e esse
+                `display` num `<td>` substitui o `table-cell`. O valor inteiro
+                fica no `title`, e a ficha da consulta abre com um clique. */}
             {!visiveis.includes('O que perguntaram') ? null : (
-              <td style={{ ...celula, minWidth: 260 }}>{linha.teor || '—'}</td>
+              <td style={{ ...celula, minWidth: 260 }} title={linha.teor || undefined}>
+                <span className="tres-linhas" style={{ display: '-webkit-box' }}>
+                  {linha.teor || '—'}
+                </span>
+              </td>
             )}
             {!visiveis.includes('Alegações') ? null : (
-              <td style={{ ...celula, minWidth: 220 }}>
-                {linha.alegacoes.length ? linha.alegacoes.join(' · ') : '—'}
+              <td
+                style={{ ...celula, minWidth: 220 }}
+                title={linha.alegacoes.join(' · ') || undefined}
+              >
+                <span className="tres-linhas" style={{ display: '-webkit-box' }}>
+                  {linha.alegacoes.length ? linha.alegacoes.join(' · ') : '—'}
+                </span>
               </td>
             )}
             {!visiveis.includes('Temas') ? null : (

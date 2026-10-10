@@ -80,11 +80,22 @@ describe('BaseDeDadosDoScore', () => {
     // PARA VOLTAR: tire `Veículo`, `Rede` e `Canal` de `LINHAS_DA_COLUNA`, em
     // `dominio/baseDasLentes.ts`. É uma linha.
     const celulaDoVeiculo = screen.getByText('Folha de S.Paulo').closest('td')!;
-    expect(celulaDoVeiculo.className).toBe('duas-linhas');
     expect(celulaDoVeiculo.getAttribute('title')).toBe('Folha de S.Paulo');
     // E O TEXTO NÃO INVADE A VIZINHA, que é o que a asserção antiga protegia: o
     // `overflow: hidden` agora vem da classe, junto do limite de duas linhas.
     expect(celulaDoVeiculo.style.whiteSpace).toBe('normal');
+
+    // O LIMITE VIVE NUM EMBRULHO DENTRO DA CÉLULA, nunca na célula.
+    //
+    // `-webkit-line-clamp` só age com `display: -webkit-box`, e esse `display`
+    // num `<td>` substitui o `table-cell`: a célula sai do modelo nativo da
+    // tabela e passa a brigar com o `<colgroup>` e o `table-layout: fixed`.
+    // Achado de revisão, e esta asserção é o que impede a volta — se a classe
+    // reaparecer no `td`, as duas linhas abaixo caem.
+    expect(celulaDoVeiculo.className).toBe('');
+    const embrulho = screen.getByText('Folha de S.Paulo');
+    expect(embrulho.tagName).toBe('SPAN');
+    expect(embrulho.className).toBe('duas-linhas');
     // A dica de como ajustar está à vista.
     expect(screen.getByText(/Arraste a borda de um cabeçalho/)).toBeTruthy();
   });

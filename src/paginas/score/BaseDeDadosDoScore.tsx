@@ -388,14 +388,26 @@ export function BaseDeDadosDoScore() {
                         </td>
                       );
                     }
+                    const limite = classeDasLinhasDaColuna(coluna.rotulo);
                     return (
                       <td
                         key={coluna.rotulo}
-                        className={classeDasLinhasDaColuna(coluna.rotulo)}
                         style={celulaDaColuna(coluna.rotulo)}
                         title={coluna.valor(mencao) || undefined}
                       >
-                        {coluna.valor(mencao)}
+                        {/* O LIMITE DE LINHAS VAI NUM EMBRULHO, nunca no `td`:
+                            `-webkit-line-clamp` exige `display: -webkit-box`, e
+                            isso num `td` substitui o `display: table-cell` — a
+                            célula para de participar da grade e briga com o
+                            `<colgroup>` e o `table-layout: fixed`. Achado de
+                            revisão. */}
+                        {limite ? (
+                          <span className={limite} style={{ display: '-webkit-box' }}>
+                            {coluna.valor(mencao)}
+                          </span>
+                        ) : (
+                          coluna.valor(mencao)
+                        )}
                       </td>
                     );
                   })}

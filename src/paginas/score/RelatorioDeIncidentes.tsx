@@ -119,7 +119,9 @@ export function RelatorioDeIncidentes({
                 <span role="columnheader">Quem</span>
                 <span role="columnheader">Alcance</span>
                 <span role="columnheader">Severidade</span>
-                <span role="columnheader">Recorrência</span>
+                <span role="columnheader" style={{ textAlign: 'right' }}>
+                  Recorrência
+                </span>
                 <span role="columnheader">Incidente</span>
                 <span role="columnheader">Riscos relacionados</span>
               </div>
@@ -235,9 +237,16 @@ function LinhaDoIncidente({
         </span>
       </span>
 
+      {/* NÚMERO ALINHA À DIREITA, para a coluna se comparar de cima a baixo:
+          "12 meses" e "1º mês" lado a lado à esquerda fazem o olho procurar o
+          dígito em posição diferente a cada linha. Achado de revisão. */}
       <span
         role="cell"
-        style={{ paddingTop: 2, fontWeight: incidente.recorrencia > 2 ? 700 : 400 }}
+        style={{
+          paddingTop: 2,
+          textAlign: 'right',
+          fontWeight: incidente.recorrencia > 2 ? 700 : 400,
+        }}
         title={
           incidente.recorrencia > 1
             ? `Este assunto teve incidente em ${incidente.recorrencia} meses da série`
