@@ -200,6 +200,105 @@ const ABAS_DA_BASE: readonly Aba<IdDaSubaba>[] = [
   { id: 'investidores', rotulo: 'Veículos de investidores' },
 ];
 
+/** O que a planilha diz de ASSUNTO, e o que o cadastro reconhece.
+ *
+ *  POR QUE ISTO APARECE NA CONFERÊNCIA. O dossiê recorta por Pilar (N1), Tema
+ *  estratégico (N2) e Subtema (N3) pelo vínculo da menção com o tema do
+ *  cadastro — e quem decide o vínculo é o nome que vem na planilha. Menção sem
+ *  vínculo não entra em recorte nenhum: subir um arquivo cujo assunto não casa
+ *  é subir dado que nenhum filtro alcança, e descobrir isso depois significa
+ *  olhar um gráfico vazio sem saber por quê.
+ *
+ *  SÓ APARECE QUANDO HÁ O QUE DIZER. Fonte que não manda assunto nenhum não
+ *  ganha uma seção vazia na tela.
+ */
+function SecaoDosAssuntos({
+  conferencia,
+}: {
+  conferencia: ConferenciaDaPlanilhaDoScore;
+}) {
+  const comTema = conferencia.mencoes_com_tema ?? 0;
+  const semAssunto = conferencia.mencoes_sem_assunto ?? 0;
+  const naoReconhecidos = conferencia.assuntos_nao_reconhecidos ?? [];
+  if (!comTema && !semAssunto && naoReconhecidos.length === 0) return null;
+
+  const total = conferencia.previsao[0]?.linhas ?? 0;
+  return (
+    <Secao
+      titulo="Assuntos"
+      subtitulo="O assunto da planilha é casado com o cadastro de temas pelo nome. É o vínculo que faz o dossiê filtrar por Pilar, Tema estratégico e Subtema — e dele saem também os riscos, sem a planilha informar nada além do subtema."
+    >
+      <Cartao>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13 }}>
+          <span>
+            <strong>{numero(comTema)}</strong> acham o assunto no cadastro
+            {total ? ` de ${numero(total)} linhas` : ''}
+          </span>
+          {semAssunto ? (
+            <span style={{ color: 'var(--cinza-2)' }}>
+              {numero(semAssunto)} vêm sem assunto
+            </span>
+          ) : null}
+        </div>
+
+        {naoReconhecidos.length ? (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '12px 0 8px' }}>
+              {/* OS DOIS CONSERTOS SÃO EM LUGARES DIFERENTES, e por isso a
+                  linha diz qual é qual: nome errado se arruma na planilha com
+                  o fornecedor; tema desativado se arruma no cadastro — ou é a
+                  planilha que está usando a taxonomia antiga. */}
+              Estes nomes o cadastro não reconhece. As menções deles entram, mas
+              ficam fora de qualquer recorte por tema.
+            </p>
+            <ul
+              style={{
+                listStyle: 'none',
+                margin: 0,
+                padding: 0,
+                border: '1px solid var(--borda)',
+                borderRadius: 'var(--r-card-int)',
+                background: 'var(--branco)',
+              }}
+            >
+              {naoReconhecidos.map((assunto) => (
+                <li
+                  key={assunto.nome}
+                  style={{
+                    borderTop: '1px solid var(--borda)',
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'center',
+                    padding: '7px 12px',
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>{assunto.nome}</span>
+                  {assunto.desativado ? (
+                    <span style={{ fontSize: 11, color: 'var(--atencao-fg)' }}>
+                      existe no cadastro, mas está desativado
+                    </span>
+                  ) : null}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--cinza-3)',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {numero(assunto.mencoes)} menç.
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </Cartao>
+    </Secao>
+  );
+}
+
 export function BaseDoScore() {
   const [subaba, definirSubaba] = useState<IdDaSubaba>('planilha');
   const [fontes, definirFontes] = useState<FonteDoScore[] | null>(null);
@@ -433,6 +532,8 @@ export function BaseDoScore() {
               </Cartao>
             </Secao>
 
+            <SecaoDosAssuntos conferencia={conferencia} />
+
             <Secao
               titulo={`Veículos novos (${numero(marcados.length)} de ${numero(novos.length)} marcados)`}
               subtitulo={
@@ -615,7 +716,11 @@ function LinhaDoVeiculo({
             whiteSpace: 'nowrap',
           }}
         >
-          {[veiculo.uf, veiculo.esfera].filter(Boolean).join(' · ') || 'sem praça'}
+          {/* O CARGO PRIMEIRO, quando vem: é o que decide o público do
+              perfil no cadastro, e é a informação que faz alguém reconhecer
+              "Iriel Sachet — Vereador" sem sair da tela para procurar. */}
+          {[veiculo.cargo, veiculo.uf, veiculo.esfera].filter(Boolean).join(' · ') ||
+            'sem praça'}
         </span>
         <span
           style={{

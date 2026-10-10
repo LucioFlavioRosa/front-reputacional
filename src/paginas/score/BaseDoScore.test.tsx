@@ -74,6 +74,15 @@ function conferencia(
   };
 }
 
+/** Um assunto que o cadastro não reconhece, como o servidor o devolve. */
+function assunto(
+  nome: string,
+  mencoes: number,
+  desativado = false,
+): { nome: string; mencoes: number; desativado: boolean } {
+  return { nome, mencoes, desativado };
+}
+
 const PLANILHA = new File([new Uint8Array([1, 2, 3])], 'clipei.xlsx', {
   type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 });
@@ -93,6 +102,59 @@ async function subir(resposta: ConferenciaDaPlanilhaDoScore) {
 describe('BaseDoScore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('A LINHA DO PERFIL MOSTRA O CARGO, que é quem decide o público', async () => {
+    // O dono do produto viu o vereador Iriel Sachet cadastrado como formador
+    // de opinião. O cargo é o que decide onde o perfil entra — Poder
+    // Legislativo / Municipal —, e quem autoriza 1.108 criações precisa ver
+    // "Iriel Sachet — Vereador" sem sair da tela para procurar quem ele é.
+    await subir(
+      conferencia({
+        veiculos_novos: [
+          { nome: 'Iriel Sachet', uf: 'RS', esfera: null, mencoes: 1, cargo: 'Vereador' },
+        ],
+      }),
+    );
+
+    const linha = screen
+      .getAllByRole('listitem')
+      .map((l) => l.textContent ?? '')
+      .find((texto) => texto.includes('Iriel Sachet'));
+    expect(linha).toContain('Vereador');
+    expect(linha).toContain('RS');
+  });
+
+  it('A CONFERÊNCIA MOSTRA OS ASSUNTOS QUE O CADASTRO NÃO RECONHECE', async () => {
+    // O dossiê recorta por Pilar (N1), Tema estratégico (N2) e Subtema (N3)
+    // pelo vínculo da menção com o tema. Menção sem vínculo não entra em
+    // recorte nenhum — e descobrir isso depois é olhar um gráfico vazio sem
+    // saber por quê.
+    await subir(
+      conferencia({
+        previsao: [resumo({ linhas: 100, ingeridas: 100 })],
+        mencoes_com_tema: 60,
+        mencoes_sem_assunto: 25,
+        assuntos_nao_reconhecidos: [
+          assunto('Serviços', 10),
+          assunto('Fatura antiga', 5, true),
+        ],
+      }),
+    );
+
+    expect(screen.getByText(/60/)).toBeTruthy();
+    expect(screen.getByText(/25 vêm sem assunto/)).toBeTruthy();
+    expect(screen.getByText('Serviços')).toBeTruthy();
+    // O TEMA DESATIVADO É SEPARADO do nome errado: um se conserta no cadastro,
+    // o outro na planilha.
+    expect(screen.getByText('existe no cadastro, mas está desativado')).toBeTruthy();
+  });
+
+  it('a seção de assuntos NÃO APARECE quando a fonte não manda assunto', async () => {
+    // Fonte sem coluna de assunto não ganha uma seção vazia na tela.
+    await subir(conferencia());
+
+    expect(screen.queryByText('Assuntos')).toBeNull();
   });
 
   it('A BASE TEM DUAS ABAS: subir a planilha e a curadoria dos veículos', async () => {

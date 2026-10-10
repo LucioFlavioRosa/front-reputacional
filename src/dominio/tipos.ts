@@ -452,6 +452,15 @@ export interface Instituicao {
    *  ainda não foi reclassificado — ver `0036_categoria_de_publico.sql`. */
   categoria_publico_id: number | null;
   subcategoria_publico_id: number | null;
+  /** O CARGO QUE O FORNECEDOR INFORMOU, pelo rótulo — "Deputado estadual".
+   *  Só em `tipo === 'perfil_rede'`.
+   *
+   *  O público diz a que poder o ator pertence ("Poder Legislativo"); o cargo
+   *  diz quem ele é. Sem isto, a tela mostrava só o primeiro. */
+  cargo?: string | null;
+  /** A pessoa do CRM de quem este perfil é. Só em perfil de rede, e nula
+   *  enquanto ninguém fez a associação. */
+  interlocutor_id?: string | null;
   /** `false` = desativada: sai de quem oferece escolha (formulário de agenda,
    *  cadastro de pessoa) e fica onde é histórico ou administração. O catálogo
    *  traz as duas, como faz com temas e referências — ver `listarInstituicoes`. */
