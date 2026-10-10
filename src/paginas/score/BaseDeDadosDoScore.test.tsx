@@ -56,6 +56,22 @@ describe('BaseDeDadosDoScore', () => {
     expect(screen.getByRole('button', { name: '90 dias' })).toBeTruthy();
   });
 
+  it('abre com o layout ajustado: TODA coluna tem largura, e o texto longo não invade a vizinha', async () => {
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    const { container } = render(<BaseDeDadosDoScore />);
+    await waitFor(() => expect(screen.getByText('Falta d’água em São Gonçalo')).toBeTruthy());
+    const colunas = [...container.querySelectorAll('col')] as HTMLElement[];
+    expect(colunas.length).toBeGreaterThan(5);
+    expect(colunas.every((col) => Number.parseInt(col.style.width, 10) >= 60)).toBe(true);
+    // O veículo é de uma linha só, cortado com reticências dentro da própria coluna.
+    const celulaDoVeiculo = screen.getByText('Folha de S.Paulo').closest('td')!;
+    expect(celulaDoVeiculo.style.overflow).toBe('hidden');
+    expect(celulaDoVeiculo.style.textOverflow).toBe('ellipsis');
+    expect(celulaDoVeiculo.getAttribute('title')).toBe('Folha de S.Paulo');
+    // A dica de como ajustar está à vista.
+    expect(screen.getByText(/Arraste a borda de um cabeçalho/)).toBeTruthy();
+  });
+
   it('a busca vai ao servidor depois que a pessoa para de digitar', async () => {
     const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
     render(<BaseDeDadosDoScore />);

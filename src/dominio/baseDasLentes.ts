@@ -110,6 +110,63 @@ export const COLUNAS_OCULTAS_POR_PADRAO = [
   'Link',
 ];
 
+//: O LAYOUT DE SAÍDA DA TABELA, coluna a coluna. Antes só "Matéria / post" tinha
+//: largura: com `table-layout: fixed`, as outras dezesseis dividiam o que
+//: sobrava, se espremiam, e o texto invadia a vizinha. Agora TODA coluna nasce
+//: com a largura que o conteúdo dela pede, e quem quiser ajusta (arrastar a
+//: borda do cabeçalho; dois cliques voltam ao padrão).
+const LARGURA_PADRAO: Record<string, number> = {
+  Data: 112,
+  Fonte: 120,
+  Veículo: 140,
+  Rede: 120,
+  Canal: 120,
+  Tier: 80,
+  Sentimento: 124,
+  'Matéria / post': 380,
+  'Pilar (N1)': 180,
+  'Tema estratégico (N2)': 190,
+  'Subtema (N3)': 190,
+  'Subtema (fornecedor)': 190,
+  Atributo: 170,
+  Concessionária: 140,
+  UF: 70,
+  Jornalista: 140,
+  Autor: 140,
+  'Perfil de quem fala': 150,
+  Engajamento: 110,
+  Link: 220,
+};
+const LARGURA_DAS_DEMAIS = 150;
+
+/** A largura de saída de uma coluna, em px. */
+export function larguraPadraoDaColuna(rotulo: string): number {
+  return LARGURA_PADRAO[rotulo] ?? LARGURA_DAS_DEMAIS;
+}
+
+/** As larguras de saída das colunas à mostra — o que a `Tabela` recebe. */
+export function largurasPadraoDaBase(rotulos: string[]): Record<string, number> {
+  return Object.fromEntries(rotulos.map((rotulo) => [rotulo, larguraPadraoDaColuna(rotulo)]));
+}
+
+//: AS COLUNAS DE TEXTO LONGO QUEBRAM LINHA (o nome do tema e da matéria é uma
+//: frase); as curtas e o link ficam numa linha só, com reticências, e o valor
+//: inteiro aparece ao passar o mouse.
+const COLUNAS_QUE_QUEBRAM = new Set([
+  'Matéria / post',
+  'Pilar (N1)',
+  'Tema estratégico (N2)',
+  'Subtema (N3)',
+  'Subtema (fornecedor)',
+  'Atributo',
+  'Concessionária',
+  'Fonte',
+]);
+
+export function colunaQuebraLinha(rotulo: string): boolean {
+  return COLUNAS_QUE_QUEBRAM.has(rotulo);
+}
+
 /** "Últimos 30 dias" etc. → `de` e `ate` em AAAA-MM-DD; "tudo" → nenhum. */
 export function periodoDoAtalho(atalho: string, hoje = new Date()): { de?: string; ate?: string } {
   const dias = { '30': 30, '90': 90, '180': 180, '365': 365 }[atalho];
