@@ -117,7 +117,7 @@ export function FiltrosDoRisco({
   if (noMacro) {
     cruzados.push({
       chave: 'tema',
-      rotulo: 'Tema (N3)',
+      rotulo: 'Subtema (N3)',
       valorAtual: filtro.tema ?? undefined,
       itens: noMacro.dentro
         .filter((tema) => tema.codigo)

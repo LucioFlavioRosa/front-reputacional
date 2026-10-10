@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ORDEM_DOS_DEGRAUS,
+  ROTULO_DO_DEGRAU,
   SEVERIDADES,
   alcanceDoIncidente,
   comoVariacao,
@@ -30,6 +31,7 @@ import type {
   NivelDoTema,
   OpcoesDoRisco,
 } from '@/dominio/riscos';
+import { camposDaBase } from '@/dominio/baseDasLentes';
 
 const MESES = [
   '2026-01',
@@ -226,16 +228,16 @@ describe('a trilha do aprofundamento', () => {
     expect(trilha[0]).toEqual({ chave: 'lentes', rotulo: 'Lente', valor: 'imprensa' });
   });
 
-  it('chama os níveis como o CADASTRO DE ASSUNTOS os chama', () => {
-    //: A AUTORIDADE É `CadastroDeAssuntos.tsx`, a tela onde esses níveis são
-    //: geridos: lá os campos se chamam "Pilar (N1)" e "Tema estratégico (N2)".
-    //: Quem cadastra o nível num lugar e o filtra no outro tem de ler a mesma
-    //: palavra — este teste é o que impede a terceira invenção.
+  it('chama os níveis como O RESTO DO PRODUTO os chama', () => {
+    //: A CONVENÇÃO ESTÁ EM DEZ ARQUIVOS DA `main`: Base das Lentes, painel do
+    //: CRM, Painel, derivações, filtros das Lentes, Base do Score e o back.
+    //: Eu inventei duas vezes, sempre tirando o rótulo do nome da TABELA —
+    //: "Macro tema (N2)" e "Tema (N3)". Este teste é o que impede a terceira.
     const trilha = trilhaDoRecorte({ bloco: 'g', macro: 'c', tema: 'Corrupção' });
     expect(trilha.map((degrau) => degrau.rotulo)).toEqual([
       'Pilar (N1)',
       'Tema estratégico (N2)',
-      'Tema (N3)',
+      'Subtema (N3)',
     ]);
   });
 
@@ -397,5 +399,35 @@ describe('a tela escreve NOME, e não código', () => {
   it('SEM tradutor o valor sai cru — a trilha continua pura e testável', () => {
     const trilha = trilhaDoRecorte({ bloco: 'governanca' });
     expect(trilha[0].valor).toBe('governanca');
+  });
+});
+
+describe('o vocabulário dos níveis', () => {
+  //: ESTE TESTE COMPARA COM O OUTRO MÓDULO, e não com uma string escrita aqui.
+  //: Comparar com literal não impede nada: eu escreveria o rótulo errado no
+  //: código e o mesmo rótulo errado no teste — foi o que aconteceu duas vezes,
+  //: com "Macro tema (N2)" e "Tema (N3)", os dois tirados do nome da TABELA em
+  //: vez do vocabulário de nível do produto.
+  //:
+  //: `camposDaBase` é a Base das Lentes, que é onde a convenção vive e de onde
+  //: o painel do CRM, o Painel e a Base do Score a copiam. Se qualquer um dos
+  //: dois lados andar sozinho, isto cai.
+  const daBase = new Map(
+    camposDaBase('imprensa').map((campo) => [campo.chave, campo.rotulo]),
+  );
+
+  it('o Risk Tracking chama os três níveis como a Base das Lentes', () => {
+    expect(ROTULO_DO_DEGRAU.bloco).toBe(daBase.get('tema_n1'));
+    expect(ROTULO_DO_DEGRAU.macro).toBe(daBase.get('tema_n2'));
+    expect(ROTULO_DO_DEGRAU.tema).toBe(daBase.get('tema_n3'));
+  });
+
+  it('e o N3 do CADASTRO não se confunde com o SUBTEMA DO FORNECEDOR', () => {
+    //: São duas coisas: `tema_n3` é o assunto do cadastro; `subtema` é o texto
+    //: cru que o fornecedor mandou, e os dois podem discordar. Eles aparecem
+    //: lado a lado na Base das Lentes, e é por isso que o qualificador existe.
+    expect(daBase.get('tema_n3')).toBe('Subtema (N3)');
+    expect(daBase.get('subtema')).toBe('Subtema (fornecedor)');
+    expect(daBase.get('tema_n3')).not.toBe(daBase.get('subtema'));
   });
 });
