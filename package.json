@@ -15,6 +15,7 @@
     "@microsoft/applicationinsights-web": "^3.4.3",
     "d3-geo": "^3.1.1",
     "d3-scale": "^4.0.2",
+    "html-to-image": "^1.11.13",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "topojson-client": "^3.1.0"
