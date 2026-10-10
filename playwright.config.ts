@@ -39,6 +39,11 @@ export default defineConfig({
     timezoneId: 'America/Sao_Paulo',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
+    // AS BARRAS DE ROLAGEM VISÍVEIS, como no navegador de quem usa: o Edge
+    // sem janela as esconde, e a página ganhava 17px de largura que ninguém
+    // tem. Foi assim que a tabela de pilares transbordava em 1280px sem o
+    // teste ver.
+    launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] },
   },
 
   webServer: {
