@@ -66,6 +66,29 @@ export function App() {
    * Por isso a falha é silenciosa — mostrar mensagem de erro para quem só abriu
    * o site pela primeira vez seria ruído.
    */
+  /**
+   * O retorno do SSO sem papel liberado (ou conta desativada, ou acesso
+   * vencido) chega aqui como `?erro=` — ver `app/api/acesso.py:callback`. O
+   * backend não pode mostrar essa mensagem direto: quem chega em
+   * `/api/auth/callback` é o NAVEGADOR navegando de topo, então uma resposta
+   * de erro ali apareceria como página crua, no lugar do site. Ele redireciona
+   * de volta pra cá com o motivo, e esta tela mostra na mesma caixa de aviso
+   * que a entrada por senha já usa.
+   *
+   * Tira o parâmetro da URL imediatamente: sem isso, um F5 reexibe a mensagem
+   * como se o erro tivesse acabado de acontecer, e `destinoAtual()` (em
+   * `Login.tsx`) levaria `?erro=…` para a PRÓXIMA tentativa de login, como se
+   * fosse o link que a pessoa queria abrir.
+   */
+  useEffect(function lerErroDoRetornoDoSso() {
+    const url = new URL(window.location.href);
+    const erro = url.searchParams.get('erro');
+    if (!erro) return;
+    definirFalhaNaEntrada(erro);
+    url.searchParams.delete('erro');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }, []);
+
   useEffect(function conferirSessaoAoAbrir() {
     let vivo = true;
     obterEu()
