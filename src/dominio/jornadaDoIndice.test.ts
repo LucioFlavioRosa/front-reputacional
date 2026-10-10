@@ -214,48 +214,18 @@ describe('jornadaDoIndice', () => {
   it('recorta a faixa no domínio, e não a desenha inteira', () => {
     const jornada = jornadaDoIndice(SEMESTRE, '2026-06');
     const somaDasAlturas = jornada.faixas.reduce((total, faixa) => total + faixa.altura, 0);
-    expect(somaDasAlturas).toBeCloseTo(VB.altura - 14 - 34, 1);
+    expect(somaDasAlturas).toBeCloseTo(VB.altura - PAD_TOPO - 34, 1);
   });
 
-  it('o rótulo do pico vai para cima e o do vale, para baixo', () => {
-    // O rótulo acompanha o relevo: abaixo de um pico ele cairia dentro da
-    // própria curva.
+  it('o número fica SEMPRE acima do ponto, no pico e no vale', () => {
+    //: Por pedido: a leitura dos meses numa linha só, acima da curva. A folga do
+    //: topo (`PAD_TOPO`) reserva o lugar do rótulo no mês mais alto.
     const vaiEVolta = [
       ponto({ mes: '2026-01', isr: 60 }),
       ponto({ mes: '2026-02', isr: 50 }),
       ponto({ mes: '2026-03', isr: 60 }),
     ];
-    const jornada = jornadaDoIndice(vaiEVolta, '2026-01');
-    expect(jornada.pontos[0].acima).toBe(true);
-    expect(jornada.pontos[1].acima).toBe(false);
-  });
-
-  it('as pontas seguem a MESMA regra do meio, com um vizinho só', () => {
-    // O protótipo compara o primeiro ponto com o sinal trocado em relação ao
-    // último: lá, um primeiro ponto mais ALTO que o vizinho manda o rótulo para
-    // baixo, para dentro da curva que desce. Aqui, mais alto sobe — nas duas
-    // pontas, como no meio.
-    const comeceAlto = [
-      ponto({ mes: '2026-01', isr: 65 }),
-      ponto({ mes: '2026-02', isr: 55 }),
-      ponto({ mes: '2026-03', isr: 60 }),
-    ];
-    expect(jornadaDoIndice(comeceAlto, '2026-01').pontos[0].acima).toBe(true);
-
-    const comeceBaixo = [
-      ponto({ mes: '2026-01', isr: 55 }),
-      ponto({ mes: '2026-02', isr: 65 }),
-      ponto({ mes: '2026-03', isr: 60 }),
-    ];
-    expect(jornadaDoIndice(comeceBaixo, '2026-01').pontos[0].acima).toBe(false);
-
-    // E a última ponta, espelhada.
-    const termineBaixo = [
-      ponto({ mes: '2026-01', isr: 60 }),
-      ponto({ mes: '2026-02', isr: 65 }),
-      ponto({ mes: '2026-03', isr: 55 }),
-    ];
-    expect(jornadaDoIndice(termineBaixo, '2026-01').pontos[2].acima).toBe(false);
+    expect(jornadaDoIndice(vaiEVolta, '2026-01').pontos.map((p) => p.acima)).toEqual([true, true, true]);
   });
 
   it('a descrição diz a faixa, e não só o número', () => {
@@ -672,30 +642,6 @@ describe('os rótulos não pulam de lado', () => {
     const ladosDepois = depois.pontos.slice(0, antes.pontos.length).map((p) => p.acima);
 
     expect(ladosDepois).toEqual(ladosAntes);
-  });
-
-  it('o relevo de verdade continua mandando: o pico sobe, o vale desce', () => {
-    //: O CONTRAPESO. Estabilidade não pode virar "todos do mesmo lado sempre" —
-    //: aí o rótulo do vale cairia dentro da curva que sobe, que é o que a regra
-    //: do relevo existe para evitar.
-    //: UMA SÉRIE COM O VALE NO MEIO DO EIXO, de propósito: no `SEMESTRE` o vale
-    //: é 36 e encosta na base, então ele sobe por não CABER embaixo — regra
-    //: antiga e legítima (ver "o vale que não cabe embaixo sobe"). Para medir o
-    //: relevo é preciso um vale que tenha espaço dos dois lados.
-    const comVale = [
-      ponto({ mes: '2026-01', isr: 50 }),
-      ponto({ mes: '2026-02', isr: 45 }),
-      ponto({ mes: '2026-03', isr: 40 }),
-      ponto({ mes: '2026-04', isr: 45 }),
-      ponto({ mes: '2026-05', isr: 50 }),
-      ponto({ mes: '2026-06', isr: 55 }),
-    ];
-
-    const { pontos } = jornadaDoIndice(comVale, '2026-06', null);
-    const porMes = Object.fromEntries(pontos.map((p) => [p.mes, p]));
-
-    expect(porMes['2026-03'].acima).toBe(false);
-    expect(porMes['2026-06'].acima).toBe(true);
   });
 
   it('um degrau pequeno NÃO troca o lado, só um relevo que se enxerga', () => {

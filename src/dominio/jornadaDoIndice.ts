@@ -37,7 +37,9 @@ export const VB = { largura: 1000, altura: 330 } as const;
  *  de coordenadas e as mesmas cinco faixas, e duas réguas diferentes para o
  *  mesmo desenho é o tipo de divergência que só aparece quando alguém já
  *  está comparando prints. */
-export const PAD_TOPO = 14;
+//: GRANDE O BASTANTE PARA O RÓTULO: o número fica sempre acima do ponto (por
+//: pedido), e o mês mais alto precisa de lugar para ele sem sair do desenho.
+export const PAD_TOPO = 56;
 
 /** A folga EXTRA do lado em que o eixo bate no limite do índice.
  *
@@ -637,7 +639,7 @@ export function jornadaDoIndice(
     dominioDe(valoresDoEixo(medidos, comparadas.flatMap(({ notas }) => notas)));
   //: A ESCALA É A MESMA DAS DUAS JORNADAS (ver `escalaDoEixo`), e nela mora a
   //: folga extra de cada lado em que o eixo encostou no limite do índice.
-  const { y, folgaDaBase } = escalaDoEixo(piso, teto);
+  const { y } = escalaDoEixo(piso, teto);
   // O CENTRO DA COLUNA, e não a borda: é o que faz o ponto cair exatamente
   // sobre a coluna do mês, que é a única forma de ligar um ao outro.
   const x = (i: number) => ((i + 0.5) / total) * VB.largura;
@@ -662,18 +664,8 @@ export function jornadaDoIndice(
     marcas.push({ valor, topo: (y(valor) / VB.altura) * 100 });
   }
 
-  //: O LADO DE CADA RÓTULO, decidido de uma vez para a série inteira.
-  //:
-  //: VARRIDO E NÃO PONTO A PONTO porque a decisão de um depende do lado do
-  //: anterior — é o que dá a estabilidade que o dono do produto pediu ("as
-  //: janelas (...) estão pulando muito quando passamos de um mês para o outro").
-  const ladoDeCada = ladosDosRotulos(notas);
-
   const pontos = medidos.map((ponto, i): PontoDaJornada => {
     const isr = ponto.isr as number;
-    const preferaAcima = ladoDeCada[i];
-    const cabeAbaixo = y(isr) + ALTURA_DO_ROTULO <= VB.altura - PAD_BASE - folgaDaBase;
-    const cabeAcima = y(isr) - ALTURA_DO_ROTULO >= 0;
     // O FILETE E A ETIQUETA SEGUEM O PRIMEIRO FATO CADASTRADO. Com vários, é
     // o mais antigo que abre a coluna, e é ele que dá a cor: o destaque do mês
     // não pode mudar quando alguém acrescenta uma nota de rodapé depois.
@@ -698,7 +690,9 @@ export function jornadaDoIndice(
       corDoTexto: corDaFaixa(isr),
       tag: TAG_DO_EFEITO[efeito] ?? '',
       corDaTag: COR_DO_EFEITO[efeito] ?? 'transparent',
-      acima: preferaAcima ? cabeAcima || !cabeAbaixo : !cabeAbaixo,
+      //: O NÚMERO SEMPRE ACIMA DO PONTO, por pedido — a leitura fica numa linha
+      //: só, e a folga do topo (`PAD_TOPO`) reserva o lugar dele no mês mais alto.
+      acima: true,
       selecionado: ponto.mes === mesSelecionado,
       parcial,
       cobertura: coberturaDoMes(ponto.lentes),
