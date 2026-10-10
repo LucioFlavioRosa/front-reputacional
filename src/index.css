@@ -187,6 +187,38 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 
 /* Rolagem interna dos blocos densos (base, filas, tabelas). */
 .rolagem-interna { overflow: auto; }
+
+/* A ALÇA DE REDIMENSIONAR DA TABELA: uma linha discreta na borda do cabeçalho
+   que acende ao passar o mouse e durante o arraste — antes era invisível, e
+   ninguém sabia onde pegar. A área clicável é larga (11px) e a linha, fina. */
+.tabela-alca {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 11px;
+  z-index: 2;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+.tabela-alca::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  left: 5px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--borda-input);
+  transition: top 120ms ease, bottom 120ms ease, background 120ms ease;
+}
+.tabela-alca:hover::after,
+.tabela-alca--ativa::after {
+  top: 0;
+  bottom: 0;
+  background: var(--azul-mar);
+}
 .rolagem-interna::-webkit-scrollbar { width: 10px; height: 10px; }
 .rolagem-interna::-webkit-scrollbar-thumb {
   background: var(--cinza-1);

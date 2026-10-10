@@ -33,6 +33,7 @@ export function Tabela({
   altura = 'calc(100vh - 340px)',
   compacta = false,
   largurasPadrao,
+  barraDeLargura = false,
   children,
 }: {
   colunas: string[];
@@ -69,6 +70,10 @@ export function Tabela({
    *  arraste. `largurasPadrao` fixa a largura de saída, e o cartão para de
    *  negociar espaço com os vizinhos pelo conteúdo de dentro. */
   largurasPadrao?: Record<string, number>;
+  /** Mostra, acima da tabela, a dica de como ajustar a largura e o botão
+   *  "Restaurar layout" (que só aparece quando alguém mexeu). Para a tabela
+   *  que quer o ajuste ao alcance de quem não sabia que ele existia. */
+  barraDeLargura?: boolean;
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -107,6 +112,11 @@ export function Tabela({
     larguraInicial: number;
   } | null>(null);
 
+  //: QUAL COLUNA ESTÁ SENDO ARRASTADA, para a alça acender e o cursor da
+  //: página inteira virar o de redimensionar (o ponteiro sai da alça de 10px
+  //: o tempo todo durante o arraste, e sem isso o cursor piscava).
+  const [arrastando, definirArrastando] = useState<string | null>(null);
+
   useEffect(() => {
     function mover(evento: MouseEvent) {
       const estado = redimensionando.current;
@@ -118,7 +128,11 @@ export function Tabela({
       definirLarguras((atuais) => ({ ...atuais, [estado.coluna]: largura }));
     }
     function soltar() {
+      if (!redimensionando.current) return;
       redimensionando.current = null;
+      definirArrastando(null);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
     window.addEventListener('mousemove', mover);
     window.addEventListener('mouseup', soltar);
@@ -137,9 +151,31 @@ export function Tabela({
     evento.preventDefault();
     evento.stopPropagation();
     const th = evento.currentTarget.closest('th');
-    const larguraAtual = larguras[coluna] ?? th?.getBoundingClientRect().width ?? 120;
+    //: PARTE DO QUE A PESSOA VÊ (a largura que a coluna tem na tela, esticada ou
+    //: não pelo `width: 100%`); sem medida, da largura de saída; por último, 120.
+    const medida = th?.getBoundingClientRect().width;
+    const larguraAtual = larguras[coluna] ?? (medida || largurasPadrao?.[coluna]) ?? 120;
     redimensionando.current = { coluna, inicioX: evento.clientX, larguraInicial: larguraAtual };
+    definirArrastando(coluna);
+    document.body.style.cursor = 'col-resize';
+    // Sem isto, arrastar seleciona o texto das células por onde o mouse passa.
+    document.body.style.userSelect = 'none';
   }
+
+  //: DOIS CLIQUES NA ALÇA devolvem ESTA coluna ao tamanho de saída — o jeito
+  //: mais rápido de desfazer um arraste que foi longe demais.
+  function restaurarColuna(coluna: string) {
+    definirLarguras((atuais) => {
+      const { [coluna]: _descartada, ...resto } = atuais;
+      return resto;
+    });
+  }
+
+  function restaurarTudo() {
+    definirLarguras({});
+  }
+
+  const ajustadas = Object.keys(larguras).length > 0;
 
   // `table-layout: fixed` entra assim que existir QUALQUER largura definida —
   // do usuário (`larguras`, depois de um arraste) ou de quem chama
@@ -150,7 +186,7 @@ export function Tabela({
   const temLarguraDefinida =
     Object.keys(larguras).length > 0 || Boolean(largurasPadrao && Object.keys(largurasPadrao).length);
 
-  return (
+  const tabela = (
     <div className="rolagem-interna" style={{ maxHeight: altura }}>
       <table
         style={{
@@ -227,19 +263,11 @@ export function Tabela({
                       à direita dela — só a rolagem interna da tabela. */}
                   {indice < colunas.length - 1 ? (
                     <span
+                      className={arrastando === coluna ? 'tabela-alca tabela-alca--ativa' : 'tabela-alca'}
                       onMouseDown={(evento) => iniciarRedimensionamento(evento, coluna)}
-                      title="Arrastar para redimensionar a coluna"
+                      onDoubleClick={() => restaurarColuna(coluna)}
+                      title="Arraste para ajustar a largura · dois cliques voltam ao tamanho padrão"
                       aria-hidden
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        right: -3,
-                        bottom: 0,
-                        width: 7,
-                        cursor: 'col-resize',
-                        userSelect: 'none',
-                        touchAction: 'none',
-                      }}
                     />
                   ) : null}
                 </th>
@@ -249,6 +277,48 @@ export function Tabela({
         </thead>
         <tbody>{children}</tbody>
       </table>
+    </div>
+  );
+
+  if (!barraDeLargura) return tabela;
+
+  return (
+    <div>
+      {/* O AJUSTE AO ALCANCE DE QUEM NÃO SABIA QUE EXISTE: a dica fica sempre
+          à vista, e o botão só aparece quando há o que restaurar. */}
+      <div
+        className="sem-impressao"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 12,
+          minHeight: 28,
+          fontSize: 11.5,
+          color: 'var(--cinza-2)',
+        }}
+      >
+        <span>Arraste a borda de um cabeçalho para ajustar a largura · dois cliques restauram a coluna</span>
+        {ajustadas ? (
+          <button
+            type="button"
+            onClick={restaurarTudo}
+            style={{
+              border: '1px solid var(--borda-input)',
+              background: 'var(--branco)',
+              borderRadius: 'var(--r-btn)',
+              padding: '3px 10px',
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: 'var(--azul-mar)',
+              cursor: 'pointer',
+            }}
+          >
+            Restaurar layout
+          </button>
+        ) : null}
+      </div>
+      {tabela}
     </div>
   );
 }

@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import { listarMencoesDaBase } from '@/api/cliente';
 import type { ConsultaDaBase, PaginaDaBase } from '@/api/cliente';
@@ -29,7 +30,9 @@ import {
   COLUNAS_OCULTAS_POR_PADRAO,
   LENTES_DA_BASE,
   colunasDaBase,
+  colunaQuebraLinha,
   csvDaBase,
+  largurasPadraoDaBase,
   periodoDoAtalho,
 } from '@/dominio/baseDasLentes';
 import { corForteDaLente } from '@/dominio/score';
@@ -56,6 +59,19 @@ const COR_DO_SENTIMENTO: Record<string, string> = {
 };
 
 type Ordem = { coluna: string; direcao: 'asc' | 'desc' };
+
+//: A CÉLULA DE CADA COLUNA: texto longo quebra linha; o curto e o link ficam
+//: numa linha só, cortados com reticências DENTRO da própria coluna (o texto
+//: nunca invade a vizinha, em qualquer largura que a pessoa escolha).
+const CELULA_QUE_QUEBRA: CSSProperties = { ...celula, whiteSpace: 'normal', overflowWrap: 'anywhere' };
+const CELULA_DE_UMA_LINHA: CSSProperties = {
+  ...celula,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+const celulaDaColuna = (rotulo: string): CSSProperties =>
+  colunaQuebraLinha(rotulo) ? CELULA_QUE_QUEBRA : CELULA_DE_UMA_LINHA;
 
 export function BaseDeDadosDoScore() {
   const [lente, definirLente] = useState<string>('imprensa');
@@ -309,16 +325,19 @@ export function BaseDeDadosDoScore() {
                 );
                 definirPagina(1);
               }}
-              chaveDeArmazenamento={`score-base-${lente}`}
+              //: v2: as larguras que alguém arrastou no layout antigo (espremido)
+              //: não valem mais — todo mundo recomeça do padrão novo.
+              chaveDeArmazenamento={`score-base-v2-${lente}`}
               altura="calc(100vh - 360px)"
-              largurasPadrao={{ 'Matéria / post': 420 }}
+              largurasPadrao={largurasPadraoDaBase(visiveis)}
+              barraDeLargura
             >
               {(dados?.itens ?? []).map((mencao) => (
                 <Linha key={mencao.id}>
                   {colunasVisiveis.map((coluna) => {
                     if (coluna.rotulo === 'Matéria / post') {
                       return (
-                        <td key={coluna.rotulo} style={{ ...celula, whiteSpace: 'normal' }}>
+                        <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
                           <span style={{ display: 'block', color: 'var(--cinza-4)', lineHeight: 1.4 }}>
                             {mencao.titulo ?? <span style={{ color: 'var(--cinza-2)' }}>sem texto na fonte</span>}
                           </span>
@@ -337,7 +356,7 @@ export function BaseDeDadosDoScore() {
                     }
                     if (coluna.rotulo === 'Sentimento' && mencao.sentimento) {
                       return (
-                        <td key={coluna.rotulo} style={celula}>
+                        <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <span
                               aria-hidden
@@ -350,7 +369,7 @@ export function BaseDeDadosDoScore() {
                     }
                     if (coluna.rotulo === 'Fonte') {
                       return (
-                        <td key={coluna.rotulo} style={celula}>
+                        <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
                           {mencao.fonte}
                           {!mencao.fonte_no_calculo ? (
                             <span title="Fonte desligada na calibração: a linha existe, mas não entra na nota." style={{ display: 'block', fontSize: 11, color: 'var(--atencao-fg)' }}>
@@ -361,7 +380,7 @@ export function BaseDeDadosDoScore() {
                       );
                     }
                     return (
-                      <td key={coluna.rotulo} style={celula}>
+                      <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)} title={coluna.valor(mencao) || undefined}>
                         {coluna.valor(mencao)}
                       </td>
                     );
