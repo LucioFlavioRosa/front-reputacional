@@ -12,6 +12,12 @@ import type { Bloco, Dossie } from '@/dominio/dossie';
 import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
+  FiltroDoRisco,
+  OpcoesDoRisco,
+  PaginaDeIncidentes,
+  PainelDeRisco,
+} from '@/dominio/riscos';
+import type {
   Calibracao,
   CalibracaoEntrada,
   DriversDoScore,
@@ -516,6 +522,14 @@ export interface InstituicaoEntrada {
    *  cadastradas antes de a coluna existir — ver `0036_categoria_de_publico.sql`. */
   categoria_publico_id?: number | null;
   subcategoria_publico_id?: number | null;
+  /** O cargo do perfil de rede, pelo rótulo — "Deputado estadual". Só em
+   *  `tipo === 'perfil_rede'`; o backend recusa nos outros. */
+  cargo?: string | null;
+  /** A pessoa do CRM de quem este perfil é. Só em perfil de rede.
+   *
+   *  VAI SEMPRE NA EDIÇÃO, mesmo nula: o PUT substitui a ficha inteira, e
+   *  omitir apagaria o vínculo de quem corrigisse só o nome do perfil. */
+  interlocutor_id?: string | null;
   ativo?: boolean;
 }
 
@@ -581,6 +595,65 @@ export function editarInterlocutor(
  */
 export function removerInterlocutor(id: string): Promise<void> {
   return requisitar<void>(`/api/interlocutores/${id}`, { method: 'DELETE' });
+}
+
+/** Um cadastro que PODE ser o mesmo ator do perfil. `mencoes` é o número que
+ *  diz qual dos dois é a linha com história — e, por isso, qual sobrevive. */
+export interface CandidatoDeFusao {
+  id: string;
+  nome: string;
+  tipo: string;
+  mencoes: number;
+}
+
+export interface CadastroDuplicado {
+  id: string;
+  nome: string;
+  cargo: string | null;
+  mencoes: number;
+  candidatos: CandidatoDeFusao[];
+}
+
+/** Os perfis de rede que se parecem com outro cadastro já existente.
+ *
+ *  POR QUE EXISTE: o fornecedor de redes manda o handle (`valoreconomico`) e o
+ *  clipping manda o nome (`Valor Econômico`). O homônimo exato a migration
+ *  `0076` já fundiu sozinha; estes só casam depois de tirar pontuação, e ali
+ *  semelhança não é identidade — `Diário SM` e `Diários M` casam assim. Quem
+ *  conhece o ator decide, e o que decidir fica guardado.
+ */
+export function duplicadosDeCadastro(): Promise<CadastroDuplicado[]> {
+  return requisitar<CadastroDuplicado[]>('/api/instituicoes/duplicados');
+}
+
+/** Funde o perfil de rede no cadastro que fica, com as menções dele.
+ *
+ *  QUEM SAI É SEMPRE O PERFIL: o cadastro que sobrevive é a linha curada, com
+ *  categoria, UF e frente. O servidor recusa (422) o caminho inverso. Não tem
+ *  volta. */
+export function fundirCadastro(
+  perfilId: string,
+  sobreviventeId: string,
+): Promise<{ id: string; nome: string }> {
+  return requisitar<{ id: string; nome: string }>(
+    `/api/instituicoes/${perfilId}/fundir`,
+    { method: 'POST', body: JSON.stringify({ sobrevivente_id: sobreviventeId }) },
+  );
+}
+
+/** "São atores diferentes" — tira o par da fila, para sempre.
+ *
+ *  FORA DE `/api/instituicoes/`: esta decisão não muda cadastro nenhum, e as
+ *  rotas de catálogo disparam a recarga do catálogo inteiro por prefixo. */
+export function declararCadastroDistinto(
+  id: string,
+  outroId: string,
+  motivo?: string,
+): Promise<{ guardado: boolean }> {
+  return requisitar<{ guardado: boolean }>('/api/atores-distintos', {
+    method: 'POST',
+    body: JSON.stringify({ um_id: id, outro_id: outroId, motivo: motivo ?? null }),
+  });
 }
 
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
@@ -834,6 +907,24 @@ export interface VeiculoNovo {
   esfera: string | null;
   /** Quantas menções da planilha o citam. É por aqui que a lista ordena. */
   mencoes: number;
+  /** O cargo que o fornecedor informou, já com as grafias dobradas.
+   *
+   *  É ELE QUE DECIDE O PÚBLICO do perfil no cadastro — vereador entra em
+   *  Poder Legislativo / Municipal, e não em Formadores de Opinião. Quem
+   *  autoriza 1.108 criações precisa ver "Iriel Sachet — Vereador". */
+  cargo?: string | null;
+}
+
+/** Um assunto que a planilha traz e o cadastro de temas não reconhece. */
+export interface AssuntoNaoReconhecido {
+  /** O texto como o fornecedor o escreveu — é o que se procura na planilha. */
+  nome: string;
+  /** Quantas linhas o citam. A lista vem ordenada por aqui. */
+  mencoes: number;
+  /** O NOME EXISTE NO CADASTRO, MAS ESTÁ DESATIVADO. São dois problemas com
+   *  dois consertos: nome errado se arruma na planilha, tema desativado se
+   *  arruma no cadastro — ou é a planilha que está na taxonomia antiga. */
+  desativado: boolean;
 }
 
 export interface ConferenciaDaPlanilhaDoScore {
@@ -843,6 +934,18 @@ export interface ConferenciaDaPlanilhaDoScore {
   veiculos_novos: VeiculoNovo[];
   /** Quantos veículos da planilha o cadastro já reconhece. */
   veiculos_reconhecidos: number;
+  /** Quantas linhas achariam assunto no cadastro de temas.
+   *
+   *  POR QUE ESTE NÚMERO IMPORTA: o dossiê recorta por Pilar (N1), Tema
+   *  estratégico (N2) e Subtema (N3) pelo vínculo da menção com o tema. Sem
+   *  vínculo, a linha não entra em recorte nenhum — subir planilha cujo
+   *  assunto não casa é subir dado que nenhum filtro alcança. */
+  mencoes_com_tema?: number;
+  /** Quantas vieram SEM assunto. Não é erro: a planilha da Bites de 01–09/2026
+   *  veio com 84% da coluna em branco, e o conteúdo vai ser refeito. */
+  mencoes_sem_assunto?: number;
+  /** Os nomes que o cadastro não reconhece, por volume — os 30 maiores. */
+  assuntos_nao_reconhecidos?: AssuntoNaoReconhecido[];
 }
 
 /** Lê o export do fornecedor e diz o que a subida faria. NADA É GRAVADO.
@@ -1607,4 +1710,65 @@ export async function confirmarPlanilhaDeSubtemas(
     method: 'POST',
     body: corpo,
   });
+}
+
+/* -- o rastreio de risco ------------------------------------------------------- */
+
+/** O recorte da aba de risco virando consulta.
+ *
+ *  AS DIMENSÕES VÃO COMO PARÂMETRO REPETIDO (`dimensao=tier:relevante`), e não
+ *  um parâmetro por dimensão: as dimensões que existem saem do DADO, e um campo
+ *  fixo por dimensão obrigaria a mexer aqui a cada base nova — exatamente a
+ *  rigidez que a tela deixou de ter. O servidor recusa chave que não conhece,
+ *  com a lista das válidas, em vez de ignorar em silêncio.
+ *
+ *  E AS FONTES VÃO REPETIDAS TAMBÉM (`fonte=clipei&fonte=bites`): são várias ao
+ *  mesmo tempo, não uma escolha.
+ */
+function paraConsultaDoRisco(filtro: FiltroDoRisco = {}): string {
+  const parametros = new URLSearchParams();
+  if (filtro.cluster) parametros.set('cluster', filtro.cluster);
+  if (filtro.risco) parametros.set('risco', filtro.risco);
+  for (const fonte of filtro.fontes ?? []) parametros.append('fonte', fonte);
+  for (const lente of filtro.lentes ?? []) parametros.append('lente', lente);
+  if (filtro.severidade) parametros.set('severidade', filtro.severidade);
+  if (filtro.bloco) parametros.set('bloco', filtro.bloco);
+  if (filtro.macro) parametros.set('macro', filtro.macro);
+  if (filtro.tema) parametros.set('tema', filtro.tema);
+  if (filtro.de) parametros.set('de', filtro.de);
+  if (filtro.ate) parametros.set('ate', filtro.ate);
+  if (filtro.busca?.trim()) parametros.set('busca', filtro.busca.trim());
+  for (const [chave, valor] of Object.entries(filtro.dimensoes ?? {})) {
+    if (valor) parametros.append('dimensao', `${chave}:${valor}`);
+  }
+  return parametros.toString();
+}
+
+/** A tela inteira num pedido: série do índice, três KPIs, matriz e totais. */
+export function obterPainelDeRisco(filtro?: FiltroDoRisco): Promise<PainelDeRisco> {
+  return requisitar<PainelDeRisco>(`/api/score/riscos?${paraConsultaDoRisco(filtro)}`);
+}
+
+/** O "Relatório de incidentes", paginado. */
+export function listarIncidentesDeRisco(
+  filtro: FiltroDoRisco,
+  pagina = 1,
+  tamanho = 50,
+): Promise<PaginaDeIncidentes> {
+  const parametros = new URLSearchParams(paraConsultaDoRisco(filtro));
+  parametros.set('pagina', String(pagina));
+  parametros.set('tamanho', String(tamanho));
+  return requisitar<PaginaDeIncidentes>(
+    `/api/score/riscos/incidentes?${parametros.toString()}`,
+  );
+}
+
+/** O que a tela pode oferecer como filtro NESTE recorte.
+ *
+ *  PEDIDO A CADA MUDANÇA DE RECORTE de propósito: a lista de dimensões e de
+ *  fontes é o dado respondendo, e não uma lista fixa — fonte sem incidente no
+ *  recorte é filtro que volta vazio.
+ */
+export function obterOpcoesDoRisco(filtro?: FiltroDoRisco): Promise<OpcoesDoRisco> {
+  return requisitar<OpcoesDoRisco>(`/api/score/riscos/opcoes?${paraConsultaDoRisco(filtro)}`);
 }

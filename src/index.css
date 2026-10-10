@@ -47,6 +47,11 @@
   --atencao-bg: #FFF1DC; --atencao-fg: #8A4E00;
   --erro-bg: #FFE7E8;    --erro-fg: #B32328;
   --sobre-turquesa: #00312C;
+  /* A TERCEIRA FAIXA DA SEVERIDADE DE RISCO. Crítico e Alto reaproveitam erro e
+     atenção, que já são o vermelho pitanga e o laranja baía da marca; Moderado é
+     o amarelo pequi, e ele não tinha par de fundo e texto. Escrever sobre o
+     pequi puro não se lê — daí o fundo claro e o texto escuro desta linha. */
+  --moderado-bg: #FFF9CC; --moderado-fg: #6B5B00;
 
   /* As cores de frente, clima, desfecho e situação NÃO moram aqui: vêm do
      dicionário (`cor_hex`) e de `CORES_DE_FRENTE` em `dominio/frentes.ts`,

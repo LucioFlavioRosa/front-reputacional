@@ -23,6 +23,11 @@ import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import type { Instituicao } from '@/dominio/tipos';
 
 vi.mock('@/api/cliente', () => ({
+  //: A tela mostra a fila de possiveis duplicados, que pede esta
+  //: lista ao montar. Sem o duble, o componente chama undefined.
+  duplicadosDeCadastro: vi.fn(async () => []),
+  fundirCadastro: vi.fn(),
+  declararCadastroDistinto: vi.fn(),
   criarInstituicao: vi.fn(),
   editarInstituicao: vi.fn(),
   criarInterlocutor: vi.fn(),
@@ -127,6 +132,30 @@ describe('Cadastro de Instituições: a contagem e o corte por tipo', () => {
     const rotulos = [...seletor.options].map((o) => o.textContent);
     expect(rotulos[0]).toBe('Todos os tipos');
     expect(rotulos.some((r) => r?.includes('2.631'))).toBe(true);
+  });
+
+  it('O PERFIL DE REDE tem rótulo e entra no filtro', async () => {
+    // `perfil_rede` nasce da ingestão do social listening e NÃO é frente do
+    // CRM — não existe agenda com um perfil de Instagram —, então ele não está
+    // em `TIPO_DE_INSTITUICAO`. Sem rótulo, o filtro mostrava o código cru; e
+    // sem a opção no `<select>` de Tipo, abrir um perfil para editar exibia
+    // "Órgão" (a primeira opção) para um registro que é perfil de rede, com um
+    // clique trocando o tipo de verdade.
+    catalogoAtual = catalogoCom([
+      instituicao('Folha', 'veiculo'),
+      instituicao('deolhoemesteio', 'perfil_rede'),
+    ]);
+    const pessoa = userEvent.setup();
+    render(<CadastroDeInstituicoes />);
+
+    const seletor = screen.getByLabelText('Tipo') as HTMLSelectElement;
+    const rotulos = [...seletor.options].map((o) => o.textContent);
+    expect(rotulos).toContain('Perfil de rede (1)');
+
+    await pessoa.selectOptions(seletor, 'perfil_rede');
+
+    expect(screen.getByText('deolhoemesteio')).toBeTruthy();
+    expect(screen.queryByText('Folha')).toBeNull();
   });
 
   it('filtrar por tipo mostra o recorte E o total', async () => {

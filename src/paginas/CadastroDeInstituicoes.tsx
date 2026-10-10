@@ -40,6 +40,7 @@ import {
   Vazio,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
@@ -84,7 +85,24 @@ const ROTULO_DO_TIPO: Record<string, string> = {
   proposicao: 'Proposição',
   area_interna: 'Área interna',
   credor: 'Banco/credor',
+  perfil_rede: 'Perfil de rede',
 };
+
+/** Tipos que existem no cadastro e NÃO são frente do CRM.
+ *
+ *  `TIPO_DE_INSTITUICAO` mapeia FRENTE → tipo: uma agenda de imprensa fala com
+ *  veículo, uma de legislativo com proposição. `perfil_rede` não está lá porque
+ *  não existe agenda com um perfil de Instagram — ele nasce da ingestão do
+ *  social listening, onde "quem falou" é um perfil (`deolhoemesteio`, "Stela
+ *  Farias") e não um veículo de imprensa.
+ *
+ *  MAS ELE APARECE NESTA TELA, e por isso precisa estar aqui. Sem isto, o
+ *  `<select>` de Tipo não tinha a opção: abrir um perfil para editar mostrava
+ *  "Órgão" — a primeira opção da lista — para um registro que é perfil de
+ *  rede, e um clique no campo trocaria o tipo de verdade. O filtro, do mesmo
+ *  jeito, exibia o código cru `perfil_rede`.
+ */
+const TIPOS_SEM_FRENTE = ['perfil_rede'];
 
 /** Os tipos de instituição que se pode cadastrar.
  *
@@ -92,7 +110,7 @@ const ROTULO_DO_TIPO: Record<string, string> = {
  *  divergiria do mapa, e a tela ofereceria um tipo que o backend não aceita.
  */
 function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
-  const tipos = new Set(Object.values(TIPO_DE_INSTITUICAO));
+  const tipos = new Set([...Object.values(TIPO_DE_INSTITUICAO), ...TIPOS_SEM_FRENTE]);
   return [...tipos].map((tipo) => ({
     tipo,
     rotulo: ROTULO_DO_TIPO[tipo] ?? tipo,
@@ -136,6 +154,9 @@ const VAZIA = {
   //: SÓ FAZ SENTIDO junto de uma categoria com `padrao_de_quebra !==
   //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
   subcategoria_publico_id: '',
+  //: SÓ DE PERFIL DE REDE, e o backend recusa nos outros tipos.
+  cargo: '',
+  pessoa: '',
 };
 const SEM_PESSOA = {
   nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
@@ -157,6 +178,8 @@ function rascunhoDe(instituicao: Instituicao): RascunhoDaInstituicao {
     subcategoria_publico_id: instituicao.subcategoria_publico_id
       ? String(instituicao.subcategoria_publico_id)
       : '',
+    cargo: instituicao.cargo ?? '',
+    pessoa: instituicao.interlocutor_id ?? '',
   };
 }
 
@@ -181,6 +204,12 @@ function entradaDaEdicao(rascunho: RascunhoDaInstituicao, ativo: boolean): Insti
     subcategoria_publico_id: rascunho.subcategoria_publico_id
       ? Number(rascunho.subcategoria_publico_id)
       : null,
+    //: SEM ESTES DOIS, O PUT OS APAGAVA. A edição manda a ficha INTEIRA, e o
+    //: backend substitui o que recebe: `cargo` e `interlocutor_id` omitidos
+    //: viravam nulo, então corrigir o nome de um perfil perdia o cargo e a
+    //: pessoa sem ninguém notar. É a mesma razão pela qual `ativo` está aqui.
+    cargo: rascunho.cargo || null,
+    interlocutor_id: rascunho.pessoa || null,
     ativo,
   };
 }
@@ -204,6 +233,18 @@ interface RascunhoDaInstituicao {
   tier: string;
   categoria_publico_id: string;
   subcategoria_publico_id: string;
+  /** O cargo do perfil de rede — "Deputado estadual". Só aparece no
+   *  formulário quando o tipo é `perfil_rede`, e é editável porque o
+   *  fornecedor erra: `stelafariasrs` veio sem cargo e com UF TO, sendo a
+   *  mesma deputada do RS. */
+  cargo: string;
+  /** A PESSOA DE QUEM ESTE PERFIL É — id de interlocutor, ou vazio.
+   *
+   *  É o que faz os TRÊS perfis da mesma deputada (`Stela Farias` com 121
+   *  menções, `Stela Farias RS` com 3 e `stelafariasrs` com 27) virarem uma
+   *  pessoa. Nenhuma normalização funde esses nomes: são diferentes de
+   *  verdade, e só alguém que conhece o ator sabe que são a mesma. */
+  pessoa: string;
 }
 
 //: O RASCUNHO DE UM CONTATO, nos três lugares que o editam (o formulário do
@@ -333,6 +374,8 @@ export function CadastroDeInstituicoes() {
     tier: '',
     categoria_publico_id: '',
     subcategoria_publico_id: '',
+    cargo: '',
+    pessoa: '',
   });
   const [pessoaNova, definirPessoaNova] = useState(SEM_PESSOA);
   //: Qual PESSOA esta aberta para edicao, e o rascunho dela. Separado do
@@ -431,6 +474,16 @@ export function CadastroDeInstituicoes() {
     [...(catalogo?.interlocutores.values() ?? [])]
       .filter((p) => p.instituicao_id === instituicaoId)
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  //: TODAS AS PESSOAS DO CRM, para o seletor "de quem e este perfil".
+  //:
+  //: A LISTA INTEIRA, e nao as da instituicao: a deputada Stela Farias e
+  //: interlocutora da Assembleia, e o perfil de Instagram dela e outro
+  //: registro — e so por isso dizer "este perfil e dela" nao a move de
+  //: instituicao. E o que faz os tres perfis dela virarem uma pessoa.
+  const pessoasDoCrm = [...(catalogo?.interlocutores.values() ?? [])].sort((a, b) =>
+    a.nome.localeCompare(b.nome, 'pt-BR'),
+  );
 
   /** Toda escrita passa por aqui.
    *
@@ -761,6 +814,10 @@ export function CadastroDeInstituicoes() {
         </Cartao>
       </Secao>
 
+      {/* A FILA DO MESMO ATOR CADASTRADO DUAS VEZES, acima da lista porque é
+          trabalho a fazer, e não consulta. Ela não aparece quando está vazia. */}
+      <FilaDeDuplicados />
+
       <Secao
         titulo={
           instituicoes.length !== totalCadastrado
@@ -821,6 +878,7 @@ export function CadastroDeInstituicoes() {
               relevancias={catalogo.dicionarios.relevancias}
               categoriasPublico={catalogo.dicionarios.categorias_publico}
               subcategoriasPublico={catalogo.dicionarios.subcategorias_publico}
+              pessoasDoCrm={pessoasDoCrm}
               emEdicao={emEdicao === instituicao.id}
               aberta={aberta === instituicao.id}
               salvando={salvando}
@@ -999,6 +1057,7 @@ function LinhaDeInstituicao({
   relevancias,
   categoriasPublico,
   subcategoriasPublico,
+  pessoasDoCrm,
   emEdicao,
   aberta,
   salvando,
@@ -1036,6 +1095,8 @@ function LinhaDeInstituicao({
   relevancias: { id: number; nome: string }[];
   categoriasPublico: CategoriaPublicoDoDicionario[];
   subcategoriasPublico: SubcategoriaPublicoDoDicionario[];
+  /** As pessoas do CRM, para o seletor "de quem é este perfil". */
+  pessoasDoCrm: Interlocutor[];
   emEdicao: boolean;
   aberta: boolean;
   salvando: boolean;
@@ -1102,7 +1163,19 @@ function LinhaDeInstituicao({
             <select
               style={estiloDeEntrada}
               value={rascunho.tipo}
-              onChange={(e) => aoRascunhar({ ...rascunho, tipo: e.target.value })}
+              onChange={(e) =>
+                aoRascunhar({
+                  ...rascunho,
+                  tipo: e.target.value,
+                  //: TROCAR O TIPO LIMPA OS CAMPOS DE PERFIL. Sem isto, mudar
+                  //: de "Perfil de rede" para "Veículo" escondia Cargo e
+                  //: Pessoa da tela mas CONTINUAVA mandando os valores — e o
+                  //: back recusava com "só perfil de rede tem cargo", um erro
+                  //: sobre um campo que a pessoa não vê mais. Achado de
+                  //: revisão.
+                  ...(e.target.value === 'perfil_rede' ? {} : { cargo: '', pessoa: '' }),
+                })
+              }
             >
               {TIPOS.map(({ tipo, rotulo }) => (
                 <option key={tipo} value={tipo}>
@@ -1129,6 +1202,41 @@ function LinhaDeInstituicao({
               ))}
             </select>
           </Campo>
+          {/* SÓ EM PERFIL DE REDE: um jornal não tem cargo nem "é de"
+              alguém, e o backend recusa os dois nos outros tipos. */}
+          {rascunho.tipo === 'perfil_rede' ? (
+            <>
+              <Campo
+                rotulo="Cargo"
+                dica="Como o fornecedor informou — e corrigível, porque ele erra."
+              >
+                <input
+                  style={estiloDeEntrada}
+                  value={rascunho.cargo}
+                  placeholder="Deputado estadual"
+                  onChange={(e) => aoRascunhar({ ...rascunho, cargo: e.target.value })}
+                />
+              </Campo>
+              <Campo
+                rotulo="Pessoa"
+                dica="De quem é este perfil. É o que junta os vários perfis de uma mesma pessoa, e liga o que ela postou ao que ela fez nas agendas."
+              >
+                <select
+                  style={estiloDeEntrada}
+                  value={rascunho.pessoa}
+                  onChange={(e) => aoRascunhar({ ...rascunho, pessoa: e.target.value })}
+                >
+                  <option value="">Ninguém ainda</option>
+                  {pessoasDoCrm.map((pessoa) => (
+                    <option key={pessoa.id} value={pessoa.id}>
+                      {pessoa.cargo ? `${pessoa.nome} — ${pessoa.cargo}` : pessoa.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </>
+          ) : null}
+
           <Campo rotulo="Abrangência">
             <select
               style={estiloDeEntrada}
@@ -1213,6 +1321,12 @@ function LinhaDeInstituicao({
                 ? null
                 : 'desativada — ela e as pessoas dela saem do cadastro de agenda; o histórico e os filtros continuam · '}
               {rotuloDoTipo}
+              {/* O CARGO ANTES DA PRAÇA: "Perfil de rede · Deputado estadual ·
+                  RS" responde quem é o ator. Antes a linha mostrava o tipo e a
+                  UF, e o cargo não aparecia em lugar nenhum — o dono do
+                  produto viu a deputada Stela Farias como "Poder
+                  Legislativo". */}
+              {instituicao.cargo ? ` · ${instituicao.cargo}` : ''}
               {instituicao.uf ? ` · ${instituicao.uf}` : ''} ·{' '}
               {pessoas.length === 0
                 ? 'ninguém cadastrado'

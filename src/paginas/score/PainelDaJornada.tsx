@@ -186,7 +186,14 @@ export function PainelDaJornada({
                   : []),
               ]}
             />
-            <SeletorDeJanela meses={meses} janela={janela} aoMudar={definirJanela} />
+            <SeletorDeJanela
+              //: O TRILHO PEDE `{ mes, valor }`, e aqui o valor é o ISR: o
+              //: controle serve a qualquer série mensal, e o Risk Tracking usa
+              //: o mesmo com o índice de exposição.
+              meses={meses.map((ponto) => ({ mes: ponto.mes, valor: ponto.isr }))}
+              janela={janela}
+              aoMudar={definirJanela}
+            />
           </div>
 
           <div

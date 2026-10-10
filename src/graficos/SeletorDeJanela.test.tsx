@@ -32,11 +32,16 @@ const ponto = (mes: string, isr: number, lentes = 5): PontoDaSerie =>
 
 const MESES = Array.from({ length: 8 }, (_, i) => ponto(`2026-0${i + 1}`, 60 + i));
 
+//: O TRILHO PEDE `{ mes, valor }` — ele serve a qualquer série mensal, e não só
+//: à do Score (o Risk Tracking usa o mesmo controle com o índice de exposição).
+//: A Jornada, nos testes abaixo, continua pedindo a série inteira.
+const TRILHO = MESES.map((um) => ({ mes: um.mes, valor: um.isr }));
+
 function ComEstado({ inicial }: { inicial: Janela }) {
   const [janela, definir] = useState(inicial);
   return (
     <>
-      <SeletorDeJanela meses={MESES} janela={janela} aoMudar={definir} />
+      <SeletorDeJanela meses={TRILHO} janela={janela} aoMudar={definir} />
       <output data-testid="janela">{`${janela.inicio}-${janela.fim}`}</output>
     </>
   );

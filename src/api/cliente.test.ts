@@ -97,6 +97,11 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
     cliente.subirVersaoDaReferencia('id-4', arquivo(), 'O texto da versão.', '2026-09-02'),
   definirVeiculosDeInvestidores: () =>
     cliente.definirVeiculosDeInvestidores(['id-6', 'id-7'], ['id-6']),
+  // Fundir apaga uma linha do catalogo e move as mencoes dela: o Cadastro
+  // compartilhado precisa ver isso sem F5. Ja `declararCadastroDistinto` NAO
+  // esta aqui de proposito — ela nao escreve em rota de catalogo, porque a
+  // decisao "sao atores diferentes" nao muda cadastro nenhum.
+  fundirCadastro: () => cliente.fundirCadastro('id-8', 'id-9'),
   criarAlegacao: () =>
     cliente.criarAlegacao({ texto: 'O Banco X não renegociaria a dívida', temas: [] }),
   editarAlegacao: () =>

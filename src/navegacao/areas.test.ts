@@ -52,6 +52,7 @@ describe('a divisão do Score', () => {
     expect(rotulos('score')).toEqual([
       'Visão geral',
       'Lentes',
+      'Risk Tracking',
       'Drivers e riscos',
       'Metodologia',
       // A BASE DE DADOS é a consulta das menções na fonte; a IMPORTAÇÃO (que
@@ -85,6 +86,9 @@ describe('a divisão do Score', () => {
     expect(itens.map((item) => item.aba)).toEqual([
       'geral',
       'lentes',
+      //: DEPOIS DE LENTES, por pedido do dono do produto: a aba desce do índice
+      //: para os incidentes que tocam a matriz de risco corporativo.
+      'riscos',
       'drivers',
       'metodologia',
       'base-de-dados',
