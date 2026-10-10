@@ -11,6 +11,13 @@ import type { Pilar, Tema } from '../dados/tipos';
 import type { EnderecoDoDrill } from '../endereco';
 import { RodapeDaConta, TabelaDeImpacto } from './TabelaDeImpacto';
 
+//: Estes cartões vivem na aba Lentes, onde o botão "PNG" está ligado
+//: (`ContextoDoPng`); soltos num teste, o padrão é desligado.
+vi.mock('@/componentes/contextoDoPng', async () => {
+  const { createContext } = await import('react');
+  return { ContextoDoPng: createContext(true) };
+});
+
 const imprensa = DADOS.lentes.find((l) => l.id === 'imprensa')!;
 const mercado = DADOS.lentes.find((l) => l.id === 'mercado')!;
 const eficiencia = imprensa.pilares.find((p) => p.id === 'eficiencia-operacional')!;

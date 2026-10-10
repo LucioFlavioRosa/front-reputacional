@@ -9,6 +9,13 @@ import type { Item } from '../dados/tipos';
 import type { EnderecoDoDrill } from '../endereco';
 import { ListaDeMaterias } from './ListaDeMaterias';
 
+//: Estes cartões vivem na aba Lentes, onde o botão "PNG" está ligado
+//: (`ContextoDoPng`); soltos num teste, o padrão é desligado.
+vi.mock('@/componentes/contextoDoPng', async () => {
+  const { createContext } = await import('react');
+  return { ContextoDoPng: createContext(true) };
+});
+
 const imprensa = DADOS.lentes.find((l) => l.id === 'imprensa')!;
 const subtemas = imprensa.pilares.flatMap((p) => p.filhos ?? []).flatMap((t) => t.filhos ?? []);
 const adutora = subtemas.find((s) => s.id === 'rompimento-adutora')!;

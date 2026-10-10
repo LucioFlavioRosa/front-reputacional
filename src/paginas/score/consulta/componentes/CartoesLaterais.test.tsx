@@ -18,6 +18,13 @@ import { CartaoDeRecortes } from './CartaoDeRecortes';
 import { CartoesLaterais } from './CartoesLaterais';
 import { ModalDePrevia } from './ModalDePrevia';
 
+//: Estes cartões vivem na aba Lentes, onde o botão "PNG" está ligado
+//: (`ContextoDoPng`); soltos num teste, o padrão é desligado.
+vi.mock('@/componentes/contextoDoPng', async () => {
+  const { createContext } = await import('react');
+  return { ContextoDoPng: createContext(true) };
+});
+
 function lente(id: string): Lente {
   const l = DADOS.lentes.find((x) => x.id === id);
   if (!l) throw new Error(id);
