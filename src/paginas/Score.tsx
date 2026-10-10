@@ -28,6 +28,7 @@ import {
 import type { FiltroDaLente } from '@/api/cliente';
 import { BaseDoScore } from '@/paginas/score/BaseDoScore';
 import { BuscaDoRadar } from '@/paginas/score/BuscaDoRadar';
+import { ComparacaoDeRadares } from '@/paginas/score/ComparacaoDeRadares';
 import {
   Carregando,
   Cartao,
@@ -232,6 +233,8 @@ export function Score({
           }}
           aoTrocarMes={trocarMes}
           controlesDoMes={seletorDoMes}
+          meses={opcoes.meses}
+          mesSugerido={opcoes.mes_sugerido}
         />
       ) : null}
 
@@ -269,7 +272,13 @@ function VisaoGeral({
   aoAbrirLente,
   aoTrocarMes,
   controlesDoMes,
+  meses,
+  mesSugerido,
 }: {
+  /** Os meses com dado e o sugerido — os mesmos do seletor do radar, para a
+   *  comparação de períodos. */
+  meses: string[];
+  mesSugerido: string | null;
   indice: IndiceDoScore;
   serie: PontoDaSerie[];
   aoAbrirLente: (codigo: string) => void;
@@ -349,6 +358,14 @@ function VisaoGeral({
       </Secao>
       </ComFaixaDoTopo>
 
+      {/* DOIS RADARES LADO A LADO, por pedido, cada um com o seu seletor de mês,
+          num bloco que nasce escondido. */}
+      <ComparacaoDeRadares
+        meses={meses}
+        sugerido={mesSugerido}
+        mesAtual={indice.mes}
+        aoAbrirLente={aoAbrirLente}
+      />
     </div>
   );
 }
