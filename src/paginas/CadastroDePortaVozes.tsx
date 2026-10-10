@@ -23,7 +23,6 @@ import {
   Botao,
   Campo,
   Cartao,
-  Chip,
   FaixaDeErro,
   Secao,
   Vazio,
@@ -31,7 +30,8 @@ import {
 } from '@/componentes/basicos';
 import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { usePainel } from '@/estado/painel';
-import type { PessoaAegea } from '@/dominio/tipos';
+import type { PessoaAegea, Tema } from '@/dominio/tipos';
+import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 
 const VAZIA = {
   nome: '',
@@ -127,6 +127,10 @@ export function CadastroDePortaVozes() {
   if (!catalogo) return null;
 
   const assuntos = catalogo.dicionarios.temas;
+  //: OS APOSENTADOS, só para MOSTRAR o que a pessoa já tem: sem eles, um porta-voz
+  //: com tema que a taxonomia v4 aposentou apareceria com menos temas do que tem,
+  //: e sem o chip não haveria o × para tirar. Mesmo cuidado da Nova interação.
+  const assuntosInativos = catalogo.dicionarios.temas_inativos ?? [];
 
   const alternar = (
     atual: { temas: number[] },
@@ -236,25 +240,17 @@ export function CadastroDePortaVozes() {
                   : 'Só quem é porta-voz tem temas autorizados.'
               }
             >
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                {assuntos.map((tema) => {
-                  const ativo = nova.temas.includes(tema.id);
-                  return (
-                    <Chip
-                      key={tema.id}
-                      rotulo={tema.nome}
-                      ativo={ativo}
-                      fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                      texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                      aoClicar={
-                        nova.eh_porta_voz
-                          ? () => alternar(nova, definirNova as never, tema.id)
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
+              {/* BUSCA E SELEÇÃO, como na Nova interação: com 104 temas, a grade
+                  inteira era uma parede para escanear. Só quem é porta-voz
+                  escolhe — para os outros, a dica acima explica o porquê. */}
+              {nova.eh_porta_voz ? (
+                <SeletorDeTemas
+                  temas={assuntos}
+                  temasInativos={assuntosInativos}
+                  selecionados={nova.temas}
+                  aoAlternar={(id) => alternar(nova, definirNova as never, id)}
+                />
+              ) : null}
             </Campo>
           </div>
 
@@ -312,6 +308,7 @@ export function CadastroDePortaVozes() {
                 <EdicaoDaPessoa
                   rascunho={rascunho}
                   assuntos={assuntos}
+                  assuntosInativos={assuntosInativos}
                   areas={catalogo.dicionarios.areas_pessoa}
                   salvando={salvando}
                   aoRascunhar={definirRascunho}
@@ -479,6 +476,7 @@ function LinhaDaPessoa({
 function EdicaoDaPessoa({
   rascunho,
   assuntos,
+  assuntosInativos,
   areas,
   salvando,
   aoRascunhar,
@@ -488,7 +486,8 @@ function EdicaoDaPessoa({
   aoSalvar,
 }: {
   rascunho: typeof VAZIA;
-  assuntos: { id: number; nome: string }[];
+  assuntos: Tema[];
+  assuntosInativos: Tema[];
   areas: { id: number; nome: string }[];
   salvando: boolean;
   aoRascunhar: (r: typeof VAZIA) => void;
@@ -558,21 +557,14 @@ function EdicaoDaPessoa({
               : 'Só quem é porta-voz tem temas autorizados.'
           }
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            {assuntos.map((tema) => {
-              const ativo = rascunho.temas.includes(tema.id);
-              return (
-                <Chip
-                  key={tema.id}
-                  rotulo={tema.nome}
-                  ativo={ativo}
-                  fundo={ativo ? 'var(--turquesa-rio)' : 'var(--bg-trilho)'}
-                  texto={ativo ? 'var(--sobre-turquesa)' : 'var(--cinza-3)'}
-                  aoClicar={rascunho.eh_porta_voz ? () => aoAlternarTema(tema.id) : undefined}
-                />
-              );
-            })}
-          </div>
+          {rascunho.eh_porta_voz ? (
+            <SeletorDeTemas
+              temas={assuntos}
+              temasInativos={assuntosInativos}
+              selecionados={rascunho.temas}
+              aoAlternar={aoAlternarTema}
+            />
+          ) : null}
         </Campo>
       </div>
 

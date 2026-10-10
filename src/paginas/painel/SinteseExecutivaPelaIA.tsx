@@ -223,7 +223,7 @@ export function SinteseExecutivaPelaIA({
                   .{' '}
                 </>
               ) : null}
-              O clima médio ficou em <Num>{scoreClimaAtual}</Num> pontos
+              O termômetro médio ficou em <Num>{scoreClimaAtual}</Num> pontos
               {temHistorico ? (
                 <>
                   , frente a <Num>{scoreClimaAnterior}</Num> em {mesAnterior}
@@ -237,12 +237,12 @@ export function SinteseExecutivaPelaIA({
             <p style={ESTILO_DO_PARAGRAFO}>
               {areaAlerta ? (
                 <>
-                  A área <strong>{areaAlerta.nome}</strong> acumula o pior placar de clima do recorte:{' '}
+                  A área <strong>{areaAlerta.nome}</strong> acumula o pior placar do termômetro do recorte:{' '}
                   <Num>{areaAlerta.score}</Num> pontos, sobre <Num>{numero(areaAlerta.total)}</Num>{' '}
-                  interações com clima registrado.{' '}
+                  interações com termômetro registrado.{' '}
                 </>
               ) : (
-                'Nenhuma área com clima negativo sustentado neste recorte. '
+                'Nenhuma área com termômetro negativo sustentado neste recorte. '
               )}
               {instituicoesTier1Inativas.length ? (
                 <>
@@ -269,7 +269,7 @@ export function SinteseExecutivaPelaIA({
             <ul style={{ ...ESTILO_DO_PARAGRAFO, margin: 0, paddingLeft: 18 }}>
               {areaAlerta ? (
                 <li>
-                  Acompanhar de perto a área <strong>{areaAlerta.nome}</strong>, cujo placar de clima está
+                  Acompanhar de perto a área <strong>{areaAlerta.nome}</strong>, cujo placar do termômetro está
                   em <Num>{areaAlerta.score}</Num> pontos.
                 </li>
               ) : null}

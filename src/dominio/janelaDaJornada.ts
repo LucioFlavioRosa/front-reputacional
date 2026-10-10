@@ -150,6 +150,9 @@ export interface KpisDaJanela {
    *  `pico` acima. É o que vira o aviso "medido por 1 de 5 lentes". */
   picoParcial: ExtremoParcial | null;
   valeParcial: ExtremoParcial | null;
+  /** A média da janela, arredondada — só dos meses medidos por 4 lentes ou
+   *  mais, pela mesma regra do pico e do vale; sem nenhum, de todos. */
+  media: number | null;
   /** Último menos primeiro mês da janela, em pontos. */
   variacao: { pontos: number; sentido: 'alta' | 'queda' | 'estavel'; de: ValorDoMes; ate: ValorDoMes } | null;
 }
@@ -179,7 +182,7 @@ export function mesComAno(chave: string): string {
 export function kpisDaJanela(serieRecortada: PontoDaSerie[]): KpisDaJanela {
   const medidos = mesesMedidos(serieRecortada);
   if (!medidos.length) {
-    return { atual: null, pico: null, vale: null, picoParcial: null, valeParcial: null, variacao: null };
+    return { atual: null, pico: null, vale: null, picoParcial: null, valeParcial: null, media: null, variacao: null };
   }
 
   const completos = medidos.filter((ponto) => !coberturaDoMes(ponto.lentes));
@@ -213,6 +216,10 @@ export function kpisDaJanela(serieRecortada: PontoDaSerie[]): KpisDaJanela {
   const primeiro = medidos[0];
   const ultimo = medidos[medidos.length - 1];
   const pontos = (ultimo.isr as number) - (primeiro.isr as number);
+  const daMedia = completos.length ? completos : medidos;
+  const media = Math.round(
+    daMedia.reduce((soma, ponto) => soma + (ponto.isr as number), 0) / daMedia.length,
+  );
 
   return {
     atual: doMes(ultimo),
@@ -220,6 +227,7 @@ export function kpisDaJanela(serieRecortada: PontoDaSerie[]): KpisDaJanela {
     vale: vale ? doMes(vale) : null,
     picoParcial: parcial(picoAbsoluto, pico, (a, b) => a > b),
     valeParcial: parcial(valeAbsoluto, vale, (a, b) => a < b),
+    media,
     variacao:
       medidos.length < 2
         ? null
@@ -230,4 +238,70 @@ export function kpisDaJanela(serieRecortada: PontoDaSerie[]): KpisDaJanela {
             ate: doMes(ultimo),
           },
   };
+}
+
+const pontosEmTexto = (n: number) => `${n} ${n === 1 ? 'ponto' : 'pontos'}`;
+
+/** A frase do cabeçalho da Jornada: em que pé o índice está, comparado com a
+ *  média, o pico e o vale da janela, e quanto andou no período.
+ *
+ *  `sujeito` é quem a frase descreve — "O índice" na Visão geral, "A lente
+ *  Imprensa" dentro da lente. A frase muda com a janela, junto dos cartões. */
+export function fraseDaJanela(kpis: KpisDaJanela, sujeito = 'O índice'): string {
+  const { atual, media, pico, vale, variacao } = kpis;
+  if (!atual) return 'Sem mês medido nesta janela.';
+
+  let frase = `${sujeito} está em ${atual.valor} em ${atual.rotuloDoMes}`;
+  if (media !== null) {
+    const diferenca = atual.valor - media;
+    frase +=
+      diferenca === 0
+        ? `, exatamente na média da janela (${media})`
+        : `, ${pontosEmTexto(Math.abs(diferenca))} ${diferenca > 0 ? 'acima' : 'abaixo'} da média da janela (${media})`;
+  }
+  const partes = [`${frase}.`];
+
+  if (pico && vale && pico.mes !== vale.mes) {
+    partes.push(`O pico foi ${pico.valor}, em ${pico.rotuloDoMes}, e o vale ${vale.valor}, em ${vale.rotuloDoMes}.`);
+  } else if (pico) {
+    partes.push(`O pico foi ${pico.valor}, em ${pico.rotuloDoMes}.`);
+  }
+
+  if (variacao) {
+    partes.push(
+      variacao.sentido === 'estavel'
+        ? 'No período, ficou estável.'
+        : `No período, ${variacao.sentido === 'alta' ? 'subiu' : 'caiu'} ${pontosEmTexto(Math.abs(variacao.pontos))}.`,
+    );
+  }
+  return partes.join(' ');
+}
+
+/** O código com que o índice geral entra na série de uma lente, para ser
+ *  desenhado como curva de comparação. Não é lente nenhuma do modelo. */
+export const CODIGO_DO_INDICE = 'indice_geral';
+
+/** A série de UMA lente no formato da série do índice: `isr` passa a ser a
+ *  nota da lente no mês. É o que deixa a Jornada da lente usar o mesmo gráfico,
+ *  os mesmos cartões e a mesma janela da Visão geral.
+ *
+ *  O QUE É DO ÍNDICE SAI: os fatos do mês e a cobertura por lentes descrevem o
+ *  ISR, e não esta lente — um ponto marcado "1 de 5 lentes" na curva da
+ *  Imprensa diria algo que não é sobre ela. */
+export function serieDaLente(serie: PontoDaSerie[], codigo: string): PontoDaSerie[] {
+  return serie.map((ponto) => ({
+    ...ponto,
+    isr: ponto.notas_das_lentes[codigo] ?? null,
+    //: O ÍNDICE GERAL VIAJA COMO MAIS UMA "LENTE" (`CODIGO_DO_INDICE`), para a
+    //: Jornada da lente desenhá-lo como curva de comparação, pontilhada.
+    notas_das_lentes:
+      ponto.isr === null
+        ? ponto.notas_das_lentes
+        : { ...ponto.notas_das_lentes, [CODIGO_DO_INDICE]: ponto.isr },
+    lentes: 5,
+    fatos: [],
+    delta: null,
+    maior_movimento: null,
+    pontos_sem_tema: 0,
+  }));
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-/** O gatilho "Filtrar por Clima" assume a cor do clima escolhido. */
+/** O gatilho "Filtrar por Termômetro" assume a cor do termômetro escolhido. */
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -22,10 +22,10 @@ const CATALOGO = {
 
 function gatilho(recorte: Recorte) {
   render(<CampoSuspenso campo={campoDeClima(recorte, () => {}, CATALOGO)} />);
-  return screen.getByRole('button', { name: /Filtrar por Clima/ });
+  return screen.getByRole('button', { name: /Filtrar por Termômetro/ });
 }
 
-describe('Filtrar por Clima', () => {
+describe('Filtrar por Termômetro', () => {
   it.each([
     ['propositivo', 'Positivo', 'rgb(23, 227, 203)'], // verde (turquesa Aegea)
     ['tenso', 'Negativo', 'rgb(255, 92, 96)'], // vermelho
@@ -33,10 +33,10 @@ describe('Filtrar por Clima', () => {
   ])('com %s escolhido, fica na cor dele e diz qual é', (codigo, rotulo, cor) => {
     const botao = gatilho({ clima: codigo });
     expect(botao.style.background).toBe(cor);
-    expect(botao.textContent).toContain(`Filtrar por Clima · ${rotulo}`);
+    expect(botao.textContent).toContain(`Filtrar por Termômetro · ${rotulo}`);
   });
 
-  it('sem clima escolhido, fica no branco de sempre', () => {
+  it('sem termômetro escolhido, fica no branco de sempre', () => {
     const botao = gatilho({});
     expect(botao.style.background).toBe('var(--branco)');
   });

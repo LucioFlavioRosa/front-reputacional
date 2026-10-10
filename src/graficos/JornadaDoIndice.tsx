@@ -67,6 +67,13 @@ import type {
   PontoDaJornada,
 } from '@/dominio/jornadaDoIndice';
 import { COR_DO_EFEITO, corDaLente } from '@/dominio/score';
+import { CODIGO_DO_INDICE } from '@/dominio/janelaDaJornada';
+
+//: O ÍNDICE GERAL, QUANDO É ELE A CURVA DE COMPARAÇÃO (na Jornada de uma lente):
+//: pontilhado e cinza-escuro, por pedido — é a régua contra a qual a lente se
+//: lê, e não mais uma lente colorida disputando atenção com ela.
+const corDaCurva = (codigo: string) =>
+  codigo === CODIGO_DO_INDICE ? 'var(--cinza-3)' : corDaLente(codigo);
 import { mesCurto } from '@/dominio/dossie';
 import type { PontoDaSerie } from '@/dominio/score';
 
@@ -262,9 +269,13 @@ export function JornadaDoIndice({
               data-curva-da-lente={lente.codigo}
               d={lente.curva}
               fill="none"
-              stroke={corDaLente(lente.codigo)}
-              strokeWidth={2.25}
-              strokeDasharray="7 5"
+              stroke={corDaCurva(lente.codigo)}
+              // MAIS FINA, por pedido: com várias lentes ao mesmo tempo, o traço
+              // de 2,25px pesava mais que a curva do índice.
+              strokeWidth={lente.codigo === CODIGO_DO_INDICE ? 2 : 1.5}
+              // PONTILHADO para o índice geral; tracejado para as lentes.
+              strokeDasharray={lente.codigo === CODIGO_DO_INDICE ? '1 5' : '6 4'}
+              strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
               style={{ animation: 'jornada-entra 220ms ease' }}
             />
@@ -284,7 +295,9 @@ export function JornadaDoIndice({
           <path
             d={jornada.curva}
             fill="none"
-            stroke="var(--azul-mar)"
+            // NA COR DA LENTE dentro da aba dela (`--cor-da-lente`); o azul da
+            // marca na Visão geral, onde a curva é o ISR.
+            stroke="var(--cor-da-lente, var(--azul-mar))"
             strokeWidth={3}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
@@ -365,7 +378,7 @@ export function JornadaDoIndice({
                 height: 8,
                 borderRadius: '50%',
                 background: 'var(--branco)',
-                border: `2px solid ${corDaLente(lente.codigo)}`,
+                border: `2px solid ${corDaCurva(lente.codigo)}`,
                 pointerEvents: 'none',
               }}
             />
@@ -445,7 +458,7 @@ export function JornadaDoIndice({
               borderRadius: 5,
               //: A BORDA NA COR DA LENTE é o que liga o número à curva: com
               //: várias lentes, o texto sozinho obrigaria a ler cada nome.
-              border: `1.5px solid ${corDaLente(lente.codigo)}`,
+              border: `1.5px solid ${corDaCurva(lente.codigo)}`,
               pointerEvents: 'none',
             }}
           >

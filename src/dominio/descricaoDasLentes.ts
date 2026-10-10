@@ -21,7 +21,7 @@ export interface DescricaoDaLente {
 
 export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
   imprensa: {
-    objetivo: 'Mostra como os formadores de opinião retratam a Aegea na imprensa.',
+    objetivo: 'Mostra como jornalistas e a mídia retratam a Aegea na imprensa.',
     fonteUtilizada: 'Clipei, ponderado pelo tier do veículo',
     proximasOndas:
       'Próximas ondas: somar as interações com essas instituições registradas no CRM dos Stakeholders.',
@@ -44,8 +44,8 @@ export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
     proximasOndas: 'Próximas ondas: SAC, Reclame Aqui e pesquisas com clientes.',
   },
   institucional: {
-    objetivo: 'Mostra o clima da relação com governo, eventos e entidades.',
-    fonteUtilizada: 'CRM — clima das interações com governo e entidades',
+    objetivo: 'Mostra o termômetro da relação com governo, eventos e entidades.',
+    fonteUtilizada: 'CRM — termômetro das interações com governo e entidades',
     proximasOndas:
       'Próximas ondas: nenhuma fonte nova prevista até aqui — a lente segue lendo o CRM dos Stakeholders.',
   },

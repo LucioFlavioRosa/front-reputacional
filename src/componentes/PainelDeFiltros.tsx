@@ -225,7 +225,7 @@ export function campoDeClima(
 ): CampoDeFiltro {
   return {
     chave: 'clima',
-    rotulo: 'Filtrar por Clima',
+    rotulo: 'Filtrar por Termômetro',
     valorAtual: recorte.clima,
     destaque: recorte.clima ? DESTAQUE_DO_CLIMA[recorte.clima] : undefined,
     itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
@@ -367,7 +367,7 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
       ? [
           {
             chave: 'clima',
-            rotulo: 'Clima registrado',
+            rotulo: 'Termômetro registrado',
             valorAtual: recorte.clima,
             itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({
               valor: c.codigo,
@@ -382,7 +382,7 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
     // o registrado depois dela. Mesmo dicionário, campos distintos do recorte.
     {
       chave: 'climaEsperado',
-      rotulo: 'Clima esperado',
+      rotulo: 'Termômetro esperado',
       valorAtual: recorte.climaEsperado,
       itens: (catalogo?.dicionarios.climas ?? []).map((c) => ({ valor: c.codigo, rotulo: c.nome })),
       aoEscolher: (valor: string) =>

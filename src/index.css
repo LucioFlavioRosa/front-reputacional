@@ -599,15 +599,15 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 }
 .jornada__rotulo--acima { transform: translate(-50%, calc(-100% - var(--jornada-afasta))); }
 .jornada__rotulo--abaixo { transform: translate(-50%, var(--jornada-afasta)); }
-.jornada__nota { font-size: 15px; font-weight: 700; }
+.jornada__nota { font-size: 13px; font-weight: 700; }
 
 @media (max-width: 1040px) {
   .jornada__rotulo { --jornada-afasta: 14px; }
-  .jornada__nota { font-size: 14px; }
+  .jornada__nota { font-size: 12px; }
 }
 @media (max-width: 860px) {
   .jornada__rotulo { --jornada-afasta: 12px; }
-  .jornada__nota { font-size: 13px; }
+  .jornada__nota { font-size: 11.5px; }
   .jornada__rotulo .kicker { font-size: 9px; }
 }
 /* A COBERTURA SAI ONDE NÃO CABE. "1 de 5 lentes" é mais largo que uma coluna de
@@ -617,6 +617,6 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
    para quem usa leitor de tela. */
 @media (max-width: 560px) {
   .jornada__rotulo { --jornada-afasta: 10px; }
-  .jornada__nota { font-size: 12px; }
+  .jornada__nota { font-size: 11px; }
   .jornada__cobertura { display: none; }
 }

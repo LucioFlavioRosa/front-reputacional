@@ -7,6 +7,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 
+import { BaixarPng } from '@/componentes/BaixarPng';
+
 /* -- ajuda ---------------------------------------------------------------- */
 
 /** O "?" que explica um campo quando o rótulo sozinho não basta.
@@ -156,6 +158,7 @@ export function Secao({
   estilo,
   estiloDoTitulo,
   nivelDoTitulo = 2,
+  semPng = false,
 }: {
   titulo: string;
   subtitulo?: string;
@@ -171,7 +174,15 @@ export function Secao({
    *  cabeçalho, e uma tela cujo maior título é `h2` parece um pedaço de outra
    *  página. */
   nivelDoTitulo?: 1 | 2;
+  /** Esconde o "Baixar PNG" — para a seção que não é um card de conteúdo
+   *  (um formulário, por exemplo). O título da tela (`nivelDoTitulo` 1) já não
+   *  o mostra. */
+  semPng?: boolean;
 }) {
+  //: TODO CARD COM TÍTULO BAIXA EM PNG, por pedido — gráficos, radar, jornada,
+  //: painéis do CRM. Fica aqui, e não em cada tela, para o card novo já nascer
+  //: com ele.
+  const comPng = !semPng && nivelDoTitulo !== 1;
   // O PADRÃO DE TÍTULO DA MARCA: azul-mar, maior que o corpo do texto, e
   // colado ao canto — é a mesma régua para toda `Secao` do produto, de
   // propósito. Um título por tela com um valor diferente faria a mesma
@@ -179,7 +190,9 @@ export function Secao({
   // uma tela para outra.
   const estiloDaMarca: CSSProperties = {
     fontSize: nivelDoTitulo === 1 ? 26 : 21,
-    color: 'var(--azul-mar)',
+    //: `--cor-dos-titulos` é definida por uma tela que tem cor própria (a aba
+    //: de uma lente usa a cor da lente); fora dela, o azul da marca de sempre.
+    color: 'var(--cor-dos-titulos, var(--azul-mar))',
     marginTop: 4,
   };
 
@@ -214,7 +227,12 @@ export function Secao({
             </div>
           ) : null}
         </div>
-        {acao ? <div style={{ flexShrink: 0 }}>{acao}</div> : null}
+        {acao || comPng ? (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {acao}
+            {comPng ? <BaixarPng titulo={titulo} /> : null}
+          </div>
+        ) : null}
       </div>
       {children}
     </Cartao>

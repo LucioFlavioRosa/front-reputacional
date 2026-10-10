@@ -123,7 +123,7 @@ export const GUIA_DO_CADASTRO: Record<string, VerbeteDoCampo> = {
     oQuePreencher: 'Como você acha que a conversa vai ser, antes dela acontecer.',
     exemplo: 'Positivo, se a pauta é favorável à instituição; negativo, se envolve uma cobrança.',
     porQue:
-      'É a previsão — o clima real, depois de a reunião acontecer, se registra na aba "Depois". Comparar os dois mostra se a expectativa bateu com o resultado.',
+      'É a previsão — o termômetro real, depois de a reunião acontecer, se registra na aba "Depois". Comparar os dois mostra se a expectativa bateu com o resultado.',
   },
   origens: {
     oQuePreencher: 'Marque quando esta agenda é desdobramento de outra que já aconteceu.',
@@ -279,15 +279,15 @@ export const GUIA_DO_CADASTRO: Record<string, VerbeteDoCampo> = {
   },
   observacoes: {
     oQuePreencher:
-      'Contexto informal, sinais do clima da conversa, ou alertas para quem for ler o registro depois — o que não cabe num relato formal.',
+      'Contexto informal, sinais do termômetro da conversa, ou alertas para quem for ler o registro depois — o que não cabe num relato formal.',
     exemplo: '"O assessor comentou, fora de pauta, que há pressão política para acelerar a obra."',
     porQue: 'É espaço para o que não é fato registrável no relato, mas ajuda quem ler depois a entender o contexto.',
     script:
-      'A partir da transcrição da reunião abaixo, escreva OBSERVAÇÕES gerais que não caibam num relato formal: contexto informal, sinais do clima da conversa, alertas para quem for ler o registro depois.\n\nTranscrição:\n[colar aqui]',
+      'A partir da transcrição da reunião abaixo, escreva OBSERVAÇÕES gerais que não caibam num relato formal: contexto informal, sinais do termômetro da conversa, alertas para quem for ler o registro depois.\n\nTranscrição:\n[colar aqui]',
   },
   clima_desfecho: {
     oQuePreencher: 'Como a conversa de fato foi, depois de ela acontecer.',
-    porQue: 'É o par do "Clima esperado", registrado antes — comparar os dois mostra se a expectativa bateu com a realidade.',
+    porQue: 'É o par do "Termômetro esperado", registrado antes — comparar os dois mostra se a expectativa bateu com a realidade.',
   },
   desfecho_resultado: {
     oQuePreencher: 'Como esta interação terminou, em relação ao objetivo dela.',

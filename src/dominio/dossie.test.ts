@@ -234,7 +234,7 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     sinais_da_evolucao: [],
     volume_por_tier: bloco({ tipo: 'rosca', titulo: 'Volume por tier' }),
     top_veiculos: bloco({ tipo: 'barras_horizontais', titulo: 'Top veículos' }),
-    clima_por_veiculos: bloco({ tipo: 'divergente_por_item', titulo: 'Clima por veículos' }),
+    clima_por_veiculos: bloco({ tipo: 'divergente_por_item', titulo: 'Termômetro por veículos' }),
     drivers_e_riscos: bloco({ tipo: 'barras_100', titulo: 'Drivers e riscos' }),
     temas_mais_falados: bloco({ tipo: 'barras_100', titulo: 'Temas mais falados' }),
     materias_recentes: bloco({ titulo: 'Últimas matérias', subtipo: 'materias' }),

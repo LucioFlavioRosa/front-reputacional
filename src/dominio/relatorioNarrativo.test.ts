@@ -133,13 +133,13 @@ describe('gerarRelatorioNarrativo', () => {
     expect(relatorio?.dias[0].entradas[0].temas).toBeNull();
   });
 
-  it('clima nulo quando não informado — sem "—" na linha', () => {
+  it('termômetro nulo quando não informado — sem "—" na linha', () => {
     const dados = [interacao({ clima: null })];
     const relatorio = gerarRelatorioNarrativo(dados, CATALOGO, '2026-09', 'mes');
     expect(relatorio?.dias[0].entradas[0].clima).toBeNull();
   });
 
-  it('clima com o rótulo do dicionário quando informado', () => {
+  it('termômetro com o rótulo do dicionário quando informado', () => {
     const dados = [interacao({ clima: 'neutro' })];
     const relatorio = gerarRelatorioNarrativo(dados, CATALOGO, '2026-09', 'mes');
     expect(relatorio?.dias[0].entradas[0].clima).toBe('Neutro');

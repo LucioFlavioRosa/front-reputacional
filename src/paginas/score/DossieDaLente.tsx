@@ -54,13 +54,14 @@ import {
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
-import { jornadaDaLente } from '@/dominio/jornadaDaLente';
+import { serieDaLente } from '@/dominio/janelaDaJornada';
+import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
+import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
-import { corDaFaixa } from '@/dominio/score';
+import { corDaFaixa, corForteDaLente } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas } from '@/graficos/BarrasEmpilhadas';
-import { JornadaDoIndice } from '@/graficos/JornadaDoIndice';
 import {
   BarrasCemPorCento,
   BarrasPareadas,
@@ -104,6 +105,7 @@ export function DossieDaLente({
   aoTrocarMes: (mes: string) => void;
 }) {
   const [dossie, definirDossie] = useState<Dossie | null>(null);
+  const nomeDaLente = LENTES.find((item) => item.id === lente)?.rotulo ?? lente;
   const [erro, definirErro] = useState<string | null>(null);
   //: AS OPÇÕES COM A LENTE E O MÊS DE QUE SÃO: assim a tela usa só as que
   //: batem com a lente aberta, sem precisar zerá-las a cada troca — e nunca
@@ -123,8 +125,8 @@ export function DossieDaLente({
   }, [lente, mes]);
 
   useEffect(() => {
-    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): Mercado e
-    // Institucional não têm recorte, e buscar opções que a tela nem desenha
+    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
+    // tem recorte, e buscar opções que a tela nem desenha
     // seria uma chamada de rede sem efeito nenhum.
     if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
@@ -157,19 +159,42 @@ export function DossieDaLente({
     };
   }, [lente, mes, filtro]);
 
+  //: OS DOIS BLOCOS EXPANSÍVEIS, por pedido: a Jornada fica sempre à mostra, e
+  //: o resto da lente se divide em "Síntese executiva" (os gráficos de sempre)
+  //: e "Drill down". AQUI, E NÃO DENTRO DE CADA BLOCO, para o que a pessoa abriu
+  //: continuar aberto quando ela troca de lente ou de mês.
+  const [abertos, definirAbertos] = useState({ sintese: false, drill: false });
+  const alternar = (bloco: 'sintese' | 'drill') =>
+    definirAbertos((atual) => ({ ...atual, [bloco]: !atual[bloco] }));
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 20,
+        //: A COR DA LENTE VALE PARA A ABA INTEIRA, por pedido: títulos das
+        //: seções ("Jornada do Mercado"), curva da Jornada e barras dos
+        //: rankings. Variáveis, e não uma prop em cada gráfico, para o que for
+        //: acrescentado depois já nascer na cor certa.
+        ['--cor-da-lente' as string]: corForteDaLente(lente),
+        ['--cor-dos-titulos' as string]: corForteDaLente(lente),
+      }}
+    >
       <Abas
         abas={LENTES}
         ativa={lente}
         aoTrocar={aoTrocarLente}
         rotulo="Lente do Score"
         prefixo="lente"
+        corDaAba={corForteDaLente}
       />
 
-      {/* OS FILTROS DE CADA LENTE: Imprensa, Sociedade digital e Clientes,
-          cada uma com os seus (`FILTROS_DAS_LENTES`). Mercado e Institucional
-          não têm recorte, e a barra não aparece para elas. */}
+      {/* OS FILTROS NO TOPO, CONGELADOS, como no CRM: logo abaixo das abas, e
+          grudados sob o cabeçalho ao rolar. */}
+      {/* OS FILTROS DE CADA LENTE: Imprensa, Mercado, Sociedade digital e
+          Clientes, cada uma com os seus (`FILTROS_DAS_LENTES`). A Institucional
+          não tem recorte, e a barra não aparece para ela. */}
       <BarraDeFiltroDaLente
         lente={lente}
         filtro={filtro}
@@ -177,18 +202,49 @@ export function DossieDaLente({
         opcoes={opcoes}
       />
 
+      {/* A JORNADA DA LENTE ABRE A ABA, por pedido: o mesmo bloco da Visão
+          geral (cartões, janela, pico e vale, frase de cabeçalho), sobre a
+          nota DESTA lente — e sem "Comparar com": dentro da lente só se vê a
+          jornada dela. Não segue os filtros acima: é a nota do mês da lente. */}
+      <PainelDaJornada
+        key={lente}
+        titulo={`Jornada da ${nomeDaLente}`}
+        sujeito={`A lente ${nomeDaLente}`}
+        serie={serieDaLente(serie, lente)}
+        mes={mes}
+        aoEscolherMes={aoTrocarMes}
+        comIndiceGeral
+        dica="Clique num mês para ver a lente naquele mês."
+      />
+
+
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      {!dossie && !erro ? <Carregando /> : null}
-      {dossie ? (
-        <Conteudo
-          dossie={dossie}
-          filtro={filtro}
-          definirFiltro={definirFiltro}
-          serie={serie}
-          mes={mes}
-          aoTrocarMes={aoTrocarMes}
-        />
-      ) : null}
+
+      <BlocoExpansivel
+        titulo="Síntese executiva"
+        descricao="Os gráficos da lente: evolução, veículos, matérias, drivers, temas e onde está a causa."
+        aberto={abertos.sintese}
+        aoAlternar={() => alternar('sintese')}
+      >
+        {!dossie && !erro ? <Carregando /> : null}
+        {dossie ? (
+          <Conteudo
+            dossie={dossie}
+            filtro={filtro}
+            definirFiltro={definirFiltro}
+            serie={serie}
+          />
+        ) : null}
+      </BlocoExpansivel>
+
+      <BlocoExpansivel
+        titulo="Drill down"
+        descricao="Do pilar ao tema e ao subtema, descendo até a menção."
+        aberto={abertos.drill}
+        aoAlternar={() => alternar('drill')}
+      >
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)' }}>Em construção.</p>
+      </BlocoExpansivel>
     </div>
   );
 }
@@ -198,15 +254,11 @@ function Conteudo({
   filtro,
   definirFiltro,
   serie,
-  mes,
-  aoTrocarMes,
 }: {
   dossie: Dossie;
   filtro: FiltroDaLente;
   definirFiltro: (filtro: FiltroDaLente) => void;
   serie: PontoDaSerie[];
-  mes: string;
-  aoTrocarMes: (mes: string) => void;
 }) {
   //: O RECORTE ABERTO NO MODAL — nulo com o modal fechado. É um estado À PARTE
   //: do `filtro` da tela, e a separação é o ponto: a barra de filtros refaz a
@@ -243,15 +295,10 @@ function Conteudo({
 
   return (
     <>
-      <Destaque dossie={dossie} />
+      {/* SEM O CARTÃO DA NOTA NA IMPRENSA E NO MERCADO, por pedido: a Jornada
+          do índice, logo acima, já mostra a nota e a variação da lente. */}
+      {LENTES_SEM_CARTAO_DA_NOTA.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
-      <JornadaDaLente
-        dossie={dossie}
-        serie={serie}
-        mes={mes}
-        aoTrocarMes={aoTrocarMes}
-        aoAprofundarNoMes={aoAprofundarNoMes}
-      />
 
       {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
           devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
@@ -424,6 +471,8 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 
+const LENTES_SEM_CARTAO_DA_NOTA = ['imprensa', 'mercado'];
+
 function Destaque({ dossie }: { dossie: Dossie }) {
   const delta =
     dossie.delta === null ? '—' : dossie.delta > 0 ? `+${dossie.delta}` : `${dossie.delta}`;
@@ -582,53 +631,6 @@ function Evolucao({
   );
 }
 
-/* -- 1.4b. a jornada desta lente ------------------------------------------------ */
-
-/** A nota desta lente, 0 a 100, mês a mês — mesmo desenho da "Jornada do
- *  índice" da Visão geral, só que a curva principal é a da própria lente,
- *  não o ISR. Reaproveita o MESMO componente de desenho
- *  (`graficos/JornadaDoIndice`) e a MESMA série já carregada pela tela —
- *  `dominio/jornadaDaLente` só monta a geometria de outro jeito.
- *
- *  CLICAR NUM MÊS TROCA O MÊS DA TELA INTEIRA — o mesmo `aoTrocarMes` do
- *  seletor "Mês" lá no topo do Score Executivo: não é um segundo jeito de
- *  escolher mês, é o mesmo estado, alcançado de um lugar a mais. */
-function JornadaDaLente({
-  dossie,
-  serie,
-  mes,
-  aoTrocarMes,
-  aoAprofundarNoMes,
-}: {
-  dossie: Dossie;
-  serie: PontoDaSerie[];
-  mes: string;
-  aoTrocarMes: (mes: string) => void;
-  /** Clicar num PONTO abre o aprofundamento daquele mês — o mesmo painel da
-   *  Evolução e dos outros gráficos. A faixa de meses embaixo continua trocando
-   *  o mês da tela. */
-  aoAprofundarNoMes: (mes: string) => void;
-}) {
-  const jornada = jornadaDaLente(serie, dossie.codigo, dossie.nome, mes);
-
-  return (
-    <ComFaixaDoTopo>
-    <Secao titulo={`Jornada da ${dossie.nome}`} subtitulo={jornada.resumo}>
-      <Cartao>
-        <JornadaDoIndice
-          serie={serie}
-          mes={mes}
-          comparada={null}
-          aoEscolherMes={aoTrocarMes}
-          aoAprofundarNoMes={aoAprofundarNoMes}
-          jornadaPronta={jornada}
-        />
-      </Cartao>
-    </Secao>
-    </ComFaixaDoTopo>
-  );
-}
-
 /* -- 1.5. quem é a cobertura, e como está o clima dela -------------------------- */
 
 /** Mesmo desenho de "% Interações por tier e Top instituições" do Painel
@@ -734,7 +736,7 @@ function ClimaPorVeiculos({
 
   return (
     <ComFaixaDoTopo>
-    <Secao titulo="Clima por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
+    <Secao titulo="Termômetro por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
       <Cartao>
         <BarraDivergentePorItem
           itens={bloco.dados.map((linha) => ({
@@ -942,7 +944,7 @@ function Painel({
           chave: comoTexto(linha.rotulo),
           rotulo: comoTexto(linha.rotulo),
           total: comoNumero(linha.valor ?? 0),
-          cor: 'var(--azul-mar)',
+          cor: 'var(--cor-da-lente, var(--azul-mar))',
         }))}
         vazio="Nada registrado no período."
         ativo={recortado}

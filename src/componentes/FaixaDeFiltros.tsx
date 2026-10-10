@@ -16,7 +16,17 @@
 
 import type { ReactNode } from 'react';
 
-export function FaixaDeFiltros({ children, rodape }: { children: ReactNode; rodape?: ReactNode }) {
+export function FaixaDeFiltros({
+  children,
+  rodape,
+  colada = true,
+}: {
+  children: ReactNode;
+  rodape?: ReactNode;
+  /** Sobe 28px para encostar no "Filtro avançado" do CRM. Sem o acordeão em
+   *  cima (nas lentes do Score), `false`: senão ela cobre o que vem antes. */
+  colada?: boolean;
+}) {
   return (
     <div
       style={{
@@ -30,7 +40,7 @@ export function FaixaDeFiltros({ children, rodape }: { children: ReactNode; roda
         // margem só encurta a distância ANTES de rolar. Vale para as duas
         // telas que montam esta faixa (Painel e Preparar agenda), ambas
         // logo abaixo do mesmo acordeão.
-        marginTop: -28,
+        marginTop: colada ? -28 : 0,
         position: 'sticky',
         top: 'var(--altura-cabecalho)',
         zIndex: 25,

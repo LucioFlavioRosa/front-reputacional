@@ -1,14 +1,18 @@
-/** Os filtros da aba Lentes: "Filtro avançado" recolhível em cima, filtros
- *  rápidos na faixa azul embaixo — a mesma ordem e os mesmos componentes do
- *  CRM dos Stakeholders (`PainelDeFiltros` + `FaixaDeFiltros`).
+/** Os filtros da aba Lentes: a faixa azul de filtros rápidos do CRM dos
+ *  Stakeholders (`FaixaDeFiltros`), CONGELADA logo abaixo do cabeçalho ao rolar.
+ *
+ *  SEM "FILTRO AVANÇADO", por pedido: só os rápidos. As dimensões que eram do
+ *  avançado (UF, autor, o tema do fornecedor) continuam alcançáveis pela busca
+ *  inteligente do cabeçalho, que sugere os valores de todas elas.
  *
  *  MESMA FAIXA, MESMO GATILHO, MESMA LISTA DE PÍLULAS do Painel: `FaixaDeFiltros`
  *  e `CampoSuspenso` reaproveitados direto, e não reconstruídos — quem já
  *  aprendeu a filtrar numa tela filtra igual na outra.
  *
  *  QUAIS FILTROS, E ONDE, MUDAM POR LENTE (`FILTROS_DAS_LENTES`): Imprensa
- *  filtra por tier e veículo, Sociedade digital por rede e perfil de quem fala,
- *  Clientes por concessionária. A barra só percorre a tabela.
+ *  filtra por concessionária, tier e sentimento, Sociedade digital por rede e
+ *  perfil de quem fala, Clientes por concessionária. A barra só percorre a
+ *  tabela — inclusive a ordem fixa dos valores e a cor do sentimento escolhido.
  *
  *  ESCOLHA ÚNICA POR CAMPO, e os campos se somam (E): escolher um veículo não
  *  implica tier nenhum, e clicar numa pílula já escolhida a desmarca — é como o
@@ -18,14 +22,11 @@
  *  pessoa concluir que o dado sumiu, quando a fonte nunca mandou o campo.
  */
 
-import { useState } from 'react';
-
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { CampoSuspenso } from '@/componentes/CampoSuspenso';
-import { GrupoDeCampo, SetaDaAegea } from '@/componentes/PainelDeFiltros';
 import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
-import { FILTROS_DAS_LENTES, rotuloDoValor } from '@/dominio/filtrosDasLentes';
+import { FILTROS_DAS_LENTES, ordenarValores, rotuloDoValor } from '@/dominio/filtrosDasLentes';
 import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
 
 /** ATIVO É QUALQUER CAMPO PREENCHIDO, perguntado ao próprio objeto — uma lista
@@ -45,8 +46,9 @@ function campoDa(
   return {
     chave: dimensao.chave,
     rotulo: dimensao.rotulo,
-    itens: valores.map((valor) => ({ valor, rotulo: rotuloDoValor(dimensao, valor) })),
+    itens: ordenarValores(dimensao, valores).map((valor) => ({ valor, rotulo: rotuloDoValor(dimensao, valor) })),
     valorAtual,
+    destaque: valorAtual ? dimensao.destaques?.[valorAtual] : undefined,
     aoEscolher: (valor) =>
       definirFiltro({ ...filtro, [dimensao.chave]: valorAtual === valor ? undefined : valor }),
   };
@@ -63,7 +65,6 @@ export function BarraDeFiltroDaLente({
   definirFiltro: (filtro: FiltroDaLente) => void;
   opcoes: OpcoesDeFiltroDaLente | null;
 }) {
-  const [abertoAvancado, definirAbertoAvancado] = useState(false);
   const config = FILTROS_DAS_LENTES[lente];
   if (!config) return null;
 
@@ -72,64 +73,11 @@ export function BarraDeFiltroDaLente({
       .map((dimensao) => ({ dimensao, valores: opcoes?.[dimensao.de] ?? [] }))
       .filter(({ valores }) => valores.length > 0);
   const rapidos = comValores(config.rapidos);
-  const avancados = comValores(config.avancados);
-  const ativosNoAvancado = avancados.filter(({ dimensao }) => filtro[dimensao.chave]).length;
 
   return (
     <div className="sem-impressao">
-      {avancados.length ? (
-        <div
-          style={{
-            border: '1px solid var(--borda)',
-            borderRadius: 'var(--r-card-int)',
-            background: 'var(--branco)',
-            marginBottom: 8,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => definirAbertoAvancado((v) => !v)}
-            aria-expanded={abertoAvancado}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '3px 12px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: 700,
-              color: 'var(--cinza-3)',
-            }}
-          >
-            <span>Filtro avançado{ativosNoAvancado ? ` · ${ativosNoAvancado}` : ''}</span>
-            <SetaDaAegea aberto={abertoAvancado} />
-          </button>
-          {abertoAvancado ? (
-            <div
-              style={{
-                padding: '4px 12px 10px',
-                borderTop: '1px solid var(--borda)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              {avancados.map(({ dimensao, valores }) => (
-                <GrupoDeCampo
-                  key={dimensao.chave}
-                  campo={campoDa(dimensao, valores, filtro, definirFiltro)}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {rapidos.length ? (
-        <FaixaDeFiltros>
+        <FaixaDeFiltros colada={false}>
           {rapidos.map(({ dimensao, valores }) => (
             <CampoSuspenso
               key={dimensao.chave}

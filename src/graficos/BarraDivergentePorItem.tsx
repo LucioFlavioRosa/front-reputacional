@@ -34,7 +34,7 @@ export function BarraDivergentePorItem({
   itens,
   ativo,
   aoClicar,
-  vazio = 'Nenhum item com clima registrado neste recorte.',
+  vazio = 'Nenhum item com termômetro registrado neste recorte.',
   unidade = { singular: 'interação', plural: 'interações' },
   variante = 'padrao',
 }: {

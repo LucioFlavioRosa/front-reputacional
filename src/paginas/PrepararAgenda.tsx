@@ -560,7 +560,7 @@ function ConsultaDinamicaDeInstituicao({
                 <p style={ESTILO_DO_PARAGRAFO_DA_CONSULTA}>
                   {consulta.comClima > 0 ? (
                     <>
-                      Das <Num>{numero(consulta.comClima)}</Num> interações com clima registrado,{' '}
+                      Das <Num>{numero(consulta.comClima)}</Num> interações com termômetro registrado,{' '}
                       <Num>{consulta.positivas}</Num> foram positivas, <Num>{consulta.neutras}</Num>{' '}
                       neutras e <Num>{consulta.negativas}</Num> negativas — placar de{' '}
                       <Num>
@@ -570,7 +570,7 @@ function ConsultaDinamicaDeInstituicao({
                       pontos (de −100 a +100).
                     </>
                   ) : (
-                    'Nenhuma interação com esta instituição tem clima registrado ainda.'
+                    'Nenhuma interação com esta instituição tem termômetro registrado ainda.'
                   )}
                 </p>
               </Bloco>

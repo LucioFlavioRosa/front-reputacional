@@ -1039,6 +1039,8 @@ export interface FiltroDaLente {
   tema_n1?: string;
   tema_n2?: string;
   tema_n3?: string;
+  /** O sentimento da menção: `pos`, `neu` ou `neg`. */
+  sentimento?: string;
 }
 
 /** Os valores de tier/veículo/atributo/tema que existem NESTE mês desta
@@ -1063,6 +1065,8 @@ export interface OpcoesDeFiltroDaLente {
   temas_n1?: string[];
   temas_n2?: string[];
   temas_n3?: string[];
+  /** Os sentimentos do mês (pos/neu/neg). Opcional: um back anterior não o manda. */
+  sentimentos?: string[];
 }
 
 /** Um degrau do caminho até um recorte. */
@@ -1159,6 +1163,98 @@ export function obterOpcoesDeFiltroDaLente(
 ): Promise<OpcoesDeFiltroDaLente> {
   return requisitar<OpcoesDeFiltroDaLente>(
     `/api/score/lentes/${codigo}/dossie/opcoes-de-filtro?mes=${mes}`,
+  );
+}
+
+// -- a Base de dados das lentes ----------------------------------------------
+
+/** Uma menção como chegou da fonte — uma linha da Base de dados do Score. */
+export interface MencaoDaBase {
+  id: string;
+  data: string | null;
+  mes: string;
+  fonte: string;
+  /** A fonte está ligada na calibração? Desligada, a linha existe mas não
+   *  entra na nota. */
+  fonte_no_calculo: boolean;
+  veiculo: string | null;
+  tier: string | null;
+  sentimento: string | null;
+  atributo: string | null;
+  tema: string | null;
+  tema_n1: string | null;
+  tema_n2: string | null;
+  tema_n3: string | null;
+  subtema: string | null;
+  empresa: string | null;
+  uf: string | null;
+  /** Nulo na Imprensa para quem não vê o diretório (é o jornalista). */
+  autor: string | null;
+  perfil_autor: string | null;
+  engajamento: number | null;
+  publico_alvo: string | null;
+  titulo: string | null;
+  link: string | null;
+}
+
+export interface PaginaDaBase {
+  itens: MencaoDaBase[];
+  total: number;
+  pagina: number;
+  tamanho: number;
+}
+
+/** Os valores de cada campo que aparecem nas menções da lente no período. */
+export interface OpcoesDaBase {
+  fontes: string[];
+  sentimentos: string[];
+  tiers: string[];
+  veiculos: string[];
+  atributos: string[];
+  temas: string[];
+  temas_n1: string[];
+  temas_n2: string[];
+  temas_n3: string[];
+  subtemas: string[];
+  empresas: string[];
+  ufs: string[];
+  autores: string[];
+  perfis: string[];
+}
+
+/** O que a Base pede ao servidor: período, busca, filtros, página e ordem. */
+export interface ConsultaDaBase {
+  de?: string;
+  ate?: string;
+  q?: string;
+  filtros?: Record<string, string | undefined>;
+  pagina?: number;
+  tamanho?: number;
+  /** Campo, com "-" na frente para descendente ("-data"). */
+  ordenacao?: string;
+}
+
+function paraConsultaDaBase(consulta: ConsultaDaBase): string {
+  const parametros = new URLSearchParams();
+  if (consulta.de) parametros.set('de', consulta.de);
+  if (consulta.ate) parametros.set('ate', consulta.ate);
+  if (consulta.q?.trim()) parametros.set('q', consulta.q.trim());
+  for (const [chave, valor] of Object.entries(consulta.filtros ?? {})) {
+    if (valor) parametros.set(chave, valor);
+  }
+  if (consulta.pagina) parametros.set('pagina', String(consulta.pagina));
+  if (consulta.tamanho) parametros.set('tamanho', String(consulta.tamanho));
+  if (consulta.ordenacao) parametros.set('ordenacao', consulta.ordenacao);
+  return parametros.toString();
+}
+
+export function listarMencoesDaBase(lente: string, consulta: ConsultaDaBase): Promise<PaginaDaBase> {
+  return requisitar<PaginaDaBase>(`/api/score/base/${lente}/mencoes?${paraConsultaDaBase(consulta)}`);
+}
+
+export function obterOpcoesDaBase(lente: string, de?: string, ate?: string): Promise<OpcoesDaBase> {
+  return requisitar<OpcoesDaBase>(
+    `/api/score/base/${lente}/mencoes/opcoes?${paraConsultaDaBase({ de, ate })}`,
   );
 }
 

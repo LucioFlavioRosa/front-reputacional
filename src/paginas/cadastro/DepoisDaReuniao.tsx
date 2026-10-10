@@ -111,7 +111,7 @@ export function DepoisDaReuniao({
         <Cartao>
           <div className="grade grade--3" style={{ gap: 16 }}>
             <CampoQueCompleta
-              rotulo="Clima"
+              rotulo="Termômetro"
               aoLadoDoRotulo={<AjudaDoCampo verbete={GUIA_DO_CADASTRO.clima_desfecho} />}
               valor={form.clima}
               aoEscolher={(v) => alterar('clima', v)}

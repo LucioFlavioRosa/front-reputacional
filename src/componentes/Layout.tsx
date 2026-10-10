@@ -18,6 +18,7 @@ import { MenuDoUsuario } from '@/componentes/MenuDoUsuario';
 import type { Eu } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 import { Botao } from '@/componentes/basicos';
+import { ID_DA_BUSCA_NO_CABECALHO } from '@/componentes/espacoNoCabecalho';
 import { BarraDeRecorte } from '@/componentes/BarraDeRecorte';
 import { PainelDeFiltros } from '@/componentes/PainelDeFiltros';
 import type { Destino } from '@/navegacao/rota';
@@ -393,6 +394,17 @@ export function Layout({
           >
             <BarraDeRecorte />
           </div>
+        ) : null}
+        {/* NO SCORE, O LUGAR DA BUSCA: a busca inteligente do Radar entra aqui
+            por portal (ver `espacoNoCabecalho.ts`), no mesmo ponto do cabeçalho
+            em que o CRM tem a dele. Vazio, não ocupa altura — o espaçamento vem
+            da própria busca. */}
+        {view === 'score' ? (
+          <div
+            id={ID_DA_BUSCA_NO_CABECALHO}
+            className="cabecalho__recorte"
+            style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px' }}
+          />
         ) : null}
       </header>
       )}
