@@ -21,7 +21,6 @@ import { CartaoDoDrill } from '../componentes/CartaoDoDrill';
 import { LimiteDoBloco } from '../componentes/LimiteDoBloco';
 import { ResumoDoNivel } from '../componentes/ResumoDoNivel';
 import { RodapeDaConta, TabelaDeImpacto } from '../componentes/TabelaDeImpacto';
-import { DADOS } from '../dados/dados';
 import { agruparPorImpacto, participacao, temaNavegavel } from '../dados/seletores';
 import type { Dados, Lente, Pilar } from '../dados/tipos';
 import { arred, corDoSinal, fmtInt, fmtPct, fmtSaldo } from '../formatacao';
@@ -36,13 +35,13 @@ export function NivelPilar({
   refDoTitulo,
   chaveDeReinicio,
   aoIr,
-  meta = DADOS.meta,
+  meta,
 }: Pick<AcoesDoNivel, 'aoIr'> & {
   lente: Lente;
   pilar: Pilar;
   refDoTitulo: Ref<HTMLHeadingElement>;
   chaveDeReinicio: string;
-  meta?: Dados['meta'];
+  meta: Dados['meta'];
 }) {
   const temas = pilar.filhos ?? [];
   const nivel2 = pilar.nivel2;

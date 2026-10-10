@@ -4,10 +4,24 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConsultaEmProfundidade } from './ConsultaEmProfundidade';
-import { DADOS } from './dados/dados';
+import { DADOS, consultaIlustrativa } from './dados/fixtures/ilustrativo';
+import type { Dados } from './dados/tipos';
+import { scoreMudou } from '@/dominio/sincronizacao';
+
+import { esquecerConsultas } from './dados/useConsultaDaLente';
 import { atenderPedidoDeFoco, navegarNoDrill } from './useEnderecoDoDrill';
 
 vi.mock('@/observabilidade/telemetria', () => ({ registrarErro: vi.fn() }));
+
+//: A API É SIMULADA (D5): o endpoint `/consulta` devolve a lente ilustrativa
+//: dentro de um `Dados` com o aviso "Dados ilustrativos", como o back faria.
+const { obterConsultaDaLente } = vi.hoisted(() => ({ obterConsultaDaLente: vi.fn() }));
+vi.mock('@/api/cliente', async (original) => ({
+  ...(await original<typeof import('@/api/cliente')>()),
+  obterConsultaDaLente,
+}));
+
+const MES = '2026-08';
 
 const IMPRENSA = DADOS.lentes.find((l) => l.id === 'imprensa')!;
 const EFICIENCIA = IMPRENSA.pilares.find((p) => p.id === 'eficiencia-operacional')!;
@@ -40,10 +54,22 @@ function textoDoRodapeDaConta(cartao: HTMLElement): string {
   return within(cartao).getByText('A conta fecha').closest('p')!.textContent ?? '';
 }
 
+/** Monta o drill e espera a árvore do mês chegar (o indicador de nível só
+ *  aparece com os dados). */
+async function montar(lente: string, mes = MES) {
+  const resultado = render(<ConsultaEmProfundidade lente={lente} mes={mes} />);
+  await screen.findByText(/Nível \d de 4/);
+  return resultado;
+}
+
 let rolar: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   irPara('');
+  // Cada teste começa sem nada no cache da consulta.
+  esquecerConsultas();
+  obterConsultaDaLente.mockReset();
+  obterConsultaDaLente.mockImplementation((lente: string) => Promise.resolve(consultaIlustrativa(lente)));
   // Nenhum pedido de foco de outro teste fica pendente.
   atenderPedidoDeFoco();
   rolar = vi.fn();
@@ -58,7 +84,7 @@ afterEach(() => {
 describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
   it('passos 1 a 9: desce até a matéria, filtra, abre a prévia, volta pela trilha e pelo navegador', async () => {
     const usuario = userEvent.setup();
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
 
     // 1-2 · Nível 1, sem a nota da lente (D1) e com os cartões laterais.
     expect(screen.getByText(/Nível 1 de 4/)).toBeInTheDocument();
@@ -155,10 +181,10 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     // outros testes longos do repositório.
   }, 20_000);
 
-  it('passo 17: endereço profundo direto abre o Nível 4 de Fiscalização regulatória com 7 linhas, sem rolar', () => {
+  it('passo 17: endereço profundo direto abre o Nível 4 de Fiscalização regulatória com 7 linhas, sem rolar', async () => {
     irPara('#consulta&lente=imprensa&pilar=governanca&tema=contratos-regulacao&subtema=fiscalizacao-regulatoria');
     const substituir = vi.spyOn(window.history, 'replaceState');
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Fiscalização regulatória' })).toBeInTheDocument();
     expect(linhasDaLista()).toHaveLength(7);
@@ -167,11 +193,11 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     expect(rolar).not.toHaveBeenCalled();
   });
 
-  it('passo 18: pilar=xyz cai no Nível 1 e o endereço é corrigido com replaceState', () => {
+  it('passo 18: pilar=xyz cai no Nível 1 e o endereço é corrigido com replaceState', async () => {
     irPara('#consulta&lente=imprensa&pilar=xyz&tema=abc');
     const substituir = vi.spyOn(window.history, 'replaceState');
     const empilhar = vi.spyOn(window.history, 'pushState');
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     expect(screen.getByText(/Nível 1 de 4/)).toBeInTheDocument();
     expect(window.location.hash).toBe('#consulta&lente=imprensa');
     expect(substituir).toHaveBeenCalledTimes(1);
@@ -179,17 +205,17 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     expect(rolar).not.toHaveBeenCalled();
   });
 
-  it('filtro de outro nível é descartado do endereço (A20) sem laço de correção', () => {
+  it('filtro de outro nível é descartado do endereço (A20) sem laço de correção', async () => {
     irPara('#consulta&lente=imprensa&pilar=governanca&sent=negativas&item=x');
     const substituir = vi.spyOn(window.history, 'replaceState');
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     expect(screen.getByText(/Nível 2 de 4/)).toBeInTheDocument();
     expect(window.location.hash).toBe('#consulta&lente=imprensa&pilar=governanca');
     expect(substituir).toHaveBeenCalledTimes(1);
   });
 
-  it('com item no endereço não rola ao topo do bloco (a lista rola até a linha)', () => {
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+  it('com item no endereço não rola ao topo do bloco (a lista rola até a linha)', async () => {
+    await montar('imprensa');
     const item = ADUTORA.nivel4!.itens[3];
     act(() => {
       navegarNoDrill(
@@ -217,7 +243,7 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     faixa.getBoundingClientRect = () => ({ height: 54 }) as DOMRect;
     document.body.appendChild(faixa);
     try {
-      const { container } = render(<ConsultaEmProfundidade lente="imprensa" />);
+      const { container } = await montar('imprensa');
       const bloco = container.querySelector<HTMLElement>('[data-consulta-profundidade]')!;
       bloco.getBoundingClientRect = () => ({ top: 900, height: 2000 }) as DOMRect;
       const tabela = tabelaComTitulo(IMPRENSA.tabelaPilares.titulo);
@@ -229,29 +255,31 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     }
   });
 
-  it('montar com pedido de foco da busca (A6) rola até o bloco e foca o título do nível', () => {
+  it('montar com pedido de foco da busca (A6) rola até o bloco e foca o título do nível', async () => {
     navegarNoDrill(
       { ativo: true, lente: 'imprensa', pilar: 'governanca', tema: 'contratos-regulacao', subtema: 'fiscalizacao-regulatoria' },
       'replace',
       { focar: true },
     );
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     expect(rolar).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { level: 2, name: 'Fiscalização regulatória' })).toHaveFocus();
   });
 
-  it('trocar de lente sem pedido não rola; com o pedido da busca (Mercado → Imprensa), rola e foca', () => {
+  it('trocar de lente sem pedido não rola; com o pedido da busca (Mercado → Imprensa), rola e foca', async () => {
     irPara('#consulta&lente=mercado');
-    const { rerender } = render(<ConsultaEmProfundidade lente="mercado" />);
+    const { rerender } = await montar('mercado');
     // HASH E PROP NO MESMO RENDER, como o Score faz (a lente sai do hash):
     // separados, a raiz veria um hash de outra lente e o corrigiria.
     const navegar = (lente: string, endereco: Parameters<typeof navegarNoDrill>[0], focar = false) =>
       act(() => {
         navegarNoDrill(endereco, focar ? 'push' : 'replace', { focar });
-        rerender(<ConsultaEmProfundidade lente={lente} />);
+        rerender(<ConsultaEmProfundidade lente={lente} mes={MES} />);
       });
-    // A aba da lente: sem pedido.
+    // A aba da lente: sem pedido. A Imprensa ainda não está no cache: o bloco
+    // mostra "Carregando" e o drill monta de novo quando a árvore chega.
     navegar('imprensa', { ativo: true, lente: 'imprensa' });
+    await screen.findByRole('heading', { level: 2, name: IMPRENSA.tabelaPilares.titulo });
     expect(rolar).not.toHaveBeenCalled();
     // A busca: do Mercado para um nível profundo da Imprensa.
     navegar('mercado', { ativo: true, lente: 'mercado' });
@@ -261,18 +289,18 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Governança' })).toHaveFocus();
   });
 
-  it('pedir de novo a tela que já está aberta também rola e foca', () => {
+  it('pedir de novo a tela que já está aberta também rola e foca', async () => {
     irPara('#consulta&lente=imprensa&pilar=governanca');
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     expect(rolar).not.toHaveBeenCalled();
     act(() => navegarNoDrill({ ativo: true, lente: 'imprensa', pilar: 'governanca' }, 'replace', { focar: true }));
     expect(rolar).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { level: 2, name: 'Governança' })).toHaveFocus();
   });
 
-  it('restauração de rolagem manual enquanto o drill está montado, e a anterior volta ao desmontar', () => {
+  it('restauração de rolagem manual enquanto o drill está montado, e a anterior volta ao desmontar', async () => {
     window.history.scrollRestoration = 'auto';
-    const { unmount } = render(<ConsultaEmProfundidade lente="imprensa" />);
+    const { unmount } = await montar('imprensa');
     expect(window.history.scrollRestoration).toBe('manual');
     unmount();
     expect(window.history.scrollRestoration).toBe('auto');
@@ -281,7 +309,7 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
   it('voltar do navegador com a prévia aberta descarta a prévia', async () => {
     const usuario = userEvent.setup();
     irPara('#consulta&lente=imprensa');
-    render(<ConsultaEmProfundidade lente="imprensa" />);
+    await montar('imprensa');
     await usuario.click(
       within(tabelaComTitulo(IMPRENSA.tabelaPilares.titulo)).getByRole('link', { name: EFICIENCIA.nome }),
     );
@@ -306,9 +334,9 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
 });
 
 describe('ConsultaEmProfundidade · Mercado (D2: só o Nível 1)', () => {
-  it('passo 19: pilar=governanca fica no Nível 1, a tabela não tem setas e o endereço é corrigido', () => {
+  it('passo 19: pilar=governanca fica no Nível 1, a tabela não tem setas e o endereço é corrigido', async () => {
     irPara('#consulta&lente=mercado&pilar=governanca');
-    render(<ConsultaEmProfundidade lente="mercado" />);
+    await montar('mercado');
     expect(screen.getByText(/Nível 1 de 4/)).toBeInTheDocument();
     expect(window.location.hash).toBe('#consulta&lente=mercado');
     const mercado = DADOS.lentes.find((l) => l.id === 'mercado')!;
@@ -318,11 +346,142 @@ describe('ConsultaEmProfundidade · Mercado (D2: só o Nível 1)', () => {
     expect(tabela.querySelectorAll('[data-linha="fixa"]')).toHaveLength(mercado.pilares.length);
   });
 
-  it('Nível 1 com os cartões "Temas financeiros" e "Sinais do mercado no mês"', () => {
-    render(<ConsultaEmProfundidade lente="mercado" />);
+  it('Nível 1 com os cartões "Temas financeiros" e "Sinais do mercado no mês"', async () => {
+    await montar('mercado');
     expect(screen.getByText('Temas financeiros')).toBeInTheDocument();
     expect(screen.getByText('Sinais do mercado no mês')).toBeInTheDocument();
     expect(screen.queryByText('A conta fecha')).toBeNull();
     expect(screen.queryByText(String(DADOS.lentes.find((l) => l.id === 'mercado')!.nota))).toBeNull();
+  });
+});
+
+describe('ConsultaEmProfundidade · dados do mês (D5)', () => {
+  const HASH_PROFUNDO =
+    '#consulta&lente=imprensa&pilar=governanca&tema=contratos-regulacao&subtema=fiscalizacao-regulatoria';
+
+  it('pede a consulta da lente no mês da tela, uma vez por lente e mês', async () => {
+    const { rerender } = await montar('imprensa');
+    expect(obterConsultaDaLente).toHaveBeenCalledTimes(1);
+    expect(obterConsultaDaLente).toHaveBeenCalledWith('imprensa', MES);
+    rerender(<ConsultaEmProfundidade lente="imprensa" mes={MES} />);
+    expect(obterConsultaDaLente).toHaveBeenCalledTimes(1);
+  });
+
+  it('link profundo sobrevive ao carregamento: nada é corrigido antes de os dados chegarem', async () => {
+    let entregar: (dados: Dados) => void = () => {};
+    obterConsultaDaLente.mockImplementationOnce(
+      () =>
+        new Promise<Dados>((resolver) => {
+          entregar = resolver;
+        }),
+    );
+    irPara(HASH_PROFUNDO);
+    const substituir = vi.spyOn(window.history, 'replaceState');
+    render(<ConsultaEmProfundidade lente="imprensa" mes={MES} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando');
+    expect(screen.queryByText(/Nível \d de 4/)).toBeNull();
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+
+    await act(async () => entregar(consultaIlustrativa('imprensa')));
+    expect(await screen.findByText(/Nível 4 de 4/)).toBeInTheDocument();
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+    expect(substituir).not.toHaveBeenCalled();
+  });
+
+  it('falha na leitura mostra a faixa de erro, sem tocar no endereço', async () => {
+    obterConsultaDaLente.mockRejectedValueOnce(new Error('O servidor não respondeu.'));
+    irPara(HASH_PROFUNDO);
+    render(<ConsultaEmProfundidade lente="imprensa" mes={MES} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('O servidor não respondeu.');
+    expect(screen.queryByText(/Nível \d de 4/)).toBeNull();
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+
+    // "TENTAR DE NOVO" refaz o pedido sem fechar o bloco, e o link profundo
+    // continua valendo quando a árvore chega.
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+    expect(await screen.findByText(/Nível \d de 4/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(obterConsultaDaLente).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+  });
+
+  it('a planilha do mês sobe (scoreMudou): o drill pede /consulta de novo e fica no mesmo nível, sem "Carregando"', async () => {
+    irPara(HASH_PROFUNDO);
+    await montar('imprensa');
+    expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument();
+    expect(obterConsultaDaLente).toHaveBeenCalledTimes(1);
+
+    const nova = consultaIlustrativa('imprensa');
+    nova.meta = { ...nova.meta, dataCorte: '2026-08-30' };
+    obterConsultaDaLente.mockResolvedValueOnce(nova);
+    act(() => scoreMudou.avisar());
+    expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument();
+    expect(await screen.findByText('Agosto de 2026 · corte em 30/08/2026')).toBeInTheDocument();
+    expect(obterConsultaDaLente).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+  });
+
+  it('lente sem matéria no mês mostra o vazio com o mês da consulta', async () => {
+    const vazia = consultaIlustrativa('imprensa');
+    vazia.meta = { ...vazia.meta, rotuloMes: 'Setembro de 2026', dataCorte: '' };
+    vazia.lentes = vazia.lentes.map((l) => ({ ...l, volumeTotal: 0 }));
+    obterConsultaDaLente.mockResolvedValueOnce(vazia);
+    render(<ConsultaEmProfundidade lente="imprensa" mes="2026-09" />);
+    expect(await screen.findByText('Sem matérias desta lente em setembro de 2026.')).toBeInTheDocument();
+    expect(screen.queryByText(/Nível \d de 4/)).toBeNull();
+  });
+
+  it('trocar de mês mantém o caminho quando os nós existem no mês novo e corrige quando não existem', async () => {
+    const setembro = consultaIlustrativa('imprensa');
+    setembro.meta = { ...setembro.meta, mesReferencia: '2026-09', rotuloMes: 'Setembro de 2026' };
+    // Outubro: o pilar Governança existe, mas sem o tema Contratos e regulação.
+    const outubro: Dados = structuredClone(consultaIlustrativa('imprensa'));
+    outubro.meta = { ...outubro.meta, mesReferencia: '2026-10', rotuloMes: 'Outubro de 2026' };
+    const governanca = outubro.lentes[0].pilares.find((p) => p.id === 'governanca')!;
+    governanca.filhos = governanca.filhos!.filter((t) => t.id !== 'contratos-regulacao');
+    obterConsultaDaLente.mockImplementation((lente: string, mes: string) =>
+      Promise.resolve(mes === '2026-09' ? setembro : mes === '2026-10' ? outubro : consultaIlustrativa(lente)),
+    );
+
+    irPara(HASH_PROFUNDO);
+    const { rerender } = await montar('imprensa');
+    expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument();
+    const substituir = vi.spyOn(window.history, 'replaceState');
+
+    // Setembro: o mesmo caminho existe, o drill fica no Nível 4.
+    rerender(<ConsultaEmProfundidade lente="imprensa" mes="2026-09" />);
+    expect(await screen.findByText(/Setembro de 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument();
+    expect(window.location.hash).toBe(HASH_PROFUNDO);
+    expect(substituir).not.toHaveBeenCalled();
+
+    // Outubro: o tema sumiu, a correção leva ao Nível 2 de Governança.
+    rerender(<ConsultaEmProfundidade lente="imprensa" mes="2026-10" />);
+    expect(await screen.findByText(/Nível 2 de 4/)).toBeInTheDocument();
+    expect(window.location.hash).toBe('#consulta&lente=imprensa&pilar=governanca');
+    expect(substituir).toHaveBeenCalledTimes(1);
+  });
+
+  it('com a fonte ilustrativa o selo aparece; com os dados reais (aviso vazio), some', async () => {
+    const { unmount } = await montar('imprensa');
+    expect(screen.getAllByText('Dados ilustrativos').length).toBeGreaterThan(0);
+    unmount();
+
+    esquecerConsultas();
+    const real = consultaIlustrativa('imprensa');
+    real.meta = { ...real.meta, aviso: '' };
+    obterConsultaDaLente.mockResolvedValueOnce(real);
+    await montar('imprensa');
+    expect(screen.queryByText('Dados ilustrativos')).toBeNull();
+    expect(screen.getByText('Agosto de 2026 · corte em 31/08/2026')).toBeInTheDocument();
+  });
+
+  it('mês do banco de exemplo (meta.origem "exemplo", aviso vazio): selo "Dados de exemplo" no topo e no indicador', async () => {
+    const exemplo = consultaIlustrativa('imprensa');
+    exemplo.meta = { ...exemplo.meta, aviso: '', origem: 'exemplo' };
+    obterConsultaDaLente.mockResolvedValueOnce(exemplo);
+    await montar('imprensa');
+    expect(screen.getAllByText('Dados de exemplo')).toHaveLength(2);
+    expect(screen.queryByText('Dados ilustrativos')).toBeNull();
   });
 });

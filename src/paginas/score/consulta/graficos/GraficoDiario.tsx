@@ -2,15 +2,14 @@
  *  em vermelho e as demais em cima em cinza, com a faixa dos dias em
  *  destaque atrás e a frase "12 a 18/08 · 69 matérias" no topo dela.
  *
- *  A SOMA DA FAIXA É CALCULADA DOS DADOS, e o mês vem do JSON
- *  (`meta.mesReferencia`), nunca fixo: outro subtema, outro intervalo ou
+ *  A SOMA DA FAIXA É CALCULADA DOS DADOS, e o mês vem da consulta
+ *  (`meta.mesReferencia`, passado pelo nível), nunca fixo: outro subtema, outro intervalo ou
  *  outro mês continuam certos sem tocar no componente.
  *
  *  A DICA DE CADA DIA É UM `<title>` nativo numa faixa invisível da altura do
  *  gráfico, como na F.5.
  */
 
-import { DADOS } from '../dados/dados';
 import type { Subtema } from '../dados/tipos';
 import { COR_EIXO, COR_FUNDO_DESTAQUE, COR_NEGATIVO_GRAFICO, COR_NEUTRO_GRAFICO } from '../cores';
 import {
@@ -18,7 +17,6 @@ import {
   diaDePico,
   larguraDoDia,
   marcasDoDiario,
-  mesDe,
   rotuloDoDestaque,
   rotuloDoDia,
   xDaFraseDoDestaque,
@@ -29,11 +27,11 @@ type PorDia = NonNullable<Subtema['nivel4']>['porDia'];
 
 export function GraficoDiario({
   porDia,
-  mes = mesDe(DADOS.meta.mesReferencia),
+  mes,
 }: {
   porDia: PorDia;
-  /** Mês de dois dígitos ("08"); padrão: o de `meta.mesReferencia`. */
-  mes?: string;
+  /** Mês de dois dígitos ("08"), o de `meta.mesReferencia`. */
+  mes: string;
 }) {
   const { total, negativas, destaque } = porDia;
   const dias = total.length;

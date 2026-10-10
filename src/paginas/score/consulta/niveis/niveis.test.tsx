@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import { resolverCaminho } from '../dados/seletores';
 import type { No } from '../dados/tipos';
 import {
@@ -99,7 +99,7 @@ describe('NivelPilar (E.5)', () => {
   it('resumo com as métricas da spec, tabela com destaque e rodapé, e os dois cartões do tema', async () => {
     const aoIr = vi.fn();
     const ref = createRef<HTMLHeadingElement>();
-    render(<NivelPilar lente={IMPRENSA} pilar={EFICIENCIA} refDoTitulo={ref} chaveDeReinicio="x" aoIr={aoIr} />);
+    render(<NivelPilar lente={IMPRENSA} pilar={EFICIENCIA} refDoTitulo={ref} chaveDeReinicio="x" aoIr={aoIr} meta={DADOS.meta} />);
 
     expect(screen.getByText('Pilar · Imprensa')).toBeInTheDocument();
     expect(ref.current).toBe(screen.getByRole('heading', { level: 2, name: EFICIENCIA.nome }));
@@ -133,6 +133,7 @@ describe('NivelTema (E.6)', () => {
         tema={ABASTECIMENTO}
         refDoTitulo={createRef()}
         chaveDeReinicio="x"
+        meta={DADOS.meta}
         aoIr={aoIr}
       />,
     );
@@ -163,6 +164,7 @@ describe('NivelSubtema (E.7)', () => {
         endereco={enderecoDoSubtema(IMPRENSA, EFICIENCIA, ABASTECIMENTO, ADUTORA)}
         refDoTitulo={createRef()}
         chaveDeReinicio="x"
+        meta={DADOS.meta}
         aoIr={vi.fn()}
         aoAbrirItem={vi.fn()}
         aoMudarLista={aoMudarLista}

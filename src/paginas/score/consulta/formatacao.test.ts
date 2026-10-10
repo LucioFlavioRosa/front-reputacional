@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DADOS } from './dados/dados';
+import { DADOS } from './dados/fixtures/ilustrativo';
 import {
   MENOS,
   arred,
@@ -35,7 +35,7 @@ describe('arred (C.5)', () => {
 
   it('o índice geral das 5 lentes dá [55, 63, 53, 49, 51, 49]', () => {
     const isr = [0, 1, 2, 3, 4, 5].map((m) =>
-      arred(DADOS.lentes.reduce((s, l) => s + l.peso * l.serie[m], 0)),
+      arred(DADOS.lentes.reduce((s, l) => s + l.peso * (l.serie[m] ?? 0), 0)),
     );
     expect(DADOS.lentes).toHaveLength(5);
     expect(isr).toEqual([55, 63, 53, 49, 51, 49]);

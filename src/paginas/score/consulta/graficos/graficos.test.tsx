@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import { escalaDeImpacto } from '../dados/seletores';
 import { BarraImpacto } from './BarraImpacto';
 import { BarraSentimento } from './BarraSentimento';
@@ -252,7 +252,7 @@ describe('GraficoDiario (F.7)', () => {
   const largura = 608 / 31;
 
   it('SVG 640×150 com resumo em português', () => {
-    render(<GraficoDiario porDia={porDia} />);
+    render(<GraficoDiario porDia={porDia} mes="08" />);
     const svg = screen.getByRole('img');
     expect(svg.getAttribute('viewBox')).toBe('0 0 640 150');
     expect(svg.getAttribute('width')).toBe('100%');
@@ -262,7 +262,7 @@ describe('GraficoDiario (F.7)', () => {
   });
 
   it('faixa de destaque do dia 12 ao 18, y de 4 a 120, com a soma calculada', () => {
-    const { container } = render(<GraficoDiario porDia={porDia} />);
+    const { container } = render(<GraficoDiario porDia={porDia} mes="08" />);
     const faixa = el(container, '[data-faixa]');
     expect(num(faixa, 'x')).toBeCloseTo(20 + 11 * largura, 6);
     expect(num(faixa, 'width')).toBeCloseTo(7 * largura, 6);
@@ -275,7 +275,7 @@ describe('GraficoDiario (F.7)', () => {
     const outro = fiscalizacao.nivel4!.porDia;
     const { inicio, fim } = outro.destaque;
     const soma = outro.total.slice(inicio - 1, fim).reduce((s, n) => s + n, 0);
-    const { container } = render(<GraficoDiario porDia={outro} />);
+    const { container } = render(<GraficoDiario porDia={outro} mes="08" />);
     expect(el(container, '[data-frase]').textContent).toBe(`${inicio} a ${fim}/08 · ${soma} matérias`);
   });
 
@@ -286,7 +286,7 @@ describe('GraficoDiario (F.7)', () => {
   });
 
   it('barras empilhadas: negativas embaixo, demais em cima, na escala ceil(maior × 1,1)', () => {
-    const { container } = render(<GraficoDiario porDia={porDia} />);
+    const { container } = render(<GraficoDiario porDia={porDia} mes="08" />);
     const unidade = 100 / Math.ceil(16 * 1.1);
     const dia13 = el(container, '[data-dia="13"]');
     const neg = el(dia13, '[data-parte="negativas"]');
@@ -304,7 +304,7 @@ describe('GraficoDiario (F.7)', () => {
   });
 
   it('marcas 1, 5, 10, 15, 20, 25 e 31 em y 138, e linha de base #8C91A4', () => {
-    const { container } = render(<GraficoDiario porDia={porDia} />);
+    const { container } = render(<GraficoDiario porDia={porDia} mes="08" />);
     const marcas = [...container.querySelectorAll('[data-marca]')];
     expect(marcas.map((m) => m.textContent)).toEqual(['1', '5', '10', '15', '20', '25', '31']);
     expect(marcas.every((m) => m.getAttribute('y') === '138')).toBe(true);
@@ -314,7 +314,7 @@ describe('GraficoDiario (F.7)', () => {
   });
 
   it('dica por dia: "14/08 · 12 matérias, 10 negativas"', () => {
-    const { container } = render(<GraficoDiario porDia={porDia} />);
+    const { container } = render(<GraficoDiario porDia={porDia} mes="08" />);
     expect(container.querySelectorAll('[data-dica] title')).toHaveLength(31);
     expect(el(container, '[data-dica="14"] title').textContent).toBe('14/08 · 12 matérias, 10 negativas');
   });

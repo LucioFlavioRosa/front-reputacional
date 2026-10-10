@@ -6,6 +6,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { simularApi } from './apiSimulada.ts';
 import type { ApiSimulada } from './apiSimulada.ts';
+import { AVISO_ILUSTRATIVO, consultaReal } from './fixtures/consulta.ts';
 
 // -------------------------------------------------------------------------
 // CONSULTA EM PROFUNDIDADE · ponta a ponta
@@ -575,6 +576,52 @@ test('roteiro G, passo 19: Mercado com pilar no endereço fica no Nível 1', asy
   await conferirNivel1DoMercado(page);
   await expect.poll(() => new URL(page.url()).hash).toBe('#consulta&lente=mercado');
   await capturar(page, '19-mercado-com-pilar-no-endereco', vigias);
+});
+
+// ---------------------------------------------------------------------------
+// Dados reais (D5): o endpoint `/consulta` responde com `aviso` vazio e com os
+// nós de fechamento ('sem-pilar', 'sem-tema', 'sem-subtema')
+// ---------------------------------------------------------------------------
+
+test('dados reais sem selo: o selo não aparece e a linha "Sem tema identificado" não tem seta', async ({
+  page,
+  api,
+  problemas,
+}) => {
+  const vigias = { api, problemas };
+  api.responder('/api/score/lentes/imprensa/consulta', consultaReal());
+  const drill = drillDe(page);
+
+  await abrir(page, '/score/lentes#consulta&lente=imprensa&pilar=eficiencia-operacional');
+  await expect(botaoDoDrill(page)).toHaveAttribute('aria-expanded', 'true');
+  await conferirNivel(page, 2);
+  await expect(tituloDoNivel(page, 'Eficiência Operacional e Qualidade')).toBeVisible();
+
+  // O mês e o corte continuam no topo; o selo some do topo e do indicador.
+  await expect(drill.getByText('Agosto de 2026 · corte em 31/08/2026')).toBeVisible();
+  await expect(drill.getByText(AVISO_ILUSTRATIVO)).toHaveCount(0);
+
+  // A linha de fechamento entra na tabela, mas não abre nada.
+  const fechamento = drill.locator('[data-linha]', { hasText: 'Sem tema identificado' });
+  await expect(fechamento).toHaveCount(1);
+  await expect(fechamento).toHaveAttribute('data-linha', 'fixa');
+  await expect(fechamento).toHaveAttribute('title', 'Sem vínculo com a taxonomia de temas');
+  await expect(fechamento.locator('[data-seta]')).toHaveCount(0);
+  await expect(drill.locator('a[data-linha]', { hasText: 'Sem tema identificado' })).toHaveCount(0);
+  // O endereço não foi corrigido: o pilar existe no mês.
+  expect(new URL(page.url()).hash).toBe('#consulta&lente=imprensa&pilar=eficiencia-operacional');
+
+  // A busca do cabeçalho: o grupo do drill sem o selo e sem o nó de fechamento.
+  await busca(page).click();
+  await busca(page).fill('adutora');
+  const lista = page.getByRole('listbox');
+  await expect(lista.getByText('Consulta em profundidade', { exact: true })).toBeVisible();
+  await expect(lista.getByText(AVISO_ILUSTRATIVO)).toHaveCount(0);
+  await busca(page).fill('identificado');
+  await expect(lista.getByText('Sem tema identificado')).toHaveCount(0);
+  await busca(page).press('Escape');
+
+  await capturar(page, '21-dados-reais-sem-selo', vigias);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,13 +1,25 @@
 /** Consulta em profundidade: a raiz do drill, montada dentro do bloco
  *  expansível "Drill down" da aba Lentes (decisões A1 e D2).
  *
+ *  OS DADOS SÃO OS REAIS DO MÊS DA TELA (D5): a árvore da lente vem do
+ *  endpoint `/consulta` (`useConsultaDaLente`, com cache por lente e mês
+ *  compartilhado com a busca do cabeçalho). Enquanto ela não chega, o bloco
+ *  mostra "Carregando"; se a leitura falha, a faixa de erro com "Tentar de
+ *  novo"; e, se a lente não teve matéria no mês, o recado de vazio. Os níveis
+ *  só montam com os dados.
+ *
  *  O ENDEREÇO É A ÚNICA FONTE DA VERDADE (A3): o nível, o nó e os filtros da
- *  lista saem do hash (`useEnderecoDoDrill`), resolvidos contra a base com a
- *  LENTE DA ABA (A4). Descer e subir de nível faz `pushState`; filtros da
+ *  lista saem do hash (`useEnderecoDoDrill`), resolvidos contra a árvore do
+ *  mês com a LENTE DA ABA (A4). Descer e subir de nível faz `pushState`; filtros da
  *  lista e correção de endereço inválido fazem `replaceState`. Por isso
  *  recarregar, voltar e avançar do navegador reabrem exatamente a mesma tela.
  *
- *  ENDEREÇO QUE NÃO É O CANÔNICO É CORRIGIDO COM `replace` (D.2, A20), num
+ *  ENDEREÇO QUE NÃO É O CANÔNICO É CORRIGIDO COM `replace` (D.2, A20), SÓ
+ *  DEPOIS DE OS DADOS CHEGAREM: corrigir contra uma árvore que ainda não
+ *  existe levaria todo link profundo ao Nível 1 durante o carregamento. Na
+ *  troca de mês vale o mesmo: o hash fica intacto enquanto o mês novo carrega,
+ *  o drill continua no mesmo caminho se os nós existem nele e, se não
+ *  existem, a correção o leva ao nível válido mais fundo. A correção roda num
  *  efeito: chamar `history` não é `setState`, e a correção dispara o evento
  *  do endereço, que faz o hook reler o hash. Não entra em laço porque o
  *  canônico do canônico é ele mesmo (`resolverCaminho` não devolve
@@ -32,14 +44,17 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { Botao, Carregando, FaixaDeErro } from '@/componentes/basicos';
+
 import type { AlvoDaPrevia } from './componentes/apoioDosCartoes';
 import { CabecalhoDoDrill } from './componentes/CabecalhoDoDrill';
 import { IndicadorDeNivel } from './componentes/IndicadorDeNivel';
 import { LimiteDoBloco } from './componentes/LimiteDoBloco';
 import { ModalDePrevia } from './componentes/ModalDePrevia';
 import { Trilha } from './componentes/Trilha';
-import { DADOS } from './dados/dados';
-import { resolverCaminho } from './dados/seletores';
+import { avisoDaConsulta, lenteDoDrill, resolverCaminho } from './dados/seletores';
+import type { Dados } from './dados/tipos';
+import { tentarConsultaDeNovo, useConsultaDaLente } from './dados/useConsultaDaLente';
 import { escreverEndereco, lerEndereco } from './endereco';
 import type { EnderecoDoDrill } from './endereco';
 import { enderecoDoNivel, rolarAteOTopoDoBloco } from './niveis/apoioDosNiveis';
@@ -62,9 +77,73 @@ function descer(endereco: EnderecoDoDrill) {
   navegarNoDrill(endereco, 'push');
 }
 
-export function ConsultaEmProfundidade({ lente }: { lente: string }) {
+const ESTILO_DO_BLOCO = { display: 'flex', flexDirection: 'column', gap: 20 } as const;
+
+/** 'Agosto de 2026' → 'agosto de 2026', para o meio da frase do vazio. */
+function mesNoMeioDaFrase(rotuloMes: string, mes: string): string {
+  const rotulo = rotuloMes.trim();
+  return rotulo ? rotulo.charAt(0).toLocaleLowerCase('pt-BR') + rotulo.slice(1) : mes;
+}
+
+export function ConsultaEmProfundidade({ lente, mes }: { lente: string; mes: string }) {
+  const { dados, erro, carregando } = useConsultaDaLente(lente, mes);
+
+  // --- Restauração de rolagem do navegador --------------------------------
+  // MANUAL ENQUANTO O DRILL ESTÁ NA TELA: no voltar e no avançar, o navegador
+  // restaurava a posição antiga da entrada DEPOIS da rolagem da A5, e o
+  // título focado ficava fora da janela ou sob o cabeçalho fixo. As entradas
+  // criadas com o drill montado herdam o modo; ao desmontar, o modo anterior
+  // volta para a entrada atual. AQUI, E NÃO NOS NÍVEIS, para valer também
+  // enquanto o mês carrega.
+  useEffect(() => {
+    const antes = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => {
+      window.history.scrollRestoration = antes;
+    };
+  }, []);
+
+  if (erro) {
+    // O BOTÃO DE TENTAR DE NOVO: sem ele, uma falha passageira (um 5xx do
+    // back) prendia o drill na faixa até alguém descobrir que recolher e
+    // expandir o bloco, ou trocar de mês, refaz o pedido.
+    return (
+      <div data-consulta-profundidade style={ESTILO_DO_BLOCO}>
+        <FaixaDeErro mensagem={erro} />
+        <div>
+          <Botao aoClicar={() => tentarConsultaDeNovo(lente, mes)}>Tentar de novo</Botao>
+        </div>
+      </div>
+    );
+  }
+  if (!dados) {
+    // LENTE SEM DRILL NO FRONT (D2): o hook nem busca. O Dossiê já não monta
+    // o bloco nessas lentes; isto só evita um "Carregando" eterno.
+    if (!carregando) return null;
+    return (
+      <div data-consulta-profundidade style={ESTILO_DO_BLOCO}>
+        <Carregando />
+      </div>
+    );
+  }
+  const daLente = lenteDoDrill(dados, lente);
+  if (!daLente || daLente.volumeTotal === 0) {
+    return (
+      <div data-consulta-profundidade style={ESTILO_DO_BLOCO}>
+        <p style={{ margin: 0, padding: '24px 0', textAlign: 'center', fontSize: 14, color: 'var(--cinza-3)' }}>
+          Sem matérias desta lente em {mesNoMeioDaFrase(dados.meta.rotuloMes, mes)}.
+        </p>
+      </div>
+    );
+  }
+  return <DrillDoMes dados={dados} lente={lente} />;
+}
+
+/** O drill com a árvore do mês já carregada: endereço, correção, rolagem,
+ *  níveis e prévia. */
+function DrillDoMes({ dados, lente }: { dados: Dados; lente: string }) {
   const endereco = useEnderecoDoDrill();
-  const caminho = resolverCaminho(DADOS, lente, endereco);
+  const caminho = resolverCaminho(dados, lente, endereco);
 
   // O ENDEREÇO DA TELA, já canônico: é dele que a lista do Nível 4 lê os
   // filtros, e é ele a chave de reinício dos limites de erro (um bloco que
@@ -107,20 +186,6 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
     refDoTitulo.current?.focus({ preventScroll: true });
   }, [chaveDoNivel, idDaLente, temItem, pedidoDeFoco]);
 
-  // --- Restauração de rolagem do navegador --------------------------------
-  // MANUAL ENQUANTO O DRILL ESTÁ NA TELA: no voltar e no avançar, o navegador
-  // restaurava a posição antiga da entrada DEPOIS da rolagem da A5, e o
-  // título focado ficava fora da janela ou sob o cabeçalho fixo. As entradas
-  // criadas com o drill montado herdam o modo; ao desmontar, o modo anterior
-  // volta para a entrada atual.
-  useEffect(() => {
-    const antes = window.history.scrollRestoration;
-    window.history.scrollRestoration = 'manual';
-    return () => {
-      window.history.scrollRestoration = antes;
-    };
-  }, []);
-
   // --- Modal de prévia ----------------------------------------------------
   const [previa, definirPrevia] = useState<PreviaAberta | null>(null);
   // AJUSTE DURANTE O RENDER, e não num efeito (padrão do React para estado
@@ -137,7 +202,8 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
   };
 
   const { lente: lenteDoCaminho, pilar, tema, subtema, nivel } = caminho;
-  const comum = { refDoTitulo, chaveDeReinicio: chaveDaTela };
+  const { meta } = dados;
+  const comum = { refDoTitulo, chaveDeReinicio: chaveDaTela, meta };
 
   let conteudoDoNivel;
   if (nivel === 4 && pilar && tema && subtema) {
@@ -159,12 +225,14 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
   } else if (nivel === 2 && pilar) {
     conteudoDoNivel = <NivelPilar {...comum} lente={lenteDoCaminho} pilar={pilar} aoIr={acoes.aoIr} />;
   } else {
-    conteudoDoNivel = <NivelLente {...comum} {...acoes} lente={lenteDoCaminho} />;
+    conteudoDoNivel = (
+      <NivelLente refDoTitulo={refDoTitulo} chaveDeReinicio={chaveDaTela} {...acoes} lente={lenteDoCaminho} />
+    );
   }
 
   return (
-    <div ref={refDoBloco} data-consulta-profundidade style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <CabecalhoDoDrill meta={DADOS.meta} />
+    <div ref={refDoBloco} data-consulta-profundidade style={ESTILO_DO_BLOCO}>
+      <CabecalhoDoDrill meta={meta} />
       <div
         style={{
           display: 'flex',
@@ -179,7 +247,7 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
             o empurra para a linha de baixo: sozinho na linha, o
             `space-between` o deixaria colado à esquerda. */}
         <div style={{ marginLeft: 'auto' }}>
-          <IndicadorDeNivel nivel={nivel} aviso={DADOS.meta.aviso} />
+          <IndicadorDeNivel nivel={nivel} aviso={avisoDaConsulta(meta)} />
         </div>
       </div>
 
@@ -195,6 +263,7 @@ export function ConsultaEmProfundidade({ lente }: { lente: string }) {
           alvo={previaVisivel.alvo}
           devolverFocoPara={previaVisivel.botao}
           aoFechar={() => definirPrevia(null)}
+          dadosReais={!meta.aviso.trim()}
         />
       ) : null}
     </div>

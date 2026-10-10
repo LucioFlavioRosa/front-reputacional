@@ -22,7 +22,7 @@ import * as cliente from './cliente';
 // porque o app é feito para o navegador e não deve enxergar o Node.
 import fonte from './cliente.ts?raw';
 import { varrerChamadas } from './cliente.varredura';
-import { ROTAS_DO_CATALOGO, catalogoMudou } from '@/dominio/sincronizacao';
+import { ROTAS_DO_CATALOGO, catalogoMudou, scoreMudou } from '@/dominio/sincronizacao';
 
 /* -- o dublê do servidor ---------------------------------------------------- */
 
@@ -154,6 +154,41 @@ describe('toda escrita de catálogo avisa quem depende do catálogo', () => {
 
     expect(avisos).toBe(0);
     expect(chamadas[0].url).toContain('/api/interacoes/');
+  });
+});
+
+/* -- as escritas no Score avisam o cache da Consulta em profundidade -------- */
+
+describe('escrita no Score avisa `scoreMudou`', () => {
+  let avisosDoScore = 0;
+  let cancelar = () => {};
+  beforeEach(() => {
+    avisosDoScore = 0;
+    cancelar = scoreMudou.assinar(() => {
+      avisosDoScore += 1;
+    });
+  });
+  afterEach(() => cancelar());
+
+  // O DEFEITO: subir a planilha do mês (aba Base) ou mudar a calibração
+  // deixava o drill da aba Lentes mostrando a árvore antiga a sessão inteira.
+  it.each([
+    ['importarPlanilhaDoScore', () => cliente.importarPlanilhaDoScore('clipei', arquivo())],
+    [
+      'gravarCalibracao',
+      () => cliente.gravarCalibracao({} as Parameters<typeof cliente.gravarCalibracao>[0]),
+    ],
+    ['restaurarCalibracaoPadrao', () => cliente.restaurarCalibracaoPadrao()],
+  ])('%s avisa uma vez', async (_nome, escrever) => {
+    await escrever();
+    expect(avisosDoScore).toBe(1);
+  });
+
+  it('ler a consulta não avisa, e a recusa do servidor também não', async () => {
+    await cliente.obterConsultaDaLente('imprensa', '2026-08');
+    respostaPadrao = () => new Response(JSON.stringify({ detalhe: 'Régua inválida.' }), { status: 422 });
+    await expect(cliente.restaurarCalibracaoPadrao()).rejects.toThrow('Régua inválida.');
+    expect(avisosDoScore).toBe(0);
   });
 });
 

@@ -10,7 +10,8 @@ export type Sentimento = 'positivo' | 'neutro' | 'negativo';
 export type Tier = 'Tier 1' | 'Tier 2' | 'Tier 3';
 export type FaixaId = 'referencia' | 'solido' | 'estavel' | 'atencao' | 'critico';
 
-/** Inteiros que somam 100. */
+/** Inteiros que somam 100, ou tudo 0 quando o volume é 0 (sem matéria não
+ *  há distribuição). */
 export interface DistSentimento { pos: number; neu: number; neg: number }
 
 export interface No {
@@ -114,9 +115,11 @@ export interface Lente {
   publico: string;
   cor: string;
   peso: number;
-  nota: number;
-  /** 6 meses; o último é a nota atual. */
-  serie: number[];
+  /** Nula quando o mês não tem dado (os dados reais, D5). */
+  nota: number | null;
+  /** 6 meses; o último é a nota atual. O back manda `null` nos meses sem
+   *  dado: quem desenhar a série (sparkline, `faixaDe`) trata o buraco. */
+  serie: (number | null)[];
   fonte: string;
   unidade: string;
   volumeTotal: number;
@@ -185,6 +188,10 @@ export interface Dados {
   meta: {
     versao: string; mesReferencia: string; rotuloMes: string; mesAnterior: string;
     dataCorte: string; aviso: string; meses: string[];
+    /** Só nos dados reais (D5): 'exemplo' quando o mês do banco é de
+     *  demonstração. Com `aviso` vazio, o selo diz "Dados de exemplo"
+     *  (`avisoDaConsulta`). */
+    origem?: 'carga' | 'exemplo';
   };
   faixas: Faixa[];
   pesoTier: Record<Tier, number>;

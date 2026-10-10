@@ -15,10 +15,13 @@
  *  radar não precisa delas.
  *
  *  O GRUPO "CONSULTA EM PROFUNDIDADE" VEM DEPOIS DAS SUGESTÕES REAIS (decisões
- *  D3 e A15, spec E.9): pilares, temas, subtemas e matérias do drill
- *  ilustrativo, com o selo "Dados ilustrativos" no cabeçalho do grupo, para
- *  ninguém confundir com o que veio do servidor. Escolher um leva direto ao
- *  nível dele (`aoEscolherNoDrill`). Sem esse callback, o grupo não aparece.
+ *  D3 e A15, spec E.9): pilares, temas, subtemas e matérias da árvore da
+ *  Imprensa DO MÊS DA TELA (D5), lida pelo mesmo hook e pelo mesmo cache da
+ *  raiz do drill (uma requisição para os dois). Escolher um leva direto ao
+ *  nível dele (`aoEscolherNoDrill`). Sem esse callback, o grupo não aparece;
+ *  enquanto a árvore carrega (ou se a leitura falhar), também não. O selo
+ *  "Dados ilustrativos" no cabeçalho do grupo só aparece quando a fonte é
+ *  ilustrativa.
  */
 
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -38,8 +41,15 @@ import {
 import type { LenteParaBusca, OpcaoDaBusca, SugestaoDoRadar } from '@/dominio/buscaDoRadar';
 import { LENTES_COM_FILTRO, dimensoesDaLente, rotuloDoValor } from '@/dominio/filtrosDasLentes';
 import { SeloIlustrativo } from '@/paginas/score/consulta/componentes/SeloIlustrativo';
-import { DADOS } from '@/paginas/score/consulta/dados/dados';
-import { buscarNoDrill, montarIndiceDeBusca } from '@/paginas/score/consulta/dados/seletores';
+import {
+  avisoDaConsulta,
+  buscarNoDrill,
+  montarIndiceDeBusca,
+} from '@/paginas/score/consulta/dados/seletores';
+import {
+  tentarConsultaDeNovo,
+  useConsultaDaLente,
+} from '@/paginas/score/consulta/dados/useConsultaDaLente';
 import type { ResultadoDeBusca } from '@/paginas/score/consulta/dados/seletores';
 import type { EnderecoDoDrill } from '@/paginas/score/consulta/endereco';
 import { arred, corDoSinal, fmtPt, fmtPtItem } from '@/paginas/score/consulta/formatacao';
@@ -94,10 +104,20 @@ export function BuscaDoRadar({
   );
   const encontradas = filtrarSugestoes(sugestoes, termo);
 
-  //: O ÍNDICE DO DRILL É MONTADO UMA VEZ (E.9): a base é um JSON local e não
-  //: muda com o mês nem com a lente. `buscarNoDrill` só responde com 2
-  //: caracteres ou mais, depois de normalizar.
-  const indiceDoDrill = useMemo(() => montarIndiceDeBusca(DADOS), []);
+  //: O ÍNDICE DO DRILL É O DA IMPRENSA NO MÊS DA TELA (D5), a única lente que
+  //: desce além do Nível 1. A ÁRVORE SÓ É PEDIDA DEPOIS DO PRIMEIRO FOCO no
+  //: campo, como as opções acima: quem só olha o radar não precisa dela. É
+  //: montado uma vez por árvore; `buscarNoDrill` só responde com 2 caracteres
+  //: ou mais, depois de normalizar.
+  const [usouABusca, definirUsouABusca] = useState(false);
+  const { dados: arvoreDoDrill, erro: erroDoDrill } = useConsultaDaLente(
+    aoEscolherNoDrill && usouABusca ? 'imprensa' : null,
+    mes,
+  );
+  const indiceDoDrill = useMemo(
+    () => (arvoreDoDrill ? montarIndiceDeBusca(arvoreDoDrill) : []),
+    [arvoreDoDrill],
+  );
   const doDrill = aoEscolherNoDrill ? buscarNoDrill(indiceDoDrill, termo) : [];
   const opcoes = opcoesDaBusca(encontradas, doDrill);
   const idDaOpcao = (indice: number) => `${id}-opcao-${indice}`;
@@ -175,6 +195,12 @@ export function BuscaDoRadar({
           placeholder="Buscar lente, veículo, rede, tema, concessionária…"
           onFocus={() => {
             carregar();
+            definirUsouABusca(true);
+            //: A BUSCA FICA MONTADA A SESSÃO INTEIRA no cabeçalho do Score, e o
+            //: efeito do hook só refaz o pedido quando o mês muda: sem isto, uma
+            //: falha de rede na árvore da Imprensa sumia com o grupo do drill
+            //: até recarregar a página. Cada novo foco tenta de novo.
+            if (aoEscolherNoDrill && erroDoDrill) tentarConsultaDeNovo('imprensa', mes);
             definirAberto(true);
           }}
           onChange={(evento) => {
@@ -285,6 +311,7 @@ export function BuscaDoRadar({
                 emFoco={emFoco}
                 termo={termo}
                 comSeparador={encontradas.length > 0}
+                aviso={arvoreDoDrill ? avisoDaConsulta(arvoreDoDrill.meta) : ''}
                 idDaOpcao={idDaOpcao}
                 aoEscolher={(resultado) => escolher({ origem: 'drill', resultado })}
                 aoApontar={definirEmFoco}
@@ -352,6 +379,7 @@ function GrupoDaConsulta({
   emFoco,
   termo,
   comSeparador,
+  aviso,
   idDaOpcao,
   aoEscolher,
   aoApontar,
@@ -362,6 +390,9 @@ function GrupoDaConsulta({
   emFoco: number;
   termo: string;
   comSeparador: boolean;
+  /** `avisoDaConsulta(meta)` da árvore: o selo só aparece quando a fonte é
+   *  ilustrativa ou de exemplo. */
+  aviso: string;
   idDaOpcao: (indice: number) => string;
   aoEscolher: (resultado: ResultadoDeBusca) => void;
   aoApontar: (indice: number) => void;
@@ -389,7 +420,7 @@ function GrupoDaConsulta({
         <span className="kicker" style={{ fontSize: 10.5, color: 'var(--cinza-3)' }}>
           Consulta em profundidade
         </span>
-        <SeloIlustrativo />
+        <SeloIlustrativo aviso={aviso} />
       </div>
 
       {agruparResultadosDoDrill(doDrill).map((grupo) => (

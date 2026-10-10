@@ -2,12 +2,12 @@
 
 /** A busca inteligente do Radar: sugestões de lentes e de filtros de lente. */
 
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { OpcoesDeFiltroDaLente } from '@/api/cliente';
-import { obterOpcoesDeFiltroDaLente } from '@/api/cliente';
+import { obterConsultaDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import {
   agruparResultadosDoDrill,
   filtrarSugestoes,
@@ -15,8 +15,10 @@ import {
   opcoesDaBusca,
   realcarTrecho,
 } from '@/dominio/buscaDoRadar';
-import { DADOS } from '@/paginas/score/consulta/dados/dados';
+import { DADOS, consultaIlustrativa } from '@/paginas/score/consulta/dados/fixtures/ilustrativo';
 import { buscarNoDrill, montarIndiceDeBusca } from '@/paginas/score/consulta/dados/seletores';
+import type { Dados } from '@/paginas/score/consulta/dados/tipos';
+import { esquecerConsultas } from '@/paginas/score/consulta/dados/useConsultaDaLente';
 
 const vazio: OpcoesDeFiltroDaLente = {
   tiers: [], veiculos: [], atributos: [], temas: [], perfis: [], ufs: [], subtemas: [], autores: [], empresas: [],
@@ -28,8 +30,11 @@ const OPCOES: Record<string, OpcoesDeFiltroDaLente> = {
   clientes: { ...vazio, empresas: ['Águas do Rio'] },
 };
 
+//: O GRUPO DO DRILL LÊ A ÁRVORE DA IMPRENSA DO MÊS (D5) pelo endpoint
+//: `/consulta`, simulado com a lente ilustrativa.
 vi.mock('@/api/cliente', () => ({
   obterOpcoesDeFiltroDaLente: vi.fn((lente: string) => Promise.resolve(OPCOES[lente])),
+  obterConsultaDaLente: vi.fn((lente: string) => Promise.resolve(consultaIlustrativa(lente))),
 }));
 
 const LENTES = [
@@ -117,7 +122,11 @@ describe('BuscaDoRadar no cabeçalho', () => {
 });
 
 describe('grupo "Consulta em profundidade" (D3, A15, E.9)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Cada teste começa sem a árvore no cache da consulta.
+    esquecerConsultas();
+  });
 
   const montarBusca = async (aoEscolherNoDrill = vi.fn(), aoEscolher = vi.fn()) => {
     const { BuscaDoRadar } = await import('@/paginas/score/BuscaDoRadar');
@@ -137,6 +146,9 @@ describe('grupo "Consulta em profundidade" (D3, A15, E.9)', () => {
     // As opções reais chegam pela rede (simulada): espera, para o teste não
     // depender da ordem entre a rede e a digitação.
     await waitFor(() => expect(vi.mocked(obterOpcoesDeFiltroDaLente)).toHaveBeenCalled());
+    // A árvore do drill também: a do mês da tela, pedida no primeiro foco.
+    await waitFor(() => expect(vi.mocked(obterConsultaDaLente)).toHaveBeenCalledWith('imprensa', '2026-06'));
+    await act(() => Promise.resolve());
     return { campo, aoEscolherNoDrill, aoEscolher };
   };
 
@@ -239,6 +251,61 @@ describe('grupo "Consulta em profundidade" (D3, A15, E.9)', () => {
     );
   });
 
+  it('enquanto a árvore do mês carrega, o grupo não aparece', async () => {
+    vi.mocked(obterConsultaDaLente).mockImplementationOnce(() => new Promise<Dados>(() => {}));
+    const { BuscaDoRadar } = await import('@/paginas/score/BuscaDoRadar');
+    render(
+      <BuscaDoRadar
+        mes="2026-06"
+        lentes={LENTES}
+        lenteAberta="imprensa"
+        filtro={{}}
+        aoEscolher={vi.fn()}
+        aoMudarFiltro={vi.fn()}
+        aoEscolherNoDrill={vi.fn()}
+      />,
+    );
+    const campo = screen.getByRole('combobox');
+    await userEvent.click(campo);
+    await userEvent.type(campo, 'adutora');
+    expect(vi.mocked(obterConsultaDaLente)).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Consulta em profundidade')).toBeNull();
+  });
+
+  it('com os dados reais (aviso vazio) o grupo aparece sem o selo ilustrativo', async () => {
+    vi.mocked(obterConsultaDaLente).mockImplementationOnce((lente: string) => {
+      const real = consultaIlustrativa(lente);
+      return Promise.resolve({ ...real, meta: { ...real.meta, aviso: '' } });
+    });
+    const { campo } = await montarBusca();
+    await userEvent.type(campo, 'adutora');
+    expect(screen.getByText('Consulta em profundidade')).toBeTruthy();
+    expect(screen.queryByText('Dados ilustrativos')).toBeNull();
+  });
+
+  it('com "origem: exemplo" e aviso vazio, o grupo mostra o selo "Dados de exemplo"', async () => {
+    vi.mocked(obterConsultaDaLente).mockImplementationOnce((lente: string) => {
+      const real = consultaIlustrativa(lente);
+      return Promise.resolve({ ...real, meta: { ...real.meta, aviso: '', origem: 'exemplo' as const } });
+    });
+    const { campo } = await montarBusca();
+    await userEvent.type(campo, 'adutora');
+    expect(screen.getByText('Consulta em profundidade')).toBeTruthy();
+    expect(screen.getByText('Dados de exemplo')).toBeTruthy();
+  });
+
+  it('a árvore que falhou é pedida de novo no próximo foco (a busca fica montada a sessão inteira)', async () => {
+    vi.mocked(obterConsultaDaLente).mockRejectedValueOnce(new Error('Sem rede.'));
+    const { campo } = await montarBusca();
+    await userEvent.type(campo, 'adutora');
+    expect(screen.queryByText('Consulta em profundidade')).toBeNull();
+
+    await userEvent.tab();
+    await userEvent.click(campo);
+    await waitFor(() => expect(vi.mocked(obterConsultaDaLente)).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText('Consulta em profundidade')).toBeTruthy());
+  });
+
   it('sem o callback do drill, o grupo não aparece (sugestões reais intactas)', async () => {
     const { BuscaDoRadar } = await import('@/paginas/score/BuscaDoRadar');
     render(
@@ -248,6 +315,8 @@ describe('grupo "Consulta em profundidade" (D3, A15, E.9)', () => {
     await userEvent.click(campo);
     await userEvent.type(campo, 'adutora');
     expect(screen.queryByText('Consulta em profundidade')).toBeNull();
+    // Nem pede a árvore do drill.
+    expect(vi.mocked(obterConsultaDaLente)).not.toHaveBeenCalled();
   });
 });
 

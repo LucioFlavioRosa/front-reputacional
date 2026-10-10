@@ -13,7 +13,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import '../consulta.css';
-import { DADOS } from '../dados/dados';
 import { escalaDeImpacto, participacao } from '../dados/seletores';
 import type { LinhaRecorte, Subtema, Tema } from '../dados/tipos';
 import { arred, corDoSinal, fmtInt, fmtPct, fmtPtCurto } from '../formatacao';
@@ -196,13 +195,13 @@ function SetaParaDireita() {
 export function CartaoDeRecortes({
   tema,
   aoVerMaterias,
-  rotuloMes = DADOS.meta.rotuloMes,
+  rotuloMes,
 }: {
   tema: Tema;
   /** Desce ao Nível 4 do subtema em destaque. */
   aoVerMaterias: (subtema: Subtema) => void;
   /** `meta.rotuloMes` ('Agosto de 2026'); o kicker usa só o mês. */
-  rotuloMes?: string;
+  rotuloMes: string;
 }) {
   const destaque = tema.nivel3?.destaque;
   const subtema = destaque ? tema.filhos?.find((s) => s.id === destaque.subtemaId) : undefined;

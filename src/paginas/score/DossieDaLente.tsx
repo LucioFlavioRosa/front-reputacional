@@ -29,6 +29,7 @@ import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
 import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
 import { RecorteDaLente } from '@/paginas/score/RecorteDaLente';
 import { ConsultaEmProfundidade } from '@/paginas/score/consulta/ConsultaEmProfundidade';
+import { LENTES_COM_DRILL } from '@/paginas/score/consulta/dados/useConsultaDaLente';
 import { lerEndereco } from '@/paginas/score/consulta/endereco';
 import { EVENTO_DO_ENDERECO } from '@/paginas/score/consulta/useEnderecoDoDrill';
 import {
@@ -90,8 +91,8 @@ const LENTES = [
 //: AS LENTES QUE TÊM DRILL DOWN (decisão D2 da Consulta em profundidade): a
 //: Imprensa com os quatro níveis e o Mercado com o Nível 1. Nas outras três o
 //: bloco "Drill down" NÃO APARECE, em vez de aparecer vazio ou "em
-//: construção" — elas ficam para uma próxima rodada.
-const LENTES_COM_DRILL: readonly string[] = ['imprensa', 'mercado'];
+//: construção" — elas ficam para uma próxima rodada. A LISTA MORA COM O HOOK
+//: DOS DADOS (`LENTES_COM_DRILL`), que só busca a consulta destas lentes.
 
 /** O endereço pede um nível abaixo do primeiro (há `pilar` no hash do drill).
  *  É o que faz o bloco abrir sozinho (decisão A6). */
@@ -294,7 +295,7 @@ export function DossieDaLente({
           aberto={abertos.drill}
           aoAlternar={() => alternar('drill')}
         >
-          <ConsultaEmProfundidade lente={lente} />
+          <ConsultaEmProfundidade lente={lente} mes={mes} />
         </BlocoExpansivel>
       ) : null}
     </div>

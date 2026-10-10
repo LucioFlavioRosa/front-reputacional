@@ -56,6 +56,7 @@ export function NivelLente({
             unidade={lente.unidade}
             nos={lente.pilares}
             navegavel={(pilar) => pilarNavegavel(lente, pilar)}
+            lenteComDrill={lente.drill}
             enderecoDe={(pilar) => enderecoDoPilar(lente, pilar)}
             aoAbrir={(pilar) => aoIr(enderecoDoPilar(lente, pilar))}
             nivelDoTitulo="h2"

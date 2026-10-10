@@ -20,12 +20,12 @@ import { LimiteDoBloco } from '../componentes/LimiteDoBloco';
 import { ListaDeMaterias } from '../componentes/ListaDeMaterias';
 import { ResumoDoNivel } from '../componentes/ResumoDoNivel';
 import type { MetricaDoResumo } from '../componentes/ResumoDoNivel';
-import { DADOS } from '../dados/dados';
 import type { Dados, Lente, Pilar, Subtema, Tema } from '../dados/tipos';
 import type { EnderecoDoDrill } from '../endereco';
 import { fmtInt } from '../formatacao';
+import { mesDe } from '../graficos/escalas';
 import { GraficoDiario, LegendaDoGraficoDiario } from '../graficos/GraficoDiario';
-import { enderecoDoTema, metricaDeImpacto } from './apoioDosNiveis';
+import { enderecoDoTema, metricaDeImpacto, nomeDaFonte } from './apoioDosNiveis';
 import type { AcoesDoNivel } from './apoioDosNiveis';
 
 export function NivelSubtema({
@@ -39,7 +39,7 @@ export function NivelSubtema({
   aoIr,
   aoMudarLista,
   aoAbrirItem,
-  meta = DADOS.meta,
+  meta,
 }: Pick<AcoesDoNivel, 'aoIr' | 'aoAbrirItem'> & {
   lente: Lente;
   pilar: Pilar;
@@ -51,7 +51,7 @@ export function NivelSubtema({
   aoMudarLista: (parcial: Partial<EnderecoDoDrill>) => void;
   refDoTitulo: Ref<HTMLHeadingElement>;
   chaveDeReinicio: string;
-  meta?: Dados['meta'];
+  meta: Dados['meta'];
 }) {
   const voltar = enderecoDoTema(lente, pilar, tema);
   const nivel4 = subtema.nivel4;
@@ -79,7 +79,7 @@ export function NivelSubtema({
         <span className="kicker">{mes ? `Matérias por dia em ${mes}` : 'Matérias por dia'}</span>
         <LegendaDoGraficoDiario />
       </div>
-      <GraficoDiario porDia={nivel4.porDia} />
+      <GraficoDiario porDia={nivel4.porDia} mes={mesDe(meta.mesReferencia)} />
     </div>
   ) : undefined;
 
@@ -106,6 +106,8 @@ export function NivelSubtema({
           endereco={endereco}
           aoMudar={aoMudarLista}
           aoAbrirItem={aoAbrirItem}
+          fonte={nomeDaFonte(lente.fonte)}
+          dataCorte={meta.dataCorte}
         />
       </LimiteDoBloco>
     </div>

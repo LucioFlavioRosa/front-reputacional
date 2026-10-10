@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import type { Page, Route } from '@playwright/test';
 
+import { LENTES_DA_CONSULTA, consultaIlustrativa } from './fixtures/consulta.ts';
+
 // -------------------------------------------------------------------------
 // A API SIMULADA DO TESTE DE PONTA A PONTA
 //
@@ -25,6 +27,12 @@ import type { Page, Route } from '@playwright/test';
 // `IndiceDoScore`, `PontoDaSerie`, `Dossie`, `OpcoesDeFiltroDaLente`) com o
 // mínimo para a aba Lentes abrir. Quando houver um caminho autorizado, troque
 // cada arquivo pela resposta gravada, mantendo os nomes de `rotas.json`.
+//
+// A CONSULTA EM PROFUNDIDADE (`/api/score/lentes/{codigo}/consulta`, D5) NÃO
+// TEM ARQUIVO EM `rotas.json`: a resposta de cada lente é derivada do JSON
+// ilustrativo do front (`fixtures/consulta.ts`), com o aviso "Dados
+// ilustrativos", para qualquer `mes`. Um teste pode trocar a resposta de um
+// caminho com `api.responder` (o de "dados reais sem selo" faz isso).
 //
 // AS FONTES DO GOOGLE PASSAM PARA A REDE, com tolerância a falha: as
 // capturas de QA (`docs/consulta-profundidade/qa/`) precisam mostrar a DM Sans
@@ -52,12 +60,19 @@ const PASTA = join(import.meta.dirname, 'fixtures');
 
 function carregarRotas(): Map<string, { status: number; corpo: string }> {
   const rotas = JSON.parse(readFileSync(join(PASTA, 'rotas.json'), 'utf-8')) as RotaGravada[];
-  return new Map(
+  const mapa = new Map(
     rotas.map((r) => [
       `${r.metodo.toUpperCase()} ${r.caminho}`,
       { status: r.status ?? 200, corpo: readFileSync(join(PASTA, r.arquivo), 'utf-8') },
     ]),
   );
+  for (const lente of LENTES_DA_CONSULTA) {
+    mapa.set(`GET /api/score/lentes/${lente}/consulta`, {
+      status: 200,
+      corpo: JSON.stringify(consultaIlustrativa(lente)),
+    });
+  }
+  return mapa;
 }
 
 /** Tempo máximo para a fonte chegar; passou disso, segue sem ela. */
@@ -89,6 +104,9 @@ async function entregarFonte(route: Route, ehFolha: boolean): Promise<void> {
 export interface ApiSimulada {
   /** Chamadas que o front fez e que não têm resposta gravada. */
   naoGravadas: string[];
+  /** Troca a resposta de um `GET` (caminho sem a consulta) neste teste.
+   *  Chame antes de abrir a página. */
+  responder: (caminho: string, corpo: unknown) => void;
 }
 
 /** `origemDoFront` é a do Vite do teste (o `baseURL`), e não `page.url()`: antes
@@ -156,5 +174,9 @@ export async function simularApi(page: Page, origemDoFront: string): Promise<Api
     });
   });
 
-  return { naoGravadas };
+  const responder = (caminho: string, corpo: unknown) => {
+    rotas.set(`GET ${caminho}`, { status: 200, corpo: JSON.stringify(corpo) });
+  };
+
+  return { naoGravadas, responder };
 }

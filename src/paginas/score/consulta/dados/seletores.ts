@@ -29,16 +29,65 @@ export function lenteDoDrill(dados: Dados, id: string): Lente | undefined {
   return dados.lentes.find((l) => l.id === id);
 }
 
+/** Prefixo dos NÓS DE FECHAMENTO que o back acrescenta com os dados reais
+ *  (D5): 'sem-pilar', 'sem-tema' e 'sem-subtema' ("Sem pilar identificado"…).
+ *  Entram como irmãos comuns, para Σ filhos = pai e Σ pilares fecharem com a
+ *  nota, mas NUNCA são navegáveis nem entram na busca. O hífen não colide com
+ *  os códigos da taxonomia, que usam '_'. */
+const PREFIXO_DE_FECHAMENTO = 'sem-';
+
+export function ehNoDeFechamento(no: { id: string }): boolean {
+  return no.id.startsWith(PREFIXO_DE_FECHAMENTO);
+}
+
+/** O texto do selo quando a fonte é ilustrativa ou de exemplo. */
+export const AVISO_DE_EXEMPLO = 'Dados de exemplo';
+
+/** O texto do selo da consulta: o `meta.aviso` quando vem preenchido (a base
+ *  ilustrativa) e, com ele vazio, "Dados de exemplo" quando o back diz que o
+ *  mês do banco é de demonstração (`meta.origem === 'exemplo'`). Vazio só
+ *  para a carga real: sem isto, os números de exemplo apareciam como reais.
+ */
+export function avisoDaConsulta(meta: Dados['meta']): string {
+  if (meta.aviso.trim()) return meta.aviso;
+  return meta.origem === 'exemplo' ? AVISO_DE_EXEMPLO : '';
+}
+
+/** A coluna da tabela de impacto: diz de que nível é a linha. */
+export type ColunaDaTabela = 'Pilar' | 'Tema estratégico' | 'Subtema';
+
+/** O `title` de uma linha que não abre o nível de baixo, PELO MOTIVO.
+ *
+ *  COM OS DADOS REAIS (D5) não há "carga completa" por vir: a linha não abre
+ *  porque é um nó de fechamento (sem vínculo com a taxonomia), porque a lente
+ *  ainda não desce além do Nível 1 (Mercado, D2), ou porque nenhuma matéria
+ *  daquele item chegou ao nível de baixo. */
+export function motivoSemDetalhamento(
+  no: { id: string },
+  coluna: ColunaDaTabela,
+  lenteComDrill: boolean,
+): string {
+  if (ehNoDeFechamento(no)) return 'Sem vínculo com a taxonomia de temas';
+  if (!lenteComDrill) return 'O detalhamento desta lente ainda não está disponível';
+  if (coluna === 'Pilar') return 'Nenhuma matéria deste pilar tem tema identificado';
+  if (coluna === 'Tema estratégico') return 'Nenhuma matéria deste tema tem subtema identificado';
+  return 'Nenhuma matéria deste subtema no mês';
+}
+
+// A REGRA C.3 JÁ DEIXA OS NÓS DE FECHAMENTO SEM SETA, porque o back nunca lhes
+// dá filhos, `nivel3` ou `nivel4`. A checagem explícita é a garantia de que
+// um endereço `pilar=sem-pilar` ou um link da busca nunca abre um nível vazio,
+// mesmo que a resposta venha diferente do contrato.
 export function pilarNavegavel(lente: Lente, pilar: Pilar): boolean {
-  return lente.drill && (pilar.filhos?.length ?? 0) > 0;
+  return lente.drill && !ehNoDeFechamento(pilar) && (pilar.filhos?.length ?? 0) > 0;
 }
 
 export function temaNavegavel(tema: Tema): boolean {
-  return (tema.filhos?.length ?? 0) > 0 && tema.nivel3 !== undefined;
+  return !ehNoDeFechamento(tema) && (tema.filhos?.length ?? 0) > 0 && tema.nivel3 !== undefined;
 }
 
 export function subtemaNavegavel(subtema: Subtema): boolean {
-  return subtema.nivel4 !== undefined;
+  return !ehNoDeFechamento(subtema) && subtema.nivel4 !== undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,7 +353,8 @@ function contagem(volume: number, unidade: string): string {
   return `${fmtInt(volume)} ${unidade}`;
 }
 
-/** Índice de busca das lentes com drill (na base, só a Imprensa). Destinos:
+/** Índice de busca das lentes com drill (na base, só a Imprensa). Os nós de
+ *  fechamento ('sem-*') não entram, nem o que estiver abaixo deles. Destinos:
  *  - Pilar: Nível 2 (Nível 1 se o pilar não for navegável);
  *  - Tema: Nível 3 se navegável; senão, Nível 2 do pilar;
  *  - Subtema: Nível 4 se tiver `nivel4`; senão, Nível 3 do tema (ou Nível 2,
@@ -318,6 +368,7 @@ export function montarIndiceDeBusca(dados: Dados): IndiceDeBusca {
     const base: EnderecoDoDrill = { ativo: true, lente: lente.id };
 
     for (const pilar of lente.pilares) {
+      if (ehNoDeFechamento(pilar)) continue;
       const noPilar: EnderecoDoDrill = pilarNavegavel(lente, pilar) ? { ...base, pilar: pilar.id } : base;
       indexar(
         indice,
@@ -333,6 +384,7 @@ export function montarIndiceDeBusca(dados: Dados): IndiceDeBusca {
       );
 
       for (const tema of pilar.filhos ?? []) {
+        if (ehNoDeFechamento(tema)) continue;
         const noTema: EnderecoDoDrill = temaNavegavel(tema) ? { ...noPilar, tema: tema.id } : noPilar;
         const acimaDoTema = [lente.nome, pilar.nome].join(SEPARADOR);
         indexar(
@@ -349,6 +401,7 @@ export function montarIndiceDeBusca(dados: Dados): IndiceDeBusca {
         );
 
         for (const subtema of tema.filhos ?? []) {
+          if (ehNoDeFechamento(subtema)) continue;
           const noSubtema: EnderecoDoDrill =
             temaNavegavel(tema) && subtemaNavegavel(subtema) ? { ...noTema, subtema: subtema.id } : noTema;
           const acimaDoSubtema = [lente.nome, pilar.nome, tema.nome].join(SEPARADOR);

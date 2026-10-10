@@ -5,7 +5,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import { agruparPorImpacto, pilarNavegavel, temaNavegavel } from '../dados/seletores';
 import type { Pilar, Tema } from '../dados/tipos';
 import type { EnderecoDoDrill } from '../endereco';
@@ -212,13 +212,45 @@ describe('TabelaDeImpacto (E.4.2)', () => {
     expect(fixas).toHaveLength(temas.length - 1);
     for (const linha of fixas) {
       expect(linha.tagName).toBe('DIV');
-      expect(linha).toHaveAttribute('title', 'Detalhamento disponível com a carga completa de dados');
+      // O TITLE DIZ O MOTIVO (D5, A21): com os dados reais não há "carga
+      // completa" por vir. Aqui, temas sem subtema identificado.
+      expect(linha).toHaveAttribute('title', 'Nenhuma matéria deste tema tem subtema identificado');
       expect(linha.querySelector('[data-seta]')).toBeNull();
       expect(linha.style.cursor).toBe('default');
       expect(linha.closest('a')).toBeNull();
     }
     const esgoto = within(fixas.find((l) => l.textContent!.includes('Esgoto'))!).getByText('Esgoto');
     expect(esgoto.getAttribute('style')).toContain('var(--cinza-4)');
+  });
+
+  it('nó de fechamento "Sem tema identificado" (D5): linha fixa, sem seta, title de sem vínculo', () => {
+    const semTema: Tema = {
+      id: 'sem-tema',
+      nome: 'Sem tema identificado',
+      volume: 4,
+      impacto: -0.3,
+      sentimento: { pos: 0, neu: 50, neg: 50 },
+    };
+    // Mesmo que viesse com filhos e nivel3 por engano, não abriria.
+    const comFilhos: Tema = { ...semTema, filhos: temas[0].filhos, nivel3: temas[0].nivel3 };
+    render(
+      <TabelaDeImpacto
+        titulo="T"
+        subtitulo="S"
+        rotuloColuna="Tema estratégico"
+        unidade={imprensa.unidade}
+        nos={[...temas, comFilhos]}
+        destaqueId={eficiencia.nivel2!.destaque.temaId}
+        navegavel={temaNavegavel}
+        enderecoDe={enderecoDoTema}
+        aoAbrir={vi.fn()}
+      />,
+    );
+    const linha = screen.getByText('Sem tema identificado').closest<HTMLElement>('[data-linha]')!;
+    expect(linha).toHaveAttribute('data-linha', 'fixa');
+    expect(linha).toHaveAttribute('title', 'Sem vínculo com a taxonomia de temas');
+    expect(linha.querySelector('[data-seta]')).toBeNull();
+    expect(linha.closest('a')).toBeNull();
   });
 
   it('lente sem drill (Mercado): nenhuma linha vira link', () => {
@@ -232,9 +264,55 @@ describe('TabelaDeImpacto (E.4.2)', () => {
         navegavel={(p) => pilarNavegavel(mercado, p)}
         enderecoDe={(p) => ({ ativo: true, lente: 'mercado', pilar: p.id })}
         aoAbrir={() => {}}
+        lenteComDrill={mercado.drill}
       />,
     );
     expect(screen.queryAllByRole('link')).toHaveLength(0);
+    for (const linha of document.querySelectorAll('[data-linha="fixa"]')) {
+      expect(linha).toHaveAttribute('title', 'O detalhamento desta lente ainda não está disponível');
+    }
+  });
+
+  it('title pelo motivo: pilar sem tema identificado e subtema sem matéria', () => {
+    const pilarSemTema: Pilar = {
+      id: 'governanca',
+      nome: 'Governança',
+      volume: 1,
+      impacto: -0.4,
+      sentimento: { pos: 0, neu: 0, neg: 100 },
+    };
+    const semPilar: Pilar = { ...pilarSemTema, id: 'sem-pilar', nome: 'Sem pilar identificado' };
+    const { unmount } = render(
+      <TabelaDeImpacto<Pilar>
+        titulo="T"
+        subtitulo="S"
+        rotuloColuna="Pilar"
+        unidade="matérias"
+        nos={[pilarSemTema, semPilar]}
+        navegavel={(p) => pilarNavegavel(imprensa, p)}
+        enderecoDe={(p) => ({ ativo: true, lente: 'imprensa', pilar: p.id })}
+        aoAbrir={() => {}}
+        lenteComDrill
+      />,
+    );
+    const linhaDe = (nome: string) => screen.getByText(nome).closest<HTMLElement>('[data-linha]')!;
+    expect(linhaDe('Governança')).toHaveAttribute('title', 'Nenhuma matéria deste pilar tem tema identificado');
+    expect(linhaDe('Sem pilar identificado')).toHaveAttribute('title', 'Sem vínculo com a taxonomia de temas');
+    unmount();
+
+    render(
+      <TabelaDeImpacto
+        titulo="T"
+        subtitulo="S"
+        rotuloColuna="Subtema"
+        unidade="matérias"
+        nos={[{ id: 'tarifa_social', nome: 'Tarifa social', volume: 0, impacto: 0, sentimento: { pos: 0, neu: 0, neg: 0 } }]}
+        navegavel={() => false}
+        enderecoDe={() => ({ ativo: true })}
+        aoAbrir={() => {}}
+      />,
+    );
+    expect(linhaDe('Tarifa social')).toHaveAttribute('title', 'Nenhuma matéria deste subtema no mês');
   });
 
   it('hover: fundo de hover e nome azul na linha navegável que não é destaque', () => {

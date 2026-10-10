@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import type { Item } from '../dados/tipos';
 import type { EnderecoDoDrill } from '../endereco';
 import { ListaDeMaterias } from './ListaDeMaterias';
@@ -28,6 +28,8 @@ function montar(extra: Partial<EnderecoDoDrill> = {}) {
     <ListaDeMaterias
       subtema={adutora}
       unidade={imprensa.unidade}
+      fonte="Clipei"
+      dataCorte={DADOS.meta.dataCorte}
       endereco={{ ...BASE, ...extra }}
       aoMudar={aoMudar}
       aoAbrirItem={aoAbrirItem}
@@ -43,6 +45,8 @@ function ComEndereco({ inicial = {} }: { inicial?: Partial<EnderecoDoDrill> }) {
     <ListaDeMaterias
       subtema={adutora}
       unidade={imprensa.unidade}
+      fonte="Clipei"
+      dataCorte={DADOS.meta.dataCorte}
       endereco={endereco}
       aoMudar={(parcial) => setEndereco((atual) => ({ ...atual, ...parcial }))}
       aoAbrirItem={() => {}}
@@ -261,6 +265,25 @@ describe('ListaDeMaterias (F.9)', () => {
     ).toBeInTheDocument();
   });
 
+  it('dados reais (D5): jornalista vazio mostra só o veículo; sem data de corte, o rodapé fica só com a fonte', () => {
+    const semAutor = { ...adutora, nivel4: { ...adutora.nivel4!, itens: adutora.nivel4!.itens.map((i) => ({ ...i, jornalista: '' })) } };
+    render(
+      <ListaDeMaterias
+        subtema={semAutor}
+        unidade="matérias"
+        fonte="Clipei"
+        dataCorte=""
+        endereco={BASE}
+        aoMudar={() => {}}
+        aoAbrirItem={() => {}}
+      />,
+    );
+    const celulaDoVeiculo = within(linhas()[0]).getAllByRole('cell')[1];
+    expect(celulaDoVeiculo.children).toHaveLength(1);
+    expect(celulaDoVeiculo.textContent).toBe(semAutor.nivel4.itens.find((i) => i.id === celulaDoVeiculo.closest('[data-item]')!.getAttribute('data-item'))!.veiculo);
+    expect(screen.getByText('Amostra de 11 matérias de um total de 96 no subtema · fonte Clipei')).toBeInTheDocument();
+  });
+
   it('rodapé com filtro ativo', () => {
     montar({ tier: 'Tier 2' });
     expect(screen.getByText('Mostrando 3 de 11 matérias da amostra · 96 no subtema')).toBeInTheDocument();
@@ -290,7 +313,15 @@ describe('ListaDeMaterias (F.9)', () => {
   it('subtema sem nivel4 não desenha nada', () => {
     const { nivel4: _, ...semNivel4 } = adutora;
     const { container } = render(
-      <ListaDeMaterias subtema={semNivel4} unidade="matérias" endereco={BASE} aoMudar={() => {}} aoAbrirItem={() => {}} />,
+      <ListaDeMaterias
+        subtema={semNivel4}
+        unidade="matérias"
+        fonte="Clipei"
+        dataCorte=""
+        endereco={BASE}
+        aoMudar={() => {}}
+        aoAbrirItem={() => {}}
+      />,
     );
     expect(container).toBeEmptyDOMElement();
   });

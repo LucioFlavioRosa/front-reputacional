@@ -14,6 +14,12 @@
  *  OS NÚMEROS DAS ABAS SÃO DO SUBTEMA INTEIRO (`contagens`, A17), e a lista é
  *  só a amostra: por isso o rodapé que diz "Amostra de 11 … de um total de
  *  96" fica sempre visível.
+ *
+ *  A FONTE E A DATA DE CORTE DO RODAPÉ VÊM DA CONSULTA DO MÊS (D5), por prop:
+ *  `fonte` é o nome da fonte da lente e `dataCorte`, o `meta.dataCorte`.
+ *
+ *  JORNALISTA VAZIO (o caso da Clipei, que não informa autor) não deixa uma
+ *  segunda linha em branco sob o veículo: a célula mostra só o veículo.
  */
 
 import { useEffect, useId, useRef } from 'react';
@@ -21,7 +27,6 @@ import type { CSSProperties } from 'react';
 
 import '../consulta.css';
 import { COR_LINHA_DESTACADA } from '../cores';
-import { DADOS } from '../dados/dados';
 import { filtrarItens, opcoesDaAmostra, ordenarItens } from '../dados/seletores';
 import type { Item, Subtema } from '../dados/tipos';
 import type { EnderecoDoDrill, OrdemDaLista, SentimentoDaLista } from '../endereco';
@@ -38,13 +43,13 @@ const GRADE: CSSProperties = {
   alignItems: 'center',
 };
 
-/** "fonte Clipei" do rodapé (F.9): o nome da fonte da Imprensa, que no JSON
- *  vem com o complemento depois da vírgula ("Clipei, ponderado pelo tier do
- *  veículo"). Derivado do JSON para não repetir o nome à mão. */
-const FONTE_DA_AMOSTRA = (DADOS.lentes.find((l) => l.id === 'imprensa')?.fonte ?? '').split(',')[0].trim();
-const CORTE = fmtDataLonga(DADOS.meta.dataCorte);
-
 const ALTURA_DO_CONTROLE = 40;
+
+/** " · fonte Clipei, corte em 31/08/2026" do rodapé (F.9); o que faltar sai. */
+function procedencia(fonte: string, dataCorte: string): string {
+  const partes = [fonte ? `fonte ${fonte}` : '', dataCorte ? `corte em ${fmtDataLonga(dataCorte)}` : ''].filter(Boolean);
+  return partes.length ? ` · ${partes.join(', ')}` : '';
+}
 
 const estiloDoSegmento = (ativo: boolean, primeiro: boolean, ultimo: boolean): CSSProperties => ({
   height: ALTURA_DO_CONTROLE,
@@ -183,10 +188,16 @@ export function ListaDeMaterias({
   endereco,
   aoMudar,
   aoAbrirItem,
+  fonte,
+  dataCorte,
 }: {
   subtema: Subtema;
   /** "matérias", da lente. */
   unidade: string;
+  /** "Clipei": o nome da fonte da lente, sem o complemento (`nomeDaFonte`). */
+  fonte: string;
+  /** `meta.dataCorte` ('2026-08-31'); vazio tira o "corte em" do rodapé. */
+  dataCorte: string;
   endereco: EnderecoDoDrill;
   /** Escreve no endereço (o nível usa `replace`). `undefined` remove a chave. */
   aoMudar: (parcial: Partial<EnderecoDoDrill>) => void;
@@ -226,7 +237,7 @@ export function ListaDeMaterias({
 
   const rodape = filtroAtivo
     ? `Mostrando ${fmtInt(visiveis.length)} de ${fmtInt(itens.length)} ${unidade} da amostra · ${fmtInt(subtema.volume)} no subtema`
-    : `Amostra de ${fmtInt(itens.length)} ${unidade} de um total de ${fmtInt(subtema.volume)} no subtema · fonte ${FONTE_DA_AMOSTRA}, corte em ${CORTE}`;
+    : `Amostra de ${fmtInt(itens.length)} ${unidade} de um total de ${fmtInt(subtema.volume)} no subtema${procedencia(fonte, dataCorte)}`;
 
   return (
     <CartaoDoDrill titulo={tituloLista} subtitulo={subtituloLista}>
@@ -329,7 +340,9 @@ export function ListaDeMaterias({
                   </span>
                   <div role="cell" style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cinza-4)' }}>{item.veiculo}</div>
-                    <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2 }}>{item.jornalista}</div>
+                    {item.jornalista.trim() ? (
+                      <div style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2 }}>{item.jornalista}</div>
+                    ) : null}
                   </div>
                   <div role="cell" style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>

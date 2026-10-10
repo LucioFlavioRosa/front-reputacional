@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import type { Item, Lente, Tema } from '../dados/tipos';
 import type { AlvoDaPrevia } from './apoioDosCartoes';
 import {
@@ -211,7 +211,7 @@ describe('CartoesLaterais · Mercado e demais', () => {
 describe('CartaoDeRecortes', () => {
   it('cabeçalho, botão com o volume do subtema e quatro quadros', async () => {
     const aoVerMaterias = vi.fn();
-    render(<CartaoDeRecortes tema={temaComRecortes()} aoVerMaterias={aoVerMaterias} />);
+    render(<CartaoDeRecortes tema={temaComRecortes()} aoVerMaterias={aoVerMaterias} rotuloMes={DADOS.meta.rotuloMes} />);
     expect(screen.getByText('Recortes · Rompimento de adutora em agosto')).toHaveClass('kicker');
     expect(screen.getByRole('heading', { level: 3, name: /A grande imprensa fez o estrago/ })).toBeInTheDocument();
     expect(screen.getByText(/96 matérias, 71 negativas/)).toBeInTheDocument();
@@ -235,7 +235,9 @@ describe('CartaoDeRecortes', () => {
   });
 
   it('tema sem destaque não desenha nada', () => {
-    const { container } = render(<CartaoDeRecortes tema={{ ...temaComRecortes(), nivel3: undefined }} aoVerMaterias={vi.fn()} />);
+    const { container } = render(
+      <CartaoDeRecortes tema={{ ...temaComRecortes(), nivel3: undefined }} aoVerMaterias={vi.fn()} rotuloMes={DADOS.meta.rotuloMes} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 });
@@ -305,6 +307,27 @@ describe('ModalDePrevia', () => {
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.queryByText(/integração do clipping/)).toBeNull();
+  });
+
+  it('item real sem título, sem jornalista, sem trecho e sem link (D5): nada de "· ·" nem parágrafo vazio', () => {
+    const real: Item = {
+      ...item,
+      titulo: '(sem título na planilha)',
+      jornalista: '',
+      trecho: '',
+      url: null,
+      concessionaria: 'Não informada',
+      uf: 'Não informada',
+    };
+    render(<ModalDePrevia alvo={{ tipo: 'item', item: real }} aoFechar={vi.fn()} dadosReais />);
+    const dialogo = screen.getByRole('dialog', { name: '(sem título na planilha)' });
+    expect(within(dialogo).getByText('O Globo · 12/08/2026')).toBeInTheDocument();
+    expect(dialogo.textContent).not.toMatch(/·\s*·/);
+    // NOS DADOS REAIS a falta do link é da linha da planilha, não de uma
+    // integração por vir (A22).
+    expect(within(dialogo).getByText('A fonte não informou o link desta matéria.')).toBeInTheDocument();
+    expect(within(dialogo).queryByText(/integração do clipping/)).toBeNull();
+    expect(within(dialogo).queryByRole('link')).toBeNull();
   });
 
   it('post: selo de perfil e linha da rede', () => {

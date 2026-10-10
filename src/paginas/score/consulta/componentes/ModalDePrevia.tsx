@@ -16,9 +16,15 @@
  *  navegadores. Os cartões e a lista já entregam o botão (`aoAbrirItem(item,
  *  botao)`); quem monta o modal o repassa aqui.
  *
- *  NUNCA UM LINK INVENTADO: sem `url` (o caso da demonstração), no lugar do
- *  botão vai a frase da spec; endereço que não é http(s) conta como sem
- *  `url`.
+ *  NUNCA UM LINK INVENTADO: sem `url`, no lugar do botão vai uma frase;
+ *  endereço que não é http(s) conta como sem `url`. NA BASE ILUSTRATIVA é a
+ *  frase da spec ("entra com a integração do clipping"); NOS DADOS REAIS
+ *  (`dadosReais`, D5) ela seria falsa, porque a carga já é a do clipping e
+ *  a falta é da própria linha da planilha, então vai a frase neutra (A22).
+ *
+ *  OS DADOS REAIS VÊM COM BURACOS (D5): jornalista vazio (a Clipei não
+ *  informa autor) sai da linha "veículo · jornalista · data" em vez de deixar
+ *  um "·  ·" solto, e trecho vazio não desenha um parágrafo em branco.
  */
 
 import { useLayoutEffect, useRef } from 'react';
@@ -34,13 +40,22 @@ import { SeloDeTier } from './SeloDeTier';
 
 const LARGURA = 640;
 
+/** "Folha · Ana Souza · 12/08/2026", sem as partes vazias. */
+function juntar(partes: string[]): string {
+  return partes.filter((p) => p.trim()).join(' · ');
+}
+
 export function ModalDePrevia({
   alvo,
   aoFechar,
   devolverFocoPara,
+  dadosReais = false,
 }: {
   alvo: AlvoDaPrevia;
   aoFechar: () => void;
+  /** A prévia é de uma resposta real do endpoint (sem `meta.aviso`): muda a
+   *  frase de link ausente (A22). */
+  dadosReais?: boolean;
   /** O botão que abriu a prévia: recebe o foco de volta ao fechar (F.8). */
   devolverFocoPara?: HTMLElement | null;
 }) {
@@ -57,8 +72,8 @@ export function ModalDePrevia({
   const titulo = ehItem ? alvo.item.titulo : alvo.titulo;
   const sentimento = ehItem ? alvo.item.sentimento : alvo.post.sentimento;
   const meta = ehItem
-    ? `${alvo.item.veiculo} · ${alvo.item.jornalista} · ${fmtDataLonga(alvo.item.data)}`
-    : `${alvo.post.rede} · ${alvo.post.perfil} · ${fmtDataLonga(alvo.post.data)}`;
+    ? juntar([alvo.item.veiculo, alvo.item.jornalista, fmtDataLonga(alvo.item.data)])
+    : juntar([alvo.post.rede, alvo.post.perfil, fmtDataLonga(alvo.post.data)]);
   const trecho = ehItem ? alvo.item.trecho : `“${alvo.post.texto}”`;
   const local = ehItem
     ? `${alvo.item.concessionaria} · ${alvo.item.uf}`
@@ -76,7 +91,9 @@ export function ModalDePrevia({
         )}
       </div>
       <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--cinza-3)' }}>{meta}</p>
-      <p style={{ margin: '14px 0 0', fontSize: 15, lineHeight: 1.6, color: 'var(--cinza-4)' }}>{trecho}</p>
+      {trecho.trim() ? (
+        <p style={{ margin: '14px 0 0', fontSize: 15, lineHeight: 1.6, color: 'var(--cinza-4)' }}>{trecho}</p>
+      ) : null}
       <p style={{ margin: '14px 0 0', fontSize: 13, color: 'var(--cinza-3)' }}>{local}</p>
       {ehItem ? (
         <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--cinza-3)' }}>
@@ -109,7 +126,9 @@ export function ModalDePrevia({
           </a>
         ) : (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-3)' }}>
-            O link para a fonte original entra com a integração do clipping.
+            {dadosReais
+              ? 'A fonte não informou o link desta matéria.'
+              : 'O link para a fonte original entra com a integração do clipping.'}
           </p>
         )}
       </div>

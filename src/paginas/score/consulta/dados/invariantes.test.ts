@@ -5,13 +5,29 @@
  *  igualdades exatas de ponto flutuante).
  *
  *  O JSON ENTREGUE PASSA EM TODAS (spec C.4). Se um teste daqui falhar, o
- *  defeito está na leitura (tipos, `dados.ts`, cópia do arquivo), não no JSON.
+ *  defeito está na leitura (tipos, `fixtures/ilustrativo.ts`, cópia do
+ *  arquivo), não no JSON.
+ *
+ *  NÓS DE FECHAMENTO (D5): a resposta real do endpoint `/consulta` traz
+ *  'sem-pilar', 'sem-tema' e 'sem-subtema' como irmãos comuns. Eles entram nas
+ *  somas (Σ filhos = pai, Σ pilares = nota − 50), mas não contam entre os 7
+ *  pilares, nunca são destaque e nunca têm filhos nem `nivel2/3/4`. O JSON
+ *  ilustrativo não tem nenhum; as regras abaixo valem para os dois.
+ *
+ *  O QUE A RESPOSTA REAL TEM DE DIFERENTE, e as regras já toleram: `nota` e os
+ *  meses de `serie` vêm `null` quando o mês não tem dado (a 2 e a C.5 ignoram
+ *  o buraco), e nó com volume 0 vem com sentimento {0, 0, 0} (a 4 exige 100 só
+ *  com volume). A 12 NÃO SE APLICA À RESPOSTA DA API com a tolerância daqui:
+ *  lá `de` e `para` são as notas inteiras e as linhas são impactos
+ *  arredondados, então `de + Σ linhas` só fecha com `para` dentro do
+ *  arredondamento da nota (até 0,5; medido: 62 + Σ = 42,40 contra 42).
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { arred } from '../formatacao';
-import { DADOS } from './dados';
+import { DADOS } from './fixtures/ilustrativo';
+import { ehNoDeFechamento } from './seletores';
 import type { Lente, No, Pilar, Sentimento, Subtema, Tema } from './tipos';
 
 const LENTES = DADOS.lentes;
@@ -44,7 +60,8 @@ describe('C.4 · invariantes do JSON (validar_dados.py)', () => {
   });
 
   it('C.5 · índice geral calculado é [55, 63, 53, 49, 51, 49]', () => {
-    const isr = [0, 1, 2, 3, 4, 5].map((m) => arred(soma(LENTES.map((l) => l.peso * l.serie[m]))));
+    // `null` (mês sem dado, só nos dados reais) fica fora da soma.
+    const isr = [0, 1, 2, 3, 4, 5].map((m) => arred(soma(LENTES.map((l) => l.peso * (l.serie[m] ?? 0)))));
     expect(isr).toEqual([55, 63, 53, 49, 51, 49]);
   });
 
@@ -52,18 +69,37 @@ describe('C.4 · invariantes do JSON (validar_dados.py)', () => {
     it('2 · serie[5] === nota e |50 + Σ impacto dos pilares − nota| ≤ 0,5', () => {
       expect(l.serie).toHaveLength(6);
       expect(l.serie[l.serie.length - 1]).toBe(l.nota);
-      expect(Math.abs(50 + soma(l.pilares.map((p) => p.impacto)) - l.nota)).toBeLessThanOrEqual(0.5);
+      // NOTA NULA (mês sem dado, nos dados reais): não há o que fechar.
+      if (l.nota !== null) {
+        expect(Math.abs(50 + soma(l.pilares.map((p) => p.impacto)) - l.nota)).toBeLessThanOrEqual(0.5);
+      }
     });
 
-    it('3 · Σ volume dos pilares === volumeTotal; sempre 7 pilares', () => {
+    it('3 · Σ volume dos pilares === volumeTotal; sempre 7 pilares (fora o de fechamento)', () => {
       expect(soma(l.pilares.map((p) => p.volume))).toBe(l.volumeTotal);
-      expect(l.pilares).toHaveLength(7);
+      expect(l.pilares.filter((p) => !ehNoDeFechamento(p))).toHaveLength(7);
     });
 
-    it('4 · toda distribuição de sentimento soma 100', () => {
+    it('nós de fechamento (D5): só os três ids, sem filhos e sem nível abaixo', () => {
+      const nos: [string, Pilar | Tema | Subtema, string][] = [
+        ...pilaresDe(l).map(([ctx, p]): [string, Pilar, string] => [ctx, p, 'sem-pilar']),
+        ...temasDe(l).map(([ctx, t]): [string, Tema, string] => [ctx, t, 'sem-tema']),
+        ...subtemasDe(l).map(([ctx, x]): [string, Subtema, string] => [ctx, x, 'sem-subtema']),
+      ];
+      for (const [ctx, n, idEsperado] of nos) {
+        if (!ehNoDeFechamento(n)) continue;
+        expect(n.id, ctx).toBe(idEsperado);
+        expect('filhos' in n ? n.filhos : undefined, ctx).toBeUndefined();
+        expect('nivel2' in n ? n.nivel2 : undefined, ctx).toBeUndefined();
+        expect('nivel3' in n ? n.nivel3 : undefined, ctx).toBeUndefined();
+        expect('nivel4' in n ? n.nivel4 : undefined, ctx).toBeUndefined();
+      }
+    });
+
+    it('4 · toda distribuição de sentimento soma 100 (ou tudo 0 com volume 0)', () => {
       const nos: [string, No][] = [...pilaresDe(l), ...temasDe(l), ...subtemasDe(l)];
       for (const [ctx, n] of nos) {
-        expect(n.sentimento.pos + n.sentimento.neu + n.sentimento.neg, ctx).toBe(100);
+        expect(n.sentimento.pos + n.sentimento.neu + n.sentimento.neg, ctx).toBe(n.volume > 0 ? 100 : 0);
       }
     });
 
@@ -100,8 +136,9 @@ describe('C.4 · invariantes do JSON (validar_dados.py)', () => {
   });
 
   describe.each(LENTES_COM_DRILL.map((l) => [l.id, l] as const))('lente com drill %s', (_id, l) => {
-    it('todo pilar tem temas e nivel2', () => {
+    it('todo pilar (fora o de fechamento) tem temas e nivel2', () => {
       for (const [ctx, p] of pilaresDe(l)) {
+        if (ehNoDeFechamento(p)) continue;
         expect(p.filhos, ctx).toBeDefined();
         expect(p.nivel2, ctx).toBeDefined();
       }
@@ -119,7 +156,9 @@ describe('C.4 · invariantes do JSON (validar_dados.py)', () => {
 
     it('7 · tema em destaque do Nível 2: maior |impacto| (desempate por volume), evolução e concentração fecham', () => {
       for (const [ctx, p] of pilaresDe(l)) {
-        const filhos = p.filhos!;
+        if (ehNoDeFechamento(p)) continue;
+        // O DESTAQUE É SEMPRE UM TEMA IDENTIFICADO: 'sem-tema' fica de fora.
+        const filhos = p.filhos!.filter((x) => !ehNoDeFechamento(x));
         const de = p.nivel2!.destaque;
         const candidatos = filhos.filter((x) => x.id === de.temaId);
         expect(candidatos, `${ctx}: destaque inexistente`).toHaveLength(1);
@@ -152,11 +191,12 @@ describe('C.4 · invariantes do JSON (validar_dados.py)', () => {
 
     it('8 · recortes do Nível 3 (tiers e concessionárias) somam volume e impacto do subtema em destaque', () => {
       for (const [ctx, t] of temasDe(l)) {
-        if (!t.filhos?.length) continue;
+        if (ehNoDeFechamento(t) || !t.filhos?.length) continue;
         expect(t.nivel3, `${ctx}: tema com subtemas sem nivel3`).toBeDefined();
         const n3 = t.nivel3!.destaque;
         const s = t.filhos.find((x) => x.id === n3.subtemaId);
         expect(s, `${ctx}: subtema em destaque inexistente`).toBeDefined();
+        expect(ehNoDeFechamento(s!), `${ctx}: destaque é nó de fechamento`).toBe(false);
         for (const k of ['tiers', 'concessionarias'] as const) {
           const linhas = n3[k].linhas;
           expect(soma(linhas.map((x) => x.volume)), `${ctx}/${k}: volume`).toBe(s!.volume);

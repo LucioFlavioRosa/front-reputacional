@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import {
   DIARIO,
   diaDePico,

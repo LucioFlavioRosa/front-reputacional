@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DADOS } from '../dados/dados';
+import { DADOS } from '../dados/fixtures/ilustrativo';
 import { resolverCaminho } from '../dados/seletores';
 import { CabecalhoDoDrill } from './CabecalhoDoDrill';
 import { IndicadorDeNivel } from './IndicadorDeNivel';
@@ -24,10 +24,16 @@ const NIVEL_4 = {
 };
 
 describe('CabecalhoDoDrill (A11)', () => {
-  it('mostra o mês e a data de corte do JSON e o selo', () => {
-    render(<CabecalhoDoDrill />);
+  it('mostra o mês e a data de corte da consulta e o selo da fonte ilustrativa', () => {
+    render(<CabecalhoDoDrill meta={DADOS.meta} />);
     expect(screen.getByText('Agosto de 2026 · corte em 31/08/2026')).toBeInTheDocument();
     expect(screen.getByText('Dados ilustrativos')).toBeInTheDocument();
+  });
+
+  it('com os dados reais (aviso vazio) a linha fica e o selo some (D5)', () => {
+    render(<CabecalhoDoDrill meta={{ ...DADOS.meta, aviso: '' }} />);
+    expect(screen.getByText('Agosto de 2026 · corte em 31/08/2026')).toBeInTheDocument();
+    expect(screen.queryByText('Dados ilustrativos')).toBeNull();
   });
 });
 
@@ -97,7 +103,7 @@ describe('Trilha (E.3.4)', () => {
 
 describe('IndicadorDeNivel (E.3.4)', () => {
   it('texto "Nível N de 4 · <nome>", cinco segmentos de 22×4px e o selo', () => {
-    const { container } = render(<IndicadorDeNivel nivel={3} />);
+    const { container } = render(<IndicadorDeNivel nivel={3} aviso={DADOS.meta.aviso} />);
     expect(container.textContent).toContain('Nível 3 de 4 · Subtemas');
     const segmentos = [...container.querySelectorAll<HTMLElement>('[data-segmento]')];
     expect(segmentos).toHaveLength(5);
@@ -109,13 +115,15 @@ describe('IndicadorDeNivel (E.3.4)', () => {
   });
 
   it('no Nível 4 a barra fica cheia; no Nível 1 há dois segmentos cheios', () => {
-    const { container, rerender } = render(<IndicadorDeNivel nivel={4} />);
+    const { container, rerender } = render(<IndicadorDeNivel nivel={4} aviso={DADOS.meta.aviso} />);
     const cheios = () => container.querySelectorAll('[data-segmento="cheio"]').length;
     expect(cheios()).toBe(5);
     expect(container.textContent).toContain('Nível 4 de 4 · Matérias');
-    rerender(<IndicadorDeNivel nivel={1} />);
+    rerender(<IndicadorDeNivel nivel={1} aviso="" />);
     expect(cheios()).toBe(2);
     expect(container.textContent).toContain('Nível 1 de 4 · Lente e pilares');
+    // Dados reais (aviso vazio, D5): o selo some do indicador.
+    expect(screen.queryByText('Dados ilustrativos')).toBeNull();
   });
 });
 

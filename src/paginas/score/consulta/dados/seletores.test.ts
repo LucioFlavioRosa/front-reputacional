@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DADOS } from './dados';
+import { DADOS } from './fixtures/ilustrativo';
 import {
   NOMES_DOS_NIVEIS,
   agruparPorImpacto,
@@ -682,5 +682,71 @@ describe('buscarNoDrill (E.9)', () => {
       'Tema:Governança corporativa',
       'Pilar:Governança',
     ]);
+  });
+});
+
+describe('nós de fechamento sem-* (D5)', () => {
+  /** A Imprensa ilustrativa com os três nós de fechamento que o back acrescenta
+   *  aos dados reais: 'Sem pilar identificado', 'Sem tema identificado' (na
+   *  Eficiência) e 'Sem subtema identificado' (no Abastecimento). */
+  function comFechamento(): Dados {
+    const dados: Dados = structuredClone({ ...DADOS, lentes: [imprensa] });
+    const lente = dados.lentes[0];
+    const efic = lente.pilares.find((p) => p.id === 'eficiencia-operacional')!;
+    const abast = efic.filhos!.find((t) => t.id === 'abastecimento-agua')!;
+    lente.pilares.push({ ...no('sem-pilar', -0.4, 3), nome: 'Sem pilar identificado' });
+    efic.filhos!.push({ ...no('sem-tema', -0.2, 2), nome: 'Sem tema identificado' });
+    abast.filhos!.push({ ...no('sem-subtema', 0, 1), nome: 'Sem subtema identificado' });
+    return dados;
+  }
+  const dados = comFechamento();
+  const lente = dados.lentes[0];
+  const semPilar = lente.pilares.find((p) => p.id === 'sem-pilar')!;
+  const efic = lente.pilares.find((p) => p.id === 'eficiencia-operacional')!;
+  const semTema = efic.filhos!.find((t) => t.id === 'sem-tema')!;
+  const semSubtema = efic.filhos!.find((t) => t.id === 'abastecimento-agua')!.filhos!.find((s) => s.id === 'sem-subtema')!;
+  const base: EnderecoDoDrill = { ativo: true, lente: 'imprensa' };
+
+  it('nunca são navegáveis, nem se vierem com filhos ou nivel4 por engano', () => {
+    expect(pilarNavegavel(lente, semPilar)).toBe(false);
+    expect(pilarNavegavel(lente, { ...semPilar, filhos: efic.filhos })).toBe(false);
+    expect(temaNavegavel(semTema)).toBe(false);
+    expect(temaNavegavel({ ...semTema, filhos: abastecimento.filhos, nivel3: abastecimento.nivel3 })).toBe(false);
+    expect(subtemaNavegavel(semSubtema)).toBe(false);
+    expect(subtemaNavegavel({ ...semSubtema, nivel4: rompimento.nivel4 })).toBe(false);
+  });
+
+  it('resolverCaminho para no nível de cima e corrige o endereço', () => {
+    const p = resolverCaminho(dados, 'imprensa', { ...base, pilar: 'sem-pilar' });
+    expect(p.nivel).toBe(1);
+    expect(p.corrigido).toEqual(base);
+
+    const t = resolverCaminho(dados, 'imprensa', { ...base, pilar: 'eficiencia-operacional', tema: 'sem-tema' });
+    expect(t.nivel).toBe(2);
+    expect(t.corrigido).toEqual({ ...base, pilar: 'eficiencia-operacional' });
+
+    const s = resolverCaminho(dados, 'imprensa', {
+      ...base,
+      pilar: 'eficiencia-operacional',
+      tema: 'abastecimento-agua',
+      subtema: 'sem-subtema',
+    });
+    expect(s.nivel).toBe(3);
+    expect(s.corrigido).toEqual({ ...base, pilar: 'eficiencia-operacional', tema: 'abastecimento-agua' });
+  });
+
+  it('entram na tabela como irmãos comuns: a soma do grupo inclui o fechamento', () => {
+    const grupos = agruparPorImpacto(lente.pilares);
+    expect(grupos.pressiona.map((p) => p.id)).toContain('sem-pilar');
+    expect(grupos.somaPressiona).toBe(-11.5);
+    expect(agruparPorImpacto(efic.filhos!).pressiona.map((t) => t.id)).toContain('sem-tema');
+  });
+
+  it('não entram na busca', () => {
+    const indice = montarIndiceDeBusca(dados);
+    expect(indice.some(({ resultado }) => resultado.id.startsWith('sem-'))).toBe(false);
+    expect(buscarNoDrill(indice, 'identificado')).toEqual([]);
+    // O resto da árvore continua indexado.
+    expect(buscarNoDrill(indice, 'adutora').length).toBeGreaterThan(0);
   });
 });

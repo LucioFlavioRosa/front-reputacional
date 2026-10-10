@@ -16,7 +16,6 @@ import { CartaoDeRecortes } from '../componentes/CartaoDeRecortes';
 import { LimiteDoBloco } from '../componentes/LimiteDoBloco';
 import { ResumoDoNivel } from '../componentes/ResumoDoNivel';
 import { RodapeDaConta, TabelaDeImpacto } from '../componentes/TabelaDeImpacto';
-import { DADOS } from '../dados/dados';
 import { agruparPorImpacto, subtemaNavegavel } from '../dados/seletores';
 import type { Dados, Lente, Pilar, Tema } from '../dados/tipos';
 import { fmtInt, fmtPct } from '../formatacao';
@@ -30,14 +29,14 @@ export function NivelTema({
   refDoTitulo,
   chaveDeReinicio,
   aoIr,
-  meta = DADOS.meta,
+  meta,
 }: Pick<AcoesDoNivel, 'aoIr'> & {
   lente: Lente;
   pilar: Pilar;
   tema: Tema;
   refDoTitulo: Ref<HTMLHeadingElement>;
   chaveDeReinicio: string;
-  meta?: Dados['meta'];
+  meta: Dados['meta'];
 }) {
   const subtemas = tema.filhos ?? [];
   const nivel3 = tema.nivel3;

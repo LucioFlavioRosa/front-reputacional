@@ -6,10 +6,13 @@ import {
   catalogoMudou,
   escreveAgendas,
   escreveNoCatalogo,
+  escreveNoScore,
+  scoreMudou,
 } from '@/dominio/sincronizacao';
 import type { Alegacao, ArquivoDoMaterial } from '@/dominio/tipos';
 import type { Bloco, Dossie } from '@/dominio/dossie';
 import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
+import type { Dados as ConsultaDaLente } from '@/paginas/score/consulta/dados/tipos';
 import type { Recorte } from '@/dominio/recorte';
 import type {
   Calibracao,
@@ -195,6 +198,10 @@ function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
   // interação recarrega a Base sozinho, em todas as abas abertas. Antes disto a
   // pessoa confirmava 54 agendas e precisava de um F5 para vê-las.
   if (escreveAgendas(metodo, caminho)) agendasMudaram.avisar();
+  // O SCORE TAMBÉM: subir a planilha ou mudar a calibração invalida o cache da
+  // Consulta em profundidade, que senão mostraria a árvore antiga ao lado da
+  // Jornada já atualizada.
+  if (escreveNoScore(metodo, caminho)) scoreMudou.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */
@@ -1066,6 +1073,18 @@ export function obterOpcoesDeFiltroDaLente(
 ): Promise<OpcoesDeFiltroDaLente> {
   return requisitar<OpcoesDeFiltroDaLente>(
     `/api/score/lentes/${codigo}/dossie/opcoes-de-filtro?mes=${mes}`,
+  );
+}
+
+/** A Consulta em profundidade (bloco "Drill down" da aba Lentes) de uma lente
+ *  no mês: pilares, temas, subtemas e a amostra de matérias, já com as frases.
+ *
+ *  A RESPOSTA É O PRÓPRIO `Dados` DO DRILL, com UMA lente em `lentes`: assim
+ *  `resolverCaminho` e os quatro níveis leem o mês real sem mudar de forma.
+ *  Só a Imprensa e o Mercado respondem; outra lente volta 404. */
+export function obterConsultaDaLente(codigo: string, mes: string): Promise<ConsultaDaLente> {
+  return requisitar<ConsultaDaLente>(
+    `/api/score/lentes/${codigo}/consulta?${new URLSearchParams({ mes })}`,
   );
 }
 

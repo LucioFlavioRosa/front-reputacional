@@ -1,5 +1,6 @@
 /** Indicador de nível (E.3.4): cinco segmentos de 22×4px, o texto
- *  "Nível N de 4 · <nome do nível>" e o selo "Dados ilustrativos".
+ *  "Nível N de 4 · <nome do nível>" e o selo "Dados ilustrativos" (só
+ *  quando a fonte é ilustrativa, D5).
  *
  *  CINCO SEGMENTOS PARA QUATRO NÍVEIS, como a spec pede. O primeiro segmento
  *  é a escolha da lente (sempre feita, pela aba) e os outros quatro são os
@@ -11,14 +12,13 @@
  *  tela lê.
  */
 
-import { DADOS } from '../dados/dados';
 import { NOMES_DOS_NIVEIS } from '../dados/seletores';
 import type { Nivel } from '../dados/seletores';
 import { SeloIlustrativo } from './SeloIlustrativo';
 
 const SEGMENTOS = [0, 1, 2, 3, 4] as const;
 
-export function IndicadorDeNivel({ nivel, aviso = DADOS.meta.aviso }: { nivel: Nivel; aviso?: string }) {
+export function IndicadorDeNivel({ nivel, aviso }: { nivel: Nivel; aviso: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <span aria-hidden="true" style={{ display: 'inline-flex', gap: 4 }}>

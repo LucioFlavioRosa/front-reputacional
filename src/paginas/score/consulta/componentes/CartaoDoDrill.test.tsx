@@ -72,7 +72,7 @@ describe('CartaoDoDrill', () => {
 
 describe('selos', () => {
   it('SeloIlustrativo mostra meta.aviso no selo neutro', () => {
-    render(<SeloIlustrativo />);
+    render(<SeloIlustrativo aviso="Dados ilustrativos" />);
     const selo = screen.getByText('Dados ilustrativos');
     expect(selo.getAttribute('style')).toContain('var(--bg-trilho)');
     expect(selo.getAttribute('style')).toContain('var(--cinza-3)');

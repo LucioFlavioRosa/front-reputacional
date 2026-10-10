@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IndiceDoScore, OpcoesDoScore } from '@/dominio/score';
+import { consultaIlustrativa } from '@/paginas/score/consulta/dados/fixtures/ilustrativo';
 
 const OPCOES_DO_SCORE: OpcoesDoScore = {
   reguas_de_tier: [],
@@ -45,6 +46,8 @@ vi.mock('@/api/cliente', () => ({
   obterDriversDoScore: vi.fn(() => new Promise(() => {})),
   obterDossieDaLente: vi.fn(() => new Promise(() => {})),
   obterOpcoesDeFiltroDaLente: vi.fn(() => Promise.resolve(undefined)),
+  // A busca do cabeçalho indexa a árvore da Imprensa do mês (D5).
+  obterConsultaDaLente: vi.fn((lente: string) => Promise.resolve(consultaIlustrativa(lente))),
 }));
 
 vi.mock('@/paginas/score/PainelDaJornada', () => ({
@@ -167,6 +170,8 @@ describe('Score · busca do cabeçalho leva ao drill (D3)', () => {
     const antes = window.history.length;
 
     await userEvent.type(screen.getByRole('combobox'), 'adutora');
+    // O grupo do drill aparece quando a árvore do mês chega.
+    await screen.findByRole('group', { name: 'Consulta em profundidade · Subtema' });
     await userEvent.keyboard('{Enter}');
 
     await waitFor(() => expect(screen.getByText('raiz do drill: imprensa')).toBeTruthy());
@@ -186,7 +191,7 @@ describe('Score · busca do cabeçalho leva ao drill (D3)', () => {
     const antes = window.history.length;
 
     await userEvent.type(screen.getByRole('combobox'), 'fiscalizacao');
-    const subtemas = screen.getByRole('group', { name: 'Consulta em profundidade · Subtema' });
+    const subtemas = await screen.findByRole('group', { name: 'Consulta em profundidade · Subtema' });
     const [opcao] = Array.from(subtemas.querySelectorAll('[role="option"]'));
     await userEvent.click(opcao);
 

@@ -34,6 +34,12 @@ export interface AcoesDoNivel {
 // Endereços dos níveis
 // ---------------------------------------------------------------------------
 
+/** "Clipei, ponderado pelo tier do veículo" → "Clipei": o nome da fonte da
+ *  lente, sem o complemento depois da vírgula (rodapé da lista, F.9). */
+export function nomeDaFonte(fonte: string): string {
+  return (fonte.split(',')[0] ?? '').trim();
+}
+
 /** Nível 1 da lente: só a lente, sem níveis e sem filtros. */
 export function enderecoDaLente(lente: Lente): EnderecoDoDrill {
   return { ativo: true, lente: lente.id };

@@ -35,7 +35,8 @@ import type { ReactNode, Ref } from 'react';
 import { Selo } from '@/componentes/basicos';
 
 import { COR_FUNDO_DESTAQUE, COR_LINHA_DESTACADA } from '../cores';
-import { agruparPorImpacto, escalaDeImpacto, participacao } from '../dados/seletores';
+import { agruparPorImpacto, escalaDeImpacto, motivoSemDetalhamento, participacao } from '../dados/seletores';
+import type { ColunaDaTabela } from '../dados/seletores';
 import type { No } from '../dados/tipos';
 import { escreverEndereco } from '../endereco';
 import type { EnderecoDoDrill } from '../endereco';
@@ -54,8 +55,6 @@ const ESTILO_DA_GRADE = {
   padding: '14px 20px',
   alignItems: 'center',
 } as const;
-
-const TITULO_NAO_NAVEGAVEL = 'Detalhamento disponível com a carga completa de dados';
 
 // ---------------------------------------------------------------------------
 // Rodapé "A conta fecha" (Níveis 2 e 3)
@@ -143,6 +142,8 @@ interface PropsDaLinha<T extends No> {
   navegavel: boolean;
   endereco?: EnderecoDoDrill;
   aoAbrir: (no: T) => void;
+  /** O `title` da linha que não abre (`motivoSemDetalhamento`). */
+  motivoFixa: string;
 }
 
 function Linha<T extends No>({
@@ -155,6 +156,7 @@ function Linha<T extends No>({
   navegavel,
   endereco,
   aoAbrir,
+  motivoFixa,
 }: PropsDaLinha<T>) {
   const [sobre, definirSobre] = useState(false);
   const id = useId();
@@ -233,7 +235,7 @@ function Linha<T extends No>({
 
   return (
     <li style={{ listStyle: 'none' }}>
-      <div title={TITULO_NAO_NAVEGAVEL} data-linha="fixa" style={{ ...estiloComum, cursor: 'default' }}>
+      <div title={motivoFixa} data-linha="fixa" style={{ ...estiloComum, cursor: 'default' }}>
         {celulas}
       </div>
     </li>
@@ -288,10 +290,11 @@ export function TabelaDeImpacto<T extends No>({
   refDoTitulo,
   focavel,
   idDoTitulo,
+  lenteComDrill = true,
 }: {
   titulo: string;
   subtitulo: string;
-  rotuloColuna: 'Pilar' | 'Tema estratégico' | 'Subtema';
+  rotuloColuna: ColunaDaTabela;
   /** `lente.unidade`: "matérias", "menções"... */
   unidade: string;
   nos: T[];
@@ -307,6 +310,9 @@ export function TabelaDeImpacto<T extends No>({
   refDoTitulo?: Ref<HTMLHeadingElement>;
   focavel?: boolean;
   idDoTitulo?: string;
+  /** `lente.drill`: no Mercado (D2) nenhuma linha abre, e o `title` diz por
+   *  quê. */
+  lenteComDrill?: boolean;
 }) {
   const grupos = agruparPorImpacto(nos);
   const escala = escalaDeImpacto(nos.map((n) => n.impacto));
@@ -328,6 +334,7 @@ export function TabelaDeImpacto<T extends No>({
           navegavel={vaiAbrir}
           endereco={vaiAbrir ? enderecoDe(no) : undefined}
           aoAbrir={aoAbrir}
+          motivoFixa={vaiAbrir ? '' : motivoSemDetalhamento(no, rotuloColuna, lenteComDrill)}
         />
       );
     });
