@@ -219,9 +219,14 @@ function Tabela({
   if (pessoas.length === 0) return <Vazio mensagem="Ninguém nesta situação." />;
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div
+      className="rolagem-das-duas-barras"
+      tabIndex={0}
+      role="group"
+      aria-label="Pessoas com acesso, rolável"
+    >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead className="cabecalho-que-fica">
           <tr style={{ textAlign: 'left', color: 'var(--cinza-2)' }}>
             <th style={celulaDeCabecalho}>Pessoa</th>
             <th style={celulaDeCabecalho}>Papel</th>

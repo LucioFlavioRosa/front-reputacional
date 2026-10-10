@@ -349,9 +349,18 @@ export function TabelaDeImpacto<T extends No>({
       idDoTitulo={idDoTitulo}
     >
       <div style={{ margin: '0 -20px -20px' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div
+          className="rolagem-das-duas-barras"
+          tabIndex={0}
+          role="group"
+          aria-label="Tabela de impacto, rolável"
+        >
           <div style={{ minWidth: 820 }}>
-            <div aria-hidden="true" className="kicker" style={{ ...ESTILO_DA_GRADE, borderTop: '1px solid var(--borda)' }}>
+            <div
+              aria-hidden="true"
+              className="kicker cabecalho-que-fica"
+              style={{ ...ESTILO_DA_GRADE, borderTop: '1px solid var(--borda)' }}
+            >
               <span>{rotuloColuna}</span>
               <span>Volume</span>
               <span>Sentimento</span>

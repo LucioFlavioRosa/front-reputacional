@@ -188,6 +188,121 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 /* Rolagem interna dos blocos densos (base, filas, tabelas). */
 .rolagem-interna { overflow: auto; }
 
+/* AS DUAS BARRAS DE ROLAGEM NA TELA AO MESMO TEMPO.
+
+   O DEFEITO que isto corrige: uma tabela larga com `overflow-x: auto` e sem
+   limite de altura cresce com o conteúdo, e a barra horizontal dela fica no FIM
+   DO DOCUMENTO. Para arrastar a barra e ver as colunas da direita, a pessoa
+   tinha de rolar a página toda para baixo — e aí perdia de vista as linhas que
+   queria ler.
+
+   `72vh` E NÃO `calc(100vh - Npx)`: o valor em `vh` não depende de quanto
+   cabeçalho e filtro existem acima, então a mesma classe serve às seis tabelas
+   deste produto sem um número diferente em cada uma. E só age quando precisa —
+   tabela curta não tem altura suficiente para o limite valer.
+
+   O CABEÇALHO VAI JUNTO (`.cabecalho-que-fica`): rolar por dentro sem o nome
+   das colunas trocaria um incômodo por outro. A classe é explícita, e não um
+   seletor que alcança o primeiro filho, porque cada tabela tem uma estrutura
+   diferente (`<thead>` em algumas, `role="row"` em outras). */
+.rolagem-das-duas-barras {
+  overflow: auto;
+  max-height: 72vh;
+}
+
+/* E A ÁREA ROLÁVEL PRECISA SER ALCANÇÁVEL POR TECLADO.
+
+   ACHADO DE REVISÃO, e é regressão que a correção acima introduziu: antes a
+   PÁGINA rolava, e página se rola com as setas e o Page Down sem precisar de
+   foco. Com o conteúdo rolando DENTRO de um `div`, quem navega por teclado não
+   chega nele — a área existe, tem barra, e não responde. É a regra 2.1.1 do
+   WCAG (`scrollable-region-focusable`, no axe).
+
+   POR ISSO CADA CONTAINER LEVA `tabIndex={0}` E NOME, no TSX e não aqui: o nome
+   é diferente em cada tabela, e um `aria-label` genérico ("área rolável") seria
+   pior que nenhum.
+
+   COM `role="group"`, E NÃO `role="region"`: `region` cria LANDMARK, e a
+   Consulta tem teste proibindo landmark — landmark demais polui a navegação de
+   quem ouve a tela. A regra do axe pede FOCO, não landmark; `group` legitima o
+   `aria-label` sem virar um. O anel de foco vem do padrão do navegador — não o removemos
+   em lugar nenhum deste projeto, de propósito. */
+.rolagem-das-duas-barras:focus-visible {
+  outline: 2px solid var(--azul-mar);
+  outline-offset: 2px;
+}
+
+/* O TEXTO LONGO PARA EM N LINHAS, em vez de esticar a linha da tabela.
+
+   MEDIDO NA BASE (28.617 menções): o título mais longo tem 2.169 caracteres, e
+   a coluna "Matéria / post" tem 380px e quebra linha — são ~39 LINHAS numa
+   célula só. 7.234 menções (25%) passam de três linhas, 287 passam de seis e 43
+   passam de vinte. Uma célula de 39 linhas estica a linha inteira e quem lê as
+   outras dezenove colunas perde o alinhamento.
+
+   TRÊS LINHAS, E NÃO UMA: cortar em uma linha com reticências devolve o
+   problema do veículo (ver `.duas-linhas`), porque o começo de dois títulos
+   pode ser igual. Três linhas mostram ~165 caracteres, que é mais que a média
+   (131) — então a maioria aparece inteira, e o resto tem o valor completo no
+   `title` e o link para a matéria ao lado.
+
+   `-webkit-line-clamp` É PADRÃO DE FATO: funciona em Chrome, Edge, Safari e
+   Firefox (desde o 68). Onde não funcionasse, o texto volta a quebrar livre —
+   degrada para o comportamento de antes, não para texto cortado. */
+.tres-linhas,
+.duas-linhas {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* `anywhere` NO TÍTULO, `break-word` NO NOME PRÓPRIO — e a diferença importa.
+
+   `anywhere` quebra a palavra em qualquer ponto. Num título isso é o certo: ele
+   pode trazer uma URL ou um token sem espaço que estouraria a coluna de 380px, e
+   conter o dano vale mais que a sílaba perfeita.
+
+   Num NOME PRÓPRIO é errado: "Prefeitura Municipal de Barra do Garças" tem
+   espaços de sobra onde quebrar, e `anywhere` cortaria no meio de "Municipal"
+   mesmo assim. `break-word` só parte a palavra quando não existe alternativa.
+   Achado de revisão. */
+.tres-linhas {
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+/* DUAS LINHAS, para a coluna do veículo.
+
+   O PROBLEMA QUE ISTO RESOLVE é perda de informação, não estética: a coluna tem
+   140px e não quebrava, então cabiam ~20 caracteres. Medido na base: 918 dos
+   3.729 veículos passam disso, e QUARENTA E DOIS veículos diferentes começam
+   com "Prefeitura Municipal" — nos vinte primeiros caracteres os 42 aparecem
+   idênticos, e a pessoa vê 42 linhas que parecem o mesmo veículo.
+
+   E AS RETICÊNCIAS ESTAVAM NO PIOR LUGAR: o que distingue "Prefeitura Municipal
+   de Sinop" de "Prefeitura Municipal de Timon" é o FIM. Duas linhas mostram ~40
+   caracteres, que é onde esses nomes se separam. */
+.duas-linhas {
+  -webkit-line-clamp: 2;
+  overflow-wrap: break-word;
+}
+
+.cabecalho-que-fica {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--branco);
+}
+
+/* A MESMA BARRA DISCRETA da rolagem interna, para as duas não se parecerem
+   diferentes na mesma tela. */
+.rolagem-das-duas-barras::-webkit-scrollbar { width: 10px; height: 10px; }
+.rolagem-das-duas-barras::-webkit-scrollbar-thumb {
+  background: var(--cinza-1);
+  border-radius: 5px;
+  border: 3px solid var(--branco);
+}
+
 /* A ALÇA DE REDIMENSIONAR DA TABELA: uma linha discreta na borda do cabeçalho
    que acende ao passar o mouse e durante o arraste — antes era invisível, e
    ninguém sabia onde pegar. A área clicável é larga (11px) e a linha, fina. */

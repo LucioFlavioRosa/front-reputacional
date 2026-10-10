@@ -85,6 +85,15 @@ function lenteValida(endereco: EnderecoDoDrill): string | null {
   return LENTES_DO_SCORE.includes(endereco.lente) ? endereco.lente : null;
 }
 
+/** AS ABAS QUE DESENHAM GRÁFICO, e por isso oferecem o botão "PNG".
+ *
+ *  UMA LISTA NOMEADA, e não a condição solta no `Provider`: quem acrescentar uma
+ *  aba com gráfico precisa achar este lugar, e o nome diz o critério. A aba
+ *  `riscos` não está aqui porque ela sai antes, num `return` próprio — ver o
+ *  comentário lá.
+ */
+const ABAS_COM_GRAFICO = ['geral', 'lentes', 'drivers'];
+
 export function Score({
   aba = 'geral',
   aoTrocarAba,
@@ -235,7 +244,19 @@ export function Score({
   //: série, a própria janela e o próprio recorte. Deixá-lo abaixo faria a aba
   //: esperar o cálculo de um índice que ela não mostra, e morrer no "Nenhum mês
   //: com dado" quando houvesse agenda tensa no CRM e nenhuma planilha subida.
-  if (aba === 'riscos') return <RastreioDeRisco />;
+  //:
+  //: E ELE LEVA O PROVIDER DO PNG CONSIGO. O `return` principal, mais abaixo,
+  //: envolve a tela no contexto; saindo antes dele, esta aba caía no padrão
+  //: (desligado) e ficava sem o botão — o que estava CERTO pela regra antiga
+  //: ("Visão geral, Painel e Lentes") e passou a estar errado pela nova ("onde
+  //: tem gráfico"). A aba tem dois: a série do índice e a matriz dos 32 riscos.
+  if (aba === 'riscos') {
+    return (
+      <ContextoDoPng.Provider value>
+        <RastreioDeRisco />
+      </ContextoDoPng.Provider>
+    );
+  }
 
   if (erro && !indice) return <FaixaDeErro mensagem={erro} />;
   if (!opcoes) return <Carregando rotulo="Carregando o Score…" />;
@@ -275,10 +296,23 @@ export function Score({
   );
 
   return (
-    //: O "PNG" SÓ NA VISÃO GERAL E NAS LENTES, por pedido (e no Painel do CRM, em
-    //: App.tsx): Drivers, Metodologia, Base e Importação não têm card que se leve
-    //: para uma apresentação.
-    <ContextoDoPng.Provider value={aba === 'geral' || aba === 'lentes'}>
+    //: O "PNG" APARECE ONDE TEM GRÁFICO — a regra que o dono do produto deu, e
+    //: que substitui a lista fixa de telas que estava aqui ("Visão geral e
+    //: Lentes"). Levantado no código, aba por aba:
+    //:
+    //:   geral ......... `RadialDasLentes` + `PainelDaJornada`      tem
+    //:   lentes ........ os blocos do dossiê                        tem
+    //:   drivers ....... `BarraDivergentePorItem` + `Ranking`       tem
+    //:   riscos ........ a série do índice + a matriz dos riscos    tem (acima)
+    //:   metodologia ... texto                                      não
+    //:   base-de-dados . tabela                                     não
+    //:   base .......... formulário de subida                       não
+    //:
+    //: DRIVERS ESTAVA DE FORA E TEM DOIS GRÁFICOS. A lista antiga a excluía por
+    //: nome; a regra nova a inclui por conteúdo, que é o critério que não
+    //: envelhece quando uma aba ganha ou perde gráfico. O Painel do CRM entra em
+    //: `App.tsx`, pelo mesmo motivo.
+    <ContextoDoPng.Provider value={ABAS_COM_GRAFICO.includes(aba)}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* SEM O CARTÃO DE ABERTURA, por pedido: ele gastava a primeira dobra da
           tela com um título e um campo, e o que a pessoa veio ver — o radar —

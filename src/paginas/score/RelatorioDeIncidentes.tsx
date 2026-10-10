@@ -103,15 +103,25 @@ export function RelatorioDeIncidentes({
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <div
+            className="rolagem-das-duas-barras"
+            //: ALCANÇÁVEL POR TECLADO: a área rola, então ela tem de receber
+            //: foco — senão quem não usa mouse não chega às colunas da direita.
+            //: Achado de revisão.
+            tabIndex={0}
+            role="group"
+            aria-label="Lista de incidentes, rolável"
+          >
             <div role="table" aria-label="Lista de incidentes" style={{ minWidth: 1180 }}>
-              <div role="row" style={{ ...LINHA, ...CABECALHO }}>
+              <div role="row" className="cabecalho-que-fica" style={{ ...LINHA, ...CABECALHO }}>
                 <span role="columnheader">Data</span>
                 <span role="columnheader">Tipo</span>
                 <span role="columnheader">Quem</span>
                 <span role="columnheader">Alcance</span>
                 <span role="columnheader">Severidade</span>
-                <span role="columnheader">Recorrência</span>
+                <span role="columnheader" style={{ textAlign: 'right' }}>
+                  Recorrência
+                </span>
                 <span role="columnheader">Incidente</span>
                 <span role="columnheader">Riscos relacionados</span>
               </div>
@@ -227,9 +237,16 @@ function LinhaDoIncidente({
         </span>
       </span>
 
+      {/* NÚMERO ALINHA À DIREITA, para a coluna se comparar de cima a baixo:
+          "12 meses" e "1º mês" lado a lado à esquerda fazem o olho procurar o
+          dígito em posição diferente a cada linha. Achado de revisão. */}
       <span
         role="cell"
-        style={{ paddingTop: 2, fontWeight: incidente.recorrencia > 2 ? 700 : 400 }}
+        style={{
+          paddingTop: 2,
+          textAlign: 'right',
+          fontWeight: incidente.recorrencia > 2 ? 700 : 400,
+        }}
         title={
           incidente.recorrencia > 1
             ? `Este assunto teve incidente em ${incidente.recorrencia} meses da série`

@@ -152,6 +152,12 @@ export function largurasPadraoDaBase(rotulos: string[]): Record<string, number> 
 //: AS COLUNAS DE TEXTO LONGO QUEBRAM LINHA (o nome do tema e da matéria é uma
 //: frase); as curtas e o link ficam numa linha só, com reticências, e o valor
 //: inteiro aparece ao passar o mouse.
+//:
+//: E QUEBRAR LIVRE NÃO BASTA PARA DUAS DELAS, medido na base de 28.617 menções:
+//: o título mais longo tem 2.169 caracteres, que em 380px são ~39 linhas numa
+//: célula — e 25% dos títulos passam de três linhas. A célula gigante estica a
+//: linha inteira da tabela. Essas duas param em N linhas
+//: (`colunaLimitaLinhas`), com o valor completo no `title`.
 const COLUNAS_QUE_QUEBRAM = new Set([
   'Matéria / post',
   'Pilar (N1)',
@@ -164,7 +170,36 @@ const COLUNAS_QUE_QUEBRAM = new Set([
 ]);
 
 export function colunaQuebraLinha(rotulo: string): boolean {
-  return COLUNAS_QUE_QUEBRAM.has(rotulo);
+  return COLUNAS_QUE_QUEBRAM.has(rotulo) || rotulo in LINHAS_DA_COLUNA;
+}
+
+//: QUANTAS LINHAS CADA COLUNA DE TEXTO LONGO OCUPA, no máximo.
+//:
+//: "MATÉRIA / POST" EM TRÊS: o título mais longo da base tem 2.169 caracteres —
+//: ~39 linhas em 380px. Três linhas mostram ~165 caracteres, mais que a média
+//: (131), então a maioria aparece inteira.
+//:
+//: "VEÍCULO" EM DUAS, e aqui o motivo é perda de informação: a coluna tem 140px
+//: e não quebrava, então cabiam ~20 caracteres. 918 dos 3.729 veículos passam
+//: disso, e 42 veículos DIFERENTES começam com "Prefeitura Municipal" — nos
+//: vinte primeiros caracteres eles aparecem idênticos. Duas linhas mostram ~40
+//: caracteres, que é onde esses nomes se separam.
+//:
+//: O RÓTULO DO VEÍCULO MUDA POR LENTE (`rotuloDoVeiculo`): nas redes ele é
+//: "Rede", nos canais próprios "Canal". Os três entram, porque é a mesma coluna.
+const LINHAS_DA_COLUNA: Record<string, 2 | 3> = {
+  'Matéria / post': 3,
+  Veículo: 2,
+  Rede: 2,
+  Canal: 2,
+};
+
+/** A classe que para o texto em N linhas, ou `undefined` para quebrar livre. */
+export function classeDasLinhasDaColuna(rotulo: string): string | undefined {
+  const linhas = LINHAS_DA_COLUNA[rotulo];
+  if (linhas === 3) return 'tres-linhas';
+  if (linhas === 2) return 'duas-linhas';
+  return undefined;
 }
 
 /** "Últimos 30 dias" etc. → `de` e `ate` em AAAA-MM-DD; "tudo" → nenhum. */

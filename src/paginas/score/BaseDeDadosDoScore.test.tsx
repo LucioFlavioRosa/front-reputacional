@@ -63,11 +63,59 @@ describe('BaseDeDadosDoScore', () => {
     const colunas = [...container.querySelectorAll('col')] as HTMLElement[];
     expect(colunas.length).toBeGreaterThan(5);
     expect(colunas.every((col) => Number.parseInt(col.style.width, 10) >= 60)).toBe(true);
-    // O veículo é de uma linha só, cortado com reticências dentro da própria coluna.
+    // O VEÍCULO PASSOU DE UMA LINHA PARA DUAS, e isto reverte uma decisão que
+    // estava escrita aqui ("o veículo é de uma linha só, cortado com reticências
+    // dentro da própria coluna"). O que mudou foi a MEDIDA, na base de 28.617
+    // menções: a coluna tem 140px e cabiam ~20 caracteres; 918 dos 3.729
+    // veículos passam disso, e QUARENTA E DOIS veículos diferentes começam com
+    // "Prefeitura Municipal" — nos vinte primeiros caracteres os 42 apareciam
+    // idênticos, e a pessoa via 42 linhas que pareciam o mesmo veículo. As
+    // reticências estavam no pior lugar possível, porque o que distingue esses
+    // nomes é o FIM.
+    //
+    // DUAS LINHAS mostram ~40 caracteres, que é onde eles se separam. O `title`
+    // continua com o valor inteiro, e a coluna continua arrastável para quem
+    // quiser mais.
+    //
+    // PARA VOLTAR: tire `Veículo`, `Rede` e `Canal` de `LINHAS_DA_COLUNA`, em
+    // `dominio/baseDasLentes.ts`. É uma linha.
     const celulaDoVeiculo = screen.getByText('Folha de S.Paulo').closest('td')!;
-    expect(celulaDoVeiculo.style.overflow).toBe('hidden');
-    expect(celulaDoVeiculo.style.textOverflow).toBe('ellipsis');
     expect(celulaDoVeiculo.getAttribute('title')).toBe('Folha de S.Paulo');
+    // E O TEXTO NÃO INVADE A VIZINHA, que é o que a asserção antiga protegia: o
+    // `overflow: hidden` agora vem da classe, junto do limite de duas linhas.
+    expect(celulaDoVeiculo.style.whiteSpace).toBe('normal');
+
+    // O LIMITE VIVE NUM EMBRULHO DENTRO DA CÉLULA, nunca na célula.
+    //
+    // `-webkit-line-clamp` só age com `display: -webkit-box`, e esse `display`
+    // num `<td>` substitui o `table-cell`: a célula sai do modelo nativo da
+    // tabela e passa a brigar com o `<colgroup>` e o `table-layout: fixed`.
+    // Achado de revisão, e esta asserção é o que impede a volta.
+    //
+    // E ELA PERGUNTA PELA INTENÇÃO, não por "o `td` não tem classe nenhuma":
+    // uma classe legítima e sem relação com isto (um `tabular`, digamos)
+    // derrubaria o teste sem que nada tivesse quebrado.
+    expect(celulaDoVeiculo.classList.contains('duas-linhas')).toBe(false);
+    const embrulho = screen.getByText('Folha de S.Paulo');
+    expect(embrulho.tagName).toBe('SPAN');
+    expect(embrulho.classList.contains('duas-linhas')).toBe(true);
+
+    // E NENHUM `display` EM LINHA NOS EMBRULHOS LIMITADOS.
+    //
+    // Este é o defeito mais silencioso dos três, e ele estava vivo: o embrulho
+    // do título tinha `style={{ display: 'block' }}`, e estilo em linha vence a
+    // classe. Isso desligava o `display: -webkit-box` de que o
+    // `-webkit-line-clamp` depende, então o limite de três linhas NÃO AGIA — a
+    // célula de 39 linhas continuava inteira, e nada no código denunciava.
+    //
+    // O `display` vem só da classe, e o CSS gerado por `npm run build` preserva
+    // `display:-webkit-box` nela (conferido). Qualquer `display` em linha aqui
+    // é um limite desligado.
+    const limitados = [...container.querySelectorAll('.tres-linhas, .duas-linhas')];
+    expect(limitados.length).toBeGreaterThan(0);
+    for (const alvo of limitados as HTMLElement[]) {
+      expect(alvo.style.display).toBe('');
+    }
     // A dica de como ajustar está à vista.
     expect(screen.getByText(/Arraste a borda de um cabeçalho/)).toBeTruthy();
   });

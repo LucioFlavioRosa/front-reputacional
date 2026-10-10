@@ -272,7 +272,18 @@ export function TabelaDeInteracoes({
         <>
           <Tabela
             colunas={colunasDaTabela}
-            altura="none"
+            //: A COMPLETA É LIMITADA EM ALTURA, A REDUZIDA NÃO.
+            //:
+            //: A completa tem colunas demais para a largura da tela e rola na
+            //: horizontal; sem limite de altura, a barra horizontal dela ficava
+            //: no fim do documento, e para arrastá-la a pessoa tinha de rolar a
+            //: página toda. Limitada, as duas barras ficam na tela.
+            //:
+            //: A REDUZIDA FICA SEM LIMITE porque ela não tem rolagem horizontal
+            //: — Stakeholder e Relevância saem justamente para as quatro
+            //: caberem — e porque são quatro lado a lado: rolagem por dentro de
+            //: cada uma daria quatro áreas de rolagem na mesma dobra.
+            altura={reduzida ? 'none' : 'calc(100vh - 300px)'}
             colunasOrdenaveis={COLUNAS_ORDENAVEIS}
             ordenacao={ordenacao}
             compacta={reduzida}

@@ -76,8 +76,13 @@ describe('TabelaDeImpacto (E.4.2)', () => {
     for (const g of grades) {
       expect(g.style.gridTemplateColumns).toBe('minmax(0,2.3fr) minmax(0,1.25fr) minmax(0,1.8fr) minmax(0,2.1fr) 36px');
     }
-    const rolagem = container.querySelector<HTMLElement>('[style*="overflow-x"]')!;
-    expect((rolagem.firstElementChild as HTMLElement).style.minWidth).toBe('820px');
+    //: PELA CLASSE, e não pelo estilo inline: a regra da rolagem saiu do
+    //: `style` e foi para `.rolagem-das-duas-barras` (em `index.css`), que
+    //: acrescenta o limite de altura — sem ele a barra horizontal ficava no fim
+    //: do documento.
+    const rolagem = container.querySelector<HTMLElement>('.rolagem-das-duas-barras');
+    expect(rolagem).not.toBeNull();
+    expect((rolagem!.firstElementChild as HTMLElement).style.minWidth).toBe('820px');
   });
 
   it('agrupa em "O que pressiona" e "O que sustenta", na ordem de agruparPorImpacto, com as somas', () => {

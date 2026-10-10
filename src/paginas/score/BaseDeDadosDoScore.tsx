@@ -30,6 +30,7 @@ import {
   COLUNAS_OCULTAS_POR_PADRAO,
   LENTES_DA_BASE,
   colunasDaBase,
+  classeDasLinhasDaColuna,
   colunaQuebraLinha,
   csvDaBase,
   largurasPadraoDaBase,
@@ -338,7 +339,23 @@ export function BaseDeDadosDoScore() {
                     if (coluna.rotulo === 'Matéria / post') {
                       return (
                         <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
-                          <span style={{ display: 'block', color: 'var(--cinza-4)', lineHeight: 1.4 }}>
+                          {/* PARA EM TRÊS LINHAS: o título mais longo da base
+                              tem 2.169 caracteres, que em 380px são ~39 linhas
+                              — e a célula gigante esticava a linha inteira da
+                              tabela. O valor completo vai no `title`.
+
+                              E NENHUM `display` EM LINHA AQUI. Havia um
+                              `display: 'block'`, e estilo em linha vence a
+                              classe: ele desligava o `display: -webkit-box` de
+                              que o `-webkit-line-clamp` depende, e o limite
+                              nunca agia — a célula de 39 linhas continuava
+                              inteira. Achado de revisão. A classe já é de
+                              nível de bloco, então o link segue embaixo. */}
+                          <span
+                            className={classeDasLinhasDaColuna(coluna.rotulo)}
+                            title={mencao.titulo ?? undefined}
+                            style={{ color: 'var(--cinza-4)', lineHeight: 1.4 }}
+                          >
                             {mencao.titulo ?? <span style={{ color: 'var(--cinza-2)' }}>sem texto na fonte</span>}
                           </span>
                           {mencao.link ? (
@@ -379,9 +396,24 @@ export function BaseDeDadosDoScore() {
                         </td>
                       );
                     }
+                    const limite = classeDasLinhasDaColuna(coluna.rotulo);
                     return (
-                      <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)} title={coluna.valor(mencao) || undefined}>
-                        {coluna.valor(mencao)}
+                      <td
+                        key={coluna.rotulo}
+                        style={celulaDaColuna(coluna.rotulo)}
+                        title={coluna.valor(mencao) || undefined}
+                      >
+                        {/* O LIMITE DE LINHAS VAI NUM EMBRULHO, nunca no `td`:
+                            `-webkit-line-clamp` exige `display: -webkit-box`, e
+                            isso num `td` substitui o `display: table-cell` — a
+                            célula para de participar da grade e briga com o
+                            `<colgroup>` e o `table-layout: fixed`. Achado de
+                            revisão. */}
+                        {limite ? (
+                          <span className={limite}>{coluna.valor(mencao)}</span>
+                        ) : (
+                          coluna.valor(mencao)
+                        )}
                       </td>
                     );
                   })}

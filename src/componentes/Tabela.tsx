@@ -187,7 +187,14 @@ export function Tabela({
     Object.keys(larguras).length > 0 || Boolean(largurasPadrao && Object.keys(largurasPadrao).length);
 
   const tabela = (
-    <div className="rolagem-interna" style={{ maxHeight: altura }}>
+    //: ALCANÇÁVEL POR TECLADO: a área rola, então ela recebe foco. Antes a
+    //: página rolava — e página se rola com as setas sem precisar de foco; uma
+    //: área interna, não. Achado de revisão (WCAG 2.1.1).
+    //:
+    //: SEM NOME PRÓPRIO AQUI de propósito: `Tabela` não sabe o que está
+    //: mostrando, e um `aria-label` fixo ("tabela rolável") seria pior que
+    //: nenhum — quem ouve a tela já leu o título da `Secao` logo acima.
+    <div className="rolagem-interna" style={{ maxHeight: altura }} tabIndex={0}>
       <table
         style={{
           width: '100%',

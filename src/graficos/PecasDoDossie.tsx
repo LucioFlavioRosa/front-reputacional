@@ -520,9 +520,14 @@ export function MatrizDePrioridade({ linhas }: { linhas: LinhaDaMatriz[] }) {
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div
+      className="rolagem-das-duas-barras"
+      tabIndex={0}
+      role="group"
+      aria-label="Tabela do dossiê, rolável"
+    >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead className="cabecalho-que-fica">
           <tr>
             {['Jornalista', 'Relevância', 'Exposição', 'Proximidade', 'Prioridade'].map((titulo, i) => (
               <th
@@ -530,7 +535,11 @@ export function MatrizDePrioridade({ linhas }: { linhas: LinhaDaMatriz[] }) {
                 style={{
                   textAlign: i === 0 ? 'left' : 'center',
                   padding: '8px 10px',
-                  fontSize: 10,
+                  //: 12px E NÃO 10px: o padrão da casa para cabeçalho é 12, e
+                  //: 10 em maiúsculas com espaçamento de letra e em cinza é a
+                  //: combinação mais difícil de ler do produto — justamente no
+                  //: elemento que se precisa ler para entender a tabela.
+                  fontSize: 12,
                   fontWeight: 700,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
@@ -700,9 +709,14 @@ export function TabelaDeLeitura({
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div
+      className="rolagem-das-duas-barras"
+      tabIndex={0}
+      role="group"
+      aria-label="Tabela do dossiê, rolável"
+    >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
+        <thead className="cabecalho-que-fica">
           <tr>
             {colunas.map((coluna) => (
               <th
@@ -711,7 +725,11 @@ export function TabelaDeLeitura({
                 style={{
                   textAlign: coluna.alinhamento === 'direita' ? 'right' : 'left',
                   padding: '8px 10px',
-                  fontSize: 10,
+                  //: 12px E NÃO 10px: o padrão da casa para cabeçalho é 12, e
+                  //: 10 em maiúsculas com espaçamento de letra e em cinza é a
+                  //: combinação mais difícil de ler do produto — justamente no
+                  //: elemento que se precisa ler para entender a tabela.
+                  fontSize: 12,
                   fontWeight: 700,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
