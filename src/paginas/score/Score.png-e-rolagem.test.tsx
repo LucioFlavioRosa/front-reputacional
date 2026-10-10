@@ -89,6 +89,29 @@ describe('as duas barras de rolagem', () => {
     expect(rolagem?.className).toContain('rolagem-das-duas-barras');
   });
 
+  it('a área rolável é ALCANÇÁVEL POR TECLADO, e tem nome', () => {
+    //: ACHADO DE REVISÃO, e é regressão que a própria correção da barra
+    //: introduziu: antes a PÁGINA rolava, e página se rola com as setas e o
+    //: Page Down sem precisar de foco. Com o conteúdo rolando dentro de um
+    //: `div`, quem navega por teclado não chega nele — a área tem barra e não
+    //: responde. Regra 2.1.1 do WCAG (`scrollable-region-focusable`, no axe).
+    render(
+      <RelatorioDeIncidentes
+        pagina={PAGINA}
+        aoMudarPagina={() => {}}
+        aoAprofundarNoTema={() => {}}
+      />,
+    );
+
+    //: `group` E NÃO `region`: `region` cria LANDMARK, e o engenheiro tem teste
+    //: proibindo landmark na Consulta — landmark demais polui a navegação de
+    //: quem ouve a tela. A regra do axe pede FOCO, não landmark, e `group`
+    //: legitima o `aria-label` sem virar landmark.
+    const area = screen.getByRole('group', { name: /Lista de incidentes/ });
+    expect(area.className).toContain('rolagem-das-duas-barras');
+    expect(area.getAttribute('tabindex')).toBe('0');
+  });
+
   it('e o CABEÇALHO fica, porque rolar sem o nome das colunas é pior', () => {
     render(
       <RelatorioDeIncidentes

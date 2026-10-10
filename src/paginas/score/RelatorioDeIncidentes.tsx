@@ -103,7 +103,15 @@ export function RelatorioDeIncidentes({
         </div>
       ) : (
         <>
-          <div className="rolagem-das-duas-barras">
+          <div
+            className="rolagem-das-duas-barras"
+            //: ALCANÇÁVEL POR TECLADO: a área rola, então ela tem de receber
+            //: foco — senão quem não usa mouse não chega às colunas da direita.
+            //: Achado de revisão.
+            tabIndex={0}
+            role="group"
+            aria-label="Lista de incidentes, rolável"
+          >
             <div role="table" aria-label="Lista de incidentes" style={{ minWidth: 1180 }}>
               <div role="row" className="cabecalho-que-fica" style={{ ...LINHA, ...CABECALHO }}>
                 <span role="columnheader">Data</span>

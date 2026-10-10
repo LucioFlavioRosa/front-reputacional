@@ -210,6 +210,28 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   max-height: 72vh;
 }
 
+/* E A ÁREA ROLÁVEL PRECISA SER ALCANÇÁVEL POR TECLADO.
+
+   ACHADO DE REVISÃO, e é regressão que a correção acima introduziu: antes a
+   PÁGINA rolava, e página se rola com as setas e o Page Down sem precisar de
+   foco. Com o conteúdo rolando DENTRO de um `div`, quem navega por teclado não
+   chega nele — a área existe, tem barra, e não responde. É a regra 2.1.1 do
+   WCAG (`scrollable-region-focusable`, no axe).
+
+   POR ISSO CADA CONTAINER LEVA `tabIndex={0}` E NOME, no TSX e não aqui: o nome
+   é diferente em cada tabela, e um `aria-label` genérico ("área rolável") seria
+   pior que nenhum.
+
+   COM `role="group"`, E NÃO `role="region"`: `region` cria LANDMARK, e a
+   Consulta tem teste proibindo landmark — landmark demais polui a navegação de
+   quem ouve a tela. A regra do axe pede FOCO, não landmark; `group` legitima o
+   `aria-label` sem virar um. O anel de foco vem do padrão do navegador — não o removemos
+   em lugar nenhum deste projeto, de propósito. */
+.rolagem-das-duas-barras:focus-visible {
+  outline: 2px solid var(--azul-mar);
+  outline-offset: 2px;
+}
+
 .cabecalho-que-fica {
   position: sticky;
   top: 0;

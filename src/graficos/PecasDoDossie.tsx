@@ -520,7 +520,12 @@ export function MatrizDePrioridade({ linhas }: { linhas: LinhaDaMatriz[] }) {
   }
 
   return (
-    <div className="rolagem-das-duas-barras">
+    <div
+      className="rolagem-das-duas-barras"
+      tabIndex={0}
+      role="group"
+      aria-label="Tabela do dossiê, rolável"
+    >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead className="cabecalho-que-fica">
           <tr>
@@ -700,7 +705,12 @@ export function TabelaDeLeitura({
   }
 
   return (
-    <div className="rolagem-das-duas-barras">
+    <div
+      className="rolagem-das-duas-barras"
+      tabIndex={0}
+      role="group"
+      aria-label="Tabela do dossiê, rolável"
+    >
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead className="cabecalho-que-fica">
           <tr>

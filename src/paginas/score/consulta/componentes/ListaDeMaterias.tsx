@@ -287,11 +287,18 @@ export function ListaDeMaterias({
 
       {/* A TABELA VAI DE BORDA A BORDA DO CARTÃO, como no mockup: a margem
           negativa desfaz o padding de 20px do `Cartao`. */}
-      <div className="rolagem-das-duas-barras" style={{ margin: '0 -20px' }}>
+      <div
+        className="rolagem-das-duas-barras"
+        style={{ margin: '0 -20px' }}
+        tabIndex={0}
+        role="group"
+        aria-label={`${tituloLista}, rolável`}
+      >
         <div role="table" aria-label={tituloLista} style={{ minWidth: 1000 }}>
           <div role="rowgroup">
             <div
               role="row"
+              className="cabecalho-que-fica"
               style={{
                 ...GRADE,
                 padding: '12px 20px',
