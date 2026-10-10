@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 import { createRef } from 'react';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { CartaoDoDrill } from './CartaoDoDrill';
 import { SeloDeSentimento } from './SeloDeSentimento';
 import { SeloDeTier } from './SeloDeTier';
 import { SeloIlustrativo } from './SeloIlustrativo';
+
+//: Estes cartões vivem na aba Lentes, onde o botão "PNG" está ligado
+//: (`ContextoDoPng`); soltos num teste, o padrão é desligado.
+vi.mock('@/componentes/contextoDoPng', async () => {
+  const { createContext } = await import('react');
+  return { ContextoDoPng: createContext(true) };
+});
 
 describe('CartaoDoDrill', () => {
   it('é um .cartao com kicker, título h3 na cor da lente e subtítulo', () => {

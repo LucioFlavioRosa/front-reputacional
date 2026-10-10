@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { ContextoDoPng } from '@/componentes/contextoDoPng';
 import { obterEu } from '@/api/cliente';
 import { Botao, Carregando, Cartao } from '@/componentes/basicos';
 import { portaisDe } from '@/dominio/tipos';
@@ -246,7 +247,11 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {/* O PANORAMA: o recorte visto de uma vez. Clicar num indicador
               FILTRA a própria tela, como todo gráfico dela. */}
-          {rota.destino === 'painel' ? <Painel aoAbrirAgenda={abrirAgenda} /> : null}
+          {rota.destino === 'painel' ? (
+            <ContextoDoPng.Provider value>
+              <Painel aoAbrirAgenda={abrirAgenda} />
+            </ContextoDoPng.Provider>
+          ) : null}
 
           {rota.destino === 'base' ? (
             <Base
