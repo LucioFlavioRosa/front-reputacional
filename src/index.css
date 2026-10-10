@@ -232,6 +232,46 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   outline-offset: 2px;
 }
 
+/* O TEXTO LONGO PARA EM N LINHAS, em vez de esticar a linha da tabela.
+
+   MEDIDO NA BASE (28.617 menções): o título mais longo tem 2.169 caracteres, e
+   a coluna "Matéria / post" tem 380px e quebra linha — são ~39 LINHAS numa
+   célula só. 7.234 menções (25%) passam de três linhas, 287 passam de seis e 43
+   passam de vinte. Uma célula de 39 linhas estica a linha inteira e quem lê as
+   outras dezenove colunas perde o alinhamento.
+
+   TRÊS LINHAS, E NÃO UMA: cortar em uma linha com reticências devolve o
+   problema do veículo (ver `.duas-linhas`), porque o começo de dois títulos
+   pode ser igual. Três linhas mostram ~165 caracteres, que é mais que a média
+   (131) — então a maioria aparece inteira, e o resto tem o valor completo no
+   `title` e o link para a matéria ao lado.
+
+   `-webkit-line-clamp` É PADRÃO DE FATO: funciona em Chrome, Edge, Safari e
+   Firefox (desde o 68). Onde não funcionasse, o texto volta a quebrar livre —
+   degrada para o comportamento de antes, não para texto cortado. */
+.tres-linhas,
+.duas-linhas {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.tres-linhas { -webkit-line-clamp: 3; }
+
+/* DUAS LINHAS, para a coluna do veículo.
+
+   O PROBLEMA QUE ISTO RESOLVE é perda de informação, não estética: a coluna tem
+   140px e não quebrava, então cabiam ~20 caracteres. Medido na base: 918 dos
+   3.729 veículos passam disso, e QUARENTA E DOIS veículos diferentes começam
+   com "Prefeitura Municipal" — nos vinte primeiros caracteres os 42 aparecem
+   idênticos, e a pessoa vê 42 linhas que parecem o mesmo veículo.
+
+   E AS RETICÊNCIAS ESTAVAM NO PIOR LUGAR: o que distingue "Prefeitura Municipal
+   de Sinop" de "Prefeitura Municipal de Timon" é o FIM. Duas linhas mostram ~40
+   caracteres, que é onde esses nomes se separam. */
+.duas-linhas { -webkit-line-clamp: 2; }
+
 .cabecalho-que-fica {
   position: sticky;
   top: 0;

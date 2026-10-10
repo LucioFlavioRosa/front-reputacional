@@ -30,6 +30,7 @@ import {
   COLUNAS_OCULTAS_POR_PADRAO,
   LENTES_DA_BASE,
   colunasDaBase,
+  classeDasLinhasDaColuna,
   colunaQuebraLinha,
   csvDaBase,
   largurasPadraoDaBase,
@@ -338,7 +339,15 @@ export function BaseDeDadosDoScore() {
                     if (coluna.rotulo === 'Matéria / post') {
                       return (
                         <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
-                          <span style={{ display: 'block', color: 'var(--cinza-4)', lineHeight: 1.4 }}>
+                          {/* PARA EM TRÊS LINHAS: o título mais longo da base
+                              tem 2.169 caracteres, que em 380px são ~39 linhas
+                              — e a célula gigante esticava a linha inteira da
+                              tabela. O valor completo vai no `title`. */}
+                          <span
+                            className={classeDasLinhasDaColuna(coluna.rotulo)}
+                            title={mencao.titulo ?? undefined}
+                            style={{ display: 'block', color: 'var(--cinza-4)', lineHeight: 1.4 }}
+                          >
                             {mencao.titulo ?? <span style={{ color: 'var(--cinza-2)' }}>sem texto na fonte</span>}
                           </span>
                           {mencao.link ? (
@@ -380,7 +389,12 @@ export function BaseDeDadosDoScore() {
                       );
                     }
                     return (
-                      <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)} title={coluna.valor(mencao) || undefined}>
+                      <td
+                        key={coluna.rotulo}
+                        className={classeDasLinhasDaColuna(coluna.rotulo)}
+                        style={celulaDaColuna(coluna.rotulo)}
+                        title={coluna.valor(mencao) || undefined}
+                      >
                         {coluna.valor(mencao)}
                       </td>
                     );
