@@ -44,6 +44,7 @@ import {
 import type {
   FiltroDoRisco,
   NivelDoTema,
+  NomeDoValor,
   PaginaDeIncidentes,
   PainelDeRisco,
 } from '@/dominio/riscos';
@@ -58,6 +59,7 @@ export function AprofundarNoRisco({
   filtro,
   arvore,
   clusters,
+  nomeDoValor,
   ultimoDegrau,
   aoFechar,
   aoDescer,
@@ -67,6 +69,8 @@ export function AprofundarNoRisco({
   filtro: FiltroDoRisco;
   arvore: NivelDoTema[];
   clusters: { codigo: string; nome: string; riscos: { codigo: string; nome: string }[] }[];
+  /** Traduz código em nome na trilha e no título — ver `nomesDoRecorte`. */
+  nomeDoValor: NomeDoValor;
   /** O degrau que a pessoa ACABOU de abrir, para o título.
    *
    *  PARA O TÍTULO, e não o último da trilha: a trilha vem na ordem do DOMÍNIO
@@ -117,12 +121,16 @@ export function AprofundarNoRisco({
     };
   }, [caminho, pagina]);
 
-  const trilha = trilhaDoRecorte(filtro);
+  const trilha = trilhaDoRecorte(filtro, nomeDoValor);
   const nivel = proximoNivelDoTema(arvore, filtro);
   const noCluster = clusters.find((cluster) => cluster.codigo === filtro.cluster);
 
   return (
-    <Modal titulo={tituloDoPainel(filtro, ultimoDegrau)} aoFechar={aoFechar} largura={720}>
+    <Modal
+      titulo={tituloDoPainel(filtro, ultimoDegrau, nomeDoValor)}
+      aoFechar={aoFechar}
+      largura={720}
+    >
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
       {/* 1. A TRILHA. Cada degrau sai pelo seu ×, e tirar o pai tira os filhos:
@@ -231,7 +239,7 @@ export function AprofundarNoRisco({
                 nivel.chave === 'bloco'
                   ? 'Dentro deste recorte · por pilar (N1)'
                   : nivel.chave === 'macro'
-                    ? 'Dentro deste recorte · por macro tema (N2)'
+                    ? 'Dentro deste recorte · por tema estratégico (N2)'
                     : 'Dentro deste recorte · por tema (N3)'
               }
               opcoes={nivel.opcoes.map((um) => ({
@@ -372,11 +380,15 @@ function clustersComIncidente(painel: PainelDeRisco) {
  *
  *  E não o último da trilha: a trilha está na ordem do domínio, e quem clicou
  *  num risco e desceu numa severidade veria o título voltar ao risco. */
-function tituloDoPainel(filtro: FiltroDoRisco, ultimo?: string): string {
+function tituloDoPainel(
+  filtro: FiltroDoRisco,
+  ultimo?: string,
+  nomeDoValor?: NomeDoValor,
+): string {
   if (ultimo === 'de' || ultimo === 'ate') {
     return `Incidentes de ${filtro.de === filtro.ate && filtro.de ? mesLegivel(filtro.de) : 'do período'}`;
   }
-  const trilha = trilhaDoRecorte(filtro);
+  const trilha = trilhaDoRecorte(filtro, nomeDoValor);
   const degrau = trilha.find((um) => um.chave === ultimo) ?? trilha[trilha.length - 1];
   if (!degrau) return 'Aprofundamento do risco';
   return `${degrau.rotulo}: ${degrau.valor}`;

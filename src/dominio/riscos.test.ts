@@ -16,6 +16,7 @@ import {
   corDaVariacao,
   descendoEm,
   janelaDoRecorte,
+  nomesDoRecorte,
   proximoNivelDoTema,
   quemDoIncidente,
   recorteDaJanela,
@@ -24,7 +25,11 @@ import {
   tituloDoIncidente,
   trilhaDoRecorte,
 } from '@/dominio/riscos';
-import type { IncidenteNaTabela, NivelDoTema } from '@/dominio/riscos';
+import type {
+  IncidenteNaTabela,
+  NivelDoTema,
+  OpcoesDoRisco,
+} from '@/dominio/riscos';
 
 const MESES = [
   '2026-01',
@@ -48,6 +53,8 @@ function incidente(ajustes: Partial<IncidenteNaTabela> = {}): IncidenteNaTabela 
     link: 'https://exemplo/1',
     fonte: 'clipei',
     lente: 'imprensa',
+    lente_nome: 'Imprensa',
+    fonte_nome: 'Clipei',
     tema: 'Desabastecimento',
     tier: null,
     engajamento: null,
@@ -183,7 +190,9 @@ describe('as colunas que uma fonte só tem', () => {
     //: não o preencheu naquela linha. Isso é cobrável; a agenda não é.
     const alcance = alcanceDoIncidente(incidente({ fonte: 'clipei' }));
     expect(alcance.valor).toBe('não informado');
-    expect(alcance.detalhe).toBe('pela clipei');
+    //: PELO NOME DE CADASTRO, e nao pelo codigo: a tela escreve
+    //: "Clipei", como o resto do produto.
+    expect(alcance.detalhe).toBe('pela Clipei');
   });
 
   it('escreve quem está do outro lado da agenda', () => {
@@ -217,11 +226,15 @@ describe('a trilha do aprofundamento', () => {
     expect(trilha[0]).toEqual({ chave: 'lentes', rotulo: 'Lente', valor: 'imprensa' });
   });
 
-  it('chama os níveis pelos nomes que a equipe usa', () => {
+  it('chama os níveis como o CADASTRO DE ASSUNTOS os chama', () => {
+    //: A AUTORIDADE É `CadastroDeAssuntos.tsx`, a tela onde esses níveis são
+    //: geridos: lá os campos se chamam "Pilar (N1)" e "Tema estratégico (N2)".
+    //: Quem cadastra o nível num lugar e o filtra no outro tem de ler a mesma
+    //: palavra — este teste é o que impede a terceira invenção.
     const trilha = trilhaDoRecorte({ bloco: 'g', macro: 'c', tema: 'Corrupção' });
     expect(trilha.map((degrau) => degrau.rotulo)).toEqual([
       'Pilar (N1)',
-      'Macro tema (N2)',
+      'Tema estratégico (N2)',
       'Tema (N3)',
     ]);
   });
@@ -316,5 +329,73 @@ describe('descer e subir um degrau', () => {
 
   it('subir numa lista a esvazia', () => {
     expect(subindoDe({ lentes: ['imprensa'] }, 'lentes').lentes).toEqual([]);
+  });
+});
+
+describe('a tela escreve NOME, e não código', () => {
+  //: O CÓDIGO É CHAVE DO CADASTRO. A trilha dizia "Lente: imprensa",
+  //: "Pilar (N1): governanca" e "Severidade: critico", enquanto o resto do
+  //: produto escreve "Imprensa", "Governança" e "Crítico" — e "sociedade" não é
+  //: nem o nome da lente, que se chama "Sociedade digital".
+  const OPCOES = {
+    clusters: [
+      {
+        codigo: 'operacional',
+        nome: 'Riscos Operacionais',
+        riscos: [{ codigo: 'R1', nome: 'Entrega de água', severidade: 'critico' }],
+      },
+    ],
+    fontes: [{ codigo: 'bites', nome: 'Bites' }],
+    lentes: [{ codigo: 'sociedade', nome: 'Sociedade digital' }],
+    temas: [
+      {
+        codigo: 'governanca',
+        nome: 'Governança',
+        incidentes: 3,
+        dentro: [
+          { codigo: 'conduta', nome: 'Conduta', incidentes: 3, dentro: [] },
+        ],
+      },
+    ],
+    dimensoes: [],
+    meses: ['2026-09'],
+  } as OpcoesDoRisco;
+
+  it('traduz cada degrau pelo nome do cadastro', () => {
+    const nome = nomesDoRecorte(OPCOES);
+    expect(nome('lentes', 'sociedade')).toBe('Sociedade digital');
+    expect(nome('fontes', 'bites')).toBe('Bites');
+    expect(nome('cluster', 'operacional')).toBe('Riscos Operacionais');
+    expect(nome('risco', 'R1')).toBe('Entrega de água');
+    expect(nome('bloco', 'governanca')).toBe('Governança');
+    expect(nome('macro', 'conduta')).toBe('Conduta');
+    expect(nome('severidade', 'critico')).toBe('Crítico');
+  });
+
+  it('o TEMA (N3) já vem pelo nome, porque não tem código no cadastro', () => {
+    expect(nomesDoRecorte(OPCOES)('tema', 'Desabastecimento')).toBe('Desabastecimento');
+  });
+
+  it('valor que o catálogo não conhece sai CRU, e não vazio', () => {
+    //: O cadastro muda; um link antigo pode citar um risco desativado. Mostrar
+    //: o código é pior que o nome e muito melhor que um chip vazio.
+    expect(nomesDoRecorte(OPCOES)('risco', 'R99')).toBe('R99');
+  });
+
+  it('a TRILHA usa o tradutor, inclusive nas listas', () => {
+    const trilha = trilhaDoRecorte(
+      { lentes: ['sociedade'], bloco: 'governanca', severidade: 'critico' },
+      nomesDoRecorte(OPCOES),
+    );
+    expect(trilha.map((degrau) => `${degrau.rotulo}: ${degrau.valor}`)).toEqual([
+      'Lente: Sociedade digital',
+      'Pilar (N1): Governança',
+      'Severidade: Crítico',
+    ]);
+  });
+
+  it('SEM tradutor o valor sai cru — a trilha continua pura e testável', () => {
+    const trilha = trilhaDoRecorte({ bloco: 'governanca' });
+    expect(trilha[0].valor).toBe('governanca');
   });
 });

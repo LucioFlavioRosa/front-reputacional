@@ -33,6 +33,7 @@ import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { Botao } from '@/componentes/basicos';
 import {
   SEVERIDADES,
+  nomesDoRecorte,
   porQueADimensaoEstaVazia,
   rotuloDaSeveridade,
   trilhaDoRecorte,
@@ -55,7 +56,7 @@ export function FiltrosDoRisco({
   busca: string;
   definirBusca: (busca: string) => void;
 }) {
-  const trilha = trilhaDoRecorte(filtro);
+  const trilha = trilhaDoRecorte(filtro, nomesDoRecorte(opcoes));
 
   //: OS CORTES CROSS, na ordem do macro ao micro.
   const cruzados: CampoDeFiltro[] = [];
@@ -99,7 +100,7 @@ export function FiltrosDoRisco({
   if (noBloco) {
     cruzados.push({
       chave: 'macro',
-      rotulo: 'Macro tema (N2)',
+      rotulo: 'Tema estratégico (N2)',
       valorAtual: filtro.macro ?? undefined,
       itens: noBloco.dentro
         .filter((macro) => macro.codigo)
@@ -299,7 +300,7 @@ export function FiltrosDoRisco({
           {numero(semClassificacao)}{' '}
           {semClassificacao === 1 ? 'incidente' : 'incidentes'} de assunto ainda sem
           classificação na taxonomia de três níveis — ele entra nos totais e no gráfico,
-          e não é alcançável pelos filtros de pilar e macro tema.
+          e não é alcançável pelos filtros de pilar e tema estratégico.
         </p>
       ) : null}
 

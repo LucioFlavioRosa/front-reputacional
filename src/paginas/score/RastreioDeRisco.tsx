@@ -45,6 +45,7 @@ import {
   corDaVariacao,
   descendoEm,
   janelaDoRecorte,
+  nomesDoRecorte,
   recorteDaJanela,
   rotuloDaSeveridade,
   setaDaVariacao,
@@ -399,6 +400,7 @@ export function RastreioDeRisco() {
           filtro={aprofundando.filtro}
           arvore={opcoes.temas}
           clusters={opcoes.clusters}
+          nomeDoValor={nomesDoRecorte(opcoes)}
           ultimoDegrau={aprofundando.ultimo}
           aoFechar={() => definirAprofundando(null)}
           //: DESCER EMPILHA NO RECORTE DO PAINEL, e não no da tela: a tela de

@@ -178,7 +178,8 @@ function LinhaDoIncidente({
             diz de quem veio o dado — e quem confere uma planilha precisa da
             segunda. */}
         <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
-          {incidente.lente} · {incidente.fonte}
+          {incidente.lente_nome || incidente.lente} ·{' '}
+          {incidente.fonte_nome || incidente.fonte}
         </span>
       </span>
 

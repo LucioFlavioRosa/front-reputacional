@@ -192,6 +192,8 @@ const REGISTROS: PaginaDeIncidentes = {
       link: 'https://exemplo/1',
       fonte: 'clipei',
       lente: 'imprensa',
+      lente_nome: 'Imprensa',
+      fonte_nome: 'Clipei',
       tema: 'Desabastecimento',
       tier: 'muito relevante',
       engajamento: null,
@@ -208,6 +210,8 @@ const REGISTROS: PaginaDeIncidentes = {
       link: null,
       fonte: 'crm',
       lente: 'institucional',
+      lente_nome: 'Institucional',
+      fonte_nome: 'CRM dos Stakeholders',
       tema: 'Desabastecimento',
       tier: null,
       engajamento: null,
@@ -263,7 +267,9 @@ describe('a aba Risk Tracking', () => {
 
     //: O MODAL ABRE com o degrau no título.
     const painel = await screen.findByRole('dialog');
-    expect(painel.textContent).toContain('Risco: R1');
+    //: PELO NOME DO RISCO, e nao pelo codigo: o chip diz o que a pessoa
+    //: clicou, com a palavra do cadastro.
+    expect(painel.textContent).toContain('Risco: Entrega de água');
     //: E A TELA DE TRÁS CONTINUA ONDE ESTAVA: o gráfico não foi recortado.
     expect(screen.getByText('Índice de Exposição a Risco')).toBeTruthy();
   });
@@ -292,7 +298,7 @@ describe('a aba Risk Tracking', () => {
     await userEvent.click(critico);
 
     const painel = await screen.findByRole('dialog');
-    expect(painel.textContent).toContain('Severidade: critico');
+    expect(painel.textContent).toContain('Severidade: Crítico');
   });
 
   it('a DIMENSÃO VAZIA fica na fileira dizendo por quê', async () => {
@@ -328,7 +334,7 @@ describe('a aba Risk Tracking', () => {
     await screen.findByText('Filtros:');
 
     //: A ESCADA: sem N1 escolhido não há por que listar 104 temas.
-    expect(screen.queryByText('Macro tema (N2)')).toBeNull();
+    expect(screen.queryByText('Tema estratégico (N2)')).toBeNull();
     expect(screen.getByText('Pilar (N1)')).toBeTruthy();
   });
 

@@ -98,6 +98,12 @@ export interface IncidenteNaTabela {
    *  Clipei": a lente diz de que ângulo se vê, a fonte diz de quem veio o dado,
    *  e quem confere uma planilha precisa da segunda. */
   lente: string;
+  /** Os NOMES de cadastro dos dois — é o que a tela escreve. O código é chave:
+   *  a tabela mostrava "sociedade · bites" onde o produto diz "Sociedade
+   *  digital". Vêm do servidor, e não de um mapa aqui, que seria uma segunda
+   *  cópia do cadastro. */
+  lente_nome: string;
+  fonte_nome: string;
   tema: string;
   tier: string | null;
   engajamento: number | null;
@@ -141,7 +147,7 @@ export interface ClusterDeRisco {
   riscos: { codigo: string; nome: string; severidade: string }[];
 }
 
-/** Um nó da taxonomia de temas — N1 (bloco), N2 (macro tema), N3 (tema).
+/** Um nó da taxonomia de assuntos — Pilar (N1), Tema estratégico (N2), Tema (N3).
  *
  *  OS TRÊS NÍVEIS SÃO O CAMINHO DO APROFUNDAMENTO: escolher N1 reduz a lista de
  *  N2, e escolher N2 reduz a de N3. `incidentes` é quantos o nó tem no recorte
@@ -367,7 +373,11 @@ export function alcanceDoIncidente(
   if (incidente.tipo === 'agenda') {
     return { valor: 'não se aplica', detalhe: 'agenda do CRM', ausente: true };
   }
-  return { valor: 'não informado', detalhe: `pela ${incidente.fonte}`, ausente: true };
+  return {
+    valor: 'não informado',
+    detalhe: `pela ${incidente.fonte_nome || incidente.fonte}`,
+    ausente: true,
+  };
 }
 
 /** O número do engajamento curto, para caber numa coluna de 84px. */
@@ -408,13 +418,22 @@ export function porQueADimensaoEstaVazia(dimensao: DimensaoDoFiltro): string {
  *
  *  EM UM LUGAR SÓ porque a trilha aparece em dois (o chip do filtro e o título
  *  do painel), e dois mapas divergiriam no primeiro rótulo que alguém ajustasse.
- *  `tema` é "Tema (N3)" e não "Tema": a planilha da Bites e o cadastro falam em
- *  N1/N2/N3, e é assim que a equipe se refere a eles em reunião. */
+ *
+ *  OS TRÊS NÍVEIS SE CHAMAM COMO O CADASTRO DE ASSUNTOS OS CHAMA — "Pilar (N1)"
+ *  e "Tema estratégico (N2)" são os rótulos dos dois campos de
+ *  `CadastroDeAssuntos.tsx`, que é a tela onde esses níveis são geridos, e o que
+ *  se cadastra lá é o "tema". Eu havia escrito "Macro tema (N2)", tirado do nome
+ *  da TABELA (`macro_tema`): nome de tabela não é rótulo de tela, e a pessoa que
+ *  cadastra o nível num lugar e o filtra no outro tem de ler a mesma palavra.
+ *
+ *  O SUFIXO N1/N2/N3 FICA porque é como a planilha da Bites manda as colunas e
+ *  como a equipe se refere a eles em reunião — e é o que distingue "Tema
+ *  estratégico (N2)" de "Tema (N3)" numa fileira de filtros. */
 export const ROTULO_DO_DEGRAU: Record<string, string> = {
   lentes: 'Lente',
   fontes: 'Fonte',
   bloco: 'Pilar (N1)',
-  macro: 'Macro tema (N2)',
+  macro: 'Tema estratégico (N2)',
   tema: 'Tema (N3)',
   cluster: 'Cluster de risco',
   risco: 'Risco',
@@ -445,18 +464,63 @@ export const ORDEM_DOS_DEGRAUS = [
 ] as const;
 
 /** Os degraus ativos de um recorte, na ordem do domínio, para a trilha. */
+/** Traduz o valor de um degrau no nome que o cadastro lhe dá.
+ *
+ *  OPCIONAL, E DE FORA: `trilhaDoRecorte` é pura e testada sem montar tela, e
+ *  quem tem o catálogo é a página (que acabou de receber `/opcoes`). Sem
+ *  tradutor o valor sai cru — pior que o nome, melhor que vazio. */
+export type NomeDoValor = (chave: string, valor: string) => string;
+
 export function trilhaDoRecorte(
   filtro: FiltroDoRisco,
+  nomeDoValor?: NomeDoValor,
 ): { chave: string; rotulo: string; valor: string }[] {
   const degraus: { chave: string; rotulo: string; valor: string }[] = [];
+  const nome = (chave: string, valor: string) => nomeDoValor?.(chave, valor) || valor;
   for (const chave of ORDEM_DOS_DEGRAUS) {
     const bruto = filtro[chave as keyof FiltroDoRisco];
-    const valor = Array.isArray(bruto) ? bruto.join(', ') : bruto;
+    //: A LISTA VIRA NOMES, UM A UM: juntar antes e traduzir depois pediria o
+    //: nome de "imprensa, sociedade", que não existe.
+    const valor = Array.isArray(bruto)
+      ? bruto.map((um) => nome(chave, String(um))).join(', ')
+      : bruto
+        ? nome(chave, String(bruto))
+        : bruto;
     if (valor) {
       degraus.push({ chave, rotulo: ROTULO_DO_DEGRAU[chave] ?? chave, valor: String(valor) });
     }
   }
   return degraus;
+}
+
+/** O tradutor desta aba, montado do que `/opcoes` trouxe.
+ *
+ *  AQUI E NÃO NA PÁGINA porque o modal precisa do mesmo tradutor, e dois mapas
+ *  divergiriam no primeiro degrau que alguém acrescentasse. */
+export function nomesDoRecorte(opcoes: OpcoesDoRisco): NomeDoValor {
+  const lentes = new Map(opcoes.lentes.map((uma) => [uma.codigo, uma.nome]));
+  const fontes = new Map(opcoes.fontes.map((uma) => [uma.codigo, uma.nome]));
+  const clusters = new Map(opcoes.clusters.map((um) => [um.codigo, um.nome]));
+  const riscos = new Map(
+    opcoes.clusters.flatMap((um) => um.riscos.map((r) => [r.codigo, r.nome] as const)),
+  );
+  const blocos = new Map(opcoes.temas.map((um) => [um.codigo, um.nome]));
+  const macros = new Map(
+    opcoes.temas.flatMap((bloco) => bloco.dentro.map((m) => [m.codigo, m.nome] as const)),
+  );
+
+  return (chave, valor) => {
+    if (chave === 'lentes' || chave === 'lente') return lentes.get(valor) ?? valor;
+    if (chave === 'fontes' || chave === 'fonte') return fontes.get(valor) ?? valor;
+    if (chave === 'cluster') return clusters.get(valor) ?? valor;
+    if (chave === 'risco') return riscos.get(valor) ?? valor;
+    if (chave === 'bloco') return blocos.get(valor) ?? valor;
+    if (chave === 'macro') return macros.get(valor) ?? valor;
+    if (chave === 'severidade') return rotuloDaSeveridade(valor);
+    //: O TEMA (N3) JÁ VEM PELO NOME: ele não tem código no cadastro, e é o nome
+    //: que é único. Ver `arvore_dos_temas` no back.
+    return valor;
+  };
 }
 
 /** O PRÓXIMO DEGRAU DA TAXONOMIA, e as opções dele no recorte.
