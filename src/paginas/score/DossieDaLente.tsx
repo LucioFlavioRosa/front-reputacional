@@ -56,6 +56,7 @@ import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { serieDaLente } from '@/dominio/janelaDaJornada';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
+import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa, corForteDaLente } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
@@ -158,6 +159,14 @@ export function DossieDaLente({
     };
   }, [lente, mes, filtro]);
 
+  //: OS DOIS BLOCOS EXPANSÍVEIS, por pedido: a Jornada fica sempre à mostra, e
+  //: o resto da lente se divide em "Síntese executiva" (os gráficos de sempre)
+  //: e "Drill down". AQUI, E NÃO DENTRO DE CADA BLOCO, para o que a pessoa abriu
+  //: continuar aberto quando ela troca de lente ou de mês.
+  const [abertos, definirAbertos] = useState({ sintese: false, drill: false });
+  const alternar = (bloco: 'sintese' | 'drill') =>
+    definirAbertos((atual) => ({ ...atual, [bloco]: !atual[bloco] }));
+
   return (
     <div
       style={{
@@ -210,15 +219,32 @@ export function DossieDaLente({
 
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
-      {!dossie && !erro ? <Carregando /> : null}
-      {dossie ? (
-        <Conteudo
-          dossie={dossie}
-          filtro={filtro}
-          definirFiltro={definirFiltro}
-          serie={serie}
-        />
-      ) : null}
+
+      <BlocoExpansivel
+        titulo="Síntese executiva"
+        descricao="Os gráficos da lente: evolução, veículos, matérias, drivers, temas e onde está a causa."
+        aberto={abertos.sintese}
+        aoAlternar={() => alternar('sintese')}
+      >
+        {!dossie && !erro ? <Carregando /> : null}
+        {dossie ? (
+          <Conteudo
+            dossie={dossie}
+            filtro={filtro}
+            definirFiltro={definirFiltro}
+            serie={serie}
+          />
+        ) : null}
+      </BlocoExpansivel>
+
+      <BlocoExpansivel
+        titulo="Drill down"
+        descricao="Do pilar ao tema e ao subtema, descendo até a menção."
+        aberto={abertos.drill}
+        aoAlternar={() => alternar('drill')}
+      >
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)' }}>Em construção.</p>
+      </BlocoExpansivel>
     </div>
   );
 }
