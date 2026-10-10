@@ -201,6 +201,26 @@ export function Login({
             acesso, entre com e-mail e senha.
           </p>
 
+          {/* ACIMA DOS DOIS CAMINHOS DE ENTRADA, e não só dentro do formulário
+              de senha: quem volta do SSO (a maioria) nunca abre esse
+              formulário, e lá embaixo a mensagem nunca seria vista. */}
+          {falha || erro ? (
+            <div
+              role="alert"
+              style={{
+                marginTop: 18,
+                padding: '10px 12px',
+                borderRadius: 'var(--r-card-int)',
+                background: 'var(--erro-bg)',
+                color: 'var(--erro-fg)',
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+            >
+              {falha ?? erro}
+            </div>
+          ) : null}
+
           {/* O SSO primeiro: é o caminho da maioria, e a ordem na tela é a
               ordem da expectativa de quem chega. */}
           <button
@@ -298,24 +318,6 @@ export function Login({
                 style={entrada}
               />
             </label>
-
-            {/* A falha da senha e a falha de sessão aparecem no MESMO lugar:
-                para quem está olhando, as duas são "não entrei". */}
-            {falha || erro ? (
-              <div
-                role="alert"
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 'var(--r-card-int)',
-                  background: 'var(--erro-bg)',
-                  color: 'var(--erro-fg)',
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                }}
-              >
-                {falha ?? erro}
-              </div>
-            ) : null}
 
             <button
               type="submit"
