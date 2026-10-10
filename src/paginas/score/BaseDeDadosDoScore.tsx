@@ -342,11 +342,19 @@ export function BaseDeDadosDoScore() {
                           {/* PARA EM TRÊS LINHAS: o título mais longo da base
                               tem 2.169 caracteres, que em 380px são ~39 linhas
                               — e a célula gigante esticava a linha inteira da
-                              tabela. O valor completo vai no `title`. */}
+                              tabela. O valor completo vai no `title`.
+
+                              E NENHUM `display` EM LINHA AQUI. Havia um
+                              `display: 'block'`, e estilo em linha vence a
+                              classe: ele desligava o `display: -webkit-box` de
+                              que o `-webkit-line-clamp` depende, e o limite
+                              nunca agia — a célula de 39 linhas continuava
+                              inteira. Achado de revisão. A classe já é de
+                              nível de bloco, então o link segue embaixo. */}
                           <span
                             className={classeDasLinhasDaColuna(coluna.rotulo)}
                             title={mencao.titulo ?? undefined}
-                            style={{ display: 'block', color: 'var(--cinza-4)', lineHeight: 1.4 }}
+                            style={{ color: 'var(--cinza-4)', lineHeight: 1.4 }}
                           >
                             {mencao.titulo ?? <span style={{ color: 'var(--cinza-2)' }}>sem texto na fonte</span>}
                           </span>
@@ -402,9 +410,7 @@ export function BaseDeDadosDoScore() {
                             `<colgroup>` e o `table-layout: fixed`. Achado de
                             revisão. */}
                         {limite ? (
-                          <span className={limite} style={{ display: '-webkit-box' }}>
-                            {coluna.valor(mencao)}
-                          </span>
+                          <span className={limite}>{coluna.valor(mencao)}</span>
                         ) : (
                           coluna.valor(mencao)
                         )}

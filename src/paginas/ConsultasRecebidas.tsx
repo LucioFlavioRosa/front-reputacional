@@ -208,13 +208,13 @@ export function ConsultasRecebidas({ aoAbrirFicha }: { aoAbrirFicha: (id: string
 
                 O limite vai num EMBRULHO dentro da célula, nunca na célula:
                 `-webkit-line-clamp` precisa de `display: -webkit-box`, e esse
-                `display` num `<td>` substitui o `table-cell`. O valor inteiro
-                fica no `title`, e a ficha da consulta abre com um clique. */}
+                `display` num `<td>` substitui o `table-cell`. E o `display`
+                vem só da classe — estilo em linha venceria a classe e
+                desligaria o limite sem aviso. O valor inteiro fica no `title`,
+                e a ficha da consulta abre com um clique. */}
             {!visiveis.includes('O que perguntaram') ? null : (
               <td style={{ ...celula, minWidth: 260 }} title={linha.teor || undefined}>
-                <span className="tres-linhas" style={{ display: '-webkit-box' }}>
-                  {linha.teor || '—'}
-                </span>
+                <span className="tres-linhas">{linha.teor || '—'}</span>
               </td>
             )}
             {!visiveis.includes('Alegações') ? null : (
@@ -222,7 +222,7 @@ export function ConsultasRecebidas({ aoAbrirFicha }: { aoAbrirFicha: (id: string
                 style={{ ...celula, minWidth: 220 }}
                 title={linha.alegacoes.join(' · ') || undefined}
               >
-                <span className="tres-linhas" style={{ display: '-webkit-box' }}>
+                <span className="tres-linhas">
                   {linha.alegacoes.length ? linha.alegacoes.join(' · ') : '—'}
                 </span>
               </td>
