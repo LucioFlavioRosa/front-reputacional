@@ -1,0 +1,50 @@
+/* Estados da Consulta em profundidade que estilo inline não alcança.
+
+   HOVER DE LINK E BOTÃO EM #111799 (spec E.1, `--azul-mar-sombra`). É CSS, e
+   não estado do React, porque é só aparência: um `useState` por botão para
+   trocar uma cor seria peso sem ganho. Por isso as cores desses controles
+   saem do estilo inline e moram aqui: inline venceria o `:hover`.
+
+   As linhas da tabela de impacto têm hover próprio (E.4.2: fundo `#F8FAFF` e
+   nome azul), já resolvido no componente, e não usam estas classes. */
+
+.consulta-link {
+  color: var(--azul-mar);
+}
+.consulta-link:hover {
+  color: var(--azul-mar-sombra);
+}
+
+.consulta-botao-primario {
+  background: var(--azul-mar);
+  color: var(--branco);
+  border: none;
+}
+.consulta-botao-primario:hover {
+  background: var(--azul-mar-sombra);
+}
+
+.consulta-botao-contornado {
+  background: var(--branco);
+  color: var(--azul-mar);
+  border: 1px solid var(--azul-mar);
+}
+.consulta-botao-contornado:hover {
+  color: var(--azul-mar-sombra);
+  border-color: var(--azul-mar-sombra);
+}
+
+/* SEGMENTADOS (F.9): os botões se sobrepõem 1px para a borda não dobrar. O
+   ativo fica por cima (a borda azul inteira aparece), e o que tem foco fica
+   acima de todos: sem isso, o vizinho pintado depois cobriria parte do anel
+   de foco (2px + 2px de afastamento). */
+.consulta-segmento {
+  position: relative;
+  z-index: 0;
+}
+.consulta-segmento[aria-pressed='true'] {
+  z-index: 1;
+}
+.consulta-segmento:focus-visible {
+  z-index: 2;
+}
