@@ -240,7 +240,7 @@ export function AprofundarNoRisco({
                   ? 'Dentro deste recorte · por pilar (N1)'
                   : nivel.chave === 'macro'
                     ? 'Dentro deste recorte · por tema estratégico (N2)'
-                    : 'Dentro deste recorte · por tema (N3)'
+                    : 'Dentro deste recorte · por subtema (N3)'
               }
               opcoes={nivel.opcoes.map((um) => ({
                 codigo: um.codigo,

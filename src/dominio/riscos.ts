@@ -147,7 +147,7 @@ export interface ClusterDeRisco {
   riscos: { codigo: string; nome: string; severidade: string }[];
 }
 
-/** Um nó da taxonomia de assuntos — Pilar (N1), Tema estratégico (N2), Tema (N3).
+/** Um nó da taxonomia de assuntos — Pilar (N1), Tema estratégico (N2), Subtema (N3).
  *
  *  OS TRÊS NÍVEIS SÃO O CAMINHO DO APROFUNDAMENTO: escolher N1 reduz a lista de
  *  N2, e escolher N2 reduz a de N3. `incidentes` é quantos o nó tem no recorte
@@ -419,22 +419,31 @@ export function porQueADimensaoEstaVazia(dimensao: DimensaoDoFiltro): string {
  *  EM UM LUGAR SÓ porque a trilha aparece em dois (o chip do filtro e o título
  *  do painel), e dois mapas divergiriam no primeiro rótulo que alguém ajustasse.
  *
- *  OS TRÊS NÍVEIS SE CHAMAM COMO O CADASTRO DE ASSUNTOS OS CHAMA — "Pilar (N1)"
- *  e "Tema estratégico (N2)" são os rótulos dos dois campos de
- *  `CadastroDeAssuntos.tsx`, que é a tela onde esses níveis são geridos, e o que
- *  se cadastra lá é o "tema". Eu havia escrito "Macro tema (N2)", tirado do nome
- *  da TABELA (`macro_tema`): nome de tabela não é rótulo de tela, e a pessoa que
- *  cadastra o nível num lugar e o filtra no outro tem de ler a mesma palavra.
+ *  OS TRÊS NÍVEIS SE CHAMAM COMO O RESTO DO PRODUTO OS CHAMA, e isso foi
+ *  corrigido duas vezes pelo MESMO erro meu: eu tirava o rótulo do nome da
+ *  TABELA em vez do vocabulário de NÍVEL. Escrevi "Macro tema (N2)" (a tabela é
+ *  `macro_tema`) e "Tema (N3)" (a tabela é `tema`); os rótulos do produto são
+ *  "Tema estratégico (N2)" e "Subtema (N3)".
  *
- *  O SUFIXO N1/N2/N3 FICA porque é como a planilha da Bites manda as colunas e
- *  como a equipe se refere a eles em reunião — e é o que distingue "Tema
- *  estratégico (N2)" de "Tema (N3)" numa fileira de filtros. */
+ *  A CONVENÇÃO JÁ ESTAVA EM DEZ ARQUIVOS da `main` — a Base das Lentes
+ *  (`baseDasLentes.ts`), o painel de filtros do CRM, o `Painel`, as derivações,
+ *  os filtros das Lentes, a Base do Score e o back (`importacao_de_subtemas`):
+ *
+ *      tema_n1  ->  "Pilar (N1)"
+ *      tema_n2  ->  "Tema estratégico (N2)"
+ *      tema_n3  ->  "Subtema (N3)"           <- o N3 do CADASTRO
+ *      subtema  ->  "Subtema (fornecedor)"   <- o texto cru do fornecedor
+ *
+ *  E O QUALIFICADOR "(N3)" NÃO É DECORATIVO: sem ele, "Subtema" colidiria com
+ *  "Subtema (fornecedor)", que é outra coisa — o que o fornecedor escreveu, e
+ *  que pode discordar do cadastro. Os dois aparecem lado a lado na Base das
+ *  Lentes. */
 export const ROTULO_DO_DEGRAU: Record<string, string> = {
   lentes: 'Lente',
   fontes: 'Fonte',
   bloco: 'Pilar (N1)',
   macro: 'Tema estratégico (N2)',
-  tema: 'Tema (N3)',
+  tema: 'Subtema (N3)',
   cluster: 'Cluster de risco',
   risco: 'Risco',
   severidade: 'Severidade',
