@@ -133,6 +133,16 @@ export interface Dossie {
   /** A frase que abre a lente — calculada dos dados, nunca salva. */
   manchete: string | null;
   evolucao: Bloco;
+  /** A LINHA DO TEMPO DOS FATOS DE MERCADO, logo abaixo da Evolução — e só na
+   *  lente Mercado; `null` nas outras.
+   *
+   *  ELE ERA A EVOLUÇÃO DELA, e deixou de ser quando se mediu que a lente tem
+   *  série mensal (216 menções em agosto, 111 em setembro — os mesmos dois
+   *  meses que a Imprensa cobre). Não foi substituído: dos seus 15 eventos, só
+   *  5 são de rating e já aparecem no painel "Trajetória de rating"; os outros
+   *  10 não estão em lugar nenhum, e o período deles é outro (fevereiro a
+   *  agosto, contra agosto e setembro da série). Ver `_eventograma` no back. */
+  eventograma: Bloco | null;
   /** O quadro ao lado da evolução: até três sinais da série, mais as lacunas. */
   sinais_da_evolucao: string[];
   /** Volume de matérias por tier, para a rosca ao lado do Top 5 veículos —

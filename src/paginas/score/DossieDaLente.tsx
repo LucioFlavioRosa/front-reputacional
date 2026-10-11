@@ -708,6 +708,36 @@ function Evolucao({
         ) : null}
 
       </Cartao>
+
+      {/* O EVENTOGRAMA, NUM CARTÃO IRMÃO E DENTRO DA MESMA SEÇÃO.
+
+          Ele responde a MESMA pergunta que a Evolução — "como isto andou no
+          período" —, por outra via: fato datado em vez de contagem. Seção nova
+          o afastaria da série que ele complementa.
+
+          SÓ O MERCADO O TEM (`null` nas outras), e ele ERA a Evolução dela até
+          se medir que a lente tem série mensal. Os dois convivem porque não se
+          repetem: dos 15 eventos, 5 são de rating e já estão no painel
+          "Trajetória de rating"; os outros 10 não aparecem em lugar nenhum. E
+          o período é outro — os eventos vão de fevereiro a agosto, a série tem
+          agosto e setembro.
+
+          SEM `aoAprofundarNoMes`: a linha do tempo não tem coluna de mês para
+          clicar, e o `Painel` recebe o atalho como opcional. Passar uma função
+          vazia faria o JSX dizer que há tratamento de clique onde não há.
+          Achado de revisão. */}
+      {dossie.eventograma ? (
+        <Cartao>
+          <CabecalhoDoBloco
+            titulo={dossie.eventograma.titulo}
+            conclusao={dossie.eventograma.conclusao}
+            ficha={dossie.eventograma.ficha}
+            ajuda={GUIA_DO_BLOCO[dossie.eventograma.titulo]}
+          />
+          <Painel bloco={dossie.eventograma} fatos={dossie.fatos} />
+          <NotaDeFonte ficha={dossie.eventograma.ficha} />
+        </Cartao>
+      ) : null}
     </Secao>
     </ComFaixaDoTopo>
   );

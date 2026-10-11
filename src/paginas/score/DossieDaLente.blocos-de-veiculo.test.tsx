@@ -27,9 +27,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bloco, Dossie, Ficha } from '@/dominio/dossie';
 
 const obterDossieDaLente = vi.fn();
+//: A ROTA DO APROFUNDAMENTO fica pendente de propósito: o teste quer provar que
+//: o clique a CHAMA com o mês certo, não o que o painel desenha depois.
+//: Os parâmetros declarados como resto, e não omitidos: sem eles o `tsc`
+//: recusa o spread no `vi.mock` abaixo ("a spread argument must either have a
+//: tuple type or be passed to a rest parameter") — e os testes passariam com o
+//: tipo quebrado.
+const obterRecorteDaLente = vi.fn((..._argumentos: unknown[]) => new Promise(() => {}));
 
 vi.mock('@/api/cliente', () => ({
   obterDossieDaLente: (...argumentos: unknown[]) => obterDossieDaLente(...argumentos),
+  obterRecorteDaLente: (...argumentos: unknown[]) => obterRecorteDaLente(...argumentos),
   obterOpcoesDeFiltroDaLente: vi.fn(() => Promise.resolve(null)),
 }));
 
@@ -93,7 +101,32 @@ function dossieCom(codigo: string): Dossie {
     kpis: [],
     ficha_do_destaque: FICHA,
     manchete: null,
-    evolucao: bloco({ tipo: 'barras_empilhadas', titulo: 'Evolução' }),
+    evolucao: bloco({
+      tipo: 'barras_empilhadas',
+      titulo: 'Evolução das matérias',
+      //: A SÉRIE MEDIDA DO MERCADO, e com dado de verdade porque é dela que
+      //: sai a COLUNA CLICÁVEL — sem linha não há coluna, e sem coluna o teste
+      //: do clique não teria o que procurar.
+      dados: [
+        { mes: '2026-08', positivo: 144, neutro: 61, negativo: 11, sem_base: false },
+        { mes: '2026-09', positivo: 63, neutro: 35, negativo: 13, sem_base: false },
+      ],
+      legenda: ['Positivo', 'Neutro', 'Negativo'],
+    }),
+    //: SÓ O MERCADO TEM, e é o que o último teste deste arquivo afirma.
+    eventograma:
+      codigo === 'mercado'
+        ? bloco({
+            tipo: 'linha_do_tempo',
+            titulo: 'Eventograma · mercado e rating',
+            dados: [
+              {
+                mes: '2026-09',
+                eventos: [{ texto: 'Aumento de capital', efeito: 'sustenta' }],
+              },
+            ],
+          })
+        : null,
     sinais_da_evolucao: [],
     volume_por_tier: bloco({
       tipo: 'rosca',
@@ -174,6 +207,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  obterRecorteDaLente.mockImplementation(() => new Promise(() => {}));
   window.history.replaceState(null, '', '/');
 });
 
@@ -212,6 +246,63 @@ describe('os blocos de veículo do dossiê', () => {
       }
     },
   );
+
+  it('a Evolução do MERCADO é o mesmo gráfico de barras da Imprensa', async () => {
+    //: ELA ERA O EVENTOGRAMA, por uma premissa falsa: acreditava-se que a lente
+    //: não tinha série mensal medida. Tem — 216 menções em agosto e 111 em
+    //: setembro, e a Imprensa cobre exatamente os mesmos dois meses.
+    //:
+    //: O QUE ESTE TESTE PRENDE é a coluna clicável, que é a função do gráfico
+    //: que a linha do tempo não tinha: clicar na barra abre o mês. Sem ela, a
+    //: Evolução do Mercado seria só um desenho parecido.
+    obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));
+    const { container } = await montarEAbrir('mercado');
+
+    await waitFor(() => expect(screen.getAllByText('Evolução').length).toBeGreaterThan(0));
+
+    //: A COLUNA CLICÁVEL SE RECONHECE PELO `aria-pressed`, e não pelo rótulo do
+    //: mês: o atributo só é posto quando `aoClicarMes` chega ao gráfico
+    //: (`BarrasEmpilhadas.tsx`), então a presença dele É a prova de que a função
+    //: está ligada. O rótulo depende do formatador e o despejo do
+    //: testing-library o trunca, o que fazia o teste falhar por motivo errado.
+    const colunas = container.querySelectorAll('[role="button"][aria-pressed]');
+    expect(colunas.length).toBe(2);
+
+    //: E CLICAR TEM DE ABRIR O MÊS CLICADO, que é a função inteira — a marcação
+    //: sozinha provaria só que o atributo está lá.
+    //:
+    //: A PROVA É A CHAMADA DA ROTA DO APROFUNDAMENTO com o mês: foi assim que
+    //: descobri que o clique já funcionava (o teste quebrou porque
+    //: `obterRecorteDaLente` não estava no mock). Afirmar texto do painel
+    //: dependeria do que ele desenha enquanto carrega.
+    await userEvent.click(colunas[1] as HTMLElement);
+    await waitFor(() => expect(obterRecorteDaLente).toHaveBeenCalled());
+    expect(obterRecorteDaLente.mock.calls[0]).toContain('2026-09');
+  });
+
+  it('e o EVENTOGRAMA continua logo abaixo, só no Mercado', async () => {
+    //: Ele não foi substituído: dos 15 eventos, 5 são de rating e já aparecem
+    //: no painel "Trajetória de rating"; os outros 10 não estão em lugar
+    //: nenhum, e o período deles é outro (fevereiro a agosto, contra agosto e
+    //: setembro da série). Trocar um pelo outro custaria dez eventos.
+    obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));
+    await montarEAbrir('mercado');
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/Eventograma/).length).toBeGreaterThan(0),
+    );
+    expect(screen.getByText('Aumento de capital')).toBeTruthy();
+  });
+
+  it('e a Imprensa NÃO ganha eventograma, nem a moldura dele', async () => {
+    //: O campo é nulo nas outras lentes, e nulo é o que faz a tela não desenhar
+    //: a moldura. Um cartão vazio se leria como dado que sumiu.
+    obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
+    await montarEAbrir('imprensa');
+
+    await waitFor(() => expect(screen.getAllByText('Evolução').length).toBeGreaterThan(0));
+    expect(screen.queryAllByText(/Eventograma/)).toEqual([]);
+  });
 
   it('e os blocos que valem em TODA lente continuam valendo', () => {
     //: A contraprova da regra: se alguém trocasse a condição por algo que
