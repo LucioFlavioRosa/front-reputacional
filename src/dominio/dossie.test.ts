@@ -231,9 +231,6 @@ function dossie(parcial: Partial<Dossie>): Dossie {
     ficha_do_destaque: FICHA,
     manchete: null,
     evolucao: bloco({ tipo: 'barras_empilhadas' }),
-    //: SÓ O MERCADO TEM EVENTOGRAMA; nas outras o campo é nulo, e nulo é o que
-    //: faz a tela não desenhar a moldura.
-    eventograma: null,
     sinais_da_evolucao: [],
     volume_por_tier: bloco({ tipo: 'rosca', titulo: 'Volume por tier' }),
     top_veiculos: bloco({ tipo: 'barras_horizontais', titulo: 'Top veículos' }),
