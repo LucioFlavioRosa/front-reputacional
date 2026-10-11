@@ -81,3 +81,35 @@ it('o UPLOAD da importacao NAO avisa ninguem', () => {
   expect(escreveNoCatalogo('POST', '/api/importacoes')).toBe(false);
   expect(escreveAgendas('POST', '/api/importacoes')).toBe(false);
 });
+
+it('a confirmacao dos SUBTEMAS avisa o catalogo, e a conferencia NAO', () => {
+  //: MESMO DEFEITO DA IMPORTACAO DE AGENDAS, numa segunda rota — achado de
+  //: revisao com severidade ALTA. `/api/taxonomia/subtemas/confirmacao` "aplica
+  //: o que foi conferido": cria e altera TEMAS. Sem o aviso, a aba Temas, todo
+  //: filtro por tema e todo formulario que oferece tema seguiam os de antes ate
+  //: um F5.
+  expect(escreveNoCatalogo('POST', '/api/taxonomia/subtemas/confirmacao')).toBe(true);
+  //: E A IRMA DELA NAO GRAVA NADA — "NADA E GRAVADO", diz o cliente. Sem esta
+  //: asercao, usar o prefixo `/api/taxonomia` passaria, e cada conferencia
+  //: recarregaria o catalogo inteiro para nao mudar coisa nenhuma.
+  expect(escreveNoCatalogo('POST', '/api/taxonomia/subtemas/conferencia')).toBe(false);
+  expect(escreveNoCatalogo('GET', '/api/taxonomia/subtemas/modelo')).toBe(false);
+  //: E ELA NAO MEXE EM AGENDA.
+  expect(escreveAgendas('POST', '/api/taxonomia/subtemas/confirmacao')).toBe(false);
+});
+
+it('a confirmacao da importacao casa o caminho EXATO, e nao qualquer profundidade', () => {
+  //: ACHADO DE REVISAO (BAIXA): o predicado era `startsWith('/api/importacoes/')`
+  //: com `endsWith('/confirmacao')`, e aceitava qualquer profundidade entre o id
+  //: e a palavra. Nao ha subrota dessas hoje, e e por isso que vale apertar
+  //: agora: o aviso falso que isso daria amanha recarregaria o catalogo inteiro
+  //: por uma rota que ninguem examinou.
+  //:
+  //: A ASERCAO DO TESTE DA ANCORA JA USAVA ESTA REGEX — implementacao mais larga
+  //: que o teste e uma diferenca que ninguem ve ate ela importar.
+  expect(escreveNoCatalogo('POST', '/api/importacoes/abc/confirmacao')).toBe(true);
+  expect(escreveNoCatalogo('POST', '/api/importacoes/abc/outra/confirmacao')).toBe(false);
+  expect(escreveAgendas('POST', '/api/importacoes/abc/outra/confirmacao')).toBe(false);
+  //: E A QUERY NAO ESTRAGA O CASAMENTO: `escreve*` corta no `?` antes de olhar.
+  expect(escreveNoCatalogo('POST', '/api/importacoes/abc/confirmacao?x=1')).toBe(true);
+});

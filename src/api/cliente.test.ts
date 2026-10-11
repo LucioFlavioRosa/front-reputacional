@@ -62,6 +62,11 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   criarTema: () => cliente.criarTema({ nome: 'Tarifa', nivel: 'sensivel' }),
   editarTema: () => cliente.editarTema(7, { nome: 'Tarifa', nivel: 'sensivel', ativo: true }),
   criarInstituicao: () => cliente.criarInstituicao({ nome: 'Folha', tipo: 'veiculo', uf: 'SP', tier: 1 }),
+  //: A CONFIRMAÇÃO DA PLANILHA DE SUBTEMAS, que "aplica o que foi conferido" —
+  //: cria e altera TEMAS. Mesmo defeito da confirmação da importação, numa
+  //: segunda rota, e esta âncora foi quem apontou as duas.
+  confirmarPlanilhaDeSubtemas: () =>
+    cliente.confirmarPlanilhaDeSubtemas(arquivo(), 'impressao-1'),
   //: A CONFIRMAÇÃO DA IMPORTAÇÃO, e o docstring dela é a prova: "Cria os
   //: cadastros e as agendas". Ela estava só na lista das AGENDAS, então as 502
   //: instituições, contatos, temas e pessoas que uma confirmação cria não

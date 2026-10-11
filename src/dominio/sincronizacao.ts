@@ -35,6 +35,21 @@ export const ROTAS_DO_CATALOGO = [
   '/api/pessoas-aegea',
   '/api/referencias',
   '/api/alegacoes',
+  // A CONFIRMAÇÃO DA PLANILHA DE SUBTEMAS, e é o MESMO defeito da confirmação
+  // da importação de agendas, numa segunda rota — achado de revisão com
+  // severidade ALTA.
+  //
+  // Ela "aplica o que foi conferido", diz o próprio comentário do cliente: cria
+  // e altera TEMAS. Sem este aviso, quem sobe a planilha de subtemas vê a aba
+  // Temas, todo filtro por tema e todo formulário que oferece tema seguirem os
+  // de antes até um F5.
+  //
+  // CAMINHO EXATO, e não o prefixo `/api/taxonomia`: a irmã dela,
+  // `/api/taxonomia/subtemas/conferencia`, NÃO grava nada — "NADA É GRAVADO",
+  // diz o cliente — e um prefixo faria cada conferência recarregar o catálogo
+  // inteiro para não mudar coisa nenhuma. O casamento da lista é por igualdade
+  // ou por `rota + '/'`, então este caminho pega só a confirmação.
+  '/api/taxonomia/subtemas/confirmacao',
   // UMA ROTA DA FILA DE REVISÃO, e SÓ ela: enquadrar um lote grava a categoria
   // de público e DERIVA O TIPO da instituição — e o tipo é o que
   // `derivar_frente` usa para dizer de que frente é cada agenda dela. Um lote de
@@ -79,10 +94,20 @@ export const ROTAS_DE_AGENDAS = ['/api/interacoes'] as const;
  *  confirmação é o único passo daquele fluxo que GRAVA, e grava as duas coisas
  *  — as agendas E os cadastros que elas precisavam. Medido com a planilha real
  *  de RI: 304 agendas e 502 cadastros numa confirmação. */
+const CONFIRMACAO_DE_IMPORTACAO = /^\/api\/importacoes\/[^/]+\/confirmacao$/;
+
 function eAConfirmacaoDeImportacao(caminho: string): boolean {
-  return (
-    caminho.startsWith('/api/importacoes/') && caminho.endsWith('/confirmacao')
-  );
+  //: A REGEX, E NÃO `startsWith` + `endsWith`.
+  //:
+  //: ACHADO DE REVISÃO: o par de testes de borda aceitava
+  //: `/api/importacoes/abc/outra-coisa/confirmacao` — qualquer profundidade
+  //: entre o id e a palavra. Não há subrota dessas hoje, e é justamente por
+  //: isso que vale apertar agora: o aviso falso que isso daria amanhã
+  //: recarregaria o catálogo inteiro por uma rota que ninguém examinou.
+  //:
+  //: E A ASSERÇÃO DO TESTE JÁ USAVA ESTA REGEX. Implementação mais larga que o
+  //: teste é uma diferença que ninguém vê até ela importar.
+  return CONFIRMACAO_DE_IMPORTACAO.test(caminho);
 }
 
 /** Esta requisição, se der certo, muda alguma agenda? */
