@@ -26,6 +26,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
+import type { AbaDeRevisao } from '@/api/cliente';
 //: O SINCRONIZADOR DE VERDADE, e não um dublê: ele é uma classe sem React e sem
 //: `fetch`, feita para ser usada em teste — e o que se mede aqui é justamente a
 //: ligação entre ele e a fila.
@@ -202,4 +203,49 @@ it('a secao DESAPARECE quando a fila esvazia, aviso e tudo', async () => {
   await userEvent.click(screen.getAllByRole('button', { name: /Artur Santa/ })[0]);
 
   await waitFor(() => expect(container.textContent).toBe(''));
+});
+
+it('a carga VELHA que chega depois da nova NAO sobrescreve a fila', async () => {
+  //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA, e o mais fino dos quatro: o
+  //: conserto de reler ao mudar o cadastro TORNOU ESTA CORRIDA MAIS PROVÁVEL.
+  //:
+  //: A carga A começa. Alguém corrige um cadastro na lista abaixo. O barramento
+  //: dispara a carga B. B volta com o dado novo; A volta DEPOIS, com o dado
+  //: velho, e sobrescreve — recriando a mesma UI velha que o conserto existia
+  //: para matar, e numa rede lenta, que é onde ela mais dói.
+  //:
+  //: AS DUAS PROMESSAS SÃO RESOLVIDAS À MÃO, na ordem invertida de propósito:
+  //: é a única forma de afirmar a ordem de CHEGADA em vez de confiar na sorte
+  //: do agendador.
+  let soltarAVelha: (abas: AbaDeRevisao[]) => void = () => {};
+  const aVelha = new Promise<AbaDeRevisao[]>((ok) => {
+    soltarAVelha = ok;
+  });
+  let soltarANova: (abas: AbaDeRevisao[]) => void = () => {};
+  const aNova = new Promise<AbaDeRevisao[]>((ok) => {
+    soltarANova = ok;
+  });
+
+  vi.mocked(filaDeRevisao)
+    .mockReturnValueOnce(aVelha)
+    .mockReturnValueOnce(aNova);
+
+  render(<FilaDeRevisao aba="instituicoes" />);
+  //: A SEGUNDA CARGA COMEÇA ANTES DE A PRIMEIRA VOLTAR.
+  catalogoMudou.avisar();
+  await waitFor(() => expect(filaDeRevisao).toHaveBeenCalledTimes(2));
+
+  //: A NOVA CHEGA PRIMEIRO, com a fila já consolidada por outra pessoa.
+  soltarANova([
+    { id: 'instituicoes', rotulo: 'Instituições e Contatos', pendentes: [] },
+  ]);
+  await waitFor(() => expect(screen.queryByText('Artur Santa')).toBeNull());
+
+  //: E A VELHA CHEGA DEPOIS, trazendo os dois cadastros que já não existem.
+  soltarAVelha(O_MESMO_NOME_DUAS_VEZES);
+  await new Promise((pronto) => setTimeout(pronto, 0));
+
+  //: NÃO RESSUSCITOU. Sem o conserto, "Artur Santa" volta para a tela — com o
+  //: botão "Está certo" apontando para um id que outra pessoa já tirou da fila.
+  expect(screen.queryByText('Artur Santa')).toBeNull();
 });

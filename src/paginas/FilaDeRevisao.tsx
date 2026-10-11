@@ -27,7 +27,7 @@
  *  teria como saber qual é o do Banco XP e qual é o da XP Asset.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   consolidarCadastro,
@@ -68,9 +68,25 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: piscar uma confirmação que não era dela. Ver `consolidarCadastro`.
   const [deOutraPessoa, definirDeOutraPessoa] = useState<string[]>([]);
 
+  //: QUAL CARGA É A ATUAL.
+  //:
+  //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA, e o mais fino dos quatro: o
+  //: conserto de reler ao mudar o cadastro TORNOU ESTA CORRIDA MAIS PROVÁVEL.
+  //: A carga A começa; alguém corrige um cadastro na lista abaixo; o barramento
+  //: dispara a carga B; B volta com o dado novo; A volta depois, com o dado
+  //: velho, e sobrescreve.
+  //:
+  //: O RESULTADO É A MESMA UI VELHA QUE O CONSERTO EXISTIA PARA MATAR — e numa
+  //: rede lenta, que é onde ela mais dói. Só a carga mais recente escreve
+  //: estado; as atrasadas são descartadas em silêncio, porque não há nada a
+  //: dizer sobre uma resposta que já não interessa.
+  const atual = useRef(0);
+
   const carregar = useCallback(() => {
+    const minhaVez = ++atual.current;
     filaDeRevisao()
       .then((abas) => {
+        if (minhaVez !== atual.current) return;
         const minha = abas.find((a) => a.id === aba) ?? {
           id: aba,
           rotulo: '',
@@ -85,6 +101,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
         definirErro('');
       })
       .catch((falha: Error) => {
+        if (minhaVez !== atual.current) return;
         //: A FILA É ACESSÓRIA: ela não pode derrubar o cadastro inteiro. O erro
         //: aparece no lugar dela e o resto da tela segue funcionando. É também o
         //: que mantém a aba utilizável para quem não tem permissão de
