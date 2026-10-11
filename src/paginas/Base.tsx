@@ -353,7 +353,14 @@ export function Base({
                     texto do `aria-label` diz a mesma coisa para quem não vê o
                     símbolo. */}
                 {linha.cadastroIncompleto ? (
+                  // `role="img"` COM `aria-label` E `tabIndex`, que é o padrão
+                  // que o `Ajuda` dos componentes básicos já usa. `title`
+                  // sozinho não atende teclado nem toque, e `aria-label` num
+                  // `span` sem papel semântico pode não ser anunciado — achado
+                  // de revisão. O `title` fica para quem usa mouse.
                   <span
+                    role="img"
+                    tabIndex={0}
                     title={`Cadastro incompleto: sem ${linha.cadastroIncompleto}`}
                     aria-label={`Cadastro incompleto: sem ${linha.cadastroIncompleto}`}
                     style={{ color: 'var(--atencao-fg)', marginLeft: 6, fontWeight: 700 }}
