@@ -758,18 +758,21 @@ export interface EnquadramentoFeito {
 
 /** Dá a mesma categoria de público a várias instituições da fila de revisão.
  *
- *  POR QUE EXISTE, e o número é o argumento: a planilha real de RI criou 499
+ *  POR QUE EXISTE, e o número é o argumento: a planilha real de RI criou 178
  *  instituições sem categoria, todas como "Entidade", e a resposta para quase
  *  todas é a mesma. A consolidação uma a uma faria a pessoa digitar a mesma
- *  coisa 499 vezes — e desistir na décima, com a base meio classificada, que é
+ *  coisa 178 vezes — e desistir na décima, com a base meio classificada, que é
  *  pior do que não classificada porque ninguém sabe onde parou.
+ *
+ *  (As 499 pendências da aba juntam instituições e CONTATOS; só as 178
+ *  instituições entram no lote, porque só elas têm categoria de público.)
  *
  *  O TIPO SAI DA CATEGORIA: enquadrar reclassifica as agendas de cada
  *  instituição do lote, porque é do tipo que a frente da agenda deriva. É por
  *  isso que este caminho está em `ROTAS_DO_CATALOGO` e o da consolidação não.
  *
- *  NÃO É TUDO-OU-NADA: com 499 linhas, uma colisão de nome faria o lote inteiro
- *  falhar e ninguém saberia qual das 499. O servidor enquadra as que dão e
+ *  NÃO É TUDO-OU-NADA: com 178 linhas, uma colisão de nome faria o lote inteiro
+ *  falhar e ninguém saberia qual das 178. O servidor enquadra as que dão e
  *  devolve `recusadas` com o motivo de cada uma.
  *
  *  SÓ ALCANÇA O QUE ESTÁ PENDENTE. Um lote capaz de reescrever o tipo de

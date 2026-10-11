@@ -26,12 +26,17 @@
  *  mostraria "Artur Santa" duas vezes, com o mesmo motivo, e quem revisa não
  *  teria como saber qual é o do Banco XP e qual é o da XP Asset.
  *
- *  E O LOTE EXISTE PORQUE 499 É UM NÚMERO REAL. Subir a planilha de Relações com
- *  Investidores criou 499 instituições, todas como "Entidade" — a resposta para
- *  quase todas é a MESMA categoria. Quatrocentas e noventa e nove idas à lista de
- *  cadastro para digitar a mesma coisa não é revisão: é a pessoa desistindo na
- *  décima, com a base meio classificada, que é pior do que não classificada
- *  porque ninguém sabe onde parou.
+ *  E O LOTE EXISTE PORQUE OS NÚMEROS SÃO REAIS. Subir a planilha de Relações com
+ *  Investidores deixou 499 pendências nesta aba: 178 INSTITUIÇÕES, todas como
+ *  "Entidade", e 321 contatos. A resposta para quase todas as instituições é a
+ *  MESMA categoria, e cento e setenta e oito idas à lista de cadastro para
+ *  digitar a mesma coisa não é revisão: é a pessoa desistindo na décima, com a
+ *  base meio classificada, que é pior do que não classificada porque ninguém
+ *  sabe onde parou.
+ *
+ *  OS DOIS NÚMEROS IMPORTAM, e por isso estão os dois aqui: 499 é o que a tela
+ *  DESENHA, e é o que o teto de renderização e a busca resolvem; 178 é o que o
+ *  LOTE alcança, porque só instituição tem categoria de público.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -78,8 +83,8 @@ const MOTIVO_GENERICO =
 //:
 //: O TETO É DE RENDERIZAÇÃO, e não de seleção: "Selecionar todas" pega tudo o
 //: que a busca encontrou, inclusive o que não está desenhado. É a divisão certa —
-//: desenhar 499 linhas é problema de tela, enquadrar 499 é a operação que a
-//: pessoa veio fazer.
+//: desenhar 499 linhas é problema de tela, enquadrar as 178 instituições é a
+//: operação que a pessoa veio fazer.
 //:
 //: 30 porque é o que cabe numa rolagem curta. Sem teto, a fila real desenha 499
 //: blocos a cada recarga, e a recarga acontece a cada escrita de catálogo.
@@ -99,7 +104,8 @@ function chaveDe(pendente: CadastroPendente): string {
 
 /** Casa a busca contra tudo o que a linha mostra.
  *
- *  NOME, CONTEXTO E MOTIVO, e não só o nome: com 499 linhas, as buscas úteis são
+ *  NOME, CONTEXTO E MOTIVO, e não só o nome: com 499 linhas na aba, as buscas
+ *  úteis são
  *  "XP" (que casa a instituição E os contatos dela, pelo contexto) e "duas
  *  instituições" (que casa pelo motivo e junta os quatro casos do dia). Buscar só
  *  no nome deixaria a segunda impossível.
@@ -169,7 +175,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
           pendentes: [],
         };
         definirFila(minha);
-        //: A SELEÇÃO É PODADA, e não limpa: quem enquadrou 40 de 499 e vê a fila
+        //: A SELEÇÃO É PODADA, e não limpa: quem enquadrou 40 de 178 e vê a fila
         //: recarregar não quer começar de novo, mas uma chave que já não está na
         //: fila é uma linha que outra pessoa resolveu — mantê-la selecionada
         //: mandaria o servidor recusá-la depois.
@@ -474,7 +480,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
             ) : null}
 
             {/* AS RECUSADAS, uma a uma e com o motivo. O lote não é
-                tudo-ou-nada de propósito: com 499 linhas, uma colisão faria tudo
+                tudo-ou-nada de propósito: com 178 linhas, uma colisão faria tudo
                 falhar e ninguém saberia qual. */}
             {recusadas.length > 0 ? (
               <div style={{ marginTop: 8 }}>
