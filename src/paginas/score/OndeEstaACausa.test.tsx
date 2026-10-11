@@ -60,8 +60,11 @@ const ABAS: Bloco[] = [
 describe('OndeEstaACausa', () => {
   it('não desenha nada quando a lente não tem dimensão que explique', () => {
     /** CARTÃO VAZIO É PIOR QUE CARTÃO AUSENTE: a moldura de um cartão sem
-     *  conteúdo se lê como dado que sumiu. Mercado e Institucional não vêm de
-     *  menção, e o servidor manda lista vazia para elas. */
+     *  conteúdo se lê como dado que sumiu.
+     *
+     *  QUEM RECEBE LISTA VAZIA é a Institucional, que não vem de menção, e
+     *  qualquer lente num mês sem dimensão que explique. O Mercado saiu desta
+     *  frase: ele é clipping com menção ingerida e hoje traz quatro abas. */
     const { container } = render(
       <OndeEstaACausa abas={[]} filtro={{}} aoAprofundar={vi.fn()} />,
     );
