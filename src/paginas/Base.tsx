@@ -37,6 +37,7 @@ import type { Interacao } from '@/dominio/tipos';
 import {
   nomeDaEsfera,
   nomeDaInstituicao,
+  oQueFaltaNoCadastroDaAgenda,
   nomeDaUnidade,
   nomeDoFormatoDeInteracao,
   nomeDoInterlocutor,
@@ -344,7 +345,23 @@ export function Base({
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
             )}
             {!visiveis.includes('Instituição') ? null : (
-              <td style={{ ...celula, fontWeight: 500 }}>{linha.entidade}</td>
+              <td style={{ ...celula, fontWeight: 500 }}>
+                {linha.entidade}
+                {/* ONDE SE PROCURA. A Ficha mostra a faixa de atenção a quem já
+                    abriu a agenda; esta marca é como alguém ENCONTRA as agendas a
+                    revisar sem abrir uma por uma. O `title` diz o que falta, e o
+                    texto do `aria-label` diz a mesma coisa para quem não vê o
+                    símbolo. */}
+                {linha.cadastroIncompleto ? (
+                  <span
+                    title={`Cadastro incompleto: sem ${linha.cadastroIncompleto}`}
+                    aria-label={`Cadastro incompleto: sem ${linha.cadastroIncompleto}`}
+                    style={{ color: 'var(--atencao-fg)', marginLeft: 6, fontWeight: 700 }}
+                  >
+                    !
+                  </span>
+                ) : null}
+              </td>
             )}
             {!visiveis.includes('Unidade') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
@@ -452,6 +469,12 @@ interface Linha {
   data: string;
   tipoDeInteracao: string;
   entidade: string;
+  /** O cadastro da instituição desta linha está incompleto.
+   *
+   *  DECIDIDO UMA VEZ, em `montarLinha`, pelo mesmo motivo que `naCadeia`: a
+   *  marca na tabela e o que a Ficha mostra leem a MESMA derivação, e duas
+   *  cópias da condição são dois lugares para ela divergir. */
+  cadastroIncompleto: string | null;
   unidade: string;
   interlocutor: string;
   pauta: string;
@@ -477,6 +500,8 @@ function montarLinha(interacao: Interacao, catalogo: Catalogo): Linha {
     data: interacao.data_interacao,
     tipoDeInteracao: nomeDoFormatoDeInteracao(catalogo, interacao.formato_interacao_id),
     entidade: nomeDaInstituicao(catalogo, interacao.instituicao_id),
+    cadastroIncompleto:
+      oQueFaltaNoCadastroDaAgenda(catalogo, interacao)?.falta.join(', ') ?? null,
     unidade: nomeDaUnidade(catalogo, interacao.unidade_negocio_id),
     interlocutor: nomeDoInterlocutor(catalogo, interacao.interlocutor_id),
     pauta: tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids)),

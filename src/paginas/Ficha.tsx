@@ -12,6 +12,7 @@ import {
   Botao,
   Carregando,
   Chip,
+  FaixaDeAtencao,
   FaixaDeErro,
   Modal,
 } from '@/componentes/basicos';
@@ -29,6 +30,7 @@ import {
   nomeDaUnidade,
   nomeDoInterlocutor,
   nomesDosTemas,
+  oQueFaltaNoCadastroDaAgenda,
   rotuloDeCodigo,
   rotuloDeRelevancia,
 } from '@/dominio/derivacoes';
@@ -100,6 +102,7 @@ export function Ficha({
   const entidade = nomeDaInstituicao(catalogo, interacao.instituicao_id);
   const preenchidos = CONTEUDO.filter(({ campo }) => Boolean(interacao[campo]));
   const faltando = camposAplicaveisVazios(interacao, catalogo);
+  const cadastroIncompleto = oQueFaltaNoCadastroDaAgenda(catalogo, interacao);
 
   return (
     <Modal
@@ -113,6 +116,26 @@ export function Ficha({
       aoFechar={aoFechar}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+        {/* NO TOPO, E NÃO NO PÉ. "Sem preenchimento", lá embaixo, fala da
+            AGENDA; isto fala do CADASTRO que ela aponta, e é trabalho em outra
+            tela. A importação por planilha deixou de barrar nome que não está
+            no cadastro — a instituição nasce com o que houver —, e sem este
+            destaque "fica incompleta" quer dizer "ninguém olha mais".
+
+            APAGA-SE SOZINHO: no instante em que alguém põe a relevância no
+            Cadastro de instituições, ele sai de toda agenda daquela
+            instituição. Não há nada a marcar como revisado. */}
+        {cadastroIncompleto ? (
+          <FaixaDeAtencao
+            mensagem={
+              <span>
+                Cadastro incompleto: <strong>{cadastroIncompleto.nome}</strong> está sem{' '}
+                {cadastroIncompleto.falta.join(', ')}. Complete em Cadastro de
+                instituições.
+              </span>
+            }
+          />
+        ) : null}
         <section>
           <div className="kicker" style={{ marginBottom: 10 }}>
             Conteúdo da interação
