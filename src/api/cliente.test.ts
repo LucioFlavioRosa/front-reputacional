@@ -62,6 +62,12 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   criarTema: () => cliente.criarTema({ nome: 'Tarifa', nivel: 'sensivel' }),
   editarTema: () => cliente.editarTema(7, { nome: 'Tarifa', nivel: 'sensivel', ativo: true }),
   criarInstituicao: () => cliente.criarInstituicao({ nome: 'Folha', tipo: 'veiculo', uf: 'SP', tier: 1 }),
+  //: A CONFIRMAÇÃO DA IMPORTAÇÃO, e o docstring dela é a prova: "Cria os
+  //: cadastros e as agendas". Ela estava só na lista das AGENDAS, então as 502
+  //: instituições, contatos, temas e pessoas que uma confirmação cria não
+  //: chegavam ao catálogo — a lista do Cadastro compartilhado e as opções de
+  //: todo filtro seguiam as de antes até um F5.
+  confirmarImportacao: () => cliente.confirmarImportacao('imp-1'),
   //: O LOTE DA FILA DE REVISÃO. Está aqui porque enquadrar GRAVA o tipo da
   //: instituição, e o tipo é o que `derivar_frente` usa para dizer de que frente
   //: é cada agenda dela — um lote de 499 reclassifica as agendas de todas. A
@@ -129,8 +135,20 @@ describe('toda escrita de catálogo avisa quem depende do catálogo', () => {
     expect(avisos).toBe(1);
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0].metodo).not.toBe('GET');
+    //: A CONFIRMAÇÃO DA IMPORTAÇÃO é a ÚNICA escrita de catálogo que não é um
+    //: prefixo da lista — o id fica no MEIO do endereço
+    //: (`/api/importacoes/<uuid>/confirmacao`), então ela tem predicado próprio
+    //: em `sincronizacao.ts`.
+    //:
+    //: NOMEADA AQUI, e não escondida atrás de `escreveNoCatalogo`: chamar a
+    //: própria função que o cliente chama tornaria esta asserção CIRCULAR com o
+    //: `avisos === 1` acima, que já é a regra aplicada. Esta linha existe para
+    //: dizer, por fora, que o endereço avisado é um que muda o catálogo.
+    const ehDeCatalogo =
+      ROTAS_DO_CATALOGO.some((rota) => chamadas[0].url.includes(rota)) ||
+      /\/api\/importacoes\/[^/]+\/confirmacao$/.test(chamadas[0].url);
     expect(
-      ROTAS_DO_CATALOGO.some((rota) => chamadas[0].url.includes(rota)),
+      ehDeCatalogo,
       `${nome} não escreveu numa rota de catálogo: ${chamadas[0].url}`,
     ).toBe(true);
   });

@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { escreveAgendas } from '@/dominio/sincronizacao';
+import { escreveAgendas, escreveNoCatalogo } from '@/dominio/sincronizacao';
 
 describe('escreveAgendas', () => {
   it('a CONFIRMAÇÃO da importação muda as agendas', () => {
@@ -47,4 +47,37 @@ describe('escreveAgendas', () => {
   it('ignora a consulta no fim do endereço', () => {
     expect(escreveAgendas('POST', '/api/interacoes?pagina=2')).toBe(true);
   });
+});
+
+it('a CONFIRMACAO da importacao avisa o CATALOGO tambem', () => {
+  //: O DEFEITO QUE ISTO PRENDE: ela estava só na lista das agendas.
+  //:
+  //: A confirmação é o único passo daquele fluxo que GRAVA, e grava as DUAS
+  //: coisas — as agendas e os cadastros que elas precisavam. Medido com a
+  //: planilha real de RI: 304 agendas e 502 CADASTROS numa chamada.
+  //:
+  //: Sem este aviso, nada dos 502 chegava ao catálogo: a lista do Cadastro
+  //: compartilhado, as opções de todo filtro e de todo formulário seguiam as de
+  //: antes até alguém apertar F5 — e a agenda recém criada aponta para uma
+  //: instituição que o catálogo não conhece, que é a mesma classe de problema
+  //: dos `temas_inativos`: dois lados discordando sobre o mesmo dado.
+  //:
+  //: E A REGRA DO MÓDULO JÁ DIZIA QUE ERA ASSIM: "a regra aqui é 'a escrita muda
+  //: o catálogo?', e não 'o endereço começa com o nome de um cadastro'".
+  expect(escreveNoCatalogo('POST', '/api/importacoes/abc-123/confirmacao')).toBe(true);
+  //: E CONTINUA AVISANDO AS AGENDAS: são os dois, não um ou o outro.
+  expect(escreveAgendas('POST', '/api/importacoes/abc-123/confirmacao')).toBe(true);
+});
+
+it('o UPLOAD da importacao NAO avisa ninguem', () => {
+  //: O CONTRAPESO, e é ele que mantém a regra significando algo: o upload
+  //: PROPÕE e não grava nada — "é por isso que nada nasce no upload: se
+  //: nascesse, cancelar a conferência deixaria instituições criadas sem nenhuma
+  //: agenda a que servissem", diz `_criar_cadastros` no back.
+  //:
+  //: Sem esta asserção, trocar o casamento por um prefixo `/api/importacoes`
+  //: passaria — e aí cada upload recarregaria o catálogo inteiro para não mudar
+  //: nada.
+  expect(escreveNoCatalogo('POST', '/api/importacoes')).toBe(false);
+  expect(escreveAgendas('POST', '/api/importacoes')).toBe(false);
 });

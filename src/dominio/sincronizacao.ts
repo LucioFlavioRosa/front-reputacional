@@ -70,16 +70,26 @@ const METODOS_QUE_LEEM = new Set(['GET', 'HEAD', 'OPTIONS']);
 /** Prefixos de caminho cujas escritas mudam as agendas. */
 export const ROTAS_DE_AGENDAS = ['/api/interacoes'] as const;
 
+/** É a confirmação de uma importação de agendas?
+ *
+ *  NÃO É UM PREFIXO, e por isso tem função própria: o id fica no MEIO do
+ *  endereço (`/api/importacoes/<uuid>/confirmacao`).
+ *
+ *  E ELA RESPONDE AOS DOIS BARRAMENTOS, que é o conserto de um defeito: a
+ *  confirmação é o único passo daquele fluxo que GRAVA, e grava as duas coisas
+ *  — as agendas E os cadastros que elas precisavam. Medido com a planilha real
+ *  de RI: 304 agendas e 502 cadastros numa confirmação. */
+function eAConfirmacaoDeImportacao(caminho: string): boolean {
+  return (
+    caminho.startsWith('/api/importacoes/') && caminho.endsWith('/confirmacao')
+  );
+}
+
 /** Esta requisição, se der certo, muda alguma agenda? */
 export function escreveAgendas(metodo: string, caminho: string): boolean {
   if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
   const soOCaminho = caminho.split('?')[0];
-  if (
-    soOCaminho.startsWith('/api/importacoes/') &&
-    soOCaminho.endsWith('/confirmacao')
-  ) {
-    return true;
-  }
+  if (eAConfirmacaoDeImportacao(soOCaminho)) return true;
   return ROTAS_DE_AGENDAS.some(
     (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
   );
@@ -89,6 +99,22 @@ export function escreveAgendas(metodo: string, caminho: string): boolean {
 export function escreveNoCatalogo(metodo: string, caminho: string): boolean {
   if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
   const soOCaminho = caminho.split('?')[0];
+  //: A CONFIRMAÇÃO DA IMPORTAÇÃO MUDA O CATÁLOGO TAMBÉM, e ela estava só na
+  //: lista das agendas.
+  //:
+  //: O DEFEITO QUE ISTO CONSERTA: a confirmação cria instituição, contato, tema
+  //: e pessoa da Aegea — medido com a planilha real de RI, 304 agendas e 502
+  //: CADASTROS numa chamada. Sem este aviso, nada disso chegava ao catálogo: a
+  //: lista do Cadastro compartilhado, as opções de todo filtro e de todo
+  //: formulário seguiam as de antes até alguém apertar F5. E a agenda recém
+  //: criada aponta para uma instituição que o catálogo não conhece, que é a
+  //: mesma classe de problema dos `temas_inativos` — dois lados discordando
+  //: sobre o mesmo dado.
+  //:
+  //: E A REGRA DESTE MÓDULO JÁ DIZIA QUE ERA AQUI: "a regra aqui é 'a escrita
+  //: muda o catálogo?', e não 'o endereço começa com o nome de um cadastro'" —
+  //: escrito para justificar a rota do Score na lista, e vale igual para esta.
+  if (eAConfirmacaoDeImportacao(soOCaminho)) return true;
   return ROTAS_DO_CATALOGO.some(
     (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
   );
