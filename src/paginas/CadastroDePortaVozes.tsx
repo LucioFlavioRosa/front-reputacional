@@ -32,24 +32,20 @@ import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { usePainel } from '@/estado/painel';
 import type { PessoaAegea, Tema } from '@/dominio/tipos';
 import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
+import {
+  PESSOA_AEGEA_VAZIA,
+  entradaDaPessoaAegea,
+  rascunhoDaPessoaAegea,
+} from '@/paginas/cadastroCompartilhado/fichas';
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
-
-const VAZIA = {
-  nome: '',
-  cargo: '',
-  email: '',
-  eh_porta_voz: true,
-  area_id: null as number | null,
-  temas: [] as number[],
-};
 
 export function CadastroDePortaVozes() {
   const { catalogo } = usePainel();
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [nova, definirNova] = useState(VAZIA);
+  const [nova, definirNova] = useState(PESSOA_AEGEA_VAZIA);
   const [emEdicao, definirEmEdicao] = useState<string | null>(null);
-  const [rascunho, definirRascunho] = useState(VAZIA);
+  const [rascunho, definirRascunho] = useState(PESSOA_AEGEA_VAZIA);
   const [busca, definirBusca] = useState('');
 
   //: Os assuntos de cada pessoa, carregados sob demanda.
@@ -270,7 +266,7 @@ export function CadastroDePortaVozes() {
                       area_id: nova.area_id,
                       temas: nova.temas,
                     }),
-                  () => definirNova(VAZIA),
+                  () => definirNova(PESSOA_AEGEA_VAZIA),
                 )
               }
             >
@@ -328,15 +324,10 @@ export function CadastroDePortaVozes() {
                   aoSalvar={() =>
                     void executar(
                       () =>
-                        editarPessoaAegea(pessoa.id, {
-                          nome: rascunho.nome,
-                          cargo: rascunho.cargo || null,
-                          email: rascunho.email || null,
-                          eh_porta_voz: rascunho.eh_porta_voz,
-                          area_id: rascunho.area_id,
-                          ativo: pessoa.ativo,
-                          temas: rascunho.temas,
-                        }).then((salva) => {
+                        editarPessoaAegea(
+                          pessoa.id,
+                          entradaDaPessoaAegea(rascunho, pessoa.ativo),
+                        ).then((salva) => {
                           // O mapa local acompanha o que acabou de ser gravado:
                           // sem isto, a lista mostraria os assuntos antigos até
                           // a próxima montagem da aba.
@@ -355,7 +346,7 @@ export function CadastroDePortaVozes() {
                   temas={temasPorPessoa[pessoa.id] ?? []}
                   // PELOS DOIS DICIONARIOS, e nao por `assuntos`, que e so os
                   // ativos: um porta-voz classificado antes da 0058 aponta para
-                  // tema aposentado, e aqui o nome saia como STRING VAZIA — o
+                  // tema aposentado, e aqui o nome saia como STRING PESSOA_AEGEA_VAZIA — o
                   // assunto desaparecia da ficha da pessoa sem deixar rastro.
                   // Achado de rodar a conferencia de vocabulario aposentado
                   // contra a base COM historico, que o teste do CI nao ve.
@@ -367,11 +358,11 @@ export function CadastroDePortaVozes() {
                   aoEditar={() => {
                     definirEmEdicao(pessoa.id);
                     definirRascunho({
-                      nome: pessoa.nome,
-                      cargo: pessoa.cargo ?? '',
-                      email: pessoa.email ?? '',
-                      eh_porta_voz: pessoa.eh_porta_voz,
-                      area_id: pessoa.area_id,
+                      ...rascunhoDaPessoaAegea(pessoa),
+                      //: OS TEMAS VEM DO MAPA LOCAL, e nao de pessoa.temas:
+                      //: o mapa acompanha o que acabou de ser gravado nesta
+                      //: tela, e o catalogo pode estar atras de um salvamento
+                      //: feito aqui ha dois segundos.
                       temas: temasPorPessoa[pessoa.id] ?? [],
                     });
                   }}
@@ -479,7 +470,7 @@ function LinhaDaPessoa({
   );
 }
 
-function EdicaoDaPessoa({
+export function EdicaoDaPessoa({
   rascunho,
   assuntos,
   assuntosInativos,
@@ -491,12 +482,12 @@ function EdicaoDaPessoa({
   aoCancelar,
   aoSalvar,
 }: {
-  rascunho: typeof VAZIA;
+  rascunho: typeof PESSOA_AEGEA_VAZIA;
   assuntos: Tema[];
   assuntosInativos: Tema[];
   areas: { id: number; nome: string }[];
   salvando: boolean;
-  aoRascunhar: (r: typeof VAZIA) => void;
+  aoRascunhar: (r: typeof PESSOA_AEGEA_VAZIA) => void;
   aoAlternarTema: (id: number) => void;
   aoEscolherPapel: (ehPortaVoz: boolean) => void;
   aoCancelar: () => void;

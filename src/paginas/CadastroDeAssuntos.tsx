@@ -20,6 +20,12 @@ import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/clie
 import type { TemaCadastrado } from '@/api/cliente';
 import type { BlocoTema, MacroTema, Risco, RiskCluster } from '@/dominio/tipos';
 import { ImportarSubtemas } from '@/paginas/taxonomia/ImportarSubtemas';
+import {
+  TEMA_VAZIO,
+  entradaDoTema,
+  rascunhoDoTema,
+  type RascunhoDoTema,
+} from '@/paginas/cadastroCompartilhado/fichas';
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
 import {
   Botao,
@@ -104,33 +110,13 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
  *  `macro_tema.bloco_tema_id`. Ele existe aqui só para filtrar a lista de
  *  temas estratégicos sem o usuário ter de procurar entre os 41.
  */
-interface RascunhoDeTema {
-  nome: string;
-  nivel: string;
-  e_risco: boolean;
-  bloco_tema_id: number | null;
-  macro_tema_id: number | null;
-  camada_lso: string;
-  riscos: number[];
-}
-
-const RASCUNHO_VAZIO: RascunhoDeTema = {
-  nome: '',
-  nivel: 'gerais',
-  e_risco: false,
-  bloco_tema_id: null,
-  macro_tema_id: null,
-  camada_lso: '',
-  riscos: [],
-};
-
 /** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
  *
  *  UMA ÚNICA VEZ, reaproveitado no formulário de criar e no de editar — a
  *  lógica de filtrar os 41 temas estratégicos pelo pilar escolhido não vale a
  *  pena duplicar.
  */
-function SeletorDeHierarquia({
+export function SeletorDeHierarquia({
   blocos,
   macros,
   rascunho,
@@ -138,8 +124,8 @@ function SeletorDeHierarquia({
 }: {
   blocos: BlocoTema[];
   macros: MacroTema[];
-  rascunho: RascunhoDeTema;
-  aoMudar: (novo: RascunhoDeTema) => void;
+  rascunho: RascunhoDoTema;
+  aoMudar: (novo: RascunhoDoTema) => void;
 }) {
   const macrosDoPilar = macros.filter((m) => m.bloco_tema_id === rascunho.bloco_tema_id);
   return (
@@ -255,7 +241,7 @@ function eixosDiscordam(tema: TemaCadastrado): boolean {
  *  aberta, seria maior que o resto do formulário inteiro. `<details>` nativo,
  *  sem estado próprio — o navegador já lembra o que a pessoa abriu.
  */
-function SeletorDeRiscos({
+export function SeletorDeRiscos({
   clusters,
   riscos,
   selecionados,
@@ -338,9 +324,9 @@ export function CadastroDeAssuntos() {
   const [riscos, definirRiscos] = useState<Risco[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
+  const [novo, definirNovo] = useState<RascunhoDoTema>(TEMA_VAZIO);
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
-  const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
+  const [rascunho, definirRascunho] = useState<RascunhoDoTema>(TEMA_VAZIO);
   const [busca, definirBusca] = useState('');
   const [soDiscordantes, definirSoDiscordantes] = useState(false);
 
@@ -528,7 +514,7 @@ export function CadastroDeAssuntos() {
                       camada_lso: novo.camada_lso || null,
                       riscos: novo.riscos,
                     }),
-                  () => definirNovo(RASCUNHO_VAZIO),
+                  () => definirNovo(TEMA_VAZIO),
                 )
               }
             >
@@ -660,15 +646,10 @@ export function CadastroDeAssuntos() {
                       aoClicar={() =>
                         void executar(
                           () =>
-                            editarTema(tema.id, {
-                              nome: rascunho.nome,
-                              nivel: rascunho.nivel,
-                              ativo: tema.ativo,
-                              e_risco: rascunho.e_risco,
-                              macro_tema_id: rascunho.macro_tema_id,
-                              camada_lso: rascunho.camada_lso || null,
-                              riscos: rascunho.riscos,
-                            }),
+                            editarTema(
+                              tema.id,
+                              entradaDoTema(rascunho, tema.ativo),
+                            ),
                           () => definirEmEdicao(null),
                         )
                       }
@@ -729,20 +710,11 @@ export function CadastroDeAssuntos() {
                     desabilitado={salvando}
                     aoClicar={() => {
                       definirEmEdicao(tema.id);
-                      // O PILAR NÃO VEM DO BACK: só `macro_tema_id` é
-                      // guardado em `tema`. Pra pré-marcar o seletor em
-                      // cascata, acha o tema estratégico pelo id e lê o
-                      // `bloco_tema_id` dele.
-                      const macro = macros.find((m) => m.id === tema.macro_tema_id);
-                      definirRascunho({
-                        nome: tema.nome,
-                        nivel: tema.nivel,
-                        e_risco: tema.e_risco ?? false,
-                        bloco_tema_id: macro?.bloco_tema_id ?? null,
-                        macro_tema_id: tema.macro_tema_id,
-                        camada_lso: tema.camada_lso ?? '',
-                        riscos: tema.riscos,
-                      });
+                      //: O PILAR NÃO VEM DO BACK — só `macro_tema_id` é
+                      //: guardado em `tema` —, e é por isso que
+                      //: `rascunhoDoTema` pede `macros`: ele acha o tema
+                      //: estratégico pelo id e lê o `bloco_tema_id` dele.
+                      definirRascunho(rascunhoDoTema(tema, macros));
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}
                   >

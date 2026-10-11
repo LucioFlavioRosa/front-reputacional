@@ -30,11 +30,16 @@
 import type {
   InstituicaoEntrada,
   InterlocutorEntrada,
+  PessoaAegeaEntrada,
+  TemaCadastrado,
+  TemaEntrada,
 } from '@/api/cliente';
 import type { Catalogo } from '@/dominio/derivacoes';
 import type {
   Instituicao,
   Interlocutor,
+  MacroTema,
+  PessoaAegea,
   SubcategoriaPublicoDoDicionario,
 } from '@/dominio/tipos';
 
@@ -234,5 +239,142 @@ export function entradaDoInterlocutor(
     redes_sociais: [...rascunho.redes_sociais],
     tipo: de.tipo,
     ativo: de.ativo,
+  };
+}
+
+
+/** O que a edição de um TEMA mexe.
+ *
+ *  `bloco_tema_id` NÃO EXISTE NO BANCO, e está aqui de propósito: só
+ *  `macro_tema_id` é guardado em `tema`. O pilar é o primeiro passo do seletor
+ *  em cascata, e é derivado do tema estratégico escolhido — ver
+ *  `rascunhoDoTema`. */
+export interface RascunhoDoTema {
+  nome: string;
+  nivel: string;
+  e_risco: boolean;
+  bloco_tema_id: number | null;
+  macro_tema_id: number | null;
+  camada_lso: string;
+  riscos: number[];
+}
+
+export const TEMA_VAZIO: RascunhoDoTema = {
+  nome: '',
+  nivel: 'gerais',
+  e_risco: false,
+  bloco_tema_id: null,
+  macro_tema_id: null,
+  camada_lso: '',
+  riscos: [],
+};
+
+/** A ficha do tema como o formulário a mostra.
+ *
+ *  `macros` É PEDIDO porque O PILAR NÃO VEM DO BACK: só `macro_tema_id` é
+ *  guardado em `tema`. Para pré-marcar o seletor em cascata, acha o tema
+ *  estratégico pelo id e lê o `bloco_tema_id` dele. */
+export function rascunhoDoTema(
+  tema: TemaCadastrado,
+  macros: MacroTema[],
+): RascunhoDoTema {
+  const macro = macros.find((m) => m.id === tema.macro_tema_id);
+  return {
+    nome: tema.nome,
+    nivel: tema.nivel,
+    e_risco: tema.e_risco ?? false,
+    bloco_tema_id: macro?.bloco_tema_id ?? null,
+    macro_tema_id: tema.macro_tema_id,
+    camada_lso: tema.camada_lso ?? '',
+    riscos: [...tema.riscos],
+  };
+}
+
+/** O corpo do PUT de um tema.
+ *
+ *  `bloco_tema_id` NÃO VAI: ele é estado do seletor, não coluna. O back deriva
+ *  o pilar pelo tema estratégico.
+ *
+ *  E ESTE PUT É DIFERENTE DOS OUTROS DOIS, o que importa para quem o chama: o
+ *  `editar_tema` do back usa `model_fields_set` para distinguir "não mandou o
+ *  campo" de "mandou null de propósito", porque a tela antiga mandava só
+ *  nome/nível/ativo e sobrescrever sempre apagaria "calado a reconciliação com
+ *  a hierarquia nova". Mandar a ficha INTEIRA, como esta função faz, é portanto
+ *  uma afirmação: estes são os valores, inclusive os nulos. É o certo para um
+ *  formulário que mostra todos os campos — e seria errado para um botão que só
+ *  inverte `ativo`. */
+export function entradaDoTema(
+  rascunho: RascunhoDoTema,
+  ativo: boolean,
+): TemaEntrada {
+  return {
+    nome: rascunho.nome,
+    nivel: rascunho.nivel,
+    ativo,
+    e_risco: rascunho.e_risco,
+    macro_tema_id: rascunho.macro_tema_id,
+    camada_lso: rascunho.camada_lso || null,
+    riscos: [...rascunho.riscos],
+  };
+}
+
+/** O que a edição de uma PESSOA DA AEGEA mexe. */
+export interface RascunhoDaPessoaAegea {
+  nome: string;
+  cargo: string;
+  email: string;
+  eh_porta_voz: boolean;
+  area_id: number | null;
+  /** SOBRE O QUE ESTA PESSOA PODE FALAR. */
+  temas: number[];
+}
+
+export const PESSOA_AEGEA_VAZIA: RascunhoDaPessoaAegea = {
+  nome: '',
+  cargo: '',
+  email: '',
+  eh_porta_voz: true,
+  area_id: null,
+  temas: [],
+};
+
+export function rascunhoDaPessoaAegea(
+  pessoa: PessoaAegea,
+): RascunhoDaPessoaAegea {
+  return {
+    nome: pessoa.nome,
+    cargo: pessoa.cargo ?? '',
+    email: pessoa.email ?? '',
+    eh_porta_voz: pessoa.eh_porta_voz,
+    area_id: pessoa.area_id,
+    temas: [...pessoa.temas],
+  };
+}
+
+/** O corpo do PUT de uma pessoa da Aegea.
+ *
+ *  ESTAVA ESCRITO À MÃO EM TRÊS LUGARES de `CadastroDePortaVozes` — criar,
+ *  salvar e desligar —, e o comentário do terceiro descreve a armadilha pela
+ *  TERCEIRA VEZ neste código:
+ *
+ *    "A LISTA DE TEMAS VAI JUNTO, e não vazia: o `PUT` substitui a lista
+ *     inteira, e mandar `[]` num simples desligar apagaria tudo o que a pessoa
+ *     podia falar. É a mesma armadilha da pauta, num campo diferente."
+ *
+ *  A mesma de `cargo`/`interlocutor_id` na instituição e de `redes_sociais` no
+ *  contato. Três campos diferentes, três tabelas, um padrão: o PUT substitui a
+ *  ficha, e quem monta o corpo à mão esquece um. */
+export function entradaDaPessoaAegea(
+  rascunho: RascunhoDaPessoaAegea,
+  ativo: boolean,
+): PessoaAegeaEntrada {
+  return {
+    nome: rascunho.nome,
+    cargo: rascunho.cargo || null,
+    email: rascunho.email || null,
+    eh_porta_voz: rascunho.eh_porta_voz,
+    area_id: rascunho.area_id,
+    ativo,
+    temas: [...rascunho.temas],
   };
 }
