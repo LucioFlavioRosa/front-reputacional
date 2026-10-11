@@ -702,6 +702,19 @@ export function TabelaDeLeitura({
   //: servidor, e ele põe na frente o que se lê ("O TEXTO VEM PRIMEIRO porque é o
   //: que se lê", em `COLUNAS_DAS_MENCOES`). Célula vazia nessa coluna fica sem
   //: link, e o clique na linha continua levando.
+  //:
+  //: EU TENTEI TROCAR ISSO POR "a primeira com valor, por linha", para fechar a
+  //: brecha de teclado numa linha sem data (achado de revisão, 11/10/2026). O
+  //: teste "o link NÃO PULA de coluna quando uma linha vem sem texto" caiu, e o
+  //: argumento dele é melhor que o meu: a mesma tabela teria o link em lugares
+  //: diferentes conforme o que o fornecedor preencheu, e uma tabela assim não se
+  //: aprende — para quem navega por teclado isso é pior, não melhor.
+  //:
+  //: A BRECHA FICA, medida: numa linha sem a primeira célula, o mouse abre e o
+  //: teclado não tem link. Zero linhas sem data hoje nas três lentes (0 de
+  //: 25.457, 327 e 2.842). Fechá-la de verdade é pôr na primeira coluna um campo
+  //: sempre preenchido — `veiculo` é 100% —, e isso muda a ordem de leitura da
+  //: tabela: decisão de produto.
   const colunaDoTexto = colunas[0];
 
   if (!linhas.length) {
@@ -813,8 +826,8 @@ export function TabelaDeLeitura({
                     {/* `!vazia` PORQUE CÉLULA VAZIA NÃO VIRA LINK: sem isto, a
                         linha sem texto da menção publicava um "—" clicável — um
                         link cujo rótulo é um travessão, que o leitor de tela
-                        anuncia como "link, travessão". O clique na linha continua
-                        levando. (Teste pegou.) */}
+                        anuncia como "link, travessão". O clique na linha
+                        continua levando. (Teste pegou.) */}
                     {destino && !vazia && coluna.chave === colunaDoTexto?.chave ? (
                       //: QUEM NAVEGA POR TECLADO chega nele, o leitor de tela o
                       //: anuncia como link, e o meio do mouse abre em outra aba.
