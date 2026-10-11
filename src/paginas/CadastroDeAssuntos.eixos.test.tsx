@@ -58,6 +58,12 @@ const TEMAS = [
   { ...base, id: 13, nome: 'Patrocínio de corrida', e_risco: false, riscos: [] },
 ];
 
+vi.mock('@/estado/painel', () => ({
+  //: A FILA DE REVISÃO lê as categorias de público daqui, para oferecer o
+  //: enquadramento em lote. Sem o dublê, `usePainel()` devolve `undefined`.
+  usePainel: () => ({ catalogo: null }),
+}));
+
 vi.mock('@/api/cliente', () => ({
   //: A ABA DE REVISAO, que a tela mostra acima da lista: ela pede a fila ao
   //: montar, e sem o duble o componente chama undefined.

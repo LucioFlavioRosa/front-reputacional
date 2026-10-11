@@ -62,6 +62,12 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   criarTema: () => cliente.criarTema({ nome: 'Tarifa', nivel: 'sensivel' }),
   editarTema: () => cliente.editarTema(7, { nome: 'Tarifa', nivel: 'sensivel', ativo: true }),
   criarInstituicao: () => cliente.criarInstituicao({ nome: 'Folha', tipo: 'veiculo', uf: 'SP', tier: 1 }),
+  //: O LOTE DA FILA DE REVISÃO. Está aqui porque enquadrar GRAVA o tipo da
+  //: instituição, e o tipo é o que `derivar_frente` usa para dizer de que frente
+  //: é cada agenda dela — um lote de 499 reclassifica as agendas de todas. A
+  //: irmã dele, a consolidação, NÃO escreve no catálogo e não entra.
+  enquadrarEmLote: () =>
+    cliente.enquadrarEmLote({ ids: ['id-1'], categoria_publico_id: 7 }),
   editarInstituicao: () =>
     cliente.editarInstituicao('id-1', { nome: 'Folha', tipo: 'veiculo', uf: 'SP', tier: 1 }),
   criarInterlocutor: () => cliente.criarInterlocutor({ nome: 'Ana', instituicao_id: 'id-1' }),

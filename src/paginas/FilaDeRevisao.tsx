@@ -25,18 +25,36 @@
  *  cadastros com o mesmo nome, de propósito. Sem a instituição ao lado, a fila
  *  mostraria "Artur Santa" duas vezes, com o mesmo motivo, e quem revisa não
  *  teria como saber qual é o do Banco XP e qual é o da XP Asset.
+ *
+ *  E O LOTE EXISTE PORQUE 499 É UM NÚMERO REAL. Subir a planilha de Relações com
+ *  Investidores criou 499 instituições, todas como "Entidade" — a resposta para
+ *  quase todas é a MESMA categoria. Quatrocentas e noventa e nove idas à lista de
+ *  cadastro para digitar a mesma coisa não é revisão: é a pessoa desistindo na
+ *  décima, com a base meio classificada, que é pior do que não classificada
+ *  porque ninguém sabe onde parou.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   consolidarCadastro,
+  enquadrarEmLote,
   filaDeRevisao,
   type AbaDeRevisao,
   type CadastroPendente,
+  type EnquadramentoRecusado,
 } from '@/api/cliente';
-import { Botao, Carregando, Cartao, FaixaDeErro, Secao } from '@/componentes/basicos';
+import {
+  Botao,
+  Campo,
+  Carregando,
+  Cartao,
+  FaixaDeErro,
+  Secao,
+  estiloDeEntrada,
+} from '@/componentes/basicos';
 import { catalogoMudou } from '@/dominio/sincronizacao';
+import { usePainel } from '@/estado/painel';
 
 /** Qual das três abas de Cadastro compartilhado está pedindo a sua fila. */
 export type AbaDoCadastro = 'instituicoes' | 'assuntos' | 'porta_vozes';
@@ -56,14 +74,72 @@ const ROTULO_DA_TABELA: Record<string, string> = {
 const MOTIVO_GENERICO =
   'Entrou por planilha e ninguém conferiu o enquadramento ainda.';
 
+//: QUANTAS LINHAS A TELA DESENHA DE UMA VEZ.
+//:
+//: O TETO É DE RENDERIZAÇÃO, e não de seleção: "Selecionar todas" pega tudo o
+//: que a busca encontrou, inclusive o que não está desenhado. É a divisão certa —
+//: desenhar 499 linhas é problema de tela, enquadrar 499 é a operação que a
+//: pessoa veio fazer.
+//:
+//: 30 porque é o que cabe numa rolagem curta. Sem teto, a fila real desenha 499
+//: blocos a cada recarga, e a recarga acontece a cada escrita de catálogo.
+const LIMITE_NA_TELA = 30;
+
+//: O MESMO TETO DO SERVIDOR (`MAXIMO_DO_LOTE`), repetido aqui para a tela avisar
+//: ANTES de mandar — um 422 depois de selecionar 600 linhas é trabalho perdido.
+const MAXIMO_DO_LOTE = 500;
+
 function quantos(n: number): string {
   return n === 1 ? '1 cadastro' : `${n} cadastros`;
 }
 
+function chaveDe(pendente: CadastroPendente): string {
+  return `${pendente.tipo}:${pendente.id}`;
+}
+
+/** Casa a busca contra tudo o que a linha mostra.
+ *
+ *  NOME, CONTEXTO E MOTIVO, e não só o nome: com 499 linhas, as buscas úteis são
+ *  "XP" (que casa a instituição E os contatos dela, pelo contexto) e "duas
+ *  instituições" (que casa pelo motivo e junta os quatro casos do dia). Buscar só
+ *  no nome deixaria a segunda impossível.
+ *
+ *  SEM ACENTO E SEM CAIXA, porque quem digita "itau" espera achar "Itaú" — e a
+ *  fila é cheia de nome acentuado. `normalize('NFD')` separa o acento da letra e
+ *  a classe `\p{Diacritic}` o remove.
+ */
+function casa(pendente: CadastroPendente, busca: string): boolean {
+  if (!busca) return true;
+  const achatar = (texto: string) =>
+    texto
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase();
+  const alvo = achatar(
+    `${pendente.nome} ${pendente.contexto ?? ''} ${pendente.motivo ?? ''}`,
+  );
+  //: TODAS AS PALAVRAS, em qualquer ordem: "xp asset" acha "Artur Santa · XP
+  //: Asset" mesmo o nome vindo antes do contexto.
+  return achatar(busca)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((parte) => alvo.includes(parte));
+}
+
 export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
+  const { catalogo } = usePainel();
   const [fila, definirFila] = useState<AbaDeRevisao | null>(null);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
+  const [busca, definirBusca] = useState('');
+  //: AS CHAVES SELECIONADAS, e não os objetos: a fila é relida a cada escrita de
+  //: catálogo, e guardar o objeto deixaria a seleção apontando para linhas de uma
+  //: carga anterior.
+  const [escolhidas, definirEscolhidas] = useState<Set<string>>(new Set());
+  const [categoria, definirCategoria] = useState('');
+  const [subcategoria, definirSubcategoria] = useState('');
+  const [recusadas, definirRecusadas] = useState<EnquadramentoRecusado[]>([]);
+  const [feito, definirFeito] = useState('');
   //: O QUE OUTRA PESSOA JÁ TINHA CONSOLIDADO, para a tela dizer isso em vez de
   //: piscar uma confirmação que não era dela. Ver `consolidarCadastro`.
   const [deOutraPessoa, definirDeOutraPessoa] = useState<string[]>([]);
@@ -93,6 +169,15 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
           pendentes: [],
         };
         definirFila(minha);
+        //: A SELEÇÃO É PODADA, e não limpa: quem enquadrou 40 de 499 e vê a fila
+        //: recarregar não quer começar de novo, mas uma chave que já não está na
+        //: fila é uma linha que outra pessoa resolveu — mantê-la selecionada
+        //: mandaria o servidor recusá-la depois.
+        const vivas = new Set(minha.pendentes.map(chaveDe));
+        definirEscolhidas((antes) => {
+          const podadas = new Set([...antes].filter((c) => vivas.has(c)));
+          return podadas.size === antes.size ? antes : podadas;
+        });
         //: A FILA VAZIOU: nada mais a fazer, e o aviso de quem veio antes já
         //: cumpriu o papel dele. Sem isto, a seção ficaria na tela como
         //: "Esperando conferência (0)" com um aviso permanente até alguém
@@ -128,8 +213,43 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: não em cada tela", diz `sincronizacao.ts`. Esta fila só não o escutava.
   useEffect(() => catalogoMudou.assinar(carregar), [carregar]);
 
+  const encontradas = useMemo(
+    () => (fila?.pendentes ?? []).filter((p) => casa(p, busca)),
+    [fila, busca],
+  );
+  //: SÓ INSTITUIÇÃO ENTRA NO LOTE. O enquadramento grava categoria de público, e
+  //: `interlocutor`, `tema` e `pessoa_aegea` não têm esse campo — oferecer a
+  //: seleção neles seria oferecer o que o servidor vai recusar.
+  const enquadraveis = useMemo(
+    () => encontradas.filter((p) => p.tipo === 'instituicao'),
+    [encontradas],
+  );
+
+  //: O CATÁLOGO PODE SER NULO enquanto a primeira carga do painel não voltou, e
+  //: a fila não espera por ela: a fila tem rota própria e carrega sozinha. Sem as
+  //: categorias o lote não aparece — e é o certo, porque sem elas não há o que
+  //: escolher —, mas a lista, a busca e o "Está certo" funcionam.
+  const categoriasPublico = catalogo?.dicionarios.categorias_publico ?? [];
+
+  const subcategorias = useMemo(() => {
+    const id = Number(categoria);
+    return (catalogo?.dicionarios.subcategorias_publico ?? [])
+      .filter((s) => s.categoria_publico_id === id)
+      .sort((a, b) => a.ordem - b.ordem);
+  }, [catalogo, categoria]);
+
+  function alternar(pendente: CadastroPendente) {
+    definirEscolhidas((antes) => {
+      const proximas = new Set(antes);
+      const chave = chaveDe(pendente);
+      if (proximas.has(chave)) proximas.delete(chave);
+      else proximas.add(chave);
+      return proximas;
+    });
+  }
+
   async function consolidar(pendente: CadastroPendente) {
-    definirEmCurso(`${pendente.tipo}:${pendente.id}`);
+    definirEmCurso(chaveDe(pendente));
     definirErro('');
     try {
       const { ja_estava_consolidado } = await consolidarCadastro(
@@ -143,6 +263,36 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
       //: pode ter consolidado três enquanto esta tela estava aberta, e tirar só
       //: a que foi clicada deixaria as outras duas na tela, clicáveis.
       carregar();
+    } catch (falha) {
+      definirErro((falha as Error).message);
+    } finally {
+      definirEmCurso('');
+    }
+  }
+
+  async function enquadrar() {
+    const ids = enquadraveis
+      .filter((p) => escolhidas.has(chaveDe(p)))
+      .map((p) => p.id);
+    definirEmCurso('lote');
+    definirErro('');
+    definirRecusadas([]);
+    definirFeito('');
+    try {
+      const resultado = await enquadrarEmLote({
+        ids,
+        categoria_publico_id: Number(categoria),
+        subcategoria_publico_id: subcategoria ? Number(subcategoria) : null,
+      });
+      definirRecusadas(resultado.recusadas);
+      definirFeito(
+        `${quantos(resultado.enquadradas)} enquadrado${
+          resultado.enquadradas === 1 ? '' : 's'
+        } e tirado${resultado.enquadradas === 1 ? '' : 's'} da fila.`,
+      );
+      //: A ROTA DO ENQUADRAMENTO ESTÁ EM `ROTAS_DO_CATALOGO`, então o barramento
+      //: recarrega o catálogo E esta fila sozinho — o tipo da instituição mudou, e
+      //: com ele a frente de toda agenda dela. Não há `carregar()` aqui por isso.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {
@@ -165,6 +315,10 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: toda abertura do cadastro.
   if (fila.pendentes.length === 0 && !erro) return null;
 
+  const selecionadas = enquadraveis.filter((p) => escolhidas.has(chaveDe(p)));
+  const acima = selecionadas.length > MAXIMO_DO_LOTE;
+  const naTela = encontradas.slice(0, LIMITE_NA_TELA);
+
   return (
     <Secao
       titulo={`Esperando conferência (${fila.pendentes.length})`}
@@ -178,21 +332,196 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+        <div style={{ marginBottom: 12 }}>
+          <Campo
+            rotulo="Buscar na fila"
+            dica="Casa o nome, a instituição ao lado e o motivo."
+          >
+            <input
+              style={estiloDeEntrada}
+              value={busca}
+              onChange={(e) => definirBusca(e.target.value)}
+              placeholder="Parte do nome, da instituição ou do motivo"
+            />
+          </Campo>
+          {busca ? (
+            <p
+              role="status"
+              style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}
+            >
+              {`${encontradas.length} de ${fila.pendentes.length} na busca.`}
+            </p>
+          ) : null}
+        </div>
+
+        {/* O LOTE, e só na aba de instituições: é lá que a categoria de público
+            existe. Ver `enquadraveis`. */}
+        {enquadraveis.length > 0 && categoriasPublico.length > 0 ? (
+          <div
+            style={{
+              borderTop: '1px solid var(--cinza-0)',
+              paddingTop: 12,
+              marginBottom: 4,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 10,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Campo
+                rotulo="Enquadrar as selecionadas como"
+                ajuda={
+                  'A categoria de público decide o TIPO da instituição, e o tipo ' +
+                  'é o que diz de que frente é cada agenda dela. Enquadrar um ' +
+                  'lote reclassifica as agendas de todas as instituições dele.'
+                }
+              >
+                <select
+                  style={estiloDeEntrada}
+                  value={categoria}
+                  onChange={(e) => {
+                    definirCategoria(e.target.value);
+                    //: A SUBCATEGORIA É DEPENDENTE: trocar a categoria sem
+                    //: limpá-la mandaria um par que o servidor recusa — e
+                    //: recusaria o lote inteiro, antes de gravar nada.
+                    definirSubcategoria('');
+                  }}
+                >
+                  <option value="">Escolha a categoria de público</option>
+                  {categoriasPublico.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+
+              {subcategorias.length > 0 ? (
+                <Campo rotulo="Subcategoria (opcional)">
+                  <select
+                    style={estiloDeEntrada}
+                    value={subcategoria}
+                    onChange={(e) => definirSubcategoria(e.target.value)}
+                  >
+                    <option value="">Sem subcategoria</option>
+                    {subcategorias.map((opcao) => (
+                      <option key={opcao.id} value={opcao.id}>
+                        {opcao.nome}
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
+              ) : null}
+
+              <Botao
+                variante="primario"
+                desabilitado={
+                  !categoria || selecionadas.length === 0 || acima || emCurso === 'lote'
+                }
+                aoClicar={() => void enquadrar()}
+                rotuloAcessivel={`Enquadrar ${selecionadas.length} instituições selecionadas`}
+                titulo={
+                  'Grava a categoria nas selecionadas, deriva o tipo de cada uma ' +
+                  'e tira todas da fila. O que colidir de nome é recusado com o ' +
+                  'motivo, e o resto passa.'
+                }
+              >
+                {emCurso === 'lote'
+                  ? 'Enquadrando…'
+                  : `Enquadrar ${selecionadas.length}`}
+              </Botao>
+
+              <Botao
+                aoClicar={() =>
+                  definirEscolhidas(
+                    selecionadas.length === enquadraveis.length
+                      ? new Set()
+                      : new Set(enquadraveis.map(chaveDe)),
+                  )
+                }
+                rotuloAcessivel={
+                  selecionadas.length === enquadraveis.length
+                    ? 'Limpar a seleção'
+                    : `Selecionar as ${enquadraveis.length} instituições da busca`
+                }
+              >
+                {selecionadas.length === enquadraveis.length
+                  ? 'Limpar seleção'
+                  : `Selecionar todas (${enquadraveis.length})`}
+              </Botao>
+            </div>
+
+            {acima ? (
+              <FaixaDeErro
+                mensagem={
+                  `Um lote aceita até ${MAXIMO_DO_LOTE} instituições, e há ` +
+                  `${selecionadas.length} selecionadas. Use a busca para dividir.`
+                }
+              />
+            ) : null}
+
+            {feito ? (
+              <p
+                role="status"
+                style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}
+              >
+                {feito}
+              </p>
+            ) : null}
+
+            {/* AS RECUSADAS, uma a uma e com o motivo. O lote não é
+                tudo-ou-nada de propósito: com 499 linhas, uma colisão faria tudo
+                falhar e ninguém saberia qual. */}
+            {recusadas.length > 0 ? (
+              <div style={{ marginTop: 8 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>
+                  {`${quantos(recusadas.length)} não ${
+                    recusadas.length === 1 ? 'pôde' : 'puderam'
+                  } ser enquadrado${recusadas.length === 1 ? '' : 's'}:`}
+                </p>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                  {recusadas.map((r) => (
+                    <li
+                      key={r.id}
+                      style={{ fontSize: 12, color: 'var(--cinza-2)' }}
+                    >
+                      <strong>{r.nome}</strong>
+                      {` — ${r.motivo}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {deOutraPessoa.length > 0 ? (
           <p
             role="status"
-            style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--cinza-2)' }}
+            style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}
           >
             {`Outra pessoa já havia conferido ${quantos(deOutraPessoa.length)}: ` +
               `${deOutraPessoa.join(', ')}.`}
           </p>
         ) : null}
 
-        {fila.pendentes.map((pendente) => {
-          const ocupado = emCurso === `${pendente.tipo}:${pendente.id}`;
+        {encontradas.length === 0 ? (
+          <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--cinza-2)' }}>
+            Nenhum cadastro da fila casa com esta busca.
+          </p>
+        ) : null}
+
+        {naTela.map((pendente) => {
+          const chave = chaveDe(pendente);
+          const ocupado = emCurso === chave;
+          const daInstituicao = pendente.tipo === 'instituicao';
           return (
             <div
-              key={`${pendente.tipo}:${pendente.id}`}
+              key={chave}
               style={{
                 display: 'flex',
                 alignItems: 'baseline',
@@ -202,6 +531,16 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
                 borderTop: '1px solid var(--cinza-0)',
               }}
             >
+              {daInstituicao ? (
+                <input
+                  type="checkbox"
+                  checked={escolhidas.has(chave)}
+                  onChange={() => alternar(pendente)}
+                  aria-label={`Selecionar ${pendente.nome} para enquadrar`}
+                  style={{ marginTop: 4 }}
+                />
+              ) : null}
+
               <div style={{ flex: 1, minWidth: 220 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
                   {pendente.nome}
@@ -235,6 +574,25 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
             </div>
           );
         })}
+
+        {/* O TETO É DE RENDERIZAÇÃO, e a linha abaixo é o que impede ele de
+            mentir: sem ela, a pessoa veria 30 linhas e concluiria que a fila tem
+            30. A busca é o caminho para alcançar o resto, e o texto diz isso. */}
+        {encontradas.length > naTela.length ? (
+          <p
+            style={{
+              margin: '12px 0 0',
+              paddingTop: 12,
+              borderTop: '1px solid var(--cinza-0)',
+              fontSize: 12,
+              color: 'var(--cinza-2)',
+            }}
+          >
+            {`Mostrando ${naTela.length} de ${encontradas.length}. Use a busca ` +
+              'para chegar aos outros — "Selecionar todas" pega os ' +
+              `${enquadraveis.length} da busca, inclusive os que não estão na tela.`}
+          </p>
+        ) : null}
       </Cartao>
     </Secao>
   );

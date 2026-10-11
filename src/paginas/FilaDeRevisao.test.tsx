@@ -19,6 +19,19 @@
  *    desta vez;
  *  * e a falha de carga NÃO derruba a tela do cadastro: a fila é acessória, e
  *    um 403 de quem não administra cadastros chega por aqui.
+ *
+ *  E DEPOIS DE 11/10/2026, a busca e o LOTE:
+ *
+ *  * a busca casa nome, contexto E motivo, sem acento e em qualquer ordem — com
+ *    499 linhas, "xp asset" e "duas instituições" são as buscas que servem;
+ *  * só INSTITUIÇÃO entra no lote: as outras três tabelas não têm categoria de
+ *    público, e oferecer seleção nelas seria oferecer o que o servidor recusa;
+ *  * "Selecionar todas" pega o que a BUSCA encontrou, inclusive o que o teto de
+ *    renderização não desenhou — o teto é de tela, a seleção é de dado;
+ *  * trocar a categoria LIMPA a subcategoria, senão o par recusaria o lote
+ *    inteiro antes de gravar nada;
+ *  * e as recusadas aparecem uma a uma com o motivo, porque o lote não é
+ *    tudo-ou-nada.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -35,9 +48,30 @@ import { catalogoMudou } from '@/dominio/sincronizacao';
 vi.mock('@/api/cliente', () => ({
   filaDeRevisao: vi.fn(),
   consolidarCadastro: vi.fn(),
+  enquadrarEmLote: vi.fn(),
 }));
 
-const { filaDeRevisao, consolidarCadastro } = await import('@/api/cliente');
+//: O CATÁLOGO DUBLADO porque o lote precisa das categorias de público, e elas
+//: vêm do estado do painel — a mesma fonte que a tela de cadastro usa.
+vi.mock('@/estado/painel', () => ({
+  usePainel: () => ({
+    catalogo: {
+      dicionarios: {
+        categorias_publico: [
+          { id: 7, codigo: 'mercado_financeiro', nome: 'Mercado financeiro', ordem: 1 },
+          { id: 2, codigo: 'poder_executivo', nome: 'Poder Executivo', ordem: 2 },
+        ],
+        subcategorias_publico: [
+          { id: 71, categoria_publico_id: 7, nome: 'Gestoras', ordem: 1 },
+          { id: 21, categoria_publico_id: 2, nome: 'Federal', ordem: 1 },
+        ],
+      },
+    },
+  }),
+}));
+
+const { filaDeRevisao, consolidarCadastro, enquadrarEmLote } =
+  await import('@/api/cliente');
 
 //: A PESSOA EM DUAS INSTITUIÇÕES, que é o caso real: quatro nomes da planilha de
 //: RI aparecem em duas casas cada, e cada um nasce DUAS VEZES, de propósito — a
@@ -80,7 +114,60 @@ beforeEach(() => {
     pendente: O_MESMO_NOME_DUAS_VEZES[0].pendentes[0],
     ja_estava_consolidado: false,
   });
+  vi.mocked(enquadrarEmLote).mockResolvedValue({
+    enquadradas: 2,
+    consolidadas: 2,
+    tipo: 'investidor',
+    recusadas: [],
+  });
 });
+
+//: TRÊS INSTITUIÇÕES E UM CONTATO: é o recorte mínimo que separa o que entra no
+//: lote do que não entra, e dá nomes distinguíveis para a busca.
+function umaFilaDeInstituicoes(): AbaDeRevisao[] {
+  return [
+    {
+      id: 'instituicoes',
+      rotulo: 'Instituições e Contatos',
+      pendentes: [
+        {
+          id: 'a1',
+          tipo: 'instituicao',
+          nome: 'XP Asset',
+          motivo: 'Entrou pela planilha sem categoria de público.',
+          contexto: 'Entidade · SP',
+          criado_em: '2026-10-11T12:00:00Z',
+        },
+        {
+          id: 'a2',
+          tipo: 'instituicao',
+          nome: 'Itaú Asset',
+          motivo: 'Entrou pela planilha sem categoria de público.',
+          contexto: 'Entidade · SP',
+          criado_em: '2026-10-11T12:00:00Z',
+        },
+        {
+          id: 'a3',
+          tipo: 'instituicao',
+          nome: 'JGP Gestão',
+          motivo: 'Entrou pela planilha sem categoria de público.',
+          contexto: 'Entidade · RJ',
+          criado_em: '2026-10-11T12:00:00Z',
+        },
+        {
+          id: 'c1',
+          tipo: 'interlocutor',
+          nome: 'Artur Santa',
+          motivo: 'Apareceu em 2 instituições na mesma planilha.',
+          contexto: 'XP Asset',
+          criado_em: '2026-10-11T12:00:00Z',
+        },
+      ],
+    },
+    { id: 'assuntos', rotulo: 'Temas', pendentes: [] },
+    { id: 'porta_vozes', rotulo: 'Representantes Aegea', pendentes: [] },
+  ];
+}
 
 it('a fila VAZIA nao ocupa tela', async () => {
   //: O "MENOR IMPACTO" DO PEDIDO. Um cartão dizendo "nada pendente" seria uma
@@ -248,4 +335,152 @@ it('a carga VELHA que chega depois da nova NAO sobrescreve a fila', async () => 
   //: NÃO RESSUSCITOU. Sem o conserto, "Artur Santa" volta para a tela — com o
   //: botão "Está certo" apontando para um id que outra pessoa já tirou da fila.
   expect(screen.queryByText('Artur Santa')).toBeNull();
+});
+
+it('a busca casa nome, CONTEXTO e MOTIVO, sem acento', async () => {
+  //: COM 499 LINHAS as buscas que servem não são pelo nome. "xp" casa a
+  //: instituição E o contato dela (pelo contexto); "duas instituições" casa pelo
+  //: MOTIVO e junta os quatro casos do dia. Buscar só no nome deixaria a segunda
+  //: impossível.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  const campo = screen.getByLabelText(/Buscar na fila/);
+
+  //: PELO CONTEXTO: o contato "Artur Santa" casa por estar na XP Asset.
+  await userEvent.clear(campo);
+  await userEvent.type(campo, 'xp');
+  expect(screen.getByText('XP Asset')).toBeTruthy();
+  expect(screen.getByText('Artur Santa')).toBeTruthy();
+  expect(screen.queryByText('JGP Gestão')).toBeNull();
+
+  //: SEM ACENTO: quem digita "itau" espera achar "Itaú", e a fila é cheia de
+  //: nome acentuado.
+  await userEvent.clear(campo);
+  await userEvent.type(campo, 'itau');
+  expect(screen.getByText('Itaú Asset')).toBeTruthy();
+  expect(screen.queryByText('XP Asset')).toBeNull();
+
+  //: PELO MOTIVO.
+  await userEvent.clear(campo);
+  //: '2 instituicoes' E NAO 'duas': o motivo gravado diz "Apareceu em 2
+  //: instituições", e a busca casa o texto que está na tela — não um sinônimo
+  //: dele. Meu primeiro teste buscou 'duas' e falhou; a busca estava certa, o
+  //: teste é que pedia o que ninguém escreveu.
+  await userEvent.type(campo, '2 instituicoes');
+  expect(screen.getByText('Artur Santa')).toBeTruthy();
+  expect(screen.queryByText('XP Asset')).toBeNull();
+});
+
+it('SO instituicao entra no lote', async () => {
+  //: `interlocutor`, `tema` e `pessoa_aegea` não têm categoria de público.
+  //: Oferecer a seleção neles seria oferecer o que o servidor vai recusar — e o
+  //: contato está na MESMA aba das instituições, então o caso é real, não
+  //: hipotético.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  expect(screen.getByLabelText('Selecionar XP Asset para enquadrar')).toBeTruthy();
+  expect(screen.queryByLabelText('Selecionar Artur Santa para enquadrar')).toBeNull();
+  //: E O BOTÃO CONTA AS TRÊS INSTITUIÇÕES, não as quatro linhas.
+  expect(screen.getByRole('button', { name: /Selecionar as 3 instituições/ })).toBeTruthy();
+});
+
+it('o LOTE manda os ids escolhidos e a categoria', async () => {
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  await userEvent.click(screen.getByLabelText('Selecionar XP Asset para enquadrar'));
+  await userEvent.click(screen.getByLabelText('Selecionar Itaú Asset para enquadrar'));
+  await userEvent.selectOptions(
+    screen.getByLabelText(/Enquadrar as selecionadas como/),
+    '7',
+  );
+  await userEvent.click(screen.getByRole('button', { name: /Enquadrar 2 instituições/ }));
+
+  expect(enquadrarEmLote).toHaveBeenCalledWith({
+    ids: ['a1', 'a2'],
+    categoria_publico_id: 7,
+    subcategoria_publico_id: null,
+  });
+  expect(await screen.findByText(/2 cadastros enquadrados/)).toBeTruthy();
+});
+
+it('Selecionar todas pega o que a BUSCA encontrou', async () => {
+  //: O TETO DE RENDERIZAÇÃO É DE TELA; a seleção é de dado. É a divisão que
+  //: permite enquadrar 499 sem desenhar 499 — e é o que a linha "Mostrando N de
+  //: M" promete.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  await userEvent.type(screen.getByLabelText(/Buscar na fila/), 'asset');
+  //: DUAS das três instituições casam "asset".
+  await userEvent.click(
+    screen.getByRole('button', { name: /Selecionar as 2 instituições/ }),
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText(/Enquadrar as selecionadas como/),
+    '7',
+  );
+  await userEvent.click(screen.getByRole('button', { name: /Enquadrar 2 instituições/ }));
+
+  expect(vi.mocked(enquadrarEmLote).mock.calls[0][0].ids).toEqual(['a1', 'a2']);
+});
+
+it('trocar a categoria LIMPA a subcategoria', async () => {
+  //: SENÃO O PAR RECUSARIA O LOTE INTEIRO, antes de gravar nada: o servidor
+  //: confere categoria × subcategoria e levanta 422. É a conferência que pesa
+  //: mais aqui do que no cadastro um a um, porque o par errado iria para até 500
+  //: linhas de uma vez.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  const categoria = screen.getByLabelText(/Enquadrar as selecionadas como/);
+  await userEvent.selectOptions(categoria, '7');
+  await userEvent.selectOptions(screen.getByLabelText(/Subcategoria/), '71');
+
+  //: TROCA A CATEGORIA: a subcategoria "Gestoras" não pertence a Poder Executivo.
+  await userEvent.selectOptions(categoria, '2');
+  await userEvent.click(screen.getByLabelText('Selecionar XP Asset para enquadrar'));
+  await userEvent.click(screen.getByRole('button', { name: /Enquadrar 1 instituições/ }));
+
+  expect(vi.mocked(enquadrarEmLote).mock.calls[0][0].subcategoria_publico_id).toBeNull();
+});
+
+it('as RECUSADAS aparecem uma a uma com o motivo', async () => {
+  //: O LOTE NÃO É TUDO-OU-NADA, e é a decisão de desenho mais importante dele:
+  //: com 499 linhas, uma colisão de nome faria o lote inteiro falhar e a pessoa
+  //: não teria como saber qual das 499.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+  vi.mocked(enquadrarEmLote).mockResolvedValue({
+    enquadradas: 1,
+    consolidadas: 1,
+    tipo: 'investidor',
+    recusadas: [
+      {
+        id: 'a2',
+        nome: 'Itaú Asset',
+        motivo:
+          "Já existe outra instituição com este nome do tipo 'Investidor' — é " +
+          "possível duplicata. Resolva em 'Possíveis duplicados'.",
+      },
+    ],
+  });
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  await userEvent.click(screen.getByLabelText('Selecionar XP Asset para enquadrar'));
+  await userEvent.selectOptions(
+    screen.getByLabelText(/Enquadrar as selecionadas como/),
+    '7',
+  );
+  await userEvent.click(screen.getByRole('button', { name: /Enquadrar 1 instituições/ }));
+
+  expect(await screen.findByText(/1 cadastro não pôde ser enquadrado/)).toBeTruthy();
+  expect(screen.getByText(/possível duplicata/)).toBeTruthy();
 });

@@ -35,6 +35,18 @@ export const ROTAS_DO_CATALOGO = [
   '/api/pessoas-aegea',
   '/api/referencias',
   '/api/alegacoes',
+  // UMA ROTA DA FILA DE REVISÃO, e SÓ ela: enquadrar um lote grava a categoria
+  // de público e DERIVA O TIPO da instituição — e o tipo é o que
+  // `derivar_frente` usa para dizer de que frente é cada agenda dela. Um lote de
+  // 499 reclassifica as agendas de todas, e sem esta linha a Base e os filtros
+  // mostrariam a classificação antiga até um F5.
+  //
+  // E A IRMÃ DELA NÃO ESTÁ AQUI, de propósito:
+  // `/api/revisao-de-cadastros/{tipo}/{id}/consolidacao` não muda nada que o
+  // catálogo sirva — `pendente_de_revisao` e `motivo_da_revisao` estão em
+  // `COLUNAS_DE_CONTROLE` e nunca saem em `/api/dicionarios`. O casamento é por
+  // prefixo COM fronteira, então o caminho abaixo pega só o enquadramento.
+  '/api/revisao-de-cadastros/instituicoes/enquadramento',
   // UMA ROTA DO SCORE NA LISTA DO CATÁLOGO, e não é engano: definir quais
   // veículos a lente Mercado considera escreve em `instituicao` — a mesma
   // tabela que o Cadastro compartilhado edita. A regra aqui é "a escrita muda

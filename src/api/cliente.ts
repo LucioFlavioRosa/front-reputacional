@@ -740,6 +740,53 @@ export function consolidarCadastro(
   );
 }
 
+/** Uma instituição do lote que não pôde ser enquadrada, e por quê. */
+export interface EnquadramentoRecusado {
+  id: string;
+  nome: string;
+  motivo: string;
+}
+
+export interface EnquadramentoFeito {
+  enquadradas: number;
+  consolidadas: number;
+  /** O tipo que a categoria escolhida implica, para a tela dizer o que
+   *  aconteceu: "47 enquadradas como Órgão". */
+  tipo: string;
+  recusadas: EnquadramentoRecusado[];
+}
+
+/** Dá a mesma categoria de público a várias instituições da fila de revisão.
+ *
+ *  POR QUE EXISTE, e o número é o argumento: a planilha real de RI criou 499
+ *  instituições sem categoria, todas como "Entidade", e a resposta para quase
+ *  todas é a mesma. A consolidação uma a uma faria a pessoa digitar a mesma
+ *  coisa 499 vezes — e desistir na décima, com a base meio classificada, que é
+ *  pior do que não classificada porque ninguém sabe onde parou.
+ *
+ *  O TIPO SAI DA CATEGORIA: enquadrar reclassifica as agendas de cada
+ *  instituição do lote, porque é do tipo que a frente da agenda deriva. É por
+ *  isso que este caminho está em `ROTAS_DO_CATALOGO` e o da consolidação não.
+ *
+ *  NÃO É TUDO-OU-NADA: com 499 linhas, uma colisão de nome faria o lote inteiro
+ *  falhar e ninguém saberia qual das 499. O servidor enquadra as que dão e
+ *  devolve `recusadas` com o motivo de cada uma.
+ *
+ *  SÓ ALCANÇA O QUE ESTÁ PENDENTE. Um lote capaz de reescrever o tipo de
+ *  qualquer instituição deixaria um clique aqui varrer a curadoria de 3.785
+ *  cadastros feitos à mão. */
+export function enquadrarEmLote(entrada: {
+  ids: string[];
+  categoria_publico_id: number;
+  subcategoria_publico_id?: number | null;
+  consolidar?: boolean;
+}): Promise<EnquadramentoFeito> {
+  return requisitar<EnquadramentoFeito>(
+    '/api/revisao-de-cadastros/instituicoes/enquadramento',
+    { method: 'POST', body: JSON.stringify(entrada) },
+  );
+}
+
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
  *  servidor recusa (422, contando as agendas) a que já esteve numa reunião:
  *  para essa o caminho é Desativar (`editarInstituicao` com `ativo: false`). */
