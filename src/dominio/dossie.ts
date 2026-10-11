@@ -160,8 +160,14 @@ export interface Dossie {
   /** As abas de "onde está a causa": o mesmo mês cortado por cada dimensão que
    *  o explica, na ordem em que a lente se explica. Ver `OndeEstaACausa`.
    *
-   *  VAZIO na lente que não vem de menção (Mercado, Institucional) e no mês em
-   *  que nenhuma dimensão explica nada. */
+   *  VAZIO na Institucional, que não vem de menção (tem zero), e no mês em que
+   *  nenhuma dimensão explica nada.
+   *
+   *  O MERCADO ESTAVA NESTA FRASE, e era premissa errada: ele é o clipping da
+   *  Clipei recortado por público-alvo Investidores, com menção ingerida como a
+   *  Imprensa. Medido: 327 menções, com tema, atributo, veículo e UF em 100%
+   *  delas. Hoje traz quatro abas, todas com dado — as mesmas da Imprensa menos
+   *  "Jornalista", porque o campo `autor` está vazio nas duas lentes. */
   onde_esta_a_causa: Bloco[];
   /** O bloco do fim da tela, já ordenado pelo servidor. */
   sinais: SinalDoDossie[];

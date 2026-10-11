@@ -49,8 +49,12 @@ export function OndeEstaACausa({
   const [ativa, definirAtiva] = useState<string>((recortada ?? abas[0])?.titulo ?? '');
 
   // CARTÃO VAZIO É PIOR QUE CARTÃO AUSENTE: a moldura sem conteúdo se lê como
-  // dado que sumiu. Mercado e Institucional não vêm de menção, e o servidor
-  // manda lista vazia para elas.
+  // dado que sumiu. Quem recebe lista vazia hoje é a Institucional, que não vem
+  // de menção — e qualquer lente num mês em que nenhuma dimensão explique nada.
+  //
+  // O MERCADO ESTAVA NESTA FRASE, e era premissa errada: ele é o clipping da
+  // Clipei recortado por público-alvo Investidores, com menção ingerida como a
+  // Imprensa, e hoje traz quatro abas com dado.
   if (!abas.length) return null;
 
 
