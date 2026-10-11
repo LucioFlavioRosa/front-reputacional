@@ -321,6 +321,15 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: toda abertura do cadastro.
   if (fila.pendentes.length === 0 && !erro) return null;
 
+  //: O LOTE ESTÁ DISPONÍVEL? Uma condição só, usada no painel E na caixa de
+  //: seleção de cada linha.
+  //:
+  //: ACHADO DE REVISÃO: elas estavam separadas, e sem catálogo (ou sem
+  //: categorias) o painel desaparecia e as CAIXAS FICAVAM — um controle órfão.
+  //: Dava para marcar linhas "para enquadrar" e não havia ação nenhuma a tomar.
+  //: Oferecer uma escolha que não leva a lugar é pior do que não oferecer: quem
+  //: marca 40 linhas e depois procura o botão conclui que a tela está quebrada.
+  const podeEnquadrar = enquadraveis.length > 0 && categoriasPublico.length > 0;
   const selecionadas = enquadraveis.filter((p) => escolhidas.has(chaveDe(p)));
   const acima = selecionadas.length > MAXIMO_DO_LOTE;
   const naTela = encontradas.slice(0, LIMITE_NA_TELA);
@@ -362,7 +371,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
 
         {/* O LOTE, e só na aba de instituições: é lá que a categoria de público
             existe. Ver `enquadraveis`. */}
-        {enquadraveis.length > 0 && categoriasPublico.length > 0 ? (
+        {podeEnquadrar ? (
           <div
             style={{
               borderTop: '1px solid var(--cinza-0)',
@@ -537,7 +546,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
                 borderTop: '1px solid var(--cinza-0)',
               }}
             >
-              {daInstituicao ? (
+              {daInstituicao && podeEnquadrar ? (
                 <input
                   type="checkbox"
                   checked={escolhidas.has(chave)}

@@ -53,21 +53,26 @@ vi.mock('@/api/cliente', () => ({
 
 //: O CATÁLOGO DUBLADO porque o lote precisa das categorias de público, e elas
 //: vêm do estado do painel — a mesma fonte que a tela de cadastro usa.
+//: O CATÁLOGO É UMA VARIÁVEL, e não um literal dentro do dublê: a fila carrega
+//: por rota própria e NÃO espera a primeira carga do painel, então "catálogo
+//: nulo com a fila cheia" é um estado real — e é o que o teste da caixa órfã
+//: precisa montar.
+const COM_CATEGORIAS = {
+  dicionarios: {
+    categorias_publico: [
+      { id: 7, codigo: 'mercado_financeiro', nome: 'Mercado financeiro', ordem: 1 },
+      { id: 2, codigo: 'poder_executivo', nome: 'Poder Executivo', ordem: 2 },
+    ],
+    subcategorias_publico: [
+      { id: 71, categoria_publico_id: 7, nome: 'Gestoras', ordem: 1 },
+      { id: 21, categoria_publico_id: 2, nome: 'Federal', ordem: 1 },
+    ],
+  },
+};
+let catalogoAtual: unknown = COM_CATEGORIAS;
+
 vi.mock('@/estado/painel', () => ({
-  usePainel: () => ({
-    catalogo: {
-      dicionarios: {
-        categorias_publico: [
-          { id: 7, codigo: 'mercado_financeiro', nome: 'Mercado financeiro', ordem: 1 },
-          { id: 2, codigo: 'poder_executivo', nome: 'Poder Executivo', ordem: 2 },
-        ],
-        subcategorias_publico: [
-          { id: 71, categoria_publico_id: 7, nome: 'Gestoras', ordem: 1 },
-          { id: 21, categoria_publico_id: 2, nome: 'Federal', ordem: 1 },
-        ],
-      },
-    },
-  }),
+  usePainel: () => ({ catalogo: catalogoAtual }),
 }));
 
 const { filaDeRevisao, consolidarCadastro, enquadrarEmLote } =
@@ -109,6 +114,7 @@ const O_MESMO_NOME_DUAS_VEZES = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  catalogoAtual = COM_CATEGORIAS;
   vi.mocked(filaDeRevisao).mockResolvedValue(O_MESMO_NOME_DUAS_VEZES);
   vi.mocked(consolidarCadastro).mockResolvedValue({
     pendente: O_MESMO_NOME_DUAS_VEZES[0].pendentes[0],
@@ -483,4 +489,28 @@ it('as RECUSADAS aparecem uma a uma com o motivo', async () => {
 
   expect(await screen.findByText(/1 cadastro não pôde ser enquadrado/)).toBeTruthy();
   expect(screen.getByText(/possível duplicata/)).toBeTruthy();
+});
+
+it('SEM CATALOGO nao ha painel de lote NEM caixa de selecao', async () => {
+  //: ACHADO DE REVISÃO: as duas condições estavam separadas, e sem catálogo o
+  //: painel desaparecia e as CAIXAS FICAVAM — um controle órfão. Dava para
+  //: marcar linhas "para enquadrar" e não havia ação nenhuma a tomar.
+  //:
+  //: OFERECER UMA ESCOLHA QUE NÃO LEVA A LUGAR é pior do que não oferecer: quem
+  //: marca 40 linhas e depois procura o botão conclui que a tela está quebrada.
+  //:
+  //: E O ESTADO É REAL, não hipotético: a fila carrega por rota própria e não
+  //: espera a primeira carga do painel, então "catálogo nulo com a fila cheia" é
+  //: o que acontece nos primeiros instantes de toda abertura da tela.
+  catalogoAtual = null;
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaDeInstituicoes());
+
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  //: A LISTA E O "ESTÁ CERTO" FUNCIONAM — a fila não depende do catálogo.
+  expect(screen.getAllByRole('button', { name: /está certo/i }).length).toBeGreaterThan(0);
+  //: MAS NÃO HÁ LOTE, E NÃO HÁ SELEÇÃO.
+  expect(screen.queryByLabelText(/Enquadrar as selecionadas como/)).toBeNull();
+  expect(screen.queryByLabelText('Selecionar XP Asset para enquadrar')).toBeNull();
 });
