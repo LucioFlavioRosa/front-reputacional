@@ -353,12 +353,11 @@ function Conteudo({
       {LENTES_SEM_CARTAO_DA_NOTA.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
 
-      {/* SÓ NA IMPRENSA — POR HORA (pedido do Jones, 2026-10-02): o backend já
-          devolve `volume_por_tier`/`top_veiculos`/`clima_por_veiculos` vazios
-          para as outras lentes (ver `_volume_por_tier`/`_veiculos` em
-          `app/api/lentes.py`), mas um card vazio ainda É um card — a tela
+      {/* IMPRENSA E MERCADO — ver `LENTES_COM_BLOCOS_DE_VEICULO`, onde está a
+          medida que trouxe o Mercado. O backend devolve esses blocos vazios
+          para quem não tem o campo, mas um card vazio ainda É um card: a tela
           também precisa não desenhar a moldura, e não só o conteúdo. */}
-      {dossie.codigo === 'imprensa' ? (
+      {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <div className="grade grade--2" style={{ gap: 16 }}>
           <VolumeETopVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
           <ClimaPorVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
@@ -370,9 +369,14 @@ function Conteudo({
           +56" quer a lista dessas matérias na sequência da leitura, não
           depois de outros dois blocos no meio do caminho.
 
-          SÓ NA IMPRENSA — mesma restrição de tela de cima: "matéria" com
-          veículo e tier é um conceito de clipagem de imprensa. */}
-      {dossie.codigo === 'imprensa' ? (
+          IMPRENSA E MERCADO — mesma lista de cima: "matéria" com veículo e
+          tier é um conceito de clipagem, e o Mercado é clipagem recortada por
+          público-alvo Investidores (migration 0048).
+
+          A SOCIEDADE TEM LISTA PRÓPRIA e não passa por aqui: o servidor lhe
+          devolve as menções dela, com as colunas dela (texto, link, autor,
+          engajamento), e quem desenha é a aba de base. */}
+      {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
       ) : null}
 
@@ -521,6 +525,28 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
     />
   );
 }
+
+/** AS LENTES QUE DESENHAM OS BLOCOS DE VEÍCULO: a rosca de volume por tier, o
+ *  par top/termômetro por veículo, e a lista de últimas matérias.
+ *
+ *  POR QUE A TELA TEM CONDIÇÃO PRÓPRIA, e não só o servidor: um card vazio
+ *  ainda É um card. O back já devolve esses blocos vazios para quem não tem o
+ *  campo (`LENTES_COM_VEICULO_E_TIER` em `app/api/lentes.py`), mas a tela
+ *  também precisa não desenhar a MOLDURA, e não só o conteúdo.
+ *
+ *  ERA SÓ A IMPRENSA, e a restrição era de tela — pedido do Jones (2026-10-02),
+ *  que não quis ver os mesmos veículos e tiers repetidos nas duas lentes. A
+ *  medida desfez a premissa: ZERO dos 10 maiores veículos do Mercado estão no
+ *  top 10 da Imprensa (o Valor Econômico é 1º no Mercado e 95º na Imprensa), o
+ *  top da Imprensa é rádio local e o do Mercado é imprensa econômica inteiro, e
+ *  o tier quase se inverte — 46,2% Tier 1 no Mercado contra 10,7% na Imprensa.
+ *  O motivo completo está na declaração do lado do servidor.
+ *
+ *  PARA VOLTAR: tire `'mercado'` daqui E de `LENTES_COM_VEICULO_E_TIER` no
+ *  back. Só aqui esconderia a moldura e deixaria o servidor calculando de
+ *  graça; só lá deixaria a moldura na tela com o bloco vazio dentro.
+ */
+const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 
