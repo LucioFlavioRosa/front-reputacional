@@ -129,9 +129,15 @@ export function FilaDeDuplicados() {
           >
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{perfil.nome}</p>
             {/* A MESMA GRAMÁTICA DA LINHA DO CADASTRO: "Perfil de rede ·
-                Imprensa · 2 menções", na ordem em que se lê o ator. */}
+                Imprensa · 2 menções", na ordem em que se lê o ator.
+
+                O TIPO VEM DO SERVIDOR, e era fixo em `perfil_rede` — verdade
+                enquanto a fila só perguntava sobre perfis de rede, mentira desde
+                11/10/2026: 4 dos pares que ela pergunta são instituições do CRM,
+                e apareciam rotuladas "Perfil de rede" a quem ia decidir se apaga
+                uma delas. */}
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-              {ROTULO_DO_TIPO.perfil_rede}
+              {ROTULO_DO_TIPO[perfil.tipo] ?? perfil.tipo}
               {perfil.cargo ? ` · ${perfil.cargo}` : ''}
               {` · ${mencoes(perfil.mencoes)}`}
             </p>

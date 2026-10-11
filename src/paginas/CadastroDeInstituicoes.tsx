@@ -41,6 +41,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
+import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
 import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
@@ -814,8 +815,19 @@ export function CadastroDeInstituicoes() {
         </Cartao>
       </Secao>
 
+      {/* OS CADASTROS QUE ENTRARAM POR PLANILHA E NINGUÉM CONFERIU.
+          Acima da lista porque é trabalho a fazer, e não consulta — o mesmo
+          lugar da fila de duplicados. Não aparece quando está vazia. */}
+      <FilaDeRevisao aba="instituicoes" />
+
       {/* A FILA DO MESMO ATOR CADASTRADO DUAS VEZES, acima da lista porque é
-          trabalho a fazer, e não consulta. Ela não aparece quando está vazia. */}
+          trabalho a fazer, e não consulta. Ela não aparece quando está vazia.
+
+          AS DUAS FILAS JUNTAS, nesta aba e só nela, por escolha do dono do
+          produto: as duplicatas também são conferência de cadastro novo. E nesta
+          ordem — a de revisão primeiro — porque ela é sobre UM registro e a de
+          duplicados é sobre o PAR: decidir se o cadastro está certo vem antes de
+          decidir se ele é o mesmo que outro. */}
       <FilaDeDuplicados />
 
       <Secao

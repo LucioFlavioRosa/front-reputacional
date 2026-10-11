@@ -616,6 +616,14 @@ export interface CandidatoDeFusao {
 export interface CadastroDuplicado {
   id: string;
   nome: string;
+  /** O TIPO DE QUEM VAI SAIR.
+   *
+   *  A tela escrevia `ROTULO_DO_TIPO.perfil_rede` fixo, e era verdade enquanto a
+   *  fila só perguntava sobre perfis de rede. Deixou de ser em 11/10/2026: a
+   *  fila passou a olhar qualquer tipo, e 4 dos pares que ela pergunta são
+   *  instituições do CRM — mostradas como "Perfil de rede" a quem ia decidir se
+   *  apaga uma delas. */
+  tipo: string;
   cargo: string | null;
   mencoes: number;
   candidatos: CandidatoDeFusao[];
@@ -633,17 +641,23 @@ export function duplicadosDeCadastro(): Promise<CadastroDuplicado[]> {
   return requisitar<CadastroDuplicado[]>('/api/instituicoes/duplicados');
 }
 
-/** Funde o perfil de rede no cadastro que fica, com as menções dele.
+/** Funde um cadastro no outro: quem vem no primeiro argumento SAI, com as
+ *  menções indo para quem fica.
  *
- *  QUEM SAI É SEMPRE O PERFIL: o cadastro que sobrevive é a linha curada, com
- *  categoria, UF e frente. O servidor recusa (422) o caminho inverso. Não tem
- *  volta. */
+ *  ERA "quem sai é sempre o perfil de rede", e deixou de ser em 11/10/2026:
+ *  qualquer tipo pode sair, porque qualquer tipo entra na fila. A assimetria
+ *  que protegia a linha curada continua, mas pela ORDEM DA FILA — o servidor
+ *  ancora a pergunta em quem deve sair — e não por um `if` de tipo.
+ *
+ *  O SOBREVIVENTE HERDA os campos que estiverem vazios nele e preenchidos em
+ *  quem sai; se os dois tiverem valores diferentes no mesmo campo, o servidor
+ *  recusa (422) listando quais. Não tem volta. */
 export function fundirCadastro(
-  perfilId: string,
+  queSaiId: string,
   sobreviventeId: string,
 ): Promise<{ id: string; nome: string }> {
   return requisitar<{ id: string; nome: string }>(
-    `/api/instituicoes/${perfilId}/fundir`,
+    `/api/instituicoes/${queSaiId}/fundir`,
     { method: 'POST', body: JSON.stringify({ sobrevivente_id: sobreviventeId }) },
   );
 }
@@ -661,6 +675,69 @@ export function declararCadastroDistinto(
     method: 'POST',
     body: JSON.stringify({ um_id: id, outro_id: outroId, motivo: motivo ?? null }),
   });
+}
+
+/** Um cadastro que nasceu de planilha e ninguém consolidou ainda. */
+export interface CadastroPendente {
+  /** TEXTO, e não número: `tema` tem chave inteira e os outros três têm UUID.
+   *  Quem consolida devolve o mesmo texto que recebeu. */
+  id: string;
+  /** O nome da tabela — `instituicao` | `interlocutor` | `tema` |
+   *  `pessoa_aegea`. É o que a rota de consolidação recebe de volta. */
+  tipo: string;
+  nome: string;
+  /** POR QUE ESTE REGISTRO ESPERA REVISÃO. Nulo é "nasceu de planilha", sem
+   *  mais nada a dizer — o caso comum. */
+  motivo: string | null;
+  /** O QUE DISTINGUE ESTE DE UM REGISTRO DE NOME PARECIDO.
+   *
+   *  O motivo mais frequente é "apareceu em 2 instituições na mesma planilha",
+   *  que cria DOIS cadastros com o mesmo nome, de propósito. Sem isto, a aba
+   *  mostraria "Artur Santa" duas vezes com o mesmo motivo. */
+  contexto: string | null;
+  criado_em: string;
+}
+
+/** Uma das três abas de Cadastro compartilhado, com a sua fila. */
+export interface AbaDeRevisao {
+  /** `instituicoes` | `assuntos` | `porta_vozes` — os mesmos ids de
+   *  `PortalDoCadastroCompartilhado`. */
+  id: string;
+  rotulo: string;
+  pendentes: CadastroPendente[];
+}
+
+/** O que cada aba de Cadastro compartilhado tem para revisar.
+ *
+ *  PEDIDO DO DONO DO PRODUTO: "o profissional consegue subir a planilha sem
+ *  problemas e pode revisar depois, e inclusive pode ser trabalho de outra
+ *  pessoa. Queremos dar padronização, mas com menor impacto."
+ *
+ *  AS TRÊS SEMPRE, inclusive as vazias — ver `AbaSaida` no back. */
+export function filaDeRevisao(): Promise<AbaDeRevisao[]> {
+  return requisitar<AbaDeRevisao[]>('/api/revisao-de-cadastros');
+}
+
+/** "Conferi este cadastro, está certo" — e ele sai da fila.
+ *
+ *  NÃO EDITA O CADASTRO, só a marca. Se o registro estiver errado, o caminho é
+ *  a lista de cadastro ao lado, que já sabe validar.
+ *
+ *  FORA DE `ROTAS_DO_CATALOGO` de propósito: consolidar não muda nada que o
+ *  catálogo sirva — `pendente_de_revisao` e `motivo_da_revisao` estão em
+ *  `COLUNAS_DE_CONTROLE` e nunca saem em `/api/dicionarios`. Uma recarga do
+ *  catálogo inteiro aqui seria trabalho para não mudar nada na tela.
+ *
+ *  `ja_estava_consolidado` É O CASO NORMAL, e não um erro: a fila é trabalho de
+ *  equipe pelo próprio pedido, então duas pessoas na mesma aba acontece. */
+export function consolidarCadastro(
+  tipo: string,
+  id: string,
+): Promise<{ pendente: CadastroPendente; ja_estava_consolidado: boolean }> {
+  return requisitar<{ pendente: CadastroPendente; ja_estava_consolidado: boolean }>(
+    `/api/revisao-de-cadastros/${tipo}/${encodeURIComponent(id)}/consolidacao`,
+    { method: 'POST' },
+  );
 }
 
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O

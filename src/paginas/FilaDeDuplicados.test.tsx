@@ -39,6 +39,7 @@ const UM_PAR = [
   {
     id: 'p1',
     nome: 'valoreconomico',
+    tipo: 'perfil_rede',
     cargo: 'Imprensa',
     mencoes: 11,
     candidatos: [
@@ -120,4 +121,34 @@ it('a falha de carga NAO derruba a tela', async () => {
 
   //: A fila é acessória: o cadastro inteiro não pode cair com ela.
   expect(await screen.findByText(/403 sem permissão/)).toBeTruthy();
+});
+
+it('o tipo de quem vai sair vem do SERVIDOR, e nao fixo em perfil de rede', async () => {
+  //: O DEFEITO QUE ISTO PRENDE. A linha escrevia `ROTULO_DO_TIPO.perfil_rede`
+  //: fixo — verdade enquanto a fila só perguntava sobre perfis de rede. Deixou
+  //: de ser em 11/10/2026, quando a fila passou a olhar qualquer tipo: dos 4
+  //: pares que restam na base real, TODOS são instituições feitas à mão no CRM,
+  //: e apareciam rotuladas "Perfil de rede".
+  //:
+  //: E O ROTULO ERRADO AQUI É CARO: quem lê a linha está decidindo se APAGA um
+  //: dos dois cadastros. "Perfil de rede" sugere um registro automático de
+  //: fornecedor, descartável; "Órgão público" é uma linha que alguém curou.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'o1',
+      nome: 'Prefeitura de Campinas',
+      tipo: 'orgao',
+      cargo: null,
+      mencoes: 2,
+      candidatos: [
+        { id: 'o2', nome: 'Prefeitura Municipal de Campinas', tipo: 'orgao', mencoes: 9 },
+      ],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+
+  expect(await screen.findByText('Prefeitura de Campinas')).toBeTruthy();
+  expect(screen.getByText(/Órgão público · 2 menções/)).toBeTruthy();
+  expect(screen.queryByText(/Perfil de rede/)).toBeNull();
 });

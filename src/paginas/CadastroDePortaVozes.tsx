@@ -32,6 +32,7 @@ import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { usePainel } from '@/estado/painel';
 import type { PessoaAegea, Tema } from '@/dominio/tipos';
 import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
+import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
 
 const VAZIA = {
   nome: '',
@@ -278,6 +279,11 @@ export function CadastroDePortaVozes() {
           </div>
         </Cartao>
       </Secao>
+
+      {/* OS CADASTROS QUE ENTRARAM POR PLANILHA E NINGUÉM CONFERIU.
+          Acima da lista porque é trabalho a fazer, e não consulta — o mesmo
+          lugar da fila de duplicados. Não aparece quando está vazia. */}
+      <FilaDeRevisao aba="porta_vozes" />
 
       <Secao titulo={`Cadastradas (${pessoas.length})`}>
         <Cartao>

@@ -59,6 +59,10 @@ const TEMAS = [
 ];
 
 vi.mock('@/api/cliente', () => ({
+  //: A ABA DE REVISAO, que a tela mostra acima da lista: ela pede a fila ao
+  //: montar, e sem o duble o componente chama undefined.
+  filaDeRevisao: vi.fn(async () => []),
+  consolidarCadastro: vi.fn(),
   listarTemas: vi.fn(async () => TEMAS),
   criarTema: vi.fn(async () => TEMAS[0]),
   editarTema: vi.fn(async () => TEMAS[0]),

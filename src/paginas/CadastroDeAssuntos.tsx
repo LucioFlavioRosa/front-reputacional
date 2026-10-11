@@ -20,6 +20,7 @@ import { criarTema, editarTema, listarTemas, obterDicionarios } from '@/api/clie
 import type { TemaCadastrado } from '@/api/cliente';
 import type { BlocoTema, MacroTema, Risco, RiskCluster } from '@/dominio/tipos';
 import { ImportarSubtemas } from '@/paginas/taxonomia/ImportarSubtemas';
+import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
 import {
   Botao,
   Campo,
@@ -536,6 +537,11 @@ export function CadastroDeAssuntos() {
           </div>
         </Cartao>
       </Secao>
+
+      {/* OS CADASTROS QUE ENTRARAM POR PLANILHA E NINGUÉM CONFERIU.
+          Acima da lista porque é trabalho a fazer, e não consulta — o mesmo
+          lugar da fila de duplicados. Não aparece quando está vazia. */}
+      <FilaDeRevisao aba="assuntos" />
 
       <Secao
         titulo={`Cadastrados (${temas.length})`}
