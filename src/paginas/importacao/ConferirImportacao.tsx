@@ -388,13 +388,17 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
       setImportacao(await resolverDivergencia(id, { campo, valor, decisao, alvo }));
     });
 
-  const moldura = (conteudo: ReactNode, rodape?: ReactNode) => (
+  const moldura = (conteudo: ReactNode, rodape?: ReactNode, comGrade = false) => (
     <Modal
       titulo={importacao?.arquivo_nome ?? 'Confira a planilha'}
       subtitulo="Nada foi criado ainda. Confira as linhas e suba quando estiver certo."
       aoFechar={aoFechar ?? (() => {})}
       largura={1240}
       rodape={rodape}
+      //: SÓ COM A GRADE. As telas de erro e de "abrindo…" são texto curto, e
+      //: tirar a rolagem delas não resolveria nada — a opção existe para a
+      //: tabela larga poder ficar com a borda de baixo dentro da tela.
+      corpoQueNaoRola={comGrade}
     >
       {conteudo}
     </Modal>
@@ -468,7 +472,14 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
   );
 
   return moldura(
-    <div className="pilha pilha--curta">
+    //: COLUNA EXPLÍCITA, e não pela classe: `pilha` e `pilha--curta` não estão
+    //: definidas em CSS nenhum deste projeto — são nomes que não estilizam nada.
+    //: Deixá-las aqui e confiar nelas faria a grade não receber o espaço que
+    //: sobra, e o conserto não funcionaria.
+    <div
+      className="pilha pilha--curta"
+      style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}
+    >
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
       {/* O QUE FALTA, EM TEXTO E FORA DO HOVER.
@@ -480,7 +491,13 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
           poucas mensagens distintas mesmo num arquivo grande, porque é o mesmo
           agrupamento que o servidor já faz. */}
       {mensagens.length > 0 ? (
-        <ul className="pilha pilha--curta" style={{ margin: 0, paddingLeft: 18 }}>
+        //: COM LIMITE PRÓPRIO, senão ela passa a ser o que esmaga a grade: com
+        //: muitas mensagens distintas, este bloco cresceria e não sobraria altura
+        //: para a tabela — trocando um defeito de rolagem por outro.
+        <ul
+          className="pilha pilha--curta rolagem-interna"
+          style={{ margin: 0, paddingLeft: 18, maxHeight: '18vh', flexShrink: 0 }}
+        >
           {mensagens.map(({ texto, linhas }) => (
             <li key={texto} className="texto--secundario">
               {texto}
@@ -511,10 +528,25 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
         </Botao>
       </div>
 
+      {/* A GRADE RECEBE O QUE SOBRA, em vez de uma altura adivinhada.
+          Era `maxHeight: '62vh'`, e 62vh mais os blocos de cima passavam da
+          altura do corpo do modal: o corpo rolava, e a borda de baixo da grade —
+          onde vive a barra horizontal — saía da tela. Ver `corpoQueNaoRola`. */}
       <div
         className="rolagem-interna"
-        style={{ maxHeight: '62vh', overflowX: 'auto' }}
+        style={{ flex: 1, minHeight: 0, overflowX: 'auto' }}
         onScroll={aoRolar}
+        //: ALCANÇÁVEL POR TECLADO, que é o que o PR #77 deu a todas as outras
+        //: áreas de rolagem interna e esta não tem: com o conteúdo rolando dentro
+        //: de um `div`, quem navega por teclado não chega nele — a área tem barra
+        //: e não responde às setas. Regra 2.1.1 do WCAG
+        //: (`scrollable-region-focusable`).
+        //:
+        //: `role="group"` E NÃO `region`: `region` cria landmark, e landmark
+        //: demais polui a navegação de quem ouve a tela.
+        tabIndex={0}
+        role="group"
+        aria-label="Linhas da planilha"
       >
         <table
           style={{
@@ -864,5 +896,10 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
       </div>
     </div>,
     rodape,
+    //: COM A GRADE: é o que liga `corpoQueNaoRola` e põe a barra horizontal
+    //: dentro da tela. Sem este `true` a função aceita o parâmetro e ninguém o
+    //: manda — foi o que aconteceu na primeira versão desta correção, e o teste
+    //: das duas barras foi quem disse.
+    true,
   );
 }
