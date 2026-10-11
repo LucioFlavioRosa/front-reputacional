@@ -373,9 +373,12 @@ function Conteudo({
           tier é um conceito de clipagem, e o Mercado é clipagem recortada por
           público-alvo Investidores (migration 0048).
 
-          A SOCIEDADE TEM LISTA PRÓPRIA e não passa por aqui: o servidor lhe
-          devolve as menções dela, com as colunas dela (texto, link, autor,
-          engajamento), e quem desenha é a aba de base. */}
+          A SOCIEDADE NÃO DESENHA ESTA LISTA, e nunca desenhou — a condição
+          anterior também era só `=== 'imprensa'`. O servidor até lhe devolve
+          `materias_recentes` preenchido, com as colunas dela (texto, link,
+          autor, engajamento), mas aqui esse bloco não é pintado. Quem mostra as
+          menções dela é a aba Base de dados, por outro caminho e outra rota —
+          não este bloco. */}
       {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
       ) : null}
