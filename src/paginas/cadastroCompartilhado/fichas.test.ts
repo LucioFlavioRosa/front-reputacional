@@ -160,3 +160,34 @@ describe('a ficha do contato', () => {
     expect(corpo.redes_sociais).toEqual(A_PESSOA.redes_sociais);
   });
 });
+
+describe('o rascunho NAO compartilha array com o cadastro', () => {
+  it('mexer na lista do rascunho nao mexe na do cadastro', () => {
+    //: ACHADO DE REVISAO, e e sobre o que vem: a tela de hoje atualiza arrays de
+    //: forma imutavel, entao nao havia defeito. Mas este modulo nasceu para ser
+    //: reusado pelo MODAL da fila, e um formulario que faca
+    //: ascunho.redes_sociais.push(...)\ mexeria no objeto do CATALOGO — a
+    //: lista apareceria mudada em toda tela antes de alguem salvar, e voltaria ao
+    //: normal no proximo F5. Defeito desses custa meio dia para ser acreditado.
+    const rascunho = rascunhoDoInterlocutor(A_PESSOA);
+    rascunho.redes_sociais.push('https://instagram.com/intruso');
+
+    expect(A_PESSOA.redes_sociais).toEqual([
+      'https://x.com/artur',
+      '@artur',
+    ]);
+  });
+
+  it('o corpo do PUT nao compartilha array com o rascunho', () => {
+    const rascunho = rascunhoDoInterlocutor(A_PESSOA);
+    const corpo = entradaDoInterlocutor(rascunho, {
+      instituicao_id: 'inst-xp',
+      tipo: 'investidor',
+      ativo: true,
+    });
+
+    rascunho.redes_sociais.push('@depois-de-montar-o-corpo');
+
+    expect(corpo.redes_sociais).toHaveLength(2);
+  });
+});

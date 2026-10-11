@@ -816,13 +816,7 @@ export function CadastroDeInstituicoes() {
               aoRascunharEdicaoDaPessoa={definirRascunhoDaPessoa}
               aoEditarPessoa={(pessoa) => {
                 definirPessoaEmEdicao(pessoa.id);
-                definirRascunhoDaPessoa({
-                  nome: pessoa.nome,
-                  email: pessoa.email ?? '',
-                  cargo: pessoa.cargo ?? '',
-                  area: pessoa.area ?? '',
-                  redes_sociais: pessoa.redes_sociais,
-                });
+                definirRascunhoDaPessoa(rascunhoDoInterlocutor(pessoa));
               }}
               aoCancelarPessoa={() => definirPessoaEmEdicao(null)}
               aoSalvarPessoa={(pessoa) =>

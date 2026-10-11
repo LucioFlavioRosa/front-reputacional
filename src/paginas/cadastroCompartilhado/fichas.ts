@@ -195,7 +195,16 @@ export function rascunhoDoInterlocutor(
     email: pessoa.email ?? '',
     cargo: pessoa.cargo ?? '',
     area: pessoa.area ?? '',
-    redes_sociais: pessoa.redes_sociais,
+    //: CÓPIA, e não a referência do cadastro.
+    //:
+    //: ACHADO DE REVISÃO, e é sobre o que vem: a tela de hoje atualiza arrays de
+    //: forma imutável, então não há defeito agora. Mas este módulo nasceu para
+    //: ser reusado pelo MODAL da fila, e um formulário que faça
+    //: `rascunho.redes_sociais.push(...)` mexeria no objeto do catálogo — a
+    //: lista apareceria mudada em toda tela antes de alguém salvar, e voltaria
+    //: ao normal no próximo F5. Defeito desses custa meio dia para ser
+    //: acreditado.
+    redes_sociais: [...pessoa.redes_sociais],
   };
 }
 
@@ -220,7 +229,9 @@ export function entradaDoInterlocutor(
     email: rascunho.email || null,
     cargo: rascunho.cargo || null,
     area: rascunho.area || null,
-    redes_sociais: rascunho.redes_sociais,
+    //: CÓPIA TAMBÉM NA SAÍDA, pela mesma razão: o corpo do PUT não deve
+    //: compartilhar array com o rascunho que a tela continua editando.
+    redes_sociais: [...rascunho.redes_sociais],
     tipo: de.tipo,
     ativo: de.ativo,
   };
