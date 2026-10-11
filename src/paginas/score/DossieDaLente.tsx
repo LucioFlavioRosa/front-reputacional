@@ -723,8 +723,9 @@ function Evolucao({
           agosto e setembro.
 
           SEM `aoAprofundarNoMes`: a linha do tempo não tem coluna de mês para
-          clicar, e passar o atalho só para ele não ser usado faria parecer que
-          falta tratamento de clique. */}
+          clicar, e o `Painel` recebe o atalho como opcional. Passar uma função
+          vazia faria o JSX dizer que há tratamento de clique onde não há.
+          Achado de revisão. */}
       {dossie.eventograma ? (
         <Cartao>
           <CabecalhoDoBloco
@@ -733,7 +734,7 @@ function Evolucao({
             ficha={dossie.eventograma.ficha}
             ajuda={GUIA_DO_BLOCO[dossie.eventograma.titulo]}
           />
-          <Painel bloco={dossie.eventograma} fatos={dossie.fatos} aoAprofundarNoMes={() => {}} />
+          <Painel bloco={dossie.eventograma} fatos={dossie.fatos} />
           <NotaDeFonte ficha={dossie.eventograma.ficha} />
         </Cartao>
       ) : null}
