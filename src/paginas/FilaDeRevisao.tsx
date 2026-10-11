@@ -36,6 +36,7 @@ import {
   type CadastroPendente,
 } from '@/api/cliente';
 import { Botao, Carregando, Cartao, FaixaDeErro, Secao } from '@/componentes/basicos';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 
 /** Qual das três abas de Cadastro compartilhado está pedindo a sua fila. */
 export type AbaDoCadastro = 'instituicoes' | 'assuntos' | 'porta_vozes';
@@ -70,7 +71,17 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   const carregar = useCallback(() => {
     filaDeRevisao()
       .then((abas) => {
-        definirFila(abas.find((a) => a.id === aba) ?? { id: aba, rotulo: '', pendentes: [] });
+        const minha = abas.find((a) => a.id === aba) ?? {
+          id: aba,
+          rotulo: '',
+          pendentes: [],
+        };
+        definirFila(minha);
+        //: A FILA VAZIOU: nada mais a fazer, e o aviso de quem veio antes já
+        //: cumpriu o papel dele. Sem isto, a seção ficaria na tela como
+        //: "Esperando conferência (0)" com um aviso permanente até alguém
+        //: trocar de aba — achado de revisão.
+        if (minha.pendentes.length === 0) definirDeOutraPessoa([]);
         definirErro('');
       })
       .catch((falha: Error) => {
@@ -84,6 +95,21 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   }, [aba]);
 
   useEffect(carregar, [carregar]);
+
+  //: E RELÊ QUANDO O CADASTRO MUDA, que é o conserto de um achado de revisão com
+  //: severidade MÉDIA — e o defeito era no fluxo que a PRÓPRIA TELA manda seguir.
+  //:
+  //: O botão diz "se ele estiver errado, corrija na lista abaixo primeiro". Essa
+  //: correção vai por `/api/instituicoes` (ou `/interlocutores`, `/temas`,
+  //: `/pessoas-aegea`), que são rotas de catálogo — então ela recarregava o
+  //: catálogo e NÃO esta fila. A linha aqui em cima continuava mostrando o nome
+  //: velho, o contexto velho, e oferecendo "Está certo" sobre uma versão que não
+  //: existe mais. Pior no caso de REMOVER: a linha ficava na tela e o botão iria
+  //: dar 404.
+  //:
+  //: E O BARRAMENTO JÁ EXISTIA para exatamente isto: "a garantia mora na rota, e
+  //: não em cada tela", diz `sincronizacao.ts`. Esta fila só não o escutava.
+  useEffect(() => catalogoMudou.assinar(carregar), [carregar]);
 
   async function consolidar(pendente: CadastroPendente) {
     definirEmCurso(`${pendente.tipo}:${pendente.id}`);
@@ -120,7 +146,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: FILA VAZIA NÃO OCUPA TELA, como em `FilaDeDuplicados`: não há nada a fazer,
   //: e um cartão dizendo "nada pendente" seria uma linha a mais para ler em
   //: toda abertura do cadastro.
-  if (fila.pendentes.length === 0 && !erro && deOutraPessoa.length === 0) return null;
+  if (fila.pendentes.length === 0 && !erro) return null;
 
   return (
     <Secao

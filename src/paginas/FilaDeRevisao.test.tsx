@@ -26,6 +26,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
+//: O SINCRONIZADOR DE VERDADE, e não um dublê: ele é uma classe sem React e sem
+//: `fetch`, feita para ser usada em teste — e o que se mede aqui é justamente a
+//: ligação entre ele e a fila.
+import { catalogoMudou } from '@/dominio/sincronizacao';
 
 vi.mock('@/api/cliente', () => ({
   filaDeRevisao: vi.fn(),
@@ -155,4 +159,47 @@ it('a falha de carga NAO derruba a tela do cadastro', async () => {
 
   expect(await screen.findByText(/Perfil não administra os cadastros/)).toBeTruthy();
   expect(screen.queryByText('Artur Santa')).toBeNull();
+});
+
+it('CORRIGIR o cadastro abaixo faz a fila reler', async () => {
+  //: O ACHADO DE REVISÃO COM SEVERIDADE MÉDIA, e o defeito era no fluxo que a
+  //: PRÓPRIA TELA manda seguir: o botão diz "se ele estiver errado, corrija na
+  //: lista abaixo primeiro".
+  //:
+  //: Essa correção vai por `/api/instituicoes` — rota de catálogo —, então ela
+  //: recarregava o catálogo e NÃO esta fila. A linha continuava mostrando o nome
+  //: velho e oferecendo "Está certo" sobre uma versão que não existe mais. Pior
+  //: no caso de REMOVER: a linha ficava na tela e o botão daria 404.
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findAllByText('Artur Santa');
+  expect(filaDeRevisao).toHaveBeenCalledTimes(1);
+
+  //: O QUE A EDIÇÃO LÁ EMBAIXO FAZ, pelo barramento que já existia.
+  catalogoMudou.avisar();
+
+  await waitFor(() => expect(filaDeRevisao).toHaveBeenCalledTimes(2));
+});
+
+it('a secao DESAPARECE quando a fila esvazia, aviso e tudo', async () => {
+  //: O OUTRO ACHADO. `deOutraPessoa` acumulava e mantinha a seção viva, então
+  //: depois da última linha a tela ficava com "Esperando conferência (0)" e um
+  //: aviso permanente até alguém trocar de aba — ocupando espaço para dizer que
+  //: não há nada a fazer.
+  vi.mocked(consolidarCadastro).mockResolvedValue({
+    pendente: O_MESMO_NOME_DUAS_VEZES[0].pendentes[0],
+    ja_estava_consolidado: true,
+  });
+  vi.mocked(filaDeRevisao)
+    .mockResolvedValueOnce(O_MESMO_NOME_DUAS_VEZES)
+    //: A SEGUNDA CARGA VEM VAZIA: outra pessoa consolidou as duas.
+    .mockResolvedValue([
+      { id: 'instituicoes', rotulo: 'Instituições e Contatos', pendentes: [] },
+    ]);
+
+  const { container } = render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findAllByText('Artur Santa');
+
+  await userEvent.click(screen.getAllByRole('button', { name: /Artur Santa/ })[0]);
+
+  await waitFor(() => expect(container.textContent).toBe(''));
 });
