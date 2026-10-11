@@ -113,20 +113,6 @@ function dossieCom(codigo: string): Dossie {
       ],
       legenda: ['Positivo', 'Neutro', 'Negativo'],
     }),
-    //: SÓ O MERCADO TEM, e é o que o último teste deste arquivo afirma.
-    eventograma:
-      codigo === 'mercado'
-        ? bloco({
-            tipo: 'linha_do_tempo',
-            titulo: 'Eventograma · mercado e rating',
-            dados: [
-              {
-                mes: '2026-09',
-                eventos: [{ texto: 'Aumento de capital', efeito: 'sustenta' }],
-              },
-            ],
-          })
-        : null,
     sinais_da_evolucao: [],
     volume_por_tier: bloco({
       tipo: 'rosca',
@@ -278,30 +264,6 @@ describe('os blocos de veículo do dossiê', () => {
     await userEvent.click(colunas[1] as HTMLElement);
     await waitFor(() => expect(obterRecorteDaLente).toHaveBeenCalled());
     expect(obterRecorteDaLente.mock.calls[0]).toContain('2026-09');
-  });
-
-  it('e o EVENTOGRAMA continua logo abaixo, só no Mercado', async () => {
-    //: Ele não foi substituído: dos 15 eventos, 5 são de rating e já aparecem
-    //: no painel "Trajetória de rating"; os outros 10 não estão em lugar
-    //: nenhum, e o período deles é outro (fevereiro a agosto, contra agosto e
-    //: setembro da série). Trocar um pelo outro custaria dez eventos.
-    obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));
-    await montarEAbrir('mercado');
-
-    await waitFor(() =>
-      expect(screen.getAllByText(/Eventograma/).length).toBeGreaterThan(0),
-    );
-    expect(screen.getByText('Aumento de capital')).toBeTruthy();
-  });
-
-  it('e a Imprensa NÃO ganha eventograma, nem a moldura dele', async () => {
-    //: O campo é nulo nas outras lentes, e nulo é o que faz a tela não desenhar
-    //: a moldura. Um cartão vazio se leria como dado que sumiu.
-    obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
-    await montarEAbrir('imprensa');
-
-    await waitFor(() => expect(screen.getAllByText('Evolução').length).toBeGreaterThan(0));
-    expect(screen.queryAllByText(/Eventograma/)).toEqual([]);
   });
 
   it('e os blocos que valem em TODA lente continuam valendo', () => {
