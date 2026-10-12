@@ -159,6 +159,8 @@ export function Secao({
   estiloDoTitulo,
   nivelDoTitulo = 2,
   semPng = false,
+  recolhivel = false,
+  comecaAberta = true,
 }: {
   titulo: string;
   subtitulo?: string;
@@ -178,7 +180,30 @@ export function Secao({
    *  (um formulário, por exemplo). O título da tela (`nivelDoTitulo` 1) já não
    *  o mostra. */
   semPng?: boolean;
+  /** O TÍTULO VIRA BOTÃO, e o corpo abre e fecha.
+   *
+   *  PEDIDO DO DONO DO PRODUTO (11/10/2026) para os três blocos do Cadastro
+   *  compartilhado: "Esperando conferência", "Possíveis duplicados" e
+   *  "Cadastrados" numa tela só, cada um com dezenas de linhas, obrigam a
+   *  rolagem para chegar no terceiro.
+   *
+   *  AQUI, E NÃO EM CADA TELA, pelo mesmo argumento do "Baixar PNG" logo
+   *  abaixo: três implementações do mesmo recolher divergiriam no dia em que
+   *  uma ganhasse teclado e as outras não.
+   *
+   *  OPT-IN de propósito: um card de gráfico recolhível por padrão esconderia o
+   *  número que a pessoa veio ver. */
+  recolhivel?: boolean;
+  /** Só com `recolhivel`. Aberta por padrão: um bloco que nasce fechado é um
+   *  bloco que a pessoa não sabe que existe — e a fila de conferência nasce
+   *  fechada só quando está vazia, o que ela resolve desaparecendo. */
+  comecaAberta?: boolean;
 }) {
+  //: `useState` SEMPRE CHAMADO, mesmo sem `recolhivel`: hook em condicional é
+  //: erro de React, e o custo de um estado não usado é nenhum.
+  const [aberta, definirAberta] = useState(comecaAberta);
+  const mostraOCorpo = !recolhivel || aberta;
+  const idDoCorpo = useId();
   //: TODO CARD COM TÍTULO BAIXA EM PNG, por pedido — gráficos, radar, jornada,
   //: painéis do CRM. Fica aqui, e não em cada tela, para o card novo já nascer
   //: com ele.
@@ -214,7 +239,59 @@ export function Secao({
       >
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            {nivelDoTitulo === 1 ? (
+            {/* O TÍTULO DENTRO DE UM `<button>` quando recolhível, e não um
+                `onClick` no `<h2>`: um cabeçalho clicável não chega por
+                teclado e o leitor de tela não o anuncia como algo que se
+                aperta. `aria-expanded` é o que diz se está aberta, e
+                `aria-controls` liga o botão ao corpo que ele governa.
+
+                O CABEÇALHO CONTINUA SENDO O `<h1>`/`<h2>` por dentro: quem
+                navega por cabeçalho precisa achar a seção, e envolver o título
+                num botão não pode custar isso. */}
+            {recolhivel ? (
+              <button
+                type="button"
+                onClick={() => definirAberta((antes) => !antes)}
+                aria-expanded={aberta}
+                aria-controls={idDoCorpo}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  margin: 0,
+                  font: 'inherit',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  textAlign: 'left',
+                }}
+              >
+                {/* A SETA GIRA, e é `aria-hidden` porque `aria-expanded` já
+                    diz o estado — anunciá-lo duas vezes é ruído. */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block',
+                    transition: 'transform 120ms',
+                    transform: aberta ? 'rotate(90deg)' : 'rotate(0deg)',
+                    color: 'var(--cor-dos-titulos, var(--azul-mar))',
+                    fontSize: 14,
+                  }}
+                >
+                  ▶
+                </span>
+                {nivelDoTitulo === 1 ? (
+                  <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo, margin: 0 }}>
+                    {titulo}
+                  </h1>
+                ) : (
+                  <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo, margin: 0 }}>
+                    {titulo}
+                  </h2>
+                )}
+              </button>
+            ) : nivelDoTitulo === 1 ? (
               <h1 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h1>
             ) : (
               <h2 style={{ ...estiloDaMarca, ...estiloDoTitulo }}>{titulo}</h2>
@@ -234,7 +311,11 @@ export function Secao({
           </div>
         ) : null}
       </div>
-      {children}
+      {/* DESMONTADO, e não escondido com `display: none`.
+          Cada bloco do cadastro tem lista paginada e estado próprio; mantê-los
+          vivos atrás de um `hidden` custaria render em toda digitação na busca
+          de outro bloco. E `id` no contêiner é o que `aria-controls` aponta. */}
+      <div id={idDoCorpo}>{mostraOCorpo ? children : null}</div>
     </Cartao>
   );
 }

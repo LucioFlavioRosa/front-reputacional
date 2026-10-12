@@ -152,3 +152,53 @@ it('o tipo de quem vai sair vem do SERVIDOR, e nao fixo em perfil de rede', asyn
   expect(screen.getByText(/Órgão público · 2 menções/)).toBeTruthy();
   expect(screen.queryByText(/Perfil de rede/)).toBeNull();
 });
+
+it('a fila de duplicados PAGINA em 10', async () => {
+  //: PEDIDO DO DONO DO PRODUTO: 10 por página nos três blocos.
+  //:
+  //: ESTA FILA NÃO PAGINAVA, e com 210 pares medidos na base real ela desenhava
+  //: os 210 de uma vez — cada um com o seu bloco de candidatos e dois botões.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue(
+    Array.from({ length: 12 }, (_, n) => ({
+      id: `p${n}`,
+      nome: `perfil${String(n).padStart(2, '0')}`,
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 2,
+      candidatos: [
+        { id: `v${n}`, nome: `Veiculo ${n}`, tipo: 'veiculo', mencoes: 9 },
+      ],
+    })),
+  );
+
+  render(<FilaDeDuplicados />);
+  expect(await screen.findByText('perfil00')).toBeTruthy();
+
+  expect(screen.getByText('perfil09')).toBeTruthy();
+  expect(screen.queryByText('perfil10')).toBeNull();
+  expect(screen.getByText(/Página 1 de 2 — 12 pares a decidir/)).toBeTruthy();
+
+  await userEvent.click(screen.getByRole('button', { name: /Última/ }));
+  expect(screen.getByText('perfil11')).toBeTruthy();
+  expect(screen.queryByText('perfil00')).toBeNull();
+});
+
+it('o TOTAL fica no titulo, e e ele que diz se o trabalho anda', async () => {
+  //: A fila encurta a cada decisão. Com a contagem só no rodapé da página, a
+  //: pessoa veria "10 de 10" para sempre enquanto resolve os 210.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue(
+    Array.from({ length: 12 }, (_, n) => ({
+      id: `p${n}`,
+      nome: `perfil${n}`,
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 2,
+      candidatos: [{ id: `v${n}`, nome: `V ${n}`, tipo: 'veiculo', mencoes: 9 }],
+    })),
+  );
+
+  render(<FilaDeDuplicados />);
+  await screen.findByText('perfil0');
+
+  expect(screen.getByRole('button', { name: /Possíveis duplicados \(12\)/ })).toBeTruthy();
+});

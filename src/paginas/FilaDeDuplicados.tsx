@@ -31,6 +31,7 @@ import {
   type CandidatoDeFusao,
 } from '@/api/cliente';
 import { Botao, Carregando, Cartao, FaixaDeErro, Secao } from '@/componentes/basicos';
+import { Paginacao } from '@/componentes/Paginacao';
 import { ROTULO_DO_TIPO_DE_INSTITUICAO } from '@/paginas/cadastroCompartilhado/formularios';
 
 //: O RÓTULO DO TIPO VEM DO CADASTRO, com TRÊS EXCEÇÕES — e as três são
@@ -66,8 +67,17 @@ function mencoes(quantas: number): string {
   return quantas === 1 ? '1 menção' : `${quantas} menções`;
 }
 
+//: DEZ POR PÁGINA, a mesma régua dos outros dois blocos do cadastro.
+//:
+//: ESTA FILA NÃO PAGINAVA, e com 210 pares medidos na base real ela desenhava os
+//: 210 de uma vez — cada um com o seu bloco de candidatos e dois botões. O
+//: pedido do dono do produto é por acesso a todos os casos, e sem navegação a
+//: lista longa é lida só até onde a paciência vai.
+const POR_PAGINA = 10;
+
 export function FilaDeDuplicados() {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
+  const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
 
@@ -125,8 +135,18 @@ export function FilaDeDuplicados() {
   //: "nenhum duplicado" seria uma linha a mais para ler em toda abertura.
   if (fila.length === 0 && !erro) return null;
 
+  const totalDePaginas = Math.max(1, Math.ceil(fila.length / POR_PAGINA));
+  //: CORRIGIDA NO RENDER, e não por efeito: cada decisão TIRA uma linha da
+  //: fila, então a última página encolhe sob os pés de quem está nela.
+  const paginaAgora = Math.min(pagina, totalDePaginas);
+  const naTela = fila.slice(
+    (paginaAgora - 1) * POR_PAGINA,
+    paginaAgora * POR_PAGINA,
+  );
+
   return (
     <Secao
+      recolhivel
       titulo={`Possíveis duplicados (${fila.length})`}
       ajuda={
         'O mesmo ator cadastrado duas vezes: o fornecedor de redes manda o ' +
@@ -137,7 +157,7 @@ export function FilaDeDuplicados() {
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-        {fila.map((perfil) => (
+        {naTela.map((perfil) => (
           <div
             key={perfil.id}
             style={{
@@ -210,6 +230,29 @@ export function FilaDeDuplicados() {
             })}
           </div>
         ))}
+
+        {/* A CONTAGEM E A NAVEGAÇÃO. A fila encurta a cada decisão, e é por isso
+            que o número total fica no título: ele é o que diz se o trabalho está
+            andando. */}
+        {fila.length > POR_PAGINA ? (
+          <p
+            style={{
+              margin: '12px 0 0',
+              paddingTop: 12,
+              borderTop: '1px solid var(--cinza-0)',
+              fontSize: 12,
+              color: 'var(--cinza-2)',
+            }}
+          >
+            {`Página ${paginaAgora} de ${totalDePaginas} — ${fila.length} pares a decidir.`}
+          </p>
+        ) : null}
+
+        <Paginacao
+          pagina={paginaAgora}
+          totalDePaginas={totalDePaginas}
+          aoMudarPagina={definirPagina}
+        />
       </Cartao>
     </Secao>
   );

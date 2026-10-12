@@ -59,6 +59,7 @@ import {
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
+import { Paginacao } from '@/componentes/Paginacao';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import { FichaDoPendente } from '@/paginas/cadastroCompartilhado/FichaDoPendente';
 import { usePainel } from '@/estado/painel';
@@ -81,16 +82,21 @@ const ROTULO_DA_TABELA: Record<string, string> = {
 const MOTIVO_GENERICO =
   'Entrou por planilha e ninguém conferiu o enquadramento ainda.';
 
-//: QUANTAS LINHAS A TELA DESENHA DE UMA VEZ.
+//: QUANTAS LINHAS POR PÁGINA.
 //:
-//: O TETO É DE RENDERIZAÇÃO, e não de seleção: "Selecionar todas" pega tudo o
-//: que a busca encontrou, inclusive o que não está desenhado. É a divisão certa —
-//: desenhar 499 linhas é problema de tela, enquadrar as 178 instituições é a
+//: DEZ, por pedido do dono do produto — a mesma régua dos três blocos do
+//: Cadastro compartilhado, e a mesma que "Cadastrados" já usava.
+//:
+//: ERA UM TETO DE 30 SEM NAVEGAÇÃO, e a diferença é o que o pedido conserta: o
+//: teto mostrava as 30 primeiras e mandava usar a busca para chegar no resto —
+//: o que não serve para quem precisa PASSAR por todos os casos. Paginar é o que
+//: dá acesso ao fim da lista sem adivinhar o que procurar.
+//:
+//: E O TETO CONTINUA SENDO DE RENDERIZAÇÃO, NÃO DE SELEÇÃO: "Selecionar todas"
+//: pega tudo o que a BUSCA encontrou, inclusive o que está em outra página.
+//: Desenhar 499 linhas é problema de tela; enquadrar as 178 instituições é a
 //: operação que a pessoa veio fazer.
-//:
-//: 30 porque é o que cabe numa rolagem curta. Sem teto, a fila real desenha 499
-//: blocos a cada recarga, e a recarga acontece a cada escrita de catálogo.
-const LIMITE_NA_TELA = 30;
+const POR_PAGINA = 10;
 
 //: O MESMO TETO DO SERVIDOR (`MAXIMO_DO_LOTE`), repetido aqui para a tela avisar
 //: ANTES de mandar — um 422 depois de selecionar 600 linhas é trabalho perdido.
@@ -144,6 +150,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: catálogo, e guardar o objeto deixaria a seleção apontando para linhas de uma
   //: carga anterior.
   const [escolhidas, definirEscolhidas] = useState<Set<string>>(new Set());
+  const [pagina, definirPagina] = useState(1);
   const [categoria, definirCategoria] = useState('');
   const [subcategoria, definirSubcategoria] = useState('');
   const [recusadas, definirRecusadas] = useState<EnquadramentoRecusado[]>([]);
@@ -368,7 +375,15 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   const abertaSumiu = aberta !== null && abertaAgora === null;
   const selecionadas = enquadraveis.filter((p) => escolhidas.has(chaveDe(p)));
   const acima = selecionadas.length > MAXIMO_DO_LOTE;
-  const naTela = encontradas.slice(0, LIMITE_NA_TELA);
+  const totalDePaginas = Math.max(1, Math.ceil(encontradas.length / POR_PAGINA));
+  //: A PÁGINA É CORRIGIDA NO RENDER, e não por efeito: consolidar a última
+  //: linha de uma página a faz deixar de existir, e um efeito corrigiria isso
+  //: DEPOIS de um render com a lista vazia — um piscar de "nada aqui".
+  const paginaAgora = Math.min(pagina, totalDePaginas);
+  const naTela = encontradas.slice(
+    (paginaAgora - 1) * POR_PAGINA,
+    paginaAgora * POR_PAGINA,
+  );
 
   return (
     <>
@@ -407,6 +422,7 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
       ) : null}
 
     <Secao
+      recolhivel
       titulo={`Esperando conferência (${fila.pendentes.length})`}
       ajuda={
         'Cadastros que entraram por planilha e ninguém conferiu ainda. Eles já ' +
@@ -426,7 +442,21 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
             <input
               style={estiloDeEntrada}
               value={busca}
-              onChange={(e) => definirBusca(e.target.value)}
+              onChange={(e) => {
+                definirBusca(e.target.value);
+                //: A BUSCA VOLTA PARA A PÁGINA 1, e no EVENTO — não por efeito.
+                //:
+                //: SEM ISTO, quem está na página 3 e digita um nome vê uma lista
+                //: VAZIA: a busca achou uma linha, e a página 3 de uma linha não
+                //: existe. Parece que a busca não achou nada.
+                //:
+                //: NO `onChange` porque a regra `set-state-in-effect` está certa
+                //: ao dizer "atualize a partir do evento que causou a mudança":
+                //: digitar é o evento, e um efeito sobre `[busca]` era uma
+                //: renderização a mais para reagir ao que eu mesmo acabei de
+                //: fazer.
+                definirPagina(1);
+              }}
               placeholder="Parte do nome, da instituição ou do motivo"
             />
           </Campo>
@@ -698,10 +728,11 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
           );
         })}
 
-        {/* O TETO É DE RENDERIZAÇÃO, e a linha abaixo é o que impede ele de
-            mentir: sem ela, a pessoa veria 30 linhas e concluiria que a fila tem
-            30. A busca é o caminho para alcançar o resto, e o texto diz isso. */}
-        {encontradas.length > naTela.length ? (
+        {/* A CONTAGEM ANTES DA NAVEGAÇÃO, e ela é o que impede a página de
+            mentir: sem ela, a pessoa vê 10 linhas e não sabe de quantas. E diz
+            que "Selecionar todas" atravessa as páginas, porque é a única forma
+            de saber isso sem testar. */}
+        {encontradas.length > POR_PAGINA ? (
           <p
             style={{
               margin: '12px 0 0',
@@ -711,11 +742,18 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
               color: 'var(--cinza-2)',
             }}
           >
-            {`Mostrando ${naTela.length} de ${encontradas.length}. Use a busca ` +
-              'para chegar aos outros — "Selecionar todas" pega os ' +
-              `${enquadraveis.length} da busca, inclusive os que não estão na tela.`}
+            {`Página ${paginaAgora} de ${totalDePaginas} — ${encontradas.length} ` +
+              `${encontradas.length === 1 ? 'cadastro' : 'cadastros'} na fila. ` +
+              `"Selecionar todas" pega os ${enquadraveis.length} da busca, ` +
+              'inclusive os de outras páginas.'}
           </p>
         ) : null}
+
+        <Paginacao
+          pagina={paginaAgora}
+          totalDePaginas={totalDePaginas}
+          aoMudarPagina={definirPagina}
+        />
       </Cartao>
     </Secao>
     </>

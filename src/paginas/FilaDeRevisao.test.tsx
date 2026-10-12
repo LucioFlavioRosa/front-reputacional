@@ -593,3 +593,81 @@ it('o dialogo SOBREVIVE a fila esvaziar', async () => {
   //: me obrigaria a dois caminhos de render para nada — o diálogo está em cima.
   expect(screen.getByText(/Esperando conferência \(0\)/)).toBeTruthy();
 });
+
+//: VINTE E CINCO PENDÊNCIAS, para haver três páginas de dez.
+function umaFilaLonga(quantas: number): AbaDeRevisao[] {
+  return [
+    {
+      id: 'instituicoes',
+      rotulo: 'Instituições e Contatos',
+      pendentes: Array.from({ length: quantas }, (_, n) => ({
+        id: `i${n}`,
+        tipo: 'instituicao',
+        nome: `Gestora ${String(n).padStart(2, '0')}`,
+        motivo: 'Entrou pela planilha sem categoria de público.',
+        contexto: 'Entidade · SP',
+        criado_em: '2026-10-11T12:00:00Z',
+      })),
+    },
+    { id: 'assuntos', rotulo: 'Temas', pendentes: [] },
+    { id: 'porta_vozes', rotulo: 'Representantes Aegea', pendentes: [] },
+  ];
+}
+
+it('a fila PAGINA em 10, e a navegacao leva ao fim', async () => {
+  //: PEDIDO DO DONO DO PRODUTO: "precisam de ser paginados para conseguir pegar
+  //: todos os casos, creio que devemos ter 10 itens por página de cada bloco".
+  //:
+  //: ERA UM TETO DE 30 SEM NAVEGAÇÃO, e a diferença é o que o pedido conserta: o
+  //: teto mostrava as 30 primeiras e mandava usar a busca para chegar no resto —
+  //: o que não serve para quem precisa PASSAR por todos os casos.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaLonga(25));
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('Gestora 00');
+
+  //: DEZ NA PRIMEIRA PÁGINA.
+  expect(screen.getByText('Gestora 09')).toBeTruthy();
+  expect(screen.queryByText('Gestora 10')).toBeNull();
+  expect(screen.getByText(/Página 1 de 3 — 25 cadastros na fila/)).toBeTruthy();
+
+  //: E A ÚLTIMA PÁGINA TEM AS CINCO QUE SOBRAM — é o caso que o teto de 30
+  //: deixava inalcançável sem busca.
+  await userEvent.click(screen.getByRole('button', { name: /Última/ }));
+  expect(screen.getByText('Gestora 24')).toBeTruthy();
+  expect(screen.queryByText('Gestora 00')).toBeNull();
+});
+
+it('Selecionar todas ATRAVESSA as paginas', async () => {
+  //: O TETO É DE RENDERIZAÇÃO, NÃO DE SELEÇÃO, e isso continua valendo com
+  //: páginas: enquadrar 25 de uma vez é a operação que a pessoa veio fazer, e
+  //: obrigá-la a ir de dez em dez desfaria o lote.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaLonga(25));
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('Gestora 00');
+
+  await userEvent.click(
+    screen.getByRole('button', { name: /Selecionar as 25 instituições/ }),
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText(/Enquadrar as selecionadas como/),
+    '7',
+  );
+  await userEvent.click(screen.getByRole('button', { name: /Enquadrar 25 instituições/ }));
+
+  expect(vi.mocked(enquadrarEmLote).mock.calls[0][0].ids).toHaveLength(25);
+});
+
+it('a BUSCA volta para a pagina 1', async () => {
+  //: SEM ISTO, quem está na página 3 e digita um nome vê uma lista VAZIA — a
+  //: busca achou uma linha e a página 3 de uma linha não existe. E parece que a
+  //: busca não achou nada.
+  vi.mocked(filaDeRevisao).mockResolvedValue(umaFilaLonga(25));
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('Gestora 00');
+
+  await userEvent.click(screen.getByRole('button', { name: /Última/ }));
+  expect(screen.getByText('Gestora 24')).toBeTruthy();
+
+  await userEvent.type(screen.getByLabelText(/Buscar na fila/), 'Gestora 07');
+  expect(screen.getByText('Gestora 07')).toBeTruthy();
+});

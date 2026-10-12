@@ -659,7 +659,10 @@ export function CadastroDeInstituicoes() {
           decidir se ele é o mesmo que outro. */}
       <FilaDeDuplicados />
 
+      {/* RECOLHÍVEL, como os dois blocos acima — pedido do dono do produto.
+          Este já paginava em 10, e é de onde a régua dos outros dois veio. */}
       <Secao
+        recolhivel
         titulo={
           instituicoes.length !== totalCadastrado
             ? `Cadastrados (${numero(instituicoes.length)} de ${numero(totalCadastrado)})`
