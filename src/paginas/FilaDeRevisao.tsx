@@ -55,6 +55,7 @@ import {
   Carregando,
   Cartao,
   FaixaDeErro,
+  Modal,
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
@@ -327,7 +328,16 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: FILA VAZIA NÃO OCUPA TELA, como em `FilaDeDuplicados`: não há nada a fazer,
   //: e um cartão dizendo "nada pendente" seria uma linha a mais para ler em
   //: toda abertura do cadastro.
-  if (fila.pendentes.length === 0 && !erro) return null;
+  //: `aberta === null` NA CONDIÇÃO, e não só a fila vazia.
+  //:
+  //: ACHADO DE REVISÃO, e foram dois testes meus que o pegaram: consolidar a
+  //: ÚLTIMA linha pelo diálogo esvazia a fila, esta saída antecipada rodava, e o
+  //: diálogo era desmontado junto com a seção — levando embora a mensagem que a
+  //: pessoa precisava ler.
+  //:
+  //: FILA VAZIA CONTINUA NÃO OCUPANDO TELA, que é o "menor impacto" do pedido.
+  //: O que muda é que um diálogo aberto conta como coisa a mostrar.
+  if (fila.pendentes.length === 0 && !erro && aberta === null) return null;
 
   //: O LOTE ESTÁ DISPONÍVEL? Uma condição só, usada no painel E na caixa de
   //: seleção de cada linha.
@@ -344,11 +354,58 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   const abertaAgora = aberta
     ? (fila.pendentes.find((p) => chaveDe(p) === aberta) ?? null)
     : null;
+  //: A LINHA ABERTA SAIU DA FILA — outra pessoa a consolidou, ou a removeu.
+  //:
+  //: ACHADO DE REVISÃO: eu comentei que "o modal trata isso dizendo que o
+  //: cadastro não está mais lá", e NÃO TRATAVA: `abertaAgora` virava `null` e o
+  //: diálogo simplesmente DESAPARECIA da tela. Quem estava editando perdia o
+  //: formulário sem uma palavra, e o teste do `Sumiu` montava o componente
+  //: direto, nunca pelo fluxo da fila.
+  //:
+  //: O DIÁLOGO FICA E DIZ O QUE ACONTECEU. É o mesmo princípio do "outra pessoa
+  //: já havia conferido": a fila é trabalho de equipe, e o que outra pessoa fez
+  //: tem de aparecer em vez de simplesmente mudar a tela.
+  const abertaSumiu = aberta !== null && abertaAgora === null;
   const selecionadas = enquadraveis.filter((p) => escolhidas.has(chaveDe(p)));
   const acima = selecionadas.length > MAXIMO_DO_LOTE;
   const naTela = encontradas.slice(0, LIMITE_NA_TELA);
 
   return (
+    <>
+      {/* A FICHA DO REGISTRO CLICADO, ANTES DE QUALQUER SAÍDA ANTECIPADA.
+          Pedido do dono do produto: "clicar em um registro específico e abrir um
+          modal para poder editar todos os campos daquele registro".
+
+          AQUI EM CIMA porque a seção some quando a fila esvazia — e esvaziar é
+          exatamente o que acontece quando a pessoa consolida a ÚLTIMA linha pelo
+          diálogo. Com o modal dentro da seção, ele era desmontado junto, levando
+          embora a mensagem de erro que ela precisava ler. */}
+      {abertaSumiu ? (
+        <Modal
+          titulo="Este cadastro saiu da fila"
+          aoFechar={() => definirAberta(null)}
+          largura={520}
+        >
+          <p style={{ margin: 0, fontSize: 13 }}>
+            Outra pessoa conferiu ou removeu este cadastro enquanto você o tinha
+            aberto. Nada do que você digitou foi gravado.
+          </p>
+        </Modal>
+      ) : null}
+
+      {abertaAgora ? (
+        <FichaDoPendente
+          key={chaveDe(abertaAgora)}
+          pendente={abertaAgora}
+          aoFechar={() => {
+            definirAberta(null);
+            //: RELÊ AO FECHAR, inclusive quando a pessoa só cancelou: outra
+            //: pessoa pode ter mexido na fila enquanto o diálogo estava aberto.
+            carregar();
+          }}
+        />
+      ) : null}
+
     <Secao
       titulo={`Esperando conferência (${fila.pendentes.length})`}
       ajuda={
@@ -544,26 +601,6 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
           </p>
         ) : null}
 
-        {/* A FICHA DO REGISTRO CLICADO.
-            Pedido do dono do produto: "clicar em um registro específico e abrir
-            um modal para poder editar todos os campos daquele registro". A
-            `key` força o diálogo a remontar ao trocar de linha — sem ela, o
-            rascunho da anterior ficaria no formulário da seguinte. */}
-        {abertaAgora ? (
-          <FichaDoPendente
-            key={chaveDe(abertaAgora)}
-            pendente={abertaAgora}
-            aoFechar={() => {
-              definirAberta(null);
-              //: RELÊ AO FECHAR, inclusive quando a pessoa só cancelou: outra
-              //: pessoa pode ter mexido na fila enquanto o diálogo estava
-              //: aberto. Salvar já recarrega pelo barramento do catálogo; isto
-              //: cobre o cancelar e o "sumiu".
-              carregar();
-            }}
-          />
-        ) : null}
-
         {naTela.map((pendente) => {
           const chave = chaveDe(pendente);
           const ocupado = emCurso === chave;
@@ -681,5 +718,6 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
         ) : null}
       </Cartao>
     </Secao>
+    </>
   );
 }

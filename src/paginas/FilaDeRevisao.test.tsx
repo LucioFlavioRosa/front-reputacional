@@ -534,3 +534,62 @@ it('SEM CATALOGO nao ha painel de lote NEM caixa de selecao', async () => {
   expect(screen.queryByLabelText(/Enquadrar as selecionadas como/)).toBeNull();
   expect(screen.queryByLabelText('Selecionar XP Asset para enquadrar')).toBeNull();
 });
+
+it('a linha que SAI da fila com o dialogo aberto diz isso', async () => {
+  //: ACHADO DE REVISÃO: eu comentei que "o modal trata isso dizendo que o
+  //: cadastro não está mais lá", e NÃO TRATAVA. `abertaAgora` virava `null` e o
+  //: diálogo simplesmente DESAPARECIA — quem estava editando perdia o formulário
+  //: sem uma palavra.
+  //:
+  //: E O TESTE QUE EU TINHA montava `FichaDoPendente` direto, com um id que não
+  //: existe. Nunca passava pelo fluxo da fila, que é onde o caso acontece: a
+  //: revisão apontou a diferença entre o teste e o caminho real.
+  vi.mocked(filaDeRevisao)
+    .mockResolvedValueOnce(umaFilaDeInstituicoes())
+    //: A SEGUNDA CARGA SEM A LINHA: outra pessoa a consolidou.
+    .mockResolvedValue([
+      { id: 'instituicoes', rotulo: 'Instituições e Contatos', pendentes: [] },
+    ]);
+
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+
+  await userEvent.click(
+    screen.getByRole('button', { name: /Abrir a ficha de XP Asset/ }),
+  );
+  //: A FILA RECARREGA pelo barramento, e a linha aberta já não está nela.
+  catalogoMudou.avisar();
+
+  expect(await screen.findByText(/Este cadastro saiu da fila/)).toBeTruthy();
+  expect(screen.getByText(/Nada do que você digitou foi gravado/)).toBeTruthy();
+});
+
+it('o dialogo SOBREVIVE a fila esvaziar', async () => {
+  //: O CASO QUE A SAÍDA ANTECIPADA DA SEÇÃO ESCONDIA: a seção some quando a fila
+  //: esvazia, e esvaziar é exatamente o que acontece ao consolidar a ÚLTIMA
+  //: linha pelo diálogo. Com o modal dentro da seção, ele era desmontado junto —
+  //: levando embora qualquer mensagem que a pessoa precisasse ler.
+  vi.mocked(filaDeRevisao)
+    .mockResolvedValueOnce(umaFilaDeInstituicoes())
+    .mockResolvedValue([
+      { id: 'instituicoes', rotulo: 'Instituições e Contatos', pendentes: [] },
+    ]);
+
+  render(<FilaDeRevisao aba="instituicoes" />);
+  await screen.findByText('XP Asset');
+  await userEvent.click(
+    screen.getByRole('button', { name: /Abrir a ficha de XP Asset/ }),
+  );
+  catalogoMudou.avisar();
+
+  //: O DIÁLOGO FICOU, que é a propriedade.
+  expect(await screen.findByText(/Este cadastro saiu da fila/)).toBeTruthy();
+  //: E A SEÇÃO CONTINUA MONTADA, titulada "(0)", por baixo do diálogo — que é
+  //: modal e cobre a tela.
+  //:
+  //: EU HAVIA AFIRMADO O CONTRÁRIO, e era o efeito colateral e não a
+  //: propriedade: o conserto é "a saída antecipada não desmonta o diálogo", e
+  //: a consequência é a seção ficar montada junto. Exigir que ela desaparecesse
+  //: me obrigaria a dois caminhos de render para nada — o diálogo está em cima.
+  expect(screen.getByText(/Esperando conferência \(0\)/)).toBeTruthy();
+});

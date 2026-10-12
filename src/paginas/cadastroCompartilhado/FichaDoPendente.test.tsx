@@ -294,3 +294,95 @@ it('sem catalogo, a ficha ESPERA em vez de estourar', async () => {
 
   expect(await screen.findByText(/Buscando a ficha deste cadastro/)).toBeTruthy();
 });
+
+it('sair de perfil de rede LIMPA o cargo e a pessoa', async () => {
+  //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA, e o defeito era meu por ignorar o
+  //: que a tela principal já fazia: os dois campos DESAPARECEM quando o tipo
+  //: muda, mas continuavam no rascunho e iam no PUT.
+  //:
+  //: O banco tem CHECK de que eles só existem em `perfil_rede`, então salvar
+  //: era recusado por causa de um campo que a pessoa não conseguia mais ver — o
+  //: pior tipo de recusa, porque ela não tem o que corrigir.
+  catalogoAtual = catalogoCom({
+    instituicoes: new Map([
+      [
+        'perf-1',
+        {
+          ...A_INSTITUICAO,
+          id: 'perf-1',
+          nome: 'stelafariasrs',
+          tipo: 'perfil_rede',
+          cargo: 'Deputado estadual',
+          interlocutor_id: 'pes-1',
+        },
+      ],
+    ]),
+  });
+
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'perf-1', nome: 'stelafariasrs' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('stelafariasrs');
+  //: ELES ESTÃO LÁ enquanto é perfil de rede.
+  expect(screen.getByDisplayValue('Deputado estadual')).toBeTruthy();
+
+  await userEvent.selectOptions(screen.getByLabelText(/Tipo/), 'orgao');
+  //: SUMIRAM DA TELA...
+  expect(screen.queryByDisplayValue('Deputado estadual')).toBeNull();
+
+  await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+  await waitFor(() => expect(editarInstituicao).toHaveBeenCalled());
+  //: ...E SUMIRAM DO PUT. Antes iam, e o banco recusava.
+  expect(vi.mocked(editarInstituicao).mock.calls[0][1]).toMatchObject({
+    tipo: 'orgao',
+    cargo: null,
+    interlocutor_id: null,
+  });
+});
+
+it('a recarga do catalogo NAO apaga o que esta sendo digitado no tema', async () => {
+  //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA: `macros` saía de `catalogo`, e
+  //: QUALQUER escrita em rota de catálogo troca aquele objeto — o efeito rodava
+  //: de novo, buscava os temas de novo, e REESCREVIA o rascunho com os valores
+  //: do servidor, apagando o que a pessoa digitou.
+  //:
+  //: E O MODAL TEM GATILHO PRÓPRIO PARA ISSO: salvar aqui avisa o catálogo.
+  vi.mocked(listarTemas).mockResolvedValue([
+    {
+      id: 44,
+      nome: 'Qualidade da água',
+      nivel: 'gerais',
+      ativo: true,
+      e_risco: false,
+      macro_tema_id: null,
+      camada_lso: null,
+      riscos: [],
+    },
+  ]);
+  const pendente = {
+    ...PENDENTE_INSTITUICAO,
+    id: '44',
+    tipo: 'tema',
+    nome: 'Qualidade da água',
+  };
+  const { rerender } = render(
+    <FichaDoPendente pendente={pendente} aoFechar={vi.fn()} />,
+  );
+  const campo = await screen.findByDisplayValue('Qualidade da água');
+
+  await userEvent.clear(campo);
+  await userEvent.type(campo, 'Qualidade da água tratada');
+  expect(screen.getByDisplayValue('Qualidade da água tratada')).toBeTruthy();
+
+  //: O CATÁLOGO RECARREGA: objeto novo, mesmo conteúdo.
+  catalogoAtual = catalogoCom();
+  rerender(<FichaDoPendente pendente={pendente} aoFechar={vi.fn()} />);
+
+  //: O QUE FOI DIGITADO FICA.
+  await waitFor(() =>
+    expect(screen.getByDisplayValue('Qualidade da água tratada')).toBeTruthy(),
+  );
+});

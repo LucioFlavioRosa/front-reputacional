@@ -25,7 +25,7 @@
  *  `listarTemas` ao abrir.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   consolidarCadastro,
@@ -318,7 +318,26 @@ function DaInstituicao({ pendente, salvando, erro, aoFechar, executar, catalogo 
           <select
             style={estiloDeEntrada}
             value={rascunho.tipo}
-            onChange={(e) => mexer({ tipo: e.target.value })}
+            onChange={(e) => {
+              const tipo = e.target.value;
+              //: SAIR DE PERFIL DE REDE LIMPA O CARGO E A PESSOA.
+              //:
+              //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA, e o defeito era meu por
+              //: ignorar o que a tela principal já fazia: os dois campos
+              //: DESAPARECEM quando o tipo muda, mas continuavam no rascunho e
+              //: iam no PUT. O banco tem CHECK de que eles só existem em
+              //: `perfil_rede`, então salvar era recusado por causa de um campo
+              //: que a pessoa não conseguia mais ver — o pior tipo de recusa,
+              //: porque ela não tem o que corrigir.
+              //:
+              //: LIMPAR, E NÃO SÓ ESCONDER: é a diferença entre a tela afirmar o
+              //: que mostra e a tela mandar o que escondeu.
+              mexer(
+                tipo === 'perfil_rede'
+                  ? { tipo }
+                  : { tipo, cargo: '', pessoa: '' },
+              );
+            }}
           >
             {TIPOS.map((t) => (
               <option key={t.tipo} value={t.tipo}>
@@ -607,7 +626,32 @@ function DoTema({ pendente, salvando, erro, aoFechar, executar, catalogo }: Comu
   const [rascunho, definirRascunho] = useState<RascunhoDoTema | null>(null);
   const [buscando, definirBuscando] = useState(true);
   const [falhou, definirFalhou] = useState('');
-  const macros = useMemo(() => catalogo.dicionarios.macro_temas, [catalogo]);
+  //: OS MACRO TEMAS NUMA REF, e não numa dependência do efeito.
+  //:
+  //: ACHADO DE REVISÃO COM SEVERIDADE MÉDIA: `macros` saía de `catalogo`, e
+  //: QUALQUER escrita em rota de catálogo troca aquele objeto. O efeito então
+  //: rodava de novo, buscava os temas de novo, e REESCREVIA O RASCUNHO com os
+  //: valores do servidor — apagando o que a pessoa estava digitando, no meio da
+  //: edição, por causa de uma mudança que não tem nada a ver com este tema.
+  //:
+  //: E O MODAL TEM UM GATILHO PRÓPRIO PARA ISSO: salvar aqui avisa o catálogo.
+  //: Com duas fichas abertas em abas diferentes, ou com outra pessoa editando,
+  //: a edição em curso era descartada em silêncio.
+  //: O VALOR PARA O RENDER, e a ref SÓ para dentro do efeito.
+  //:
+  //: A primeira versão escrevia `macros.current = ...` no corpo e lia `.current`
+  //: no JSX — e o lint apontou: "acessar uma ref durante o render pode fazer o
+  //: componente não atualizar como esperado". Ele está certo, e a ref ali era
+  //: cinto: o que conserta a reidratação é o `antes ?? ...` abaixo.
+  //:
+  //: ENTÃO SÃO DOIS: o valor simples, que o JSX usa e que atualiza o seletor em
+  //: cascata quando o dicionário muda; e a ref, atualizada por efeito, que o
+  //: efeito da busca lê sem precisar depender dela.
+  const macros = catalogo.dicionarios.macro_temas;
+  const macrosAgora = useRef(macros);
+  useEffect(() => {
+    macrosAgora.current = macros;
+  }, [macros]);
 
   useEffect(() => {
     let atual = true;
@@ -616,14 +660,18 @@ function DoTema({ pendente, salvando, erro, aoFechar, executar, catalogo }: Comu
         if (!atual) return;
         const achado = todos.find((t) => String(t.id) === pendente.id) ?? null;
         definirTema(achado);
-        if (achado) definirRascunho(rascunhoDoTema(achado, macros));
+        //: `antes ?? ...`: SÓ A PRIMEIRA CARGA monta o rascunho. Se este efeito
+        //: rodar de novo por qualquer razão, o que a pessoa digitou fica.
+        if (achado) {
+          definirRascunho((antes) => antes ?? rascunhoDoTema(achado, macrosAgora.current));
+        }
       })
       .catch((e: Error) => atual && definirFalhou(e.message))
       .finally(() => atual && definirBuscando(false));
     return () => {
       atual = false;
     };
-  }, [pendente.id, macros]);
+  }, [pendente.id]);
 
   if (buscando) {
     return (
