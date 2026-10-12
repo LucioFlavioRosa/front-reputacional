@@ -58,6 +58,13 @@ vi.mock('@/api/cliente', () => ({
 //: nulo com a fila cheia" é um estado real — e é o que o teste da caixa órfã
 //: precisa montar.
 const COM_CATEGORIAS = {
+  //: OS TRÊS MAPAS, porque a FICHA do registro sai deles: o modal lê a
+  //: instituição, o contato e a pessoa da Aegea por id. Sem eles o diálogo
+  //: estourava em `catalogo.interlocutores.get` — e foi assim que três testes
+  //: apontaram que o modal tinha passado a ser montado por esta tela.
+  instituicoes: new Map(),
+  interlocutores: new Map(),
+  pessoas: new Map(),
   dicionarios: {
     categorias_publico: [
       { id: 7, codigo: 'mercado_financeiro', nome: 'Mercado financeiro', ordem: 1 },
@@ -215,7 +222,12 @@ it('Esta certo manda o TIPO e o ID, e rele a fila', async () => {
   render(<FilaDeRevisao aba="instituicoes" />);
   await screen.findAllByText('Artur Santa');
 
-  const botoes = screen.getAllByRole('button', { name: /Artur Santa/ });
+  //: PELO RÓTULO DO BOTÃO QUE SE QUER, e não pelo nome do cadastro: a linha
+  //: tem DOIS botões que falam de "Artur Santa" desde que o nome passou a abrir
+  //: a ficha. Buscar pelo nome da pessoa casava os dois e clicava no primeiro.
+  const botoes = screen.getAllByRole('button', {
+    name: /Confirmar que o cadastro de Artur Santa/,
+  });
   await userEvent.click(botoes[0]);
 
   expect(consolidarCadastro).toHaveBeenCalledWith('interlocutor', 'i1');
@@ -236,7 +248,11 @@ it('o que OUTRA PESSOA ja consolidou e dito, nao comemorado', async () => {
   render(<FilaDeRevisao aba="instituicoes" />);
   await screen.findAllByText('Artur Santa');
 
-  await userEvent.click(screen.getAllByRole('button', { name: /Artur Santa/ })[0]);
+  await userEvent.click(
+    screen.getAllByRole('button', {
+      name: /Confirmar que o cadastro de Artur Santa/,
+    })[0],
+  );
 
   expect(
     await screen.findByText(/Outra pessoa já havia conferido 1 cadastro: Artur Santa/),
@@ -293,7 +309,11 @@ it('a secao DESAPARECE quando a fila esvazia, aviso e tudo', async () => {
   const { container } = render(<FilaDeRevisao aba="instituicoes" />);
   await screen.findAllByText('Artur Santa');
 
-  await userEvent.click(screen.getAllByRole('button', { name: /Artur Santa/ })[0]);
+  await userEvent.click(
+    screen.getAllByRole('button', {
+      name: /Confirmar que o cadastro de Artur Santa/,
+    })[0],
+  );
 
   await waitFor(() => expect(container.textContent).toBe(''));
 });

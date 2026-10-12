@@ -59,6 +59,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { catalogoMudou } from '@/dominio/sincronizacao';
+import { FichaDoPendente } from '@/paginas/cadastroCompartilhado/FichaDoPendente';
 import { usePainel } from '@/estado/painel';
 
 /** Qual das três abas de Cadastro compartilhado está pedindo a sua fila. */
@@ -149,6 +150,13 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: O QUE OUTRA PESSOA JÁ TINHA CONSOLIDADO, para a tela dizer isso em vez de
   //: piscar uma confirmação que não era dela. Ver `consolidarCadastro`.
   const [deOutraPessoa, definirDeOutraPessoa] = useState<string[]>([]);
+  //: A LINHA ABERTA NO MODAL, pela chave — não pelo objeto.
+  //:
+  //: A fila é relida a cada escrita de catálogo, e guardar o objeto deixaria o
+  //: diálogo mostrando a ficha de uma carga anterior. Guardando a chave, a
+  //: linha é reencontrada na carga de agora; se ela já não existe, o modal diz
+  //: isso em vez de editar um fantasma.
+  const [aberta, definirAberta] = useState<string | null>(null);
 
   //: QUAL CARGA É A ATUAL.
   //:
@@ -330,6 +338,12 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
   //: Oferecer uma escolha que não leva a lugar é pior do que não oferecer: quem
   //: marca 40 linhas e depois procura o botão conclui que a tela está quebrada.
   const podeEnquadrar = enquadraveis.length > 0 && categoriasPublico.length > 0;
+  //: A LINHA ABERTA NA CARGA DE AGORA, e não a que foi clicada: a fila pode ter
+  //: sido relida desde então. `undefined` quando ela saiu da fila — o modal
+  //: trata isso dizendo que o cadastro não está mais lá.
+  const abertaAgora = aberta
+    ? (fila.pendentes.find((p) => chaveDe(p) === aberta) ?? null)
+    : null;
   const selecionadas = enquadraveis.filter((p) => escolhidas.has(chaveDe(p)));
   const acima = selecionadas.length > MAXIMO_DO_LOTE;
   const naTela = encontradas.slice(0, LIMITE_NA_TELA);
@@ -340,8 +354,8 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
       ajuda={
         'Cadastros que entraram por planilha e ninguém conferiu ainda. Eles já ' +
         'estão em uso — a agenda e a menção apontam para eles —, só falta ' +
-        'alguém confirmar o enquadramento. Corrigir é na lista abaixo; aqui se ' +
-        'diz que está certo.'
+        'alguém confirmar o enquadramento. CLIQUE NO NOME para abrir a ficha e ' +
+        'corrigir qualquer campo; "Está certo" tira da fila sem mexer em nada.'
       }
     >
       <Cartao>
@@ -530,6 +544,26 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
           </p>
         ) : null}
 
+        {/* A FICHA DO REGISTRO CLICADO.
+            Pedido do dono do produto: "clicar em um registro específico e abrir
+            um modal para poder editar todos os campos daquele registro". A
+            `key` força o diálogo a remontar ao trocar de linha — sem ela, o
+            rascunho da anterior ficaria no formulário da seguinte. */}
+        {abertaAgora ? (
+          <FichaDoPendente
+            key={chaveDe(abertaAgora)}
+            pendente={abertaAgora}
+            aoFechar={() => {
+              definirAberta(null);
+              //: RELÊ AO FECHAR, inclusive quando a pessoa só cancelou: outra
+              //: pessoa pode ter mexido na fila enquanto o diálogo estava
+              //: aberto. Salvar já recarrega pelo barramento do catálogo; isto
+              //: cobre o cancelar e o "sumiu".
+              carregar();
+            }}
+          />
+        ) : null}
+
         {naTela.map((pendente) => {
           const chave = chaveDe(pendente);
           const ocupado = emCurso === chave;
@@ -557,9 +591,46 @@ export function FilaDeRevisao({ aba }: { aba: AbaDoCadastro }) {
               ) : null}
 
               <div style={{ flex: 1, minWidth: 220 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                {/* O NOME É O BOTÃO que abre a ficha.
+                    Não um ícone de lápis ao lado: o nome é o que a pessoa já
+                    está lendo quando decide que aquela linha precisa de atenção,
+                    e é o alvo maior da linha. `<button>` de verdade, e não um
+                    `<div onClick>`, para chegar por teclado e ser anunciado como
+                    botão. */}
+                <button
+                  type="button"
+                  onClick={() => definirAberta(chave)}
+                  //: NOME ACESSÍVEL PRÓPRIO, e não só o texto do nome.
+                  //:
+                  //: A LINHA TEM DOIS BOTÕES e os dois falam do mesmo cadastro:
+                  //: este e o "Está certo". Com o nome da pessoa como único
+                  //: rótulo, quem ouve a tela recebe "Artur Santa, botão" e
+                  //: "Confirmar que o cadastro de Artur Santa está certo,
+                  //: botão" — o primeiro não diz o que faz.
+                  //:
+                  //: E FOI ISSO QUE TRÊS TESTES APONTARAM: eles buscavam o botão
+                  //: por `/Artur Santa/`, que passou a casar os DOIS. A colisão
+                  //: no teste era a colisão que um leitor de tela teria.
+                  aria-label={`Abrir a ficha de ${pendente.nome} para editar`}
+                  title="Abrir a ficha deste cadastro para editar todos os campos"
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    margin: 0,
+                    font: 'inherit',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: 'var(--azul-mar)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'dotted',
+                    textUnderlineOffset: 3,
+                  }}
+                >
                   {pendente.nome}
-                </p>
+                </button>
                 {/* A MESMA GRAMÁTICA DA LINHA DO CADASTRO: "Contato · Banco XP ·
                     Diretor", na ordem em que se lê o ator. */}
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>

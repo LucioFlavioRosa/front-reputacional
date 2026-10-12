@@ -31,18 +31,36 @@ import {
   type CandidatoDeFusao,
 } from '@/api/cliente';
 import { Botao, Carregando, Cartao, FaixaDeErro, Secao } from '@/componentes/basicos';
+import { ROTULO_DO_TIPO_DE_INSTITUICAO } from '@/paginas/cadastroCompartilhado/formularios';
 
-const ROTULO_DO_TIPO: Record<string, string> = {
+//: O RÓTULO DO TIPO VEM DO CADASTRO, com TRÊS EXCEÇÕES — e as três são
+//: deliberadas, não sobra de cópia.
+//:
+//: ESTA TELA TINHA UMA SEGUNDA TABELA, com a mesma lista escrita à mão, e as
+//: duas DIVERGIRAM: aqui "Veículo de imprensa" e "Órgão público", lá "Veículo"
+//: e "Órgão". A descoberta foi ao unificá-las, e dois testes apontaram.
+//:
+//: E A DIFERENÇA TEM RAZÃO: quem lê uma linha daqui está decidindo se APAGA um
+//: dos dois cadastros. "Veículo" serve num `<select>` onde a pessoa já sabe que
+//: está cadastrando imprensa; aqui, ao lado de um perfil de rede e de um órgão,
+//: o rótulo precisa dizer de que mundo o registro é. O cadastro escolhe o nome
+//: curto porque o contexto já diz o resto; esta fila não tem contexto.
+//:
+//: EXPLÍCITO, E NÃO UMA TABELA PARALELA: três linhas que dizem "aqui é
+//: diferente, e por isso" em vez de nove que precisam concordar com outras nove.
+const MAIS_ESPECIFICO_AQUI: Record<string, string> = {
   veiculo: 'Veículo de imprensa',
-  perfil_rede: 'Perfil de rede',
   orgao: 'Órgão público',
-  entidade: 'Entidade',
-  investidor: 'Investidor',
-  proposicao: 'Proposição',
-  area_interna: 'Área interna',
-  escritorio: 'Escritório',
+  //: `credor` é "Banco/credor" no cadastro, onde a barra ajuda quem procura o
+  //: tipo numa lista; aqui a linha já é curta e a barra só polui.
   credor: 'Credor',
 };
+
+function rotuloDoTipo(tipo: string): string {
+  return (
+    MAIS_ESPECIFICO_AQUI[tipo] ?? ROTULO_DO_TIPO_DE_INSTITUICAO[tipo] ?? tipo
+  );
+}
 
 function mencoes(quantas: number): string {
   return quantas === 1 ? '1 menção' : `${quantas} menções`;
@@ -137,7 +155,7 @@ export function FilaDeDuplicados() {
                 e apareciam rotuladas "Perfil de rede" a quem ia decidir se apaga
                 uma delas. */}
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-              {ROTULO_DO_TIPO[perfil.tipo] ?? perfil.tipo}
+              {rotuloDoTipo(perfil.tipo)}
               {perfil.cargo ? ` · ${perfil.cargo}` : ''}
               {` · ${mencoes(perfil.mencoes)}`}
             </p>
@@ -161,7 +179,7 @@ export function FilaDeDuplicados() {
                   </span>
                   <strong style={{ fontSize: 14 }}>{candidato.nome}</strong>
                   <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                    {`${ROTULO_DO_TIPO[candidato.tipo] ?? candidato.tipo} · ${mencoes(
+                    {`${rotuloDoTipo(candidato.tipo)} · ${mencoes(
                       candidato.mencoes,
                     )}`}
                   </span>

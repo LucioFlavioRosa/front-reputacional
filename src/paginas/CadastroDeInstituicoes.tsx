@@ -42,6 +42,10 @@ import {
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
 import {
+  ROTULO_DO_TIPO_DE_INSTITUICAO,
+  tiposCadastraveis,
+} from '@/paginas/cadastroCompartilhado/formularios';
+import {
   INSTITUICAO_VAZIA,
   INTERLOCUTOR_VAZIO,
   entradaDaInstituicao,
@@ -58,7 +62,6 @@ import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { Paginacao } from '@/componentes/Paginacao';
 import { numero } from '@/dominio/formato';
 import { usePainel } from '@/estado/painel';
-import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
   CategoriaPublicoDoDicionario,
   Instituicao,
@@ -80,54 +83,12 @@ const MODOS_DE_CADASTRO: readonly Aba<'instituicao' | 'pessoa'>[] = [
   { id: 'pessoa', rotulo: 'Contatos' },
 ];
 
+const TIPOS = tiposCadastraveis();
+
 const PESSOA_AVULSA_VAZIA = {
   instituicao_id: '', nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
 };
 
-//: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
-//: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
-//: mesmo jeito que o dicionário de UF já tem código E nome escritos à parte.
-const ROTULO_DO_TIPO: Record<string, string> = {
-  orgao: 'Órgão',
-  veiculo: 'Veículo',
-  entidade: 'Entidade',
-  investidor: 'Investidor',
-  proposicao: 'Proposição',
-  area_interna: 'Área interna',
-  credor: 'Banco/credor',
-  perfil_rede: 'Perfil de rede',
-};
-
-/** Tipos que existem no cadastro e NÃO são frente do CRM.
- *
- *  `TIPO_DE_INSTITUICAO` mapeia FRENTE → tipo: uma agenda de imprensa fala com
- *  veículo, uma de legislativo com proposição. `perfil_rede` não está lá porque
- *  não existe agenda com um perfil de Instagram — ele nasce da ingestão do
- *  social listening, onde "quem falou" é um perfil (`deolhoemesteio`, "Stela
- *  Farias") e não um veículo de imprensa.
- *
- *  MAS ELE APARECE NESTA TELA, e por isso precisa estar aqui. Sem isto, o
- *  `<select>` de Tipo não tinha a opção: abrir um perfil para editar mostrava
- *  "Órgão" — a primeira opção da lista — para um registro que é perfil de
- *  rede, e um clique no campo trocaria o tipo de verdade. O filtro, do mesmo
- *  jeito, exibia o código cru `perfil_rede`.
- */
-const TIPOS_SEM_FRENTE = ['perfil_rede'];
-
-/** Os tipos de instituição que se pode cadastrar.
- *
- *  Derivado de `TIPO_DE_INSTITUICAO`, e não escrito à mão: uma lista própria
- *  divergiria do mapa, e a tela ofereceria um tipo que o backend não aceita.
- */
-function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
-  const tipos = new Set([...Object.values(TIPO_DE_INSTITUICAO), ...TIPOS_SEM_FRENTE]);
-  return [...tipos].map((tipo) => ({
-    tipo,
-    rotulo: ROTULO_DO_TIPO[tipo] ?? tipo,
-  }));
-}
-
-const TIPOS = tiposCadastraveis();
 
 /** O campo de redes sociais: digita um link ou handle, "Adicionar" (ou
  *  Enter) acrescenta na lista, cada um vira um chip removível. Não identifica
@@ -730,7 +691,7 @@ export function CadastroDeInstituicoes() {
                 <option value="">Todos os tipos</option>
                 {quantasPorTipo.map(([tipo, quantas]) => (
                   <option key={tipo} value={tipo}>
-                    {`${ROTULO_DO_TIPO[tipo] ?? tipo} (${numero(quantas)})`}
+                    {`${ROTULO_DO_TIPO_DE_INSTITUICAO[tipo] ?? tipo} (${numero(quantas)})`}
                   </option>
                 ))}
               </select>
@@ -1000,7 +961,7 @@ function LinhaDeInstituicao({
   aoRemoverPessoa: (pessoa: Interlocutor) => void;
   aoDesligarPessoa: (pessoa: Interlocutor) => void;
 }) {
-  const rotuloDoTipo = ROTULO_DO_TIPO[instituicao.tipo] ?? instituicao.tipo;
+  const rotuloDoTipo = ROTULO_DO_TIPO_DE_INSTITUICAO[instituicao.tipo] ?? instituicao.tipo;
   const categoriaDoRascunho = categoriasPublico.find(
     (c) => c.id === Number(rascunho.categoria_publico_id),
   );

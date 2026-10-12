@@ -17,6 +17,8 @@
  *  componentes. Vocabulário de tela compartilhado por quem o desenha.
  */
 
+import type { ReactNode } from 'react';
+
 import {
   Botao,
   Campo,
@@ -24,6 +26,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
+import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
   BlocoTema,
   MacroTema,
@@ -77,6 +80,55 @@ export const SEVERIDADE_SELO: Record<string, { fundo: string; texto: string }> =
  *
  *  `gerais` se chamava `livre` até a migração 0022, no rótulo e no código.
  */
+
+//: O VOCABULÁRIO DOS TIPOS DE INSTITUIÇÃO, e ele estava em DOIS lugares —
+//: `CadastroDeInstituicoes` e `FilaDeDuplicados`, com a mesma tabela escrita
+//: duas vezes. O modal da fila seria o terceiro, e é o que trouxe os dois para
+//: cá.
+
+//: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
+//: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
+//: mesmo jeito que o dicionário de UF já tem código E nome escritos à parte.
+export const ROTULO_DO_TIPO_DE_INSTITUICAO: Record<string, string> = {
+  orgao: 'Órgão',
+  veiculo: 'Veículo',
+  entidade: 'Entidade',
+  investidor: 'Investidor',
+  proposicao: 'Proposição',
+  area_interna: 'Área interna',
+  credor: 'Banco/credor',
+  perfil_rede: 'Perfil de rede',
+};
+
+/** Tipos que existem no cadastro e NÃO são frente do CRM.
+ *
+ *  `TIPO_DE_INSTITUICAO` mapeia FRENTE → tipo: uma agenda de imprensa fala com
+ *  veículo, uma de legislativo com proposição. `perfil_rede` não está lá porque
+ *  não existe agenda com um perfil de Instagram — ele nasce da ingestão do
+ *  social listening, onde "quem falou" é um perfil (`deolhoemesteio`, "Stela
+ *  Farias") e não um veículo de imprensa.
+ *
+ *  MAS ELE APARECE NESTA TELA, e por isso precisa estar aqui. Sem isto, o
+ *  `<select>` de Tipo não tinha a opção: abrir um perfil para editar mostrava
+ *  "Órgão" — a primeira opção da lista — para um registro que é perfil de
+ *  rede, e um clique no campo trocaria o tipo de verdade. O filtro, do mesmo
+ *  jeito, exibia o código cru `perfil_rede`.
+ */
+const TIPOS_SEM_FRENTE = ['perfil_rede'];
+
+/** Os tipos de instituição que se pode cadastrar.
+ *
+ *  Derivado de `TIPO_DE_INSTITUICAO`, e não escrito à mão: uma lista própria
+ *  divergiria do mapa, e a tela ofereceria um tipo que o backend não aceita.
+ */
+export function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
+  const tipos = new Set([...Object.values(TIPO_DE_INSTITUICAO), ...TIPOS_SEM_FRENTE]);
+  return [...tipos].map((tipo) => ({
+    tipo,
+    rotulo: ROTULO_DO_TIPO_DE_INSTITUICAO[tipo] ?? tipo,
+  }));
+}
+
 
 /** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
  *
@@ -304,6 +356,7 @@ export function EdicaoDaPessoa({
   aoEscolherPapel,
   aoCancelar,
   aoSalvar,
+  acoes,
 }: {
   rascunho: RascunhoDaPessoaAegea;
   assuntos: Tema[];
@@ -315,6 +368,8 @@ export function EdicaoDaPessoa({
   aoEscolherPapel: (ehPortaVoz: boolean) => void;
   aoCancelar: () => void;
   aoSalvar: () => void;
+  /** No lugar dos botões de Salvar/Cancelar — ver o comentário deles. */
+  acoes?: ReactNode;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -388,14 +443,21 @@ export function EdicaoDaPessoa({
         </Campo>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
-          Salvar
-        </Botao>
-        <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
-          Cancelar
-        </Botao>
-      </div>
+      {/* AS AÇÕES VÊM DE FORA QUANDO QUEM MONTA AS TEM EM OUTRO LUGAR.
+          O modal da fila de revisão põe os botões no RODAPÉ do diálogo — onde
+          eles ficam visíveis mesmo com o formulário rolado — e oferece DOIS:
+          "Salvar" e "Salvar e dar como conferido". Sem esta saída, o modal
+          mostraria três botões, dois deles dizendo a mesma coisa. */}
+      {acoes ?? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
+            Salvar
+          </Botao>
+          <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
+            Cancelar
+          </Botao>
+        </div>
+      )}
     </div>
   );
 }
