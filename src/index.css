@@ -305,17 +305,17 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
    estado por linha — uma renderização a cada passagem de mouse numa tabela de
    cinquenta linhas.
 
-   `:focus-within` PORQUE O FOCO VAI NO `<a>` DE DENTRO: quem chega por teclado
-   foca o título, e sem isto a linha inteira ficaria sem marca nenhuma enquanto o
-   foco está nela. */
+   SÓ `:hover`, E NÃO `:focus-within` — achado BAIXA de revisão, e ele estava
+   certo. A linha tem DOIS focáveis: o título, que leva para fora do painel, e o
+   botão do assunto, que desce dentro dele. `:focus-within` acende a linha nos
+   dois casos, prometendo "Enter abre o registro" quando o foco está no assunto e
+   Enter vai descer no assunto.
+
+   E O FOCO NÃO FICA SEM MARCA: o `:focus-visible` global do `index.css` já
+   desenha o anel no elemento focado, seja o título ou o botão. A marca da linha
+   seria uma segunda, dizendo outra coisa. */
 .linha-que-leva:hover {
   background: var(--bg-trilho);
-}
-
-.linha-que-leva:focus-within {
-  background: var(--bg-trilho);
-  outline: 2px solid var(--azul-mar);
-  outline-offset: -2px;
 }
 
 /* A MESMA BARRA DISCRETA da rolagem interna, para as duas não se parecerem

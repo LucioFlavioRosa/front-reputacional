@@ -98,7 +98,7 @@ it('clicar em QUALQUER celula da linha encaminha ao registro', async () => {
   expect(abrir).toHaveBeenCalledWith(
     'https://valor.globo.com/materia-zz1',
     '_blank',
-    'noreferrer',
+    'noopener,noreferrer',
   );
 });
 
@@ -192,4 +192,123 @@ it('a linha de AGENDA nao finge ser clicavel', async () => {
 
   expect(abrir).not.toHaveBeenCalled();
   expect(screen.queryByRole('link')).toBeNull();
+});
+
+it('um endereco `javascript:` NAO vira destino', async () => {
+  //: ACHADO ALTA DE REVISÃO. `incidente.link` vem da planilha do fornecedor;
+  //: cru, um `javascript:alert(...)` numa célula executaria na sessão de quem
+  //: clica — XSS armazenado, por dois caminhos: o `href` do título e o
+  //: `window.open` da linha.
+  //:
+  //: `urlSegura` RECUSA, e o efeito é a linha ficar inerte: sem destino não há
+  //: `onClick`, não há classe, não há cursor e o título não é link.
+  render(
+    <RelatorioDeIncidentes
+      pagina={pagina([{ ...MENCAO, link: 'javascript:alert(document.cookie)' }])}
+      aoMudarPagina={() => {}}
+      aoAprofundarNoTema={() => {}}
+    />,
+  );
+
+  await userEvent.click(screen.getByText('18/09/2026'));
+
+  expect(abrir).not.toHaveBeenCalled();
+  expect(screen.queryByRole('link')).toBeNull();
+});
+
+it('selecionar texto na linha NAO abre nada', async () => {
+  //: ACHADO MÉDIA DE REVISÃO. A linha é feita de texto que se copia, e um
+  //: arrasto para selecionar termina em `click` — sem a guarda, copiar meia
+  //: frase abriria a página do fornecedor no meio do gesto.
+  vi.spyOn(window, 'getSelection').mockReturnValue({
+    toString: () => 'Tarifa de água',
+  } as Selection);
+
+  render(
+    <RelatorioDeIncidentes
+      pagina={pagina([MENCAO])}
+      aoMudarPagina={() => {}}
+      aoAprofundarNoTema={() => {}}
+    />,
+  );
+
+  await userEvent.click(screen.getByText('18/09/2026'));
+
+  expect(abrir).not.toHaveBeenCalled();
+});
+
+it('selecionar texto DENTRO do titulo tambem nao navega', async () => {
+  //: A GUARDA PRECISA ESTAR NOS DOIS: o `stopPropagation` do título impede a
+  //: linha de abrir, então a guarda de lá não roda — e o comportamento padrão do
+  //: `<a>` abriria a página de qualquer jeito. É o caso MAIS provável, porque o
+  //: título é o texto mais longo da linha.
+  vi.spyOn(window, 'getSelection').mockReturnValue({
+    toString: () => 'água sobe',
+  } as Selection);
+
+  render(
+    <RelatorioDeIncidentes
+      pagina={pagina([MENCAO])}
+      aoMudarPagina={() => {}}
+      aoAprofundarNoTema={() => {}}
+    />,
+  );
+
+  const titulo = screen.getByRole('link', { name: /Tarifa de água sobe em Manaus/ });
+  const evento = new MouseEvent('click', { bubbles: true, cancelable: true });
+  titulo.dispatchEvent(evento);
+
+  //: `defaultPrevented` É O QUE MEDE ISSO: no jsdom o `<a>` não navega, então
+  //: olhar "abriu ou não" não diria nada. O que se mede é se a navegação NATIVA
+  //: foi barrada.
+  expect(evento.defaultPrevented).toBe(true);
+  expect(abrir).not.toHaveBeenCalled();
+});
+
+it('SEM selecao, o titulo nao tem a navegacao nativa barrada', async () => {
+  //: ACHADO BAIXA DE REVISÃO: o teste "encaminha UMA vez" só provava que a linha
+  //: não chamou `window.open`, e passaria se alguém pusesse `preventDefault()`
+  //: no título — matando o clique real no navegador sem nada acusar.
+  //:
+  //: AQUI SE MEDE O CONTRÁRIO: sem seleção, o evento sai do handler
+  //: NÃO cancelado, que é o que deixa o `<a>` fazer o trabalho dele.
+  render(
+    <RelatorioDeIncidentes
+      pagina={pagina([MENCAO])}
+      aoMudarPagina={() => {}}
+      aoAprofundarNoTema={() => {}}
+    />,
+  );
+
+  const titulo = screen.getByRole('link', { name: /Tarifa de água sobe em Manaus/ });
+  const evento = new MouseEvent('click', { bubbles: true, cancelable: true });
+  titulo.dispatchEvent(evento);
+
+  expect(evento.defaultPrevented).toBe(false);
+});
+
+it('o link abre sem dar `window.opener` para a pagina do fornecedor', async () => {
+  //: `noopener` EXPLÍCITO nos dois caminhos, mesmo sendo implicado por
+  //: `noreferrer`: é o que a OWASP recomenda escrever, e é o que o resto do
+  //: repositório escreve. Sem ele, a página do fornecedor recebe
+  //: `window.opener` e pode navegar a aba do painel.
+  render(
+    <RelatorioDeIncidentes
+      pagina={pagina([MENCAO])}
+      aoMudarPagina={() => {}}
+      aoAprofundarNoTema={() => {}}
+    />,
+  );
+
+  expect(
+    screen.getByRole('link', { name: /Tarifa de água sobe em Manaus/ }).getAttribute('rel'),
+  ).toBe('noopener noreferrer');
+
+  await userEvent.click(screen.getByText('18/09/2026'));
+
+  expect(abrir).toHaveBeenCalledWith(
+    'https://valor.globo.com/materia-zz1',
+    '_blank',
+    'noopener,noreferrer',
+  );
 });
