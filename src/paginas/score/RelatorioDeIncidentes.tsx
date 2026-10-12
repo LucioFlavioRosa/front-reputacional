@@ -19,6 +19,29 @@
  *  em sete meses" conta a série inteira, mesmo com a janela em um mês. É o que
  *  separa o fato isolado do problema crônico, e é a coluna que faz alguém abrir
  *  uma frente de trabalho em vez de responder a uma notícia.
+ *
+ *  A LINHA INTEIRA LEVA AO REGISTRO, e o link para de aparecer como link.
+ *
+ *  O DONO DO PRODUTO (12/10/2026): "não quero que o link seja mostrado, quero
+ *  apenas clicar no registro e ser encaminhado". O título era um `<a>` azul
+ *  sublinhado — o único ponto clicável de uma linha de OITO colunas, o que obriga
+ *  a pessoa a mirar. Agora a linha toda leva, e o título é texto comum.
+ *
+ *  O `<a>` CONTINUA EXISTINDO, e isso não contradiz o pedido: ele pediu que o
+ *  link não fosse MOSTRADO, não que deixasse de existir. É o `<a>` que dá o
+ *  caminho por teclado, o ctrl-clique para outra aba, o "copiar endereço do link"
+ *  e o endereço na barra de status. Um `<div onClick>` não dá nenhum dos quatro.
+ *
+ *  A REGRA É "TEM DESTINO SEGURO", e não "não é agenda" — achado BAIXA de
+ *  revisão, e a distinção importa. Na prática a agenda é quem cai fora, porque
+ *  `link` é nulo nela por construção (não há URL externa de uma reunião). Mas o
+ *  código decide pelo `destino`, então uma agenda que um dia chegasse COM link
+ *  seria clicável, e uma menção com link inválido não seria. Decidir pelo fato
+ *  ("tem para onde ir") em vez do rótulo ("é agenda") é o que mantém as duas
+ *  coisas certas.
+ *
+ *  Linha que promete e não cumpre é pior que linha inerte: sem destino, nem
+ *  cursor de mão nem a classe.
  */
 
 import { Paginacao } from '@/componentes/Paginacao';
@@ -33,7 +56,7 @@ import {
   tituloDoIncidente,
 } from '@/dominio/riscos';
 import type { IncidenteNaTabela, PaginaDeIncidentes } from '@/dominio/riscos';
-import { dataCompleta, numero } from '@/dominio/formato';
+import { dataCompleta, numero, urlSegura } from '@/dominio/formato';
 
 const COLUNAS = '96px 86px 150px 108px 112px 100px minmax(300px, 2fr) minmax(220px, 1.2fr)';
 
@@ -156,9 +179,45 @@ function LinhaDoIncidente({
 }) {
   const alcance = alcanceDoIncidente(incidente);
   const titulo = tituloDoIncidente(incidente);
+  //: SÓ `http`/`https` VIRAM DESTINO — achado ALTA de revisão.
+  //:
+  //: `incidente.link` vem da planilha do fornecedor. Cru, um
+  //: `javascript:alert(...)` numa célula executaria na sessão de quem clica —
+  //: XSS armazenado, e por DOIS caminhos agora: o `href` do título (que já era
+  //: assim) e o `window.open` da linha (que este commit acrescentou).
+  //:
+  //: `urlSegura` É A FUNÇÃO QUE JÁ EXISTE para isso, e usá-la em vez de escrever
+  //: a regra de novo é o ponto: `PecasDoDossie.tsx:765` tem a MESMA conferência
+  //: em regex inline, e duas cópias de uma regra de segurança divergem em
+  //: silêncio. A terceira não vou escrever.
+  const destino = urlSegura(incidente.link);
 
   return (
-    <div role="row" style={{ ...LINHA, ...CELULAS }}>
+    <div
+      role="row"
+      //: `.linha-que-leva` ACENDE AO PASSAR O MOUSE, e é o que substitui o azul
+      //: do link: sem ela, nada diria que a linha é clicável. Só entra quando há
+      //: destino — ver o `destino ?` abaixo.
+      className={destino ? 'linha-que-leva' : undefined}
+      onClick={
+        destino
+          ? () => {
+              //: SELECIONAR TEXTO NÃO ABRE NADA — achado MÉDIA de revisão.
+              //:
+              //: A linha é feita de texto que se copia (título da matéria, nome
+              //: do veículo, data), e um arrasto para selecionar termina em
+              //: `click`. Sem esta guarda, copiar meia frase abriria a página do
+              //: fornecedor no meio do gesto.
+              //:
+              //: A MESMA FORMA DE `PecasDoDossie.tsx:782`, que resolveu isto
+              //: antes nesta mesma situação — linha de menção clicável.
+              if (window.getSelection()?.toString()) return;
+              window.open(destino, '_blank', 'noopener,noreferrer');
+            }
+          : undefined
+      }
+      style={{ ...LINHA, ...CELULAS, cursor: destino ? 'pointer' : undefined }}
+    >
       <span role="cell" style={{ fontWeight: 500, paddingTop: 2, whiteSpace: 'nowrap' }}>
         {dataCompleta(incidente.data)}
       </span>
@@ -257,16 +316,35 @@ function LinhaDoIncidente({
       </span>
 
       <span role="cell" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {incidente.link ? (
+        {destino ? (
           <a
-            href={incidente.link}
+            href={destino}
             target="_blank"
-            rel="noreferrer"
+            //: `noopener` EXPLÍCITO, mesmo sendo implicado por `noreferrer`: é o
+            //: que a OWASP recomenda escrever, e é o que o resto do repositório
+            //: escreve (`PecasDoDossie.tsx:839`).
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              //: A MESMA GUARDA DA LINHA, e ela é NECESSÁRIA aqui: o
+              //: `stopPropagation` abaixo impede a linha de abrir, então a guarda
+              //: de lá não roda — e o comportamento padrão do `<a>` abriria a
+              //: página de qualquer jeito. Selecionar texto DENTRO do título é o
+              //: caso mais provável de todos, porque o título é o texto mais
+              //: longo da linha.
+              if (window.getSelection()?.toString()) e.preventDefault();
+              //: PARA A PROPAGAÇÃO: a linha também tem `onClick`, e sem isto um
+              //: clique no título dispararia os dois — abrindo DUAS abas da mesma
+              //: matéria.
+              e.stopPropagation();
+            }}
             style={{
               fontSize: 14,
               fontWeight: 700,
               lineHeight: 1.35,
-              color: 'var(--azul-mar)',
+              //: TEXTO COMUM, de propósito: é o "não quero que o link seja
+              //: mostrado". Quem diz que dá para clicar é a linha acendendo.
+              color: 'inherit',
+              textDecoration: 'none',
             }}
           >
             {titulo}
@@ -278,7 +356,13 @@ function LinhaDoIncidente({
             se desce para ver tudo o que aquele assunto produziu. */}
         <button
           type="button"
-          onClick={() => aoAprofundarNoTema(incidente.tema)}
+          onClick={(e) => {
+            //: O ASSUNTO É OUTRO DESTINO — o último degrau da descida DENTRO do
+            //: painel. Sem parar a propagação, clicar nele abriria a matéria no
+            //: veículo: o degrau de descida viraria um salto para fora.
+            e.stopPropagation();
+            aoAprofundarNoTema(incidente.tema);
+          }}
           style={{
             alignSelf: 'flex-start',
             border: 0,

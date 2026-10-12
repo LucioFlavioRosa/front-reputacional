@@ -294,6 +294,30 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   background: var(--branco);
 }
 
+/* A LINHA QUE LEVA AO REGISTRO.
+
+   O dono do produto pediu "apenas clicar no registro e ser encaminhado", sem o
+   link aparecendo. Tirado o azul do título, nada mais diria que a linha é
+   clicável — e é esta classe que diz: ela acende ao passar o mouse.
+
+   AQUI E NÃO EM `style`: `:hover` e `:focus-within` não existem em estilo
+   inline, e era por isso que a alternativa seria um `onMouseEnter` guardando
+   estado por linha — uma renderização a cada passagem de mouse numa tabela de
+   cinquenta linhas.
+
+   SÓ `:hover`, E NÃO `:focus-within` — achado BAIXA de revisão, e ele estava
+   certo. A linha tem DOIS focáveis: o título, que leva para fora do painel, e o
+   botão do assunto, que desce dentro dele. `:focus-within` acende a linha nos
+   dois casos, prometendo "Enter abre o registro" quando o foco está no assunto e
+   Enter vai descer no assunto.
+
+   E O FOCO NÃO FICA SEM MARCA: o `:focus-visible` global do `index.css` já
+   desenha o anel no elemento focado, seja o título ou o botão. A marca da linha
+   seria uma segunda, dizendo outra coisa. */
+.linha-que-leva:hover {
+  background: var(--bg-trilho);
+}
+
 /* A MESMA BARRA DISCRETA da rolagem interna, para as duas não se parecerem
    diferentes na mesma tela. */
 .rolagem-das-duas-barras::-webkit-scrollbar { width: 10px; height: 10px; }
