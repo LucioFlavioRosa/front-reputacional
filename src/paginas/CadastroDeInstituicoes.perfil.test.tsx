@@ -27,6 +27,10 @@ import { CadastroDeInstituicoes } from '@/paginas/CadastroDeInstituicoes';
 import type { Instituicao, Interlocutor } from '@/dominio/tipos';
 
 vi.mock('@/api/cliente', () => ({
+  //: A ABA DE REVISAO, que a tela mostra acima da lista: ela pede a fila ao
+  //: montar, e sem o duble o componente chama undefined.
+  filaDeRevisao: vi.fn(async () => []),
+  consolidarCadastro: vi.fn(),
   //: A tela mostra a fila de possiveis duplicados, que pede esta
   //: lista ao montar. Sem o duble, o componente chama undefined.
   duplicadosDeCadastro: vi.fn(async () => []),

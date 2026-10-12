@@ -29,7 +29,6 @@ import {
   removerInstituicao,
   removerInterlocutor,
 } from '@/api/cliente';
-import type { InstituicaoEntrada } from '@/api/cliente';
 import {
   Botao,
   Campo,
@@ -41,20 +40,34 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
+import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
+import {
+  ROTULO_DO_TIPO_DE_INSTITUICAO,
+  tiposCadastraveis,
+} from '@/paginas/cadastroCompartilhado/formularios';
+import {
+  INSTITUICAO_VAZIA,
+  INTERLOCUTOR_VAZIO,
+  entradaDaInstituicao,
+  entradaDoInterlocutor,
+  rascunhoDaInstituicao,
+  rascunhoDoInterlocutor,
+  subcategoriasDe,
+  type RascunhoDaInstituicao,
+  type RascunhoDoInterlocutor,
+} from '@/paginas/cadastroCompartilhado/fichas';
 import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { Paginacao } from '@/componentes/Paginacao';
 import { numero } from '@/dominio/formato';
 import { usePainel } from '@/estado/painel';
-import { TIPO_DE_INSTITUICAO } from '@/dominio/frentes';
 import type {
   CategoriaPublicoDoDicionario,
   Instituicao,
   Interlocutor,
   SubcategoriaPublicoDoDicionario,
 } from '@/dominio/tipos';
-import type { Catalogo } from '@/dominio/derivacoes';
 
 /** O que este gesto de cadastro cria.
  *
@@ -70,195 +83,12 @@ const MODOS_DE_CADASTRO: readonly Aba<'instituicao' | 'pessoa'>[] = [
   { id: 'pessoa', rotulo: 'Contatos' },
 ];
 
+const TIPOS = tiposCadastraveis();
+
 const PESSOA_AVULSA_VAZIA = {
   instituicao_id: '', nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
 };
 
-//: O código que o banco grava (`orgao`, `area_interna`...) não é o que se lê
-//: numa tela. Escrito à mão, e não derivado: são seis valores fixos, do
-//: mesmo jeito que o dicionário de UF já tem código E nome escritos à parte.
-const ROTULO_DO_TIPO: Record<string, string> = {
-  orgao: 'Órgão',
-  veiculo: 'Veículo',
-  entidade: 'Entidade',
-  investidor: 'Investidor',
-  proposicao: 'Proposição',
-  area_interna: 'Área interna',
-  credor: 'Banco/credor',
-  perfil_rede: 'Perfil de rede',
-};
-
-/** Tipos que existem no cadastro e NÃO são frente do CRM.
- *
- *  `TIPO_DE_INSTITUICAO` mapeia FRENTE → tipo: uma agenda de imprensa fala com
- *  veículo, uma de legislativo com proposição. `perfil_rede` não está lá porque
- *  não existe agenda com um perfil de Instagram — ele nasce da ingestão do
- *  social listening, onde "quem falou" é um perfil (`deolhoemesteio`, "Stela
- *  Farias") e não um veículo de imprensa.
- *
- *  MAS ELE APARECE NESTA TELA, e por isso precisa estar aqui. Sem isto, o
- *  `<select>` de Tipo não tinha a opção: abrir um perfil para editar mostrava
- *  "Órgão" — a primeira opção da lista — para um registro que é perfil de
- *  rede, e um clique no campo trocaria o tipo de verdade. O filtro, do mesmo
- *  jeito, exibia o código cru `perfil_rede`.
- */
-const TIPOS_SEM_FRENTE = ['perfil_rede'];
-
-/** Os tipos de instituição que se pode cadastrar.
- *
- *  Derivado de `TIPO_DE_INSTITUICAO`, e não escrito à mão: uma lista própria
- *  divergiria do mapa, e a tela ofereceria um tipo que o backend não aceita.
- */
-function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
-  const tipos = new Set([...Object.values(TIPO_DE_INSTITUICAO), ...TIPOS_SEM_FRENTE]);
-  return [...tipos].map((tipo) => ({
-    tipo,
-    rotulo: ROTULO_DO_TIPO[tipo] ?? tipo,
-  }));
-}
-
-const TIPOS = tiposCadastraveis();
-
-/** As subcategorias de UMA categoria, na ordem — `subcategorias_publico` vem
- *  do dicionário inteiro, de todas as categorias juntas (ver
- *  `Dicionarios.subcategorias_publico`), então quem monta o `<select>`
- *  dependente sempre filtra por `categoria_publico_id` primeiro. */
-function subcategoriasDe(
-  catalogo: Catalogo,
-  categoriaPublicoId: string,
-): SubcategoriaPublicoDoDicionario[] {
-  const id = Number(categoriaPublicoId);
-  return catalogo.dicionarios.subcategorias_publico
-    .filter((s) => s.categoria_publico_id === id)
-    .sort((a, b) => a.ordem - b.ordem);
-}
-
-const VAZIA = {
-  nome: '',
-  nome_completo: '',
-  uf: '',
-  esfera: '',
-  //: SEM PADRAO, e e por isso que e string vazia e nao 3.
-  //:
-  //: Um padrao aqui viraria o valor da maioria: quem cadastra com pressa
-  //: aceita o que ja esta na tela, e a base inteira acaba num tier so — o
-  //: campo passa a existir sem significar nada. Vazio obriga a escolher,
-  //: enquanto quem cadastra ainda sabe por que aquela instituicao importa.
-  tier: '',
-  //: MESMO RACIOCINIO DO TIER: sem padrao, para obrigar a escolha. Ao
-  //: contrario do tier, aqui o backend aceita nulo mesmo em instituicao nova
-  //: — as ~99 que ja existiam ficam sem categoria ate o backfill, e o mesmo
-  //: formulario serve para corrigi-las. `obrigatorio` na tela é só para
-  //: instituição CRIADA daqui pra frente não nascer sem classificação.
-  categoria_publico_id: '',
-  //: SÓ FAZ SENTIDO junto de uma categoria com `padrao_de_quebra !==
-  //: 'sem_quebra'` — o campo de subcategoria só aparece nesse caso.
-  subcategoria_publico_id: '',
-  //: SÓ DE PERFIL DE REDE, e o backend recusa nos outros tipos.
-  cargo: '',
-  pessoa: '',
-};
-const SEM_PESSOA = {
-  nome: '', email: '', cargo: '', area: '', redes_sociais: [] as string[],
-};
-
-/** A ficha como a tela a mostra: é o rascunho de partida da edição, e também
- *  o de quem só quer inverter `ativo` sem abrir a edição. */
-function rascunhoDe(instituicao: Instituicao): RascunhoDaInstituicao {
-  return {
-    nome: instituicao.nome,
-    nome_completo: instituicao.nome_completo ?? '',
-    tipo: instituicao.tipo,
-    uf: instituicao.uf ?? '',
-    esfera: instituicao.esfera_id ? String(instituicao.esfera_id) : '',
-    tier: instituicao.tier ? String(instituicao.tier) : '',
-    categoria_publico_id: instituicao.categoria_publico_id
-      ? String(instituicao.categoria_publico_id)
-      : '',
-    subcategoria_publico_id: instituicao.subcategoria_publico_id
-      ? String(instituicao.subcategoria_publico_id)
-      : '',
-    cargo: instituicao.cargo ?? '',
-    pessoa: instituicao.interlocutor_id ?? '',
-  };
-}
-
-/** O corpo do PUT, a partir do rascunho. ESCRITO UMA VEZ: Salvar e
- *  Desativar/Reativar passam por aqui, e é por isso que `ativo` — que o PUT
- *  substitui junto com o resto da ficha — não pode ser esquecido em nenhum.
- *
- *  VAZIO VIRA `null`, e não 0: as instituições anteriores às colunas de tier
- *  e de categoria não têm valor, e corrigir o nome de uma delas não pode
- *  obrigar a classificá-la primeiro. */
-function entradaDaEdicao(rascunho: RascunhoDaInstituicao, ativo: boolean): InstituicaoEntrada {
-  return {
-    nome: rascunho.nome,
-    nome_completo: rascunho.nome_completo || null,
-    tipo: rascunho.tipo,
-    uf: rascunho.uf || null,
-    esfera_id: rascunho.esfera ? Number(rascunho.esfera) : null,
-    tier: rascunho.tier ? Number(rascunho.tier) : null,
-    categoria_publico_id: rascunho.categoria_publico_id
-      ? Number(rascunho.categoria_publico_id)
-      : null,
-    subcategoria_publico_id: rascunho.subcategoria_publico_id
-      ? Number(rascunho.subcategoria_publico_id)
-      : null,
-    //: SEM ESTES DOIS, O PUT OS APAGAVA. A edição manda a ficha INTEIRA, e o
-    //: backend substitui o que recebe: `cargo` e `interlocutor_id` omitidos
-    //: viravam nulo, então corrigir o nome de um perfil perdia o cargo e a
-    //: pessoa sem ninguém notar. É a mesma razão pela qual `ativo` está aqui.
-    cargo: rascunho.cargo || null,
-    interlocutor_id: rascunho.pessoa || null,
-    ativo,
-  };
-}
-
-/** O que a edição de uma instituição mexe.
- *
- *  ESCRITO UMA VEZ. A forma estava em três lugares — o estado, a prop da linha
- *  e a assinatura do callback — e ao acrescentar `tier` os três divergiram na
- *  mesma hora, com o compilador apontando dois deles.
- *
- *  `tier` é string porque vem de um `<select>`, e vira número só na hora de
- *  enviar: guardar número aqui obrigaria a representar "nada escolhido" como
- *  0 ou NaN, que são valores e não ausências.
- */
-interface RascunhoDaInstituicao {
-  nome: string;
-  nome_completo: string;
-  tipo: string;
-  uf: string;
-  esfera: string;
-  tier: string;
-  categoria_publico_id: string;
-  subcategoria_publico_id: string;
-  /** O cargo do perfil de rede — "Deputado estadual". Só aparece no
-   *  formulário quando o tipo é `perfil_rede`, e é editável porque o
-   *  fornecedor erra: `stelafariasrs` veio sem cargo e com UF TO, sendo a
-   *  mesma deputada do RS. */
-  cargo: string;
-  /** A PESSOA DE QUEM ESTE PERFIL É — id de interlocutor, ou vazio.
-   *
-   *  É o que faz os TRÊS perfis da mesma deputada (`Stela Farias` com 121
-   *  menções, `Stela Farias RS` com 3 e `stelafariasrs` com 27) virarem uma
-   *  pessoa. Nenhuma normalização funde esses nomes: são diferentes de
-   *  verdade, e só alguém que conhece o ator sabe que são a mesma. */
-  pessoa: string;
-}
-
-//: O RASCUNHO DE UM CONTATO, nos três lugares que o editam (o formulário do
-//: topo, o "Acrescentar pessoa" por instituição, e a edição inline) — um tipo
-//: só, para uma rede nova não exigir achar os três lugares à mão de novo.
-interface RascunhoDePessoa {
-  nome: string;
-  email: string;
-  cargo: string;
-  area: string;
-  //: LISTA LIVRE, e não uma caixa por rede: a pessoa acrescenta quantos
-  //: links quiser, de qualquer rede, um de cada vez.
-  redes_sociais: string[];
-}
 
 /** O campo de redes sociais: digita um link ou handle, "Adicionar" (ou
  *  Enter) acrescenta na lista, cada um vira um chip removível. Não identifica
@@ -358,7 +188,7 @@ export function CadastroDeInstituicoes() {
   const [aberta, definirAberta] = useState<string | null>(null);
   //: Qual das duas formas o gesto de cadastro do topo está fazendo agora.
   const [modo, definirModo] = useState<'instituicao' | 'pessoa'>('instituicao');
-  const [nova, definirNova] = useState(VAZIA);
+  const [nova, definirNova] = useState(INSTITUICAO_VAZIA);
   //: O rascunho do modo "Só a pessoa" — vive separado de `nova` porque os
   //: dois modos podem ser preenchidos e abandonados de forma independente:
   //: trocar de aba não deveria apagar o que já foi digitado no outro modo.
@@ -377,12 +207,12 @@ export function CadastroDeInstituicoes() {
     cargo: '',
     pessoa: '',
   });
-  const [pessoaNova, definirPessoaNova] = useState(SEM_PESSOA);
+  const [pessoaNova, definirPessoaNova] = useState(INTERLOCUTOR_VAZIO);
   //: Qual PESSOA esta aberta para edicao, e o rascunho dela. Separado do
   //: rascunho da instituicao: dá para editar uma pessoa sem entrar no modo de
   //: edicao da instituicao que a abriga.
   const [pessoaEmEdicao, definirPessoaEmEdicao] = useState<string | null>(null);
-  const [rascunhoDaPessoa, definirRascunhoDaPessoa] = useState(SEM_PESSOA);
+  const [rascunhoDaPessoa, definirRascunhoDaPessoa] = useState(INTERLOCUTOR_VAZIO);
 
   //: O FILTRO POR TIPO, e por que ele passou a ser necessário.
   //:
@@ -804,7 +634,7 @@ export function CadastroDeInstituicoes() {
                             ? Number(nova.subcategoria_publico_id)
                             : null,
                         }),
-                      () => definirNova(VAZIA),
+                      () => definirNova(INSTITUICAO_VAZIA),
                     )
               }
             >
@@ -814,11 +644,25 @@ export function CadastroDeInstituicoes() {
         </Cartao>
       </Secao>
 
+      {/* OS CADASTROS QUE ENTRARAM POR PLANILHA E NINGUÉM CONFERIU.
+          Acima da lista porque é trabalho a fazer, e não consulta — o mesmo
+          lugar da fila de duplicados. Não aparece quando está vazia. */}
+      <FilaDeRevisao aba="instituicoes" />
+
       {/* A FILA DO MESMO ATOR CADASTRADO DUAS VEZES, acima da lista porque é
-          trabalho a fazer, e não consulta. Ela não aparece quando está vazia. */}
+          trabalho a fazer, e não consulta. Ela não aparece quando está vazia.
+
+          AS DUAS FILAS JUNTAS, nesta aba e só nela, por escolha do dono do
+          produto: as duplicatas também são conferência de cadastro novo. E nesta
+          ordem — a de revisão primeiro — porque ela é sobre UM registro e a de
+          duplicados é sobre o PAR: decidir se o cadastro está certo vem antes de
+          decidir se ele é o mesmo que outro. */}
       <FilaDeDuplicados />
 
+      {/* RECOLHÍVEL, como os dois blocos acima — pedido do dono do produto.
+          Este já paginava em 10, e é de onde a régua dos outros dois veio. */}
       <Secao
+        recolhivel
         titulo={
           instituicoes.length !== totalCadastrado
             ? `Cadastrados (${numero(instituicoes.length)} de ${numero(totalCadastrado)})`
@@ -850,7 +694,7 @@ export function CadastroDeInstituicoes() {
                 <option value="">Todos os tipos</option>
                 {quantasPorTipo.map(([tipo, quantas]) => (
                   <option key={tipo} value={tipo}>
-                    {`${ROTULO_DO_TIPO[tipo] ?? tipo} (${numero(quantas)})`}
+                    {`${ROTULO_DO_TIPO_DE_INSTITUICAO[tipo] ?? tipo} (${numero(quantas)})`}
                   </option>
                 ))}
               </select>
@@ -891,7 +735,7 @@ export function CadastroDeInstituicoes() {
               }
               aoEditar={() => {
                 definirEmEdicao(instituicao.id);
-                definirRascunho(rascunhoDe(instituicao));
+                definirRascunho(rascunhoDaInstituicao(instituicao));
               }}
               aoCancelar={() => definirEmEdicao(null)}
               aoSalvar={() =>
@@ -899,7 +743,7 @@ export function CadastroDeInstituicoes() {
                   () =>
                     editarInstituicao(
                       instituicao.id,
-                      entradaDaEdicao(rascunho, instituicao.ativo),
+                      entradaDaInstituicao(rascunho, instituicao.ativo),
                     ),
                   () => definirEmEdicao(null),
                 )
@@ -911,7 +755,7 @@ export function CadastroDeInstituicoes() {
                   () =>
                     editarInstituicao(
                       instituicao.id,
-                      entradaDaEdicao(rascunhoDe(instituicao), !instituicao.ativo),
+                      entradaDaInstituicao(rascunhoDaInstituicao(instituicao), !instituicao.ativo),
                     ),
                   () => undefined,
                   `${instituicao.nome} ${instituicao.ativo ? 'desativada' : 'reativada'}.`,
@@ -928,7 +772,7 @@ export function CadastroDeInstituicoes() {
                       area: pessoaNova.area || null,
                       redes_sociais: pessoaNova.redes_sociais,
                     }),
-                  () => definirPessoaNova(SEM_PESSOA),
+                  () => definirPessoaNova(INTERLOCUTOR_VAZIO),
                 )
               }
               pessoaEmEdicao={pessoaEmEdicao}
@@ -936,28 +780,20 @@ export function CadastroDeInstituicoes() {
               aoRascunharEdicaoDaPessoa={definirRascunhoDaPessoa}
               aoEditarPessoa={(pessoa) => {
                 definirPessoaEmEdicao(pessoa.id);
-                definirRascunhoDaPessoa({
-                  nome: pessoa.nome,
-                  email: pessoa.email ?? '',
-                  cargo: pessoa.cargo ?? '',
-                  area: pessoa.area ?? '',
-                  redes_sociais: pessoa.redes_sociais,
-                });
+                definirRascunhoDaPessoa(rascunhoDoInterlocutor(pessoa));
               }}
               aoCancelarPessoa={() => definirPessoaEmEdicao(null)}
               aoSalvarPessoa={(pessoa) =>
                 void executar(
                   () =>
-                    editarInterlocutor(pessoa.id, {
-                      nome: rascunhoDaPessoa.nome,
-                      instituicao_id: pessoa.instituicao_id,
-                      email: rascunhoDaPessoa.email || null,
-                      cargo: rascunhoDaPessoa.cargo || null,
-                      area: rascunhoDaPessoa.area || null,
-                      redes_sociais: rascunhoDaPessoa.redes_sociais,
-                      tipo: pessoa.tipo,
-                      ativo: pessoa.ativo,
-                    }),
+                    editarInterlocutor(
+                      pessoa.id,
+                      entradaDoInterlocutor(rascunhoDaPessoa, {
+                        instituicao_id: pessoa.instituicao_id,
+                        tipo: pessoa.tipo,
+                        ativo: pessoa.ativo,
+                      }),
+                    ),
                   () => definirPessoaEmEdicao(null),
                 )
               }
@@ -1023,16 +859,16 @@ export function CadastroDeInstituicoes() {
               aoDesligarPessoa={(pessoa) =>
                 void executar(
                   () =>
-                    editarInterlocutor(pessoa.id, {
-                      nome: pessoa.nome,
-                      instituicao_id: pessoa.instituicao_id,
-                      email: pessoa.email,
-                      cargo: pessoa.cargo,
-                      area: pessoa.area,
-                      redes_sociais: pessoa.redes_sociais,
-                      tipo: pessoa.tipo,
-                      ativo: !pessoa.ativo,
-                    }),
+                    //: O DESLIGAR MANDA A FICHA DE QUEM JÁ ESTÁ GRAVADO, e
+                    //: não um rascunho: quem clica aqui não abriu a edição.
+                    editarInterlocutor(
+                      pessoa.id,
+                      entradaDoInterlocutor(rascunhoDoInterlocutor(pessoa), {
+                        instituicao_id: pessoa.instituicao_id,
+                        tipo: pessoa.tipo,
+                        ativo: !pessoa.ativo,
+                      }),
+                    ),
                   () => undefined,
                 )
               }
@@ -1101,17 +937,17 @@ function LinhaDeInstituicao({
   aberta: boolean;
   salvando: boolean;
   rascunho: RascunhoDaInstituicao;
-  pessoaNova: RascunhoDePessoa;
+  pessoaNova: RascunhoDoInterlocutor;
   aoRascunhar: (r: RascunhoDaInstituicao) => void;
-  aoRascunharPessoa: (p: RascunhoDePessoa) => void;
+  aoRascunharPessoa: (p: RascunhoDoInterlocutor) => void;
   aoAbrir: () => void;
   aoEditar: () => void;
   aoCancelar: () => void;
   aoSalvar: () => void;
   aoAcrescentarPessoa: () => void;
   pessoaEmEdicao: string | null;
-  rascunhoDaPessoa: RascunhoDePessoa;
-  aoRascunharEdicaoDaPessoa: (p: RascunhoDePessoa) => void;
+  rascunhoDaPessoa: RascunhoDoInterlocutor;
+  aoRascunharEdicaoDaPessoa: (p: RascunhoDoInterlocutor) => void;
   aoEditarPessoa: (pessoa: Interlocutor) => void;
   aoCancelarPessoa: () => void;
   aoSalvarPessoa: (pessoa: Interlocutor) => void;
@@ -1128,7 +964,7 @@ function LinhaDeInstituicao({
   aoRemoverPessoa: (pessoa: Interlocutor) => void;
   aoDesligarPessoa: (pessoa: Interlocutor) => void;
 }) {
-  const rotuloDoTipo = ROTULO_DO_TIPO[instituicao.tipo] ?? instituicao.tipo;
+  const rotuloDoTipo = ROTULO_DO_TIPO_DE_INSTITUICAO[instituicao.tipo] ?? instituicao.tipo;
   const categoriaDoRascunho = categoriasPublico.find(
     (c) => c.id === Number(rascunho.categoria_publico_id),
   );

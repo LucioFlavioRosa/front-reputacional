@@ -31,25 +31,53 @@ import {
   type CandidatoDeFusao,
 } from '@/api/cliente';
 import { Botao, Carregando, Cartao, FaixaDeErro, Secao } from '@/componentes/basicos';
+import { Paginacao } from '@/componentes/Paginacao';
+import { ROTULO_DO_TIPO_DE_INSTITUICAO } from '@/paginas/cadastroCompartilhado/formularios';
 
-const ROTULO_DO_TIPO: Record<string, string> = {
+//: O RÓTULO DO TIPO VEM DO CADASTRO, com TRÊS EXCEÇÕES — e as três são
+//: deliberadas, não sobra de cópia.
+//:
+//: ESTA TELA TINHA UMA SEGUNDA TABELA, com a mesma lista escrita à mão, e as
+//: duas DIVERGIRAM: aqui "Veículo de imprensa" e "Órgão público", lá "Veículo"
+//: e "Órgão". A descoberta foi ao unificá-las, e dois testes apontaram.
+//:
+//: E A DIFERENÇA TEM RAZÃO: quem lê uma linha daqui está decidindo se APAGA um
+//: dos dois cadastros. "Veículo" serve num `<select>` onde a pessoa já sabe que
+//: está cadastrando imprensa; aqui, ao lado de um perfil de rede e de um órgão,
+//: o rótulo precisa dizer de que mundo o registro é. O cadastro escolhe o nome
+//: curto porque o contexto já diz o resto; esta fila não tem contexto.
+//:
+//: EXPLÍCITO, E NÃO UMA TABELA PARALELA: três linhas que dizem "aqui é
+//: diferente, e por isso" em vez de nove que precisam concordar com outras nove.
+const MAIS_ESPECIFICO_AQUI: Record<string, string> = {
   veiculo: 'Veículo de imprensa',
-  perfil_rede: 'Perfil de rede',
   orgao: 'Órgão público',
-  entidade: 'Entidade',
-  investidor: 'Investidor',
-  proposicao: 'Proposição',
-  area_interna: 'Área interna',
-  escritorio: 'Escritório',
+  //: `credor` é "Banco/credor" no cadastro, onde a barra ajuda quem procura o
+  //: tipo numa lista; aqui a linha já é curta e a barra só polui.
   credor: 'Credor',
 };
+
+function rotuloDoTipo(tipo: string): string {
+  return (
+    MAIS_ESPECIFICO_AQUI[tipo] ?? ROTULO_DO_TIPO_DE_INSTITUICAO[tipo] ?? tipo
+  );
+}
 
 function mencoes(quantas: number): string {
   return quantas === 1 ? '1 menção' : `${quantas} menções`;
 }
 
+//: DEZ POR PÁGINA, a mesma régua dos outros dois blocos do cadastro.
+//:
+//: ESTA FILA NÃO PAGINAVA, e com 210 pares medidos na base real ela desenhava os
+//: 210 de uma vez — cada um com o seu bloco de candidatos e dois botões. O
+//: pedido do dono do produto é por acesso a todos os casos, e sem navegação a
+//: lista longa é lida só até onde a paciência vai.
+const POR_PAGINA = 10;
+
 export function FilaDeDuplicados() {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
+  const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
 
@@ -107,8 +135,18 @@ export function FilaDeDuplicados() {
   //: "nenhum duplicado" seria uma linha a mais para ler em toda abertura.
   if (fila.length === 0 && !erro) return null;
 
+  const totalDePaginas = Math.max(1, Math.ceil(fila.length / POR_PAGINA));
+  //: CORRIGIDA NO RENDER, e não por efeito: cada decisão TIRA uma linha da
+  //: fila, então a última página encolhe sob os pés de quem está nela.
+  const paginaAgora = Math.min(pagina, totalDePaginas);
+  const naTela = fila.slice(
+    (paginaAgora - 1) * POR_PAGINA,
+    paginaAgora * POR_PAGINA,
+  );
+
   return (
     <Secao
+      recolhivel
       titulo={`Possíveis duplicados (${fila.length})`}
       ajuda={
         'O mesmo ator cadastrado duas vezes: o fornecedor de redes manda o ' +
@@ -119,7 +157,7 @@ export function FilaDeDuplicados() {
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-        {fila.map((perfil) => (
+        {naTela.map((perfil) => (
           <div
             key={perfil.id}
             style={{
@@ -129,9 +167,15 @@ export function FilaDeDuplicados() {
           >
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{perfil.nome}</p>
             {/* A MESMA GRAMÁTICA DA LINHA DO CADASTRO: "Perfil de rede ·
-                Imprensa · 2 menções", na ordem em que se lê o ator. */}
+                Imprensa · 2 menções", na ordem em que se lê o ator.
+
+                O TIPO VEM DO SERVIDOR, e era fixo em `perfil_rede` — verdade
+                enquanto a fila só perguntava sobre perfis de rede, mentira desde
+                11/10/2026: 4 dos pares que ela pergunta são instituições do CRM,
+                e apareciam rotuladas "Perfil de rede" a quem ia decidir se apaga
+                uma delas. */}
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-              {ROTULO_DO_TIPO.perfil_rede}
+              {rotuloDoTipo(perfil.tipo)}
               {perfil.cargo ? ` · ${perfil.cargo}` : ''}
               {` · ${mencoes(perfil.mencoes)}`}
             </p>
@@ -155,7 +199,7 @@ export function FilaDeDuplicados() {
                   </span>
                   <strong style={{ fontSize: 14 }}>{candidato.nome}</strong>
                   <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-                    {`${ROTULO_DO_TIPO[candidato.tipo] ?? candidato.tipo} · ${mencoes(
+                    {`${rotuloDoTipo(candidato.tipo)} · ${mencoes(
                       candidato.mencoes,
                     )}`}
                   </span>
@@ -186,6 +230,29 @@ export function FilaDeDuplicados() {
             })}
           </div>
         ))}
+
+        {/* A CONTAGEM E A NAVEGAÇÃO. A fila encurta a cada decisão, e é por isso
+            que o número total fica no título: ele é o que diz se o trabalho está
+            andando. */}
+        {fila.length > POR_PAGINA ? (
+          <p
+            style={{
+              margin: '12px 0 0',
+              paddingTop: 12,
+              borderTop: '1px solid var(--cinza-0)',
+              fontSize: 12,
+              color: 'var(--cinza-2)',
+            }}
+          >
+            {`Página ${paginaAgora} de ${totalDePaginas} — ${fila.length} pares a decidir.`}
+          </p>
+        ) : null}
+
+        <Paginacao
+          pagina={paginaAgora}
+          totalDePaginas={totalDePaginas}
+          aoMudarPagina={definirPagina}
+        />
       </Cartao>
     </Secao>
   );

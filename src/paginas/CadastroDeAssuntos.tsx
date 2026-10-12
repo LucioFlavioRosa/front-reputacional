@@ -21,6 +21,19 @@ import type { TemaCadastrado } from '@/api/cliente';
 import type { BlocoTema, MacroTema, Risco, RiskCluster } from '@/dominio/tipos';
 import { ImportarSubtemas } from '@/paginas/taxonomia/ImportarSubtemas';
 import {
+  TEMA_VAZIO,
+  entradaDoTema,
+  rascunhoDoTema,
+  type RascunhoDoTema,
+} from '@/paginas/cadastroCompartilhado/fichas';
+import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
+import {
+  SEVERIDADE_ROTULO,
+  SEVERIDADE_SELO,
+  SeletorDeHierarquia,
+  SeletorDeRiscos,
+} from '@/paginas/cadastroCompartilhado/formularios';
+import {
   Botao,
   Campo,
   Carregando,
@@ -31,35 +44,6 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 
-/** Legitimidade / Credibilidade / Confiança / Não se aplica — a dimensão da
- *  taxonomia v4 que diz QUE TIPO de reputação o tema afeta: o direito de
- *  operar, o cumprir o que promete, ou a relação de longo prazo. Ver
- *  `migrations/0053`/`0058`. */
-const LSO = [
-  { valor: '', rotulo: '— sem classificação —' },
-  { valor: 'legitimidade', rotulo: 'Legitimidade' },
-  { valor: 'credibilidade', rotulo: 'Credibilidade' },
-  { valor: 'confianca', rotulo: 'Confiança' },
-  { valor: 'nao_se_aplica', rotulo: 'Não se aplica' },
-];
-
-//: Rótulo de cada severidade — a matriz da Aegea já vem com "Critico" sem
-//: acento (ver migration 0059); o acento é só de exibição.
-const SEVERIDADE_ROTULO: Record<string, string> = {
-  critico: 'Crítico',
-  alto: 'Alto',
-  moderado: 'Moderado',
-};
-
-//: SELO EM VEZ DE TEXTO ENTRE PARÊNTESES: a severidade é o dado mais
-//: importante pra quem está classificando um risco, e texto pequeno dentro
-//: de um `<details>` fechado passava batido. Semáforo, com as cores da
-//: marca: vermelho = crítico, laranja = alto, amarelo = moderado.
-const SEVERIDADE_SELO: Record<string, { fundo: string; texto: string }> = {
-  critico: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
-  alto: { fundo: 'var(--laranja-baia)', texto: 'var(--sobre-turquesa)' },
-  moderado: { fundo: 'var(--amarelo-pequi)', texto: 'var(--sobre-turquesa)' },
-};
 
 /** Os três níveis, do mais restrito ao mais aberto.
  *
@@ -103,114 +87,6 @@ const SELO_DO_NIVEL: Record<string, { fundo: string; texto: string }> = {
  *  `macro_tema.bloco_tema_id`. Ele existe aqui só para filtrar a lista de
  *  temas estratégicos sem o usuário ter de procurar entre os 41.
  */
-interface RascunhoDeTema {
-  nome: string;
-  nivel: string;
-  e_risco: boolean;
-  bloco_tema_id: number | null;
-  macro_tema_id: number | null;
-  camada_lso: string;
-  riscos: number[];
-}
-
-const RASCUNHO_VAZIO: RascunhoDeTema = {
-  nome: '',
-  nivel: 'gerais',
-  e_risco: false,
-  bloco_tema_id: null,
-  macro_tema_id: null,
-  camada_lso: '',
-  riscos: [],
-};
-
-/** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
- *
- *  UMA ÚNICA VEZ, reaproveitado no formulário de criar e no de editar — a
- *  lógica de filtrar os 41 temas estratégicos pelo pilar escolhido não vale a
- *  pena duplicar.
- */
-function SeletorDeHierarquia({
-  blocos,
-  macros,
-  rascunho,
-  aoMudar,
-}: {
-  blocos: BlocoTema[];
-  macros: MacroTema[];
-  rascunho: RascunhoDeTema;
-  aoMudar: (novo: RascunhoDeTema) => void;
-}) {
-  const macrosDoPilar = macros.filter((m) => m.bloco_tema_id === rascunho.bloco_tema_id);
-  return (
-    <>
-      <Campo rotulo="Pilar (N1)" obrigatorio>
-        <select
-          style={estiloDeEntrada}
-          value={rascunho.bloco_tema_id ?? ''}
-          onChange={(e) =>
-            aoMudar({
-              ...rascunho,
-              bloco_tema_id: e.target.value ? Number(e.target.value) : null,
-              // TROCAR O PILAR DESMARCA O TEMA ESTRATÉGICO: um tema
-              // estratégico de outro pilar ficaria selecionado sem aparecer
-              // mais na lista — o `<select>` mostraria o id errado como se
-              // fosse o primeiro da lista nova, calado.
-              macro_tema_id: null,
-            })
-          }
-        >
-          <option value="">— selecione —</option>
-          {blocos.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nome}
-            </option>
-          ))}
-        </select>
-      </Campo>
-      <Campo rotulo="Tema estratégico (N2)" obrigatorio>
-        <select
-          style={estiloDeEntrada}
-          value={rascunho.macro_tema_id ?? ''}
-          disabled={rascunho.bloco_tema_id === null}
-          onChange={(e) =>
-            aoMudar({
-              ...rascunho,
-              macro_tema_id: e.target.value ? Number(e.target.value) : null,
-            })
-          }
-        >
-          <option value="">— selecione —</option>
-          {macrosDoPilar.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome}
-            </option>
-          ))}
-        </select>
-      </Campo>
-      {/* NÃO É OBRIGATÓRIO, e a razão está na fonte: a taxonomia v4 deixa 47 dos
-          104 subtemas SEM LSO. Marcá-lo com asterisco e exigi-lo travaria 45%
-          das classificações válidas, e afirmaria uma camada que a Aegea não
-          atribuiu. Pilar e Tema estratégico ficam obrigatórios porque a
-          planilha os preenche em 104 de 104, sem uma exceção. */}
-      <Campo
-        rotulo="LSO"
-        dica="A taxonomia não define LSO para 47 dos 104 subtemas; deixar vazio é resposta."
-      >
-        <select
-          style={estiloDeEntrada}
-          value={rascunho.camada_lso}
-          onChange={(e) => aoMudar({ ...rascunho, camada_lso: e.target.value })}
-        >
-          {LSO.map((l) => (
-            <option key={l.valor} value={l.valor}>
-              {l.rotulo}
-            </option>
-          ))}
-        </select>
-      </Campo>
-    </>
-  );
-}
 
 /** Quando a seção de riscos aparece.
  *
@@ -248,86 +124,6 @@ function eixosDiscordam(tema: TemaCadastrado): boolean {
   return Boolean(tema.e_risco) !== (tema.riscos.length > 0);
 }
 
-/** Quais riscos da matriz corporativa este tema toca — zero, um ou vários.
- *
- *  AGRUPADO POR CLUSTER, e recolhível: 32 riscos numa lista só, sempre
- *  aberta, seria maior que o resto do formulário inteiro. `<details>` nativo,
- *  sem estado próprio — o navegador já lembra o que a pessoa abriu.
- */
-function SeletorDeRiscos({
-  clusters,
-  riscos,
-  selecionados,
-  aoMudar,
-}: {
-  clusters: RiskCluster[];
-  riscos: Risco[];
-  selecionados: number[];
-  aoMudar: (novos: number[]) => void;
-}) {
-  const alternar = (riscoId: number) => {
-    aoMudar(
-      selecionados.includes(riscoId)
-        ? selecionados.filter((id) => id !== riscoId)
-        : [...selecionados, riscoId],
-    );
-  };
-  // NÃO É OBRIGATÓRIO: 4 dos 104 subtemas vêm da planilha com "Sem
-  // enquadramento" — a Aegea olhou e decidiu que não há risco a rastrear ali.
-  // Nenhum risco marcado é resposta, não falta de dado.
-  return (
-    <Campo
-      rotulo="Risco(s) associado(s)"
-      dica="Nenhum marcado é resposta: a planilha deixa 4 subtemas sem enquadramento."
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {clusters.map((cluster) => {
-          const riscosDoCluster = riscos.filter((r) => r.risk_cluster_id === cluster.id);
-          // ABRE SOZINHO QUANDO JÁ TEM ALGO MARCADO: ao editar um tema que
-          // já tem risco associado, esconder o cluster escondia a própria
-          // resposta de "o que está marcado" atrás de um clique.
-          const temSelecionado = riscosDoCluster.some((r) => selecionados.includes(r.id));
-          return (
-            <details key={cluster.id} open={temSelecionado}>
-              <summary style={{ cursor: 'pointer', fontSize: 13, padding: '4px 0' }}>
-                {cluster.nome}
-              </summary>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 16 }}>
-                {riscosDoCluster.map((risco) => (
-                  <label
-                    key={risco.id}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-                  >
-                    <input
-                      type="checkbox"
-                      // NOME EXPLÍCITO, e é conserto de acessibilidade: `Campo`
-                      // envolve o conteúdo todo num `<label>`, então o PRIMEIRO
-                      // checkbox da lista herdava aquele rótulo — e o leitor de
-                      // tela anunciava a seção inteira ("Risco(s)
-                      // associado(s)Riscos ESGExternalidadesCrítico…") no lugar
-                      // do nome do risco. Os demais já pegavam o `<label>`
-                      // interno, então o defeito aparecia só no primeiro, o que
-                      // é pior: parecia funcionar.
-                      aria-label={risco.nome}
-                      checked={selecionados.includes(risco.id)}
-                      onChange={() => alternar(risco.id)}
-                    />
-                    <span>{risco.nome}</span>
-                    <Selo
-                      rotulo={SEVERIDADE_ROTULO[risco.severidade] ?? risco.severidade}
-                      fundo={SEVERIDADE_SELO[risco.severidade]?.fundo ?? 'var(--bg-trilho)'}
-                      texto={SEVERIDADE_SELO[risco.severidade]?.texto ?? 'var(--cinza-3)'}
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </Campo>
-  );
-}
 
 export function CadastroDeAssuntos() {
   const [temas, definirTemas] = useState<TemaCadastrado[] | null>(null);
@@ -337,9 +133,9 @@ export function CadastroDeAssuntos() {
   const [riscos, definirRiscos] = useState<Risco[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
   const [salvando, definirSalvando] = useState(false);
-  const [novo, definirNovo] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
+  const [novo, definirNovo] = useState<RascunhoDoTema>(TEMA_VAZIO);
   const [emEdicao, definirEmEdicao] = useState<number | null>(null);
-  const [rascunho, definirRascunho] = useState<RascunhoDeTema>(RASCUNHO_VAZIO);
+  const [rascunho, definirRascunho] = useState<RascunhoDoTema>(TEMA_VAZIO);
   const [busca, definirBusca] = useState('');
   const [soDiscordantes, definirSoDiscordantes] = useState(false);
 
@@ -527,7 +323,7 @@ export function CadastroDeAssuntos() {
                       camada_lso: novo.camada_lso || null,
                       riscos: novo.riscos,
                     }),
-                  () => definirNovo(RASCUNHO_VAZIO),
+                  () => definirNovo(TEMA_VAZIO),
                 )
               }
             >
@@ -536,6 +332,11 @@ export function CadastroDeAssuntos() {
           </div>
         </Cartao>
       </Secao>
+
+      {/* OS CADASTROS QUE ENTRARAM POR PLANILHA E NINGUÉM CONFERIU.
+          Acima da lista porque é trabalho a fazer, e não consulta — o mesmo
+          lugar da fila de duplicados. Não aparece quando está vazia. */}
+      <FilaDeRevisao aba="assuntos" />
 
       <Secao
         titulo={`Cadastrados (${temas.length})`}
@@ -654,15 +455,10 @@ export function CadastroDeAssuntos() {
                       aoClicar={() =>
                         void executar(
                           () =>
-                            editarTema(tema.id, {
-                              nome: rascunho.nome,
-                              nivel: rascunho.nivel,
-                              ativo: tema.ativo,
-                              e_risco: rascunho.e_risco,
-                              macro_tema_id: rascunho.macro_tema_id,
-                              camada_lso: rascunho.camada_lso || null,
-                              riscos: rascunho.riscos,
-                            }),
+                            editarTema(
+                              tema.id,
+                              entradaDoTema(rascunho, tema.ativo),
+                            ),
                           () => definirEmEdicao(null),
                         )
                       }
@@ -723,20 +519,11 @@ export function CadastroDeAssuntos() {
                     desabilitado={salvando}
                     aoClicar={() => {
                       definirEmEdicao(tema.id);
-                      // O PILAR NÃO VEM DO BACK: só `macro_tema_id` é
-                      // guardado em `tema`. Pra pré-marcar o seletor em
-                      // cascata, acha o tema estratégico pelo id e lê o
-                      // `bloco_tema_id` dele.
-                      const macro = macros.find((m) => m.id === tema.macro_tema_id);
-                      definirRascunho({
-                        nome: tema.nome,
-                        nivel: tema.nivel,
-                        e_risco: tema.e_risco ?? false,
-                        bloco_tema_id: macro?.bloco_tema_id ?? null,
-                        macro_tema_id: tema.macro_tema_id,
-                        camada_lso: tema.camada_lso ?? '',
-                        riscos: tema.riscos,
-                      });
+                      //: O PILAR NÃO VEM DO BACK — só `macro_tema_id` é
+                      //: guardado em `tema` —, e é por isso que
+                      //: `rascunhoDoTema` pede `macros`: ele acha o tema
+                      //: estratégico pelo id e lê o `bloco_tema_id` dele.
+                      definirRascunho(rascunhoDoTema(tema, macros));
                     }}
                     rotuloAcessivel={`Editar ${tema.nome}`}
                   >

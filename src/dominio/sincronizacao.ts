@@ -35,6 +35,33 @@ export const ROTAS_DO_CATALOGO = [
   '/api/pessoas-aegea',
   '/api/referencias',
   '/api/alegacoes',
+  // A CONFIRMAÇÃO DA PLANILHA DE SUBTEMAS, e é o MESMO defeito da confirmação
+  // da importação de agendas, numa segunda rota — achado de revisão com
+  // severidade ALTA.
+  //
+  // Ela "aplica o que foi conferido", diz o próprio comentário do cliente: cria
+  // e altera TEMAS. Sem este aviso, quem sobe a planilha de subtemas vê a aba
+  // Temas, todo filtro por tema e todo formulário que oferece tema seguirem os
+  // de antes até um F5.
+  //
+  // CAMINHO EXATO, e não o prefixo `/api/taxonomia`: a irmã dela,
+  // `/api/taxonomia/subtemas/conferencia`, NÃO grava nada — "NADA É GRAVADO",
+  // diz o cliente — e um prefixo faria cada conferência recarregar o catálogo
+  // inteiro para não mudar coisa nenhuma. O casamento da lista é por igualdade
+  // ou por `rota + '/'`, então este caminho pega só a confirmação.
+  '/api/taxonomia/subtemas/confirmacao',
+  // UMA ROTA DA FILA DE REVISÃO, e SÓ ela: enquadrar um lote grava a categoria
+  // de público e DERIVA O TIPO da instituição — e o tipo é o que
+  // `derivar_frente` usa para dizer de que frente é cada agenda dela. Um lote de
+  // 499 reclassifica as agendas de todas, e sem esta linha a Base e os filtros
+  // mostrariam a classificação antiga até um F5.
+  //
+  // E A IRMÃ DELA NÃO ESTÁ AQUI, de propósito:
+  // `/api/revisao-de-cadastros/{tipo}/{id}/consolidacao` não muda nada que o
+  // catálogo sirva — `pendente_de_revisao` e `motivo_da_revisao` estão em
+  // `COLUNAS_DE_CONTROLE` e nunca saem em `/api/dicionarios`. O casamento é por
+  // prefixo COM fronteira, então o caminho abaixo pega só o enquadramento.
+  '/api/revisao-de-cadastros/instituicoes/enquadramento',
   // UMA ROTA DO SCORE NA LISTA DO CATÁLOGO, e não é engano: definir quais
   // veículos a lente Mercado considera escreve em `instituicao` — a mesma
   // tabela que o Cadastro compartilhado edita. A regra aqui é "a escrita muda
@@ -58,16 +85,36 @@ const METODOS_QUE_LEEM = new Set(['GET', 'HEAD', 'OPTIONS']);
 /** Prefixos de caminho cujas escritas mudam as agendas. */
 export const ROTAS_DE_AGENDAS = ['/api/interacoes'] as const;
 
+/** É a confirmação de uma importação de agendas?
+ *
+ *  NÃO É UM PREFIXO, e por isso tem função própria: o id fica no MEIO do
+ *  endereço (`/api/importacoes/<uuid>/confirmacao`).
+ *
+ *  E ELA RESPONDE AOS DOIS BARRAMENTOS, que é o conserto de um defeito: a
+ *  confirmação é o único passo daquele fluxo que GRAVA, e grava as duas coisas
+ *  — as agendas E os cadastros que elas precisavam. Medido com a planilha real
+ *  de RI: 304 agendas e 502 cadastros numa confirmação. */
+const CONFIRMACAO_DE_IMPORTACAO = /^\/api\/importacoes\/[^/]+\/confirmacao$/;
+
+function eAConfirmacaoDeImportacao(caminho: string): boolean {
+  //: A REGEX, E NÃO `startsWith` + `endsWith`.
+  //:
+  //: ACHADO DE REVISÃO: o par de testes de borda aceitava
+  //: `/api/importacoes/abc/outra-coisa/confirmacao` — qualquer profundidade
+  //: entre o id e a palavra. Não há subrota dessas hoje, e é justamente por
+  //: isso que vale apertar agora: o aviso falso que isso daria amanhã
+  //: recarregaria o catálogo inteiro por uma rota que ninguém examinou.
+  //:
+  //: E A ASSERÇÃO DO TESTE JÁ USAVA ESTA REGEX. Implementação mais larga que o
+  //: teste é uma diferença que ninguém vê até ela importar.
+  return CONFIRMACAO_DE_IMPORTACAO.test(caminho);
+}
+
 /** Esta requisição, se der certo, muda alguma agenda? */
 export function escreveAgendas(metodo: string, caminho: string): boolean {
   if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
   const soOCaminho = caminho.split('?')[0];
-  if (
-    soOCaminho.startsWith('/api/importacoes/') &&
-    soOCaminho.endsWith('/confirmacao')
-  ) {
-    return true;
-  }
+  if (eAConfirmacaoDeImportacao(soOCaminho)) return true;
   return ROTAS_DE_AGENDAS.some(
     (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
   );
@@ -77,6 +124,22 @@ export function escreveAgendas(metodo: string, caminho: string): boolean {
 export function escreveNoCatalogo(metodo: string, caminho: string): boolean {
   if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
   const soOCaminho = caminho.split('?')[0];
+  //: A CONFIRMAÇÃO DA IMPORTAÇÃO MUDA O CATÁLOGO TAMBÉM, e ela estava só na
+  //: lista das agendas.
+  //:
+  //: O DEFEITO QUE ISTO CONSERTA: a confirmação cria instituição, contato, tema
+  //: e pessoa da Aegea — medido com a planilha real de RI, 304 agendas e 502
+  //: CADASTROS numa chamada. Sem este aviso, nada disso chegava ao catálogo: a
+  //: lista do Cadastro compartilhado, as opções de todo filtro e de todo
+  //: formulário seguiam as de antes até alguém apertar F5. E a agenda recém
+  //: criada aponta para uma instituição que o catálogo não conhece, que é a
+  //: mesma classe de problema dos `temas_inativos` — dois lados discordando
+  //: sobre o mesmo dado.
+  //:
+  //: E A REGRA DESTE MÓDULO JÁ DIZIA QUE ERA AQUI: "a regra aqui é 'a escrita
+  //: muda o catálogo?', e não 'o endereço começa com o nome de um cadastro'" —
+  //: escrito para justificar a rota do Score na lista, e vale igual para esta.
+  if (eAConfirmacaoDeImportacao(soOCaminho)) return true;
   return ROTAS_DO_CATALOGO.some(
     (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
   );

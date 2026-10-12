@@ -616,6 +616,14 @@ export interface CandidatoDeFusao {
 export interface CadastroDuplicado {
   id: string;
   nome: string;
+  /** O TIPO DE QUEM VAI SAIR.
+   *
+   *  A tela escrevia `ROTULO_DO_TIPO.perfil_rede` fixo, e era verdade enquanto a
+   *  fila só perguntava sobre perfis de rede. Deixou de ser em 11/10/2026: a
+   *  fila passou a olhar qualquer tipo, e 4 dos pares que ela pergunta são
+   *  instituições do CRM — mostradas como "Perfil de rede" a quem ia decidir se
+   *  apaga uma delas. */
+  tipo: string;
   cargo: string | null;
   mencoes: number;
   candidatos: CandidatoDeFusao[];
@@ -633,17 +641,23 @@ export function duplicadosDeCadastro(): Promise<CadastroDuplicado[]> {
   return requisitar<CadastroDuplicado[]>('/api/instituicoes/duplicados');
 }
 
-/** Funde o perfil de rede no cadastro que fica, com as menções dele.
+/** Funde um cadastro no outro: quem vem no primeiro argumento SAI, com as
+ *  menções indo para quem fica.
  *
- *  QUEM SAI É SEMPRE O PERFIL: o cadastro que sobrevive é a linha curada, com
- *  categoria, UF e frente. O servidor recusa (422) o caminho inverso. Não tem
- *  volta. */
+ *  ERA "quem sai é sempre o perfil de rede", e deixou de ser em 11/10/2026:
+ *  qualquer tipo pode sair, porque qualquer tipo entra na fila. A assimetria
+ *  que protegia a linha curada continua, mas pela ORDEM DA FILA — o servidor
+ *  ancora a pergunta em quem deve sair — e não por um `if` de tipo.
+ *
+ *  O SOBREVIVENTE HERDA os campos que estiverem vazios nele e preenchidos em
+ *  quem sai; se os dois tiverem valores diferentes no mesmo campo, o servidor
+ *  recusa (422) listando quais. Não tem volta. */
 export function fundirCadastro(
-  perfilId: string,
+  queSaiId: string,
   sobreviventeId: string,
 ): Promise<{ id: string; nome: string }> {
   return requisitar<{ id: string; nome: string }>(
-    `/api/instituicoes/${perfilId}/fundir`,
+    `/api/instituicoes/${queSaiId}/fundir`,
     { method: 'POST', body: JSON.stringify({ sobrevivente_id: sobreviventeId }) },
   );
 }
@@ -661,6 +675,170 @@ export function declararCadastroDistinto(
     method: 'POST',
     body: JSON.stringify({ um_id: id, outro_id: outroId, motivo: motivo ?? null }),
   });
+}
+
+/** O que a mudança de casa de um contato devolve. */
+export interface MudancaDeCasa {
+  id: string;
+  nome: string;
+  /** A casa de onde saiu; nulo em quem não tinha nenhuma. */
+  de: string | null;
+  para: string;
+  /** QUANTAS AGENDAS FICAM NA CASA ANTIGA.
+   *
+   *  É a frase que distingue as duas leituras: com zero, a provável é "errei a
+   *  instituição no cadastro"; com trinta, é "mudou de casa". O histórico não se
+   *  mexe — `interacao.instituicao_id` é coluna própria da agenda.
+   *
+   *  SÓ AS DA CASA ANTIGA, e isto foi um achado de revisão: a primeira versão
+   *  contava todas as agendas do contato, inclusive as de uma terceira
+   *  instituição, e inflava a frase da confirmação. */
+  agendas_que_ficam: number;
+  /** SE O CONTATO SAIU DA FILA DE REVISÃO com esta mudança.
+   *
+   *  Mover É a resposta à pergunta que a fila fazia — "confirme se são a mesma
+   *  pessoa, se ela mudou de casa, ou se são homônimas" —, então ela se encerra
+   *  aqui. `false` quando o contato não estava na fila: a tela não deve anunciar
+   *  o que não houve. */
+  consolidou: boolean;
+}
+
+/** Passa um contato para outra instituição.
+ *
+ *  ENDEREÇO PRÓPRIO, e não `editarInterlocutor` com outra `instituicao_id`.
+ *  Aquele caminho existe e funciona — é por ele que a tela de cadastro grava a
+ *  ficha —, e é exatamente por isso que este também existe: ali a instituição
+ *  vai no meio de oito campos, com o mesmo peso de corrigir um e-mail.
+ *
+ *  A `0002` cria `unique (nome_normalizado, instituicao_id)` com o comentário
+ *  "mesmo nome em instituições diferentes são pessoas diferentes": a instituição
+ *  não é um atributo do contato, é parte da IDENTIDADE dele neste modelo.
+ *  Trocá-la é afirmar que a pessoa é a mesma de outro lugar.
+ *
+ *  O SERVIDOR RECUSA (422) quando já existe alguém com aquele nome no destino —
+ *  e a mensagem aponta para 'Possíveis duplicados', porque aí a resposta é
+ *  fundir, não mover um para cima do outro. */
+export function mudarContatoDeCasa(
+  id: string,
+  instituicaoId: string,
+): Promise<MudancaDeCasa> {
+  return requisitar<MudancaDeCasa>(
+    `/api/interlocutores/${id}/mudanca-de-casa`,
+    { method: 'POST', body: JSON.stringify({ instituicao_id: instituicaoId }) },
+  );
+}
+
+/** Um cadastro que nasceu de planilha e ninguém consolidou ainda. */
+export interface CadastroPendente {
+  /** TEXTO, e não número: `tema` tem chave inteira e os outros três têm UUID.
+   *  Quem consolida devolve o mesmo texto que recebeu. */
+  id: string;
+  /** O nome da tabela — `instituicao` | `interlocutor` | `tema` |
+   *  `pessoa_aegea`. É o que a rota de consolidação recebe de volta. */
+  tipo: string;
+  nome: string;
+  /** POR QUE ESTE REGISTRO ESPERA REVISÃO. Nulo é "nasceu de planilha", sem
+   *  mais nada a dizer — o caso comum. */
+  motivo: string | null;
+  /** O QUE DISTINGUE ESTE DE UM REGISTRO DE NOME PARECIDO.
+   *
+   *  O motivo mais frequente é "apareceu em 2 instituições na mesma planilha",
+   *  que cria DOIS cadastros com o mesmo nome, de propósito. Sem isto, a aba
+   *  mostraria "Artur Santa" duas vezes com o mesmo motivo. */
+  contexto: string | null;
+  criado_em: string;
+}
+
+/** Uma das três abas de Cadastro compartilhado, com a sua fila. */
+export interface AbaDeRevisao {
+  /** `instituicoes` | `assuntos` | `porta_vozes` — os mesmos ids de
+   *  `PortalDoCadastroCompartilhado`. */
+  id: string;
+  rotulo: string;
+  pendentes: CadastroPendente[];
+}
+
+/** O que cada aba de Cadastro compartilhado tem para revisar.
+ *
+ *  PEDIDO DO DONO DO PRODUTO: "o profissional consegue subir a planilha sem
+ *  problemas e pode revisar depois, e inclusive pode ser trabalho de outra
+ *  pessoa. Queremos dar padronização, mas com menor impacto."
+ *
+ *  AS TRÊS SEMPRE, inclusive as vazias — ver `AbaSaida` no back. */
+export function filaDeRevisao(): Promise<AbaDeRevisao[]> {
+  return requisitar<AbaDeRevisao[]>('/api/revisao-de-cadastros');
+}
+
+/** "Conferi este cadastro, está certo" — e ele sai da fila.
+ *
+ *  NÃO EDITA O CADASTRO, só a marca. Se o registro estiver errado, o caminho é
+ *  a lista de cadastro ao lado, que já sabe validar.
+ *
+ *  FORA DE `ROTAS_DO_CATALOGO` de propósito: consolidar não muda nada que o
+ *  catálogo sirva — `pendente_de_revisao` e `motivo_da_revisao` estão em
+ *  `COLUNAS_DE_CONTROLE` e nunca saem em `/api/dicionarios`. Uma recarga do
+ *  catálogo inteiro aqui seria trabalho para não mudar nada na tela.
+ *
+ *  `ja_estava_consolidado` É O CASO NORMAL, e não um erro: a fila é trabalho de
+ *  equipe pelo próprio pedido, então duas pessoas na mesma aba acontece. */
+export function consolidarCadastro(
+  tipo: string,
+  id: string,
+): Promise<{ pendente: CadastroPendente; ja_estava_consolidado: boolean }> {
+  return requisitar<{ pendente: CadastroPendente; ja_estava_consolidado: boolean }>(
+    `/api/revisao-de-cadastros/${tipo}/${encodeURIComponent(id)}/consolidacao`,
+    { method: 'POST' },
+  );
+}
+
+/** Uma instituição do lote que não pôde ser enquadrada, e por quê. */
+export interface EnquadramentoRecusado {
+  id: string;
+  nome: string;
+  motivo: string;
+}
+
+export interface EnquadramentoFeito {
+  enquadradas: number;
+  consolidadas: number;
+  /** O tipo que a categoria escolhida implica, para a tela dizer o que
+   *  aconteceu: "47 enquadradas como Órgão". */
+  tipo: string;
+  recusadas: EnquadramentoRecusado[];
+}
+
+/** Dá a mesma categoria de público a várias instituições da fila de revisão.
+ *
+ *  POR QUE EXISTE, e o número é o argumento: a planilha real de RI criou 178
+ *  instituições sem categoria, todas como "Entidade", e a resposta para quase
+ *  todas é a mesma. A consolidação uma a uma faria a pessoa digitar a mesma
+ *  coisa 178 vezes — e desistir na décima, com a base meio classificada, que é
+ *  pior do que não classificada porque ninguém sabe onde parou.
+ *
+ *  (As 499 pendências da aba juntam instituições e CONTATOS; só as 178
+ *  instituições entram no lote, porque só elas têm categoria de público.)
+ *
+ *  O TIPO SAI DA CATEGORIA: enquadrar reclassifica as agendas de cada
+ *  instituição do lote, porque é do tipo que a frente da agenda deriva. É por
+ *  isso que este caminho está em `ROTAS_DO_CATALOGO` e o da consolidação não.
+ *
+ *  NÃO É TUDO-OU-NADA: com 178 linhas, uma colisão de nome faria o lote inteiro
+ *  falhar e ninguém saberia qual das 178. O servidor enquadra as que dão e
+ *  devolve `recusadas` com o motivo de cada uma.
+ *
+ *  SÓ ALCANÇA O QUE ESTÁ PENDENTE. Um lote capaz de reescrever o tipo de
+ *  qualquer instituição deixaria um clique aqui varrer a curadoria de 3.785
+ *  cadastros feitos à mão. */
+export function enquadrarEmLote(entrada: {
+  ids: string[];
+  categoria_publico_id: number;
+  subcategoria_publico_id?: number | null;
+  consolidar?: boolean;
+}): Promise<EnquadramentoFeito> {
+  return requisitar<EnquadramentoFeito>(
+    '/api/revisao-de-cadastros/instituicoes/enquadramento',
+    { method: 'POST', body: JSON.stringify(entrada) },
+  );
 }
 
 /** Apaga a instituição que entrou por engano — e as pessoas dela junto. O
