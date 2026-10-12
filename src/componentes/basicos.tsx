@@ -1099,6 +1099,7 @@ export function Modal({
   children,
   rodape,
   largura = 820,
+  corpoQueNaoRola = false,
 }: {
   titulo: ReactNode;
   subtitulo?: ReactNode;
@@ -1106,6 +1107,23 @@ export function Modal({
   children: ReactNode;
   rodape?: ReactNode;
   largura?: number;
+  /** O corpo NÃO rola, e quem rola é o conteúdo — em coluna, por dentro.
+   *
+   *  PARA O DIÁLOGO QUE TEM UMA TABELA LARGA DENTRO. Com o corpo rolando, uma
+   *  tabela de altura fixa empurra a própria borda de baixo para fora da tela: a
+   *  barra horizontal dela fica no fim da ROLAGEM DO MODAL, e para arrastá-la a
+   *  pessoa percorre o diálogo todo. É o defeito que o dono do produto relatou na
+   *  conferência da importação, e a mesma classe de problema que o PR #77
+   *  resolveu nas tabelas de página.
+   *
+   *  LIGADO, o corpo vira coluna de altura limitada e NÃO rola; o conteúdo
+   *  escolhe quem cresce (`flex: 1` + `minHeight: 0`) e quem rola por dentro.
+   *  Assim a borda de baixo da tabela é a borda de baixo do diálogo, e as duas
+   *  barras ficam na tela ao mesmo tempo.
+   *
+   *  OPT-IN de propósito: um diálogo de texto deve continuar rolando inteiro, e
+   *  ligar isto nele esconderia o fim do texto sem barra nenhuma. */
+  corpoQueNaoRola?: boolean;
 }) {
   //: O NOME DO DIALOGO, para quem ouve a tela.
   //:
@@ -1261,7 +1279,25 @@ export function Modal({
           </button>
         </header>
 
-        <div className="rolagem-interna" style={{ padding: 24, flex: 1 }}>
+        <div
+          className={corpoQueNaoRola ? undefined : 'rolagem-interna'}
+          style={{
+            padding: 24,
+            flex: 1,
+            //: `minHeight: 0` É O QUE FAZ O LIMITE VALER: sem ele, um item de
+            //: flex não encolhe abaixo do próprio conteúdo, e a tabela de dentro
+            //: esticaria o diálogo — a barra horizontal voltaria para fora da
+            //: tela, pelo mesmo caminho que esta opção fecha.
+            ...(corpoQueNaoRola
+              ? {
+                  minHeight: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }
+              : {}),
+          }}
+        >
           {children}
         </div>
 
