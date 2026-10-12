@@ -33,6 +33,7 @@ vi.mock('@/api/cliente', () => ({
   editarTema: vi.fn(async () => ({})),
   consolidarCadastro: vi.fn(async () => ({ ja_estava_consolidado: false })),
   listarTemas: vi.fn(async () => []),
+  mudarContatoDeCasa: vi.fn(),
 }));
 
 const A_INSTITUICAO = {
@@ -73,11 +74,21 @@ const {
   editarTema,
   consolidarCadastro,
   listarTemas,
+  mudarContatoDeCasa,
 } = await import('@/api/cliente');
 
 function catalogoCom(extras: Record<string, unknown> = {}) {
   return {
-    instituicoes: new Map([[A_INSTITUICAO.id, A_INSTITUICAO]]),
+    instituicoes: new Map([
+      [A_INSTITUICAO.id, A_INSTITUICAO],
+      //: A SEGUNDA CASA, para a mudança ter destino. E uma TERCEIRA, desativada,
+      //: que não deve ser oferecida.
+      ['inst-2', { ...A_INSTITUICAO, id: 'inst-2', nome: 'Leto Capital' }],
+      [
+        'inst-3',
+        { ...A_INSTITUICAO, id: 'inst-3', nome: 'Casa Fechada', ativo: false },
+      ],
+    ]),
     interlocutores: new Map([[O_CONTATO.id, O_CONTATO]]),
     pessoas: new Map(),
     dicionarios: {
@@ -114,6 +125,13 @@ const PENDENTE_INSTITUICAO = {
 beforeEach(() => {
   vi.clearAllMocks();
   catalogoAtual = catalogoCom();
+  vi.mocked(mudarContatoDeCasa).mockResolvedValue({
+    id: 'pes-1',
+    nome: 'Artur Santa',
+    de: 'XP Asset',
+    para: 'Leto Capital',
+    agendas_que_ficam: 7,
+  });
 });
 
 it('a ficha abre com os VALORES GRAVADOS', async () => {
@@ -207,14 +225,16 @@ it('o cargo e o "de quem e" aparecem SO em perfil de rede', async () => {
   expect(screen.getByLabelText(/De quem é este perfil/)).toBeTruthy();
 });
 
-it('a ficha do CONTATO nao troca a instituicao', async () => {
-  //: A DECISÃO MAIS IMPORTANTE DESTA FICHA. "Mesmo nome em instituições
-  //: diferentes são pessoas diferentes", diz a `0002` — trocar a casa de um
-  //: contato não é corrigir um campo, é dizer que ele é outra pessoa.
+it('a ficha do CONTATO salva sem perder nada, e a casa nao e campo', async () => {
+  //: A PREMISSA DESTE TESTE MUDOU, e vale registrar: ele dizia "a ficha não
+  //: troca a instituição" e afirmava que não havia caminho nenhum. O dono do
+  //: produto pediu o caminho — "siga com mover contato" —, e ele existe agora
+  //: como GESTO À PARTE, com confirmação (ver o teste logo abaixo).
   //:
-  //: E QUEM APARECEU EM DUAS INSTITUIÇÕES na mesma planilha nasceu DUAS VEZES,
-  //: de propósito: a pergunta da fila é se são a mesma pessoa, e respondê-la é
-  //: fundir ou apagar, não editar.
+  //: O QUE CONTINUA VERDADE, e é o que este teste guarda: a casa não é um CAMPO
+  //: do formulário. "Mesmo nome em instituições diferentes são pessoas
+  //: diferentes", diz a `0002`, e salvar a ficha manda a instituição que já
+  //: estava lá — quem abriu para corrigir um e-mail não leva o contato de casa.
   render(
     <FichaDoPendente
       pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
@@ -225,9 +245,11 @@ it('a ficha do CONTATO nao troca a instituicao', async () => {
   expect(await screen.findByDisplayValue('Artur Santa')).toBeTruthy();
   //: O CARGO SE EDITA.
   expect(screen.getByDisplayValue('Diretor de RI')).toBeTruthy();
-  //: A CASA SÓ SE LÊ, e a tela diz por quê.
-  expect(screen.getByText(/A instituição de um contato não se troca por aqui/)).toBeTruthy();
-  expect(screen.queryByLabelText(/Instituição/)).toBeNull();
+  //: A CASA APARECE COMO LEITURA no corpo da ficha...
+  expect(screen.getByText(/Fala por: XP Asset/)).toBeTruthy();
+  //: ...e NÃO como campo do formulário: não há `<input>`/`<select>` de
+  //: instituição entre os campos que "Salvar" manda.
+  expect(screen.queryByLabelText(/^Instituição$/)).toBeNull();
 
   await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
   await waitFor(() => expect(editarInterlocutor).toHaveBeenCalled());
@@ -385,4 +407,97 @@ it('a recarga do catalogo NAO apaga o que esta sendo digitado no tema', async ()
   await waitFor(() =>
     expect(screen.getByDisplayValue('Qualidade da água tratada')).toBeTruthy(),
   );
+});
+
+it('a MUDANCA DE CASA e um gesto a parte, nao um campo', async () => {
+  //: "Mesmo nome em instituições diferentes são pessoas diferentes", diz a
+  //: `0002`: a instituição é parte da IDENTIDADE do contato neste modelo. Num
+  //: `<select>` ao lado do cargo ela teria o mesmo peso de corrigir um e-mail.
+  //:
+  //: E SALVAR A FICHA NÃO A INCLUI: quem abriu para corrigir um e-mail não pode
+  //: levar o contato de instituição sem ter pedido.
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  await userEvent.selectOptions(screen.getByLabelText(/Mudar de casa/), 'inst-2');
+  //: A CONFIRMAÇÃO APARECE DEPOIS DE ESCOLHER, e diz o que vai acontecer com o
+  //: histórico — é a razão de a mudança ter três passos.
+  expect(screen.getByText(/mover não reescreve o histórico/)).toBeTruthy();
+
+  //: SALVAR A FICHA NÃO MOVE.
+  await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+  await waitFor(() => expect(editarInterlocutor).toHaveBeenCalled());
+  expect(mudarContatoDeCasa).not.toHaveBeenCalled();
+  expect(vi.mocked(editarInterlocutor).mock.calls[0][1]).toMatchObject({
+    instituicao_id: 'inst-1',
+  });
+});
+
+it('Mover conta quantas AGENDAS ficam na casa antiga', async () => {
+  //: É A FRASE QUE DISTINGUE AS DUAS LEITURAS: com zero agendas, a provável é
+  //: "errei a instituição no cadastro"; com sete, é "mudou de casa". E o
+  //: histórico não muda — `interacao.instituicao_id` é coluna própria da agenda.
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  await userEvent.selectOptions(screen.getByLabelText(/Mudar de casa/), 'inst-2');
+  await userEvent.click(screen.getByRole('button', { name: 'Mover' }));
+
+  expect(mudarContatoDeCasa).toHaveBeenCalledWith('pes-1', 'inst-2');
+  expect(
+    await screen.findByText(/7 agendas continuam registradas em XP Asset/),
+  ).toBeTruthy();
+});
+
+it('a casa DESATIVADA nao e oferecida', async () => {
+  //: O servidor recusa mover para casa desativada, porque a listagem de
+  //: contatos aplica os dois níveis e a pessoa ficaria invisível. Oferecer aqui
+  //: seria oferecer o que será recusado.
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  const seletor = screen.getByLabelText(/Mudar de casa/);
+  expect(seletor.textContent).toContain('Leto Capital');
+  expect(seletor.textContent).not.toContain('Casa Fechada');
+});
+
+it('a RECUSA da mudanca aparece, e o contato nao se move', async () => {
+  //: A recusa do servidor é informativa: "já existe um contato chamado X em
+  //: Leto Capital — se for a mesma pessoa, a resposta é fundir os dois em
+  //: 'Possíveis duplicados', e não mover um para cima do outro".
+  vi.mocked(mudarContatoDeCasa).mockRejectedValue(
+    new Error(
+      "Já existe um contato chamado 'Artur Santa' em 'Leto Capital' — a " +
+        "resposta é fundir os dois em 'Possíveis duplicados'.",
+    ),
+  );
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  await userEvent.selectOptions(screen.getByLabelText(/Mudar de casa/), 'inst-2');
+  await userEvent.click(screen.getByRole('button', { name: 'Mover' }));
+
+  expect(await screen.findByText(/Possíveis duplicados/)).toBeTruthy();
+  //: E O SELETOR CONTINUA LÁ, com a escolha: a pessoa pode ir resolver e voltar.
+  expect(screen.getByLabelText(/Mudar de casa/)).toHaveValue('inst-2');
 });

@@ -677,6 +677,46 @@ export function declararCadastroDistinto(
   });
 }
 
+/** O que a mudança de casa de um contato devolve. */
+export interface MudancaDeCasa {
+  id: string;
+  nome: string;
+  /** A casa de onde saiu; nulo em quem não tinha nenhuma. */
+  de: string | null;
+  para: string;
+  /** QUANTAS AGENDAS FICAM NA CASA ANTIGA.
+   *
+   *  É a frase que distingue as duas leituras: com zero, a provável é "errei a
+   *  instituição no cadastro"; com trinta, é "mudou de casa". O histórico não se
+   *  mexe — `interacao.instituicao_id` é coluna própria da agenda. */
+  agendas_que_ficam: number;
+}
+
+/** Passa um contato para outra instituição.
+ *
+ *  ENDEREÇO PRÓPRIO, e não `editarInterlocutor` com outra `instituicao_id`.
+ *  Aquele caminho existe e funciona — é por ele que a tela de cadastro grava a
+ *  ficha —, e é exatamente por isso que este também existe: ali a instituição
+ *  vai no meio de oito campos, com o mesmo peso de corrigir um e-mail.
+ *
+ *  A `0002` cria `unique (nome_normalizado, instituicao_id)` com o comentário
+ *  "mesmo nome em instituições diferentes são pessoas diferentes": a instituição
+ *  não é um atributo do contato, é parte da IDENTIDADE dele neste modelo.
+ *  Trocá-la é afirmar que a pessoa é a mesma de outro lugar.
+ *
+ *  O SERVIDOR RECUSA (422) quando já existe alguém com aquele nome no destino —
+ *  e a mensagem aponta para 'Possíveis duplicados', porque aí a resposta é
+ *  fundir, não mover um para cima do outro. */
+export function mudarContatoDeCasa(
+  id: string,
+  instituicaoId: string,
+): Promise<MudancaDeCasa> {
+  return requisitar<MudancaDeCasa>(
+    `/api/interlocutores/${id}/mudanca-de-casa`,
+    { method: 'POST', body: JSON.stringify({ instituicao_id: instituicaoId }) },
+  );
+}
+
 /** Um cadastro que nasceu de planilha e ninguém consolidou ainda. */
 export interface CadastroPendente {
   /** TEXTO, e não número: `tema` tem chave inteira e os outros três têm UUID.

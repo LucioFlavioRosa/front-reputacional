@@ -25,7 +25,7 @@
  *  `listarTemas` ao abrir.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   consolidarCadastro,
@@ -34,7 +34,9 @@ import {
   editarPessoaAegea,
   editarTema,
   listarTemas,
+  mudarContatoDeCasa,
   type CadastroPendente,
+  type MudancaDeCasa,
   type TemaCadastrado,
 } from '@/api/cliente';
 import {
@@ -550,19 +552,165 @@ function DoInterlocutor({ pendente, salvando, erro, aoFechar, executar, catalogo
         </Campo>
       </div>
 
-      {/* A INSTITUIÇÃO NÃO SE TROCA AQUI, e é a decisão mais importante desta
-          ficha. "Mesmo nome em instituições diferentes são pessoas diferentes",
-          diz a `0002` — mudar a casa de um contato não é corrigir um campo, é
-          dizer que ele é outra pessoa. Quem apareceu em duas instituições na
-          mesma planilha nasceu DUAS VEZES de propósito, e a pergunta da fila é
-          se são a mesma; respondê-la é fundir ou apagar, não editar. */}
-      <p style={{ margin: '14px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-        {`Fala por: ${casa?.nome ?? '— sem instituição —'}. A instituição de um ` +
-          'contato não se troca por aqui: mesmo nome em instituições diferentes ' +
-          'são pessoas diferentes. Se este contato é o mesmo de outra casa, a ' +
-          'resposta está em "Possíveis duplicados".'}
-      </p>
+      {/* A MUDANÇA DE CASA, e ela NÃO é um campo do formulário.
+          "Mesmo nome em instituições diferentes são pessoas diferentes", diz a
+          `0002`: a instituição é parte da IDENTIDADE do contato neste modelo.
+          Num `<select>` ao lado do cargo, ela teria o mesmo peso de corrigir um
+          e-mail — então é um gesto à parte, com confirmação, e salvar a ficha
+          NÃO a inclui. */}
+      <MudarDeCasa
+        contato={registro}
+        casaAtual={casa?.nome ?? null}
+        catalogo={catalogo}
+        aoMudar={aoFechar}
+      />
     </Dialogo>
+  );
+}
+
+/** Mover o contato para outra instituição — escolher, confirmar, e ler o que
+ *  ficou atrás.
+ *
+ *  TRÊS PASSOS, e não um `<select>` que grava: escolher a casa, LER o que vai
+ *  acontecer, e confirmar. O meio é a razão de existir — é ali que a tela diz
+ *  quantas agendas ficam na casa antiga, que é a frase que distingue "mudou de
+ *  casa" de "eu errei a instituição no cadastro".
+ *
+ *  FORA DOS BOTÕES DO DIÁLOGO de propósito: "Salvar" grava a ficha e não mexe na
+ *  casa. Se a mudança fosse junto, quem abriu para corrigir um e-mail levaria o
+ *  contato de instituição sem ter pedido.
+ */
+function MudarDeCasa({
+  contato,
+  casaAtual,
+  catalogo,
+  aoMudar,
+}: {
+  contato: { id: string; nome: string };
+  casaAtual: string | null;
+  catalogo: Comum['catalogo'];
+  aoMudar: () => void;
+}) {
+  const [escolhida, definirEscolhida] = useState('');
+  const [movendo, definirMovendo] = useState(false);
+  const [erro, definirErro] = useState('');
+  const [feito, definirFeito] = useState<MudancaDeCasa | null>(null);
+
+  const casas = useMemo(
+    () =>
+      [...catalogo.instituicoes.values()]
+        //: SÓ AS ATIVAS: o servidor recusa mover para casa desativada, porque a
+        //: listagem de contatos aplica os dois níveis e a pessoa ficaria
+        //: invisível. Oferecer aqui seria oferecer o que será recusado.
+        .filter((i) => i.ativo)
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    [catalogo],
+  );
+
+  if (feito) {
+    return (
+      <div
+        role="status"
+        style={{
+          marginTop: 14,
+          padding: 12,
+          borderRadius: 8,
+          background: 'var(--cinza-0)',
+          fontSize: 12,
+        }}
+      >
+        {`${feito.nome} passou a falar por ${feito.para}. ` +
+          (feito.agendas_que_ficam === 0
+            ? 'Não havia agenda nenhuma na casa anterior.'
+            : `${feito.agendas_que_ficam} ${
+                feito.agendas_que_ficam === 1 ? 'agenda continua' : 'agendas continuam'
+              } registradas em ${feito.de} — o histórico não muda.`)}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        paddingTop: 14,
+        borderTop: '1px solid var(--cinza-0)',
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--cinza-2)' }}>
+        {`Fala por: ${casaAtual ?? '— sem instituição —'}.`}
+      </p>
+
+      {erro ? <FaixaDeErro mensagem={erro} /> : null}
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 10,
+          flexWrap: 'wrap',
+          marginTop: 8,
+        }}
+      >
+        <Campo
+          rotulo="Mudar de casa"
+          ajuda={
+            'A instituição de um contato é parte da identidade dele: "mesmo nome ' +
+            'em instituições diferentes são pessoas diferentes". Por isso a ' +
+            'mudança é um gesto à parte, e salvar a ficha não a inclui.'
+          }
+        >
+          <select
+            style={estiloDeEntrada}
+            value={escolhida}
+            onChange={(e) => {
+              definirEscolhida(e.target.value);
+              definirErro('');
+            }}
+          >
+            <option value="">Escolha a nova instituição</option>
+            {casas.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Botao
+          desabilitado={!escolhida || movendo}
+          aoClicar={() => {
+            definirMovendo(true);
+            definirErro('');
+            mudarContatoDeCasa(contato.id, escolhida)
+              .then((m) => {
+                definirFeito(m);
+                //: AVISA QUEM MONTOU: a fila relê, e a linha deste contato passa
+                //: a mostrar a casa nova no `contexto`.
+                aoMudar();
+              })
+              .catch((f: Error) => definirErro(f.message))
+              .finally(() => definirMovendo(false));
+          }}
+          titulo={
+            'Passa o contato para a instituição escolhida. As agendas antigas ' +
+            'continuam registradas na casa anterior — o histórico não muda.'
+          }
+        >
+          {movendo ? 'Movendo…' : 'Mover'}
+        </Botao>
+      </div>
+
+      {/* A CONFIRMAÇÃO É O TEXTO, e aparece só depois de escolher: um aviso
+          permanente seria lido como enfeite, e este precisa ser lido. */}
+      {escolhida ? (
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--cinza-3)' }}>
+          {`${contato.nome} passará a falar por ` +
+            `${casas.find((c) => c.id === escolhida)?.nome}. As agendas em que ` +
+            `ele participou continuam registradas em ${casaAtual ?? 'nenhuma casa'} — ` +
+            'mover não reescreve o histórico.'}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

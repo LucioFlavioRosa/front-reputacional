@@ -84,6 +84,11 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
   criarInterlocutor: () => cliente.criarInterlocutor({ nome: 'Ana', instituicao_id: 'id-1' }),
   editarInterlocutor: () => cliente.editarInterlocutor('id-2', { nome: 'Ana', instituicao_id: 'id-1' }),
   removerInterlocutor: () => cliente.removerInterlocutor('id-2'),
+  //: A MUDANÇA DE CASA de um contato. Escreve em `/api/interlocutores`, que
+  //: é rota de catálogo — e a casa de um contato aparece em toda tela que o
+  //: oferece, então o aviso tem de sair. Esta âncora apontou a função no
+  //: instante em que ela nasceu, como fez com as duas confirmações.
+  mudarContatoDeCasa: () => cliente.mudarContatoDeCasa('id-2', 'id-1'),
   removerInstituicao: () => cliente.removerInstituicao('id-1'),
   acrescentarNoDicionario: () => cliente.acrescentarNoDicionario('esferas', { nome: 'Distrital' }),
   editarNoDicionario: () => cliente.editarNoDicionario('esferas', 7, { nome: 'Distrital' }),
