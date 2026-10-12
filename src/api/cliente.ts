@@ -688,8 +688,19 @@ export interface MudancaDeCasa {
    *
    *  É a frase que distingue as duas leituras: com zero, a provável é "errei a
    *  instituição no cadastro"; com trinta, é "mudou de casa". O histórico não se
-   *  mexe — `interacao.instituicao_id` é coluna própria da agenda. */
+   *  mexe — `interacao.instituicao_id` é coluna própria da agenda.
+   *
+   *  SÓ AS DA CASA ANTIGA, e isto foi um achado de revisão: a primeira versão
+   *  contava todas as agendas do contato, inclusive as de uma terceira
+   *  instituição, e inflava a frase da confirmação. */
   agendas_que_ficam: number;
+  /** SE O CONTATO SAIU DA FILA DE REVISÃO com esta mudança.
+   *
+   *  Mover É a resposta à pergunta que a fila fazia — "confirme se são a mesma
+   *  pessoa, se ela mudou de casa, ou se são homônimas" —, então ela se encerra
+   *  aqui. `false` quando o contato não estava na fila: a tela não deve anunciar
+   *  o que não houve. */
+  consolidou: boolean;
 }
 
 /** Passa um contato para outra instituição.

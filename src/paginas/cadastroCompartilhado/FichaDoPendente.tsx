@@ -621,10 +621,16 @@ function MudarDeCasa({
       >
         {`${feito.nome} passou a falar por ${feito.para}. ` +
           (feito.agendas_que_ficam === 0
-            ? 'Não havia agenda nenhuma na casa anterior.'
+            ? feito.de
+              ? `Não havia agenda nenhuma em ${feito.de}.`
+              : 'Ele não tinha instituição antes.'
             : `${feito.agendas_que_ficam} ${
                 feito.agendas_que_ficam === 1 ? 'agenda continua' : 'agendas continuam'
-              } registradas em ${feito.de} — o histórico não muda.`)}
+              } registradas em ${feito.de} — o histórico não muda.`) +
+          //: E A PENDÊNCIA SE ENCERROU, quando havia uma. Mover é a resposta à
+          //: pergunta que a fila fazia, e dizer isso é o que faz a pessoa
+          //: entender por que a linha vai desaparecer da fila.
+          (feito.consolidou ? ' Saiu da fila de conferência.' : '')}
       </div>
     );
   }

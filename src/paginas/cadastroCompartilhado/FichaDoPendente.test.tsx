@@ -131,6 +131,7 @@ beforeEach(() => {
     de: 'XP Asset',
     para: 'Leto Capital',
     agendas_que_ficam: 7,
+    consolidou: true,
   });
 });
 
@@ -500,4 +501,57 @@ it('a RECUSA da mudanca aparece, e o contato nao se move', async () => {
   expect(await screen.findByText(/Possíveis duplicados/)).toBeTruthy();
   //: E O SELETOR CONTINUA LÁ, com a escolha: a pessoa pode ir resolver e voltar.
   expect(screen.getByLabelText(/Mudar de casa/)).toHaveValue('inst-2');
+});
+
+it('mover diz que a pendencia se ENCERROU', async () => {
+  //: ACHADO DE REVISÃO, e um erro de raciocínio meu: eu havia decidido não mexer
+  //: na pendência porque "uma mudança deliberada é uma decisão, não uma dúvida".
+  //:
+  //: O OUTRO LADO É O QUE IMPORTA: "não precisa marcar dúvida nova; precisa
+  //: ENCERRAR a dúvida antiga". O motivo que a fila mostrava diz literalmente
+  //: "confirme se são a mesma pessoa, SE ELA MUDOU DE CASA, ou se são
+  //: homônimas" — mover é a resposta.
+  //:
+  //: E A TELA DIZ ISSO porque é o que faz a pessoa entender por que a linha vai
+  //: desaparecer da fila.
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  await userEvent.selectOptions(screen.getByLabelText(/Mudar de casa/), 'inst-2');
+  await userEvent.click(screen.getByRole('button', { name: 'Mover' }));
+
+  expect(await screen.findByText(/Saiu da fila de conferência/)).toBeTruthy();
+});
+
+it('mover quem NAO estava na fila nao anuncia o que nao houve', async () => {
+  //: O OUTRO LADO DO BOOLEANO. Dizer "saiu da fila" para quem nunca esteve nela
+  //: ensina a pessoa a desconfiar das outras frases da tela.
+  vi.mocked(mudarContatoDeCasa).mockResolvedValue({
+    id: 'pes-1',
+    nome: 'Artur Santa',
+    de: 'XP Asset',
+    para: 'Leto Capital',
+    agendas_que_ficam: 0,
+    consolidou: false,
+  });
+  render(
+    <FichaDoPendente
+      pendente={{ ...PENDENTE_INSTITUICAO, id: 'pes-1', tipo: 'interlocutor', nome: 'Artur Santa' }}
+      aoFechar={vi.fn()}
+    />,
+  );
+  await screen.findByDisplayValue('Artur Santa');
+
+  await userEvent.selectOptions(screen.getByLabelText(/Mudar de casa/), 'inst-2');
+  await userEvent.click(screen.getByRole('button', { name: 'Mover' }));
+
+  //: SEM AGENDA NENHUMA, a frase diz isso — e é o sinal de "errei a instituição
+  //: no cadastro", não de "mudou de casa".
+  expect(await screen.findByText(/Não havia agenda nenhuma em XP Asset/)).toBeTruthy();
+  expect(screen.queryByText(/Saiu da fila/)).toBeNull();
 });
