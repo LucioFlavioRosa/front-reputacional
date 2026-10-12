@@ -74,6 +74,37 @@ export class ErroDaApi extends Error {
   }
 }
 
+/** A mensagem de uma falha — e ela NUNCA fala de sintaxe de JSON.
+ *
+ *  Três casos, do mais preciso ao menos:
+ *
+ *  1. O BACK EXPLICOU: `detalhe` (nosso) ou `detail` (do FastAPI). O domínio
+ *     já escreve em português, e não inventamos texto por cima.
+ *  2. O CORPO NÃO ERA JSON: alguém entre o navegador e a API respondeu no
+ *     lugar dela. O que importa dizer é o status, a rota e o tipo que veio —
+ *     é o trio que localiza a camada, e é o que faltava na tela quando isto
+ *     aconteceu na Azure.
+ *  3. FALHOU SEM CORPO: o status e a rota, que é tudo que existe.
+ */
+function mensagemDaFalha(
+  resposta: Response,
+  caminho: string,
+  dados: { detalhe?: string; detail?: string } | null,
+  eraJson: boolean,
+): string {
+  if (dados?.detalhe) return dados.detalhe;
+  if (dados?.detail) return dados.detail;
+  if (!eraJson) {
+    const tipo = resposta.headers.get('content-type') ?? 'tipo não declarado';
+    return (
+      `Falha ${resposta.status} em ${caminho}: o servidor respondeu ${tipo} em vez de JSON. ` +
+      `Isso costuma ser a infraestrutura respondendo no lugar da API — sessão expirada, ` +
+      `tempo esgotado no gateway, ou o serviço fora do ar.`
+    );
+  }
+  return `Falha ${resposta.status} em ${caminho}.`;
+}
+
 /**
  * Token anti-CSRF da sessão corrente.
  *
@@ -167,19 +198,55 @@ async function requisitar<T>(
   }
 
   const corpo = await resposta.text();
-  const dados = corpo ? JSON.parse(corpo) : null;
 
-  if (!resposta.ok) {
-    const erro = new ErroDaApi(
-      resposta.status,
-      dados?.detalhe ?? dados?.detail ?? `Falha ${resposta.status} em ${caminho}.`,
-    );
+  // O `JSON.parse` NÃO VEM ANTES DA CONFERÊNCIA DO STATUS — e vinha.
+  //
+  // Quando uma camada de infraestrutura responde no lugar da API, o corpo é
+  // HTML. MEDIDO no ambiente da Azure em 12/10/2026, subindo planilha: o back
+  // devolveu `400`, este nginx repassou com ZERO byte de corpo, e o ingress do
+  // Container Apps preencheu o vazio com a página de erro dele. O `JSON.parse`
+  // estourava antes da linha que diz o status, e a tela mostrava
+  //
+  //     Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  //
+  // — uma reclamação de sintaxe no lugar de "falha 400 ao subir a planilha".
+  //
+  // E LOCALMENTE NUNCA APARECEU, o que não é sorte: sem ingress no caminho, o
+  // 400 chega com corpo vazio, `dados` fica nulo e a mensagem abaixo sai certa.
+  // O defeito só existia onde ninguém depura.
+  let dados: { detalhe?: string; detail?: string } | null = null;
+  let eraJson = true;
+  if (corpo) {
+    try {
+      dados = JSON.parse(corpo);
+    } catch {
+      eraJson = false;
+    }
+  }
+
+  // CORPO QUE NÃO É JSON É FALHA, INCLUSIVE COM 200. Um 200 com HTML é a API
+  // não tendo respondido — roteamento, ou tela de login no lugar dela. Seguir
+  // com `dados` nulo empurraria o erro para a tela, longe da causa.
+  if (!resposta.ok || !eraJson) {
+    const erro = new ErroDaApi(resposta.status, mensagemDaFalha(resposta, caminho, dados, eraJson));
 
     // 5xx é defeito nosso e precisa aparecer. 4xx é o servidor recusando algo
     // esperado (filtro inválido, permissão) — registrar todos viraria ruído,
     // e o backend já os anota do lado dele.
-    if (resposta.status >= 500) {
-      registrarErro(erro, { caminho, status: resposta.status, metodo: opcoes.method ?? 'GET' });
+    //
+    // CORPO NÃO-JSON ENTRA SEMPRE, seja qual for o status: é a API não tendo
+    // respondido, e o backend não registra o que não chegou nele. Era
+    // justamente o caso da Azure, que não deixou rastro na telemetria.
+    if (resposta.status >= 500 || !eraJson) {
+      registrarErro(erro, {
+        caminho,
+        status: resposta.status,
+        metodo: opcoes.method ?? 'GET',
+        // O COMEÇO DO CORPO IDENTIFICA O AUTOR: o `<title>` de uma página de
+        // erro diz se foi ingress, WAF ou tela de login. Não é resposta da
+        // nossa API, então não há dado de ninguém aqui.
+        ...(eraJson ? {} : { corpoNaoEraJson: true, inicioDoCorpo: corpo.slice(0, 120) }),
+      });
     }
     throw erro;
   }
