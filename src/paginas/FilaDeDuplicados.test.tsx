@@ -100,18 +100,30 @@ it('Nao e o mesmo GRAVA a decisao, e nao funde', async () => {
   expect(fundirCadastro).not.toHaveBeenCalled();
 });
 
-it('depois de responder, a fila e relida', async () => {
+it('depois de responder, a fila NAO e relida', async () => {
+  //: ESTE TESTE INVERTEU, e a inversão é o pedido do dono do produto: "realmente
+  //: tem que fazer a busca sempre? não basta fazer uma vez quando expandi a tela
+  //: e depois só atualizar a lista?".
+  //:
+  //: NÃO PRECISA. O efeito de cada decisão é local e determinado, então a lista
+  //: nova sai de `semOCadastro`/`semOPar` — o servidor devolveria a mesma coisa
+  //: depois de 7,4 s de recálculo (medido: ~3.962 cadastros comparados par a par
+  //: com `difflib`), e eram 7,4 s POR DECISÃO, com 209 pares a decidir.
+  //:
+  //: A VERSÃO ANTERIOR DESTE TESTE exigia a segunda chamada. Ela estava certa
+  //: para o desenho de ontem e virou o oposto do que se quer: cada chamada aqui é
+  //: trabalho que ninguém pediu.
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
     name: 'valoreconomico não é Valor Econômico',
   });
-  vi.mocked(duplicadosDeCadastro).mockResolvedValue([]);
+  expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 
   await userEvent.click(botao);
 
-  //: A LINHA RESPONDIDA SAI. Sem a releitura, ela ficaria na tela com dois
-  //: botões que não têm mais o que fazer.
-  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+  await waitFor(() => expect(declararCadastroDistinto).toHaveBeenCalled());
+  //: A LINHA SAIU (medido em "a linha SAI NA HORA") e a busca NÃO rodou de novo.
+  expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 });
 
 it('a falha de carga NAO derruba a tela', async () => {
@@ -201,4 +213,185 @@ it('o TOTAL fica no titulo, e e ele que diz se o trabalho anda', async () => {
   await screen.findByText('perfil0');
 
   expect(screen.getByRole('button', { name: /Possíveis duplicados \(12\)/ })).toBeTruthy();
+});
+
+it('a linha SAI NA HORA, sem esperar a releitura', async () => {
+  //: O DEFEITO QUE ISTO PRENDE, relatado pelo dono do produto (12/10/2026): "ao
+  //: clicar em fundir ou não é o mesmo, demora a atualizar, parece que nada foi
+  //: feito".
+  //:
+  //: MEDIDO: `GET /api/instituicoes/duplicados` leva 7,4 s na base real — a fila
+  //: é recalculada comparando ~3.962 cadastros par a par com `difflib`. A tela
+  //: pagava isso A CADA decisão, e durante os 7,4 s a linha ficava ali, com os
+  //: botões reativados, idêntica ao que era antes do clique.
+  //:
+  //: POR QUE O TESTE ANTIGO NÃO PEGAVA: ele devolvia `[]` num mock que resolve no
+  //: mesmo tick, então provava "a linha sai depois da releitura" — que é verdade
+  //: e não é a pergunta. Aqui a releitura NUNCA resolve, que é o que mede o que a
+  //: pessoa vê enquanto o servidor recalcula.
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'valoreconomico não é Valor Econômico',
+  });
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+
+  await userEvent.click(botao);
+
+  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+});
+
+it('a CONTAGEM do titulo cai na hora, junto com a linha', async () => {
+  //: O NÚMERO É O QUE DIZ SE O TRABALHO ESTÁ ANDANDO — está no título por isso.
+  //: Um título que continua "(2)" depois de uma decisão desmente a tela.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    ...UM_PAR,
+    {
+      id: 'p2',
+      nome: 'outro handle',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      candidatos: [{ id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40 }],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'valoreconomico não é Valor Econômico',
+  });
+  expect(screen.getByRole('button', { name: /Possíveis duplicados \(2\)/ })).toBeTruthy();
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+  await userEvent.click(botao);
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /Possíveis duplicados \(1\)/ })).toBeTruthy(),
+  );
+});
+
+it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
+  //: FUNDIR NÃO TIRA UM PAR, TIRA UM CADASTRO. O perfil fundido deixa de existir,
+  //: então toda pergunta que o menciona — como quem sai OU como candidato — morre
+  //: com ele. Sem isto, a tela ofereceria fundir de novo algo que já não está no
+  //: banco, e o segundo clique viria 404.
+  //:
+  //: MEDIDO NA BASE REAL: `bmc.news` casa com DOIS veículos, então pergunta
+  //: repetida sobre o mesmo cadastro não é hipótese.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+      ],
+    },
+    {
+      id: 'p3',
+      nome: 'bmcnews',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      //: O MESMO `v1` aparece aqui como candidato. Fundir `bmc.news` em `v1` NÃO
+      //: apaga `v1` — ele é o sobrevivente —, então esta pergunta FICA.
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+  await userEvent.click(botao);
+
+  //: QUEM SAIU: `bmc.news`, e com ele a segunda pergunta dele (sobre `v9`).
+  await waitFor(() => expect(screen.queryByText('bmc.news')).toBeNull());
+  expect(screen.queryByText('BMC Notícias')).toBeNull();
+  //: QUEM FICOU: o sobrevivente continua sendo candidato de outra pergunta.
+  expect(screen.getByText('bmcnews')).toBeTruthy();
+});
+
+it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
+  //: ACHADO MÉDIA DE REVISÃO. A trava era do PAR, então uma pergunta com dois
+  //: candidatos deixava o segundo botão clicável durante a primeira decisão —
+  //: e, numa fusão, o segundo pedido fala de um cadastro que está saindo.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+      ],
+    },
+  ]);
+  //: A fusão fica EM VOO: é durante ela que o segundo botão tem de estar travado.
+  vi.mocked(fundirCadastro).mockReturnValue(new Promise(() => {}));
+
+  render(<FilaDeDuplicados />);
+  const primeiro = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  await userEvent.click(primeiro);
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole('button', { name: 'Fundir bmc.news em BMC Notícias' })
+        .hasAttribute('disabled'),
+    ).toBe(true),
+  );
+  expect(
+    screen.getByRole('button', { name: 'bmc.news não é BMC Notícias' }).hasAttribute('disabled'),
+  ).toBe(true);
+});
+
+it('FUNDIR passa as mencoes ao sobrevivente, onde ele aparecer', async () => {
+  //: O NÚMERO É LOAD-BEARING NESTA TELA: "é ele que diz qual é a linha com
+  //: história, e é sempre a linha com história que sobrevive". Sem releitura,
+  //: quem tem de passar as menções é o efeito local — e deixá-las velhas numa
+  //: outra pergunta sobre o MESMO sobrevivente faria a decisão seguinte ser
+  //: tomada com o número errado. A fusão não tem volta.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+    },
+    {
+      id: 'p3',
+      nome: 'bmcnews',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      //: O MESMO sobrevivente, em outra pergunta.
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  await userEvent.click(botao);
+
+  //: 50 + as 3 de quem saiu.
+  await waitFor(() =>
+    expect(screen.getByText(/Veículo de imprensa · 53 menções/)).toBeTruthy(),
+  );
+  expect(screen.queryByText(/50 menções/)).toBeNull();
 });

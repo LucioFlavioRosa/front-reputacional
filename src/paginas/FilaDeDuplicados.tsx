@@ -19,6 +19,33 @@
  *  O NÚMERO DE MENÇÕES está em cada lado de propósito: é ele que diz qual é a
  *  linha com história (`Valor Econômico` tem 86 de clipping; o handle tem 2), e
  *  é sempre a linha com história que sobrevive.
+ *
+ *  A DECISÃO APARECE NA HORA, e a releitura vai para segundo plano.
+ *
+ *  O DONO DO PRODUTO (12/10/2026): "ao clicar em fundir ou não é o mesmo, demora
+ *  a atualizar, parece que nada foi feito". MEDIDO: `GET
+ *  /api/instituicoes/duplicados` leva 7,4 s na base real — a fila é recalculada
+ *  comparando ~3.962 cadastros par a par com `difflib`, e o próprio caso de uso
+ *  escreve que "`ratio()` é caro". A tela pagava isso A CADA decisão, e o
+ *  `carregar()` não era aguardado: o `finally` reativava os botões na hora, e
+ *  durante sete segundos a linha ficava ali, idêntica ao que era antes do clique.
+ *
+ *  O EFEITO DE CADA RESPOSTA É LOCAL E DETERMINADO, então a tela o aplica sem
+ *  perguntar ao servidor: "não é o mesmo" tira UM par; fundir tira um CADASTRO
+ *  (e com ele toda pergunta que o menciona) e PASSA AS MENÇÕES ao sobrevivente.
+ *
+ *  E A BUSCA RODA UMA VEZ, na abertura da tela.
+ *
+ *  O DONO DO PRODUTO: "realmente tem que fazer a busca sempre? não basta fazer
+ *  uma vez quando expandi a tela e depois só atualizar a lista?". Não precisa, e
+ *  ele está certo: as três linhas acima são a lista nova, inteira. Recalcular
+ *  7,4 s para chegar ao mesmo resultado é trabalho que ninguém pediu — e eram 7,4
+ *  s POR DECISÃO, com 209 pares a decidir.
+ *
+ *  O QUE SE PERDE, e por que o preço não paga: um par que OUTRA pessoa decidiu
+ *  enquanto esta decidia continua na tela até a próxima abertura. Clicar nele
+ *  falha com a mensagem do servidor, que é o que a faixa de erro mostra — uma
+ *  mensagem rara contra sete segundos em cada clique.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -75,12 +102,76 @@ function mencoes(quantas: number): string {
 //: lista longa é lida só até onde a paciência vai.
 const POR_PAGINA = 10;
 
+/** A fila sem o cadastro que SAIU — nem perguntando, nem como candidato.
+ *
+ *  FUNDIR NÃO TIRA UM PAR, TIRA UM CADASTRO: quem sai deixa de existir, então
+ *  toda pergunta que o menciona morre com ele. Medido na base real, `bmc.news`
+ *  casa com DOIS veículos — pergunta repetida sobre o mesmo cadastro não é
+ *  hipótese. Sem isto a tela ofereceria fundir de novo algo que já não está no
+ *  banco, e o segundo clique viria 404.
+ *
+ *  E A PERGUNTA QUE PERDE O ÚLTIMO CANDIDATO SAI: não há mais nada a decidir
+ *  nela, e uma linha com dois botões sem efeito é pior que linha nenhuma.
+ *
+ *  AS MENÇÕES PASSAM PARA O SOBREVIVENTE, onde ele aparecer. É o que a fusão faz
+ *  no banco, e aqui esse número é LOAD-BEARING: "é ele que diz qual é a linha com
+ *  história, e é sempre a linha com história que sobrevive". Deixá-lo velho numa
+ *  outra pergunta sobre o mesmo sobrevivente faria a próxima decisão ser tomada
+ *  com o número errado — e a fusão não tem volta. */
+function semOCadastro(
+  fila: CadastroDuplicado[],
+  queSaiuId: string,
+  sobreviventeId: string,
+  mencoesQuePassam: number,
+): CadastroDuplicado[] {
+  const somar = (quantas: number, id: string) =>
+    id === sobreviventeId ? quantas + mencoesQuePassam : quantas;
+  return fila
+    .filter((perfil) => perfil.id !== queSaiuId)
+    .map((perfil) => ({
+      ...perfil,
+      mencoes: somar(perfil.mencoes, perfil.id),
+      candidatos: perfil.candidatos
+        .filter((c) => c.id !== queSaiuId)
+        .map((c) => ({ ...c, mencoes: somar(c.mencoes, c.id) })),
+    }))
+    .filter((perfil) => perfil.candidatos.length > 0);
+}
+
+/** A fila sem UM par: "não é o mesmo" vale para aquele par e só para ele.
+ *
+ *  OS DOIS CADASTROS CONTINUAM NO BANCO — a decisão é sobre a relação entre
+ *  eles, e cada um pode seguir sendo pergunta contra outro candidato. */
+function semOPar(
+  fila: CadastroDuplicado[],
+  perfilId: string,
+  candidatoId: string,
+): CadastroDuplicado[] {
+  return fila
+    .map((perfil) =>
+      perfil.id === perfilId
+        ? {
+            ...perfil,
+            candidatos: perfil.candidatos.filter((c) => c.id !== candidatoId),
+          }
+        : perfil,
+    )
+    .filter((perfil) => perfil.candidatos.length > 0);
+}
+
 export function FilaDeDuplicados() {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
   const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
 
+  //: A GUARDA DE ORDEM SAIU JUNTO COM A RELEITURA POR DECISÃO.
+  //:
+  //: Ela existia porque três decisões seguidas deixavam três cargas no ar, e a
+  //: primeira a voltar ressuscitaria o que as outras resolveram. Com a busca
+  //: rodando UMA VEZ, há um chamador só e não há corrida — e guarda que não
+  //: guarda nada é comentário fingindo ser código. Se um dia a tela ganhar um
+  //: "atualizar", a guarda volta com ele; o desenho está na `FilaDeRevisao`.
   const carregar = useCallback(() => {
     duplicadosDeCadastro()
       .then((lista) => {
@@ -102,7 +193,18 @@ export function FilaDeDuplicados() {
     candidato: CandidatoDeFusao,
     resposta: 'fundir' | 'distinto',
   ) {
-    definirEmCurso(`${perfil.id}:${candidato.id}`);
+    //: A TRAVA É DA PERGUNTA, e não do par — achado MÉDIA de revisão.
+    //:
+    //: ERA `${perfil.id}:${candidato.id}`, e então uma pergunta com DOIS
+    //: candidatos deixava o segundo botão clicável enquanto a primeira decisão
+    //: estava em voo. Para "fundir" isso é pior que uma corrida: o cadastro de
+    //: `perfil.id` está SAINDO, então o segundo pedido fala de um registro que
+    //: já não existe — volta 404 depois de a linha ter desaparecido, e a pessoa
+    //: lê uma faixa de erro sobre algo que ela viu dar certo.
+    //:
+    //: E `bmc.news` CASA COM DOIS VEÍCULOS na base real: pergunta com dois
+    //: candidatos não é hipótese.
+    definirEmCurso(perfil.id);
     definirErro('');
     try {
       if (resposta === 'fundir') {
@@ -110,10 +212,19 @@ export function FilaDeDuplicados() {
         //: uma rota de catálogo, e o barramento de sincronização recarrega o
         //: catálogo inteiro sozinho. Ver `dominio/sincronizacao.ts`.
         await fundirCadastro(perfil.id, candidato.id);
+        definirFila((antes) =>
+          antes
+            ? semOCadastro(antes, perfil.id, candidato.id, perfil.mencoes)
+            : antes,
+        );
       } else {
         await declararCadastroDistinto(perfil.id, candidato.id);
+        definirFila((antes) =>
+          antes ? semOPar(antes, perfil.id, candidato.id) : antes,
+        );
       }
-      carregar();
+      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira; o
+      //: servidor devolveria a mesma coisa depois de 7,4 s de recálculo.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {
@@ -181,7 +292,7 @@ export function FilaDeDuplicados() {
             </p>
 
             {perfil.candidatos.map((candidato) => {
-              const ocupado = emCurso === `${perfil.id}:${candidato.id}`;
+              const ocupado = emCurso === perfil.id;
               return (
                 <div
                   key={candidato.id}
