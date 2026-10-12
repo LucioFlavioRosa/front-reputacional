@@ -168,9 +168,135 @@ interface ComoLer {
    *  paralelo seria um caminho que falha sem ninguém saber, e o teste que conta
    *  as chamadas a `fetch` neste arquivo existe justamente para impedir isso. */
   comoBlob?: boolean;
+  /** Vai à rede sempre, sem olhar nem alimentar o que está guardado.
+   *
+   *  Para o que mede o AGORA — sonda de saúde, contagem que a tela mostra como
+   *  "neste instante". */
+  semGuardar?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// O QUE JÁ FOI BUSCADO, GUARDADO AQUI — e por que aqui, e não nas telas.
+//
+// O PROBLEMA MEDIDO (12/10/2026). O painel não tinha camada de dado nenhuma, e
+// as abas são renderizadas por `{aba === 'x' ? <Componente/> : null}`: sair da
+// aba DESMONTA o componente, voltar REMONTA, e o `useEffect` dele busca tudo de
+// novo. Na telemetria da Azure, em 36 h, as quatro rotas de dado de referência
+// apareceram com a MESMA contagem — `dicionarios` 17, `referencias` 17,
+// `pessoas-aegea` 17, `alegacoes` 17 —, uma por abertura de tela, com p95 de
+// 1,8 s na primeira. Era isso que fazia cada troca de aba parecer travada.
+//
+// POR QUE NA CAMADA HTTP. Aqui a correção serve TODAS as telas de uma vez, sem
+// componente nenhum precisar saber — e as telas já ficaram prontas: uma função
+// nova de leitura entra no cache sem quem a escreveu pensar nisso. A alternativa
+// (uma biblioteca de dados) mexeria em todos os componentes e traria dependência
+// nova; isto é um mapa e um relógio.
+//
+// NÃO SERVE DADO VENCIDO. Devolver o velho e revalidar atrás pintaria a tela
+// instantânea sempre — mas sem assinatura o componente nunca receberia o valor
+// novo, e a pessoa leria número velho sem saber. Então: dentro do prazo, não vai
+// à rede; fora do prazo, vai e espera. O prazo é escolhido pelo que o dado é.
+// ---------------------------------------------------------------------------
+
+/** O prazo do dado que muda a cada registro — a janela que cobre trocar de aba
+ *  e voltar, sem cobrir uma pausa de café. */
+const PRAZO_PADRAO_MS = 20_000;
+
+/** O prazo do CATÁLOGO: dicionários, opções, pessoas, referências, papéis.
+ *
+ *  Pode ser longo porque não depende do relógio para se corrigir — toda escrita
+ *  de catálogo limpa o guardado (ver `requisitar`), que é a mesma regra do
+ *  `catalogoMudou` logo abaixo. O prazo só existe para o caso de alguém mudar o
+ *  cadastro em OUTRA aba do navegador. */
+const PRAZO_DE_CATALOGO_MS = 5 * 60_000;
+
+const ROTAS_DE_CATALOGO = [
+  '/api/dicionarios',
+  '/api/referencias',
+  '/api/pessoas-aegea',
+  '/api/acessos/papeis',
+  '/api/score/opcoes',
+  '/api/score/riscos/opcoes',
+];
+
+function prazoDe(caminho: string): number {
+  return ROTAS_DE_CATALOGO.some((rota) => caminho.startsWith(rota))
+    ? PRAZO_DE_CATALOGO_MS
+    : PRAZO_PADRAO_MS;
+}
+
+interface Guardado {
+  quando: number;
+  dados: unknown;
+}
+
+const GUARDADO = new Map<string, Guardado>();
+
+/** As buscas em voo, para que duas telas que montam juntas façam UM pedido.
+ *
+ *  Não é refinamento: ao abrir o painel, componentes irmãos pedem a mesma rota
+ *  no mesmo tique, e sem isto são dois `fetch` idênticos esperando a mesma
+ *  resposta. */
+const EM_VOO = new Map<string, Promise<unknown>>();
+
+/** Esquece tudo o que foi guardado.
+ *
+ *  Chamado por toda escrita que deu certo, e exportado para os testes — um mapa
+ *  de módulo sobrevive entre testes do mesmo arquivo, e um teste que herda a
+ *  resposta de outro é um teste que mente. */
+export function limparCacheDaApi(): void {
+  GUARDADO.clear();
+  EM_VOO.clear();
 }
 
 async function requisitar<T>(
+  caminho: string,
+  opcoes: RequestInit = {},
+  como: ComoLer = {},
+): Promise<T> {
+  const metodo = (opcoes.method ?? 'GET').toUpperCase();
+  const guardavel = metodo === 'GET' && !como.comoBlob && !como.semGuardar;
+
+  if (!guardavel) {
+    const resultado = await buscarNaRede<T>(caminho, opcoes, como);
+    // TODA ESCRITA QUE DEU CERTO ESQUECE TUDO, e é de propósito grosso: uma
+    // interação gravada muda a série mensal, os KPIs, o dossiê e as contagens
+    // das lentes. Invalidar por rota exigiria uma segunda fonte de verdade
+    // sobre quem depende de quem — e ela divergiria em silêncio. O custo de
+    // limpar tudo é uma busca a mais depois de gravar, que é exatamente o que
+    // se quer depois de gravar.
+    //
+    // ENTRAR E SAIR TAMBÉM SÃO ESCRITAS (`POST /api/auth/...`), então a sessão
+    // seguinte não herda nada da anterior na mesma aba.
+    if (!METODOS_SEGUROS.has(metodo)) limparCacheDaApi();
+    return resultado;
+  }
+
+  const guardado = GUARDADO.get(caminho);
+  if (guardado && Date.now() - guardado.quando < prazoDe(caminho)) {
+    return guardado.dados as T;
+  }
+
+  const emVoo = EM_VOO.get(caminho);
+  if (emVoo) return emVoo as Promise<T>;
+
+  // FALHA NÃO É GUARDADA: o `.then` só grava no caminho de sucesso, e o
+  // `finally` tira o pedido de voo em qualquer caso. Guardar um erro faria uma
+  // falha momentânea de rede durar o prazo inteiro.
+  const promessa = buscarNaRede<T>(caminho, opcoes, como)
+    .then((dados) => {
+      GUARDADO.set(caminho, { quando: Date.now(), dados });
+      return dados;
+    })
+    .finally(() => {
+      EM_VOO.delete(caminho);
+    });
+
+  EM_VOO.set(caminho, promessa as Promise<unknown>);
+  return promessa;
+}
+
+async function buscarNaRede<T>(
   caminho: string,
   opcoes: RequestInit = {},
   como: ComoLer = {},
