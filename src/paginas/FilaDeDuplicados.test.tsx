@@ -24,6 +24,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
+import type { CadastroDuplicado } from '@/api/cliente';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 
 vi.mock('@/api/cliente', () => ({
@@ -101,17 +102,20 @@ it('Nao e o mesmo GRAVA a decisao, e nao funde', async () => {
 });
 
 it('depois de responder, a fila e relida', async () => {
+  //: ESTE TESTE MUDOU DE PREMISSA, e a antiga provava menos do que o nome dizia.
+  //: Ele devolvia `[]` num mock que resolve no mesmo tick e checava que a linha
+  //: saiu — o que passa hoje pelo EFEITO LOCAL, sem releitura nenhuma. A linha
+  //: que sai é medida em "a linha SAI NA HORA"; aqui se mede a RELEITURA, que é
+  //: o que o nome promete e o que reconcilia a tela com o servidor.
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
     name: 'valoreconomico não é Valor Econômico',
   });
-  vi.mocked(duplicadosDeCadastro).mockResolvedValue([]);
+  expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 
   await userEvent.click(botao);
 
-  //: A LINHA RESPONDIDA SAI. Sem a releitura, ela ficaria na tela com dois
-  //: botões que não têm mais o que fazer.
-  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+  await waitFor(() => expect(duplicadosDeCadastro).toHaveBeenCalledTimes(2));
 });
 
 it('a falha de carga NAO derruba a tela', async () => {
@@ -201,4 +205,139 @@ it('o TOTAL fica no titulo, e e ele que diz se o trabalho anda', async () => {
   await screen.findByText('perfil0');
 
   expect(screen.getByRole('button', { name: /Possíveis duplicados \(12\)/ })).toBeTruthy();
+});
+
+it('a linha SAI NA HORA, sem esperar a releitura', async () => {
+  //: O DEFEITO QUE ISTO PRENDE, relatado pelo dono do produto (12/10/2026): "ao
+  //: clicar em fundir ou não é o mesmo, demora a atualizar, parece que nada foi
+  //: feito".
+  //:
+  //: MEDIDO: `GET /api/instituicoes/duplicados` leva 7,4 s na base real — a fila
+  //: é recalculada comparando ~3.962 cadastros par a par com `difflib`. A tela
+  //: pagava isso A CADA decisão, e durante os 7,4 s a linha ficava ali, com os
+  //: botões reativados, idêntica ao que era antes do clique.
+  //:
+  //: POR QUE O TESTE ANTIGO NÃO PEGAVA: ele devolvia `[]` num mock que resolve no
+  //: mesmo tick, então provava "a linha sai depois da releitura" — que é verdade
+  //: e não é a pergunta. Aqui a releitura NUNCA resolve, que é o que mede o que a
+  //: pessoa vê enquanto o servidor recalcula.
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'valoreconomico não é Valor Econômico',
+  });
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+
+  await userEvent.click(botao);
+
+  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+});
+
+it('a CONTAGEM do titulo cai na hora, junto com a linha', async () => {
+  //: O NÚMERO É O QUE DIZ SE O TRABALHO ESTÁ ANDANDO — está no título por isso.
+  //: Um título que continua "(2)" depois de uma decisão desmente a tela.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    ...UM_PAR,
+    {
+      id: 'p2',
+      nome: 'outro handle',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      candidatos: [{ id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40 }],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'valoreconomico não é Valor Econômico',
+  });
+  expect(screen.getByRole('button', { name: /Possíveis duplicados \(2\)/ })).toBeTruthy();
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+  await userEvent.click(botao);
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /Possíveis duplicados \(1\)/ })).toBeTruthy(),
+  );
+});
+
+it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
+  //: FUNDIR NÃO TIRA UM PAR, TIRA UM CADASTRO. O perfil fundido deixa de existir,
+  //: então toda pergunta que o menciona — como quem sai OU como candidato — morre
+  //: com ele. Sem isto, a tela ofereceria fundir de novo algo que já não está no
+  //: banco, e o segundo clique viria 404.
+  //:
+  //: MEDIDO NA BASE REAL: `bmc.news` casa com DOIS veículos, então pergunta
+  //: repetida sobre o mesmo cadastro não é hipótese.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+      ],
+    },
+    {
+      id: 'p3',
+      nome: 'bmcnews',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      //: O MESMO `v1` aparece aqui como candidato. Fundir `bmc.news` em `v1` NÃO
+      //: apaga `v1` — ele é o sobrevivente —, então esta pergunta FICA.
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
+  await userEvent.click(botao);
+
+  //: QUEM SAIU: `bmc.news`, e com ele a segunda pergunta dele (sobre `v9`).
+  await waitFor(() => expect(screen.queryByText('bmc.news')).toBeNull());
+  expect(screen.queryByText('BMC Notícias')).toBeNull();
+  //: QUEM FICOU: o sobrevivente continua sendo candidato de outra pergunta.
+  expect(screen.getByText('bmcnews')).toBeTruthy();
+});
+
+it('a releitura em segundo plano RECONCILIA, sem travar a tela', async () => {
+  //: O OTIMISMO NÃO DISPENSA A VERDADE DO SERVIDOR. A tela responde na hora pelo
+  //: efeito local, e a releitura chega depois para corrigir o que o efeito local
+  //: não sabe — por exemplo um par que outra pessoa decidiu enquanto esta decidia.
+  let resolver: (valor: CadastroDuplicado[]) => void = () => {};
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'valoreconomico não é Valor Econômico',
+  });
+
+  vi.mocked(duplicadosDeCadastro).mockReturnValue(
+    new Promise((ok) => {
+      resolver = ok;
+    }),
+  );
+  await userEvent.click(botao);
+  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+
+  //: O servidor devolve uma pergunta que a tela não tinha.
+  resolver([
+    {
+      id: 'p9',
+      nome: 'apareceu depois',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      candidatos: [{ id: 'v9', nome: 'Veículo Nove', tipo: 'veiculo', mencoes: 7 }],
+    },
+  ]);
+
+  expect(await screen.findByText('apareceu depois')).toBeTruthy();
 });

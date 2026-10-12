@@ -19,9 +19,25 @@
  *  O NÚMERO DE MENÇÕES está em cada lado de propósito: é ele que diz qual é a
  *  linha com história (`Valor Econômico` tem 86 de clipping; o handle tem 2), e
  *  é sempre a linha com história que sobrevive.
+ *
+ *  A DECISÃO APARECE NA HORA, e a releitura vai para segundo plano.
+ *
+ *  O DONO DO PRODUTO (12/10/2026): "ao clicar em fundir ou não é o mesmo, demora
+ *  a atualizar, parece que nada foi feito". MEDIDO: `GET
+ *  /api/instituicoes/duplicados` leva 7,4 s na base real — a fila é recalculada
+ *  comparando ~3.962 cadastros par a par com `difflib`, e o próprio caso de uso
+ *  escreve que "`ratio()` é caro". A tela pagava isso A CADA decisão, e o
+ *  `carregar()` não era aguardado: o `finally` reativava os botões na hora, e
+ *  durante sete segundos a linha ficava ali, idêntica ao que era antes do clique.
+ *
+ *  O EFEITO DE CADA RESPOSTA É LOCAL E DETERMINADO, então a tela o aplica sem
+ *  perguntar ao servidor: "não é o mesmo" tira UM par; fundir tira um CADASTRO,
+ *  e com ele toda pergunta que o menciona. A releitura continua, atrás, para
+ *  trazer o que o efeito local não sabe — um par que outra pessoa decidiu
+ *  enquanto esta decidia.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   declararCadastroDistinto,
@@ -75,19 +91,73 @@ function mencoes(quantas: number): string {
 //: lista longa é lida só até onde a paciência vai.
 const POR_PAGINA = 10;
 
+/** A fila sem o cadastro que SAIU — nem perguntando, nem como candidato.
+ *
+ *  FUNDIR NÃO TIRA UM PAR, TIRA UM CADASTRO: quem sai deixa de existir, então
+ *  toda pergunta que o menciona morre com ele. Medido na base real, `bmc.news`
+ *  casa com DOIS veículos — pergunta repetida sobre o mesmo cadastro não é
+ *  hipótese. Sem isto a tela ofereceria fundir de novo algo que já não está no
+ *  banco, e o segundo clique viria 404.
+ *
+ *  E A PERGUNTA QUE PERDE O ÚLTIMO CANDIDATO SAI: não há mais nada a decidir
+ *  nela, e uma linha com dois botões sem efeito é pior que linha nenhuma. */
+function semOCadastro(
+  fila: CadastroDuplicado[],
+  queSaiuId: string,
+): CadastroDuplicado[] {
+  return fila
+    .filter((perfil) => perfil.id !== queSaiuId)
+    .map((perfil) => ({
+      ...perfil,
+      candidatos: perfil.candidatos.filter((c) => c.id !== queSaiuId),
+    }))
+    .filter((perfil) => perfil.candidatos.length > 0);
+}
+
+/** A fila sem UM par: "não é o mesmo" vale para aquele par e só para ele.
+ *
+ *  OS DOIS CADASTROS CONTINUAM NO BANCO — a decisão é sobre a relação entre
+ *  eles, e cada um pode seguir sendo pergunta contra outro candidato. */
+function semOPar(
+  fila: CadastroDuplicado[],
+  perfilId: string,
+  candidatoId: string,
+): CadastroDuplicado[] {
+  return fila
+    .map((perfil) =>
+      perfil.id === perfilId
+        ? {
+            ...perfil,
+            candidatos: perfil.candidatos.filter((c) => c.id !== candidatoId),
+          }
+        : perfil,
+    )
+    .filter((perfil) => perfil.candidatos.length > 0);
+}
+
 export function FilaDeDuplicados() {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
   const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
 
+  //: QUAL CARGA É A ATUAL — o mesmo desenho da `FilaDeRevisao`, e aqui a corrida
+  //: é MAIS provável do que lá: a releitura leva 7,4 s e a tela deixou de
+  //: esperá-la, então decidir três pares seguidos deixa três cargas no ar. Sem a
+  //: guarda, a primeira a voltar traz a fila de ANTES das outras duas decisões e
+  //: RESSUSCITA na tela o que já foi resolvido.
+  const atual = useRef(0);
+
   const carregar = useCallback(() => {
+    const minhaVez = ++atual.current;
     duplicadosDeCadastro()
       .then((lista) => {
+        if (minhaVez !== atual.current) return;
         definirFila(lista);
         definirErro('');
       })
       .catch((falha: Error) => {
+        if (minhaVez !== atual.current) return;
         //: A FILA É ACESSÓRIA: ela não pode derrubar o cadastro inteiro. O erro
         //: aparece no lugar dela e o resto da tela segue funcionando.
         definirFila([]);
@@ -110,9 +180,18 @@ export function FilaDeDuplicados() {
         //: uma rota de catálogo, e o barramento de sincronização recarrega o
         //: catálogo inteiro sozinho. Ver `dominio/sincronizacao.ts`.
         await fundirCadastro(perfil.id, candidato.id);
+        definirFila((antes) => (antes ? semOCadastro(antes, perfil.id) : antes));
       } else {
         await declararCadastroDistinto(perfil.id, candidato.id);
+        definirFila((antes) =>
+          antes ? semOPar(antes, perfil.id, candidato.id) : antes,
+        );
       }
+      //: A RELEITURA FICA, mas ATRÁS: ninguém espera por ela. Ela é a verdade do
+      //: servidor chegando para corrigir o que o efeito local não sabe.
+      //:
+      //: NÃO AGUARDADA DE PROPÓSITO, e isto já era verdade antes — a diferença é
+      //: que agora a tela não depende dela para mostrar a decisão.
       carregar();
     } catch (falha) {
       definirErro((falha as Error).message);
