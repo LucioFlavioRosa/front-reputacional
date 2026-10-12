@@ -172,7 +172,18 @@ export function FilaDeDuplicados() {
     candidato: CandidatoDeFusao,
     resposta: 'fundir' | 'distinto',
   ) {
-    definirEmCurso(`${perfil.id}:${candidato.id}`);
+    //: A TRAVA É DA PERGUNTA, e não do par — achado MÉDIA de revisão.
+    //:
+    //: ERA `${perfil.id}:${candidato.id}`, e então uma pergunta com DOIS
+    //: candidatos deixava o segundo botão clicável enquanto a primeira decisão
+    //: estava em voo. Para "fundir" isso é pior que uma corrida: o cadastro de
+    //: `perfil.id` está SAINDO, então o segundo pedido fala de um registro que
+    //: já não existe — volta 404 depois de a linha ter desaparecido, e a pessoa
+    //: lê uma faixa de erro sobre algo que ela viu dar certo.
+    //:
+    //: E `bmc.news` CASA COM DOIS VEÍCULOS na base real: pergunta com dois
+    //: candidatos não é hipótese.
+    definirEmCurso(perfil.id);
     definirErro('');
     try {
       if (resposta === 'fundir') {
@@ -260,7 +271,7 @@ export function FilaDeDuplicados() {
             </p>
 
             {perfil.candidatos.map((candidato) => {
-              const ocupado = emCurso === `${perfil.id}:${candidato.id}`;
+              const ocupado = emCurso === perfil.id;
               return (
                 <div
                   key={candidato.id}

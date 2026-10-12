@@ -106,7 +106,14 @@ it('depois de responder, a fila e relida', async () => {
   //: Ele devolvia `[]` num mock que resolve no mesmo tick e checava que a linha
   //: saiu — o que passa hoje pelo EFEITO LOCAL, sem releitura nenhuma. A linha
   //: que sai é medida em "a linha SAI NA HORA"; aqui se mede a RELEITURA, que é
-  //: o que o nome promete e o que reconcilia a tela com o servidor.
+  //: o que o nome promete.
+  //:
+  //: E SÓ A CHAMADA, de propósito — achado BAIXA de revisão, respondido e não
+  //: consertado: este teste passaria se a resposta da releitura fosse ignorada.
+  //: Quem mede o EFEITO dela é "a releitura em segundo plano RECONCILIA", e quem
+  //: mede o descarte da velha é "a releitura VELHA ... é DESCARTADA". Repetir a
+  //: asserção aqui faria três testes caírem juntos pelo mesmo motivo, e um teste
+  //: que cai junto com outro não diz onde está o defeito.
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
     name: 'valoreconomico não é Valor Econômico',
@@ -307,6 +314,110 @@ it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
   expect(screen.queryByText('BMC Notícias')).toBeNull();
   //: QUEM FICOU: o sobrevivente continua sendo candidato de outra pergunta.
   expect(screen.getByText('bmcnews')).toBeTruthy();
+});
+
+it('a releitura VELHA que volta depois de uma decisao nova e DESCARTADA', async () => {
+  //: ACHADO BAIXA DE REVISÃO, e ele estava certo: os testes provavam que uma
+  //: releitura pendente consegue escrever, e NÃO provavam a parte arriscada da
+  //: mudança — descartar a releitura velha que volta depois de uma decisão mais
+  //: nova. Sem este teste, uma regressão na guarda de ordem ressuscitaria linhas
+  //: já resolvidas sem nada acusar.
+  //:
+  //: E A JANELA AQUI É DE SETE SEGUNDOS: decidir dois pares seguidos deixa duas
+  //: releituras no ar, e a primeira carrega a fila de ANTES da segunda decisão.
+  const PAR2 = {
+    id: 'p2',
+    nome: 'outro handle',
+    tipo: 'perfil_rede',
+    cargo: null,
+    mencoes: 1,
+    candidatos: [{ id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40 }],
+  };
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([...UM_PAR, PAR2]);
+
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+
+  const resolvers: ((valor: CadastroDuplicado[]) => void)[] = [];
+  vi.mocked(duplicadosDeCadastro).mockImplementation(
+    () =>
+      new Promise((ok) => {
+        resolvers.push(ok);
+      }),
+  );
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'valoreconomico não é Valor Econômico' }),
+  );
+  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'outro handle não é Outro Veículo' }),
+  );
+  await waitFor(() => expect(screen.queryByText('outro handle')).toBeNull());
+
+  expect(resolvers.length).toBe(2);
+
+  //: A PRIMEIRA releitura volta agora, com a fila de ANTES da segunda decisão.
+  resolvers[0]([PAR2]);
+  //: Dois ticks para o `.then` do mock rodar. Se a guarda falhar, há escrita de
+  //: estado aqui — e `outro handle` volta à tela.
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(screen.queryByText('outro handle')).toBeNull();
+
+  //: E A MAIS NOVA ESCREVE: descartar a velha não pode significar descartar
+  //: todas, senão a tela nunca mais se reconcilia com o servidor.
+  resolvers[1]([
+    {
+      id: 'p9',
+      nome: 'chegou do servidor',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 1,
+      candidatos: [{ id: 'v9', nome: 'Veículo Nove', tipo: 'veiculo', mencoes: 7 }],
+    },
+  ]);
+  expect(await screen.findByText('chegou do servidor')).toBeTruthy();
+});
+
+it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
+  //: ACHADO MÉDIA DE REVISÃO. A trava era do PAR, então uma pergunta com dois
+  //: candidatos deixava o segundo botão clicável durante a primeira decisão —
+  //: e, numa fusão, o segundo pedido fala de um cadastro que está saindo.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+      ],
+    },
+  ]);
+  //: A fusão fica EM VOO: é durante ela que o segundo botão tem de estar travado.
+  vi.mocked(fundirCadastro).mockReturnValue(new Promise(() => {}));
+
+  render(<FilaDeDuplicados />);
+  const primeiro = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  await userEvent.click(primeiro);
+
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole('button', { name: 'Fundir bmc.news em BMC Notícias' })
+        .hasAttribute('disabled'),
+    ).toBe(true),
+  );
+  expect(
+    screen.getByRole('button', { name: 'bmc.news não é BMC Notícias' }).hasAttribute('disabled'),
+  ).toBe(true);
 });
 
 it('a releitura em segundo plano RECONCILIA, sem travar a tela', async () => {
