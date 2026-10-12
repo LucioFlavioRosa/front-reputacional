@@ -69,18 +69,6 @@ export const SEVERIDADE_SELO: Record<string, { fundo: string; texto: string }> =
   moderado: { fundo: 'var(--amarelo-pequi)', texto: 'var(--sobre-turquesa)' },
 };
 
-/** Os três níveis, do mais restrito ao mais aberto.
- *
- *  O SENSÍVEL É O QUE A ÁREA USA PARA DECIDIR QUEM FALA. Sem ele, "reajuste
- *  tarifário" e "patrocínio de corrida" moram na mesma gaveta.
- *
- *  A ORDEM É A DO CUIDADO, e não a alfabética: quem abre a lista lê primeiro o
- *  que exige mais, e o que exige menos fica por último — que é também o padrão
- *  de quem cadastra sem pensar no campo.
- *
- *  `gerais` se chamava `livre` até a migração 0022, no rótulo e no código.
- */
-
 //: O VOCABULÁRIO DOS TIPOS DE INSTITUIÇÃO, e ele estava em DOIS lugares —
 //: `CadastroDeInstituicoes` e `FilaDeDuplicados`, com a mesma tabela escrita
 //: duas vezes. O modal da fila seria o terceiro, e é o que trouxe os dois para

@@ -222,7 +222,7 @@ const O_TEMA: TemaCadastrado = {
   e_risco: true,
   macro_tema_id: 9,
   camada_lso: 'legitimidade',
-  //: rea_dona_id NAO ESTA AQUI, e o 	sc foi quem me disse:
+  //: `area_dona_id` NÃO ESTÁ AQUI, e o `tsc` foi quem me disse:
   //: TemaCadastrado nao o traz, entao a tela nao o edita — e
   //: entradaDoTema nao o manda. O back preserva o campo por
   //: model_fields_set, que e exatamente o caso que aquele mecanismo

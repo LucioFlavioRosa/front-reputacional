@@ -483,5 +483,3 @@ function LinhaDaPessoa({
     </>
   );
 }
-
-
