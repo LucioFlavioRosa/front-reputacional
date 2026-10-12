@@ -24,12 +24,22 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { Instituicao, Interlocutor } from '@/dominio/tipos';
+import type { TemaCadastrado } from '@/api/cliente';
+import type {
+  Instituicao,
+  Interlocutor,
+  MacroTema,
+  PessoaAegea,
+} from '@/dominio/tipos';
 import {
   entradaDaInstituicao,
+  entradaDaPessoaAegea,
   entradaDoInterlocutor,
+  entradaDoTema,
   rascunhoDaInstituicao,
+  rascunhoDaPessoaAegea,
   rascunhoDoInterlocutor,
+  rascunhoDoTema,
 } from '@/paginas/cadastroCompartilhado/fichas';
 
 //: UM PERFIL DE REDE COMPLETO, de propósito: é o tipo que tem TODOS os campos
@@ -189,5 +199,130 @@ describe('o rascunho NAO compartilha array com o cadastro', () => {
     rascunho.redes_sociais.push('@depois-de-montar-o-corpo');
 
     expect(corpo.redes_sociais).toHaveLength(2);
+  });
+});
+
+
+//: OS MACRO TEMAS, para a ficha derivar o PILAR. Ver `rascunhoDoTema`: o pilar
+//: não vem do back, só `macro_tema_id` é guardado em `tema`.
+const MACROS: MacroTema[] = [
+  { id: 9, bloco_tema_id: 2, codigo: 'integridade', nome: 'Integridade', ordem: 1 },
+  { id: 10, bloco_tema_id: 3, codigo: 'tarifa', nome: 'Tarifa', ordem: 2 },
+];
+
+//: UM TEMA COM TODOS OS EIXOS PREENCHIDOS, de propósito: é o único caso que
+//: prova a ida e volta de `riscos`, `camada_lso` e `macro_tema_id` ao mesmo
+//: tempo. Um tema recém-criado por planilha tem os três vazios e passaria sem
+//: afirmar nada.
+const O_TEMA: TemaCadastrado = {
+  id: 44,
+  nome: 'Qualidade da água',
+  nivel: 'sensivel',
+  ativo: true,
+  e_risco: true,
+  macro_tema_id: 9,
+  camada_lso: 'legitimidade',
+  //: rea_dona_id NAO ESTA AQUI, e o 	sc foi quem me disse:
+  //: TemaCadastrado nao o traz, entao a tela nao o edita — e
+  //: entradaDoTema nao o manda. O back preserva o campo por
+  //: model_fields_set, que e exatamente o caso que aquele mecanismo
+  //: existe para cobrir.
+  riscos: [3, 7],
+};
+
+describe('a ficha do tema', () => {
+  it('vai e volta sem perder NENHUM campo', () => {
+    const corpo = entradaDoTema(rascunhoDoTema(O_TEMA, MACROS), O_TEMA.ativo);
+
+    expect(corpo.nome).toBe(O_TEMA.nome);
+    expect(corpo.nivel).toBe(O_TEMA.nivel);
+    expect(corpo.e_risco).toBe(O_TEMA.e_risco);
+    expect(corpo.macro_tema_id).toBe(O_TEMA.macro_tema_id);
+    expect(corpo.camada_lso).toBe(O_TEMA.camada_lso);
+    //: OS RISCOS, que são o campo que mais dói perder: eles ligam o tema à
+    //: matriz corporativa, e a ligação não é derivável de nada.
+    expect(corpo.riscos).toEqual(O_TEMA.riscos);
+    expect(corpo.ativo).toBe(true);
+  });
+
+  it('o PILAR é derivado do tema estratégico', () => {
+    //: O PILAR NÃO VEM DO BACK — só `macro_tema_id` é guardado em `tema`. Sem
+    //: esta derivação o seletor em cascata abriria vazio e, pior, trocar
+    //: qualquer coisa no formulário mandaria `macro_tema_id` embora: o seletor
+    //: desmarca o tema estratégico quando o pilar muda.
+    expect(rascunhoDoTema(O_TEMA, MACROS).bloco_tema_id).toBe(2);
+    //: E NÃO VAI NO PUT: é estado do seletor, não coluna.
+    expect('bloco_tema_id' in entradaDoTema(rascunhoDoTema(O_TEMA, MACROS), true)).toBe(
+      false,
+    );
+  });
+
+  it('o tema sem hierarquia não inventa pilar', () => {
+    const solto: TemaCadastrado = {
+      ...O_TEMA,
+      macro_tema_id: null,
+      camada_lso: null,
+      e_risco: null,
+      riscos: [],
+    };
+    const rascunho = rascunhoDoTema(solto, MACROS);
+
+    expect(rascunho.bloco_tema_id).toBeNull();
+    //: `e_risco` NULO VIRA FALSO no rascunho, porque o campo é uma caixa — e
+    //: volta como `false`, não como nulo. É uma afirmação da tela: quem abriu o
+    //: formulário e salvou disse "não é tema de risco".
+    expect(rascunho.e_risco).toBe(false);
+    expect(entradaDoTema(rascunho, true).camada_lso).toBeNull();
+  });
+});
+
+const A_PESSOA_AEGEA: PessoaAegea = {
+  id: 'aegea-1',
+  nome: 'Radamés Casseb',
+  cargo: 'Diretor de Comunicação',
+  email: 'radames@exemplo.com',
+  eh_porta_voz: true,
+  area_id: 4,
+  ativo: true,
+  temas: [44, 51, 60],
+};
+
+describe('a ficha da pessoa da Aegea', () => {
+  it('vai e volta sem perder NENHUM campo', () => {
+    const corpo = entradaDaPessoaAegea(
+      rascunhoDaPessoaAegea(A_PESSOA_AEGEA),
+      A_PESSOA_AEGEA.ativo,
+    );
+
+    expect(corpo.nome).toBe(A_PESSOA_AEGEA.nome);
+    expect(corpo.cargo).toBe(A_PESSOA_AEGEA.cargo);
+    expect(corpo.email).toBe(A_PESSOA_AEGEA.email);
+    expect(corpo.eh_porta_voz).toBe(A_PESSOA_AEGEA.eh_porta_voz);
+    expect(corpo.area_id).toBe(A_PESSOA_AEGEA.area_id);
+    //: A LISTA DE TEMAS, e é a terceira vez que este campo aparece como
+    //: armadilha neste código: "o PUT substitui a lista inteira, e mandar []
+    //: num simples desligar apagaria tudo o que a pessoa podia falar".
+    expect(corpo.temas).toEqual(A_PESSOA_AEGEA.temas);
+    expect(corpo.ativo).toBe(true);
+  });
+
+  it('os temas sobrevivem a um DESLIGAR', () => {
+    //: O CASO CONCRETO, e o botão onde a armadilha morava até agora: desligar
+    //: manda a ficha de quem já está gravado com o `ativo` invertido, e os temas
+    //: têm de ir junto.
+    const corpo = entradaDaPessoaAegea(
+      rascunhoDaPessoaAegea(A_PESSOA_AEGEA),
+      !A_PESSOA_AEGEA.ativo,
+    );
+
+    expect(corpo.ativo).toBe(false);
+    expect(corpo.temas).toEqual([44, 51, 60]);
+  });
+
+  it('o rascunho NAO compartilha a lista de temas', () => {
+    const rascunho = rascunhoDaPessoaAegea(A_PESSOA_AEGEA);
+    rascunho.temas.push(999);
+
+    expect(A_PESSOA_AEGEA.temas).toEqual([44, 51, 60]);
   });
 });

@@ -30,7 +30,7 @@ import {
 } from '@/componentes/basicos';
 import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
 import { usePainel } from '@/estado/painel';
-import type { PessoaAegea, Tema } from '@/dominio/tipos';
+import type { PessoaAegea } from '@/dominio/tipos';
 import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 import {
   PESSOA_AEGEA_VAZIA,
@@ -38,6 +38,10 @@ import {
   rascunhoDaPessoaAegea,
 } from '@/paginas/cadastroCompartilhado/fichas';
 import { FilaDeRevisao } from '@/paginas/FilaDeRevisao';
+import {
+  EdicaoDaPessoa,
+  SeletorDePapel,
+} from '@/paginas/cadastroCompartilhado/formularios';
 
 export function CadastroDePortaVozes() {
   const { catalogo } = usePainel();
@@ -346,7 +350,7 @@ export function CadastroDePortaVozes() {
                   temas={temasPorPessoa[pessoa.id] ?? []}
                   // PELOS DOIS DICIONARIOS, e nao por `assuntos`, que e so os
                   // ativos: um porta-voz classificado antes da 0058 aponta para
-                  // tema aposentado, e aqui o nome saia como STRING PESSOA_AEGEA_VAZIA — o
+                  // tema aposentado, e aqui o nome saia como STRING VAZIA — o
                   // assunto desaparecia da ficha da pessoa sem deixar rastro.
                   // Achado de rodar a conferencia de vocabulario aposentado
                   // contra a base COM historico, que o teste do CI nao ve.
@@ -369,20 +373,30 @@ export function CadastroDePortaVozes() {
                   aoAlternarAtivo={() =>
                     void executar(
                       () =>
-                        editarPessoaAegea(pessoa.id, {
-                          nome: pessoa.nome,
-                          cargo: pessoa.cargo,
-                          email: pessoa.email,
-                          eh_porta_voz: pessoa.eh_porta_voz,
-                          area_id: pessoa.area_id,
-                          ativo: !pessoa.ativo,
-                          // A LISTA DE TEMAS VAI JUNTO, e não vazia: o `PUT`
-                          // substitui a lista inteira, e mandar `[]` num
-                          // simples desligar apagaria tudo o que a pessoa podia
-                          // falar. É a mesma armadilha da pauta, num campo
-                          // diferente.
-                          temas: temasPorPessoa[pessoa.id] ?? [],
-                        }),
+                        //: PELO HELPER, e este era o caminho MAIS PERIGOSO que
+                        //: a extração tinha deixado à mão — achado de revisão.
+                        //:
+                        //: Ele ainda mandava `temas`, então não havia defeito; o
+                        //: que ficava vivo era a ARMADILHA, documentada aqui
+                        //: mesmo: "o PUT substitui a lista inteira, e mandar []
+                        //: num simples desligar apagaria tudo o que a pessoa
+                        //: podia falar". O próximo campo de `PessoaAegeaEntrada`
+                        //: seria esquecido justo aqui, num botão que ninguém
+                        //: associa a perder dado.
+                        //:
+                        //: OS TEMAS VÊM DO MAPA LOCAL, como na abertura da
+                        //: edição: ele acompanha o que acabou de ser gravado
+                        //: nesta tela, e o catálogo pode estar atrás.
+                        editarPessoaAegea(
+                          pessoa.id,
+                          entradaDaPessoaAegea(
+                            {
+                              ...rascunhoDaPessoaAegea(pessoa),
+                              temas: temasPorPessoa[pessoa.id] ?? [],
+                            },
+                            !pessoa.ativo,
+                          ),
+                        ),
                       () => undefined,
                     )
                   }
@@ -470,154 +484,4 @@ function LinhaDaPessoa({
   );
 }
 
-export function EdicaoDaPessoa({
-  rascunho,
-  assuntos,
-  assuntosInativos,
-  areas,
-  salvando,
-  aoRascunhar,
-  aoAlternarTema,
-  aoEscolherPapel,
-  aoCancelar,
-  aoSalvar,
-}: {
-  rascunho: typeof PESSOA_AEGEA_VAZIA;
-  assuntos: Tema[];
-  assuntosInativos: Tema[];
-  areas: { id: number; nome: string }[];
-  salvando: boolean;
-  aoRascunhar: (r: typeof PESSOA_AEGEA_VAZIA) => void;
-  aoAlternarTema: (id: number) => void;
-  aoEscolherPapel: (ehPortaVoz: boolean) => void;
-  aoCancelar: () => void;
-  aoSalvar: () => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="grade grade--3" style={{ gap: 12 }}>
-        <Campo rotulo="Nome">
-          <input
-            style={estiloDeEntrada}
-            value={rascunho.nome}
-            onChange={(e) => aoRascunhar({ ...rascunho, nome: e.target.value })}
-          />
-        </Campo>
-        <Campo rotulo="E-mail">
-          <input
-            type="email"
-            style={estiloDeEntrada}
-            value={rascunho.email}
-            onChange={(e) => aoRascunhar({ ...rascunho, email: e.target.value })}
-          />
-        </Campo>
-        <Campo rotulo="Cargo">
-          <input
-            style={estiloDeEntrada}
-            value={rascunho.cargo}
-            onChange={(e) => aoRascunhar({ ...rascunho, cargo: e.target.value })}
-          />
-        </Campo>
-      </div>
 
-      <div className="grade grade--3" style={{ gap: 12 }}>
-        <Campo rotulo="Tipo">
-          <SeletorDePapel ehPortaVoz={rascunho.eh_porta_voz} aoEscolher={aoEscolherPapel} />
-        </Campo>
-        <Campo rotulo="Área">
-          <select
-            style={estiloDeEntrada}
-            value={rascunho.area_id ?? ''}
-            onChange={(e) =>
-              aoRascunhar({
-                ...rascunho,
-                area_id: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          >
-            <option value="">Sem área definida</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.nome}
-              </option>
-            ))}
-          </select>
-        </Campo>
-      </div>
-
-      <div style={{ opacity: rascunho.eh_porta_voz ? 1 : 0.5 }}>
-        <Campo
-          rotulo="Sobre o que pode falar"
-          dica={
-            rascunho.eh_porta_voz
-              ? undefined
-              : 'Só quem é porta-voz tem temas autorizados.'
-          }
-        >
-          {rascunho.eh_porta_voz ? (
-            <SeletorDeTemas
-              temas={assuntos}
-              temasInativos={assuntosInativos}
-              selecionados={rascunho.temas}
-              aoAlternar={aoAlternarTema}
-            />
-          ) : null}
-        </Campo>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Botao variante="primario" desabilitado={salvando} aoClicar={aoSalvar}>
-          Salvar
-        </Botao>
-        <Botao estilo={{ height: 40 }} aoClicar={aoCancelar}>
-          Cancelar
-        </Botao>
-      </div>
-    </div>
-  );
-}
-
-/** Porta-voz ou equipe — a escolha por trás de `eh_porta_voz`, dita como
- *  pergunta em vez de caixa marcada. Duas pílulas, e não um `<select>`: são só
- *  duas opções, sempre as mesmas, e qual está ativa precisa estar visível sem
- *  abrir nada — o mesmo raciocínio do seletor de granularidade do Painel. */
-function SeletorDePapel({
-  ehPortaVoz,
-  aoEscolher,
-}: {
-  ehPortaVoz: boolean;
-  aoEscolher: (ehPortaVoz: boolean) => void;
-}) {
-  const opcoes: { valor: boolean; rotulo: string }[] = [
-    { valor: true, rotulo: 'Porta-voz' },
-    { valor: false, rotulo: 'Equipe' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {opcoes.map((opcao) => {
-        const ativo = ehPortaVoz === opcao.valor;
-        return (
-          <button
-            key={String(opcao.valor)}
-            type="button"
-            onClick={() => aoEscolher(opcao.valor)}
-            aria-pressed={ativo}
-            style={{
-              flex: 1,
-              height: 38,
-              borderRadius: 'var(--r-btn)',
-              border: ativo ? '1px solid var(--azul-mar)' : '1px solid var(--borda-input)',
-              background: ativo ? 'var(--azul-mar)' : 'var(--branco)',
-              color: ativo ? 'var(--branco)' : 'var(--cinza-3)',
-              fontSize: 13,
-              fontWeight: ativo ? 700 : 500,
-              cursor: 'pointer',
-            }}
-          >
-            {opcao.rotulo}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
