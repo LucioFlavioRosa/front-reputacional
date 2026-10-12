@@ -162,6 +162,45 @@ export function rotuloDeCodigo(
  *  ele sai do dicionário, mas os registros que já o usavam continuam existindo
  *  e precisam mostrar alguma coisa.
  */
+/** O cadastro desta agenda está incompleto? E o que falta nele.
+ *
+ *  O DESTAQUE PARA REVISAR DEPOIS. A importação de planilha deixou de barrar
+ *  nome que não está no cadastro: a instituição nasce com o que houver e fica
+ *  incompleta até alguém completá-la na plataforma. Sem um destaque, "fica
+ *  incompleta" quer dizer "ninguém nunca mais olha".
+ *
+ *  É A RELEVÂNCIA DA INSTITUIÇÃO, e a medida é que escolheu. A primeira ideia era
+ *  "instituição sem categoria de público", mas das 99 instituições que aparecem
+ *  em agendas apenas 58 têm categoria — a ausência é o ESTADO NORMAL, e acenderia
+ *  em 250 das 544 agendas. Alerta que acende em metade da Base ensina a ignorar
+ *  alerta. Tier, ao contrário, está preenchido em 99 das 99: a ausência dele não
+ *  existe hoje, então quando aparecer significa algo.
+ *
+ *  E SE APAGA SOZINHO, que é a razão de ser derivado em vez de gravado: no
+ *  momento em que alguém põe a relevância no Cadastro de instituições, o destaque
+ *  desaparece de toda agenda daquela instituição, sem ninguém ter de "marcar como
+ *  revisado" uma por uma.
+ *
+ *  NÃO CONFUNDIR OS DOIS TIERS. `interacao.tier` é a relevância DAQUELA agenda, e
+ *  a ficha já a lista entre os campos sem preenchimento. Este é o tier da
+ *  INSTITUIÇÃO, que vem do cadastro — e é o que o cadastro automático não tem
+ *  como saber a partir de um nome escrito numa célula.
+ *
+ *  O INTERLOCUTOR NÃO ENTRA: medido, dos 129 cadastrados, e-mail e área estão
+ *  vazios em 129 e o cargo em 55. Não há ali nada cuja ausência queira dizer
+ *  "incompleto".
+ */
+export function oQueFaltaNoCadastroDaAgenda(
+  catalogo: Catalogo,
+  interacao: Interacao,
+): { nome: string; falta: string[] } | null {
+  const instituicao = catalogo.instituicoes.get(interacao.instituicao_id);
+  if (!instituicao) return null;
+  const falta: string[] = [];
+  if (!instituicao.tier) falta.push('relevância');
+  return falta.length ? { nome: instituicao.nome, falta } : null;
+}
+
 export function rotuloDeRelevancia(
   catalogo: Catalogo | null,
   tier: number | null,
