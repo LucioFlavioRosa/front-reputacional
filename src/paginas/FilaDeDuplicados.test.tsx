@@ -24,7 +24,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-import type { CadastroDuplicado } from '@/api/cliente';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 
 vi.mock('@/api/cliente', () => ({
@@ -101,19 +100,19 @@ it('Nao e o mesmo GRAVA a decisao, e nao funde', async () => {
   expect(fundirCadastro).not.toHaveBeenCalled();
 });
 
-it('depois de responder, a fila e relida', async () => {
-  //: ESTE TESTE MUDOU DE PREMISSA, e a antiga provava menos do que o nome dizia.
-  //: Ele devolvia `[]` num mock que resolve no mesmo tick e checava que a linha
-  //: saiu — o que passa hoje pelo EFEITO LOCAL, sem releitura nenhuma. A linha
-  //: que sai é medida em "a linha SAI NA HORA"; aqui se mede a RELEITURA, que é
-  //: o que o nome promete.
+it('depois de responder, a fila NAO e relida', async () => {
+  //: ESTE TESTE INVERTEU, e a inversão é o pedido do dono do produto: "realmente
+  //: tem que fazer a busca sempre? não basta fazer uma vez quando expandi a tela
+  //: e depois só atualizar a lista?".
   //:
-  //: E SÓ A CHAMADA, de propósito — achado BAIXA de revisão, respondido e não
-  //: consertado: este teste passaria se a resposta da releitura fosse ignorada.
-  //: Quem mede o EFEITO dela é "a releitura em segundo plano RECONCILIA", e quem
-  //: mede o descarte da velha é "a releitura VELHA ... é DESCARTADA". Repetir a
-  //: asserção aqui faria três testes caírem juntos pelo mesmo motivo, e um teste
-  //: que cai junto com outro não diz onde está o defeito.
+  //: NÃO PRECISA. O efeito de cada decisão é local e determinado, então a lista
+  //: nova sai de `semOCadastro`/`semOPar` — o servidor devolveria a mesma coisa
+  //: depois de 7,4 s de recálculo (medido: ~3.962 cadastros comparados par a par
+  //: com `difflib`), e eram 7,4 s POR DECISÃO, com 209 pares a decidir.
+  //:
+  //: A VERSÃO ANTERIOR DESTE TESTE exigia a segunda chamada. Ela estava certa
+  //: para o desenho de ontem e virou o oposto do que se quer: cada chamada aqui é
+  //: trabalho que ninguém pediu.
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
     name: 'valoreconomico não é Valor Econômico',
@@ -122,7 +121,9 @@ it('depois de responder, a fila e relida', async () => {
 
   await userEvent.click(botao);
 
-  await waitFor(() => expect(duplicadosDeCadastro).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(declararCadastroDistinto).toHaveBeenCalled());
+  //: A LINHA SAIU (medido em "a linha SAI NA HORA") e a busca NÃO rodou de novo.
+  expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 });
 
 it('a falha de carga NAO derruba a tela', async () => {
@@ -316,71 +317,6 @@ it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
   expect(screen.getByText('bmcnews')).toBeTruthy();
 });
 
-it('a releitura VELHA que volta depois de uma decisao nova e DESCARTADA', async () => {
-  //: ACHADO BAIXA DE REVISÃO, e ele estava certo: os testes provavam que uma
-  //: releitura pendente consegue escrever, e NÃO provavam a parte arriscada da
-  //: mudança — descartar a releitura velha que volta depois de uma decisão mais
-  //: nova. Sem este teste, uma regressão na guarda de ordem ressuscitaria linhas
-  //: já resolvidas sem nada acusar.
-  //:
-  //: E A JANELA AQUI É DE SETE SEGUNDOS: decidir dois pares seguidos deixa duas
-  //: releituras no ar, e a primeira carrega a fila de ANTES da segunda decisão.
-  const PAR2 = {
-    id: 'p2',
-    nome: 'outro handle',
-    tipo: 'perfil_rede',
-    cargo: null,
-    mencoes: 1,
-    candidatos: [{ id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40 }],
-  };
-  vi.mocked(duplicadosDeCadastro).mockResolvedValue([...UM_PAR, PAR2]);
-
-  render(<FilaDeDuplicados />);
-  await screen.findByText('valoreconomico');
-
-  const resolvers: ((valor: CadastroDuplicado[]) => void)[] = [];
-  vi.mocked(duplicadosDeCadastro).mockImplementation(
-    () =>
-      new Promise((ok) => {
-        resolvers.push(ok);
-      }),
-  );
-
-  await userEvent.click(
-    screen.getByRole('button', { name: 'valoreconomico não é Valor Econômico' }),
-  );
-  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
-
-  await userEvent.click(
-    screen.getByRole('button', { name: 'outro handle não é Outro Veículo' }),
-  );
-  await waitFor(() => expect(screen.queryByText('outro handle')).toBeNull());
-
-  expect(resolvers.length).toBe(2);
-
-  //: A PRIMEIRA releitura volta agora, com a fila de ANTES da segunda decisão.
-  resolvers[0]([PAR2]);
-  //: Dois ticks para o `.then` do mock rodar. Se a guarda falhar, há escrita de
-  //: estado aqui — e `outro handle` volta à tela.
-  await Promise.resolve();
-  await Promise.resolve();
-  expect(screen.queryByText('outro handle')).toBeNull();
-
-  //: E A MAIS NOVA ESCREVE: descartar a velha não pode significar descartar
-  //: todas, senão a tela nunca mais se reconcilia com o servidor.
-  resolvers[1]([
-    {
-      id: 'p9',
-      nome: 'chegou do servidor',
-      tipo: 'perfil_rede',
-      cargo: null,
-      mencoes: 1,
-      candidatos: [{ id: 'v9', nome: 'Veículo Nove', tipo: 'veiculo', mencoes: 7 }],
-    },
-  ]);
-  expect(await screen.findByText('chegou do servidor')).toBeTruthy();
-});
-
 it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
   //: ACHADO MÉDIA DE REVISÃO. A trava era do PAR, então uma pergunta com dois
   //: candidatos deixava o segundo botão clicável durante a primeira decisão —
@@ -420,35 +356,42 @@ it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
   ).toBe(true);
 });
 
-it('a releitura em segundo plano RECONCILIA, sem travar a tela', async () => {
-  //: O OTIMISMO NÃO DISPENSA A VERDADE DO SERVIDOR. A tela responde na hora pelo
-  //: efeito local, e a releitura chega depois para corrigir o que o efeito local
-  //: não sabe — por exemplo um par que outra pessoa decidiu enquanto esta decidia.
-  let resolver: (valor: CadastroDuplicado[]) => void = () => {};
-  render(<FilaDeDuplicados />);
-  const botao = await screen.findByRole('button', {
-    name: 'valoreconomico não é Valor Econômico',
-  });
-
-  vi.mocked(duplicadosDeCadastro).mockReturnValue(
-    new Promise((ok) => {
-      resolver = ok;
-    }),
-  );
-  await userEvent.click(botao);
-  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
-
-  //: O servidor devolve uma pergunta que a tela não tinha.
-  resolver([
+it('FUNDIR passa as mencoes ao sobrevivente, onde ele aparecer', async () => {
+  //: O NÚMERO É LOAD-BEARING NESTA TELA: "é ele que diz qual é a linha com
+  //: história, e é sempre a linha com história que sobrevive". Sem releitura,
+  //: quem tem de passar as menções é o efeito local — e deixá-las velhas numa
+  //: outra pergunta sobre o MESMO sobrevivente faria a decisão seguinte ser
+  //: tomada com o número errado. A fusão não tem volta.
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
     {
-      id: 'p9',
-      nome: 'apareceu depois',
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      mencoes: 3,
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+    },
+    {
+      id: 'p3',
+      nome: 'bmcnews',
       tipo: 'perfil_rede',
       cargo: null,
       mencoes: 1,
-      candidatos: [{ id: 'v9', nome: 'Veículo Nove', tipo: 'veiculo', mencoes: 7 }],
+      //: O MESMO sobrevivente, em outra pergunta.
+      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
     },
   ]);
 
-  expect(await screen.findByText('apareceu depois')).toBeTruthy();
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'Fundir bmc.news em BMC News',
+  });
+
+  await userEvent.click(botao);
+
+  //: 50 + as 3 de quem saiu.
+  await waitFor(() =>
+    expect(screen.getByText(/Veículo de imprensa · 53 menções/)).toBeTruthy(),
+  );
+  expect(screen.queryByText(/50 menções/)).toBeNull();
 });

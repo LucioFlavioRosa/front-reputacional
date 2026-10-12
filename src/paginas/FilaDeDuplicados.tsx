@@ -31,13 +31,24 @@
  *  durante sete segundos a linha ficava ali, idêntica ao que era antes do clique.
  *
  *  O EFEITO DE CADA RESPOSTA É LOCAL E DETERMINADO, então a tela o aplica sem
- *  perguntar ao servidor: "não é o mesmo" tira UM par; fundir tira um CADASTRO,
- *  e com ele toda pergunta que o menciona. A releitura continua, atrás, para
- *  trazer o que o efeito local não sabe — um par que outra pessoa decidiu
- *  enquanto esta decidia.
+ *  perguntar ao servidor: "não é o mesmo" tira UM par; fundir tira um CADASTRO
+ *  (e com ele toda pergunta que o menciona) e PASSA AS MENÇÕES ao sobrevivente.
+ *
+ *  E A BUSCA RODA UMA VEZ, na abertura da tela.
+ *
+ *  O DONO DO PRODUTO: "realmente tem que fazer a busca sempre? não basta fazer
+ *  uma vez quando expandi a tela e depois só atualizar a lista?". Não precisa, e
+ *  ele está certo: as três linhas acima são a lista nova, inteira. Recalcular
+ *  7,4 s para chegar ao mesmo resultado é trabalho que ninguém pediu — e eram 7,4
+ *  s POR DECISÃO, com 209 pares a decidir.
+ *
+ *  O QUE SE PERDE, e por que o preço não paga: um par que OUTRA pessoa decidiu
+ *  enquanto esta decidia continua na tela até a próxima abertura. Clicar nele
+ *  falha com a mensagem do servidor, que é o que a faixa de erro mostra — uma
+ *  mensagem rara contra sete segundos em cada clique.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   declararCadastroDistinto,
@@ -100,16 +111,29 @@ const POR_PAGINA = 10;
  *  banco, e o segundo clique viria 404.
  *
  *  E A PERGUNTA QUE PERDE O ÚLTIMO CANDIDATO SAI: não há mais nada a decidir
- *  nela, e uma linha com dois botões sem efeito é pior que linha nenhuma. */
+ *  nela, e uma linha com dois botões sem efeito é pior que linha nenhuma.
+ *
+ *  AS MENÇÕES PASSAM PARA O SOBREVIVENTE, onde ele aparecer. É o que a fusão faz
+ *  no banco, e aqui esse número é LOAD-BEARING: "é ele que diz qual é a linha com
+ *  história, e é sempre a linha com história que sobrevive". Deixá-lo velho numa
+ *  outra pergunta sobre o mesmo sobrevivente faria a próxima decisão ser tomada
+ *  com o número errado — e a fusão não tem volta. */
 function semOCadastro(
   fila: CadastroDuplicado[],
   queSaiuId: string,
+  sobreviventeId: string,
+  mencoesQuePassam: number,
 ): CadastroDuplicado[] {
+  const somar = (quantas: number, id: string) =>
+    id === sobreviventeId ? quantas + mencoesQuePassam : quantas;
   return fila
     .filter((perfil) => perfil.id !== queSaiuId)
     .map((perfil) => ({
       ...perfil,
-      candidatos: perfil.candidatos.filter((c) => c.id !== queSaiuId),
+      mencoes: somar(perfil.mencoes, perfil.id),
+      candidatos: perfil.candidatos
+        .filter((c) => c.id !== queSaiuId)
+        .map((c) => ({ ...c, mencoes: somar(c.mencoes, c.id) })),
     }))
     .filter((perfil) => perfil.candidatos.length > 0);
 }
@@ -141,23 +165,20 @@ export function FilaDeDuplicados() {
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
 
-  //: QUAL CARGA É A ATUAL — o mesmo desenho da `FilaDeRevisao`, e aqui a corrida
-  //: é MAIS provável do que lá: a releitura leva 7,4 s e a tela deixou de
-  //: esperá-la, então decidir três pares seguidos deixa três cargas no ar. Sem a
-  //: guarda, a primeira a voltar traz a fila de ANTES das outras duas decisões e
-  //: RESSUSCITA na tela o que já foi resolvido.
-  const atual = useRef(0);
-
+  //: A GUARDA DE ORDEM SAIU JUNTO COM A RELEITURA POR DECISÃO.
+  //:
+  //: Ela existia porque três decisões seguidas deixavam três cargas no ar, e a
+  //: primeira a voltar ressuscitaria o que as outras resolveram. Com a busca
+  //: rodando UMA VEZ, há um chamador só e não há corrida — e guarda que não
+  //: guarda nada é comentário fingindo ser código. Se um dia a tela ganhar um
+  //: "atualizar", a guarda volta com ele; o desenho está na `FilaDeRevisao`.
   const carregar = useCallback(() => {
-    const minhaVez = ++atual.current;
     duplicadosDeCadastro()
       .then((lista) => {
-        if (minhaVez !== atual.current) return;
         definirFila(lista);
         definirErro('');
       })
       .catch((falha: Error) => {
-        if (minhaVez !== atual.current) return;
         //: A FILA É ACESSÓRIA: ela não pode derrubar o cadastro inteiro. O erro
         //: aparece no lugar dela e o resto da tela segue funcionando.
         definirFila([]);
@@ -191,19 +212,19 @@ export function FilaDeDuplicados() {
         //: uma rota de catálogo, e o barramento de sincronização recarrega o
         //: catálogo inteiro sozinho. Ver `dominio/sincronizacao.ts`.
         await fundirCadastro(perfil.id, candidato.id);
-        definirFila((antes) => (antes ? semOCadastro(antes, perfil.id) : antes));
+        definirFila((antes) =>
+          antes
+            ? semOCadastro(antes, perfil.id, candidato.id, perfil.mencoes)
+            : antes,
+        );
       } else {
         await declararCadastroDistinto(perfil.id, candidato.id);
         definirFila((antes) =>
           antes ? semOPar(antes, perfil.id, candidato.id) : antes,
         );
       }
-      //: A RELEITURA FICA, mas ATRÁS: ninguém espera por ela. Ela é a verdade do
-      //: servidor chegando para corrigir o que o efeito local não sabe.
-      //:
-      //: NÃO AGUARDADA DE PROPÓSITO, e isto já era verdade antes — a diferença é
-      //: que agora a tela não depende dela para mostrar a decisão.
-      carregar();
+      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira; o
+      //: servidor devolveria a mesma coisa depois de 7,4 s de recálculo.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {
