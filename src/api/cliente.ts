@@ -86,6 +86,40 @@ export class ErroDaApi extends Error {
  *     aconteceu na Azure.
  *  3. FALHOU SEM CORPO: o status e a rota, que é tudo que existe.
  */
+//: O `<title>` é o que nomeia o autor de uma página de erro: "Application
+//: Error" é ingress, "Sign in" é Entra, "Request blocked" é WAF. Ele é a
+//: pergunta que ficou sem resposta no episódio da Azure, e é barato de guardar.
+const TITULO_DA_PAGINA = /<title[^>]*>([^<]{0,200})<\/title>/i;
+
+/** O rótulo de um corpo que não era JSON — o autor da página, e nada além.
+ *
+ *  ACHADO MÉDIA DE REVISÃO, e ele estava certo: guardar os primeiros caracteres
+ *  crus podia levar dado de pessoa à telemetria. Uma tela de login traz
+ *  `redirect=` com a URL que a pessoa pediu; uma página de erro de proxy pode
+ *  ecoar a requisição inteira.
+ *
+ *  Três podas, na ordem que importa:
+ *
+ *  1. o `<title>`, quando existe — é só o nome do autor, e corta o resto da
+ *     página junto;
+ *  2. QUERY STRING FORA, antes do e-mail, porque é dentro dela que o dado mora
+ *     (`?busca=alguem@x.com`). Isto come um "?" de texto legítimo, e é um
+ *     preço que eu pago de boa vontade;
+ *  3. e-mail fora, para o que sobrou do lado de fora de uma query.
+ */
+function rotuloDoCorpoEstranho(corpo: string): string {
+  const casado = TITULO_DA_PAGINA.exec(corpo);
+  //: Sem título, o corpo sem marcação — uma página de erro de texto puro ainda
+  //: diz quem a escreveu na primeira linha.
+  const bruto = casado ? casado[1] : corpo.replace(/<[^>]*>/g, ' ');
+  return bruto
+    .replace(/\s+/g, ' ')
+    .replace(/\?\S*/g, '')
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]{2,}/g, '[e-mail]')
+    .trim()
+    .slice(0, 80);
+}
+
 function mensagemDaFalha(
   resposta: Response,
   caminho: string,
@@ -242,10 +276,14 @@ async function requisitar<T>(
         caminho,
         status: resposta.status,
         metodo: opcoes.method ?? 'GET',
-        // O COMEÇO DO CORPO IDENTIFICA O AUTOR: o `<title>` de uma página de
-        // erro diz se foi ingress, WAF ou tela de login. Não é resposta da
-        // nossa API, então não há dado de ninguém aqui.
-        ...(eraJson ? {} : { corpoNaoEraJson: true, inicioDoCorpo: corpo.slice(0, 120) }),
+        // O RÓTULO, E NÃO O CORPO — achado MÉDIA de revisão, contra o meu
+        // próprio argumento. Eu tinha escrito que o começo de um corpo
+        // não-JSON não carrega dado de ninguém "porque não é resposta da nossa
+        // API". Não se sustenta: uma tela de login traz `redirect=` com a URL
+        // que a pessoa pediu, e uma página de erro de proxy pode ecoar a
+        // requisição. `rotuloDoCorpoEstranho` guarda só o que identifica o
+        // autor da página, sem query string e sem e-mail.
+        ...(eraJson ? {} : { corpoNaoEraJson: true, autorDaPagina: rotuloDoCorpoEstranho(corpo) }),
       });
     }
     throw erro;

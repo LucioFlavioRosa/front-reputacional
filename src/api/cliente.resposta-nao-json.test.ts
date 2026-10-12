@@ -18,7 +18,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ErroDaApi, listarAcessos } from './cliente';
+import { ErroDaApi, baixarModeloDeSubtemas, listarAcessos } from './cliente';
 import { registrarErro } from '@/observabilidade/telemetria';
 
 //: SÓ `registrarErro` É DUBLÊ. Trocar o módulo inteiro obrigaria a repetir
@@ -97,17 +97,39 @@ describe('corpo que não é JSON', () => {
     expect(registrarErro).toHaveBeenCalledTimes(1);
     const contexto = contextoRegistrado();
     expect(contexto.corpoNaoEraJson).toBe(true);
-    //: O COMEÇO DO CORPO IDENTIFICA O AUTOR: o `<title>` diz se foi ingress,
-    //: WAF ou tela de login. É a pergunta que ficou sem resposta no episódio.
-    expect(contexto.inicioDoCorpo).toContain('Application Error');
+    //: O `<title>` IDENTIFICA O AUTOR: diz se foi ingress, WAF ou tela de
+    //: login. É a pergunta que ficou sem resposta no episódio da Azure.
+    expect(contexto.autorDaPagina).toBe('Application Error');
   });
 
-  it('o inicio do corpo registrado e CURTO — nao vai a pagina inteira', async () => {
+  it('o rotulo NAO leva query string nem e-mail para a telemetria', async () => {
+    //: ACHADO MÉDIA DE REVISÃO, contra o meu próprio argumento. Eu havia dito
+    //: que um corpo não-JSON não carrega dado de pessoa "porque não é resposta
+    //: da nossa API". Uma tela de login desmente: ela traz `redirect=` com a
+    //: URL que a pessoa pediu.
+    responder(
+      '<!DOCTYPE html><html><head><title>Sign in — ?redirect=/ficha/alguem@aegea.com.br</title>' +
+        '</head><body>contato@aegea.com.br</body></html>',
+      401,
+      'text/html',
+    );
+
+    await listarAcessos().catch(() => {});
+
+    const autor = contextoRegistrado().autorDaPagina as string;
+    expect(autor).toContain('Sign in');
+    expect(autor).not.toContain('redirect');
+    expect(autor).not.toContain('@aegea.com.br');
+  });
+
+  it('o rotulo e CURTO — nao vai a pagina inteira', async () => {
+    //: Sem `<title>`, sobra o corpo sem marcação: a primeira linha de uma
+    //: página de texto puro ainda nomeia quem a escreveu.
     responder('<!DOCTYPE html>' + 'x'.repeat(5000), 500, 'text/html');
 
     await listarAcessos().catch(() => {});
 
-    expect((contextoRegistrado().inicioDoCorpo as string).length).toBeLessThanOrEqual(120);
+    expect((contextoRegistrado().autorDaPagina as string).length).toBeLessThanOrEqual(80);
   });
 });
 
@@ -142,6 +164,31 @@ describe('o que já funcionava continua funcionando', () => {
     responder('[]', 200);
 
     await expect(listarAcessos()).resolves.toEqual([]);
+  });
+
+  it('um DOWNLOAD que falha com HTML nao tenta virar blob', async () => {
+    //: SUGESTÃO DA REVISÃO. O caminho `comoBlob` sai antes da leitura como
+    //: texto, mas SÓ quando `resposta.ok`. Com 4xx ele cai no fluxo de erro
+    //: comum, e é isso que precisa estar fixado: um download que falhou tem de
+    //: dizer o status, e não devolver uma página HTML embrulhada em `Blob` —
+    //: que o navegador salvaria como se fosse a planilha.
+    responder(PAGINA_DO_INGRESS, 502, 'text/html');
+
+    const falha = (await baixarModeloDeSubtemas().catch((e) => e)) as ErroDaApi;
+
+    expect(falha).toBeInstanceOf(ErroDaApi);
+    expect(falha.status).toBe(502);
+    expect(falha.message).toContain('text/html');
+  });
+
+  it('JSON valido que NAO e objeto cai na mensagem genérica', async () => {
+    //: SUGESTÃO DA REVISÃO. `JSON.parse` aceita `"texto"` e `123`, então
+    //: `eraJson` fica verdadeiro e `dados?.detalhe` fica indefinido. O que
+    //: importa é que isso não quebre: a mensagem genérica, com o status, é a
+    //: resposta certa para um corpo que o servidor mandou mas não explica.
+    responder('123', 500);
+
+    expect((await falhaDe()).message).toBe('Falha 500 em /api/acessos.');
   });
 
   it('5xx com JSON segue registrado, e UMA vez', async () => {
