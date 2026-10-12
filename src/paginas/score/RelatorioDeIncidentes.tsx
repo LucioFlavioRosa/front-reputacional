@@ -19,6 +19,22 @@
  *  em sete meses" conta a série inteira, mesmo com a janela em um mês. É o que
  *  separa o fato isolado do problema crônico, e é a coluna que faz alguém abrir
  *  uma frente de trabalho em vez de responder a uma notícia.
+ *
+ *  A LINHA INTEIRA LEVA AO REGISTRO, e o link para de aparecer como link.
+ *
+ *  O DONO DO PRODUTO (12/10/2026): "não quero que o link seja mostrado, quero
+ *  apenas clicar no registro e ser encaminhado". O título era um `<a>` azul
+ *  sublinhado — o único ponto clicável de uma linha de OITO colunas, o que obriga
+ *  a pessoa a mirar. Agora a linha toda leva, e o título é texto comum.
+ *
+ *  O `<a>` CONTINUA EXISTINDO, e isso não contradiz o pedido: ele pediu que o
+ *  link não fosse MOSTRADO, não que deixasse de existir. É o `<a>` que dá o
+ *  caminho por teclado, o ctrl-clique para outra aba, o "copiar endereço do link"
+ *  e o endereço na barra de status. Um `<div onClick>` não dá nenhum dos quatro.
+ *
+ *  E A AGENDA NÃO FINGE SER CLICÁVEL: `link` é nulo nela por construção, então
+ *  ela não ganha cursor de mão. Linha que promete e não cumpre é pior que linha
+ *  inerte.
  */
 
 import { Paginacao } from '@/componentes/Paginacao';
@@ -156,9 +172,20 @@ function LinhaDoIncidente({
 }) {
   const alcance = alcanceDoIncidente(incidente);
   const titulo = tituloDoIncidente(incidente);
+  const destino = incidente.link;
 
   return (
-    <div role="row" style={{ ...LINHA, ...CELULAS }}>
+    <div
+      role="row"
+      //: `.linha-que-leva` ACENDE AO PASSAR O MOUSE, e é o que substitui o azul
+      //: do link: sem ela, nada diria que a linha é clicável. Só entra quando há
+      //: destino — ver o `destino ?` abaixo.
+      className={destino ? 'linha-que-leva' : undefined}
+      onClick={
+        destino ? () => window.open(destino, '_blank', 'noreferrer') : undefined
+      }
+      style={{ ...LINHA, ...CELULAS, cursor: destino ? 'pointer' : undefined }}
+    >
       <span role="cell" style={{ fontWeight: 500, paddingTop: 2, whiteSpace: 'nowrap' }}>
         {dataCompleta(incidente.data)}
       </span>
@@ -257,16 +284,23 @@ function LinhaDoIncidente({
       </span>
 
       <span role="cell" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {incidente.link ? (
+        {destino ? (
           <a
-            href={incidente.link}
+            href={destino}
             target="_blank"
             rel="noreferrer"
+            //: PARA A PROPAGAÇÃO: a linha também tem `onClick`, e sem isto um
+            //: clique no título dispararia os dois — abrindo DUAS abas da mesma
+            //: matéria.
+            onClick={(e) => e.stopPropagation()}
             style={{
               fontSize: 14,
               fontWeight: 700,
               lineHeight: 1.35,
-              color: 'var(--azul-mar)',
+              //: TEXTO COMUM, de propósito: é o "não quero que o link seja
+              //: mostrado". Quem diz que dá para clicar é a linha acendendo.
+              color: 'inherit',
+              textDecoration: 'none',
             }}
           >
             {titulo}
@@ -278,7 +312,13 @@ function LinhaDoIncidente({
             se desce para ver tudo o que aquele assunto produziu. */}
         <button
           type="button"
-          onClick={() => aoAprofundarNoTema(incidente.tema)}
+          onClick={(e) => {
+            //: O ASSUNTO É OUTRO DESTINO — o último degrau da descida DENTRO do
+            //: painel. Sem parar a propagação, clicar nele abriria a matéria no
+            //: veículo: o degrau de descida viraria um salto para fora.
+            e.stopPropagation();
+            aoAprofundarNoTema(incidente.tema);
+          }}
           style={{
             alignSelf: 'flex-start',
             border: 0,
