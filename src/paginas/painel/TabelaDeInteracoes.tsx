@@ -69,29 +69,26 @@ const COLUNAS_ORDENAVEIS = ['Data', 'Instituição'];
 const PADRAO_POR_PAGINA = 10;
 
 /** O clima tem TRÊS códigos hoje (Propositivo/Neutro/Tenso), não cinco — ver
- *  `catalogo.dicionarios.climas`. O selo usa as mesmas cores do resto do
- *  produto (`CORES_DE_CLIMA` em `dominio/frentes.ts`), com o par fundo/texto
- *  já conferido para contraste — turquesa só passa com texto escuro. */
+ *  `catalogo.dicionarios.climas`. O par fundo/texto é o mesmo de
+ *  `SELO_DE_SENTIMENTO`/`SELO_NEUTRO` (`paginas/score/consulta/cores.ts`) —
+ *  neutro e tenso usavam `--cinza-2`/`--vermelho-pitanga`, duas cores com
+ *  luminosidade parecida, dificultando distinguir as duas linhas de longe.
+ *  `--ok-fg`/`--erro-fg` são escolhidos para terem contraste bem diferente
+ *  entre si, além de boa leitura sobre o próprio fundo do selo. */
 const SELO_DO_CLIMA: Record<string, { fundo: string; texto: string }> = {
-  propositivo: { fundo: 'var(--turquesa-rio)', texto: 'var(--sobre-turquesa)' },
-  neutro: { fundo: 'var(--cinza-2)', texto: 'var(--branco)' },
-  tenso: { fundo: 'var(--vermelho-pitanga)', texto: 'var(--branco)' },
+  propositivo: { fundo: 'var(--ok-bg)', texto: 'var(--ok-fg)' },
+  neutro: { fundo: 'var(--bg-trilho)', texto: 'var(--cinza-3)' },
+  tenso: { fundo: 'var(--erro-bg)', texto: 'var(--erro-fg)' },
 };
 
-//: A LINHA INTEIRA das quatro tabelas de área fixa pinta pelo clima — mesma
-//: técnica de `Barra` (`color-mix` com o branco, a uma fração baixa): a cor
-//: crua do selo (feita para contraste de texto em cima dela) é forte demais
-//: pra virar fundo de linha inteira; diluída, dá para ler o texto normal por
-//: cima sem competir com o selo da própria linha.
-//:
-//: NEUTRO A 12%, NÃO 7% — `--cinza-2` é um cinza-azulado de saturação baixa;
-//: na mesma fração das outras duas (que são cores vivas, turquesa/vermelho)
-//: ele ficava quase imperceptível. 12% equilibra visualmente com os 10% de
-//: propositivo/tenso sem comprometer a leitura do texto por cima.
+//: A LINHA INTEIRA das quatro tabelas de área fixa pinta pelo clima — mesmo
+//: par fundo/texto do selo acima (`SELO_DO_CLIMA`), e não mais um `color-mix`
+//: à parte: `--ok-bg`/`--bg-trilho`/`--erro-bg` já SÃO fundos pastéis pensados
+//: para ficar atrás de texto normal, dispensando qualquer diluição.
 const FUNDO_DA_LINHA_POR_CLIMA: Record<string, string> = {
-  propositivo: 'color-mix(in srgb, var(--turquesa-rio) 10%, var(--branco))',
-  neutro: 'color-mix(in srgb, var(--cinza-2) 12%, var(--branco))',
-  tenso: 'color-mix(in srgb, var(--vermelho-pitanga) 10%, var(--branco))',
+  propositivo: 'var(--ok-bg)',
+  neutro: 'var(--bg-trilho)',
+  tenso: 'var(--erro-bg)',
 };
 
 //: A ORDEM QUE A LEGENDA MOSTRA — sempre proativo/neutro/reativo, a mesma
