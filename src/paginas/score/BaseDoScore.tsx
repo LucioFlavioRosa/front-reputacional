@@ -433,7 +433,12 @@ export function BaseDoScore() {
                 display: 'grid',
                 gridTemplateColumns: 'minmax(220px, 1fr) minmax(240px, 1.2fr)',
                 gap: 14,
-                alignItems: 'end',
+                // ALINHADO PELO TOPO, e não pelo rodapé: a coluna 1 só ganha a
+                // linha "Alimenta a lente..." depois de escolher uma fonte que
+                // tenha essa informação, então as duas colunas têm altura
+                // diferente — alinhar pelo rodapé empurrava o campo de arquivo
+                // (coluna 2) pra baixo do seletor de fornecedor (coluna 1).
+                alignItems: 'start',
               }}
             >
               <label style={{ display: 'grid', gap: 5 }}>

@@ -143,13 +143,15 @@ export function LegendaDeClimaPorArea({ catalogo }: { catalogo: Catalogo }) {
 //: lado) — a completa continua com o espaçamento de sempre.
 const CELULA_COMPACTA = { padding: '6px 8px' };
 
-//: A PAUTA DA VERSÃO REDUZIDA quebra em até DUAS linhas antes de truncar —
-//: uma só (a versão completa, `overflow+ellipsis+nowrap` de sempre) cortava
-//: pauta longa cedo demais nas quatro tabelas lado a lado, que já têm menos
-//: largura. `minHeight` reserva o espaço das duas linhas mesmo numa pauta
-//: curta: é o que deixa a ALTURA DA LINHA FIXA — sem isto, cada linha da
-//: tabela teria uma altura diferente dependendo do tamanho da própria pauta.
-const PAUTA_EM_DUAS_LINHAS = {
+//: PAUTA E INSTITUIÇÃO, NA VERSÃO REDUZIDA, quebram em até DUAS linhas antes
+//: de truncar — uma só (`overflow+ellipsis+nowrap`) cortava cedo demais
+//: nessas colunas estreitas das quatro tabelas lado a lado. A Instituição
+//: usava só uma linha e cortava nomes reais como "Patria Investimentos" e
+//: "T Rowe Price" já nos primeiros caracteres. `minHeight` reserva o espaço
+//: das duas linhas mesmo num texto curto: é o que deixa a ALTURA DA LINHA
+//: FIXA — sem isto, cada linha da tabela teria uma altura diferente
+//: dependendo do tamanho do próprio texto.
+const TRUNCAR_EM_DUAS_LINHAS = {
   whiteSpace: 'normal' as const,
   display: '-webkit-box' as const,
   WebkitLineClamp: 2,
@@ -318,9 +320,10 @@ export function TabelaDeInteracoes({
                   <td
                     style={
                       reduzida
-                        ? { ...celulaAtual, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                        ? { ...celulaAtual, ...TRUNCAR_EM_DUAS_LINHAS }
                         : { ...celulaAtual, minWidth: 160 }
                     }
+                    title={reduzida ? nomeDaInstituicao(catalogo, interacao.instituicao_id) : undefined}
                   >
                     {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
                   </td>
@@ -337,7 +340,7 @@ export function TabelaDeInteracoes({
                   <td
                     style={
                       reduzida
-                        ? { ...celulaAtual, ...PAUTA_EM_DUAS_LINHAS }
+                        ? { ...celulaAtual, ...TRUNCAR_EM_DUAS_LINHAS }
                         : {
                             ...celulaAtual,
                             maxWidth: 280,
