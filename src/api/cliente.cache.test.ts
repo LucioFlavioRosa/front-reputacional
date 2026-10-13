@@ -28,6 +28,7 @@ import {
   obterDicionarios,
   baixarModeloDeSubtemas,
 } from './cliente';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 
 vi.mock('@/observabilidade/telemetria', async (original) => ({
   ...(await original<typeof import('@/observabilidade/telemetria')>()),
@@ -137,6 +138,70 @@ describe('o que faz esquecer', () => {
     await obterDicionarios();
 
     expect(espiao).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('a corrida entre a leitura em voo e a escrita', () => {
+  it('leitura que volta depois de a escrita esquecer tudo NÃO é guardada', async () => {
+    // ACHADO ALTA DE REVISÃO. Sem a guarda de geração, esta leitura volta e
+    // grava o dado PRÉ-ESCRITA, que então vale pelo prazo inteiro.
+    let soltar: ((r: Response) => void) | null = null;
+    let n = 0;
+    const espiao = vi.fn((_url: string, opcoes?: RequestInit) => {
+      n += 1;
+      const metodo = (opcoes?.method ?? 'GET').toUpperCase();
+      if (metodo !== 'GET') {
+        return Promise.resolve(
+          new Response(JSON.stringify({ id: 'escrito' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      const quantos = n;
+      return new Promise<Response>((resolver) => {
+        soltar = resolver;
+        if (quantos > 1) {
+          resolver(
+            new Response(JSON.stringify([{ id: 'depois' }]), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+          );
+        }
+      });
+    });
+    vi.stubGlobal('fetch', espiao);
+
+    const leitura = listarAcessos();
+    await criarInteracao({ assunto: 'qualquer' });
+    soltar!(
+      new Response(JSON.stringify([{ id: 'antes' }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    // Quem pediu recebe a resposta — não fica sem nada.
+    expect(await leitura).toEqual([{ id: 'antes' }]);
+
+    // Mas ela não ficou guardada: a leitura seguinte vai à rede.
+    expect(await listarAcessos()).toEqual([{ id: 'depois' }]);
+  });
+});
+
+describe('o aviso que vem de outra aba', () => {
+  it('esquece o guardado, senão a tela "recarrega" e lê o estado de antes', async () => {
+    // ACHADO ALTA DE REVISÃO. `catalogoMudou` atravessa o `BroadcastChannel`: a
+    // outra aba salva, esta recebe o aviso e recarrega — e sem isto a recarga
+    // leria o guardado por até cinco minutos no catálogo.
+    const espiao = fetchQueConta((n) => ({ temas: [String(n)] }));
+
+    await obterDicionarios();
+    catalogoMudou.avisar();
+    await obterDicionarios();
+
+    expect(espiao).toHaveBeenCalledTimes(2);
   });
 });
 

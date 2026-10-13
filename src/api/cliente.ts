@@ -2,6 +2,7 @@
 
 import { registrarErro } from '@/observabilidade/telemetria';
 import {
+  Sincronizador,
   agendasMudaram,
   catalogoMudou,
   escreveAgendas,
@@ -196,6 +197,13 @@ interface ComoLer {
 // instantânea sempre — mas sem assinatura o componente nunca receberia o valor
 // novo, e a pessoa leria número velho sem saber. Então: dentro do prazo, não vai
 // à rede; fora do prazo, vai e espera. O prazo é escolhido pelo que o dado é.
+//
+// A CHAVE É O CAMINHO, e isso vale enquanto a resposta depender só dele. Hoje
+// depende: o caminho já carrega a query string, e nenhum GET de JSON deste
+// cliente varia por cabeçalho ou por corpo (os GET com `RequestInit` são
+// downloads, que saem do cache). Um GET novo cuja resposta mude por cabeçalho
+// precisa de `semGuardar` — ou de chave composta. Achado de revisão, anotado
+// aqui porque é armadilha futura, não defeito de hoje.
 // ---------------------------------------------------------------------------
 
 /** O prazo do dado que muda a cada registro — a janela que cobre trocar de aba
@@ -210,10 +218,21 @@ const PRAZO_PADRAO_MS = 20_000;
  *  cadastro em OUTRA aba do navegador. */
 const PRAZO_DE_CATALOGO_MS = 5 * 60_000;
 
+//: AS ROTAS QUE O PAINEL TRATA COMO CATÁLOGO — as mesmas que `estado/painel.tsx`
+//: recarrega quando `catalogoMudou` avisa. Achado MÉDIO de revisão: a primeira
+//: versão desta lista deixava `alegacoes`, `instituicoes` e `interlocutores` no
+//: prazo curto, embora o painel as carregue como referência igual às outras.
+//:
+//: O prazo longo aqui é REDE DE SEGURANÇA, e não o mecanismo: o que mantém estas
+//: rotas corretas é a invalidação por aviso (local ou de outra aba). Os 5 min
+//: cobrem só o caso de alguém mudar o cadastro fora do painel.
 const ROTAS_DE_CATALOGO = [
   '/api/dicionarios',
   '/api/referencias',
   '/api/pessoas-aegea',
+  '/api/alegacoes',
+  '/api/instituicoes',
+  '/api/interlocutores',
   '/api/acessos/papeis',
   '/api/score/opcoes',
   '/api/score/riscos/opcoes',
@@ -232,6 +251,18 @@ interface Guardado {
 
 const GUARDADO = new Map<string, Guardado>();
 
+/** Em que geração do cache estamos. Cada esquecimento começa uma nova.
+ *
+ *  ACHADO ALTA DE REVISÃO, e era corrida de verdade: uma leitura já EM VOO
+ *  quando a escrita esquece tudo voltava depois e gravava o dado PRÉ-ESCRITA,
+ *  que então valia pelo prazo inteiro. Cenário medido no desenho: a tela começa
+ *  `GET /api/interacoes`, a pessoa salva uma interação, o `POST` esquece tudo, e
+ *  o GET antigo termina e guarda a lista de antes.
+ *
+ *  A geração resolve sem cancelar nada: quem voltar de uma geração vencida
+ *  entrega o dado a quem pediu (a tela não fica sem resposta) e NÃO o guarda. */
+let geracao = 0;
+
 /** As buscas em voo, para que duas telas que montam juntas façam UM pedido.
  *
  *  Não é refinamento: ao abrir o painel, componentes irmãos pedem a mesma rota
@@ -247,7 +278,20 @@ const EM_VOO = new Map<string, Promise<unknown>>();
 export function limparCacheDaApi(): void {
   GUARDADO.clear();
   EM_VOO.clear();
+  geracao += 1;
 }
+
+//: ESQUECE TAMBÉM QUANDO O AVISO VEM DE FORA — achado ALTA de revisão.
+//:
+//: `catalogoMudou`, `agendasMudaram` e `scoreMudou` atravessam o
+//: `BroadcastChannel`: a outra aba salva, esta recebe o aviso e recarrega. Sem
+//: isto a recarga leria o guardado, e a pessoa veria o estado de antes da
+//: escrita da outra aba por até o prazo inteiro — 5 min no catálogo.
+//:
+//: `antesDeEspalhar` roda antes dos ouvintes, de propósito: o ouvinte da tela
+//: pode estar inscrito primeiro, e aí ele leria o guardado antes de alguém o
+//: esquecer. Cobre os três sincronizadores com uma inscrição só.
+Sincronizador.antesDeEspalhar(limparCacheDaApi);
 
 async function requisitar<T>(
   caminho: string,
@@ -257,20 +301,10 @@ async function requisitar<T>(
   const metodo = (opcoes.method ?? 'GET').toUpperCase();
   const guardavel = metodo === 'GET' && !como.comoBlob && !como.semGuardar;
 
-  if (!guardavel) {
-    const resultado = await buscarNaRede<T>(caminho, opcoes, como);
-    // TODA ESCRITA QUE DEU CERTO ESQUECE TUDO, e é de propósito grosso: uma
-    // interação gravada muda a série mensal, os KPIs, o dossiê e as contagens
-    // das lentes. Invalidar por rota exigiria uma segunda fonte de verdade
-    // sobre quem depende de quem — e ela divergiria em silêncio. O custo de
-    // limpar tudo é uma busca a mais depois de gravar, que é exatamente o que
-    // se quer depois de gravar.
-    //
-    // ENTRAR E SAIR TAMBÉM SÃO ESCRITAS (`POST /api/auth/...`), então a sessão
-    // seguinte não herda nada da anterior na mesma aba.
-    if (!METODOS_SEGUROS.has(metodo)) limparCacheDaApi();
-    return resultado;
-  }
+  // A ESCRITA ESQUECE O GUARDADO DENTRO DE `avisarSeMudouOCatalogo`, e não
+  // aqui: lá o esquecimento acontece ANTES de os ouvintes recarregarem, que é a
+  // ordem que importa. Ver o comentário daquela função.
+  if (!guardavel) return buscarNaRede<T>(caminho, opcoes, como);
 
   const guardado = GUARDADO.get(caminho);
   if (guardado && Date.now() - guardado.quando < prazoDe(caminho)) {
@@ -283,9 +317,13 @@ async function requisitar<T>(
   // FALHA NÃO É GUARDADA: o `.then` só grava no caminho de sucesso, e o
   // `finally` tira o pedido de voo em qualquer caso. Guardar um erro faria uma
   // falha momentânea de rede durar o prazo inteiro.
+  const minhaGeracao = geracao;
   const promessa = buscarNaRede<T>(caminho, opcoes, como)
     .then((dados) => {
-      GUARDADO.set(caminho, { quando: Date.now(), dados });
+      // A GERAÇÃO É A GUARDA DA CORRIDA: se alguém esqueceu tudo enquanto esta
+      // busca estava em voo, o que ela traz é de antes — entrega a quem pediu,
+      // mas não guarda.
+      if (minhaGeracao === geracao) GUARDADO.set(caminho, { quando: Date.now(), dados });
       return dados;
     })
     .finally(() => {
@@ -430,6 +468,20 @@ async function buscarNaRede<T>(
  *  SÓ DEPOIS DO SUCESSO. Um 4xx não mudou nada, e avisar faria a tela piscar
  *  por um cadastro que não aconteceu. */
 function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
+  // ESQUECE O GUARDADO ANTES DE AVISAR, e a ordem é o ponto: o aviso faz as
+  // telas recarregarem, e uma tela que recarregue com o cache ainda cheio
+  // receberia o estado de antes da escrita.
+  //
+  // E ESQUECE TUDO, de propósito grosso: uma interação gravada muda a série
+  // mensal, os KPIs, o dossiê e as contagens das lentes. Invalidar por rota
+  // exigiria uma segunda fonte de verdade sobre quem depende de quem, e ela
+  // divergiria em silêncio. O custo de limpar tudo é uma busca a mais depois de
+  // gravar — que é exatamente o que se quer depois de gravar.
+  //
+  // ENTRAR E SAIR SÃO ESCRITAS (`POST /api/auth/...`), então a sessão seguinte
+  // não herda nada da anterior na mesma aba.
+  if (!METODOS_SEGUROS.has(metodo)) limparCacheDaApi();
+
   if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
   // AS AGENDAS TÊM O SEU PRÓPRIO AVISO: confirmar uma importação ou salvar uma
   // interação recarrega a Base sozinho, em todas as abas abertas. Antes disto a
