@@ -164,6 +164,31 @@ export class Sincronizador {
   private readonly canal: CanalEntreAbas | null;
   private readonly mensagem: string;
 
+  /** O que roda ANTES dos ouvintes, em TODO aviso de TODO sincronizador.
+   *
+   *  POR QUE ESTÁTICO E POR QUE ANTES. O cliente da API guarda o que já buscou
+   *  (ver `limparCacheDaApi`), e um aviso que chega de OUTRA ABA faz esta
+   *  recarregar — mas a recarga passa pelo mesmo cliente, que devolveria o valor
+   *  guardado. Resultado, achado ALTA de revisão: a outra aba salva, esta
+   *  "recarrega" e lê dado velho por até o prazo inteiro.
+   *
+   *  Assinar como ouvinte comum não resolveria: `espalhar` chama na ordem de
+   *  inscrição, e o ouvinte da tela pode vir antes — ele leria o guardado antes
+   *  de alguém o esquecer. Esquecer ANTES de espalhar é o que torna a ordem
+   *  irrelevante.
+   *
+   *  Estático porque são três sincronizadores (catálogo, agendas, score) e o
+   *  cliente precisa cobrir os três com uma inscrição só. */
+  private static readonly antesDosOuvintes = new Set<Ouvinte>();
+
+  /** Registra um gesto para rodar antes dos ouvintes de qualquer aviso. */
+  static antesDeEspalhar(gesto: Ouvinte): () => void {
+    Sincronizador.antesDosOuvintes.add(gesto);
+    return () => {
+      Sincronizador.antesDosOuvintes.delete(gesto);
+    };
+  }
+
   constructor(canal: CanalEntreAbas | null = null, mensagem: string = MENSAGEM_DO_CATALOGO) {
     this.canal = canal;
     this.mensagem = mensagem;
@@ -191,6 +216,7 @@ export class Sincronizador {
   }
 
   private espalhar(): void {
+    for (const gesto of Sincronizador.antesDosOuvintes) gesto();
     for (const ouvinte of this.ouvintes) ouvinte();
   }
 }

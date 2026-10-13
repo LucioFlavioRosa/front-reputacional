@@ -216,6 +216,51 @@ export function Score({
     };
   }, []);
 
+  //: A SÉRIE SAI JUNTO COM AS OPÇÕES, e não atrás delas.
+  //:
+  //: ELA NÃO DEPENDE DO MÊS — `obterSerieDoScore()` não recebe parâmetro —, mas
+  //: vinha dentro do `recarregar`, que só roda depois de `mes` existir, e `mes`
+  //: só existe depois de as opções responderem. Eram DUAS idas ao servidor em
+  //: fila antes de a tela mostrar qualquer coisa: medido na telemetria da Azure,
+  //: `score/opcoes` com p95 de 993 ms e `score/serie` com 679 ms, somados em vez
+  //: de sobrepostos.
+  //:
+  //: CONTINUA TAMBÉM NO `recarregar`, e não é desperdício: uma calibração salva
+  //: muda a série, então quem grava precisa relê-la. Na montagem as duas
+  //: chamadas quase sempre se encontram no cliente — pedido em voo
+  //: compartilhado, ou resposta guardada.
+  //:
+  //: "QUASE SEMPRE", e não "sempre": achado de revisão contra o meu próprio
+  //: comentário, que afirmava que o servidor veria uma só. `/api/score/serie`
+  //: não é rota de catálogo, então vale o prazo curto; se as OPÇÕES demorarem
+  //: mais que esse prazo depois de a série já ter respondido, o `recarregar`
+  //: pede de novo, de verdade. É raro e não corrompe nada — mas afirmar o forte
+  //: era inferência, não fato.
+  useEffect(() => {
+    let ativo = true;
+    obterSerieDoScore()
+      .then((carregada) => {
+        if (ativo) definirSerie(carregada);
+      })
+      .catch((falha: unknown) => {
+        //: O PRIMEIRO ERRO É QUE FICA — achado de revisão. Este efeito e o das
+        //: opções escrevem no mesmo `erro`, e antes de haver índice é o `erro`
+        //: que derruba a tela. Falhando as opções e depois a série, a mensagem
+        //: final seria a da série: a menos estrutural das duas, para quem está
+        //: tentando abrir a tela.
+        if (ativo) {
+          definirErro(
+            (anterior) =>
+              anterior ??
+              (falha instanceof Error ? falha.message : 'Não foi possível carregar.'),
+          );
+        }
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   // DEVOLVE A PROMESSA, e quem grava a espera: sem isso, quem edita dois
   // campos em seguida manda o segundo com a régua ANTERIOR — e a primeira
   // alteração some sem aviso, porque o payload é montado das props.

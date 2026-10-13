@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { listarRecorteCompleto, TAMANHO_DO_LOTE } from './cliente';
+import { limparCacheDaApi, listarRecorteCompleto, TAMANHO_DO_LOTE } from './cliente';
 
 type Pedido = { pagina: number; responder: () => void };
 
@@ -37,6 +37,10 @@ function servidorQueSegura(url: string): Promise<Response> {
 
 beforeEach(() => {
   pendentes = [];
+  // O CLIENTE GUARDA O QUE JÁ BUSCOU, e o mapa é de módulo: sem limpar, a
+  // página 1 guardada pelo teste anterior faz este não pedir nada, e a leitura
+  // de `pendentes` vem vazia — falha que se lê como defeito da paginação.
+  limparCacheDaApi();
   vi.stubGlobal('fetch', servidorQueSegura);
 });
 

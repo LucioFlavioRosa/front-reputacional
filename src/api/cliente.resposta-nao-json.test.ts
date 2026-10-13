@@ -18,7 +18,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ErroDaApi, baixarModeloDeSubtemas, listarAcessos } from './cliente';
+import { ErroDaApi, baixarModeloDeSubtemas, limparCacheDaApi, listarAcessos } from './cliente';
 import { registrarErro } from '@/observabilidade/telemetria';
 
 //: SÓ `registrarErro` É DUBLÊ. Trocar o módulo inteiro obrigaria a repetir
@@ -51,6 +51,10 @@ function contextoRegistrado(): Record<string, unknown> {
 
 beforeEach(() => {
   vi.mocked(registrarErro).mockClear();
+  // O CLIENTE GUARDA LEITURA QUE DEU CERTO, num mapa de módulo. Um teste que
+  // responde 200 deixa a rota guardada para o seguinte, que então recebe o
+  // corpo do anterior em vez do que acabou de dublar.
+  limparCacheDaApi();
 });
 
 afterEach(() => {
