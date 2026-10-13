@@ -227,8 +227,15 @@ export function Score({
   //:
   //: CONTINUA TAMBÉM NO `recarregar`, e não é desperdício: uma calibração salva
   //: muda a série, então quem grava precisa relê-la. Na montagem as duas
-  //: chamadas se encontram no cliente — pedido em voo compartilhado, ou resposta
-  //: guardada —, então o servidor vê uma.
+  //: chamadas quase sempre se encontram no cliente — pedido em voo
+  //: compartilhado, ou resposta guardada.
+  //:
+  //: "QUASE SEMPRE", e não "sempre": achado de revisão contra o meu próprio
+  //: comentário, que afirmava que o servidor veria uma só. `/api/score/serie`
+  //: não é rota de catálogo, então vale o prazo curto; se as OPÇÕES demorarem
+  //: mais que esse prazo depois de a série já ter respondido, o `recarregar`
+  //: pede de novo, de verdade. É raro e não corrompe nada — mas afirmar o forte
+  //: era inferência, não fato.
   useEffect(() => {
     let ativo = true;
     obterSerieDoScore()
@@ -236,7 +243,18 @@ export function Score({
         if (ativo) definirSerie(carregada);
       })
       .catch((falha: unknown) => {
-        if (ativo) definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
+        //: O PRIMEIRO ERRO É QUE FICA — achado de revisão. Este efeito e o das
+        //: opções escrevem no mesmo `erro`, e antes de haver índice é o `erro`
+        //: que derruba a tela. Falhando as opções e depois a série, a mensagem
+        //: final seria a da série: a menos estrutural das duas, para quem está
+        //: tentando abrir a tela.
+        if (ativo) {
+          definirErro(
+            (anterior) =>
+              anterior ??
+              (falha instanceof Error ? falha.message : 'Não foi possível carregar.'),
+          );
+        }
       });
     return () => {
       ativo = false;
