@@ -39,6 +39,17 @@ const FONTES = import.meta.glob('@/**/*.tsx', {
 /** O que denuncia um limite de linhas escrito em estilo de objeto. */
 const MARCAS_DO_LIMITE = ['WebkitLineClamp', '-webkit-box'];
 
+//: E O MESMO LIMITE ESCRITO COMO CLASSE. É o caminho mais natural de todos —
+//: `<td className="duas-linhas">` —, e ele põe exatamente o mesmo
+//: `display: -webkit-box` (ver `index.css`), com exatamente o mesmo estrago.
+//: Uma guarda que só olhasse o estilo em objeto deixaria o defeito voltar
+//: pela porta da frente. Achado da revisão desta própria correção.
+//:
+//: `classeDasLinhasDaColuna` é a função que devolve a classe por rótulo de
+//: coluna (em `BaseDeDadosDoScore`): a classe não aparece escrita, mas o
+//: efeito é o mesmo se ela for parar na etiqueta da célula.
+const MARCAS_DE_CLASSE = ['duas-linhas', 'tres-linhas', 'classeDasLinhasDaColuna'];
+
 /** A etiqueta JSX de abertura que começa em `posicao`, até o `>` que a fecha.
  *
  *  CONTA CHAVES: um `<td>` costuma trazer `style={{ ... }}` e `onClick={() =>
@@ -84,12 +95,12 @@ function constantesComLimite(fonte: string): string[] {
 }
 
 describe('o limite de linhas não vai na célula da tabela', () => {
-  it('nenhuma etiqueta `<td` carrega `-webkit-line-clamp`, nem direto nem por constante', () => {
+  it('nenhuma etiqueta `<td` carrega limite de linhas — por estilo, por constante ou por classe', () => {
     const culpados: string[] = [];
 
     for (const [caminho, fonte] of Object.entries(FONTES)) {
       const espalhadas = constantesComLimite(fonte).map((nome) => `...${nome}`);
-      const proibidos = [...MARCAS_DO_LIMITE, ...espalhadas];
+      const proibidos = [...MARCAS_DO_LIMITE, ...MARCAS_DE_CLASSE, ...espalhadas];
 
       let de = fonte.indexOf('<td');
       while (de >= 0) {
@@ -122,6 +133,21 @@ describe('o limite de linhas não vai na célula da tabela', () => {
     const etiqueta = etiquetaDeAbertura(defeito, defeito.indexOf('<td'));
     expect(etiqueta).toContain('...TRUNCAR_EM_DUAS_LINHAS');
     expect(etiqueta.endsWith('>')).toBe(true);
+  });
+
+  it('e pega o mesmo defeito escrito como classe', () => {
+    //: O caminho mais curto para o defeito voltar, e o que a primeira versão
+    //: desta guarda deixava passar.
+    const porClasse = '<td className="duas-linhas" title={nome}>{nome}</td>';
+    const etiqueta = etiquetaDeAbertura(porClasse, porClasse.indexOf('<td'));
+
+    expect(MARCAS_DE_CLASSE.some((marca) => etiqueta.includes(marca))).toBe(true);
+
+    //: E o embrulho certo NÃO é denunciado — a classe está no `span`, e a
+    //: etiqueta do `td` termina antes dele.
+    const certo = '<td style={celula}><span className="duas-linhas">{nome}</span></td>';
+    const etiquetaDoCerto = etiquetaDeAbertura(certo, certo.indexOf('<td'));
+    expect(MARCAS_DE_CLASSE.some((marca) => etiquetaDoCerto.includes(marca))).toBe(false);
   });
 
   it('e está olhando para os arquivos de verdade', () => {
