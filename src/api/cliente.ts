@@ -301,7 +301,7 @@ async function requisitar<T>(
   const metodo = (opcoes.method ?? 'GET').toUpperCase();
   const guardavel = metodo === 'GET' && !como.comoBlob && !como.semGuardar;
 
-  // A ESCRITA ESQUECE O GUARDADO DENTRO DE `avisarSeMudouOCatalogo`, e não
+  // A ESCRITA ESQUECE O GUARDADO DENTRO DE `sincronizarAposSucesso`, e não
   // aqui: lá o esquecimento acontece ANTES de os ouvintes recarregarem, que é a
   // ordem que importa. Ver o comentário daquela função.
   if (!guardavel) return buscarNaRede<T>(caminho, opcoes, como);
@@ -382,7 +382,7 @@ async function buscarNaRede<T>(
   }
 
   if (resposta.status === 204) {
-    avisarSeMudouOCatalogo(metodo, caminho);
+    sincronizarAposSucesso(metodo, caminho);
     return undefined as T;
   }
 
@@ -391,7 +391,7 @@ async function buscarNaRede<T>(
   // sobre um arquivo perfeitamente válido. O caminho de erro continua o mesmo:
   // um 4xx/5xx aqui ainda traz corpo de texto, e é ele que explica o problema.
   if (como.comoBlob && resposta.ok) {
-    avisarSeMudouOCatalogo(metodo, caminho);
+    sincronizarAposSucesso(metodo, caminho);
     return (await resposta.blob()) as T;
   }
 
@@ -452,11 +452,12 @@ async function buscarNaRede<T>(
     }
     throw erro;
   }
-  avisarSeMudouOCatalogo(metodo, caminho);
+  sincronizarAposSucesso(metodo, caminho);
   return dados as T;
 }
 
-/** A GARANTIA DE SINCRONIZAÇÃO, num lugar só.
+/** A GARANTIA DE SINCRONIZAÇÃO, num lugar só: esquece o guardado e avisa quem
+ *  escuta.
  *
  *  Toda escrita que deu certo numa rota de catálogo avisa `catalogoMudou`, e o
  *  estado do painel — que escuta — recarrega dicionários, instituições,
@@ -465,9 +466,13 @@ async function buscarNaRede<T>(
  *  escrita nova entra na garantia sem que quem a escreveu saiba dela: a regra
  *  é a rota, não a função.
  *
+ *  O NOME MUDOU (era `avisarSeMudouOCatalogo`), e por achado de revisão: desde
+ *  que o esquecimento do cache passou a morar aqui, "avisar" descrevia metade do
+ *  que a função faz.
+ *
  *  SÓ DEPOIS DO SUCESSO. Um 4xx não mudou nada, e avisar faria a tela piscar
  *  por um cadastro que não aconteceu. */
-function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
+function sincronizarAposSucesso(metodo: string, caminho: string): void {
   // ESQUECE O GUARDADO ANTES DE AVISAR, e a ordem é o ponto: o aviso faz as
   // telas recarregarem, e uma tela que recarregue com o cache ainda cheio
   // receberia o estado de antes da escrita.
@@ -482,6 +487,14 @@ function avisarSeMudouOCatalogo(metodo: string, caminho: string): void {
   // não herda nada da anterior na mesma aba.
   if (!METODOS_SEGUROS.has(metodo)) limparCacheDaApi();
 
+  //: PENDÊNCIA CONHECIDA, achado MÉDIO de revisão e anterior a este cache: uma
+  //: rota pode casar DOIS barramentos. `/api/score/veiculos-de-investidores`
+  //: está em `ROTAS_DO_CATALOGO` e também casa o prefixo de
+  //: `ROTAS_DO_SCORE`, então a mesma escrita avisa catálogo E score. Quem
+  //: assina os dois — `useConsultaDaLente` — dispara duas buscas e descarta a
+  //: primeira. Não corrompe dado; paga rede dobrada numa recarga pós-escrita.
+  //: O conserto é no desenho daquele hook (ou em juntar avisos do mesmo tique),
+  //: e não aqui — fica registrado para não voltar a ser invisível.
   if (escreveNoCatalogo(metodo, caminho)) catalogoMudou.avisar();
   // AS AGENDAS TÊM O SEU PRÓPRIO AVISO: confirmar uma importação ou salvar uma
   // interação recarrega a Base sozinho, em todas as abas abertas. Antes disto a
