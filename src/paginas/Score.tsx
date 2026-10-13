@@ -216,6 +216,33 @@ export function Score({
     };
   }, []);
 
+  //: A SÉRIE SAI JUNTO COM AS OPÇÕES, e não atrás delas.
+  //:
+  //: ELA NÃO DEPENDE DO MÊS — `obterSerieDoScore()` não recebe parâmetro —, mas
+  //: vinha dentro do `recarregar`, que só roda depois de `mes` existir, e `mes`
+  //: só existe depois de as opções responderem. Eram DUAS idas ao servidor em
+  //: fila antes de a tela mostrar qualquer coisa: medido na telemetria da Azure,
+  //: `score/opcoes` com p95 de 993 ms e `score/serie` com 679 ms, somados em vez
+  //: de sobrepostos.
+  //:
+  //: CONTINUA TAMBÉM NO `recarregar`, e não é desperdício: uma calibração salva
+  //: muda a série, então quem grava precisa relê-la. Na montagem as duas
+  //: chamadas se encontram no cliente — pedido em voo compartilhado, ou resposta
+  //: guardada —, então o servidor vê uma.
+  useEffect(() => {
+    let ativo = true;
+    obterSerieDoScore()
+      .then((carregada) => {
+        if (ativo) definirSerie(carregada);
+      })
+      .catch((falha: unknown) => {
+        if (ativo) definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   // DEVOLVE A PROMESSA, e quem grava a espera: sem isso, quem edita dois
   // campos em seguida manda o segundo com a régua ANTERIOR — e a primeira
   // alteração some sem aviso, porque o payload é montado das props.
