@@ -151,12 +151,22 @@ const CELULA_COMPACTA = { padding: '6px 8px' };
 //: das duas linhas mesmo num texto curto: é o que deixa a ALTURA DA LINHA
 //: FIXA — sem isto, cada linha da tabela teria uma altura diferente
 //: dependendo do tamanho do próprio texto.
-const TRUNCAR_EM_DUAS_LINHAS = {
-  whiteSpace: 'normal' as const,
-  display: '-webkit-box' as const,
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: 'vertical' as const,
-  overflow: 'hidden',
+//:
+//: O LIMITE VAI NUM EMBRULHO DENTRO DA CÉLULA, NUNCA NA CÉLULA — e isto aqui
+//: é o conserto de um defeito que chegou à tela: `-webkit-line-clamp` exige
+//: `display: -webkit-box`, e esse `display` num `<td>` SUBSTITUI o
+//: `table-cell`. Com uma célula só fora da grade o navegador ainda embrulhava
+//: ela sozinha e a tabela parecia inteira; quando Instituição e Pauta ficaram
+//: as DUAS fora, as duas viraram uma célula anônima só — a pauta passou a
+//: aparecer EMPILHADA DEBAIXO do nome, dentro da coluna de Instituição, e a
+//: coluna de Pauta ficou vazia. É a mesma regra que `ConsultasRecebidas` e
+//: `BaseDeDadosDoScore` já seguem, e `oLimiteDeLinhasNaoVaiNaCelula` guarda.
+//:
+//: O `display` vem SÓ da classe `duas-linhas` (ver `index.css`): estilo em
+//: linha venceria a classe e desligaria o limite sem aviso — é o que
+//: `oLimiteDeLinhasNaoEDesligado` guarda. Por isso aqui só altura e
+//: entrelinha, que nenhuma das duas regras proíbe.
+const EMBRULHO_DE_DUAS_LINHAS = {
   lineHeight: 1.35,
   minHeight: '2.7em',
 };
@@ -295,7 +305,16 @@ export function TabelaDeInteracoes({
             // CONTEÚDO (uma instituição de nome comprido, por exemplo) e
             // aperta a largura das outras duas tabelas ao lado no grid — ver
             // o comentário de `largurasPadrao` em `Tabela.tsx`.
-            largurasPadrao={reduzida ? { Data: 76, Instituição: 84 } : undefined}
+            //
+            // INSTITUIÇÃO EM 150, E NÃO 84: o cabeçalho dela é "INSTITUIÇÃO"
+            // em versalete MAIS a seta de ordenar (ela é ordenável), e isso
+            // mede ~115px. Em 84px o próprio rótulo não cabia: `white-space:
+            // nowrap` no `<th>` fazia ele TRANSBORDAR por cima do cabeçalho
+            // de Pauta — os dois títulos encostavam, e a divisa entre as duas
+            // colunas sumia para quem lê. 150px cabem o rótulo com folga e
+            // ~40 caracteres de nome nas duas linhas; Pauta continua levando
+            // todo o resto da largura do cartão.
+            largurasPadrao={reduzida ? { Data: 76, Instituição: 150 } : undefined}
             aoOrdenar={(coluna) => {
               definirOrdenacao((atual) => alternarOrdenacao(atual, coluna));
               definirPagina(1);
@@ -303,6 +322,8 @@ export function TabelaDeInteracoes({
           >
             {daPagina.map((interacao) => {
               const celulaAtual = reduzida ? { ...celula, ...CELULA_COMPACTA } : celula;
+              const instituicao = nomeDaInstituicao(catalogo, interacao.instituicao_id);
+              const pauta = tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids));
               return (
                 <LinhaDaTabela
                   key={interacao.id}
@@ -318,14 +339,16 @@ export function TabelaDeInteracoes({
                     {dataCompleta(interacao.data_interacao)}
                   </td>
                   <td
-                    style={
-                      reduzida
-                        ? { ...celulaAtual, ...TRUNCAR_EM_DUAS_LINHAS }
-                        : { ...celulaAtual, minWidth: 160 }
-                    }
-                    title={reduzida ? nomeDaInstituicao(catalogo, interacao.instituicao_id) : undefined}
+                    style={reduzida ? celulaAtual : { ...celulaAtual, minWidth: 160 }}
+                    title={reduzida ? instituicao : undefined}
                   >
-                    {nomeDaInstituicao(catalogo, interacao.instituicao_id)}
+                    {reduzida ? (
+                      <span className="duas-linhas" style={EMBRULHO_DE_DUAS_LINHAS}>
+                        {instituicao}
+                      </span>
+                    ) : (
+                      instituicao
+                    )}
                   </td>
                   {reduzida ? null : (
                     <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
@@ -340,7 +363,7 @@ export function TabelaDeInteracoes({
                   <td
                     style={
                       reduzida
-                        ? { ...celulaAtual, ...TRUNCAR_EM_DUAS_LINHAS }
+                        ? celulaAtual
                         : {
                             ...celulaAtual,
                             maxWidth: 280,
@@ -349,8 +372,15 @@ export function TabelaDeInteracoes({
                             whiteSpace: 'nowrap',
                           }
                     }
+                    title={reduzida ? pauta : undefined}
                   >
-                    {tituloDaAgenda(interacao, (ids) => nomesDosTemas(catalogo, ids))}
+                    {reduzida ? (
+                      <span className="duas-linhas" style={EMBRULHO_DE_DUAS_LINHAS}>
+                        {pauta}
+                      </span>
+                    ) : (
+                      pauta
+                    )}
                   </td>
                   {reduzida ? null : (
                     <td style={{ ...celulaAtual, color: 'var(--cinza-2)' }}>
