@@ -243,13 +243,26 @@ export function estadoDoModulo(
   mercadoLancado: boolean,
 ): EstadoDoModulo {
   if (id === null) return 'sem-acesso';
+
+  //: A PORTA VEM ANTES DO ALCANCE, inclusive para administrador.
+  //:
+  //: Esta linha estava DEPOIS do atalho de `admin`, e por isso o Executivo via
+  //: "Liberado ao lançar" no Mercado e o administrador via "Acesso total" — no
+  //: mesmo painel, no mesmo instante, com o mesmo painel fechado. Administrar
+  //: acessos não abre uma tela que não existe; "acesso total" ali prometia uma
+  //: porta pelo motivo errado. Achado de revisão.
+  //:
+  //: Quem tem o nível alcança o painel; o painel é que não responde até a
+  //: bandeira virar. São perguntas diferentes, e esta é a da porta.
+  if (modulo === 'mercado' && !mercadoLancado) {
+    return id === 'admin' || LIBERA[id].includes('mercado')
+      ? 'ao-lancar'
+      : 'sem-acesso';
+  }
+
   if (id === 'admin') return 'total';
 
   if (!LIBERA[id].includes(modulo)) return 'sem-acesso';
-  // A PORTA, e não o alcance. Quem tem o nível Mercado alcança o painel; o
-  // painel é que não responde até a bandeira de lançamento virar. Mostrar
-  // "Editor" aqui prometeria uma tela que não abre.
-  if (modulo === 'mercado' && !mercadoLancado) return 'ao-lancar';
   return editor ? 'editor' : 'consulta';
 }
 
