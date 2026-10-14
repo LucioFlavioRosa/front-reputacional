@@ -30,6 +30,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 import {
   criarReferencia,
   editarReferencia,
@@ -39,7 +40,7 @@ import {
 } from '@/api/cliente';
 import { dataCompleta, tamanhoLegivel } from '@/dominio/formato';
 import { nomeDoTema as nomeDoTemaNoCatalogo } from '@/dominio/derivacoes';
-import type { Referencia, VersaoDaReferencia } from '@/dominio/tipos';
+import type { Referencia, Tema, VersaoDaReferencia } from '@/dominio/tipos';
 import { usePainel } from '@/estado/painel';
 
 const TIPOS = [
@@ -267,6 +268,7 @@ export function Biblioteca() {
             valor={nova}
             aoMudar={definirNova}
             temas={catalogo.dicionarios.temas}
+            temasInativos={catalogo.dicionarios.temas_inativos}
           />
 
           <div style={{ marginTop: 16 }}>
@@ -353,6 +355,7 @@ export function Biblioteca() {
                       valor={rascunho}
                       aoMudar={definirRascunho}
                       temas={catalogo.dicionarios.temas}
+                      temasInativos={catalogo.dicionarios.temas_inativos}
                       semData
                     />
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -451,11 +454,15 @@ function FormularioDeReferencia({
   valor,
   aoMudar,
   temas,
+  temasInativos = [],
   semData = false,
 }: {
   valor: Rascunho;
   aoMudar: (r: Rascunho) => void;
-  temas: { id: number; nome: string }[];
+  temas: Tema[];
+  /** Os aposentados — só para continuar mostrando, como chip, o que uma
+   *  referência antiga já tem marcado. Mesmo papel que em `SeletorDeTemas`. */
+  temasInativos?: Tema[];
   /** Na edição a data não aparece: ela é da VERSÃO, não da referência. */
   semData?: boolean;
 }) {
@@ -520,41 +527,23 @@ function FormularioDeReferencia({
         rotulo="Outros temas"
         dica="Além do principal. É por eles que o posicionamento aparece no preparo de uma interação."
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-          {temas
-            .filter((tema) => String(tema.id) !== valor.tema_principal)
-            .map((tema) => {
-              const marcado = valor.temas.includes(tema.id);
-              return (
-                <button
-                  key={tema.id}
-                  type="button"
-                  aria-pressed={marcado}
-                  onClick={() =>
-                    aoMudar({
-                      ...valor,
-                      temas: marcado
-                        ? valor.temas.filter((id) => id !== tema.id)
-                        : [...valor.temas, tema.id],
-                    })
-                  }
-                  style={{
-                    padding: '5px 11px',
-                    borderRadius: 999,
-                    border: `1px solid ${marcado ? 'var(--azul-mar)' : 'var(--borda)'}`,
-                    background: marcado ? 'var(--azul-mar)' : 'transparent',
-                    color: marcado ? 'var(--branco)' : 'var(--cinza-3)',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    fontWeight: marcado ? 600 : 400,
-                  }}
-                >
-                  {tema.nome}
-                </button>
-              );
-            })}
-        </div>
+        {/* MESMO SELETOR DA NOVA INTERAÇÃO (`Cadastro.tsx`): busca por nome em
+            vez de uma grade com os 104 temas de uma vez — a grade antiga desta
+            tela mostrava todos juntos, difícil de escanear. O principal sai da
+            lista de busca para não duplicar a escolha já feita acima. */}
+        <SeletorDeTemas
+          temas={temas.filter((tema) => String(tema.id) !== valor.tema_principal)}
+          temasInativos={temasInativos}
+          selecionados={valor.temas}
+          aoAlternar={(id) =>
+            aoMudar({
+              ...valor,
+              temas: valor.temas.includes(id)
+                ? valor.temas.filter((t) => t !== id)
+                : [...valor.temas, id],
+            })
+          }
+        />
       </Campo>
     </div>
   );
