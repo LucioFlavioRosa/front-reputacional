@@ -116,6 +116,22 @@ export function Ficha({
       aoFechar={aoFechar}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+        {/* A CLASSIFICAÇÃO NO TOPO DA FICHA, e antes de qualquer conteúdo.
+            Quem abre esta agenda tem a camada — senão não chegaria aqui, o
+            servidor responde 404. O aviso existe para a outra metade: lembrar
+            que o que está nesta tela não circula, e que colegas sem a camada
+            não veem este registro nem o contam nos KPIs deles. */}
+        {interacao.sensivel ? (
+          <FaixaDeAtencao
+            mensagem={
+              <span>
+                <strong>Informação sensível.</strong> Esta agenda só aparece
+                para quem tem acesso a informação sensível — para os demais ela
+                não existe na Base, na busca nem nos KPIs.
+              </span>
+            }
+          />
+        ) : null}
         {/* NO TOPO, E NÃO NO PÉ. "Sem preenchimento", lá embaixo, fala da
             AGENDA; isto fala do CADASTRO que ela aponta, e é trabalho em outra
             tela. A importação por planilha deixou de barrar nome que não está

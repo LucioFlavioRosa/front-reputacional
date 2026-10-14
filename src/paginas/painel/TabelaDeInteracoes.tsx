@@ -333,6 +333,22 @@ export function TabelaDeInteracoes({
                   }
                 >
                   <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }} className="tabular">
+                    {/* A MARCA ANTES DA DATA, e num cadeado e não numa coluna.
+                        Quem lê esta tabela TEM a camada — as agendas restritas
+                        de quem não tem simplesmente não chegam. A marca serve
+                        para a outra metade: saber, de relance, quais linhas
+                        não circulam. Uma coluna própria custaria largura numa
+                        tabela de 20+ colunas para dizer "não" na maioria das
+                        linhas. */}
+                    {interacao.sensivel ? (
+                      <span
+                        title="Informação sensível: só quem tem a camada alcança esta agenda"
+                        aria-label="Informação sensível"
+                        style={{ marginRight: 5, color: 'var(--atencao-fg)' }}
+                      >
+                        🔒
+                      </span>
+                    ) : null}
                     {dataCompleta(interacao.data_interacao)}
                   </td>
                   <td

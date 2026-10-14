@@ -73,6 +73,16 @@ const DESTINO: Record<keyof Interacao, Destino> = {
   preve_desdobramento: 'ida-e-volta',
   outra_parte: 'ida-e-volta',
   materiais: 'ida-e-volta',
+  //: A CLASSIFICAÇÃO VIAJA SEMPRE, e não por `opcional`: é booleano, e `false`
+  //: é um valor, não a ausência de um. Passá-la por `opcional` transformaria
+  //: "desmarquei" em "não mexi nisto", e desmarcar deixaria de funcionar.
+  //:
+  //: O campo só aparece na tela para quem tem a camada — mas VIAJA de todo
+  //: jeito, com o valor que veio do servidor. Omiti-lo para quem não vê a caixa
+  //: faria uma edição de quem não tem a camada… não poder nem existir, porque
+  //: ela não alcança a agenda marcada. Para a agenda comum, manda `false`, que é
+  //: o que já está lá.
+  sensivel: 'ida-e-volta',
 
   //: A tela não edita — e cada um destes tem o motivo escrito em `corpo.ts`.
   //: `pauta` quase destruiu a descrição das 60 agendas vindas da planilha;
@@ -162,6 +172,9 @@ const COMPLETA: Interacao = {
   ],
   fonte: 'cadastro_manual',
   visivel: true,
+  //: `true` para que a ida e a volta digam algo: com `false`, que é o padrão do
+  //: formulário, a asserção passaria mesmo se o valor nunca saísse de lá.
+  sensivel: true,
   criado_por: 'u-1',
   criado_em: '2026-05-01T10:00:00Z',
   atualizado_em: '2026-05-02T10:00:00Z',
@@ -210,6 +223,13 @@ const ESPERADO: Record<string, unknown> = {
   clima_esperado: 'neutro',
   origens: ['i-0'],
   preve_desdobramento: true,
+  //: `true` DE PROPÓSITO, e não `false`.
+  //:
+  //: `false` é o valor-padrão do campo, então um teste que esperasse `false`
+  //: passaria igual se o valor nunca saísse do formulário — a asserção não
+  //: distinguiria "viajou" de "nasceu assim". É a mesma razão de os outros
+  //: valores aqui serem deliberadamente distintos entre si.
+  sensivel: true,
 };
 
 describe('a ida e a volta', () => {

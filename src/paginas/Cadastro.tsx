@@ -86,9 +86,86 @@ const ESTILO_DO_CHIP_MAIOR: CSSProperties = {
   fontSize: 12,
 };
 
+/** "Esta agenda é informação sensível?" — a classificação, na seção 3.
+ *
+ *  UMA CAIXA, E NÃO DUAS OPÇÕES. A pergunta tem resposta padrão — a agenda
+ *  nasce comum —, e um par "sim/não" obrigaria a responder uma pergunta que,
+ *  na maioria das agendas, não se põe. Marcar é o ato; não marcar é o repouso.
+ *
+ *  O AVISO APARECE SÓ QUANDO MARCADA, e diz a consequência em número de
+ *  pessoas: "restrita" é abstrato, "só quem tem a camada" é a regra, e quem
+ *  classifica precisa saber que está tirando a agenda da vista de colegas e
+ *  dos KPIs deles.
+ */
+function ClassificacaoSensivel({
+  form,
+  alterar,
+}: {
+  form: Formulario;
+  alterar: <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: '13px 15px',
+        borderRadius: 'var(--r-card-int)',
+        border: `1px solid ${form.sensivel ? 'var(--atencao-fg)' : 'var(--borda)'}`,
+        background: form.sensivel ? 'var(--atencao-bg)' : 'var(--bg-rodape-card)',
+      }}
+    >
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          cursor: 'pointer',
+          fontSize: 13,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={form.sensivel}
+          onChange={(evento) => alterar('sensivel', evento.target.checked)}
+          style={{ marginTop: 2, flexShrink: 0 }}
+        />
+        <span>
+          <strong>Esta agenda é informação sensível</strong>
+          <span
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: form.sensivel ? 'var(--atencao-fg)' : 'var(--cinza-2)',
+              marginTop: 3,
+              lineHeight: 1.5,
+            }}
+          >
+            {form.sensivel ? (
+              <>
+                Marcada, ela só aparece para quem tem acesso a informação
+                sensível. Para os demais, a agenda <strong>não existe</strong>:
+                não aparece na Base, não é achada pela busca, não abre por link
+                e <strong>não entra nos KPIs deles</strong> — os números que
+                eles veem passam a ser menores que os seus.
+              </>
+            ) : (
+              <>
+                A agenda e todos os campos dela ficam visíveis a quem tem acesso
+                ao CRM. Marque quando o encontro — ou a simples existência dele —
+                não deva circular.
+              </>
+            )}
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
 export function Cadastro({
   aoSalvar,
   id,
+  alcancaSensivel = false,
 }: {
   aoSalvar: () => void;
   /** Quando vem, o formulário EDITA em vez de criar.
@@ -99,6 +176,15 @@ export function Cadastro({
    *  outra, e ninguém notaria até alguém perder o que digitou.
    */
   id?: string;
+  /** Quem olha tem acesso a informação sensível? Vem de `eu.ve_campos_sensiveis`.
+   *
+   *  Decide se o campo "Informação sensível" aparece na seção 3. `false` por
+   *  padrão — esconder é o lado seguro, e quem precisa do campo tem a camada.
+   *
+   *  NÃO É A BARREIRA: o backend recusa a marcação com 422. Esconder aqui
+   *  evita a armadilha de alguém trancar um registro que deixaria de enxergar.
+   */
+  alcancaSensivel?: boolean;
 }) {
   const { catalogo, recarregar } = usePainel();
   const [form, definirForm] = useState<Formulario>(VAZIO);
@@ -826,6 +912,18 @@ export function Cadastro({
             />
           </Campo>
         </div>
+
+        {/* A CLASSIFICAÇÃO FICA AQUI, na seção que IDENTIFICA a agenda.
+            "Esta reunião é delicada" se sabe antes de ela acontecer — não é
+            output nem desfecho. É a mesma posição que a coluna ocupa na
+            planilha de importação.
+
+            SÓ APARECE PARA QUEM TEM A CAMADA. Quem não a tem e marcasse
+            perderia o próprio registro de vista no mesmo instante — a agenda
+            sairia da listagem, da ficha e da busca dele — e não conseguiria nem
+            desmarcar. O backend recusa com 422; esconder aqui é para a pessoa
+            não se meter nessa armadilha, não é a barreira. */}
+        {alcancaSensivel ? <ClassificacaoSensivel form={form} alterar={alterar} /> : null}
       </Secao>
 
       {/* QUEM PARTICIPA, LOGO APÓS IDENTIFICAR A INSTITUIÇÃO — por pedido:
