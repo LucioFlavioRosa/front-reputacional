@@ -11,6 +11,7 @@ const EXTERNO: Acesso = {
   ativo: true,
   papel: 'externo',
   acesso_irrestrito: false,
+  sensivel: true,
   externo: true,
   expira_em: '2026-12-31',
   frentes: ['imprensa'],
@@ -64,6 +65,16 @@ describe('montarConcessao', () => {
     const corpo = montarConcessao(EXTERNO, { ...formularioDe(EXTERNO), papel: '' });
     expect(corpo.papel).toBeNull();
   });
+
+  it('leva a camada sensível, e a zera junto com o papel', () => {
+    /* A terceira camada (migration 0087). Sem papel ela não existe, e o
+       backend a zera de todo jeito — revogar é estado limpo. Mandar `true`
+       faria a tela afirmar uma coisa que o banco não guarda. */
+    expect(montarConcessao(EXTERNO, formularioDe(EXTERNO)).sensivel).toBe(true);
+
+    const semPapel = { ...formularioDe(EXTERNO), papel: '', sensivel: true };
+    expect(montarConcessao(EXTERNO, semPapel).sensivel).toBe(false);
+  });
 });
 
 describe('impedimento', () => {
@@ -88,6 +99,42 @@ describe('impedimento', () => {
 
   it('deixa passar o que está completo', () => {
     expect(impedimento(formularioDe(EXTERNO))).toBeNull();
+  });
+
+  it('barra sensível acima do teto do papel', () => {
+    /* O backend recusa (migration 0087), e a recusa não protege dado nenhum — a
+       conjunção `papel.ve_campos_sensiveis AND usuario.acesso_sensivel` já
+       tornaria o acesso falso. Ela protege a TELA de dizer uma coisa e o
+       sistema fazer outra: a pessoa apareceria "com acesso sensível", não veria
+       o campo, e quem administra procuraria o defeito no lugar errado. */
+    const papelComTetoFechado = {
+      codigo: 'externo',
+      nome: 'Externo sem sensível',
+      administra_acessos: false,
+      administra_dicionarios: false,
+      ve_campos_sensiveis: false,
+      ve_diretorio: false,
+      pode_criar: false,
+      pode_editar_proprio: false,
+      pode_editar_tudo: false,
+      pode_exportar: false,
+      acessa_crm: true,
+      acessa_sintese: false,
+      acessa_score: false,
+    };
+
+    const forma = { ...formularioDe(EXTERNO), sensivel: true };
+    expect(impedimento(forma, [papelComTetoFechado])).toMatch(/sensível/i);
+
+    /* E não opina sobre o que não conhece: sem o catálogo, quem responde é o
+       backend. Inventar um impedimento a partir de um catálogo vazio barraria
+       toda concessão enquanto a lista de papéis não tivesse chegado. */
+    expect(impedimento(forma)).toBeNull();
+
+    /* Nem barra quando o teto está aberto. */
+    expect(
+      impedimento(forma, [{ ...papelComTetoFechado, ve_campos_sensiveis: true }]),
+    ).toBeNull();
   });
 });
 

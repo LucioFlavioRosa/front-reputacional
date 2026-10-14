@@ -16,17 +16,28 @@
  *  a quem não tem. Esconder é conveniência de tela.
  */
 
-import { Acessos } from '@/paginas/Acessos';
-import { Secao } from '@/componentes/basicos';
+import { GerenciamentoDePerfis } from '@/paginas/GerenciamentoDePerfis';
 
-export function PortalDaPlataforma({ euId }: { euId: string | null }) {
-  return (
-    <Secao
-      titulo="Plataforma"
-      subtitulo="O que vale para o painel inteiro, e não para uma área só."
-      nivelDoTitulo={1}
-    >
-      <Acessos euId={euId} />
-    </Secao>
-  );
+/** `Acessos` saiu daqui, e a tela nova a substitui inteira.
+ *
+ *  A antiga mostrava o acesso como ele é GUARDADO — um `select` com onze papéis
+ *  de nome técnico, mais caixas para irrestrito, externo, frentes e unidades.
+ *  A nova mostra as três camadas que quem libera uma pessoa de fato usa, e
+ *  ABSORVEU prazo, externo e escopo num quarto bloco: deixá-los sem tela os
+ *  devolveria ao `UPDATE` manual no banco, que é o que a tela antiga existia
+ *  para evitar.
+ *
+ *  O `Secao` de "Plataforma" saiu junto: com uma aba só, dois títulos
+ *  encadeados ("Plataforma" e depois "Gerenciamento de perfis") só empurravam o
+ *  conteúdo para baixo. Volta no dia em que o portal tiver companhia — política
+ *  de sessão, integrações, telemetria —, que é a razão de ele existir.
+ */
+export function PortalDaPlataforma({
+  euId,
+  mercadoLancado = false,
+}: {
+  euId: string | null;
+  mercadoLancado?: boolean;
+}) {
+  return <GerenciamentoDePerfis euId={euId} mercadoLancado={mercadoLancado} />;
 }
