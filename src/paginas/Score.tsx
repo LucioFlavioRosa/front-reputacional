@@ -475,21 +475,10 @@ function VisaoGeral({
   const [destacada, definirDestacada] = useState<string | null>(null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* A JORNADA DO ÍNDICE ABRE A TELA, por pedido: a pergunta de quem chega
-          é "para onde o índice está indo", e o radar do mês vem logo depois
-          para explicar de que lentes o número é feito. */}
-      <PainelDaJornada
-        titulo="Jornada do índice"
-        sujeito="O índice"
-        serie={serie}
-        mes={indice.mes}
-        aoEscolherMes={aoTrocarMes}
-        lentesParaComparar={indice.lentes
-          .filter((lente) => lente.score !== null)
-          .map((lente) => ({ codigo: lente.codigo, nome: lente.nome }))}
-        dica="Clique num mês para abrir a lente e o radial daquele mês."
-      />
-
+      {/* O RADAR REPUTACIONAL ABRE A TELA, por pedido: a pergunta de quem
+          chega é "como a companhia está sendo vista agora", e a jornada do
+          índice vem logo depois para mostrar a tendência por trás do radar
+          do mês. */}
       <ComFaixaDoTopo>
       <Secao
         titulo="Radar Reputacional"
@@ -539,6 +528,18 @@ function VisaoGeral({
         </Cartao>
       </Secao>
       </ComFaixaDoTopo>
+
+      <PainelDaJornada
+        titulo="Jornada do índice"
+        sujeito="O índice"
+        serie={serie}
+        mes={indice.mes}
+        aoEscolherMes={aoTrocarMes}
+        lentesParaComparar={indice.lentes
+          .filter((lente) => lente.score !== null)
+          .map((lente) => ({ codigo: lente.codigo, nome: lente.nome }))}
+        dica="Clique num mês para abrir a lente e o radial daquele mês."
+      />
 
       {/* DOIS RADARES LADO A LADO, por pedido, cada um com o seu seletor de mês,
           num bloco que nasce escondido. */}
