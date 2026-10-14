@@ -187,6 +187,20 @@ export interface Interacao {
   materiais: Material[];
   fonte: string;
   visivel: boolean;
+  /** A agenda INTEIRA é restrita a quem tem acesso a informação sensível.
+   *
+   *  Quem classifica é quem registra, uma agenda por vez, e o efeito é sobre a
+   *  LINHA: para quem não tem a camada, a agenda não existe — não vem na Base,
+   *  não é achada pela busca, não abre por link e **não entra nos KPIs dele**.
+   *
+   *  Chega no payload porque quem ALCANÇA precisa ver que a marca pegou, e a
+   *  lista precisa distinguir a linha restrita. Para quem não alcança a questão
+   *  não se põe: a linha não chega.
+   *
+   *  NÃO confundir com `visivel`, que esconde de TODO mundo (importação que deu
+   *  errado, duplicata).
+   */
+  sensivel: boolean;
   criado_por: string | null;
   criado_em: string | null;
   atualizado_em: string | null;

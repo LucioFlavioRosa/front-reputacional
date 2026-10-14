@@ -100,6 +100,10 @@ export function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = f
     // opiniao sobre ele.
     formato_interacao_id: numeroOpcional(form.formato_interacao_id),
     tier: numeroOpcional(form.tier),
+    // VIAJA SEMPRE, e não por `opcional`: é booleano, e `false` é um valor —
+    // não a ausência de um. Passá-lo por `opcional` transformaria "desmarquei"
+    // em "não mexi nisto", e desmarcar deixaria de funcionar.
+    sensivel: form.sensivel,
     clima: opcional(form.clima),
     resultado: opcional(form.resultado),
     iniciativa: opcional(form.iniciativa),
@@ -259,6 +263,10 @@ export function paraFormulario(interacao: Interacao): Formulario {
     modalidade: texto(interacao.modalidade),
     local: texto(interacao.local),
     tier: texto(interacao.tier),
+    //: `?? false` e não `Boolean(...)`: a agenda que chegou de um servidor
+    //: antigo não traz o campo, e `undefined` no `checked` de um input
+    //: controlado faz o React reclamar e o campo virar não-controlado.
+    sensivel: interacao.sensivel ?? false,
     status: texto(interacao.status),
     clima: texto(interacao.clima),
     resultado: texto(interacao.resultado),

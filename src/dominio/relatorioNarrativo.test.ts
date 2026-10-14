@@ -84,6 +84,7 @@ function interacao(ajustes: Partial<Interacao> = {}): Interacao {
     materiais: [],
     fonte: 'cadastro_manual',
     visivel: true,
+    sensivel: false,
     criado_por: null,
     criado_em: null,
     atualizado_em: null,

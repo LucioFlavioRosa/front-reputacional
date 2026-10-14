@@ -40,6 +40,17 @@ export interface Formulario {
   //: Endereco, sala, ou o link da chamada. Texto livre.
   local: string;
   tier: string;
+  /** A agenda inteira é restrita a quem tem acesso a informação sensível.
+   *
+   *  `boolean` e não os três estados de `preve_desdobramento`: aqui não existe
+   *  "não informado". Uma agenda é restrita ou não é, e a ausência de decisão
+   *  significa `false` — a classificação é um ato.
+   *
+   *  Só aparece na tela para quem TEM a camada, e o backend recusa a marcação
+   *  de quem não tem: quem marcasse sem ela perderia o próprio registro de
+   *  vista no mesmo instante. Ver a migration 0089.
+   */
+  sensivel: boolean;
   status: string;
   clima: string;
   resultado: string;
@@ -261,6 +272,9 @@ export const VAZIO: Formulario = {
   modalidade: '',
   local: '',
   tier: '',
+  //: A agenda nasce COMUM. Classificar é um ato, e o contrário faria quem
+  //: esquecesse o campo trancar o registro sem decidir isso.
+  sensivel: false,
   //: SOLICITADO, e nao vazio nem `agendado`. Uma agenda recem-criada foi
   //: PEDIDA; dizer "agendado" afirmaria que existe data marcada com a outra
   //: parte, coisa que ninguem confirmou — e a distancia entre pedir e conseguir

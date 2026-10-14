@@ -322,6 +322,13 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
                 key={rota.agenda ?? 'nova'}
                 id={rota.agenda}
                 aoSalvar={() => irPara({ destino: 'base' })}
+                /* O campo "Informação sensível" da seção 3 só aparece para
+                   quem tem a camada. `ve_campos_sensiveis` vem CALCULADO do
+                   servidor — é a conjunção do teto do papel com a concessão à
+                   pessoa (migration 0087). O backend recusa a marcação com
+                   422; esconder aqui evita a armadilha de alguém trancar um
+                   registro que deixaria de enxergar. */
+                alcancaSensivel={eu?.ve_campos_sensiveis ?? false}
               />
             ) : (
               <SemPermissaoParaCriar irPara={irParaDestino} />
