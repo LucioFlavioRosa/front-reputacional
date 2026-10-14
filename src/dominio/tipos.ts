@@ -522,9 +522,35 @@ export type Perfil =
   | 'sintese_leitura'
   | 'sintese_edicao'
   | 'score_leitura'
-  | 'score_edicao';
+  | 'score_edicao'
+  // -- migration 0088 ---------------------------------------------------------
+  | 'mercado_leitura'
+  | 'mercado_edicao'
+  /** O Executivo que edita os quatro painéis e NÃO administra acessos.
+   *
+   *  O nome é feio e o motivo está na migration 0088: `plataforma_edicao` já é
+   *  o papel de administrador, e tomar-lhe o nome significaria tirar
+   *  `administra_acessos` de quem o tem hoje em produção. */
+  | 'plataforma_edicao_sem_acessos';
 
-/** As três divisões da plataforma, como a capa as oferece. */
+/** As três divisões da plataforma, como a capa as oferece.
+ *
+ *  OS NOMES INTERNOS NÃO SÃO OS RÓTULOS, e vale saber antes de mexer:
+ *
+ *      crm      "CRM dos Stakeholders"
+ *      score    "KPIs Reputacionais"
+ *      sintese  "Painel de Inteligência de Mercado" — EM CONSTRUÇÃO
+ *
+ *  `sintese` é o portal do painel que a capa chama de Inteligência de Mercado:
+ *  o rótulo mudou e o nome interno não (ver `paginas/Inicio.tsx`). NÃO existe um
+ *  portal `mercado`, e procurar um leva a criá-lo — ver `dominio/perfis.ts`.
+ *
+ *  `sintese` é também o único que pode estar FECHADO por configuração: ver
+ *  `Eu.mercado_lancado`. Alcance e porta são coisas diferentes — alguém pode ter
+ *  o portal no papel e ver o cartão como "em construção".
+ *
+ *  A "Síntese Executiva" que aparece DENTRO do Painel do CRM é outra coisa e não
+ *  tem portal: é um bloco que lê a base do CRM. */
 export type Portal = 'crm' | 'sintese' | 'score';
 
 /**
@@ -565,14 +591,26 @@ export interface PapelDeAcesso {
  *  Esconder um portal é conveniência de tela, nunca controle: quem decide é o
  *  backend. Uma pessoa que force a navegação para um portal fechado leva 403 do
  *  mesmo jeito — o que se evita aqui é oferecer uma porta que não abre.
+ *
+ *  Aceita qualquer coisa que tenha as quatro bandeiras — o papel de quem está
+ *  logado (`PapelDeAcesso`) ou um papel do catálogo (`PapelDisponivel`). É a
+ *  mesma pergunta nos dois casos, e duplicar a função foi o que fez a tela de
+ *  perfis precisar dela para um tipo que ela não aceitava.
  */
-export function portaisDe(papel: PapelDeAcesso | null): Set<Portal> {
+export function portaisDe(papel: PortaisDoPapel | null): Set<Portal> {
   const abertos = new Set<Portal>();
   if (!papel) return abertos;
   if (papel.acessa_crm) abertos.add('crm');
   if (papel.acessa_sintese) abertos.add('sintese');
   if (papel.acessa_score) abertos.add('score');
   return abertos;
+}
+
+/** O mínimo para responder "que portais este papel abre?". */
+export interface PortaisDoPapel {
+  acessa_crm: boolean;
+  acessa_sintese: boolean;
+  acessa_score: boolean;
 }
 
 /**
@@ -591,6 +629,20 @@ export interface Usuario {
   papel: PapelDeAcesso | null;
   externo: boolean;
   acesso_expira_em: string | null;
+  /**
+   * O acesso sensível EFETIVO de quem está logado.
+   *
+   * Vem CALCULADO do servidor — `papel.ve_campos_sensiveis` E
+   * `usuario.acesso_sensivel` —, e não como os dois valores crus. A tela faz
+   * uma pergunta só: mostro o aviso de campos restritos? Compor a conjunção
+   * aqui seria repetir uma regra de autorização, e regra repetida é como as
+   * duas pontas passam a discordar.
+   *
+   * NÃO CONFUNDIR com `papel.ve_campos_sensiveis`, que é o TETO do cargo. Os
+   * dois divergem exatamente no caso que a migration 0087 criou: quem tem papel
+   * que alcança o sensível e não recebeu a camada.
+   */
+  ve_campos_sensiveis: boolean;
 }
 
 /** O que o servidor devolve ao registrar uma exportação da Base.
@@ -612,6 +664,16 @@ export interface Acesso {
   ativo: boolean;
   papel: string | null;
   acesso_irrestrito: boolean;
+  /**
+   * A terceira camada, como está GRAVADA na pessoa — não o acesso efetivo.
+   *
+   * Cru de propósito, ao contrário de `Usuario.ve_campos_sensiveis`: esta é a
+   * tela de administração, e aqui o valor gravado é o que se edita. O efetivo a
+   * tela compõe com o teto do papel, que vem em `PapelDisponivel` — e precisa
+   * compor, porque "marcado e sem efeito" é justamente o estado que quem
+   * administra tem de conseguir ver para corrigir.
+   */
+  sensivel: boolean;
   externo: boolean;
   expira_em: string | null;
   frentes: string[];
@@ -624,6 +686,8 @@ export interface Acesso {
 export interface Concessao {
   papel: string | null;
   acesso_irrestrito: boolean;
+  /** A terceira camada. O backend recusa marcar acima do teto do papel. */
+  sensivel: boolean;
   externo: boolean;
   expira_em: string | null;
   frentes: string[];
@@ -638,12 +702,34 @@ export interface Concessao {
   versao_vista: string | null;
 }
 
+/**
+ * Um papel concedível, com as bandeiras que a tela de perfis usa para se montar.
+ *
+ * AS BANDEIRAS INTEIRAS, e não três, porque a tela apresenta o acesso em três
+ * camadas — onde a pessoa entra, o que faz lá, e se alcança o sensível — e
+ * precisa DERIVAR cada papel nessas camadas.
+ *
+ * Derivar das bandeiras, e nunca do código. `papel` é tabela no banco, um papel
+ * novo é um `insert`, e uma tela que reconhecesse `crm_edicao` pelo nome
+ * passaria a ignorar o papel seguinte em silêncio. É a mesma advertência que
+ * `Perfil` carrega acima.
+ */
 export interface PapelDisponivel {
   codigo: string;
   nome: string;
   administra_acessos: boolean;
+  administra_dicionarios: boolean;
   ve_campos_sensiveis: boolean;
   ve_diretorio: boolean;
+  /** O que a pessoa FAZ lá dentro — é daqui que sai Editor × Usuário. */
+  pode_criar: boolean;
+  pode_editar_proprio: boolean;
+  pode_editar_tudo: boolean;
+  pode_exportar: boolean;
+  /** ONDE ela entra — é daqui que sai o nível. */
+  acessa_crm: boolean;
+  acessa_sintese: boolean;
+  acessa_score: boolean;
 }
 
 /**
@@ -664,6 +750,17 @@ export interface TrilhaDeAcesso {
 
 /** O corpo de `GET /api/eu`. */
 export interface Eu extends Usuario {
+  /**
+   * O painel de Inteligência de Mercado está no ar?
+   *
+   * Não é sobre "eu", e vem aqui mesmo: é a rota que a capa carrega para montar
+   * a navegação, e sem o valor junto haveria um instante em que a pessoa está
+   * identificada e a tela ainda não sabe se oferece o cartão.
+   *
+   * ALCANCE E PORTA SÃO COISAS DIFERENTES: alguém pode ter
+   * `papel.acessa_sintese` e ver o cartão como "em construção".
+   */
+  mercado_lancado: boolean;
   /**
    * Token anti-CSRF da sessão.
    *

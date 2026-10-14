@@ -341,7 +341,14 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               assunto de agenda, vale igual para o Score, e agora tem botão
               próprio. */}
           {rota.destino === 'plataforma' ? (
-            <PortalDaPlataforma euId={eu?.id ?? null} />
+            <PortalDaPlataforma
+              euId={eu?.id ?? null}
+              /* O cartão de Inteligência de Mercado aparece como "Liberado ao
+                 lançar" enquanto o painel não responde. Sem isto a tela
+                 prometeria "Editor" num painel que não abre, e o chamado seria
+                 aberto contra a tela de perfis. */
+              mercadoLancado={eu?.mercado_lancado ?? false}
+            />
           ) : null}
           {rota.destino === 'config-score' ? <ConfiguracoesDoScore /> : null}
         </LimiteDeErro>
