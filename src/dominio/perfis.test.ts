@@ -204,10 +204,34 @@ describe('o papel escolhido para cada nível', () => {
 });
 
 describe('o que o nível libera, recalculado antes de salvar', () => {
-  it('administrador tem acesso total aos quatro módulos', () => {
+  it('administrador tem acesso total aos quatro módulos, com o painel no ar', () => {
     for (const m of MODULOS) {
       expect(estadoDoModulo(m.id, 'admin', false, true)).toBe('total');
     }
+  });
+
+  it('e o administrador também vê "ao lançar" no painel que não abriu', () => {
+    //: A PORTA VEM ANTES DO ALCANCE, inclusive para quem administra.
+    //:
+    //: Antes, o Executivo via "Liberado ao lançar" no Mercado e o administrador
+    //: via "Acesso total" — mesmo painel, mesmo instante, painel fechado.
+    //: Administrar acessos não abre uma tela que não existe. Achado de revisão.
+    expect(estadoDoModulo('mercado', 'admin', false, false)).toBe('ao-lancar');
+    expect(estadoDoModulo('mercado', 'exec', false, false)).toBe('ao-lancar');
+
+    //: E os outros módulos do administrador não mudam por causa disso.
+    expect(estadoDoModulo('crm', 'admin', false, false)).toBe('total');
+    expect(estadoDoModulo('kpi', 'admin', false, false)).toBe('total');
+    expect(estadoDoModulo('usuarios', 'admin', false, false)).toBe('total');
+  });
+
+  it('quem não tem o nível continua sem acesso, painel fechado ou aberto', () => {
+    //: O par do teste acima: a bandeira de lançamento não concede nada. Sem
+    //: isto, o `if` da porta poderia transformar "sem acesso" em "ao lançar"
+    //: para todo mundo — e a tela diria a quem não tem o nível que o acesso
+    //: chega quando o painel abrir.
+    expect(estadoDoModulo('mercado', 'crm', true, false)).toBe('sem-acesso');
+    expect(estadoDoModulo('mercado', 'kpi', true, false)).toBe('sem-acesso');
   });
 
   it('sem nível, nada é liberado', () => {

@@ -524,9 +524,7 @@ export type Perfil =
   | 'score_leitura'
   | 'score_edicao'
   // -- migration 0088 ---------------------------------------------------------
-  | 'mercado_leitura'
-  | 'mercado_edicao'
-  /** O Executivo que edita os quatro painéis e NÃO administra acessos.
+  /** O Executivo que edita os três painéis e NÃO administra acessos.
    *
    *  O nome é feio e o motivo está na migration 0088: `plataforma_edicao` já é
    *  o papel de administrador, e tomar-lhe o nome significaria tirar

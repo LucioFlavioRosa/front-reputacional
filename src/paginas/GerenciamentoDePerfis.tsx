@@ -99,7 +99,13 @@ export function GerenciamentoDePerfis({
   const [aDesativar, definirADesativar] = useState<Acesso | null>(null);
   const [aDescartar, definirADescartar] = useState<string | null>(null);
 
-  const carregar = async (manterSelecao = true) => {
+  /** Relê a lista e o catálogo. Devolve a lista, para quem precisa do que veio.
+   *
+   *  DEVOLVE, e não só guarda no estado: quem acabou de salvar precisa resemear
+   *  o formulário com a versão NOVA da pessoa, e o estado só estaria disponível
+   *  no render seguinte. Ver `salvar`.
+   */
+  const carregar = async (manterSelecao = true): Promise<Acesso[] | null> => {
     definirErro(null);
     try {
       const [lista, papeis] = await Promise.all([listarAcessos(), listarPapeis()]);
@@ -112,9 +118,11 @@ export function GerenciamentoDePerfis({
         const esperando = lista.find((p) => !p.papel);
         definirSelecionada((esperando ?? lista[0])?.id ?? null);
       }
+      return lista;
     } catch (falha) {
       definirErro(falha instanceof Error ? falha.message : 'Falha ao carregar perfis.');
       definirPessoas([]);
+      return null;
     }
   };
 
@@ -255,21 +263,55 @@ export function GerenciamentoDePerfis({
     forma && original && JSON.stringify(forma) !== JSON.stringify(original),
   );
 
+  /** Relê tudo e refaz o formulário desta pessoa com o que veio do servidor. */
+  const ressemear = async (id: string) => {
+    const atualizadas = await carregar();
+    const nova = atualizadas?.find((p) => p.id === id) ?? null;
+    if (nova) definirForma(formularioDe(nova));
+  };
+
   const salvar = async () => {
     if (!pessoa || !forma || barreira) return;
+    const alvo = pessoa.id;
     definirSalvando(true);
     definirErroDoSalvar(null);
     try {
-      await concederAcesso(pessoa.id, montarConcessao(pessoa, forma));
+      await concederAcesso(alvo, montarConcessao(pessoa, forma));
       definirConfirmado(`Acesso de ${pessoa.nome} salvo: ${resumo(forma)}.`);
-      await carregar();
+      //: RESEMEIA O FORMULÁRIO com o que voltou do servidor. O `useEffect` que
+      //: o recomeça olha só o `id` da pessoa, e o id não mudou — sem isto o
+      //: formulário continuaria com o `versao_vista` antigo, e a barra diria
+      //: "alteração pendente" sobre uma alteração que já foi salva.
+      await ressemear(alvo);
     } catch (falha) {
       //: A MENSAGEM VEM DO BACKEND — "Acesso externo exige prazo", "Frente
       //: desconhecida: X", "O acesso desta pessoa mudou enquanto o formulário
       //: estava aberto". Escrever outra aqui esconderia a que explica.
-      definirErroDoSalvar(
-        falha instanceof Error ? falha.message : 'Falha ao salvar o acesso.',
-      );
+      const mensagem =
+        falha instanceof Error ? falha.message : 'Falha ao salvar o acesso.';
+
+      //: CONFLITO DE VERSÃO RECARREGA, e é o que tira a tela de um laço.
+      //:
+      //: `versao_vista` é o `concedido_em` que a tela viu ao abrir. Quando
+      //: outra pessoa salva no meio, o backend recusa e manda recarregar — mas
+      //: a tela ficava com a versão velha em mãos: salvar de novo repetia o
+      //: mesmo erro, e "Desfazer" restaurava o formulário igualmente velho. A
+      //: mensagem dizia o que fazer e a tela não oferecia como. Achado de
+      //: revisão.
+      //:
+      //: A alteração pendente é PERDIDA, e é o preço certo: ela foi montada
+      //: sobre um estado que já não existe, e aplicá-la por cima apagaria em
+      //: silêncio o que a outra pessoa acabou de decidir.
+      if (/mudou enquanto o formul/i.test(mensagem)) {
+        const atualizadas = await carregar();
+        const nova = atualizadas?.find((p) => p.id === alvo) ?? null;
+        if (nova) definirForma(formularioDe(nova));
+        definirErroDoSalvar(
+          `${mensagem} A tela já foi recarregada com o acesso atual — refaça a alteração.`,
+        );
+      } else {
+        definirErroDoSalvar(mensagem);
+      }
     } finally {
       definirSalvando(false);
     }
@@ -416,6 +458,7 @@ export function GerenciamentoDePerfis({
                 titulo="Nível de acesso"
                 legenda="um nível por usuário · do mais amplo ao mais restrito"
               >
+                <Escolha rotulo="Nível de acesso">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {NIVEIS.map((n) => (
                     <Opcao
@@ -449,6 +492,7 @@ export function GerenciamentoDePerfis({
                     descricao="A pessoa continua existindo e o histórico dela permanece atribuído — mas não alcança painel nenhum. Prazo e escopo são apagados."
                   />
                 </div>
+                </Escolha>
               </Bloco>
 
               {/* 2. PAPEL */}
@@ -462,6 +506,7 @@ export function GerenciamentoDePerfis({
                       : 'o que a pessoa pode fazer dentro dos painéis liberados'
                 }
               >
+                <Escolha rotulo="Papel nos painéis">
                 <div style={duasColunas}>
                   <Opcao
                     marcada={!camadasDesligadas && editorEscolhido}
@@ -478,6 +523,7 @@ export function GerenciamentoDePerfis({
                     descricao="Só consulta e exporta. Não cadastra, não edita, não calibra."
                   />
                 </div>
+                </Escolha>
                 {ehAdmin && (
                   <p style={nota}>
                     Administradores podem tudo em todos os painéis — o papel não
@@ -497,6 +543,7 @@ export function GerenciamentoDePerfis({
                       : 'terceira camada: vale para editores e usuários'
                 }
               >
+                <Escolha rotulo="Informação sensível">
                 <div style={duasColunas}>
                   <Opcao
                     marcada={!camadasDesligadas && forma.sensivel}
@@ -513,6 +560,7 @@ export function GerenciamentoDePerfis({
                     descricao="Vê os registros com esses campos ocultos: só data, contraparte, pauta, situação, temas e indicadores."
                   />
                 </div>
+                </Escolha>
                 <div style={notaAmbar}>
                   {semNivelEscolhido
                     ? 'Defina o nível de acesso acima para liberar esta camada.'
@@ -572,7 +620,16 @@ export function GerenciamentoDePerfis({
 
               {/* 6. BARRA DE AÇÃO */}
               <div style={barraDeAcao}>
-                <div style={{ fontSize: 13, minWidth: 0 }}>
+                {/* `role="status"` com `aria-live`: a confirmação e o erro do
+                    salvamento aparecem aqui, longe do botão que os causou, e
+                    sem o anúncio quem usa leitor de tela clica em "Salvar" e
+                    não recebe resposta nenhuma. `polite` e não `assertive` —
+                    não interrompe o que estiver sendo lido. Achado de revisão. */}
+                <div
+                  style={{ fontSize: 13, minWidth: 0 }}
+                  role="status"
+                  aria-live="polite"
+                >
                   {erroDoSalvar ? (
                     <span style={{ color: 'var(--erro-fg)' }}>{erroDoSalvar}</span>
                   ) : barreira ? (
@@ -821,8 +878,42 @@ function LinhaDaPessoa({
             {detalhe}
           </span>
         )}
+        {/* O PRAZO DE QUEM É DE FORA, AQUI NA LISTA.
+            A tela antiga tinha um cartão "Externos" que mostrava os prazos de
+            todos de uma vez; esta mostra um perfil por vez, e sem esta linha a
+            pergunta "quem está vencendo?" exigiria clicar em cada pessoa.
+            Acesso de terceiro que vence em silêncio é o caso que motivou o
+            campo, e perder a visão de conjunto foi um achado de revisão. */}
+        <PrazoNaLinha pessoa={pessoa} />
       </span>
     </button>
+  );
+}
+
+/** O prazo de quem é de fora, condensado para a linha da lista. */
+function PrazoNaLinha({ pessoa }: { pessoa: Acesso }) {
+  if (!pessoa.externo || !pessoa.expira_em) return null;
+
+  const faltam = -diasDesde(pessoa.expira_em);
+  const vencido = faltam < 0;
+  const perto = faltam >= 0 && faltam <= DIAS_DE_ALERTA;
+
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: vencido || perto ? 700 : 400,
+        whiteSpace: 'nowrap',
+        color: vencido || perto ? 'var(--erro-fg)' : 'var(--cinza-2)',
+      }}
+      title={`Acesso de fora, até ${dataCompleta(pessoa.expira_em)}`}
+    >
+      {vencido
+        ? 'de fora · vencido'
+        : perto
+          ? `de fora · vence em ${faltam}d`
+          : `de fora · até ${dataCompleta(pessoa.expira_em)}`}
+    </span>
   );
 }
 
@@ -932,12 +1023,34 @@ function Bloco({
   );
 }
 
+/** O grupo de escolha única em volta das `Opcao`.
+ *
+ *  `aria-label` com o título do bloco, e não só o `role`: um `radiogroup` sem
+ *  nome é anunciado como "grupo" e quem ouve não sabe grupo de quê. Os três
+ *  blocos de camada têm a mesma forma visual, e é o nome que os distingue.
+ */
+function Escolha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div role="radiogroup" aria-label={rotulo}>
+      {children}
+    </div>
+  );
+}
+
 /** Uma escolha única, no formato do protótipo: marca, título, descrição.
  *
- *  `button` e não `input[type=radio]`: o alvo de clique é o cartão inteiro, e
- *  `aria-pressed` diz o estado a quem usa leitor de tela. Um radio de verdade
- *  exigiria `fieldset`/`legend` por grupo — o que seria melhor, e fica anotado;
- *  o que não dá é um alvo de 18px no canto.
+ *  `button` com `role="radio"`, e não `input[type=radio]`: o alvo de clique é o
+ *  cartão inteiro, com a descrição dentro, e um radio de verdade colocaria o
+ *  alvo nos 16px da marca.
+ *
+ *  ERA `aria-pressed`, E ESTAVA ERRADO. `aria-pressed` descreve um botão de
+ *  alternância INDEPENDENTE: quem usa leitor de tela ouvia cinco alternâncias
+ *  soltas, sem saber que pertencem ao mesmo grupo nem que só uma pode valer.
+ *  `role="radio"` + `aria-checked`, dentro de um `role="radiogroup"` com nome
+ *  acessível, diz as três coisas. Achado de revisão.
+ *
+ *  O que ainda falta é a navegação por setas dentro do grupo, que o padrão de
+ *  rádio pede; `Tab` alcança cada opção, então nada fica inalcançável.
  */
 function Opcao({
   marcada,
@@ -964,7 +1077,8 @@ function Opcao({
     <button
       type="button"
       onClick={desabilitada ? undefined : aoClicar}
-      aria-pressed={marcada}
+      role="radio"
+      aria-checked={marcada}
       disabled={desabilitada}
       title={indisponivel}
       style={{
