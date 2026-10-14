@@ -34,7 +34,8 @@ import {
 import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
-import { SinteseExecutivaPelaIA } from '@/paginas/painel/SinteseExecutivaPelaIA';
+// `SinteseExecutivaPelaIA` fica sem import por ora — ver o comentário mais
+// abaixo, onde o componente era chamado, para trazer a tela de volta.
 import { TabelaDeInteracoes } from '@/paginas/painel/TabelaDeInteracoes';
 import { TermometroDeClima } from '@/graficos/TermometroDeClima';
 import {
@@ -865,11 +866,15 @@ export function Painel({
         publicoPrincipal={derivado.resumoExecutivo.publicoPrincipal}
       />
 
-      {/* SÍNTESE EXECUTIVA PELA IA — ver o comentário no topo do arquivo do
-          componente: hoje é o front montando o texto com dados reais, sem
-          agente nenhum por trás; a caixa (abrir/fechar, feedback) é o que já
-          vale fixar agora. */}
+      {/* SÍNTESE EXECUTIVA PELA IA — TIRADA DA TELA por pedido (2026-10-14),
+          por enquanto. O componente continua no código, só não é chamado
+          aqui; ver o comentário no topo do arquivo dele para o que falta
+          antes de ele voltar (hoje é o front montando o texto com dados
+          reais, sem agente nenhum por trás). PARA TRAZER DE VOLTA: reimportar
+          `SinteseExecutivaPelaIA` (`@/paginas/painel/SinteseExecutivaPelaIA`)
+          lá em cima e descomentar a linha abaixo.
       <SinteseExecutivaPelaIA interacoes={interacoes} catalogo={catalogo} />
+      */}
 
       {/* 2. TERMÔMETRO POR PÚBLICO — mesmo layout da "Barra divergente por
           tema" mais abaixo (mesmo componente `BarraDivergente`, mesmo botão
