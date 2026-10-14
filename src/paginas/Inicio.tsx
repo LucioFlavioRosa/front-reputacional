@@ -15,6 +15,12 @@ const ONDA_1: {
   view: Destino | null;
   titulo: string;
   descricao: string;
+  /** De onde vem o dado que o painel lê — o sinal de confiança que falta para
+   *  quem abre o cartão sem conhecer o modelo por trás. O "o que responde" já
+   *  mora dentro da própria `descricao`, em vez de uma terceira linha que
+   *  repetiria o que a primeira já diz com outras palavras. Só nos dois
+   *  painéis prontos: o terceiro ainda não tem fonte definida. */
+  fontes?: string;
   pronto: boolean;
 }[] = [
   {
@@ -24,7 +30,8 @@ const ONDA_1: {
     view: 'painel',
     titulo: 'CRM dos Stakeholders',
     descricao:
-      'Fonte única das interações institucionais — o registro e a síntese executiva que leem essa base.',
+      'O que a Aegea já conversou com reguladores, imprensa, investidores e demais públicos institucionais — o assunto, o resultado e o que ainda está pendente de resposta.',
+    fontes: 'Alimentado pela própria equipe, a cada interação registrada.',
     pronto: true,
   },
   {
@@ -38,7 +45,12 @@ const ONDA_1: {
     view: 'score',
     titulo: 'KPIs Reputacionais',
     descricao:
-      'O Índice de Saúde Reputacional: uma nota por mês, de cinco lentes.',
+      'Uma nota única de reputação, atualizada todo mês, que mostra como a Aegea é vista pela imprensa, pelo mercado, pela sociedade, pelos clientes e pelas instituições — e se essa nota está subindo ou caindo.',
+    // MESMAS FONTES DE `DESCRICAO_DAS_LENTES` (dominio/descricaoDasLentes.ts),
+    // só resumidas por fornecedor em vez de por lente: é a mesma fonte única
+    // de verdade, não um texto novo que pode divergir dela.
+    fontes:
+      'Monitoramento de imprensa e redes contratado pela Aegea (Clipei, Approach SL e Bites), o canal de atendimento (CM) e o próprio CRM.',
     pronto: true,
   },
   {
@@ -191,11 +203,22 @@ export function Inicio({
             <Cartao
               key={modulo.titulo}
               aoClicar={modulo.view ? () => irPara(modulo.view!) : undefined}
-              estilo={{ padding: 24, opacity: modulo.pronto ? 1 : 0.62 }}
+              // FLEX COLUNA, para o "Abrir o painel" cair no rodapé
+              // (`marginTop: auto`, mais abaixo) e alinhar entre os três
+              // cartões — a grade já estica os três para a mesma altura.
+              estilo={{
+                padding: 24,
+                opacity: modulo.pronto ? 1 : 0.62,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
             >
               <span
                 style={{
-                  display: 'inline-block',
+                  // `alignSelf`, e não o padrão `stretch` do flex-coluna: sem
+                  // isto o selo vira uma barra da largura inteira do cartão —
+                  // foi exatamente esse o defeito da primeira tentativa.
+                  alignSelf: 'flex-start',
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: '0.08em',
@@ -210,11 +233,50 @@ export function Inicio({
                 {modulo.pronto ? 'Disponível' : 'Em construção'}
               </span>
               <h2 style={{ fontSize: 17, marginTop: 12 }}>{modulo.titulo}</h2>
-              <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 8, lineHeight: 1.6 }}>
+              {/* `minHeight` NAS QUATRO LINHAS DO MAIOR TEXTO (KPIs) — mesma
+                  técnica de `TRUNCAR_EM_DUAS_LINHAS` (`TabelaDeInteracoes.tsx`):
+                  reservar o espaço do texto mais comprido para a Fonte cair na
+                  mesma altura nos dois cartões, sem flex nem tocar em nada do
+                  cartão do KPI (a descrição dele já ocupa as 4 linhas). */}
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--cinza-3)',
+                  marginTop: 8,
+                  lineHeight: 1.6,
+                  minHeight: '6.4em',
+                }}
+              >
                 {modulo.descricao}
               </p>
+              {/* A FONTE, SÓ QUANDO EXISTE — hoje, só os dois painéis
+                  prontos. É o sinal de confiança que faltava para quem abre o
+                  cartão sem conhecer o modelo: de onde vem o dado. */}
+              {modulo.fontes ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--borda)',
+                    fontSize: 12,
+                    color: 'var(--cinza-2)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong style={{ color: 'var(--cinza-3)' }}>Fonte: </strong>
+                  {modulo.fontes}
+                </div>
+              ) : null}
               {modulo.view ? (
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--azul-mar)', marginTop: 14 }}>
+                <div
+                  style={{
+                    marginTop: 'auto',
+                    paddingTop: 14,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: 'var(--azul-mar)',
+                  }}
+                >
                   Abrir o painel →
                 </div>
               ) : null}
