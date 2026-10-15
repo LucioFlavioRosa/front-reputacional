@@ -171,7 +171,11 @@ export function campoDeTemaN1(
   const pilarDoN2 = (idN2: number) => macroTemas.find((m) => m.id === idN2)?.bloco_tema_id;
   return {
     chave: 'temasN1',
-    rotulo: 'Pilar (N1)',
+    //: RÓTULO "ATRIBUTOS", por pedido — só o texto que aparece no filtro do
+    //: CRM. A chave (`temasN1`) e o que o filtro de fato cruza (`blocos_tema`,
+    //: o N1 da taxonomia de temas) não mudam; é a mesma lista de 7 itens só
+    //: com outro nome na tela.
+    rotulo: 'Atributos',
     multiplo: true,
     selecionados: (recorte.temasN1 ?? []).map(String),
     itens: (catalogo?.dicionarios.blocos_tema ?? []).map((b) => ({
@@ -194,7 +198,9 @@ export function campoDeTemaN2(
   const pilares = new Set(recorte.temasN1 ?? []);
   return {
     chave: 'temasN2',
-    rotulo: 'Tema estratégico (N2)',
+    //: SEM "(N2)" NO RÓTULO, por pedido — mesmo caso do filtro de Pilar logo
+    //: acima: só o texto da tela, a chave (`temasN2`) não muda.
+    rotulo: 'Tema estratégico',
     multiplo: true,
     selecionados: (recorte.temasN2 ?? []).map(String),
     itens: (catalogo?.dicionarios.macro_temas ?? [])
