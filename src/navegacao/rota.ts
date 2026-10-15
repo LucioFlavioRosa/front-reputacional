@@ -176,6 +176,17 @@ export function lerRecorte(consulta: string): Recorte {
   const tier = p.get('tier');
   if (tier && Number.isFinite(Number(tier))) recorte.tier = Number(tier);
 
+  // O DESTAQUE É BOOLEANO, e por isso não cabe em `CAMPOS_DE_TEXTO`: lá o
+  // valor entra cru, e `destaque: "false"` seria uma STRING no Recorte — que
+  // `paraParametros` mandaria de volta como `destaque=false` por acaso, e
+  // todo `=== false` do caminho trataria como verdadeiro.
+  //
+  // SÓ 'true' E 'false' VALEM. Qualquer outra coisa é descartada, como em
+  // `tier` não-numérico: um link estragado abre a Base inteira, e não uma
+  // tela com filtro que ninguém pediu.
+  const destaque = p.get('destaque');
+  if (destaque === 'true' || destaque === 'false') recorte.destaque = destaque === 'true';
+
   // Repetido (`tags=a&tags=b`), e não separado por vírgula: um nome de tema
   // pode ter vírgula, e partir nela quebraria o nome em dois.
   const tags = p.getAll('tags').filter(Boolean);
@@ -194,6 +205,9 @@ export function consultaDe(recorte: Recorte): string {
     if (typeof valor === 'string' && valor) p.set(campo, valor);
   }
   if (recorte.tier) p.set('tier', String(recorte.tier));
+  // `!= null` E NÃO TRUTHINESS: com `if (recorte.destaque)` o filtro "Sem
+  // destaque" sairia da URL, e recarregar a página devolveria a base inteira.
+  if (recorte.destaque != null) p.set('destaque', String(recorte.destaque));
   for (const tag of recorte.tags ?? []) p.append('tags', tag);
 
   const texto = p.toString();
