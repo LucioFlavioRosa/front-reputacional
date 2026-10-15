@@ -90,6 +90,14 @@ export interface Recorte {
   /** Pilar (N1) — ids de `catalogo.dicionarios.blocos_tema`. Mesma regra de
    *  `temasN2`; entre os dois níveis (e com `tags`) é E, não OU. */
   temasN1?: number[];
+  /** Agendas de DESTAQUE — a marca editorial de `interacao.destaque`.
+   *
+   *  TRÊS ESTADOS: ausente não filtra, `true` traz só as de destaque, `false`
+   *  só as que não são. Por isso tudo que decide sobre ele usa `!= null` e
+   *  nunca truthiness — com truthiness, "sem destaque" viraria "sem filtro" e
+   *  a tela mostraria a base inteira para um pedido estreito, sem erro. O
+   *  backend tem a mesma armadilha e a mesma resposta (`filtros_sql`). */
+  destaque?: boolean;
   q?: string;
 }
 
@@ -99,6 +107,10 @@ export const RECORTE_VAZIO: Recorte = {};
 const CAMPOS_CONTAVEIS: (keyof Recorte)[] = [
   'frente', 'unidade', 'uf', 'esfera', 'tier', 'clima', 'climaEsperado', 'resultado',
   'status', 'grupo', 'entidade', 'subtipo', 'portaVoz', 'pessoa', 'alegacao', 'q',
+  //: `destaque` CONTA NOS DOIS SENTIDOS, e é o filtro de `!= null` acima que
+  //: faz isso funcionar: `false` é escolha, não ausência. Com truthiness o
+  //: contador diria "0 filtros ativos" sobre uma lista recortada.
+  'destaque',
 ];
 
 export function quantidadeDeFiltros(recorte: Recorte): number {

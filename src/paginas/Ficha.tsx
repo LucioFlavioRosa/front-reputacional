@@ -109,6 +109,15 @@ export function Ficha({
       titulo={entidade}
       subtitulo={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          {/* NO SUBTÍTULO, e não numa faixa como a do sensível. Aquela avisa
+              de uma CONSEQUÊNCIA — o que está na tela não circula; esta só
+              informa um atributo da agenda, e uma faixa de atenção para ela
+              gastaria o peso visual que o aviso de verdade precisa ter. */}
+          {interacao.destaque ? (
+            <span title="Agenda de destaque" style={{ color: 'var(--azul-mar)' }}>
+              ★
+            </span>
+          ) : null}
           {dataCompleta(interacao.data_interacao)}
           {interacao.tier ? ` · ${rotuloDeRelevancia(catalogo, interacao.tier)}` : ''}
         </span>

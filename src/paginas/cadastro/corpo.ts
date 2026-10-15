@@ -104,6 +104,7 @@ export function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = f
     // não a ausência de um. Passá-lo por `opcional` transformaria "desmarquei"
     // em "não mexi nisto", e desmarcar deixaria de funcionar.
     sensivel: form.sensivel,
+    destaque: form.destaque,
     clima: opcional(form.clima),
     resultado: opcional(form.resultado),
     iniciativa: opcional(form.iniciativa),
@@ -267,6 +268,10 @@ export function paraFormulario(interacao: Interacao): Formulario {
     //: antigo não traz o campo, e `undefined` no `checked` de um input
     //: controlado faz o React reclamar e o campo virar não-controlado.
     sensivel: interacao.sensivel ?? false,
+    //: `?? false` como o vizinho: uma agenda gravada antes da 0090 não traz o
+    //: campo, e `undefined` num booleano do formulário deixaria a caixa num
+    //: terceiro estado que a tela não sabe desenhar.
+    destaque: interacao.destaque ?? false,
     status: texto(interacao.status),
     clima: texto(interacao.clima),
     resultado: texto(interacao.resultado),

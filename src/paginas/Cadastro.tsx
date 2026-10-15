@@ -97,6 +97,52 @@ const ESTILO_DO_CHIP_MAIOR: CSSProperties = {
  *  classifica precisa saber que está tirando a agenda da vista de colegas e
  *  dos KPIs deles.
  */
+/** A MARCA DE DESTAQUE — seção 5, por decisão do dono do produto.
+ *
+ *  SEM CONDIÇÃO DE PERMISSÃO, e é a diferença em relação a
+ *  `ClassificacaoSensivel`: apontar uma agenda não a tira da vista de ninguém,
+ *  então não há armadilha de que proteger a pessoa e não há caixa a esconder.
+ *  Quem pode registrar a agenda pode apontá-la.
+ *
+ *  E SEM AVISO DE CONSEQUÊNCIA, pelo mesmo motivo: a caixa do sensível explica
+ *  quem perde o acesso porque isso não é óbvio e é irreversível na prática.
+ *  Aqui o efeito é o que a frase já diz, e um parágrafo embaixo de cada caixa
+ *  faria o aviso que importa parecer só mais um texto de ajuda.
+ */
+function MarcaDeDestaque({
+  form,
+  alterar,
+}: {
+  form: Formulario;
+  alterar: <C extends keyof Formulario>(campo: C, valor: Formulario[C]) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginTop: 16,
+        cursor: 'pointer',
+        fontSize: 13,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={form.destaque}
+        onChange={(evento) => alterar('destaque', evento.target.checked)}
+        style={{ flexShrink: 0 }}
+      />
+      <span>
+        <strong>Agenda de destaque</strong>
+        <span style={{ color: 'var(--cinza-2)', marginLeft: 6 }}>
+          aparece marcada na Base, e o filtro "Destaque" encontra só estas.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 function ClassificacaoSensivel({
   form,
   alterar,
@@ -1052,6 +1098,15 @@ export function Cadastro({
               </Campo>
             </div>
           </div>
+          {/* DEPOIS DE MODALIDADE E LOCAL, no fim do cartão — a mesma posição
+              que a caixa do sensível ocupa no fim da seção 3, e a mesma ordem
+              em que a coluna aparece na planilha de importação.
+
+              ELA NÃO FALA DE "ONDE", e é a única coisa nesta seção que não
+              fala: está aqui por decisão do dono do produto. Se um dia as
+              seções forem reorganizadas por assunto, é esta que não se
+              encaixa — e aí a planilha tem de mudar junto. */}
+          <MarcaDeDestaque form={form} alterar={alterar} />
         </Cartao>
       </Secao>
 

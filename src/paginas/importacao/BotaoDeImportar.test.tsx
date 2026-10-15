@@ -49,8 +49,8 @@ describe('BotaoDeImportar', () => {
     expect(screen.getByText('Simplificado')).toBeTruthy();
     // Cada um diz para quem serve: só o nome faria a pessoa escolher pelo que soa
     // mais seguro, que é sempre o primeiro.
-    expect(screen.getByText(/75 colunas/)).toBeTruthy();
-    expect(screen.getByText(/38 colunas/)).toBeTruthy();
+    expect(screen.getByText(/76 colunas/)).toBeTruthy();
+    expect(screen.getByText(/39 colunas/)).toBeTruthy();
   });
 
   it('não aparece para quem não administra cadastros', () => {

@@ -201,6 +201,12 @@ export interface Interacao {
    *  errado, duplicata).
    */
   sensivel: boolean;
+  /** MARCA EDITORIAL de quem registra: "esta agenda merece destaque" (0090).
+   *
+   *  NÃO é controle de acesso, e é a diferença em relação a `sensivel`, logo
+   *  acima: ninguém deixa de ver a agenda por causa dela. É filtro opcional,
+   *  como Relevância ou UF, e quem alcança a linha vê a marca. */
+  destaque: boolean;
   criado_por: string | null;
   criado_em: string | null;
   atualizado_em: string | null;

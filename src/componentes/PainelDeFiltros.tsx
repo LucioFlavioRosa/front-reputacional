@@ -336,6 +336,33 @@ export function PainelDeFiltros({ view }: { view: Destino }) {
           (v) => Number(v),
         ),
     },
+    {
+      // A MARCA EDITORIAL, logo depois de Relevância: as duas respondem
+      // "o quanto esta agenda importa", uma pelo cadastro da instituição
+      // e a outra pela decisão de quem registrou.
+      //
+      // DUAS PÍLULAS E NÃO UMA CAIXA: o backend aceita os dois lados
+      // (`destaque=true|false`) e a gaveta já é feita de pílulas que
+      // ligam/desligam. Uma caixa só ofereceria metade do filtro e
+      // introduziria um segundo idioma de controle na mesma gaveta.
+      chave: 'destaque',
+      rotulo: 'Destaque',
+      // `!= null` E NÃO TRUTHINESS: `false` é escolha, não ausência. Com
+      // truthiness a pílula "Sem destaque" nunca ficaria marcada e o
+      // contador de filtros ativos não a somaria.
+      valorAtual: recorte.destaque != null ? String(recorte.destaque) : undefined,
+      itens: [
+        { valor: 'true', rotulo: 'De destaque' },
+        { valor: 'false', rotulo: 'Sem destaque' },
+      ],
+      aoEscolher: (valor: string) =>
+        definirOuAlternar(
+          'destaque',
+          recorte.destaque != null ? String(recorte.destaque) : undefined,
+          valor,
+          (v) => v === 'true',
+        ),
+    },
     // O OUTRO CAMPO DE "Filtros rápidos" — mesma ordem de antes. "Frente"
     // saiu daqui: a tela parou de perguntar/mostrar Frente em qualquer
     // lugar; o campo continua existindo no `Recorte` e na URL (um link

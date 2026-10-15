@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  alternar,
   alternarCategoriaDeArea,
   alternarCategoriaPublico,
   intervalo,
@@ -192,5 +193,40 @@ describe('paraParametros', () => {
     const p = paraParametros({ categoriaPublico: [3, 1], formatoInteracao: [7] });
     expect(p.get('categoriaPublico')).toBe('3,1');
     expect(p.get('formatoInteracao')).toBe('7');
+  });
+});
+
+/** A MARCA DE DESTAQUE tem TRÊS estados, e o do meio é o único jeito de errar
+ *  o filtro: `false` é escolha ("as que ninguém apontou"), não ausência.
+ *
+ *  Tudo que decide sobre ela usa `!= null`. Com truthiness, a tela mandaria a
+ *  base inteira para um pedido estreito, o contador diria "0 filtros ativos"
+ *  sobre uma lista recortada, e a pílula "Sem destaque" nunca ficaria marcada.
+ *  Nada disso daria erro: é o defeito que só aparece em número errado. */
+describe('destaque', () => {
+  it('ausente não vai na query string', () => {
+    expect(paraParametros({ frente: 'imprensa' }).has('destaque')).toBe(false);
+  });
+
+  it('true e false viajam os dois — não só o true', () => {
+    expect(paraParametros({ destaque: true }).get('destaque')).toBe('true');
+    expect(paraParametros({ destaque: false }).get('destaque')).toBe('false');
+  });
+
+  it('conta como filtro ativo nos dois sentidos', () => {
+    expect(quantidadeDeFiltros({})).toBe(0);
+    expect(quantidadeDeFiltros({ destaque: true })).toBe(1);
+    expect(quantidadeDeFiltros({ destaque: false })).toBe(1);
+  });
+
+  it('clicar na mesma pílula desliga o filtro', () => {
+    const ligado = alternar({}, 'destaque', true);
+    expect(ligado.destaque).toBe(true);
+    expect(alternar(ligado, 'destaque', true).destaque).toBeUndefined();
+  });
+
+  it('trocar de pílula troca o lado, em vez de desligar', () => {
+    const ligado = alternar({}, 'destaque', true);
+    expect(alternar(ligado, 'destaque', false).destaque).toBe(false);
   });
 });
