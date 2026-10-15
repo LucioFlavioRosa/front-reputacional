@@ -668,6 +668,14 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                           background: excluida
                             ? undefined
                             : (FUNDO_DA_CELULA[cor ?? ''] ?? 'var(--branco)'),
+                          //: A CÉLULA CRESCE QUANDO MOSTRA SUGESTÕES, mesma ideia da
+                          //: coluna de Ações (:848): com a altura fixa de `CELULA` e
+                          //: `overflow: hidden`, a terceira sugestão (ou o botão
+                          //: "Cadastrar como novo") ficava cortada pela largura da
+                          //: coluna — sem rolagem, sem alcance nenhum, só invisível.
+                          ...(decisao && !excluida && !fechada && !emEdicao
+                            ? { height: 'auto', overflow: 'visible' }
+                            : {}),
                         }}
                       >
                         {/* O SINAL SAI QUANDO A LINHA ENTRA EM EDIÇÃO, e isto era o
@@ -805,7 +813,18 @@ export function ConferirImportacao({ id, aoConfirmar, aoFechar }: Props) {
                                 {decisao.outrasLinhas === 1 ? 'outra linha' : 'outras linhas'}
                               </span>
                             ) : null}
-                            <div className="linha linha--quebra">
+                            {/* ESTILO EXPLÍCITO, e não só a classe: `linha`/
+                                `linha--quebra` não estão definidas em CSS nenhum
+                                deste projeto — mesmo problema que `pilha`/
+                                `pilha--curta` já documenta algumas linhas acima.
+                                Sem `flexWrap`, os botões (até 3: duas sugestões
+                                + "Cadastrar como novo") tentavam caber numa
+                                linha só e o que não cabia na largura da coluna
+                                era cortado pelo `overflow: hidden` da célula. */}
+                            <div
+                              className="linha linha--quebra"
+                              style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+                            >
                               {decisao.grupo.sugestoes.map((sugestao) => (
                                 <Botao
                                   key={sugestao.alvo}
