@@ -83,6 +83,7 @@ const DESTINO: Record<keyof Interacao, Destino> = {
   //: ela não alcança a agenda marcada. Para a agenda comum, manda `false`, que é
   //: o que já está lá.
   sensivel: 'ida-e-volta',
+  destaque: 'ida-e-volta',
 
   //: A tela não edita — e cada um destes tem o motivo escrito em `corpo.ts`.
   //: `pauta` quase destruiu a descrição das 60 agendas vindas da planilha;
@@ -175,6 +176,7 @@ const COMPLETA: Interacao = {
   //: `true` para que a ida e a volta digam algo: com `false`, que é o padrão do
   //: formulário, a asserção passaria mesmo se o valor nunca saísse de lá.
   sensivel: true,
+  destaque: true,
   criado_por: 'u-1',
   criado_em: '2026-05-01T10:00:00Z',
   atualizado_em: '2026-05-02T10:00:00Z',
@@ -230,6 +232,10 @@ const ESPERADO: Record<string, unknown> = {
   //: distinguiria "viajou" de "nasceu assim". É a mesma razão de os outros
   //: valores aqui serem deliberadamente distintos entre si.
   sensivel: true,
+  //: `true` PELO MESMO MOTIVO DE `sensivel`, acima: `false` é o padrão do
+  //: campo, e esperar o padrão não distingue "o valor viajou" de "o valor
+  //: nunca saiu do formulário".
+  destaque: true,
 };
 
 describe('a ida e a volta', () => {

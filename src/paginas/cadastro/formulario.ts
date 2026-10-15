@@ -51,6 +51,8 @@ export interface Formulario {
    *  vista no mesmo instante. Ver a migration 0089.
    */
   sensivel: boolean;
+  /** A marca editorial — seção 5. Sem permissão nenhuma: quem registra marca. */
+  destaque: boolean;
   status: string;
   clima: string;
   resultado: string;
@@ -275,6 +277,7 @@ export const VAZIO: Formulario = {
   //: A agenda nasce COMUM. Classificar é um ato, e o contrário faria quem
   //: esquecesse o campo trancar o registro sem decidir isso.
   sensivel: false,
+  destaque: false,
   //: SOLICITADO, e nao vazio nem `agendado`. Uma agenda recem-criada foi
   //: PEDIDA; dizer "agendado" afirmaria que existe data marcada com a outra
   //: parte, coisa que ninguem confirmou — e a distancia entre pedir e conseguir

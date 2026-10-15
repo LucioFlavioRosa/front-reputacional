@@ -349,6 +349,21 @@ export function TabelaDeInteracoes({
                         🔒
                       </span>
                     ) : null}
+                    {/* A MARCA DE DESTAQUE AO LADO DO CADEADO, pelo mesmo
+                        argumento: coluna própria custaria largura numa tabela
+                        de 20+ colunas para dizer "não" na maioria das linhas.
+                        As duas marcas convivem — uma agenda pode ser restrita
+                        E apontada —, e por isso são dois spans e não um
+                        ternário escolhendo entre eles. */}
+                    {interacao.destaque ? (
+                      <span
+                        title="Agenda de destaque"
+                        aria-label="Agenda de destaque"
+                        style={{ marginRight: 5, color: 'var(--azul-mar)' }}
+                      >
+                        ★
+                      </span>
+                    ) : null}
                     {dataCompleta(interacao.data_interacao)}
                   </td>
                   <td
