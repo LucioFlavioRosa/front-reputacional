@@ -235,7 +235,7 @@ describe('a trilha do aprofundamento', () => {
     //: "Macro tema (N2)" e "Tema (N3)". Este teste é o que impede a terceira.
     const trilha = trilhaDoRecorte({ bloco: 'g', macro: 'c', tema: 'Corrupção' });
     expect(trilha.map((degrau) => degrau.rotulo)).toEqual([
-      'Pilar (N1)',
+      'Atributo (N1)',
       'Tema estratégico (N2)',
       'Subtema (N3)',
     ]);
@@ -391,7 +391,7 @@ describe('a tela escreve NOME, e não código', () => {
     );
     expect(trilha.map((degrau) => `${degrau.rotulo}: ${degrau.valor}`)).toEqual([
       'Lente: Sociedade digital',
-      'Pilar (N1): Governança',
+      'Atributo (N1): Governança',
       'Severidade: Crítico',
     ]);
   });

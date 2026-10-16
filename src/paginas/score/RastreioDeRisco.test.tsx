@@ -335,7 +335,7 @@ describe('a aba Risk Tracking', () => {
 
     //: A ESCADA: sem N1 escolhido não há por que listar 104 temas.
     expect(screen.queryByText('Tema estratégico (N2)')).toBeNull();
-    expect(screen.getByText('Pilar (N1)')).toBeTruthy();
+    expect(screen.getByText('Atributo (N1)')).toBeTruthy();
   });
 
   it('TROCAR O RECORTE NA PÁGINA 2 faz UM carregamento, não dois', async () => {

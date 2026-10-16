@@ -22,7 +22,7 @@ describe('filtros de tema no painel de KPIs', () => {
     expect(todos).not.toContain('Subtema');
   });
 
-  it('na Base de dados, Pilar e Tema estratégico vêm primeiro', () => {
-    expect(camposDaBase('sociedade').slice(0, 2).map((c) => c.rotulo)).toEqual(['Pilar (N1)', 'Tema estratégico (N2)']);
+  it('na Base de dados, Atributo e Tema estratégico vêm primeiro', () => {
+    expect(camposDaBase('sociedade').slice(0, 2).map((c) => c.rotulo)).toEqual(['Atributo (N1)', 'Tema estratégico (N2)']);
   });
 });

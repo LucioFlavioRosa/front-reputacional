@@ -429,19 +429,33 @@ export function porQueADimensaoEstaVazia(dimensao: DimensaoDoFiltro): string {
  *  (`baseDasLentes.ts`), o painel de filtros do CRM, o `Painel`, as derivações,
  *  os filtros das Lentes, a Base do Score e o back (`importacao_de_subtemas`):
  *
- *      tema_n1  ->  "Pilar (N1)"
  *      tema_n2  ->  "Tema estratégico (N2)"
  *      tema_n3  ->  "Subtema (N3)"           <- o N3 do CADASTRO
  *      subtema  ->  "Subtema (fornecedor)"   <- o texto cru do fornecedor
  *
- *  E O QUALIFICADOR "(N3)" NÃO É DECORATIVO: sem ele, "Subtema" colidiria com
+ *  `tema_n1` NÃO SEGUE MAIS ESSA LISTA SOZINHO: era "Pilar (N1)" em todo
+ *  lugar; por pedido (2026-10-16), virou "Atributo (N1)" na Base das
+ *  Lentes/Base do Score e aqui no Risk Tracking (mesma convenção, amarrada
+ *  pelo teste `o vocabulário dos níveis` logo abaixo) — mas CONTINUA "Pilar
+ *  (N1)" no painel de filtros do CRM (onde virou "Atributos", plural, sem o
+ *  "(N1)") e nos lugares que não entraram nesse pedido (treemap do `Painel`,
+ *  cadastro compartilhado, dossiê da Consulta em profundidade, filtros da
+ *  aba Lentes). Não é mais uma convenção única — é uma divergência
+ *  deliberada. `tema_n3` passou pelo mesmo vaivém no mesmo dia — chegou a
+ *  perder o "(N3)" e ganhou de volta, por pedido, para ficar em paridade
+ *  visual com "(N1)" e "(N2)" ao lado.
+ *
+ *  O QUALIFICADOR "(N3)" NÃO É DECORATIVO: sem ele, "Subtema" colidiria com
  *  "Subtema (fornecedor)", que é outra coisa — o que o fornecedor escreveu, e
  *  que pode discordar do cadastro. Os dois aparecem lado a lado na Base das
  *  Lentes. */
 export const ROTULO_DO_DEGRAU: Record<string, string> = {
   lentes: 'Lente',
   fontes: 'Fonte',
-  bloco: 'Pilar (N1)',
+  //: "Atributo (N1)", e não "Pilar (N1)" — segue a mesma convenção de
+  //: `camposDaBase` (Base das Lentes), por pedido (2026-10-16). O teste em
+  //: `riscos.test.ts` trava os dois lados juntos de propósito.
+  bloco: 'Atributo (N1)',
   macro: 'Tema estratégico (N2)',
   tema: 'Subtema (N3)',
   cluster: 'Cluster de risco',

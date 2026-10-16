@@ -84,7 +84,11 @@ export function FiltrosDoRisco({
     .reduce((soma, bloco) => soma + bloco.incidentes, 0);
   cruzados.push({
     chave: 'bloco',
-    rotulo: 'Pilar (N1)',
+    //: "Atributo (N1)" — mesma convenção de `ROTULO_DO_DEGRAU.bloco` (riscos.ts)
+    //: e `camposDaBase` (Base das Lentes): as duas trocaram de "Pilar (N1)" por
+    //: pedido (2026-10-16), e esta tela mostra o filtro E a trilha do mesmo
+    //: recorte — teriam que dizer a mesma coisa.
+    rotulo: 'Atributo (N1)',
     valorAtual: filtro.bloco ?? undefined,
     itens: blocos.map((bloco) => ({
       valor: bloco.codigo,
