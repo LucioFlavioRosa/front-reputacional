@@ -46,15 +46,26 @@ export function camposDaBase(lente: string): CampoDaBase[] {
   return [
     //: PILAR E TEMA ESTRATÉGICO PRIMEIRO, por pedido: são os filtros de tema
     //: que valem em todo o painel, e o nome diz o nível.
-    { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' },
+    //:
+    //: "ATRIBUTO (N1)" AQUI É O N1 (`tema_n1`), não o campo `atributo` do
+    //: fornecedor — por pedido (2026-10-16), depois de olhar o dado real e
+    //: ver que os dois sempre coincidem (o `atributo` é o N1 com um número
+    //: na frente, tipo "2. Eficiência Operacional e Qualidade"). O filtro de
+    //: `atributo` saiu daqui por ser redundante com este. O "(N1)" tirado e
+    //: devolvido no mesmo dia: tirado junto da palavra "Pilar", devolvido
+    //: depois para ficar em paridade visual com "(N2)" e "(N3)" ao lado.
+    { chave: 'tema_n1', rotulo: 'Atributo (N1)', de: 'temas_n1' },
     { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' },
     { chave: 'sentimento', rotulo: 'Sentimento', de: 'sentimentos', rotulos: ROTULO_DO_SENTIMENTO },
     { chave: 'fonte', rotulo: 'Fonte', de: 'fontes' },
     { chave: 'tier', rotulo: 'Tier do veículo', de: 'tiers', rotulos: ROTULO_DO_TIER },
     { chave: 'veiculo', rotulo: rotuloDoVeiculo(lente), de: 'veiculos' },
+    //: "SUBTEMA (N3)" AQUI É O N3 (`tema_n3`) do cadastro. O qualificador saiu
+    //: e voltou no mesmo dia (2026-10-16), pelo mesmo motivo do Atributo acima
+    //: — e ainda distingue de "Subtema (fornecedor)" logo abaixo, que é outra
+    //: coisa.
     { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' },
     { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' },
-    { chave: 'atributo', rotulo: 'Atributo', de: 'atributos' },
     { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' },
     { chave: 'uf', rotulo: 'UF', de: 'ufs' },
     { chave: 'autor', rotulo: rotuloDoAutor(lente), de: 'autores' },
@@ -84,11 +95,13 @@ export function colunasDaBase(lente: string): ColunaDaBase[] {
       ordena: 'sentimento',
     },
     { rotulo: 'Matéria / post', valor: (m) => m.titulo ?? '' },
-    { rotulo: 'Pilar (N1)', valor: (m) => m.tema_n1 ?? '' },
+    //: "ATRIBUTO (N1)" É O PILAR/N1 (`tema_n1`) — ver o comentário de `camposDaBase`.
+    //: A coluna antiga do campo `atributo` saiu por duplicar este valor.
+    { rotulo: 'Atributo (N1)', valor: (m) => m.tema_n1 ?? '' },
     { rotulo: 'Tema estratégico (N2)', valor: (m) => m.tema_n2 ?? '' },
+    //: "SUBTEMA (N3)" É O N3 (`tema_n3`) — ver o comentário de `camposDaBase`.
     { rotulo: 'Subtema (N3)', valor: (m) => m.tema_n3 ?? '' },
     { rotulo: 'Subtema (fornecedor)', valor: (m) => m.subtema ?? '' },
-    { rotulo: 'Atributo', valor: (m) => m.atributo ?? '' },
     { rotulo: 'Concessionária', valor: (m) => m.empresa ?? '', ordena: 'empresa' },
     { rotulo: 'UF', valor: (m) => m.uf ?? '', ordena: 'uf' },
     { rotulo: rotuloDoAutor(lente), valor: (m) => m.autor ?? '', ordena: 'autor' },
@@ -104,7 +117,8 @@ export function colunasDaBase(lente: string): ColunaDaBase[] {
 
 /** As colunas que nascem escondidas — dá para ligar no seletor de colunas. */
 export const COLUNAS_OCULTAS_POR_PADRAO = [
-  'Tema estratégico (N2)',
+  //: "Tema estratégico (N2)" saiu daqui por pedido (2026-10-16): com "Atributo
+  //: (N1)" e "Subtema (N3)" já visíveis por padrão, faltava o N2 no meio.
   'Subtema (fornecedor)',
   'Perfil de quem fala',
   'Link',
@@ -124,11 +138,10 @@ const LARGURA_PADRAO: Record<string, number> = {
   Tier: 80,
   Sentimento: 124,
   'Matéria / post': 380,
-  'Pilar (N1)': 180,
+  'Atributo (N1)': 180,
   'Tema estratégico (N2)': 190,
   'Subtema (N3)': 190,
   'Subtema (fornecedor)': 190,
-  Atributo: 170,
   Concessionária: 140,
   UF: 70,
   Jornalista: 140,
@@ -160,11 +173,10 @@ export function largurasPadraoDaBase(rotulos: string[]): Record<string, number> 
 //: (`colunaLimitaLinhas`), com o valor completo no `title`.
 const COLUNAS_QUE_QUEBRAM = new Set([
   'Matéria / post',
-  'Pilar (N1)',
+  'Atributo (N1)',
   'Tema estratégico (N2)',
   'Subtema (N3)',
   'Subtema (fornecedor)',
-  'Atributo',
   'Concessionária',
   'Fonte',
 ]);

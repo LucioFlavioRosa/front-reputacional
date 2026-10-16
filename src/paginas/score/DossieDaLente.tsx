@@ -94,6 +94,13 @@ const LENTES = [
 //: construção" — elas ficam para uma próxima rodada. A LISTA MORA COM O HOOK
 //: DOS DADOS (`LENTES_COM_DRILL`), que só busca a consulta destas lentes.
 
+//: DESLIGADO por pedido (2026-10-16): o bloco some da tela para Imprensa e
+//: Mercado — as únicas com drill hoje —, sem mexer no resto do código (ver o
+//: uso logo abaixo e o mesmo desligamento, pela mesma data, em
+//: `DRILL_NA_BUSCA_LIGADO` em `Score.tsx`, para a busca inteligente). Virar
+//: `true` religa as duas pontas.
+const DRILL_LIGADO = false;
+
 /** O endereço pede um nível abaixo do primeiro (há `pilar` no hash do drill).
  *  É o que faz o bloco abrir sozinho (decisão A6). */
 function enderecoProfundo(): boolean {
@@ -289,7 +296,7 @@ export function DossieDaLente({
         ) : null}
       </BlocoExpansivel>
 
-      {LENTES_COM_DRILL.includes(lente) ? (
+      {DRILL_LIGADO && LENTES_COM_DRILL.includes(lente) ? (
         <BlocoExpansivel
           titulo="Drill down"
           descricao="Do pilar ao tema e ao subtema, descendo até a menção."

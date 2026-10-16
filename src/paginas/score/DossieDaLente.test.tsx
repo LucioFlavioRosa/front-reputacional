@@ -50,7 +50,12 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-describe('DossieDaLente · bloco Drill down', () => {
+//: SUSPENSA por pedido (2026-10-16): o bloco "Drill down" foi tirado da tela
+//: (`DRILL_LIGADO = false` em `DossieDaLente.tsx`), sem mexer no resto do
+//: código. Esta suíte continua descrevendo o comportamento de quando ele
+//: volta a aparecer — por isso `describe.skip`, e não apagada. Tirar o
+//: `.skip` junto com `DRILL_LIGADO` religa as duas pontas.
+describe.skip('DossieDaLente · bloco Drill down', () => {
   it.each(['imprensa', 'mercado'])('aparece na lente %s, fechado e sem montar a raiz', (lente) => {
     montar(lente);
     expect(botaoDoDrill()).toBeTruthy();

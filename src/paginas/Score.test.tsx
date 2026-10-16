@@ -163,7 +163,12 @@ describe('Score · lente pelo hash (A4)', () => {
   });
 });
 
-describe('Score · busca do cabeçalho leva ao drill (D3)', () => {
+//: SUSPENSA por pedido (2026-10-16): o grupo "Consulta em profundidade" da
+//: busca foi desligado (`DRILL_NA_BUSCA_LIGADO` em `Score.tsx`), junto com o
+//: bloco "Drill down" da aba Lentes — mesmo motivo, mesma data. Esta suíte
+//: continua descrevendo o comportamento de quando ele volta; por isso
+//: `describe.skip`, e não apagada.
+describe.skip('Score · busca do cabeçalho leva ao drill (D3)', () => {
   it('da Visão geral: abre Lentes, Imprensa e o bloco, e a entrada final tem o hash', async () => {
     window.history.replaceState(null, '', '/score/geral?uf=RJ');
     await montar('geral');

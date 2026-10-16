@@ -94,6 +94,14 @@ function lenteValida(endereco: EnderecoDoDrill): string | null {
  */
 const ABAS_COM_GRAFICO = ['geral', 'lentes', 'drivers'];
 
+//: DESLIGADO por pedido (2026-10-16), junto com o bloco "Drill down" em
+//: `DossieDaLente.tsx` (mesma trava `false &&` lá): sem o `aoEscolherNoDrill`
+//: da busca, o grupo "Consulta em profundidade" não aparece nas sugestões
+//: (ver `BuscaDoRadar.tsx`) — senão um resultado dela levaria a um bloco
+//: escondido, sem mostrar nada na tela. Virar `true` religa as duas pontas
+//: junto com a de `DossieDaLente.tsx`.
+const DRILL_NA_BUSCA_LIGADO = false;
+
 export function Score({
   aba = 'geral',
   aoTrocarAba,
@@ -398,7 +406,7 @@ export function Score({
             );
             if (aba !== 'lentes') aoTrocarAba('lentes');
           }}
-          aoEscolherNoDrill={abrirNoDrill}
+          aoEscolherNoDrill={DRILL_NA_BUSCA_LIGADO ? abrirNoDrill : undefined}
         />
       ) : null}
 
