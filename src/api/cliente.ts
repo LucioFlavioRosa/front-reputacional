@@ -1485,26 +1485,46 @@ export function conferirPlanilhaDoScore(
  *
  *      1,42 MB  ->    4,1 s  -> 200
  *      1,33 MB  ->   73,2 s  -> 200
+ *      3,27 MB  ->   ~240 s  -> 403   (a planilha da Approach, em produção)
  *     10,53 MB  ->  212,4 s  -> 403
  *     10,53 MB  ->  227,4 s  -> 403
  *
- *  Os 403 param em ~212–227 s porque o ingress do Container Apps encerra a
+ *  Os 403 param em ~212–240 s porque o ingress do Container Apps encerra a
  *  requisição por volta de 240 s, e isso não é configurável. A banda de subida
  *  variou de ~18 KB/s a ~350 KB/s na MESMA hora.
  *
- *  4 MB É CONSERVADOR DE PROPÓSITO. A 18 KB/s — o pior caso medido — 4 MB
- *  levam ~230 s e não caberiam; mas 1,33 MB já levaram 73 s, o que põe o risco
- *  bem abaixo dos 4 MB. O teto existe para não pagar onze requisições por um
- *  arquivo que sobe numa, e não para adivinhar a banda: quem passa dele vai em
- *  partes, e lá cada pedaço tem margem de 4x.
+ *  ESTE NÚMERO JÁ ESTEVE ERRADO, e a linha de 3,27 MB é o preço. Ele era 4 MB,
+ *  e o comentário que o justificava dizia, com estes mesmos dados, que "a
+ *  18 KB/s 4 MB levam ~230 s e NÃO caberiam" — e escolhia 4 MB de todo jeito,
+ *  apostando que a banda ruim não voltaria. Voltou: a planilha da Approach tem
+ *  3,27 MB, passou por baixo do limiar, foi numa requisição só e morreu no
+ *  ingress. Quem usava leu um 403 em HTML.
  *
- *  POR QUE NÃO SEMPRE EM PARTES: o caminho de uma vez é uma requisição e uma
- *  resposta, e os arquivos reais do dia a dia (um mês da Clipei, 1,3 a 2,1 MB)
- *  passam nele em segundos. Partir tudo trocaria simplicidade por nada. */
-export const TAMANHO_PARA_SUBIR_EM_PARTES = 4 * 1024 * 1024;
+ *  O LIMIAR AGORA FICA ABAIXO DO ÚNICO ARQUIVO GRANDE QUE SE VIU COMPLETAR no
+ *  pior momento de banda: 1,33 MB em 73,2 s. A 1,2 MB o caminho de uma vez só
+ *  guarda mais de 3x de margem contra os 240 s, contando a leitura por cima —
+ *  que, medida, é da ordem de 11 s para a Approach e 7 s para a Clipei. O teto
+ *  não adivinha banda: ele garante que o caso ruim ainda caiba.
+ *
+ *  POR QUE NÃO SEMPRE EM PARTES: o caminho de uma vez é uma requisição em vez
+ *  de três, e não depende de armazenamento. Arquivo pequeno não paga por uma
+ *  máquina de estados que não precisa.
+ *
+ *  O QUE ISSO CUSTA: o mês da Clipei (1,3 a 2,1 MB) passa a subir em partes —
+ *  abertura, duas ou três partes, conferência. Medido no ambiente, cada parte
+ *  custa ~0,5 s, então são ~2 s a mais no caso bom para não ter 4 minutos e um
+ *  403 no caso ruim.
+ *
+ *  `Math.round` PORQUE 1,2 MiB NÃO É INTEIRO: 1,2 × 1024 × 1024 = 1.258.291,2,
+ *  e um limiar fracionário compara certo mas não serve de tamanho de arquivo —
+ *  o teste da borda exata criaria um `File` de 1.258.291,2 bytes. */
+export const TAMANHO_PARA_SUBIR_EM_PARTES = Math.round(1.2 * 1024 * 1024);
 
 interface SubidaAberta {
-  planilha_id: string;
+  /** NULO SIGNIFICA "AQUI NÃO DÁ, MANDE DE UMA VEZ" — ambiente sem
+   *  armazenamento não tem onde montar as partes. É a mesma convenção que a
+   *  conferência de uma vez só usa para dizer que não guardou o arquivo. */
+  planilha_id: string | null;
   tamanho_da_parte: number;
 }
 
@@ -1536,6 +1556,24 @@ export async function conferirPlanilhaDoScoreEmPartes(
     `/api/score/fontes/${codigo}/planilha/upload`,
     { method: 'POST', body: abertura },
   );
+
+  // SEM ARMAZENAMENTO, O CAMINHO DE SEMPRE. O servidor diz isso com
+  // `planilha_id` nulo, e aqui é o único lugar que precisa saber: a tela chama
+  // `conferirPlanilhaDoScoreComoCouber` e recebe a mesma resposta nos dois
+  // casos.
+  //
+  // ESTE RETORNO É O QUE FAZ O LIMIAR MENOR SER SEGURO. Antes o servidor
+  // recusava com 422 e esta função repassava a recusa — a pessoa lia "este
+  // ambiente não guarda arquivos" sem ter pedido nada sobre armazenamento. Com
+  // o limiar em 4 MB isso era raro; com 1,2 MB seria quase toda planilha em
+  // ambiente sem blob.
+  //
+  // E NÃO SE DETECTA POR ERRO: o envelope do back é `{detalhe, referencia}` e
+  // não traz código, então capturar o 422 confundiria esta causa com "fonte
+  // inativa" e "passa de 80 MB" — e cairia no caminho de uma vez só justamente
+  // nos dois casos em que ele também vai falhar, depois de subir o arquivo
+  // inteiro.
+  if (planilha_id === null) return conferirPlanilhaDoScore(codigo, arquivo);
 
   // O TAMANHO DA PARTE VEM DO SERVIDOR, e não daqui: é ele que conhece o teto
   // do ingress e a margem que escolheu. Um número nosso divergiria do dele na

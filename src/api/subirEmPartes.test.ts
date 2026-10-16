@@ -73,6 +73,28 @@ function servidorDeMentira(tamanhoDaParte: number) {
   });
 }
 
+/** O servidor de um ambiente SEM ARMAZENAMENTO: a abertura responde nulo.
+ *
+ *  É a convenção que a conferência de uma vez só já usava para dizer que não
+ *  guardou o arquivo, e a abertura passou a repeti-la. Antes ela recusava com
+ *  422, e o cliente repassava a recusa: a pessoa lia "este ambiente não guarda
+ *  arquivos" sem ter pedido nada sobre armazenamento. */
+function servidorSemArmazenamento(tamanhoDaParte: number) {
+  return vi.fn(async (url: string, opcoes: RequestInit) => {
+    chamadas.push({ url, metodo: String(opcoes.method), corpo: opcoes.body as FormData });
+    if (url.endsWith('/planilha/upload')) {
+      return new Response(
+        JSON.stringify({ planilha_id: null, tamanho_da_parte: tamanhoDaParte }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    return new Response(JSON.stringify(CONFERENCIA), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+}
+
 function arquivoDe(bytes: number, nome = 'clipping.xlsx'): File {
   // CONTEÚDO RECONHECÍVEL por posição: é o que permite afirmar que o pedaço 2
   // é o pedaço 2, e não só que foram enviados três pedaços.
@@ -108,6 +130,48 @@ describe('a escolha entre um caminho e outro', () => {
 
     expect(chamadas[0].url).toContain('/planilha/upload');
     expect(chamadas.some((c) => c.url.includes('/parte/'))).toBe(true);
+  });
+
+  it('a planilha da APPROACH, de 3,27 MB, vai em partes', async () => {
+    //: O ARQUIVO REAL QUE FALHOU EM PRODUÇÃO em 16/10/2026, e é por isso que
+    //: este teste cita o tamanho em vez de usar o símbolo: o símbolo acompanha
+    //: a constante, então um teste escrito com ele passaria igual se alguém
+    //: voltasse o limiar para 4 MB. Este não.
+    //:
+    //: 3,27 MB passavam por baixo do limiar de 4 MB, iam numa requisição só e
+    //: morriam no ingress aos ~240 s — a pessoa lia um 403 em HTML.
+    vi.stubGlobal('fetch', servidorDeMentira(1024 * 1024));
+
+    await conferirPlanilhaDoScoreComoCouber('approach_sl', arquivoDe(3_425_145));
+
+    expect(chamadas[0].url).toContain('/planilha/upload');
+    expect(chamadas.some((c) => c.url.includes('/parte/'))).toBe(true);
+  });
+
+  it('SEM ARMAZENAMENTO a abertura nula faz cair no caminho de uma vez só', async () => {
+    //: O QUE ISTO PROTEGE É O LIMIAR MENOR. Com 4 MB a recusa do ambiente sem
+    //: blob atingia pouca planilha; com 1,2 MB atingiria quase toda. Sem este
+    //: retorno, baixar o limiar quebraria a importação em ambiente sem
+    //: armazenamento — e a pessoa leria uma mensagem sobre armazenamento sem
+    //: ter pedido nada sobre isso.
+    vi.stubGlobal('fetch', servidorSemArmazenamento(1024 * 1024));
+
+    const saida = await conferirPlanilhaDoScoreComoCouber(
+      'clipei',
+      arquivoDe(TAMANHO_PARA_SUBIR_EM_PARTES + 1),
+    );
+
+    //: A ABERTURA FOI TENTADA — é ela que informa, e o cliente não adivinha.
+    expect(chamadas[0].url).toContain('/planilha/upload');
+    //: E NENHUMA PARTE SUBIU: montar sem armazenamento não existe.
+    expect(chamadas.some((c) => c.url.includes('/parte/'))).toBe(false);
+    //: O ARQUIVO FOI PELA ROTA DE SEMPRE, com o arquivo no corpo.
+    const ultima = chamadas[chamadas.length - 1];
+    expect(ultima.url).toContain('/fontes/clipei/conferencia');
+    expect(ultima.corpo.get('arquivo')).toBeTruthy();
+    //: E A RESPOSTA É A MESMA, que é o contrato desta função: a tela não
+    //: distingue os caminhos depois daqui.
+    expect(saida.planilha_id).toBe(CONFERENCIA.planilha_id);
   });
 
   it('o teto é EXCLUSIVO: exatamente no limite ainda vai numa requisição', async () => {
