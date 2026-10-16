@@ -266,6 +266,19 @@ describe('os blocos de veículo do dossiê', () => {
     expect(obterRecorteDaLente.mock.calls[0]).toContain('2026-09');
   });
 
+  it('a IMPRENSA não desenha Drivers e riscos, e o Mercado continua desenhando', async () => {
+    //: Por pedido: o popup N1 › N2 › N3 da Evolução já responde a pergunta.
+    obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
+    const { unmount } = await montarEAbrir('imprensa');
+    await waitFor(() => expect(screen.getAllByText('Temas mais falados').length).toBeGreaterThan(0));
+    expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
+    unmount();
+
+    obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));
+    await montarEAbrir('mercado');
+    await waitFor(() => expect(screen.getAllByText('Drivers e riscos').length).toBeGreaterThan(0));
+  });
+
   it('e os blocos que valem em TODA lente continuam valendo', () => {
     //: A contraprova da regra: se alguém trocasse a condição por algo que
     //: esconde demais, estes dois cairiam junto e o teste acima não veria.
