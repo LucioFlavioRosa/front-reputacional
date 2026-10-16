@@ -1351,13 +1351,31 @@ export function listarFontesDoScore(mes: string): Promise<FonteDoScore[]> {
  *  Clipei atende Imprensa e, recortado por público investidor, Mercado; o da
  *  Approach traz Social Listening e Community Management em abas diferentes.
  *  Quem escolhe "Importar" numa das linhas alimenta todas as irmãs. */
+/** A planilha a importar: o arquivo, ou a que a conferência já guardou.
+ *
+ *  OS BYTES SÓ SOBEM UMA VEZ quando a conferência pôde guardá-los. Medido em
+ *  15/10/2026 no clipping real da Clipei (10,53 MB): mandar o arquivo de novo
+ *  na confirmação são 21 MB para um trabalho que precisa de 10,53 — e a
+ *  segunda subida acontece dentro do mesmo relógio de gateway que já estourou.
+ *
+ *  O ARQUIVO CONTINUA VALENDO, e não é legado: a Calibração importa SEM
+ *  conferir, e um ambiente sem armazenamento devolve `planilha_id` nulo. Quem
+ *  não tem identificador manda os bytes, como sempre. */
+export type PlanilhaAImportar = File | { planilhaId: string };
+
 export function importarPlanilhaDoScore(
   codigo: string,
-  arquivo: File,
+  planilha: PlanilhaAImportar,
   veiculosACriar: string[] = [],
 ): Promise<ImportacaoDoScore[]> {
   const corpo = new FormData();
-  corpo.append('arquivo', arquivo);
+  // UM DOS DOIS, NUNCA OS DOIS: o servidor recusa o pedido que traz arquivo e
+  // identificador juntos, em vez de escolher um em silêncio.
+  if (planilha instanceof File) {
+    corpo.append('arquivo', planilha);
+  } else {
+    corpo.append('planilha_id', planilha.planilhaId);
+  }
   // UM CAMPO COM A LISTA EM JSON, e não um campo por nome.
   //
   // A primeira versão mandava `veiculos_a_criar` repetido, uma vez por veículo.
@@ -1427,6 +1445,13 @@ export interface ConferenciaDaPlanilhaDoScore {
   mencoes_sem_assunto?: number;
   /** Os nomes que o cadastro não reconhece, por volume — os 30 maiores. */
   assuntos_nao_reconhecidos?: AssuntoNaoReconhecido[];
+  /** O arquivo JÁ ESTÁ GUARDADO no servidor, e a confirmação pode citá-lo em
+   *  vez de subir os mesmos bytes de novo.
+   *
+   *  NULO QUANDO O AMBIENTE NÃO TEM ARMAZENAMENTO — e aí a tela manda o
+   *  arquivo, como sempre fez. Nunca tratar a ausência como erro: a economia é
+   *  uma economia, não um pré-requisito. */
+  planilha_id?: string | null;
 }
 
 /** Lê o export do fornecedor e diz o que a subida faria. NADA É GRAVADO.

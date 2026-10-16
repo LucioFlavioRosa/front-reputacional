@@ -520,4 +520,70 @@ describe('RecorteDaLente', () => {
       }),
     );
   });
+
+  it('a faixa do topo mostra o recorte em sequência: mês › N1 › N2, cada degrau removível', async () => {
+    /** Por pedido: "os filtros mais claros em cima do popup, com sequência
+     *  lógica". A ordem é a do servidor (a taxonomia primeiro). */
+    const aoSubir = vi.fn();
+    abrir(
+      {
+        ...DO_RIO,
+        lente: 'imprensa',
+        trilha: [
+          { chave: 'atributo', dimensao: 'N1 Atributo Reputacional', valor: 'Governança' },
+          { chave: 'tema_n2', dimensao: 'N2 Tema estratégico', valor: 'Contratos e Regulação' },
+        ],
+      },
+      { codigo: 'imprensa', filtro: { atributo: 'Governança', tema_n2: 'Contratos e Regulação' }, aoSubir },
+    );
+    const remover = await screen.findAllByRole('button', { name: /^Remover / });
+    expect(remover.map((botao) => botao.getAttribute('aria-label'))).toEqual([
+      'Remover N1 Atributo Reputacional: Governança',
+      'Remover N2 Tema estratégico: Contratos e Regulação',
+    ]);
+    expect(screen.getByText('Recorte aplicado')).toBeTruthy();
+    await userEvent.click(remover[0]);
+    expect(aoSubir).toHaveBeenCalledWith('atributo');
+  });
+
+  it('refinar pelos filtros da lente aplica no recorte do painel', async () => {
+    const aoDescer = vi.fn();
+    abrir(DO_RIO, {
+      aoDescer,
+      filtrosRapidos: [{ chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' }],
+      opcoes: {
+        tiers: [], veiculos: [], atributos: [], temas: [], perfis: [], ufs: [], subtemas: [],
+        autores: [], empresas: ['Águas do Rio', 'Prolagos'],
+      },
+    });
+    expect(await screen.findByText('Refinar')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: /Concessionária/ }));
+    await userEvent.click(await screen.findByText('Prolagos'));
+    expect(aoDescer).toHaveBeenCalledWith('empresa', 'Prolagos');
+  });
+
+  it('as abas de dentro são colunas EMPILHADAS EM QUANTIDADE, da maior para a menor', async () => {
+    abrir({
+      ...DO_RIO,
+      dentro: [
+        {
+          ...DO_RIO.dentro[0],
+          titulo: 'N1 Atributo Reputacional',
+          recorta: 'atributo',
+          dados: [
+            { rotulo: 'Inovação e Tecnologia', positivo: 1, neutro: 0, negativo: 0 },
+            { rotulo: 'Governança', positivo: 2, neutro: 3, negativo: 5 },
+            { rotulo: 'Responsabilidade Social', positivo: 4, neutro: 0, negativo: 0 },
+          ],
+        },
+      ],
+    });
+    const colunas = await screen.findAllByRole('button', { name: /Abrir este recorte\.$/ });
+    expect(colunas.map((coluna) => coluna.getAttribute('aria-label')?.split(':')[0])).toEqual([
+      'Governança',
+      'Responsabilidade Social',
+      'Inovação e Tecnologia',
+    ]);
+    expect(colunas[0].getAttribute('aria-label')).toContain('10 menções');
+  });
 });

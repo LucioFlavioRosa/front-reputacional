@@ -61,7 +61,7 @@ import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { serieDaLente } from '@/dominio/janelaDaJornada';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
-import { LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
+import { FILTROS_DAS_LENTES, LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa, corForteDaLente } from '@/dominio/score';
 import type { PontoDaSerie } from '@/dominio/score';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
@@ -291,6 +291,7 @@ export function DossieDaLente({
             filtro={filtro}
             definirFiltro={definirFiltro}
             serie={serie}
+            opcoes={opcoes}
           />
         ) : null}
       </BlocoExpansivel>
@@ -314,11 +315,15 @@ function Conteudo({
   filtro,
   definirFiltro,
   serie,
+  opcoes,
 }: {
   dossie: Dossie;
   filtro: FiltroDaLente;
   definirFiltro: (filtro: FiltroDaLente) => void;
   serie: PontoDaSerie[];
+  /** Os valores dos filtros no mês — para o painel de aprofundamento oferecer
+   *  o refino (Concessionária, Tier, Sentimento). */
+  opcoes: OpcoesDeFiltroDaLente | null;
 }) {
   //: O RECORTE ABERTO NO MODAL — nulo com o modal fechado. É um estado À PARTE
   //: do `filtro` da tela, e a separação é o ponto: a barra de filtros refaz a
@@ -390,7 +395,11 @@ function Conteudo({
         <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
       ) : null}
 
-      <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
+      {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução
+          (N1 › N2 › N3) já responde de onde vem o sentimento do mês. */}
+      {LENTES_SEM_DRIVERS.includes(dossie.codigo) ? null : (
+        <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
+      )}
       {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
           painel a primeira aba é o Subtema — que é onde "Saneamento básico"
           deixa de ser um rótulo e passa a dizer o que aconteceu. */}
@@ -406,6 +415,22 @@ function Conteudo({
       {aprofundando ? (
         <RecorteDaLente
           codigo={dossie.codigo}
+          nomeDaLente={dossie.nome}
+          filtrosRapidos={FILTROS_DAS_LENTES[dossie.codigo]?.rapidos}
+          //: AS OPÇÕES SÃO DO MÊS DA TELA, e o painel pode estar num mês
+          //: ANTERIOR — é o que acontece ao clicar numa coluna da Evolução. Sem
+          //: esta comparação o refinamento oferecia os valores de junho dentro
+          //: do painel de abril: escolher uma concessionária que só existe em
+          //: junho devolvia "nenhum item", e as que existem só em abril não
+          //: apareciam. Achado da revisão do Codex em 16/10/2026.
+          //:
+          //: `null` ESCONDE O REFINAMENTO em vez de oferecê-lo errado:
+          //: `FaixaDoRecorte` filtra as dimensões sem valores. Oferecer nada é
+          //: honesto; oferecer o mês errado parece certo e não é. Buscar as
+          //: opções do mês do painel é a versão melhor disto, e é outro pedido —
+          //: uma requisição a mais e um estado a mais, que não entram num
+          //: conserto.
+          opcoes={aprofundando.mes === dossie.mes ? opcoes : null}
           mes={aprofundando.mes}
           filtro={aprofundando.filtro}
           aoFechar={() => definirAprofundando(null)}
@@ -557,6 +582,7 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  *  graça; só lá deixaria a moldura na tela com o bloco vazio dentro.
  */
 const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
+const LENTES_SEM_DRIVERS = ['imprensa'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 
@@ -673,6 +699,11 @@ function Evolucao({
           ficha={evolucao.ficha}
           ajuda={GUIA_DO_BLOCO[evolucao.titulo]}
         />
+        {/* O CONVITE ESCRITO, por pedido: a coluna já abria o mês, mas nada
+            dizia isso — e o clique é a porta para o N1 › N2 › N3. */}
+        <p className="sem-png sem-impressao" style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--cinza-2)' }}>
+          Clique numa coluna para aprofundar o mês.
+        </p>
         <Painel bloco={evolucao} fatos={dossie.fatos} aoAprofundarNoMes={aoAprofundarNoMes} />
         <QuadroDaEvolucao linhas={dossie.sinais_da_evolucao} />
         <NotaDeFonte ficha={evolucao.ficha} />

@@ -75,7 +75,12 @@ export function BarraDeFiltroDaLente({
   const rapidos = comValores(config.rapidos);
 
   return (
-    <div className="sem-impressao">
+    //: `display: contents`, E É O QUE FAZ A FAIXA CONGELAR. Ela já é
+    //: `position: sticky`, mas o sticky só gruda DENTRO do pai — e o pai era este
+    //: <div>, do tamanho da própria faixa: não havia espaço nenhum para ela
+    //: acompanhar a rolagem. Sem caixa própria, o pai passa a ser a coluna da
+    //: aba inteira, e a faixa desce junto até o fim da lente.
+    <div className="sem-impressao" style={{ display: 'contents' }}>
       {rapidos.length ? (
         <FaixaDeFiltros colada={false}>
           {rapidos.map(({ dimensao, valores }) => (

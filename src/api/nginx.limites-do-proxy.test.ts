@@ -75,4 +75,50 @@ describe('os limites do bloco /api/', () => {
     expect(segundos).toBeGreaterThanOrEqual(60);
     expect(segundos).toBeLessThanOrEqual(TETO_DO_INGRESS_S);
   });
+
+  it('o tempo de SUBIR o arquivo esta declarado, e nao fica no padrao de 60s', () => {
+    /** O SEGUNDO RELÓGIO, e o que faltava.
+     *
+     *  `proxy_read_timeout` é o tempo de o BACK responder. O tempo de o arquivo
+     *  CHEGAR é `client_body_timeout`, e o padrão do nginx são 60 s — que um
+     *  arquivo de 10,53 MB numa conexão brasileira comum não cumpre.
+     *
+     *  MEDIDO NO AMBIENTE em 16/10/2026: `408` de 60 em 60 segundos com corpo
+     *  de zero bytes, o navegador reenviando, e o back sem registro nenhum da
+     *  requisição. Na tela isso se lê como "está demorando" — não há erro para
+     *  investigar e o arquivo nunca chega.
+     *
+     *  O TESTE EXIGE O VALOR DECLARADO, e não apenas "grande": a ausência da
+     *  diretiva é exatamente o defeito, e um teste que só conferisse o número
+     *  quando ele existe passaria com ela removida.
+     */
+    const casado = /client_body_timeout\s+(\d+)s\s*;/.exec(nginx);
+    expect(casado, 'client_body_timeout não declarado — volta ao padrão de 60s').not.toBeNull();
+
+    const segundos = Number(casado![1]);
+    //: O PISO SAI DO TETO DA APLICAÇÃO: 80 MB a 360 kB/s são ~230 s. Menos que
+    //: isto recusa, por tempo, um arquivo que o `client_max_body_size` aceita —
+    //: o mesmo desalinhamento entre camadas que este arquivo já consertou uma
+    //: vez, agora no relógio em vez do tamanho.
+    expect(segundos).toBeGreaterThanOrEqual(230);
+  });
+
+  it('nao declara diretiva que o nginx recusa dentro de `location`', () => {
+    /** LER O ARQUIVO COMO TEXTO NÃO SABE DE CONTEXTO, e esta é a correção de um
+     *  erro meu na mesma mudança: eu pus `client_header_timeout` junto do
+     *  `client_body_timeout`, dentro do bloco `/api/`. O `nginx -t` recusou —
+     *  aquela diretiva só vale em `http` e `server` — e o teste de texto tinha
+     *  passado, porque ele só procura a linha.
+     *
+     *  Esta guarda é estreita de propósito: ela prende a diretiva que eu errei,
+     *  não todas as que existem. A verificação completa é subir a imagem, e o
+     *  CI já faz isso — nginx que não arranca derruba o contêiner, e o passo "A
+     *  imagem sobe e serve a página" falha.
+     *
+     *  E A DIRETIVA ATIVA, NÃO A PALAVRA: a primeira versão desta linha
+     *  procurava o texto e falhou contra o COMENTÁRIO que explica a ausência.
+     *  Diretiva começa a linha; comentário começa com `#`.
+     */
+    expect(nginx).not.toMatch(/^\s*client_header_timeout\s/m);
+  });
 });
