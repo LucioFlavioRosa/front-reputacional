@@ -388,7 +388,11 @@ function Conteudo({
         <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
       ) : null}
 
-      <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
+      {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução
+          (N1 › N2 › N3) já responde de onde vem o sentimento do mês. */}
+      {LENTES_SEM_DRIVERS.includes(dossie.codigo) ? null : (
+        <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
+      )}
       {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
           painel a primeira aba é o Subtema — que é onde "Saneamento básico"
           deixa de ser um rótulo e passa a dizer o que aconteceu. */}
@@ -558,6 +562,7 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  *  graça; só lá deixaria a moldura na tela com o bloco vazio dentro.
  */
 const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
+const LENTES_SEM_DRIVERS = ['imprensa'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 

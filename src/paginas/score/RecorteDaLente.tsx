@@ -290,7 +290,7 @@ function FaixaDoRecorte({
         ))}
         {!trilha.length ? (
           <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
-            · mês inteiro. Clique numa coluna abaixo para descer.
+            · mês inteiro. Clique numa barra abaixo para descer.
           </span>
         ) : null}
       </div>
