@@ -410,7 +410,20 @@ function Conteudo({
           codigo={dossie.codigo}
           nomeDaLente={dossie.nome}
           filtrosRapidos={FILTROS_DAS_LENTES[dossie.codigo]?.rapidos}
-          opcoes={opcoes}
+          //: AS OPÇÕES SÃO DO MÊS DA TELA, e o painel pode estar num mês
+          //: ANTERIOR — é o que acontece ao clicar numa coluna da Evolução. Sem
+          //: esta comparação o refinamento oferecia os valores de junho dentro
+          //: do painel de abril: escolher uma concessionária que só existe em
+          //: junho devolvia "nenhum item", e as que existem só em abril não
+          //: apareciam. Achado da revisão do Codex em 16/10/2026.
+          //:
+          //: `null` ESCONDE O REFINAMENTO em vez de oferecê-lo errado:
+          //: `FaixaDoRecorte` filtra as dimensões sem valores. Oferecer nada é
+          //: honesto; oferecer o mês errado parece certo e não é. Buscar as
+          //: opções do mês do painel é a versão melhor disto, e é outro pedido —
+          //: uma requisição a mais e um estado a mais, que não entram num
+          //: conserto.
+          opcoes={aprofundando.mes === dossie.mes ? opcoes : null}
           mes={aprofundando.mes}
           filtro={aprofundando.filtro}
           aoFechar={() => definirAprofundando(null)}
