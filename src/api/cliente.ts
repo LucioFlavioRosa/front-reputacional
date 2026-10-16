@@ -1528,6 +1528,10 @@ export async function conferirPlanilhaDoScoreEmPartes(
 ): Promise<ConferenciaDaPlanilhaDoScore> {
   const abertura = new FormData();
   abertura.append('tamanho', String(arquivo.size));
+  // O NOME VEM AGORA, e não no fim: a linha da subida nasce na abertura (ver a
+  // migration 0094), e `nome` é coluna obrigatória dela. Mandá-lo nos dois
+  // lugares convidaria os dois a divergirem.
+  abertura.append('nome', arquivo.name);
   const { planilha_id, tamanho_da_parte } = await requisitar<SubidaAberta>(
     `/api/score/fontes/${codigo}/planilha/upload`,
     { method: 'POST', body: abertura },
@@ -1549,23 +1553,66 @@ export async function conferirPlanilhaDoScoreEmPartes(
     const pedaco = arquivo.slice(inicio, inicio + tamanho_da_parte);
     const corpo = new FormData();
     // O NOME DO ARQUIVO NÃO IMPORTA AQUI: o servidor lê os bytes da parte, e o
-    // nome de verdade vai no último passo. Mandar um fixo evita que um nome com
+    // nome de verdade foi na abertura. Mandar um fixo evita que um nome com
     // caractere estranho quebre a parte.
     corpo.append('parte', pedaco, `parte-${indice}`);
-    await requisitar<void>(
-      `/api/score/fontes/${codigo}/planilha/${planilha_id}/parte/${indice}`,
-      { method: 'PUT', body: corpo },
+    await comTentativas(() =>
+      requisitar<void>(
+        `/api/score/fontes/${codigo}/planilha/${planilha_id}/parte/${indice}`,
+        { method: 'PUT', body: corpo },
+      ),
     );
     aoProgresso?.(indice + 1, total);
   }
 
   const fechamento = new FormData();
   fechamento.append('partes', String(total));
-  fechamento.append('nome', arquivo.name);
   return requisitar<ConferenciaDaPlanilhaDoScore>(
     `/api/score/fontes/${codigo}/planilha/${planilha_id}/conferencia`,
     { method: 'POST', body: fechamento },
   );
+}
+
+/** Quantas vezes uma parte é tentada antes de desistir. */
+const TENTATIVAS_POR_PARTE = 3;
+
+/** Repete a parte que falhou por motivo TRANSITÓRIO.
+ *
+ *  POR QUE EXISTE: o servidor fez o `PUT` idempotente por índice justamente
+ *  para permitir repetir — e a primeira versão deste cliente abortava na
+ *  primeira falha, desperdiçando a garantia. Numa rede ruim, que é o caso de
+ *  uso inteiro, uma parte falha e a pessoa recomeçava o arquivo de dez
+ *  megabytes. Achado da revisão do Codex em 16/10/2026.
+ *
+ *  SÓ O QUE PODE DAR CERTO NA SEGUNDA: falha de rede, 408, 429 e 5xx. Um 4xx
+ *  determinístico — parte fora de faixa, tamanho errado, subida que não é sua —
+ *  dá o mesmo resultado três vezes, e repetir só atrasa a mensagem que a pessoa
+ *  precisa ler.
+ *
+ *  ESPERA CRESCENTE COM RUÍDO: 400 ms, 800 ms, e o ruído evita que dez partes
+ *  que falharam juntas voltem todas no mesmo instante. Sem o teto de três, uma
+ *  rede caída viraria laço infinito com a tela dizendo que está subindo.
+ */
+async function comTentativas<T>(fazer: () => Promise<T>): Promise<T> {
+  for (let tentativa = 1; ; tentativa += 1) {
+    try {
+      return await fazer();
+    } catch (falha) {
+      if (tentativa >= TENTATIVAS_POR_PARTE || !valeTentarDeNovo(falha)) throw falha;
+      const espera = 400 * 2 ** (tentativa - 1) * (1 + Math.random() * 0.3);
+      await new Promise((pronto) => setTimeout(pronto, espera));
+    }
+  }
+}
+
+/** A falha é do tipo que pode dar certo na próxima? */
+function valeTentarDeNovo(falha: unknown): boolean {
+  // SEM `status` É FALHA DE REDE: o `fetch` rejeita antes de haver resposta, e
+  // é o caso mais comum numa conexão instável — o que este caminho existe para
+  // atender.
+  const status = (falha as { status?: number } | null)?.status;
+  if (status === undefined) return true;
+  return status === 408 || status === 429 || status >= 500;
 }
 
 /** Confere a planilha pelo caminho que o tamanho dela pede.

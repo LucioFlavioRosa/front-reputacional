@@ -200,7 +200,6 @@ describe('o fechamento', () => {
     const fechamento = chamadas.at(-1)!;
     expect(fechamento.url).toContain(`/planilha/${CONFERENCIA.planilha_id}/conferencia`);
     expect(fechamento.corpo.get('partes')).toBe('3');
-    expect(fechamento.corpo.get('nome')).toBe('julho.xlsx');
   });
 
   it('devolve a MESMA resposta do caminho de uma vez só', async () => {
@@ -243,29 +242,84 @@ describe('o progresso', () => {
   });
 });
 
+/** Um servidor que falha a parte 1 nas `quantas` primeiras tentativas. */
+function servidorQueFalhaAParte1(quantas: number, status = 500) {
+  let falhas = 0;
+  return vi.fn(async (url: string, opcoes: RequestInit) => {
+    chamadas.push({ url, metodo: String(opcoes.method), corpo: opcoes.body as FormData });
+    if (url.endsWith('/planilha/upload')) {
+      return new Response(
+        JSON.stringify({ planilha_id: CONFERENCIA.planilha_id, tamanho_da_parte: 1000 }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (url.endsWith('/parte/1') && falhas < quantas) {
+      falhas += 1;
+      return new Response(JSON.stringify({ detalhe: 'a rede oscilou' }), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (url.includes('/parte/')) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify(CONFERENCIA), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+}
+
 describe('quando uma parte falha', () => {
-  it('a falha sobe, e as partes seguintes NÃO são enviadas', async () => {
-    //: Insistir depois de uma parte falhar gastaria a banda que acabou de se
-    //: mostrar o gargalo — e montaria um arquivo incompleto no fim.
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string, opcoes: RequestInit) => {
-        chamadas.push({ url, metodo: String(opcoes.method), corpo: opcoes.body as FormData });
-        if (url.endsWith('/planilha/upload')) {
-          return new Response(
-            JSON.stringify({ planilha_id: CONFERENCIA.planilha_id, tamanho_da_parte: 1000 }),
-            { status: 200, headers: { 'content-type': 'application/json' } },
-          );
-        }
-        if (url.endsWith('/parte/1')) {
-          return new Response(JSON.stringify({ detalhe: 'a rede caiu' }), {
-            status: 500,
-            headers: { 'content-type': 'application/json' },
-          });
-        }
-        return new Response(null, { status: 204 });
-      }),
-    );
+  it('REPETE a parte que falhou por motivo transitório, e segue', async () => {
+    /** O servidor fez o `PUT` idempotente por índice justamente para isto, e a
+     *  primeira versão deste cliente abortava na primeira falha — desperdiçando
+     *  a garantia. Numa rede ruim, que é o caso de uso inteiro, uma parte falha
+     *  e a pessoa recomeçava o arquivo de dez megabytes.
+     *
+     *  Achado da revisão do Codex em 16/10/2026. */
+    vi.stubGlobal('fetch', servidorQueFalhaAParte1(1));
+
+    const resposta = await conferirPlanilhaDoScoreEmPartes('clipei', arquivoDe(3500));
+
+    const indices = chamadas
+      .filter((c) => c.url.includes('/parte/'))
+      .map((c) => Number(c.url.split('/parte/')[1]));
+    //: A PARTE 1 APARECE DUAS VEZES, e as seguintes sobem.
+    expect(indices).toEqual([0, 1, 1, 2, 3]);
+    expect(resposta.planilha_id).toBe(CONFERENCIA.planilha_id);
+  });
+
+  it('DESISTE depois do teto, sem laço infinito', async () => {
+    //: Sem o teto, uma rede caída viraria laço infinito com a tela dizendo que
+    //: está subindo — pior que falhar, porque não termina nunca.
+    vi.stubGlobal('fetch', servidorQueFalhaAParte1(99));
+
+    await expect(
+      conferirPlanilhaDoScoreEmPartes('clipei', arquivoDe(3500)),
+    ).rejects.toThrow();
+
+    const daParte1 = chamadas.filter((c) => c.url.endsWith('/parte/1'));
+    expect(daParte1).toHaveLength(3);
+    //: E NÃO FECHOU: montar com uma parte a menos daria um zip truncado.
+    expect(chamadas.some((c) => c.url.endsWith('/conferencia'))).toBe(false);
+  });
+
+  it('NÃO repete 4xx determinístico — repetir só atrasa a mensagem', async () => {
+    /** Parte fora de faixa, tamanho errado, subida que não é sua: dão o mesmo
+     *  resultado três vezes. Repetir atrasa em segundos a recusa que a pessoa
+     *  precisa ler. */
+    vi.stubGlobal('fetch', servidorQueFalhaAParte1(99, 422));
+
+    await expect(
+      conferirPlanilhaDoScoreEmPartes('clipei', arquivoDe(3500)),
+    ).rejects.toThrow();
+
+    expect(chamadas.filter((c) => c.url.endsWith('/parte/1'))).toHaveLength(1);
+  });
+
+  it('as partes SEGUINTES não sobem quando a parte desiste', async () => {
+    //: Insistir depois de desistir gastaria a banda que acabou de se mostrar o
+    //: gargalo — e montaria um arquivo incompleto no fim.
+    vi.stubGlobal('fetch', servidorQueFalhaAParte1(99));
 
     await expect(
       conferirPlanilhaDoScoreEmPartes('clipei', arquivoDe(3500)),
@@ -274,8 +328,23 @@ describe('quando uma parte falha', () => {
     const indices = chamadas
       .filter((c) => c.url.includes('/parte/'))
       .map((c) => Number(c.url.split('/parte/')[1]));
-    expect(indices).toEqual([0, 1]);
-    //: E NÃO FECHOU: montar com uma parte a menos daria um zip truncado.
-    expect(chamadas.some((c) => c.url.endsWith('/conferencia'))).toBe(false);
+    expect(Math.max(...indices)).toBe(1);
+  });
+});
+
+describe('a abertura', () => {
+  it('manda o NOME do arquivo, porque a linha da subida nasce lá', async () => {
+    //: A migration 0094 fez a linha nascer na abertura, e `nome` é coluna
+    //: obrigatória dela. O fechamento deixou de mandá-lo: nos dois lugares, os
+    //: dois divergiriam.
+    vi.stubGlobal('fetch', servidorDeMentira(1000));
+
+    await conferirPlanilhaDoScoreEmPartes('clipei', arquivoDe(2500, 'julho.xlsx'));
+
+    const abertura = chamadas[0];
+    expect(abertura.url).toContain('/planilha/upload');
+    expect(abertura.corpo.get('nome')).toBe('julho.xlsx');
+    expect(abertura.corpo.get('tamanho')).toBe('2500');
+    expect(chamadas.at(-1)!.corpo.get('nome')).toBeNull();
   });
 });
