@@ -77,6 +77,28 @@ describe('importarPlanilhaDoScore', () => {
     expect([...corpos[0].keys()]).toEqual(['arquivo']);
   });
 
+  it('COM A PLANILHA JÁ GUARDADA, manda o identificador e NÃO o arquivo', async () => {
+    // É a funcionalidade inteira: no clipping real da Clipei são 10,53 MB que
+    // deixam de subir pela segunda vez — e a segunda subida acontecia dentro
+    // do mesmo relógio de gateway que já estourou uma vez, em 15/10/2026.
+    await importarPlanilhaDoScore('clipei', { planilhaId: 'abc-123' }, ['Rádio A']);
+
+    const [corpo] = corpos;
+    expect(corpo.get('planilha_id')).toBe('abc-123');
+    expect(corpo.has('arquivo')).toBe(false);
+  });
+
+  it('NUNCA manda os dois, porque o servidor recusa o pedido que traz ambos', async () => {
+    // Escolher um em silêncio gravaria o arquivo que a pessoa não quis, no mês
+    // de todo mundo, e a resposta pareceria certa.
+    await importarPlanilhaDoScore('clipei', { planilhaId: 'abc-123' });
+    await importarPlanilhaDoScore('clipei', PLANILHA);
+
+    for (const corpo of corpos) {
+      expect(corpo.has('arquivo') && corpo.has('planilha_id')).toBe(false);
+    }
+  });
+
   it('nome com acento, vírgula e barra sobrevive ao JSON', async () => {
     // "Rádio Betel 87.9 FM | São Francisco do Sul" é um nome de verdade da
     // planilha: tem acento, ponto e barra vertical. Uma serialização por

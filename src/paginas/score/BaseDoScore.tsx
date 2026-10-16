@@ -379,7 +379,12 @@ export function BaseDoScore() {
       definirAplicado(
         await importarPlanilhaDoScore(
           codigo,
-          arquivo,
+          // O ARQUIVO JÁ SUBIU na conferência: citar o identificador poupa
+          // mandar os mesmos bytes de novo — 10,53 MB no clipping da Clipei.
+          // Sem identificador (ambiente sem armazenamento), manda o arquivo.
+          conferencia?.planilha_id
+            ? { planilhaId: conferencia.planilha_id }
+            : arquivo,
           marcados.map((v) => v.nome),
         ),
       );

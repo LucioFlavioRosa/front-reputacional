@@ -301,6 +301,40 @@ describe('BaseDoScore', () => {
     );
   });
 
+  it('A PLANILHA JÁ GUARDADA não sobe de novo: vai o identificador', async () => {
+    // O ganho inteiro da funcionalidade. No clipping real da Clipei são 10,53
+    // MB que deixam de atravessar ingress, nginx e API pela segunda vez — e
+    // essa segunda travessia é a que acontece dentro do relógio de gateway que
+    // já cortou uma importação de verdade, em 15/10/2026.
+    vi.mocked(importarPlanilhaDoScore).mockResolvedValue([resumo()]);
+    const pessoa = await subir(conferencia({ planilha_id: 'planilha-guardada' }));
+
+    await pessoa.click(screen.getByRole('button', { name: /^Subir/ }));
+
+    await waitFor(() =>
+      expect(importarPlanilhaDoScore).toHaveBeenCalledWith(
+        'clipei',
+        { planilhaId: 'planilha-guardada' },
+        [],
+      ),
+    );
+  });
+
+  it('SEM ARMAZENAMENTO, manda o arquivo como sempre fez', async () => {
+    // `planilha_id` nulo é o ambiente sem Blob, e é estado previsto: o painel
+    // inteiro funciona assim. Tratar a ausência como erro faria uma conta de
+    // armazenamento mal configurada impedir a importação — preço que ninguém
+    // aceitou pagar.
+    vi.mocked(importarPlanilhaDoScore).mockResolvedValue([resumo()]);
+    const pessoa = await subir(conferencia({ planilha_id: null }));
+
+    await pessoa.click(screen.getByRole('button', { name: /^Subir/ }));
+
+    await waitFor(() =>
+      expect(importarPlanilhaDoScore).toHaveBeenCalledWith('clipei', PLANILHA, []),
+    );
+  });
+
   it('desmarcar TODOS sobe sem cadastrar nenhum', async () => {
     vi.mocked(importarPlanilhaDoScore).mockResolvedValue([resumo()]);
     const pessoa = await subir(
