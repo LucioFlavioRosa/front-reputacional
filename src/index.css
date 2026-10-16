@@ -188,6 +188,10 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
 /* Rolagem interna dos blocos densos (base, filas, tabelas). */
 .rolagem-interna { overflow: auto; }
 
+/* A COLUNA CLICÁVEL do painel de aprofundamento acende ao passar o mouse:
+   é o que diz que ela desce um nível. */
+.coluna-empilhada:hover { background: var(--bg-hover) !important; }
+
 /* AS DUAS BARRAS DE ROLAGEM NA TELA AO MESMO TEMPO.
 
    O DEFEITO que isto corrige: uma tabela larga com `overflow-x: auto` e sem

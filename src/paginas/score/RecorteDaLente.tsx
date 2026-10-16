@@ -27,9 +27,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import type { FiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
+import type { FiltroDaLente, OpcoesDeFiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
 import { obterRecorteDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
+import { CampoSuspenso } from '@/componentes/CampoSuspenso';
+import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
+import { ordenarValores, rotuloDoValor } from '@/dominio/filtrosDasLentes';
+import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
+import { ColunasEmpilhadas } from '@/graficos/ColunasEmpilhadas';
 import { numero as numeroBR } from '@/dominio/formato';
 import { Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
 import { BotaoDaConta } from '@/componentes/Procedencia';
@@ -55,8 +60,19 @@ export function RecorteDaLente({
   tituloPeloMes = false,
   notaDoMes,
   formula,
+  nomeDaLente,
+  filtrosRapidos = [],
+  opcoes = null,
 }: {
   codigo: string;
+  /** "Imprensa" — para o cabeçalho do painel dizer de que lente é. */
+  nomeDaLente?: string;
+  /** OS FILTROS RÁPIDOS DA LENTE (Concessionária, Tier, Sentimento na Imprensa),
+   *  oferecidos DENTRO do painel para refinar o recorte, por pedido: a mesma
+   *  faixa da tela, na mesma ordem, para quem aprendeu lá filtrar igual aqui. */
+  filtrosRapidos?: DimensaoDaLente[];
+  /** Os valores de cada filtro no mês da tela (`opcoes-de-filtro`). */
+  opcoes?: OpcoesDeFiltroDaLente | null;
   mes: string;
   /** O recorte aberto: o caminho inteiro, não só o último degrau. */
   filtro: FiltroDaLente;
@@ -158,7 +174,10 @@ export function RecorteDaLente({
       //: — clicar em abril com a tela em junho mostrava um painel sem nada
       //: dizendo de que mês eram aqueles números.
       titulo={ultimo ? ultimo.valor : `Mês inteiro · ${mesCurto(mes)}`}
-      subtitulo={<Trilha recorte={recorte} mes={mes} aoSubir={aoSubir} />}
+      //: O CAMINHO SAIU DO SUBTÍTULO e foi para a faixa do recorte, no topo do
+      //: corpo, por pedido: "os filtros mais claros em cima, com sequência
+      //: lógica". Aqui fica só de que lente e de que mês é o painel.
+      subtitulo={`${nomeDaLente ?? 'Lente'} · ${mesCurto(mes)}`}
       aoFechar={aoFechar}
       //: MAIS LARGO QUE OS 600px DA GAVETA DO PACOTE, e o motivo é a tabela de
       //: menções: são sete colunas, e uma delas é o TEXTO da menção — o que se
@@ -178,6 +197,15 @@ export function RecorteDaLente({
         tabIndex={-1}
         style={{ padding: 24, outline: 'none', display: 'flex', flexDirection: 'column', gap: 22 }}
       >
+        <FaixaDoRecorte
+          mes={mes}
+          trilha={recorte?.trilha ?? []}
+          filtro={filtro}
+          filtrosRapidos={filtrosRapidos}
+          opcoes={opcoes}
+          aoDescer={aoDescer}
+          aoSubir={aoSubir}
+        />
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
         {!recorte && !erro ? <Carregando /> : null}
         {recorte ? (
@@ -193,51 +221,170 @@ export function RecorteDaLente({
   );
 }
 
-/** O caminho até aqui, no subtítulo do cabeçalho.
+/** A FAIXA DO RECORTE, no topo do painel: o que está aplicado e o que dá para
+ *  refinar, numa sequência que se lê da esquerda para a direita.
  *
- *  A TRILHA É O QUE IMPEDE O PAINEL DE SER UM BECO: sem ela, quem desceu dois
- *  níveis não sabe de onde veio nem o que remover para subir um. Cada degrau é
- *  um botão, e clicar remove AQUELE degrau — não todos os de baixo: a pessoa que
- *  quer ver "o Rio inteiro" de dentro de "Rio › cidadãos" está tirando o perfil,
- *  e não recomeçando. */
-function Trilha({
-  recorte,
+ *  1. O MÊS, fixo — é o ponto de partida (a coluna da Evolução que abriu o
+ *     painel), e não se tira.
+ *  2. OS DEGRAUS JÁ APLICADOS, na ordem do servidor: a taxonomia primeiro
+ *     (N1 Atributo › N2 Tema estratégico › N3 Subtema), depois o resto. Cada
+ *     um com ×, e o × tira AQUELE degrau — não todos os de baixo: quem quer
+ *     "Governança inteira" de dentro de "Governança › Regulação" está tirando
+ *     o tema, e não recomeçando.
+ *  3. REFINAR: os filtros rápidos da lente (na Imprensa, Concessionária, Tier e
+ *     Sentimento), os mesmos da faixa da tela.
+ *
+ *  ANTES, O CAMINHO MORAVA NO SUBTÍTULO do cabeçalho, como texto sublinhado:
+ *  o dono do produto pediu "os filtros mais claros em cima do popup, com
+ *  sequência lógica". */
+function FaixaDoRecorte({
   mes,
+  trilha,
+  filtro,
+  filtrosRapidos,
+  opcoes,
+  aoDescer,
   aoSubir,
 }: {
-  recorte: Recorte | null;
   mes: string;
+  trilha: Recorte['trilha'];
+  filtro: FiltroDaLente;
+  filtrosRapidos: DimensaoDaLente[];
+  opcoes: OpcoesDeFiltroDaLente | null;
+  aoDescer: (chave: string, valor: string) => void;
   aoSubir: (chave: string) => void;
 }) {
-  //: A RAIZ NOMEIA O MÊS, sempre: com a barra da Evolução abrindo este painel, a
-  //: trilha "Lente › UF: RJ" não diria de que mês é o Rio.
-  const raiz = `Lente · ${mesCurto(mes)}`;
-  if (!recorte?.trilha.length) return <>{raiz}</>;
+  const refinaveis = filtrosRapidos
+    .map((dimensao) => ({ dimensao, valores: opcoes?.[dimensao.de] ?? [] }))
+    .filter(({ valores }) => valores.length > 0);
 
   return (
-    <span>
-      {raiz}
-      {recorte.trilha.map((passo) => (
-        <span key={passo.chave}>
-          {' › '}
-          <button
-            type="button"
-            onClick={() => aoSubir(passo.chave)}
-            title={`Remover ${passo.dimensao}: ${passo.valor}`}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'inherit',
-              padding: 0,
-              font: 'inherit',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-            }}
-          >
-            {passo.dimensao}: {passo.valor} ×
-          </button>
+    <div
+      className="sem-png"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        padding: '12px 14px',
+        background: 'var(--bg-trilho)',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-card-int)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span className="kicker" style={{ marginRight: 4 }}>
+          Recorte aplicado
         </span>
-      ))}
+        <PilulaDoRecorte rotulo="Mês" valor={mesCurto(mes)} />
+        {trilha.map((passo) => (
+          <span key={passo.chave} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden style={{ color: 'var(--cinza-2)' }}>
+              ›
+            </span>
+            <PilulaDoRecorte
+              rotulo={passo.dimensao}
+              valor={passo.valor}
+              aoRemover={() => aoSubir(passo.chave)}
+            />
+          </span>
+        ))}
+        {!trilha.length ? (
+          <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+            · mês inteiro. Clique numa coluna abaixo para descer.
+          </span>
+        ) : null}
+      </div>
+
+      {refinaveis.length ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span className="kicker" style={{ marginRight: 4 }}>
+            Refinar
+          </span>
+          {refinaveis.map(({ dimensao, valores }) => (
+            <CampoSuspenso
+              key={dimensao.chave}
+              campo={campoDoRefino(dimensao, valores, filtro, aoDescer, aoSubir)}
+              aoLimpar={filtro[dimensao.chave] ? () => aoSubir(dimensao.chave) : undefined}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Um campo de refino: escolher aplica no recorte do painel; escolher de novo
+ *  o que já estava aplicado tira — o mesmo gesto da faixa da tela. */
+function campoDoRefino(
+  dimensao: DimensaoDaLente,
+  valores: string[],
+  filtro: FiltroDaLente,
+  aoDescer: (chave: string, valor: string) => void,
+  aoSubir: (chave: string) => void,
+): CampoDeFiltro {
+  const valorAtual = filtro[dimensao.chave];
+  return {
+    chave: dimensao.chave,
+    rotulo: dimensao.rotulo,
+    itens: ordenarValores(dimensao, valores).map((valor) => ({
+      valor,
+      rotulo: rotuloDoValor(dimensao, valor),
+    })),
+    valorAtual,
+    destaque: valorAtual ? dimensao.destaques?.[valorAtual] : undefined,
+    aoEscolher: (valor) =>
+      valorAtual === valor ? aoSubir(dimensao.chave) : aoDescer(dimensao.chave, valor),
+  };
+}
+
+/** Uma pílula da faixa: "N1 Atributo Reputacional: Governança ×". */
+function PilulaDoRecorte({
+  rotulo,
+  valor,
+  aoRemover,
+}: {
+  rotulo: string;
+  valor: string;
+  aoRemover?: () => void;
+}) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 6px 4px 10px',
+        paddingRight: aoRemover ? 6 : 10,
+        background: 'var(--branco)',
+        border: '1px solid var(--borda-input)',
+        borderRadius: 999,
+        fontSize: 12,
+        lineHeight: 1.3,
+      }}
+    >
+      <span style={{ color: 'var(--cinza-2)' }}>{rotulo}:</span>
+      <strong style={{ color: 'var(--cinza-4)' }}>{valor}</strong>
+      {aoRemover ? (
+        <button
+          type="button"
+          onClick={aoRemover}
+          aria-label={`Remover ${rotulo}: ${valor}`}
+          title={`Remover ${rotulo}: ${valor}`}
+          style={{
+            width: 20,
+            height: 20,
+            border: 'none',
+            borderRadius: '50%',
+            background: 'var(--bg-trilho)',
+            color: 'var(--cinza-3)',
+            fontSize: 13,
+            lineHeight: 1,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      ) : null}
     </span>
   );
 }
@@ -479,7 +626,9 @@ function DentroDoRecorte({
         aria-labelledby={`dentro-${bloco.titulo}`}
         style={{ paddingTop: 14 }}
       >
-        <BarrasCemPorCento
+        {/* COLUNAS EMPILHADAS EM QUANTIDADE, do maior para o menor, por pedido:
+            a barra de 100% igualava o atributo de 2 menções ao de 200. */}
+        <ColunasEmpilhadas
           itens={bloco.dados.map((linha) => ({
             rotulo: comoTexto(linha.rotulo),
             positivo: comoNumero(linha.positivo ?? 0),
