@@ -29,7 +29,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente, RecorteDaLente as Recorte } from '@/api/cliente';
 import { obterRecorteDaLente } from '@/api/cliente';
-import { Abas } from '@/componentes/Abas';
+import { Abas, idDeAba } from '@/componentes/Abas';
 import { CampoSuspenso } from '@/componentes/CampoSuspenso';
 import type { CampoDeFiltro } from '@/componentes/PainelDeFiltros';
 import { ordenarValores, rotuloDoValor } from '@/dominio/filtrosDasLentes';
@@ -622,8 +622,12 @@ function DentroDoRecorte({
       />
       <div
         role="tabpanel"
-        id={`painel-${bloco.titulo}`}
-        aria-labelledby={`dentro-${bloco.titulo}`}
+        //: `idDeAba` E NÃO INTERPOLAÇÃO DIRETA: o título tem espaço ("N2 Temas
+        //: estratégicos"), e `aria-labelledby` é lista de ids separada por
+        //: espaço — a referência quebrava em três que não existem. A régua usa
+        //: a mesma função, e é isso que faz as duas pontas casarem.
+        id={idDeAba('painel', bloco.titulo)}
+        aria-labelledby={idDeAba('dentro', bloco.titulo)}
         style={{ paddingTop: 14 }}
       >
         {/* COLUNAS EMPILHADAS EM QUANTIDADE, do maior para o menor, por pedido:
