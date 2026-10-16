@@ -132,6 +132,18 @@ describe('a escolha entre um caminho e outro', () => {
     expect(chamadas.some((c) => c.url.includes('/parte/'))).toBe(true);
   });
 
+  it('o limiar é 1.258.291 bytes, e o número está AFIRMADO aqui', () => {
+    //: UM FIO DE ALARME, e não redundância com os testes abaixo. Todo teste de
+    //: borda deste arquivo usa a constante exportada, então todos passariam
+    //: igual se alguém a devolvesse para 4 MB — foi a revisão do Codex que
+    //: apontou a lacuna, em 16/10/2026.
+    //:
+    //: ESTE NÚMERO JÁ FOI ESCOLHIDO ERRADO UMA VEZ, e o preço foi um 403 em
+    //: HTML na mão de quem usava. Mudá-lo passa a exigir mudar este teste, que
+    //: é o ponto: a mudança deixa de poder ser distraída.
+    expect(TAMANHO_PARA_SUBIR_EM_PARTES).toBe(1_258_291);
+  });
+
   it('a planilha da APPROACH, de 3,27 MB, vai em partes', async () => {
     //: O ARQUIVO REAL QUE FALHOU EM PRODUÇÃO em 16/10/2026, e é por isso que
     //: este teste cita o tamanho em vez de usar o símbolo: o símbolo acompanha
