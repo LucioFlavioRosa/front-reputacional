@@ -1478,6 +1478,113 @@ export function conferirPlanilhaDoScore(
   );
 }
 
+/** ACIMA DISTO A PLANILHA SOBE EM PARTES, e o número sai de medição.
+ *
+ *  MEDIDO NO AMBIENTE em 16/10/2026, pela telemetria do navegador — o mesmo
+ *  arquivo, a mesma máquina, a mesma hora:
+ *
+ *      1,42 MB  ->    4,1 s  -> 200
+ *      1,33 MB  ->   73,2 s  -> 200
+ *     10,53 MB  ->  212,4 s  -> 403
+ *     10,53 MB  ->  227,4 s  -> 403
+ *
+ *  Os 403 param em ~212–227 s porque o ingress do Container Apps encerra a
+ *  requisição por volta de 240 s, e isso não é configurável. A banda de subida
+ *  variou de ~18 KB/s a ~350 KB/s na MESMA hora.
+ *
+ *  4 MB É CONSERVADOR DE PROPÓSITO. A 18 KB/s — o pior caso medido — 4 MB
+ *  levam ~230 s e não caberiam; mas 1,33 MB já levaram 73 s, o que põe o risco
+ *  bem abaixo dos 4 MB. O teto existe para não pagar onze requisições por um
+ *  arquivo que sobe numa, e não para adivinhar a banda: quem passa dele vai em
+ *  partes, e lá cada pedaço tem margem de 4x.
+ *
+ *  POR QUE NÃO SEMPRE EM PARTES: o caminho de uma vez é uma requisição e uma
+ *  resposta, e os arquivos reais do dia a dia (um mês da Clipei, 1,3 a 2,1 MB)
+ *  passam nele em segundos. Partir tudo trocaria simplicidade por nada. */
+export const TAMANHO_PARA_SUBIR_EM_PARTES = 4 * 1024 * 1024;
+
+interface SubidaAberta {
+  planilha_id: string;
+  tamanho_da_parte: number;
+}
+
+/** Confere uma planilha GRANDE, subindo-a em pedaços.
+ *
+ *  POR QUE ESTE CAMINHO EXISTE: ver `TAMANHO_PARA_SUBIR_EM_PARTES`. O problema
+ *  não é o processamento — a conferência leva ~7 s para 10,53 MB — é a
+ *  requisição longa, que o ingress encerra.
+ *
+ *  `aoProgresso` NÃO É ENFEITE. Onze requisições levam minutos, e uma tela
+ *  parada por minutos se lê como travada: foi exatamente assim que este defeito
+ *  apareceu para quem usava ("está demorando", sem erro nenhum). Quem chama
+ *  precisa poder dizer em que parte está.
+ *
+ *  NÃO SUBSTITUI `conferirPlanilhaDoScore`: devolve a MESMA resposta, porque é
+ *  a mesma montagem no servidor. A tela não distingue os dois depois daqui. */
+export async function conferirPlanilhaDoScoreEmPartes(
+  codigo: string,
+  arquivo: File,
+  aoProgresso?: (enviadas: number, total: number) => void,
+): Promise<ConferenciaDaPlanilhaDoScore> {
+  const abertura = new FormData();
+  abertura.append('tamanho', String(arquivo.size));
+  const { planilha_id, tamanho_da_parte } = await requisitar<SubidaAberta>(
+    `/api/score/fontes/${codigo}/planilha/upload`,
+    { method: 'POST', body: abertura },
+  );
+
+  // O TAMANHO DA PARTE VEM DO SERVIDOR, e não daqui: é ele que conhece o teto
+  // do ingress e a margem que escolheu. Um número nosso divergiria do dele na
+  // primeira mudança, e a divergência só apareceria como parte recusada.
+  const total = Math.ceil(arquivo.size / tamanho_da_parte);
+  aoProgresso?.(0, total);
+
+  // UMA POR VEZ, e não em paralelo. O servidor aceita qualquer ordem — o teste
+  // dele cobra isso —, mas em paralelo as partes disputam a MESMA banda que
+  // acabou de se mostrar o gargalo, e o progresso deixaria de significar
+  // "quanto subiu". Sequencial é mais lento em rede boa e mais legível em rede
+  // ruim, que é onde este caminho é usado.
+  for (let indice = 0; indice < total; indice += 1) {
+    const inicio = indice * tamanho_da_parte;
+    const pedaco = arquivo.slice(inicio, inicio + tamanho_da_parte);
+    const corpo = new FormData();
+    // O NOME DO ARQUIVO NÃO IMPORTA AQUI: o servidor lê os bytes da parte, e o
+    // nome de verdade vai no último passo. Mandar um fixo evita que um nome com
+    // caractere estranho quebre a parte.
+    corpo.append('parte', pedaco, `parte-${indice}`);
+    await requisitar<void>(
+      `/api/score/fontes/${codigo}/planilha/${planilha_id}/parte/${indice}`,
+      { method: 'PUT', body: corpo },
+    );
+    aoProgresso?.(indice + 1, total);
+  }
+
+  const fechamento = new FormData();
+  fechamento.append('partes', String(total));
+  fechamento.append('nome', arquivo.name);
+  return requisitar<ConferenciaDaPlanilhaDoScore>(
+    `/api/score/fontes/${codigo}/planilha/${planilha_id}/conferencia`,
+    { method: 'POST', body: fechamento },
+  );
+}
+
+/** Confere a planilha pelo caminho que o tamanho dela pede.
+ *
+ *  É ESTA QUE A TELA CHAMA, e é a única que ela precisa conhecer: a escolha
+ *  entre uma requisição e onze é de transporte, não de produto. Deixá-la na tela
+ *  espalharia a decisão por cada lugar que confere planilha — e hoje são dois,
+ *  a Base e a Calibração. */
+export function conferirPlanilhaDoScoreComoCouber(
+  codigo: string,
+  arquivo: File,
+  aoProgresso?: (enviadas: number, total: number) => void,
+): Promise<ConferenciaDaPlanilhaDoScore> {
+  if (arquivo.size > TAMANHO_PARA_SUBIR_EM_PARTES) {
+    return conferirPlanilhaDoScoreEmPartes(codigo, arquivo, aoProgresso);
+  }
+  return conferirPlanilhaDoScore(codigo, arquivo);
+}
+
 /** O que a gravação da lista de veículos de investidores mudou. */
 export interface VeiculosDeInvestidoresSalvos {
   /** Quantos entraram na lente Mercado agora. */

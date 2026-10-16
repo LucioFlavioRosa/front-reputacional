@@ -30,7 +30,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
-  conferirPlanilhaDoScore,
+  conferirPlanilhaDoScoreComoCouber,
   importarPlanilhaDoScore,
   listarFontesDoScore,
 } from '@/api/cliente';
@@ -312,6 +312,16 @@ export function BaseDoScore() {
   const [busca, definirBusca] = useState('');
   const [pagina, definirPagina] = useState(1);
   const [ocupado, definirOcupado] = useState(false);
+  //: A SUBIDA EM PARTES, enquanto acontece. Nulo quando não há — e também
+  //: quando o arquivo cabe numa requisição, que é o caso comum.
+  //:
+  //: EXISTE PORQUE UMA TELA PARADA SE LÊ COMO TRAVADA. Foi assim que o defeito
+  //: do arquivo grande apareceu para quem usava: "está demorando", sem erro
+  //: nenhum, por minutos. Onze requisições levam o mesmo tempo; a diferença é
+  //: a pessoa saber que algo está andando.
+  const [subida, definirSubida] = useState<{ enviadas: number; total: number } | null>(
+    null,
+  );
   const [erro, definirErro] = useState<string | null>(null);
 
   //: A BUSCA DAS FONTES NUM EFEITO, e não no corpo do render: no corpo ela
@@ -362,12 +372,20 @@ export function BaseDoScore() {
     definirArquivo(escolhido);
     limpar();
     definirOcupado(true);
+    definirSubida(null);
     try {
-      definirConferencia(await conferirPlanilhaDoScore(codigo, escolhido));
+      definirConferencia(
+        await conferirPlanilhaDoScoreComoCouber(codigo, escolhido, (enviadas, total) =>
+          //: SÓ QUANDO HÁ MAIS DE UMA PARTE. Com uma, a mensagem diria "parte 1
+          //: de 1" — ruído que faz a pessoa procurar significado onde não há.
+          definirSubida(total > 1 ? { enviadas, total } : null),
+        ),
+      );
     } catch (falha) {
       definirErro(falha instanceof Error ? falha.message : 'Não consegui ler a planilha.');
     } finally {
       definirOcupado(false);
+      definirSubida(null);
     }
   }
 
@@ -497,8 +515,24 @@ export function BaseDoScore() {
             </div>
 
             {ocupado && !conferencia ? (
-              <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
-                Lendo a planilha…
+              <p
+                //: `role="status"` para quem ouve a tela: a contagem muda onze
+                //: vezes, e sem isto a mudança é invisível para leitor de tela.
+                role="status"
+                style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}
+              >
+                {subida ? (
+                  <>
+                    Enviando a planilha: parte {subida.enviadas} de {subida.total}.
+                    {/* O QUE ELA NÃO PODE FAZER vai escrito: fechar a aba no meio
+                        perde a subida, e a pessoa não tem como saber disso. */}
+                    <span style={{ display: 'block', marginTop: 4 }}>
+                      Arquivo grande sobe em pedaços. Deixe esta aba aberta.
+                    </span>
+                  </>
+                ) : (
+                  'Lendo a planilha…'
+                )}
               </p>
             ) : null}
 

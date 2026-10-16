@@ -18,11 +18,11 @@ import type { FonteDoScore, ImportacaoDoScore } from '@/dominio/score';
 
 vi.mock('@/api/cliente', () => ({
   listarFontesDoScore: vi.fn(),
-  conferirPlanilhaDoScore: vi.fn(),
+  conferirPlanilhaDoScoreComoCouber: vi.fn(),
   importarPlanilhaDoScore: vi.fn(),
 }));
 
-const { listarFontesDoScore, conferirPlanilhaDoScore, importarPlanilhaDoScore } =
+const { listarFontesDoScore, conferirPlanilhaDoScoreComoCouber, importarPlanilhaDoScore } =
   await import('@/api/cliente');
 
 // AS FONTES COMO O SERVIDOR AS MANDA, com `arquivo` e `lente`: são elas que
@@ -90,12 +90,12 @@ const PLANILHA = new File([new Uint8Array([1, 2, 3])], 'clipei.xlsx', {
 /** Abre a tela e sobe a planilha — o estado de onde quase todo teste parte. */
 async function subir(resposta: ConferenciaDaPlanilhaDoScore) {
   vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
-  vi.mocked(conferirPlanilhaDoScore).mockResolvedValue(resposta);
+  vi.mocked(conferirPlanilhaDoScoreComoCouber).mockResolvedValue(resposta);
   const pessoa = userEvent.setup();
   render(<BaseDoScore />);
   await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
   await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
-  await waitFor(() => expect(conferirPlanilhaDoScore).toHaveBeenCalled());
+  await waitFor(() => expect(conferirPlanilhaDoScoreComoCouber).toHaveBeenCalled());
   return pessoa;
 }
 
@@ -420,7 +420,7 @@ describe('BaseDoScore', () => {
 
   it('a falha ao ler a planilha aparece como erro, não como lista vazia', async () => {
     vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
-    vi.mocked(conferirPlanilhaDoScore).mockRejectedValue(
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockRejectedValue(
       new Error('A planilha não tem as colunas que o cadastro desta fonte espera: ID.'),
     );
     const pessoa = userEvent.setup();
@@ -458,5 +458,65 @@ describe('BaseDoScore', () => {
     await pessoa.selectOptions(screen.getByLabelText(/De qual fornecedor/), 'bites');
 
     expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  // -- a subida em partes, pelo que a pessoa VÊ ------------------------------
+
+  it('A SUBIDA EM PARTES DIZ EM QUE PARTE ESTÁ, e pede para não fechar a aba', async () => {
+    /** POR QUE ISTO É TELA E NÃO DETALHE DE TRANSPORTE.
+     *
+     *  Onze requisições levam minutos, e uma tela parada por minutos se lê como
+     *  travada. Foi exatamente assim que o defeito do arquivo grande apareceu
+     *  para quem usava: "está demorando", sem erro nenhum, por quatro minutos —
+     *  e nesse tempo não havia o que olhar.
+     *
+     *  E O AVISO DA ABA É A OUTRA METADE: fechar no meio perde a subida, e a
+     *  pessoa não tem como saber disso.
+     */
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    //: A CONFERÊNCIA FICA PENDENTE de propósito, chamando o progresso: é o
+    //: estado intermediário que se quer afirmar, e uma promessa resolvida o
+    //: atravessaria sem deixar ver.
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(3, 11);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    await waitFor(() =>
+      expect(screen.getByText(/parte 3 de 11/)).toBeTruthy(),
+    );
+    expect(screen.getByText(/Deixe esta aba aberta/)).toBeTruthy();
+    //: `role="status"` para quem ouve a tela: a contagem muda onze vezes, e sem
+    //: isto a mudança é invisível para leitor de tela.
+    expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
+  });
+
+  it('com UMA parte só, não diz "parte 1 de 1" — isso seria ruído', async () => {
+    /** O caminho comum é o arquivo que cabe numa requisição, e ali a contagem
+     *  não significa nada. Mostrá-la faria a pessoa procurar significado onde
+     *  não há — e é o tipo de ruído que ensina a ignorar a área de aviso. */
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(1, 1);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    await waitFor(() => expect(screen.getByText('Lendo a planilha…')).toBeTruthy());
+    expect(screen.queryByText(/parte 1 de 1/)).toBeNull();
+    expect(screen.queryByText(/Deixe esta aba aberta/)).toBeNull();
   });
 });
