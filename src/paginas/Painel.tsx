@@ -810,7 +810,7 @@ export function Painel({
           aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
         />
         {/* O TEMA VIROU N3 (104 subtemas), e a faixa passou a filtrar pelos
-            dois níveis de cima, por pedido: Pilar (N1) e Tema estratégico
+            dois níveis de cima, por pedido: Atributo (N1) e Tema estratégico
             (N2). O N3 continua em "Filtro avançado". */}
         <CampoSuspenso
           campo={campoDeTemaN1(recorte, definirRecorte, catalogo)}
@@ -1069,7 +1069,7 @@ export function Painel({
         <Secao
           titulo="% de Interações por Temas"
           subtitulo={`Distribuição das interações por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao].toLowerCase()} no recorte`}
-          ajuda="Cada retângulo é um tema no nível escolhido — Pilar (N1), Tema estratégico (N2) ou Subtema (N3) —, com a área proporcional ao total de interações com ele no recorte. Uma interação com dois subtemas do mesmo pilar conta uma vez para o pilar. No N3, a cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
+          ajuda="Cada retângulo é um tema no nível escolhido — Atributo (N1), Tema estratégico (N2) ou Subtema (N3) —, com a área proporcional ao total de interações com ele no recorte. Uma interação com dois subtemas do mesmo atributo conta uma vez para o atributo. No N3, a cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
           acao={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <SeletorDeNivelDeTema
@@ -1342,7 +1342,7 @@ export function Painel({
       <Secao
         titulo="Barra divergente por tema"
         subtitulo={`Desempenho comparativo do termômetro por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
-        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Pilar (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Atributo (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
         acao={
           <SeletorDeNivelDeTema
             valor={nivelDaDivergente}

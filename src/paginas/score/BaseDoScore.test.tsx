@@ -126,7 +126,7 @@ describe('BaseDoScore', () => {
   });
 
   it('A CONFERÊNCIA MOSTRA OS ASSUNTOS QUE O CADASTRO NÃO RECONHECE', async () => {
-    // O dossiê recorta por Pilar (N1), Tema estratégico (N2) e Subtema (N3)
+    // O dossiê recorta por Atributo (N1), Tema estratégico (N2) e Subtema (N3)
     // pelo vínculo da menção com o tema. Menção sem vínculo não entra em
     // recorte nenhum — e descobrir isso depois é olhar um gráfico vazio sem
     // saber por quê.

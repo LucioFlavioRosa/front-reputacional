@@ -67,16 +67,20 @@ const sentimento: DimensaoDaLente = {
   },
 };
 //: "TEMA" SEMPRE DIZ QUAL É, por pedido. O TEMA QUE O FORNECEDOR ESCREVE É O
-//: PILAR (N1): o filtro de Pilar o encontra (o servidor casa os dois). O
+//: ATRIBUTO (N1): o filtro de Atributo o encontra (o servidor casa os dois). O
 //: subtema do fornecedor é o N3, e fica "(fornecedor)" até o de-para entrar.
-const pilar: DimensaoDaLente = { chave: 'tema_n1', rotulo: 'Pilar (N1)', de: 'temas_n1' };
+//:
+//: "ATRIBUTO", e não "Pilar": por pedido (2026-10-16), a palavra "Pilar" sai
+//: de toda a aplicação — não é mais uma divergência deliberada entre telas
+//: (ver o comentário em `riscos.ts`), é regra geral agora.
+const pilar: DimensaoDaLente = { chave: 'tema_n1', rotulo: 'Atributo (N1)', de: 'temas_n1' };
 const temaEstrategico: DimensaoDaLente = { chave: 'tema_n2', rotulo: 'Tema estratégico (N2)', de: 'temas_n2' };
 const subtemaN3: DimensaoDaLente = { chave: 'tema_n3', rotulo: 'Subtema (N3)', de: 'temas_n3' };
 const subtemaDoFornecedor: DimensaoDaLente = { chave: 'subtema', rotulo: 'Subtema (fornecedor)', de: 'subtemas' };
 const uf: DimensaoDaLente = { chave: 'uf', rotulo: 'UF', de: 'ufs' };
 const concessionaria: DimensaoDaLente = { chave: 'empresa', rotulo: 'Concessionária', de: 'empresas' };
 
-//: PILAR (N1) E TEMA ESTRATÉGICO (N2) NOS RÁPIDOS DE SOCIEDADE E CLIENTES, por
+//: ATRIBUTO (N1) E TEMA ESTRATÉGICO (N2) NOS RÁPIDOS DE SOCIEDADE E CLIENTES, por
 //: pedido — logo depois da dimensão própria da lente. A IMPRENSA FICOU ENXUTA,
 //: também por pedido: Concessionária, Tier e Sentimento, nessa ordem; veículo e
 //: temas seguem alcançáveis pela busca inteligente. O servidor oferece a taxonomia

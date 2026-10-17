@@ -7,9 +7,9 @@ import { FILTROS_DAS_LENTES } from '@/dominio/filtrosDasLentes';
 
 describe('filtros de tema no painel de KPIs', () => {
   //: Imprensa e Mercado ficaram enxutas por pedido (Concessionária, Tier, Sentimento).
-  it.each(['sociedade', 'clientes'])('%s tem Pilar (N1) e Tema estratégico (N2) nos rápidos', (lente) => {
+  it.each(['sociedade', 'clientes'])('%s tem Atributo (N1) e Tema estratégico (N2) nos rápidos', (lente) => {
     const rotulos = FILTROS_DAS_LENTES[lente].rapidos.map((d) => d.rotulo);
-    expect(rotulos).toContain('Pilar (N1)');
+    expect(rotulos).toContain('Atributo (N1)');
     expect(rotulos).toContain('Tema estratégico (N2)');
   });
 

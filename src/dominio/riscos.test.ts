@@ -336,7 +336,7 @@ describe('descer e subir um degrau', () => {
 
 describe('a tela escreve NOME, e não código', () => {
   //: O CÓDIGO É CHAVE DO CADASTRO. A trilha dizia "Lente: imprensa",
-  //: "Pilar (N1): governanca" e "Severidade: critico", enquanto o resto do
+  //: "Atributo (N1): governanca" e "Severidade: critico", enquanto o resto do
   //: produto escreve "Imprensa", "Governança" e "Crítico" — e "sociedade" não é
   //: nem o nome da lente, que se chama "Sociedade digital".
   const OPCOES = {

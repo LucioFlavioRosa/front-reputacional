@@ -53,7 +53,7 @@ describe('BarraDeFiltroDaLente', () => {
     expect(screen.queryByRole('button', { name: /Filtro avançado/ })).toBeNull();
   });
 
-  it('Sociedade digital: Pilar (N1), Tema estratégico (N2) e Subtema (N3) quando as menções estão ligadas', async () => {
+  it('Sociedade digital: Atributo (N1), Tema estratégico (N2) e Subtema (N3) quando as menções estão ligadas', async () => {
     const definirFiltro = vi.fn();
     render(
       <BarraDeFiltroDaLente
@@ -63,17 +63,17 @@ describe('BarraDeFiltroDaLente', () => {
         opcoes={{ ...DA_SOCIEDADE, temas_n1: ['Governança'], temas_n2: ['Ética'], temas_n3: ['Compliance'] }}
       />,
     );
-    expect(screen.getByText('Pilar (N1)')).toBeTruthy();
+    expect(screen.getByText('Atributo (N1)')).toBeTruthy();
     expect(screen.getByText('Tema estratégico (N2)')).toBeTruthy();
     expect(screen.getByText('Subtema (N3)')).toBeTruthy();
-    await userEvent.click(screen.getByText('Pilar (N1)'));
+    await userEvent.click(screen.getByText('Atributo (N1)'));
     await userEvent.click(screen.getByText('Governança'));
     expect(definirFiltro).toHaveBeenCalledWith({ tema_n1: 'Governança' });
   });
 
   it('Sociedade digital sem menção ligada: os três níveis não aparecem', () => {
     render(<BarraDeFiltroDaLente lente="sociedade" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_SOCIEDADE} />);
-    expect(screen.queryByText('Pilar (N1)')).toBeNull();
+    expect(screen.queryByText('Atributo (N1)')).toBeNull();
     expect(screen.queryByText('Subtema (N3)')).toBeNull();
   });
 
@@ -85,7 +85,7 @@ describe('BarraDeFiltroDaLente', () => {
     expect(texto.indexOf('Concessionária')).toBeGreaterThanOrEqual(0);
     expect(texto.indexOf('Concessionária')).toBeLessThan(texto.indexOf('Tier do veículo'));
     expect(texto.indexOf('Tier do veículo')).toBeLessThan(texto.indexOf('Sentimento'));
-    for (const fora of ['Veículo', 'Atributo', 'Pilar (N1)', 'Tema estratégico (N2)', 'UF']) {
+    for (const fora of ['Veículo', 'Atributo (N1)', 'Tema estratégico (N2)', 'UF']) {
       expect(screen.queryByText(fora)).toBeNull();
     }
   });
