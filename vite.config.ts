@@ -23,9 +23,17 @@ export default defineConfig({
   // -------------------------------------------------------------------------
   // OS TESTES DE TELA, e por que o ambiente não é `jsdom` para todos
   //
-  // A suíte é quase toda de lógica pura, e lógica pura não precisa de DOM:
-  // ligar `jsdom` em tudo custaria segundos a cada rodada para montar um
-  // navegador falso que 24 dos 25 arquivos ignoram.
+  // Ligar `jsdom` em tudo custaria segundos a cada rodada para montar um
+  // navegador falso que boa parte dos arquivos ignora.
+  //
+  // O ARGUMENTO ENFRAQUECEU, e vale dizer em vez de manter o número velho:
+  // quando isto foi escrito, "24 dos 25 arquivos" ignoravam o DOM. Medido em
+  // 16/10/2026, são 58 de 121 que PRECISAM dele — quase metade. A suíte deixou
+  // de ser "quase toda de lógica pura".
+  //
+  // Continua valendo porque os outros 63 rodam sem pagar o custo, e porque
+  // declarar no topo do arquivo é explícito. Mas se a proporção virar, a conta
+  // inverte e o padrão deve passar a ser o contrário.
   //
   // Quem precisa dele declara no topo do próprio arquivo:
   //

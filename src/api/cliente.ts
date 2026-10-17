@@ -1950,6 +1950,21 @@ export function listarMencoesDaBase(lente: string, consulta: ConsultaDaBase): Pr
   return requisitar<PaginaDaBase>(`/api/score/base/${lente}/mencoes?${paraConsultaDaBase(consulta)}`);
 }
 
+/** As opções de filtro da Base, para uma lente e um período.
+ *
+ *  ⚠ SEM CONSUMIDOR DE PRODUÇÃO. Conferido em 16/10/2026: nenhuma tela a
+ *  chama. O único uso é um `vi.fn()` em `BaseDeDadosDoScore.test.tsx:30`, que
+ *  mocka a função e depois não a exercita — o mock está tão órfão quanto ela.
+ *
+ *  A ROTA DO BACK TAMBÉM ESTÁ ÓRFÃ (`app/api/base_das_lentes.py:297`), e é isso
+ *  que distingue este caso de um descuido do front: as duas pontas foram
+ *  escritas e nenhuma foi ligada. É um filtro que o produto desenhou para a
+ *  Base e não chegou à tela.
+ *
+ *  FICA ATÉ ALGUÉM DECIDIR, e a decisão é de produto: ou a Base ganha o filtro
+ *  por opções, ou saem as duas pontas juntas — esta função, o mock e a rota.
+ *  Remover só um lado deixaria o outro parecendo em uso.
+ */
 export function obterOpcoesDaBase(lente: string, de?: string, ate?: string): Promise<OpcoesDaBase> {
   return requisitar<OpcoesDaBase>(
     `/api/score/base/${lente}/mencoes/opcoes?${paraConsultaDaBase({ de, ate })}`,
