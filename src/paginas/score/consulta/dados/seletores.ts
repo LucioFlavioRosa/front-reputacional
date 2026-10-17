@@ -7,6 +7,7 @@
  *  impacto vêm prontos do JSON e só são somados para os rodapés de grupo.
  */
 
+import { normalizarBusca } from '@/dominio/texto';
 import { arred, fmtDataCurta, fmtInt } from '../formatacao';
 import { escreverEndereco } from '../endereco';
 import type { EnderecoDoDrill } from '../endereco';
@@ -318,16 +319,6 @@ const MAXIMO_DE_RESULTADOS = 8;
 const MAXIMO_DE_MATERIAS = 3;
 const MINIMO_DE_CARACTERES = 2;
 const SEPARADOR = ' › ';
-
-/** Minúsculas, sem acento, espaços colapsados e sem espaço nas pontas. */
-export function normalizarBusca(texto: string): string {
-  return texto
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /** Uma entrada do índice: o resultado exibido e os TEXTOS PESQUISÁVEIS, que
  *  ficam ao lado do resultado e não dentro dele, para o resultado manter a

@@ -14,8 +14,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { porUrgencia } from '@/paginas/importacao/grupos';
-import type { Grupo } from '@/paginas/importacao/grupos';
+import { porUrgencia } from '@/dominio/conferenciaDaImportacao';
+import type { Grupo } from '@/dominio/conferenciaDaImportacao';
 
 const TRAVA: Grupo = {
   campo: 'instituicao_id',

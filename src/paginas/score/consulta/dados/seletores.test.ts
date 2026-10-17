@@ -10,7 +10,6 @@ import {
   lenteDoDrill,
   mediaArredondada,
   montarIndiceDeBusca,
-  normalizarBusca,
   opcoesDaAmostra,
   ordenarItens,
   participacao,
@@ -462,14 +461,6 @@ describe('opcoesDaAmostra', () => {
       concessionarias: ['Águas do Rio', 'Corsan'],
       ufs: ['RJ', 'RS'],
     });
-  });
-});
-
-describe('normalizarBusca', () => {
-  it('minúsculas, sem acento, espaços colapsados', () => {
-    expect(normalizarBusca('  Fiscalização   REGULATÓRIA ')).toBe('fiscalizacao regulatoria');
-    expect(normalizarBusca('Águas do Rio')).toBe('aguas do rio');
-    expect(normalizarBusca('Crédito\te\nrating')).toBe('credito e rating');
   });
 });
 
