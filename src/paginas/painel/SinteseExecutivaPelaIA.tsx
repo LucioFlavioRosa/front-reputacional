@@ -242,7 +242,7 @@ export function SinteseExecutivaPelaIA({
                   interações com termômetro registrado.{' '}
                 </>
               ) : (
-                'Nenhuma área com termômetro negativo sustentado neste recorte. '
+                'Nenhuma área com termômetro reativo sustentado neste recorte. '
               )}
               {instituicoesTier1Inativas.length ? (
                 <>

@@ -141,7 +141,7 @@ describe('BaseDeDadosDoScore', () => {
 describe('domínio da Base', () => {
   it('o CSV leva as colunas pedidas, com aspas e ";"', () => {
     const colunas = colunasDaBase('imprensa').filter((c) => ['Data', 'Veículo', 'Sentimento'].includes(c.rotulo));
-    expect(csvDaBase([mencao({})], colunas)).toBe('"Data";"Veículo";"Sentimento"\r\n"20/08/2026";"Folha de S.Paulo";"Negativo"');
+    expect(csvDaBase([mencao({})], colunas)).toBe('"Data";"Veículo";"Sentimento"\r\n"20/08/2026";"Folha de S.Paulo";"Reativo"');
   });
 
   it('o nome da coluna de fonte muda por lente', () => {

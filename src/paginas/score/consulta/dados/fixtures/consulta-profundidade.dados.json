@@ -110,7 +110,7 @@
      "nota": "saldo −31, o pior do semestre"
     },
     {
-     "rotulo": "Matérias negativas",
+     "rotulo": "Matérias reativas",
      "valor": "34%",
      "nota": "+7 p.p. vs. julho"
     },
@@ -168,8 +168,8 @@
          "tier1": 34,
          "nivel4": {
           "leitura": "Sete em cada dez matérias saíram entre 12 e 18 de agosto, logo depois do rompimento na Zona Norte do Rio. As oito de maior impacto são todas de grande imprensa. A única virada positiva veio no dia 21, com o anúncio da troca de rede, e ainda não compensou um décimo da perda.",
-          "tituloLista": "As 8 matérias de maior impacto são de grande imprensa; a única positiva saiu no dia 21",
-          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando negativa e +0,12 quando positiva.",
+          "tituloLista": "As 8 matérias de maior impacto são de grande imprensa; a única propositiva saiu no dia 21",
+          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando reativa e +0,12 quando propositiva.",
           "porDia": {
            "total": [
             0,
@@ -441,7 +441,7 @@
         "destaque": {
          "subtemaId": "rompimento-adutora",
          "titulo": "A grande imprensa fez o estrago: Tier 1 é 35% das matérias e 74% do impacto",
-         "subtitulo": "96 matérias, 71 negativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
+         "subtitulo": "96 matérias, 71 reativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
          "tiers": {
           "titulo": "Cada matéria de Tier 1 pesa 10 vezes uma de Tier 3",
           "linhas": [
@@ -526,7 +526,7 @@
           ]
          },
          "jornalistas": {
-          "titulo": "Duas assinaturas respondem por 9 das 71 matérias negativas",
+          "titulo": "Duas assinaturas respondem por 9 das 71 matérias reativas",
           "linhas": [
            {
             "nome": "Renata Moura",
@@ -755,7 +755,7 @@
          "nivel4": {
           "leitura": "A cobertura começou no dia 13, com a abertura do processo, e voltou a crescer no dia 20, com a notificação. A única matéria positiva de grande imprensa saiu no dia 22, quando o regulador aceitou o prazo de adequação.",
           "tituloLista": "A pauta teve dois picos, abertura do processo e notificação; a resposta positiva veio no dia 22",
-          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando negativa e +0,12 quando positiva.",
+          "subtituloLista": "Impacto de cada matéria na nota da Imprensa, em pontos: Tier 1 vale −0,12 quando reativa e +0,12 quando propositiva.",
           "porDia": {
            "total": [
             0,
@@ -971,7 +971,7 @@
         "destaque": {
          "subtemaId": "fiscalizacao-regulatoria",
          "titulo": "Tier 1 é 34% das matérias e 75% do impacto da fiscalização",
-         "subtitulo": "64 matérias, 41 negativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
+         "subtitulo": "64 matérias, 41 reativas. Impacto em pontos na nota da Imprensa. Nomes de jornalistas fictícios.",
          "tiers": {
           "titulo": "Cada matéria de Tier 1 pesa 10 vezes uma de Tier 3",
           "linhas": [
@@ -1056,7 +1056,7 @@
           ]
          },
          "jornalistas": {
-          "titulo": "Uma assinatura de O Globo responde por 4 das 41 matérias negativas",
+          "titulo": "Uma assinatura de O Globo responde por 4 das 41 matérias reativas",
           "linhas": [
            {
             "nome": "Renata Moura",
@@ -1976,7 +1976,7 @@
      "nota": "reafirmação, perspectiva estável"
     },
     {
-     "rotulo": "Matérias negativas",
+     "rotulo": "Matérias reativas",
      "valor": "14%",
      "nota": "−3 p.p. vs. julho"
     },
@@ -2106,7 +2106,7 @@
      "eventos": [
       {
        "sentimento": "positivo",
-       "selo": "Positivo",
+       "selo": "Propositivo",
        "meta": "18/08/2026 · evento de rating",
        "titulo": "Rating nacional reafirmado em AA, perspectiva estável",
        "nota": "Evento ilustrativo. Pesa como fato do mês, não como matéria."
@@ -2178,7 +2178,7 @@
      "nota": "interações nas menções"
     },
     {
-     "rotulo": "Menções negativas",
+     "rotulo": "Menções reativas",
      "valor": "52%",
      "nota": "+6 p.p. vs. julho"
     },
@@ -2406,7 +2406,7 @@
      "nota": "meta interna: 4h"
     },
     {
-     "rotulo": "Negativas sem resposta",
+     "rotulo": "Reativas sem resposta",
      "valor": "412",
      "nota": "62% delas na Corsan"
     }
@@ -2500,10 +2500,10 @@
      "tipo": "tabela",
      "rotulo": "Estamos respondendo?",
      "titulo": "A Corsan concentra o problema: mais reclamação e menos resposta",
-     "subtitulo": "Participação nas mensagens negativas, taxa de resposta às negativas e tempo mediano.",
+     "subtitulo": "Participação nas mensagens reativas, taxa de resposta às reativas e tempo mediano.",
      "colunas": [
       "Concessionária",
-      "Negativas",
+      "Reativas",
       "Resposta",
       "Tempo"
      ],
@@ -2613,7 +2613,7 @@
      "nota": "12 novas no mês"
     },
     {
-     "rotulo": "Clima negativo",
+     "rotulo": "Clima reativo",
      "valor": "33%",
      "nota": "+8 p.p. vs. julho"
     },
@@ -2712,7 +2712,7 @@
      "tipo": "saldos",
      "rotulo": "Onde o clima está mais tenso",
      "titulo": "Regulador do RJ tem o pior saldo do mês, à frente de ALMG e ABDIB",
-     "subtitulo": "Instituições com mais interações no recorte. Saldo = % positivas menos % negativas.",
+     "subtitulo": "Instituições com mais interações no recorte. Saldo = % propositivas menos % reativas.",
      "linhas": [
       {
        "nome": "Agência reguladora (RJ)",
@@ -2743,9 +2743,9 @@
     },
     {
      "tipo": "contagens",
-     "rotulo": "Conversas negativas com o regulador",
+     "rotulo": "Conversas reativas com o regulador",
      "titulo": "Uma pauta só aparece em 7 das 9 reuniões",
-     "subtitulo": "Temas e porta-vozes das reuniões com clima negativo.",
+     "subtitulo": "Temas e porta-vozes das reuniões com clima reativo.",
      "secoes": [
       {
        "rotulo": "Temas na pauta",

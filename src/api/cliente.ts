@@ -1842,6 +1842,41 @@ export function obterRecorteDaLente(
   );
 }
 
+/** Um pedaço do mês por N1 (atributo), N2, N3 e UF — ver `dominio/explorador`. */
+export interface GrupoDoExplorador {
+  n1: string | null;
+  n2: string | null;
+  n3: string | null;
+  uf: string | null;
+  positivo: number;
+  neutro: number;
+  negativo: number;
+  peso_positivo: number;
+  peso_neutro: number;
+  peso_negativo: number;
+}
+
+export interface ExploradorDaLente {
+  lente: string;
+  mes: string;
+  /** O denominador da nota do mês: impacto = 50 × (P − N) ÷ denominador. */
+  denominador: number;
+  grupos: GrupoDoExplorador[];
+}
+
+/** Os grupos que os gráficos N1 › N2 › N3 e o mapa por UF somam na tela. UM
+ *  PEDIDO POR MÊS E FILTRO DA TELA: o filtro cruzado (clicar num N1) é soma no
+ *  navegador, sem nova ida ao servidor. */
+export function obterExploradorDaLente(
+  codigo: string,
+  mes: string,
+  filtro?: FiltroDaLente,
+): Promise<ExploradorDaLente> {
+  return requisitar<ExploradorDaLente>(
+    `/api/score/lentes/${codigo}/explorador?${paraConsultaDoFiltro(mes, filtro)}`,
+  );
+}
+
 /** As opções que o filtro desta lente pode oferecer neste mês. */
 export function obterOpcoesDeFiltroDaLente(
   codigo: string,

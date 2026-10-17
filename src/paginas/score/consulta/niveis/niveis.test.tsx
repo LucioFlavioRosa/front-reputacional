@@ -138,8 +138,8 @@ describe('NivelTema (E.6)', () => {
       />,
     );
     expect(screen.getByText('Tema estratégico · Eficiência Operacional e Qualidade')).toBeInTheDocument();
-    expect(metricas()).toEqual({ Matérias: '214', Negativas: '60%', Impacto: '−4,6 pt', 'vs. julho': '−1,9 pt' });
-    expect(corDaMetrica('Negativas')).toBe('var(--erro-fg)');
+    expect(metricas()).toEqual({ Matérias: '214', Reativas: '60%', Impacto: '−4,6 pt', 'vs. julho': '−1,9 pt' });
+    expect(corDaMetrica('Reativas')).toBe('var(--erro-fg)');
     const tabela = screen.getByRole('heading', { name: ABASTECIMENTO.nivel3!.tituloTabela }).closest('.cartao')!;
     expect(within(tabela as HTMLElement).getByText('A conta fecha').closest('p')!.textContent).toContain(
       '= impacto do tema −4,6 pt',
@@ -171,8 +171,8 @@ describe('NivelSubtema (E.7)', () => {
       />,
     );
     expect(screen.getByText('Subtema · Abastecimento de água')).toBeInTheDocument();
-    expect(metricas()).toEqual({ Matérias: '96', Negativas: '71', 'Tier 1': '34', Impacto: '−3,1 pt' });
-    expect(corDaMetrica('Negativas')).toBe('var(--erro-fg)');
+    expect(metricas()).toEqual({ Matérias: '96', Reativas: '71', 'Tier 1': '34', Impacto: '−3,1 pt' });
+    expect(corDaMetrica('Reativas')).toBe('var(--erro-fg)');
     expect(screen.getByText('Matérias por dia em agosto')).toBeInTheDocument();
     expect(screen.getByText('Demais')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /Matérias por dia/ })).toBeInTheDocument();
@@ -181,7 +181,7 @@ describe('NivelSubtema (E.7)', () => {
       '#consulta&lente=imprensa&pilar=eficiencia-operacional&tema=abastecimento-agua',
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Positivas 8' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Propositivas 8' }));
     expect(aoMudarLista).toHaveBeenCalledWith({ sent: 'positivas' });
   });
 });

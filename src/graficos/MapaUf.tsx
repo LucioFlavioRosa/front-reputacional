@@ -24,6 +24,11 @@ export function MapaUf({
   acento = '#0027BD',
   totalOnline = 0,
   corDoOnline = 'var(--roxo-acai)',
+  corDaUf,
+  detalheDaUf,
+  rotuloDaUf,
+  legendaDaEscala = 'Escala por volume de interações',
+  rotuloAcessivel = 'Distribuição geográfica das interações por unidade da federação',
 }: {
   pontos: PontoNoMapa[];
   selecionada?: string;
@@ -35,6 +40,15 @@ export function MapaUf({
    *  tracejada e numa cor diferente das bolhas de estado. */
   totalOnline?: number;
   corDoOnline?: string;
+  /** A COR DE CADA BOLHA, quando ela codifica algo (o termômetro, nos KPIs
+   *  Reputacionais). Ausente, todas na cor de destaque, como no CRM. */
+  corDaUf?: (uf: string) => string;
+  /** O texto do selo ao passar o mouse; por padrão, agendas e percentual. */
+  detalheDaUf?: (ponto: PontoNoMapa) => string;
+  /** O número dentro da bolha; por padrão, o `total` que dá o tamanho. */
+  rotuloDaUf?: (ponto: PontoNoMapa) => string;
+  legendaDaEscala?: string;
+  rotuloAcessivel?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(420);
@@ -87,7 +101,7 @@ export function MapaUf({
         viewBox={`0 0 ${largura} ${altura}`}
         style={{ display: 'block', overflow: 'visible' }}
         role="img"
-        aria-label="Distribuição geográfica das interações por unidade da federação"
+        aria-label={rotuloAcessivel}
       >
         <defs>
           <pattern id="grid-mapa" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -145,13 +159,23 @@ export function MapaUf({
                 ) : null}
 
                 {/* Círculo da bolha */}
-                <circle
-                  r={r}
-                  fill={ativa ? acento : emHover ? 'var(--azul-mar)' : acento}
-                  fillOpacity={ativa ? 0.85 : emHover ? 0.6 : 0.25}
-                  stroke={acento}
-                  strokeWidth={ativa ? 2.5 : 1.5}
-                />
+                {corDaUf ? (
+                  <circle
+                    r={r}
+                    fill={corDaUf(ponto.uf)}
+                    fillOpacity={emHover || ativa ? 0.95 : 0.8}
+                    stroke="var(--branco)"
+                    strokeWidth={1.5}
+                  />
+                ) : (
+                  <circle
+                    r={r}
+                    fill={ativa ? acento : emHover ? 'var(--azul-mar)' : acento}
+                    fillOpacity={ativa ? 0.85 : emHover ? 0.6 : 0.25}
+                    stroke={acento}
+                    strokeWidth={ativa ? 2.5 : 1.5}
+                  />
+                )}
 
                 {/* Rótulo da UF e total */}
                 {r >= 12 ? (
@@ -160,10 +184,10 @@ export function MapaUf({
                     dy="0.35em"
                     fontSize={r >= 18 ? 11 : 9.5}
                     fontWeight={700}
-                    fill={ativa ? 'var(--branco)' : 'var(--cinza-4)'}
+                    fill={ativa && !corDaUf ? 'var(--branco)' : 'var(--cinza-4)'}
                     className="tabular"
                   >
-                    {ponto.total}
+                    {rotuloDaUf ? rotuloDaUf(ponto) : ponto.total}
                   </text>
                 ) : null}
               </g>
@@ -234,7 +258,7 @@ export function MapaUf({
               width: 8,
               height: 8,
               borderRadius: 2,
-              background: acento,
+              background: corDaUf ? corDaUf(pontoHoverOuSelecionado.uf) : acento,
               display: 'inline-block',
             }}
           />
@@ -243,7 +267,9 @@ export function MapaUf({
               {rotuloDeAbrangencia(pontoHoverOuSelecionado.uf)}
             </strong>
             <span style={{ color: 'var(--cinza-2)', marginLeft: 6 }} className="tabular">
-              {pontoHoverOuSelecionado.total} agendas ({Math.round((pontoHoverOuSelecionado.total / totalNacional) * 100)}%)
+              {detalheDaUf
+                ? detalheDaUf(pontoHoverOuSelecionado)
+                : `${pontoHoverOuSelecionado.total} agendas (${Math.round((pontoHoverOuSelecionado.total / totalNacional) * 100)}%)`}
             </span>
           </div>
         </div>
@@ -263,7 +289,7 @@ export function MapaUf({
             borderTop: '1px solid var(--borda)',
           }}
         >
-          <span>Escala por volume de interações</span>
+          <span>{legendaDaEscala}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {[1, Math.round(maximo / 2), maximo].map((valor) => {
               const r = raio(valor);

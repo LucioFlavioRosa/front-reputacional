@@ -112,7 +112,7 @@ export function rotuloDoDestaque(
 
 /** Dica de cada dia: `14/08 · 12 matérias, 10 negativas`. */
 export function rotuloDoDia(dia: number, mes: string, total: number, negativas: number): string {
-  return `${dd(dia)}/${mes} · ${contagem(total, 'matéria', 'matérias')}, ${contagem(negativas, 'negativa', 'negativas')}`;
+  return `${dd(dia)}/${mes} · ${contagem(total, 'matéria', 'matérias')}, ${contagem(negativas, 'reativa', 'reativas')}`;
 }
 
 /** Dia (contado de 1) com o maior total; empate fica com o primeiro. Mês

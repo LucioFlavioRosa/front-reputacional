@@ -142,7 +142,7 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
     // `replace` (a história não cresce) e sem rolar nem mover o foco.
     const comprimentoNoNivel4 = window.history.length;
     const rolagensAntes = rolar.mock.calls.length;
-    await usuario.click(screen.getByRole('button', { name: 'Negativas 71' }));
+    await usuario.click(screen.getByRole('button', { name: 'Reativas 71' }));
     await usuario.click(screen.getByRole('button', { name: 'Data' }));
     expect(window.location.hash).toContain('&sent=negativas&ordem=data');
     expect(window.history.length).toBe(comprimentoNoNivel4);
@@ -173,7 +173,7 @@ describe('ConsultaEmProfundidade · roteiro G (Imprensa)', () => {
       window.history.back();
     });
     await waitFor(() => expect(screen.getByText(/Nível 4 de 4/)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Negativas 71' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Reativas 71' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Data' })).toHaveAttribute('aria-pressed', 'true');
     expect(linhasDaLista()).toHaveLength(9);
     // O ROTEIRO INTEIRO NUM TESTE SÓ passa dos 5s padrão na suíte cheia (o
