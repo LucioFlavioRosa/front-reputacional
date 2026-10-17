@@ -23,7 +23,7 @@ function papel(parcial: Partial<PapelDeAcesso>): PapelDeAcesso {
     ve_diretorio: false,
     pode_exportar: false,
     acessa_crm: false,
-    acessa_sintese: false,
+    acessa_inteligencia_de_mercado: false,
     acessa_score: false,
     ...parcial,
   };
@@ -42,21 +42,23 @@ describe('portaisDe', () => {
 
   it('a plataforma abre os três', () => {
     const todos = portaisDe(
-      papel({ codigo: 'plataforma_edicao', acessa_crm: true, acessa_sintese: true, acessa_score: true }),
+      papel({ codigo: 'plataforma_edicao', acessa_crm: true, acessa_inteligencia_de_mercado: true, acessa_score: true }),
     );
-    expect([...todos].sort()).toEqual(['crm', 'score', 'sintese']);
+    //: ORDEM ALFABÉTICA, e ela mudou com o rename da 0095: `inteligencia_de_mercado`
+    //: vem antes de `score`, onde `sintese` vinha depois.
+    expect([...todos].sort()).toEqual(['crm', 'inteligencia_de_mercado', 'score']);
   });
 
   it('cada papel de portal abre só o seu', () => {
     expect([...portaisDe(papel({ acessa_crm: true }))]).toEqual(['crm']);
-    expect([...portaisDe(papel({ acessa_sintese: true }))]).toEqual(['sintese']);
+    expect([...portaisDe(papel({ acessa_inteligencia_de_mercado: true }))]).toEqual(['inteligencia_de_mercado']);
     expect([...portaisDe(papel({ acessa_score: true }))]).toEqual(['score']);
   });
 
   it('dois portais convivem sem precisar de um papel próprio', () => {
     // É o motivo de portal ser dimensão separada: "lê a Síntese e o Score" não
     // exige um papel novo, exige duas bandeiras.
-    const dois = portaisDe(papel({ acessa_sintese: true, acessa_score: true }));
-    expect([...dois].sort()).toEqual(['score', 'sintese']);
+    const dois = portaisDe(papel({ acessa_inteligencia_de_mercado: true, acessa_score: true }));
+    expect([...dois].sort()).toEqual(['inteligencia_de_mercado', 'score']);
   });
 });

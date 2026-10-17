@@ -34,7 +34,7 @@ const EU: Eu = {
     ve_diretorio: true,
     pode_exportar: true,
     acessa_crm: true,
-    acessa_sintese: true,
+    acessa_inteligencia_de_mercado: true,
     acessa_score: true,
   },
 };

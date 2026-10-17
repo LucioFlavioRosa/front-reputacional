@@ -35,7 +35,7 @@ function papel(ajustes: Partial<PapelDisponivel> & { codigo: string }): PapelDis
     pode_editar_tudo: false,
     pode_exportar: false,
     acessa_crm: false,
-    acessa_sintese: false,
+    acessa_inteligencia_de_mercado: false,
     acessa_score: false,
     ...ajustes,
   };
@@ -44,14 +44,14 @@ function papel(ajustes: Partial<PapelDisponivel> & { codigo: string }): PapelDis
 /** O catálogo que as migrations 0003 e 0088 semeiam, nas bandeiras que importam.
  *
  *  OS PARES DA SÍNTESE SÃO O NÍVEL "MERCADO". Não há papel `mercado_*`, e não
- *  deve haver: `acessa_sintese` é o portal do painel que a capa chama de
+ *  deve haver: `acessa_inteligencia_de_mercado` é o portal do painel que a capa chama de
  *  Inteligência de Mercado. Ver o comentário no topo de `perfis.ts`.
  */
 const CATALOGO: PapelDisponivel[] = [
   papel({
     codigo: 'plataforma_leitura',
     acessa_crm: true,
-    acessa_sintese: true,
+    acessa_inteligencia_de_mercado: true,
     acessa_score: true,
     ve_campos_sensiveis: true,
   }),
@@ -62,7 +62,7 @@ const CATALOGO: PapelDisponivel[] = [
     pode_criar: true,
     pode_editar_tudo: true,
     acessa_crm: true,
-    acessa_sintese: true,
+    acessa_inteligencia_de_mercado: true,
     acessa_score: true,
     ve_campos_sensiveis: true,
   }),
@@ -70,7 +70,7 @@ const CATALOGO: PapelDisponivel[] = [
     codigo: 'plataforma_edicao_sem_acessos',
     pode_criar: true,
     acessa_crm: true,
-    acessa_sintese: true,
+    acessa_inteligencia_de_mercado: true,
     acessa_score: true,
     ve_campos_sensiveis: true,
   }),
@@ -81,11 +81,11 @@ const CATALOGO: PapelDisponivel[] = [
     acessa_crm: true,
     ve_campos_sensiveis: true,
   }),
-  papel({ codigo: 'sintese_leitura', acessa_sintese: true, ve_campos_sensiveis: true }),
+  papel({ codigo: 'inteligencia_de_mercado_leitura', acessa_inteligencia_de_mercado: true, ve_campos_sensiveis: true }),
   papel({
-    codigo: 'sintese_edicao',
+    codigo: 'inteligencia_de_mercado_edicao',
     pode_criar: true,
-    acessa_sintese: true,
+    acessa_inteligencia_de_mercado: true,
     ve_campos_sensiveis: true,
   }),
   papel({ codigo: 'score_leitura', acessa_score: true, ve_campos_sensiveis: true }),
@@ -107,8 +107,8 @@ describe('o nível sai das bandeiras, e não do código do papel', () => {
     ['score_leitura', 'kpi'],
     ['score_edicao', 'kpi'],
     //: `sintese_*` É O NÍVEL MERCADO. Ver o comentário do catálogo.
-    ['sintese_leitura', 'mercado'],
-    ['sintese_edicao', 'mercado'],
+    ['inteligencia_de_mercado_leitura', 'mercado'],
+    ['inteligencia_de_mercado_edicao', 'mercado'],
   ])('%s cai no nível %s', (codigo, esperado) => {
     const p = CATALOGO.find((x) => x.codigo === codigo)!;
     expect(nivelDoPapel(p)).toBe(esperado);
@@ -120,14 +120,14 @@ describe('o nível sai das bandeiras, e não do código do papel', () => {
     //: com esse nome no banco, e criou um — `papel.acessa_mercado`, numa
     //: migration, com dois papéis novos.
     //:
-    //: O painel já tinha portal: `acessa_sintese`. O rótulo da capa mudou e o
+    //: O painel já tinha portal: `acessa_inteligencia_de_mercado`. O rótulo da capa mudou e o
     //: nome interno não. O quarto portal concederia uma bandeira que não guarda
     //: rota nenhuma, o painel de verdade continuaria não concedido, e a tela
     //: pareceria certa — que é o pior formato de erro de autorização.
-    const leitura = CATALOGO.find((p) => p.codigo === 'sintese_leitura')!;
-    expect(leitura.acessa_sintese).toBe(true);
+    const leitura = CATALOGO.find((p) => p.codigo === 'inteligencia_de_mercado_leitura')!;
+    expect(leitura.acessa_inteligencia_de_mercado).toBe(true);
     expect(nivelDoPapel(leitura)).toBe('mercado');
-    expect(papelParaNivel('mercado', false, CATALOGO)?.codigo).toBe('sintese_leitura');
+    expect(papelParaNivel('mercado', false, CATALOGO)?.codigo).toBe('inteligencia_de_mercado_leitura');
 
     //: E não existe bandeira `acessa_mercado` para ninguém procurar.
     expect('acessa_mercado' in leitura).toBe(false);
@@ -166,8 +166,8 @@ describe('o papel escolhido para cada nível', () => {
     ['crm', true, 'crm_edicao'],
     ['kpi', false, 'score_leitura'],
     ['kpi', true, 'score_edicao'],
-    ['mercado', false, 'sintese_leitura'],
-    ['mercado', true, 'sintese_edicao'],
+    ['mercado', false, 'inteligencia_de_mercado_leitura'],
+    ['mercado', true, 'inteligencia_de_mercado_edicao'],
   ] as const)('%s + editor=%s -> %s', (id, editor, esperado) => {
     expect(papelParaNivel(id, editor, CATALOGO)?.codigo).toBe(esperado);
   });
@@ -192,7 +192,7 @@ describe('o papel escolhido para cada nível', () => {
 
     //: E o nível Mercado deixa de ser concedível num banco sem os papéis da
     //: Síntese — que são os dele.
-    const semSintese = CATALOGO.filter((p) => !p.acessa_sintese);
+    const semSintese = CATALOGO.filter((p) => !p.acessa_inteligencia_de_mercado);
     expect(papelParaNivel('mercado', false, semSintese)).toBeNull();
     expect(niveisConcediveis(semSintese).has('mercado')).toBe(false);
   });

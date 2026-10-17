@@ -22,7 +22,7 @@ import type { Eu, Portal } from '@/dominio/tipos';
 /** O nome de cada portal, na ordem em que a capa os apresenta. */
 const NOME_DO_PORTAL: Record<Portal, string> = {
   crm: 'CRM dos Stakeholders',
-  sintese: 'Painel de Inteligência de Mercado',
+  inteligencia_de_mercado: 'Painel de Inteligência de Mercado',
   score: 'KPIs Reputacionais',
 };
 
