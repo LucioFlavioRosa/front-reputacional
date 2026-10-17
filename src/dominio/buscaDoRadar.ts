@@ -14,7 +14,13 @@ import type { OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { normalizar } from '@/dominio/completar';
 import { dimensoesDaLente, rotuloDoValor } from '@/dominio/filtrosDasLentes';
 import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
-import { normalizarBusca } from '@/paginas/score/consulta/dados/seletores';
+import { normalizarBusca } from '@/dominio/texto';
+//: OS DOIS TIPOS AINDA VÊM DA PASTA DA TELA, e é dívida registrada em
+//: `oDominioNaoChamaTela.test.ts`. `ResultadoDeBusca` carrega um
+//: `EnderecoDoDrill` — endereço de navegação da Consulta —, então trazê-lo
+//: para cá arrastaria a cadeia inteira. Resolver de verdade é decidir se o
+//: endereço do drill é vocabulário de domínio, e isso é decisão de estrutura,
+//: não troca de import. São só TIPOS: não existem em runtime.
 import type {
   ResultadoDeBusca,
   TipoDeResultado,

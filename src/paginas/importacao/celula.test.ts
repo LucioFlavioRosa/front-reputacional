@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { decisaoDaCelula } from '@/paginas/importacao/celula';
-import type { Grupo } from '@/paginas/importacao/grupos';
+import type { Grupo } from '@/dominio/conferenciaDaImportacao';
 import type { LinhaDaImportacao } from '@/api/cliente';
 
 function grupo(parcial: Partial<Grupo> = {}): Grupo {

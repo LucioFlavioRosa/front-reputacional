@@ -6,7 +6,7 @@
  *  66 arquivos que o importam precisou mudar.
  */
 
-import type { ACriar, Grupo } from '@/paginas/importacao/grupos';
+import type { ACriar, Grupo } from '@/dominio/conferenciaDaImportacao';
 import { requisitar } from './nucleo';
 
 /** Os dois recortes do MESMO formato que o download oferece.

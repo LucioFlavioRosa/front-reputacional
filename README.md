@@ -67,6 +67,20 @@ src/
 o que está ali é função pura, testável sem montar componente. Se um arquivo de
 `dominio/` precisar de `useState`, ele está na pasta errada.
 
+**E `dominio/` não CHAMA tela.** A direção é `paginas` → `dominio`/`api`, nunca
+o contrário: uma tela servindo de biblioteca para a regra significa que a regra
+deixou de poder ser lida sem a tela. Isso é **conferido**, não prometido —
+`src/dominio/oDominioNaoChamaTela.test.ts` varre o fonte de `dominio/` e de
+`api/` a cada execução.
+
+Ele separa valor de tipo, e não é frouxidão: `import type` não existe depois da
+compilação — não cria dependência de execução, não cria ciclo e não arrasta
+código para o bundle. Import de **valor** de `paginas`/`componentes`/`graficos` é
+recusado sem exceção (hoje são zero). Import de **tipo** é permitido só para as
+duas entradas nomeadas no próprio teste, cada uma com o motivo de ainda estar
+lá. A lista é **teto, não piso**: uma entrada nova falha, e uma que foi paga
+também — senão ela vira cemitério.
+
 ### Quando uma parte precisa sair da página
 
 A regra acima diz ONDE as coisas moram. Esta diz QUANDO mover — e ela existe

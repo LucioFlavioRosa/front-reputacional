@@ -13,7 +13,7 @@
  */
 
 import type { LinhaDaImportacao } from '@/api/cliente';
-import type { Grupo } from '@/paginas/importacao/grupos';
+import type { Grupo } from '@/dominio/conferenciaDaImportacao';
 
 /** A decisão disponível numa célula, com o alcance dela. */
 export interface DecisaoDaCelula {
