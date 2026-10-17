@@ -118,22 +118,68 @@ E, em `lentes.py:549`:
 
 > *"`evento_mercado` continua no banco, intacta."*
 
-Essa tabela alimentava um eventograma que foi removido. **O "episódio" da §4.4 é
-muito próximo do que ela guarda.** Antes de escrever um motor de episódios novo,
-é obrigatório olhar o que `evento_mercado` tem e por que o eventograma saiu —
-pode ser a mesma coisa com outro nome, pode ser deliberadamente diferente, e as
-duas respostas mudam o trabalho.
+**`evento_mercado` NÃO é o episódio da §4.4, e a primeira versão deste documento
+dizia que era "muito próximo".** Era chute, e a revisão o derrubou. O que a
+tabela é, pela `0049_lentes_v2.sql:60` e pelo cabeçalho de `tabelas_lentes.py`:
+
+```sql
+create table if not exists evento_mercado (
+  tipo text check (tipo in ('resultado','rating','operacao','governanca','outro')),
+  agencia text, nota_anterior text, nota_nova text, perspectiva text,
+  texto text not null,
+  efeito text check (efeito in ('sustenta','pressiona','misto')),
+  exemplo boolean, criado_por uuid references usuario(id)
+);
+```
+
+> *"O dossiê de cada lente tem duas metades. Uma é CALCULADA das menções que a
+> ingestão já grava. A outra **não sai de planilha nenhuma**: `evento_mercado` —
+> o que aconteceu: resultados, rating, operações."*
+
+São conceitos opostos: `evento_mercado` é **fato editorial curado, digitado por
+uma pessoa** (tem `criado_por`, tem `exemplo`); o episódio é **agregação
+derivada** de `Mencao` por N3 numa janela de 7 dias, sem ninguém digitar nada.
+
+O que sobra de verdadeiro, e vale: as duas respondem "o que aconteceu no
+mercado", e `efeito` (`sustenta`/`pressiona`/`misto`) é o mesmo vocabulário do
+sinal do episódio. Elas vão conviver na mesma tela e **não podem se
+contradizer** — mas uma não implementa a outra.
 
 **Tradução do modelo da §5 para o que existe:**
 
 | §5 sugere | já existe como | observação |
 |---|---|---|
 | `noticia(... pilar_n1, tema_n2, subtema_n3, impacto_score)` | `Mencao` + taxonomia | a tela **não recalcula** impacto, e nisso a especificação está certa (§4.3) |
-| `veiculo(segmento='mercado')` | a lente `mercado` já filtra veículo | criar `segmento` seria uma segunda régua para a mesma coisa — **conferir** qual manda |
+| `veiculo(segmento='mercado')` | **a pertinência à lente vem da FONTE**, não do veículo | ver §2.5 — `segmento` seria uma segunda régua, em outra granularidade |
 | `indice_reputacional(semana, lente, valor)` | índice por lente, hoje mensal | granularidade semanal é novidade, e está aceita (§1 acima) |
 | `bond_quote(data, codigo, preco_pct_par, ...)` | **não existe** | é o que a planilha vai alimentar |
 
-### 2.5 A taxonomia do mockup confere
+### 2.5 A régua de "notícia de mercado" já existe, e é a FONTE
+
+A §4.3 propõe `veiculo.segmento = 'mercado'` para habilitar a notícia na tela.
+Não existe coluna de segmento em veículo — `segmento` no back é outra coisa
+(`frente | clima | tema`, do painel de métricas, `consultas_metricas.py:223`).
+
+A régua que existe é outra, e é mais simples:
+
+```
+base_das_lentes.py:136   condicoes = [ScoreFonte.lente_id == lente_id]
+repositorio_lentes.py:86 def fontes_da_lente(sessao, lente_id) -> list[ScoreFonte]
+```
+
+**Uma menção é "de mercado" porque a FONTE pela qual ela foi importada está
+ligada à lente `mercado`** — não por um atributo do veículo. Criar
+`veiculo.segmento` seria a estrutura paralela que o Guilherme pediu para evitar,
+e numa granularidade diferente da que o sistema usa.
+
+Isso **não encerra** a questão, só a estreita. A lista da §4.3 — Valor
+Econômico, Bloomberg Línea, Brazil Journal, InfoMoney, Exame, NeoFeed — é mais
+estreita que "tudo o que entra pela lente mercado". A pergunta que sobra é se
+essa lista é um **filtro adicional** sobre a lente (e aí é uma lista
+configurável de nomes de veículo, sem coluna nova) ou se é a própria definição
+da lente (e aí é conversa de cadastro de fonte, não de código novo).
+
+### 2.6 A taxonomia do mockup confere
 
 Os seis pilares N1 que o mockup fixa — Crescimento e Solidez Financeira,
 Eficiência Operacional e Qualidade, Governança, Responsabilidade Ambiental,
@@ -144,8 +190,39 @@ back**. Um risco a menos.
 
 ## 3. O que a base de exemplo ensina, e a especificação não previu
 
-`base_cotacoes_exemplo.csv` tem 47 linhas de dado e 42 colunas. Ela é agora o
-**contrato da planilha de importação**, então o que está nela é regra.
+Ela é agora o **contrato da planilha de importação**, então o que está nela é
+regra — e o primeiro problema é o arquivo em si.
+
+### 3.0 O arquivo entregue NÃO é um CSV válido
+
+Achado da revisão, e é o mais sério deste documento. Medido com o leitor CSV da
+biblioteca padrão do Python:
+
+```
+registros: 48
+colunas na 1a linha: 1
+colunas na 2a linha: 1
+distintas contagens de coluna: [1]
+```
+
+**Um leitor CSV comum vê UMA coluna em todos os 48 registros.** Duas causas:
+
+1. **Cada linha inteira está entre aspas.** O registro vira um campo único, e os
+   42 campos ficam escondidos dentro dele como texto.
+2. **Há vírgula sem escape dentro de `observacao`** — por exemplo *"Data de corte
+   da tela não identificada, 14/10/2026 usada como exemplo."* — e, em seis
+   linhas, aspas duplicadas (`""Preço, taxa e negócios…""`) que são escape de
+   CSV *dentro* do campo já aspado.
+
+A primeira versão deste documento afirmava "42 colunas". Eu havia medido
+**tirando as aspas à mão** (`.Trim('"')`) antes de contar — ou seja, medi a
+*intenção* do arquivo, não o arquivo. São 42 campos por registro **na intenção**;
+como CSV entregue, é 1.
+
+**Consequência para o trabalho:** o contrato da planilha tem de ser acertado
+antes do importador, não durante. Enquanto o formato não for corrigido na
+origem, qualquer parser nosso estaria adivinhando onde o campo começa — e
+`observacao` com vírgula é exatamente o caso em que a adivinhação erra.
 
 ### 3.1 Ela é uma amostra de esquema, não um histórico
 
@@ -157,6 +234,11 @@ mas define o tamanho do que precisa ser carregado antes de a tela ter gráfico.
 
 As três datas não são acaso: são exatamente as que os **cartões** da §3.2 pedem
 (último fechamento, pregão anterior, fechamento do mês anterior).
+
+Mas isso vale para os **três cartões de bond**, não para os quatro. O quarto é o
+índice de Mercado financeiro, e **a amostra não traz índice nenhum** — o único
+`classe = Benchmark` é o `PTAX`, com `flag_qualidade = pendente` e sem valor.
+Pendência C da §4.
 
 ### 3.2 A procedência dos preços da Aegea é um print
 
@@ -233,11 +315,20 @@ Dos sete pontos da §9, sobram cinco — e acrescento dois que vieram da base.
 | 6 | Lista final de veículos de mercado | Peers + Market Intelligence |
 | 7 | Escala do eixo direito do índice (mockup usa 40 a 80) | Peers |
 | — | Metodologia do índice **semanal** (janela, ponderação) | Peers + Market Intelligence |
-| **A** | **`evento_mercado` serve de episódio, ou o episódio é coisa nova?** | time técnico, olhando a tabela |
-| **B** | **`veiculo.segmento` ou a régua da lente `mercado`?** Duas não podem mandar. | time técnico |
+| **A** | **O formato da planilha de cotações** — o arquivo entregue não é CSV válido (§3.0). Precisa de contrato acertado na origem. | Lúcio + quem gera a base |
+| **B** | **A lista de veículos da §4.3 é filtro sobre a lente, ou é a definição dela?** (§2.5) | Peers + Market Intelligence |
+| **C** | **De onde vem o índice de Mercado semanal.** A amostra não o tem — só `PTAX`, e `pendente`. Sem ele, o quarto cartão da §3.2 não tem fonte. | Peers + Market Intelligence |
 
-A e B são as que travam código. As outras travam número, e dá para construir
-com valor parametrizado enquanto não vêm.
+**As duas que eu listava aqui antes saíram, porque a revisão as respondeu:**
+
+- *"`evento_mercado` serve de episódio?"* — **não.** É fato editorial curado,
+  digitado; o episódio é agregação derivada de `Mencao`. Ver §2.4.
+- *"`veiculo.segmento` ou a régua da lente?"* — **a régua existe e é a FONTE**
+  (`ScoreFonte.lente_id`). `segmento` seria paralelo. Ver §2.5. O que sobrou
+  dessa pergunta está em B, mais estreito.
+
+A trava código. B e C travam número, e dá para construir com valor
+parametrizado e fixture enquanto não vêm.
 
 ---
 
@@ -247,20 +338,29 @@ Em fatias que entregam algo utilizável, cada uma com revisão antes da próxima
 A ordem segue o que a base **de verdade** sustenta hoje, e não a ordem visual da
 tela.
 
-1. **Responder A e B** — leitura de `evento_mercado` e da régua de veículo de
-   mercado. Sem código. É o que impede estrutura paralela.
-2. **O importador da planilha de cotações** — contrato pelo CSV, com
-   `flag_qualidade`, `papel_monitoramento` e unidade por classe. É o que faz
-   existir histórico.
-3. **Os cartões de cotação (§3.2, coluna direita)** — a única parte que a base
-   de hoje já sustenta de ponta a ponta.
-4. **A regra de episódios (§4.4)** como função pura em `dominio/`, com teste:
+1. **Acertar o formato da planilha (A)** — sem código. O arquivo entregue não é
+   CSV válido (§3.0), e um importador escrito contra ele estaria adivinhando
+   onde o campo começa.
+2. **O importador das cotações** — contrato pelo CSV corrigido, com
+   `flag_qualidade` (`repetido` e `pendente` fora do cálculo),
+   `papel_monitoramento` e unidade por classe. É o que faz existir histórico.
+3. **A casca do portal `sintese`** — rota, permissão `acessa_sintese`, portão
+   `mercado_lancado` e as quatro abas da §3.1, com três vazias. Vem cedo, e não
+   no fim, porque é onde a tela mora: deixá-la para depois obriga a construir a
+   aba solta e realojá-la. E é pequena.
+4. **Os três cartões dos bonds (§3.2, coluna direita)** — a parte que a base
+   sustenta de ponta a ponta. **O quarto cartão, do índice de Mercado, não
+   entra aqui**: a amostra não traz índice semanal nenhum (pendência C).
+5. **A regra de episódios (§4.4)** como função pura em `dominio/`, com teste:
    janela de 7 dias, corte de 0,8 pt, mesmo N3 em dois episódios, ordenação e
-   numeração.
-5. **As duas listas de episódios (§3.3) e a tabela de notícias (§3.4)** — saem
-   do que já está no banco.
-6. **O gráfico (§3.2, coluna esquerda)** — por último, porque depende do item 2
-   ter rodado com histórico de verdade.
+   numeração. **Não depende do histórico de preço** — roda sobre `Mencao`, que
+   já está no banco, e se testa com fixture.
+6. **As duas listas de episódios (§3.3) e a tabela de notícias (§3.4)**.
+7. **O gráfico (§3.2, coluna esquerda)** — por último para a validação de ponta
+   a ponta, porque a amostra tem três pontos por bond e não sustenta os seis
+   meses. O componente em si pode ser construído antes, com dado de teste; o
+   que fica para o fim é ligá-lo ao histórico.
 
-O item 6 ser o último é de propósito: é o maior bloco da tela e o único que não
-pode ser validado sem dado carregado.
+**O que mudou nesta ordem depois da revisão:** a casca do portal subiu (era
+implícita e tardia), o quarto cartão saiu do item dos cartões, e ficou explícito
+que os episódios não esperam o preço — antes a ordem sugeria que esperavam.
