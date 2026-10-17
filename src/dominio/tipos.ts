@@ -539,8 +539,8 @@ export type Perfil =
   | 'plataforma_edicao'
   | 'crm_leitura'
   | 'crm_edicao'
-  | 'sintese_leitura'
-  | 'sintese_edicao'
+  | 'inteligencia_de_mercado_leitura'
+  | 'inteligencia_de_mercado_edicao'
   | 'score_leitura'
   | 'score_edicao'
   // -- migration 0088 ---------------------------------------------------------
@@ -569,7 +569,7 @@ export type Perfil =
  *
  *  A "Síntese Executiva" que aparece DENTRO do Painel do CRM é outra coisa e não
  *  tem portal: é um bloco que lê a base do CRM. */
-export type Portal = 'crm' | 'sintese' | 'score';
+export type Portal = 'crm' | 'inteligencia_de_mercado' | 'score';
 
 /**
  * O que o usuário pode fazer. Espelha a tabela `papel` do backend.
@@ -600,7 +600,7 @@ export interface PapelDeAcesso {
    *  tabela.
    */
   acessa_crm: boolean;
-  acessa_sintese: boolean;
+  acessa_inteligencia_de_mercado: boolean;
   acessa_score: boolean;
 }
 
@@ -619,7 +619,7 @@ export function portaisDe(papel: PortaisDoPapel | null): Set<Portal> {
   const abertos = new Set<Portal>();
   if (!papel) return abertos;
   if (papel.acessa_crm) abertos.add('crm');
-  if (papel.acessa_sintese) abertos.add('sintese');
+  if (papel.acessa_inteligencia_de_mercado) abertos.add('inteligencia_de_mercado');
   if (papel.acessa_score) abertos.add('score');
   return abertos;
 }
@@ -627,7 +627,7 @@ export function portaisDe(papel: PortaisDoPapel | null): Set<Portal> {
 /** O mínimo para responder "que portais este papel abre?". */
 export interface PortaisDoPapel {
   acessa_crm: boolean;
-  acessa_sintese: boolean;
+  acessa_inteligencia_de_mercado: boolean;
   acessa_score: boolean;
 }
 
@@ -746,7 +746,7 @@ export interface PapelDisponivel {
   pode_exportar: boolean;
   /** ONDE ela entra — é daqui que sai o nível. */
   acessa_crm: boolean;
-  acessa_sintese: boolean;
+  acessa_inteligencia_de_mercado: boolean;
   acessa_score: boolean;
 }
 
@@ -776,7 +776,7 @@ export interface Eu extends Usuario {
    * identificada e a tela ainda não sabe se oferece o cartão.
    *
    * ALCANCE E PORTA SÃO COISAS DIFERENTES: alguém pode ter
-   * `papel.acessa_sintese` e ver o cartão como "em construção".
+   * `papel.acessa_inteligencia_de_mercado` e ver o cartão como "em construção".
    */
   mercado_lancado: boolean;
   /**

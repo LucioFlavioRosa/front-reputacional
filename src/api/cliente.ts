@@ -614,24 +614,6 @@ export async function obterEu(): Promise<Eu> {
  * derruba `//outro.site` e esquema explícito.
  */
 /**
- * Entrada por e-mail e senha, para quem não está no Entra ID.
- *
- * Responde 204 e a sessão vem no cookie — nada do usuário volta no corpo. Quem
- * precisa saber quem entrou chama `obterEu()` em seguida, que é a rota que já
- * existe para essa pergunta.
- *
- * A senha NÃO é guardada, nem em memória além da chamada, nem em
- * `localStorage`. O que persiste é o cookie de sessão, que é `httpOnly` e o
- * JavaScript não lê.
- */
-export function entrarPorSenha(email: string, senha: string): Promise<void> {
-  return requisitar<void>('/api/auth/senha', {
-    method: 'POST',
-    body: JSON.stringify({ email, senha }),
-  });
-}
-
-/**
  * Encerra a sessão.
  *
  * O cookie é `httpOnly`, então o JavaScript não consegue apagá-lo: quem apaga é
@@ -1968,6 +1950,21 @@ export function listarMencoesDaBase(lente: string, consulta: ConsultaDaBase): Pr
   return requisitar<PaginaDaBase>(`/api/score/base/${lente}/mencoes?${paraConsultaDaBase(consulta)}`);
 }
 
+/** As opções de filtro da Base, para uma lente e um período.
+ *
+ *  ⚠ SEM CONSUMIDOR DE PRODUÇÃO. Conferido em 16/10/2026: nenhuma tela a
+ *  chama. O único uso é um `vi.fn()` em `BaseDeDadosDoScore.test.tsx:30`, que
+ *  mocka a função e depois não a exercita — o mock está tão órfão quanto ela.
+ *
+ *  A ROTA DO BACK TAMBÉM ESTÁ ÓRFÃ (`app/api/base_das_lentes.py:297`), e é isso
+ *  que distingue este caso de um descuido do front: as duas pontas foram
+ *  escritas e nenhuma foi ligada. É um filtro que o produto desenhou para a
+ *  Base e não chegou à tela.
+ *
+ *  FICA ATÉ ALGUÉM DECIDIR, e a decisão é de produto: ou a Base ganha o filtro
+ *  por opções, ou saem as duas pontas juntas — esta função, o mock e a rota.
+ *  Remover só um lado deixaria o outro parecendo em uso.
+ */
 export function obterOpcoesDaBase(lente: string, de?: string, ate?: string): Promise<OpcoesDaBase> {
   return requisitar<OpcoesDaBase>(
     `/api/score/base/${lente}/mencoes/opcoes?${paraConsultaDaBase({ de, ate })}`,

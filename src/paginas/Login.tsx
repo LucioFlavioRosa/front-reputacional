@@ -1,27 +1,24 @@
-/** Login — duas portas: o SSO da Microsoft e e-mail com senha.
+/** Login — uma porta: o SSO da Microsoft.
  *
- *  O SSO ESTÁ DESLIGADO nesta versão, e desligado de propósito. O botão
- *  aparece, diz que aparece, e não sai daqui: `SSO_LIGADO` é a única chave, e
- *  ligá-la devolve o fluxo OIDC inteiro, que continua implementado no backend
- *  (`/api/auth/login` → `/api/auth/callback`).
+ *  ERAM DUAS ATÉ A MIGRATION 0096. A outra era e-mail com senha, e existia
+ *  para quem não está no Entra ID — agência, consultor, alguém de investida
+ *  ainda não integrada. Ela saiu inteira: a coluna `usuario.senha_hash`, a rota
+ *  `POST /api/auth/senha` e este formulário.
  *
- *  Mostrar o botão apagado, em vez de escondê-lo, é decisão: quem é da Aegea
- *  chega esperando entrar com a conta corporativa, e uma tela que só oferece
- *  senha faria a pessoa achar que abriu o sistema errado. O botão diz "vem aí".
+ *  QUEM NÃO ESTÁ NO ENTRA ID agora não entra. É a consequência da decisão, e
+ *  está dita na tela: o acesso passa a ser concedido pela coordenação, que
+ *  precisa pôr a pessoa no diretório antes.
  *
- *  A ENTRADA POR SENHA existe para quem não está no Entra ID — agência,
- *  consultor, alguém de investida ainda não integrada. Manda e-mail e senha
- *  para `/api/auth/senha`, que responde 204 com o mesmo cookie de sessão que o
- *  SSO emitiria. Daqui para a frente o resto da aplicação não sabe por qual
- *  porta a pessoa entrou.
+ *  `SSO_LIGADO` CONTINUA, e não é resquício: ele desenha o botão apagado com
+ *  um aviso em vez de escondê-lo. Com uma porta só, desligá-lo deixa a tela sem
+ *  nenhuma entrada — o que é a verdade daquele estado, e é melhor dizê-la do
+ *  que mostrar um botão que não leva a lugar nenhum sem explicação.
  *
  *  A decisão entre "seguir para o painel" e "sair para o SSO" mora em
  *  `entrada.ts`, fora do componente, porque é lá que ela pode ser testada.
  */
 
-import { useState } from 'react';
 import { OndaDoHero } from '@/componentes/Onda';
-import { entrarPorSenha } from '@/api/cliente';
 import { entrarNoPainel } from '@/dominio/entrada';
 
 /** O SSO volta trocando isto para `true`. Nada mais precisa mudar aqui. */
@@ -69,34 +66,10 @@ export function Login({
   /** Falha ao confirmar a sessão. Aparece aqui, e não na tela seguinte. */
   erro?: string | null;
 }) {
-  const [email, definirEmail] = useState('');
-  const [senha, definirSenha] = useState('');
-  const [enviando, definirEnviando] = useState(false);
-  const [falha, definirFalha] = useState<string | null>(null);
-
-  const ocupado = enviando || (carregando && !erro);
-
-  async function submeter(evento: React.FormEvent) {
-    evento.preventDefault();
-    definirFalha(null);
-    definirEnviando(true);
-    try {
-      await entrarPorSenha(email.trim(), senha);
-      // A sessão está no cookie. `aoEntrar` confirma e o App troca de tela — o
-      // mesmo caminho do retorno do SSO, e não um segundo fluxo paralelo.
-      await entrarNoPainel(aoEntrar, (url) => {
-        window.location.href = url;
-      });
-    } catch (erroDoServidor) {
-      definirFalha(
-        erroDoServidor instanceof Error
-          ? erroDoServidor.message
-          : 'Não foi possível entrar. Tente de novo.',
-      );
-    } finally {
-      definirEnviando(false);
-    }
-  }
+  //: OCUPADO ENQUANTO O APP CONFERE a sessão, e não quando há erro: com erro
+  //: na tela a pessoa precisa poder tentar de novo. Era a mesma regra do
+  //: `ocupado` do formulário que saiu.
+  const ativando = carregando && !erro;
 
   return (
     <div className="entrada">
@@ -201,10 +174,11 @@ export function Login({
             acesso, entre com e-mail e senha.
           </p>
 
-          {/* ACIMA DOS DOIS CAMINHOS DE ENTRADA, e não só dentro do formulário
-              de senha: quem volta do SSO (a maioria) nunca abre esse
-              formulário, e lá embaixo a mensagem nunca seria vista. */}
-          {falha || erro ? (
+          {/* ACIMA DO BOTÃO, e não abaixo: é aqui que a recusa do `/auth/callback`
+              chega, e quem volta do SSO olha para o topo do cartão. Eram dois
+              caminhos de entrada até a 0096, e a caixa já ficava acima dos dois
+              pelo mesmo motivo. */}
+          {erro ? (
             <div
               role="alert"
               style={{
@@ -217,15 +191,17 @@ export function Login({
                 lineHeight: 1.5,
               }}
             >
-              {falha ?? erro}
+              {erro}
             </div>
           ) : null}
 
-          {/* O SSO primeiro: é o caminho da maioria, e a ordem na tela é a
-              ordem da expectativa de quem chega. */}
+          {/* O ÚNICO CAMINHO DE ENTRADA desde a 0096. `carregando` o desabilita
+              junto com `SSO_LIGADO`: enquanto o App ainda confere se já havia
+              sessão, clicar aqui dispararia um segundo fluxo por cima do
+              primeiro. Antes isso era coberto pelo `ocupado` do formulário. */}
           <button
             type="button"
-            disabled={!SSO_LIGADO}
+            disabled={!SSO_LIGADO || ativando}
             onClick={() =>
               entrarNoPainel(
                 aoEntrar,
@@ -249,7 +225,7 @@ export function Login({
               color: SSO_LIGADO ? 'var(--cinza-4)' : 'var(--texto-placeholder)',
               fontSize: 14,
               fontWeight: 700,
-              cursor: SSO_LIGADO ? 'pointer' : 'not-allowed',
+              cursor: SSO_LIGADO && !ativando ? 'pointer' : 'not-allowed',
             }}
           >
             <LogotipoDaMicrosoft apagado={!SSO_LIGADO} />
@@ -273,81 +249,18 @@ export function Login({
             </p>
           )}
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              margin: '22px 0',
-              color: 'var(--cinza-2)',
-              fontSize: 11,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            <span style={{ flex: 1, height: 1, background: 'var(--borda)' }} />
-            ou
-            <span style={{ flex: 1, height: 1, background: 'var(--borda)' }} />
-          </div>
-
-          <form onSubmit={submeter} style={{ display: 'grid', gap: 14 }}>
-            <label style={{ display: 'block' }}>
-              <span style={rotulo}>E-mail</span>
-              <input
-                type="email"
-                required
-                autoComplete="username"
-                value={email}
-                onChange={(evento) => definirEmail(evento.target.value)}
-                placeholder="voce@empresa.com.br"
-                style={entrada}
-              />
-            </label>
-
-            <label style={{ display: 'block' }}>
-              <span style={rotulo}>Senha</span>
-              <input
-                type="password"
-                required
-                // `current-password` e não `new-password`: é o que faz o
-                // gerenciador de senhas oferecer a que já existe, em vez de
-                // propor uma nova a cada visita.
-                autoComplete="current-password"
-                value={senha}
-                onChange={(evento) => definirSenha(evento.target.value)}
-                style={entrada}
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={ocupado}
-              style={{
-                height: 46,
-                borderRadius: 'var(--r-btn)',
-                border: 'none',
-                background: ocupado ? 'var(--cinza-2)' : 'var(--azul-mar)',
-                color: 'var(--branco)',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: ocupado ? 'progress' : 'pointer',
-              }}
-            >
-              {ocupado ? 'Entrando…' : 'Entrar'}
-            </button>
-          </form>
-
           <p
             style={{
               fontSize: 12,
-              // Mesmo motivo do aviso do SSO: `--cinza-2` reprova a WCAG aqui.
+              // `--cinza-3`, e NÃO `--cinza-2`: o cinza-2 sobre `--bg-app` dá
+              // 2,90:1 e reprova a WCAG. Mesmo motivo do aviso do SSO.
               color: 'var(--cinza-3)',
               marginTop: 20,
               lineHeight: 1.6,
             }}
           >
-            Esqueceu a senha? Peça à coordenação do painel — não há redefinição
-            automática.
+            Não consegue entrar? Peça à coordenação do painel — o acesso é
+            concedido por lá.
           </p>
         </div>
       </main>
@@ -355,30 +268,6 @@ export function Login({
   );
 }
 
-const rotulo: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--cinza-3)',
-  marginBottom: 6,
-};
-
-const entrada: React.CSSProperties = {
-  width: '100%',
-  height: 44,
-  padding: '0 13px',
-  borderRadius: 'var(--r-btn)',
-  border: '1px solid var(--borda-input)',
-  background: 'var(--branco)',
-  fontSize: 14,
-  fontFamily: 'inherit',
-};
-
-/** Os quatro quadrados da Microsoft, em cinza quando o SSO está desligado.
- *
- *  Desenhado aqui, e não importado: são quatro retângulos, e trazer uma
- *  biblioteca de ícones para isto custaria mais bytes do que o resto da tela.
- */
 function LogotipoDaMicrosoft({ apagado }: { apagado: boolean }) {
   const cores = apagado
     ? ['#C7CBD9', '#C7CBD9', '#C7CBD9', '#C7CBD9']
