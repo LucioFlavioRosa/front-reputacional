@@ -11,7 +11,7 @@ import { colunasDaBase, csvDaBase, periodoDoAtalho } from '@/dominio/baseDasLent
 
 const mencao = (extra: Partial<MencaoDaBase>): MencaoDaBase => ({
   id: 'm1', data: '2026-08-20', mes: '2026-08', fonte: 'Clipei', fonte_no_calculo: true,
-  veiculo: 'Folha de S.Paulo', tier: 'muito_relevante', sentimento: 'neg', atributo: null,
+  veiculo: 'Folha de S.Paulo', instituicao_id: null, tier: 'muito_relevante', sentimento: 'neg', atributo: null,
   tema: 'Abastecimento', tema_n1: null, tema_n2: null, tema_n3: null, subtema: null,
   empresa: 'Águas do Rio', uf: 'RJ', autor: 'Ana Lima', perfil_autor: null, engajamento: null,
   publico_alvo: null, titulo: 'Falta d’água em São Gonçalo', link: 'https://folha.com/x',
@@ -25,9 +25,20 @@ const OPCOES: OpcoesDaBase = {
 };
 
 const listar = vi.fn();
+//: O JORNALISTA busca os interlocutores uma vez, ao montar — sem isto, todo
+//: teste deste arquivo quebraria no `useEffect` por chamar `undefined()`.
+//: Expostos fora da fábrica do mock para os testes de edição poderem mudar o
+//: que cada um devolve.
+const listarInterlocutoresMock = vi.fn(() => Promise.resolve([] as unknown[]));
+const editarJornalistaMock = vi.fn((_id: string, _interlocutorId: string | null) =>
+  Promise.resolve({ autor: null as string | null }),
+);
 vi.mock('@/api/cliente', () => ({
   listarMencoesDaBase: (...args: unknown[]) => listar(...args),
   obterOpcoesDaBase: vi.fn(() => Promise.resolve(OPCOES)),
+  listarInterlocutores: () => listarInterlocutoresMock(),
+  editarJornalistaDaMencao: (id: string, interlocutorId: string | null) =>
+    editarJornalistaMock(id, interlocutorId),
 }));
 
 describe('BaseDeDadosDoScore', () => {
@@ -35,6 +46,8 @@ describe('BaseDeDadosDoScore', () => {
     window.localStorage.clear();
     listar.mockReset();
     listar.mockResolvedValue({ itens: [mencao({})], total: 1, pagina: 1, tamanho: 50 });
+    listarInterlocutoresMock.mockReset().mockResolvedValue([]);
+    editarJornalistaMock.mockReset().mockResolvedValue({ autor: null });
   });
 
   it('lista as menções da lente com o link para a matéria', async () => {
@@ -135,6 +148,83 @@ describe('BaseDeDadosDoScore', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Institucional' }));
     expect(screen.getByText(/está na/)).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
+  });
+});
+
+describe('editar o jornalista', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    listarInterlocutoresMock.mockReset().mockResolvedValue([
+      { id: 'i1', nome: 'Dani Souza', instituicao_id: 'globo', ativo: true },
+      { id: 'i2', nome: 'Ana Lima', instituicao_id: 'folha', ativo: true },
+    ]);
+    editarJornalistaMock.mockReset().mockResolvedValue({ autor: 'Dani Souza' });
+  });
+
+  it('sem veículo cadastrado, o nome é só texto — sem botão de editar', async () => {
+    listar.mockReset().mockResolvedValue({
+      itens: [mencao({ instituicao_id: null, autor: 'Alguém' })],
+      total: 1, pagina: 1, tamanho: 50,
+    });
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    render(<BaseDeDadosDoScore />);
+    await waitFor(() => expect(screen.getByText('Alguém')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /Alguém/ })).toBeNull();
+  });
+
+  it('com veículo cadastrado, clicar abre a busca só com quem está naquela instituição', async () => {
+    listar.mockReset().mockResolvedValue({
+      itens: [mencao({ instituicao_id: 'globo', autor: null })],
+      total: 1, pagina: 1, tamanho: 50,
+    });
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    render(<BaseDeDadosDoScore />);
+    const usuario = userEvent.setup();
+
+    const botao = await screen.findByRole('button', { name: /Vincular jornalista/ });
+    await usuario.click(botao);
+
+    const campo = await screen.findByRole('combobox', { name: /Jornalista de/ });
+    await usuario.click(campo);
+    expect(await screen.findByText('Dani Souza')).toBeTruthy();
+    expect(screen.queryByText('Ana Lima')).toBeNull(); // é da Folha, outra instituição
+  });
+
+  it('escolher um nome salva e recarrega a página', async () => {
+    listar.mockReset().mockResolvedValue({
+      itens: [mencao({ instituicao_id: 'globo', autor: null })],
+      total: 1, pagina: 1, tamanho: 50,
+    });
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    render(<BaseDeDadosDoScore />);
+    const usuario = userEvent.setup();
+
+    await usuario.click(await screen.findByRole('button', { name: /Vincular jornalista/ }));
+    const campo = await screen.findByRole('combobox', { name: /Jornalista de/ });
+    await usuario.click(campo);
+    await usuario.click(await screen.findByText('Dani Souza'));
+
+    await waitFor(() => expect(editarJornalistaMock).toHaveBeenCalledWith('m1', 'i1'));
+    // A TELA RECARREGA DO SERVIDOR, e não corrige a linha sozinha — por isso a
+    // segunda chamada a `listar` é o que faz o nome aparecer de novo.
+    await waitFor(() => expect(listar).toHaveBeenCalledTimes(2));
+  });
+
+  it('cancelar fecha sem salvar', async () => {
+    listar.mockReset().mockResolvedValue({
+      itens: [mencao({ instituicao_id: 'globo', autor: null })],
+      total: 1, pagina: 1, tamanho: 50,
+    });
+    const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    render(<BaseDeDadosDoScore />);
+    const usuario = userEvent.setup();
+
+    await usuario.click(await screen.findByRole('button', { name: /Vincular jornalista/ }));
+    await usuario.click(await screen.findByRole('button', { name: 'Cancelar edição do jornalista' }));
+
+    expect(screen.queryByRole('combobox', { name: /Jornalista de/ })).toBeNull();
+    expect(editarJornalistaMock).not.toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: /Vincular jornalista/ })).toBeTruthy();
   });
 });
 
