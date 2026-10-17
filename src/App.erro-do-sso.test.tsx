@@ -114,9 +114,13 @@ describe('a recusa do SSO que volta na URL', () => {
     chegarCom('/?lente=mercado');
     render(<App />);
 
-    //: Nome exato: a tela tem DOIS botões que casam com /entrar/i — o de senha
-    //: e o do SSO ("Entrar com o e-mail da Aegea").
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy());
+    //: O ÚNICO BOTÃO DE ENTRADA desde a 0096. Eram dois que casavam com
+    //: /entrar/i — o de senha e o do SSO —, e por isso este teste pedia o nome
+    //: exato `'Entrar'`, que era o de submeter o formulário. O formulário saiu
+    //: com a senha; sobrou o do SSO.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Entrar com a conta Aegea/ })).toBeTruthy(),
+    );
     //: O ENDEREÇO SOBREVIVE INTEIRO, e é isto que se afirma — não "ninguém
     //: chamou `replaceState`". O provedor do painel sincroniza os filtros no
     //: endereço pelo mesmo `replaceState` (`estado/painel.tsx`), então exigir
