@@ -25,22 +25,22 @@ import * as cliente from './cliente';
 // de reexportação; varrer só ele passou a varrer nada, e estes três testes
 // caíram na mesma hora — que é exatamente o que eles existem para fazer.
 //
-// A LISTA PRECISA CRESCER COM A PASTA: um arquivo novo em `src/api/` que faça
-// chamada e não entre aqui fica fora da varredura, e a garantia vira falsa em
-// silêncio. É a fraqueza deste desenho, e o preço de varrer texto.
-import nucleo from './nucleo.ts?raw';
-import acesso from './acesso.ts?raw';
-import crm from './crm.ts?raw';
-import score from './score.ts?raw';
-import importacao from './importacao.ts?raw';
+// A PASTA SE DESCOBRE SOZINHA, e a primeira versão disto era uma LISTA ESCRITA
+// À MÃO. A revisão apontou o buraco: um sexto arquivo em `src/api/` que fizesse
+// chamada e não entrasse na lista ficaria fora da varredura, e a garantia
+// viraria falsa em silêncio — sem nada quebrar.
+//
+// O QUE FICA DE FORA, e por quê: os testes (não são produto), `cliente.ts` (é
+// só barril, e varrê-lo duplicaria tudo) e `cliente.varredura.ts` (é a própria
+// varredura; ela fala de `requisitar` sem chamá-lo).
+const BRUTOS = import.meta.glob(
+  ['./*.ts', '!./*.test.ts', '!./cliente.ts', '!./cliente.varredura.ts'],
+  { eager: true, query: '?raw', import: 'default' },
+) as Record<string, string>;
 
-const ARQUIVOS: ReadonlyArray<readonly [string, string]> = [
-  ['nucleo.ts', nucleo],
-  ['acesso.ts', acesso],
-  ['crm.ts', crm],
-  ['score.ts', score],
-  ['importacao.ts', importacao],
-];
+const ARQUIVOS: ReadonlyArray<readonly [string, string]> = Object.entries(BRUTOS)
+  .map(([caminho, texto]) => [caminho.replace('./', ''), texto] as const)
+  .sort(([a], [b]) => a.localeCompare(b));
 
 /** Os cinco colados. Serve para o que é contagem global — `fetch` é um só no
  *  produto inteiro —, e NÃO para o que depende de atribuir código a função. */
@@ -373,6 +373,38 @@ describe('a varredura recusa o que não sabe classificar', () => {
       'esperava UMA origem de requisitar (definição ou import), achei 0',
     ]);
     expect(varrerChamadas(definicao + definicao).problemas).toHaveLength(1);
+  });
+
+  it('a varredura cobre TODO arquivo de produto da pasta, e não uma lista', () => {
+    //: A LISTA ESCRITA À MÃO era o buraco: um sexto arquivo com chamada ficaria
+    //: fora, e a garantia viraria falsa sem nada quebrar. Achado da revisão.
+    //:
+    //: Afirma o PISO e o conteúdo, e não a lista exata — acrescentar um arquivo
+    //: de domínio novo (a Inteligência de Mercado vem aí) não deve derrubar
+    //: este teste, mas tirar um deve.
+    const nomes = ARQUIVOS.map(([nome]) => nome);
+    expect(nomes.length).toBeGreaterThanOrEqual(5);
+    for (const esperado of ['nucleo.ts', 'acesso.ts', 'crm.ts', 'score.ts', 'importacao.ts']) {
+      expect(nomes).toContain(esperado);
+    }
+    expect(nomes).not.toContain('cliente.ts');
+    expect(nomes.filter((n) => n.includes('.test.'))).toEqual([]);
+  });
+
+  it('`requisitar` RENOMEADA no import é problema, e não origem', () => {
+    //: O ESCAPE QUE A REVISÃO ACHOU: `import { requisitar as r } from './outro'`
+    //: passava como origem, e as chamadas por `r` não eram varridas por nada —
+    //: um segundo caminho de rede entrando sem ninguém ver.
+    const renomeada = "import { requisitar as r } from './outro';\n";
+    expect(varrerChamadas(renomeada).problemas.length).toBeGreaterThan(0);
+
+    //: E de OUTRO MÓDULO também não vale, mesmo sem renomear.
+    const deOutroLugar = "import { requisitar } from './outro';\n";
+    expect(varrerChamadas(deOutroLugar).problemas.length).toBeGreaterThan(0);
+
+    //: Nem `import type` — tipo não traz função nenhuma em runtime.
+    const soTipo = "import type { requisitar } from './nucleo';\n";
+    expect(varrerChamadas(soTipo).problemas.length).toBeGreaterThan(0);
   });
 
   it('o IMPORT vale como origem, e dois imports continuam sendo problema', () => {

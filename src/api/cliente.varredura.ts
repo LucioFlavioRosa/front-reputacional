@@ -34,6 +34,14 @@ export type Varredura = {
 
 const VERBOS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** `import { … requisitar … } from './nucleo';` — sem renomear, sem `type`.
+ *
+ *  `[^}]*` de propósito nos dois lados: aceita `requisitar` no meio de outros
+ *  nomes, e NÃO atravessa a chave de fechamento. O `(?!\s+as\b)` é o que
+ *  recusa `requisitar as r`, que era o escape. */
+const IMPORT_DO_NUCLEO =
+  /^\s*import\s*\{[^}]*\brequisitar\b(?!\s+as\b)[^}]*\}\s*from\s*['"]\.\/nucleo['"];/;
+
 /** Fora comentários — uma menção a `requisitar` num comentário não é chamada. */
 function semComentarios(fonte: string): string {
   return fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
@@ -136,13 +144,33 @@ export function varrerChamadas(fonteBruto: string): Varredura {
       continue;
     }
 
-    // A LINHA DO IMPORT. Olha para trás até o começo da linha e exige que ela
-    // seja um `import … from …` — não basta a palavra `import` aparecer antes.
+    // O IMPORT DO NÚCLEO, e só ele.
+    //
+    // A PRIMEIRA VERSÃO DISTO ACEITAVA QUALQUER LINHA QUE PARECESSE IMPORT, e
+    // era um buraco: `import { requisitar as r } from './outro'` passava como
+    // origem, e as chamadas por `r` não eram varridas por nada. Um segundo
+    // caminho de rede entrava sem ninguém ver — exatamente o que este arquivo
+    // existe para impedir. Achado da revisão em 17/10/2026.
+    //
+    // AS TRÊS EXIGÊNCIAS, e cada uma fecha um jeito de escapar:
+    //   * o módulo é `./nucleo` — não qualquer um;
+    //   * o nome NÃO é renomeado — `requisitar as r` deixaria `r` invisível;
+    //   * não é `import type` — tipo não traz função nenhuma em runtime.
     const comecoDaLinha = fonte.lastIndexOf('\n', inicio) + 1;
-    const fimDaLinha = fonte.indexOf(';', inicio);
-    const linha = fonte.slice(comecoDaLinha, fimDaLinha === -1 ? inicio : fimDaLinha + 1);
-    if (/^\s*import\b[\s\S]*\bfrom\b/.test(linha)) {
-      origens += 1;
+    const fimDaDeclaracao = fonte.indexOf(';', inicio);
+    const declaracao = fonte.slice(
+      comecoDaLinha,
+      fimDaDeclaracao === -1 ? inicio : fimDaDeclaracao + 1,
+    );
+    if (/^\s*import\b/.test(declaracao)) {
+      if (IMPORT_DO_NUCLEO.test(declaracao)) {
+        origens += 1;
+      } else {
+        problema(
+          '`requisitar` importada de um jeito que a varredura não acompanha ' +
+            "(renomeada? `import type`? de outro módulo que não `./nucleo`?)",
+        );
+      }
       continue;
     }
 
