@@ -34,6 +34,14 @@ export type Varredura = {
 
 const VERBOS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** `import { … requisitar … } from './nucleo';` — sem renomear, sem `type`.
+ *
+ *  `[^}]*` de propósito nos dois lados: aceita `requisitar` no meio de outros
+ *  nomes, e NÃO atravessa a chave de fechamento. O `(?!\s+as\b)` é o que
+ *  recusa `requisitar as r`, que era o escape. */
+const IMPORT_DO_NUCLEO =
+  /^\s*import\s*\{[^}]*\brequisitar\b(?!\s+as\b)[^}]*\}\s*from\s*['"]\.\/nucleo['"];/;
+
 /** Fora comentários — uma menção a `requisitar` num comentário não é chamada. */
 function semComentarios(fonte: string): string {
   return fonte.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
@@ -108,12 +116,23 @@ function pularEspaco(fonte: string, i: number): number {
 }
 
 /** Varre o fonte: cada menção a `requisitar` vira uma chamada classificada ou
- *  um problema. Uma definição, e só uma, é esperada. */
+ *  um problema. Uma ORIGEM, e só uma, é esperada.
+ *
+ *  ORIGEM É DEFINIÇÃO **OU** IMPORT, e era só definição até 17/10/2026. Naquele
+ *  dia `cliente.ts` se dividiu em cinco: `nucleo.ts` DEFINE `requisitar`, e os
+ *  outros quatro o IMPORTAM. A varredura, que assumia o monólito, acusou os
+ *  quatro de duas coisas ao mesmo tempo — "mencionada sem ser chamada" (a linha
+ *  do import) e "esperava uma definição, achei 0".
+ *
+ *  A GARANTIA NÃO AFROUXOU: continua sendo exatamente uma origem por arquivo.
+ *  Um arquivo que definisse E importasse, ou que importasse de dois lugares,
+ *  continua sendo problema — e é isso que impede um segundo caminho de rede
+ *  entrar sem ninguém ver. */
 export function varrerChamadas(fonteBruto: string): Varredura {
   const fonte = semComentarios(fonteBruto);
   const chamadas: Chamada[] = [];
   const problemas: string[] = [];
-  let definicoes = 0;
+  let origens = 0;
 
   for (const mencao of fonte.matchAll(/\brequisitar\b/g)) {
     const inicio = mencao.index;
@@ -121,7 +140,37 @@ export function varrerChamadas(fonteBruto: string): Varredura {
     const problema = (motivo: string) => problemas.push(`${funcao}: ${motivo}`);
 
     if (/(?:async )?function $/.test(fonte.slice(Math.max(0, inicio - 16), inicio))) {
-      definicoes += 1;
+      origens += 1;
+      continue;
+    }
+
+    // O IMPORT DO NÚCLEO, e só ele.
+    //
+    // A PRIMEIRA VERSÃO DISTO ACEITAVA QUALQUER LINHA QUE PARECESSE IMPORT, e
+    // era um buraco: `import { requisitar as r } from './outro'` passava como
+    // origem, e as chamadas por `r` não eram varridas por nada. Um segundo
+    // caminho de rede entrava sem ninguém ver — exatamente o que este arquivo
+    // existe para impedir. Achado da revisão em 17/10/2026.
+    //
+    // AS TRÊS EXIGÊNCIAS, e cada uma fecha um jeito de escapar:
+    //   * o módulo é `./nucleo` — não qualquer um;
+    //   * o nome NÃO é renomeado — `requisitar as r` deixaria `r` invisível;
+    //   * não é `import type` — tipo não traz função nenhuma em runtime.
+    const comecoDaLinha = fonte.lastIndexOf('\n', inicio) + 1;
+    const fimDaDeclaracao = fonte.indexOf(';', inicio);
+    const declaracao = fonte.slice(
+      comecoDaLinha,
+      fimDaDeclaracao === -1 ? inicio : fimDaDeclaracao + 1,
+    );
+    if (/^\s*import\b/.test(declaracao)) {
+      if (IMPORT_DO_NUCLEO.test(declaracao)) {
+        origens += 1;
+      } else {
+        problema(
+          '`requisitar` importada de um jeito que a varredura não acompanha ' +
+            "(renomeada? `import type`? de outro módulo que não `./nucleo`?)",
+        );
+      }
       continue;
     }
 
@@ -193,6 +242,10 @@ export function varrerChamadas(fonteBruto: string): Varredura {
     });
   }
 
-  if (definicoes !== 1) problemas.push(`esperava uma definição de requisitar, achei ${definicoes}`);
+  if (origens !== 1) {
+    problemas.push(
+      `esperava UMA origem de requisitar (definição ou import), achei ${origens}`,
+    );
+  }
   return { chamadas, problemas };
 }
