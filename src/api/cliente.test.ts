@@ -20,7 +20,31 @@ import * as cliente from './cliente';
 // O FONTE DO CLIENTE, como texto. `?raw` é do Vite, e o vitest fala Vite: é o
 // que permite varrer o código sem `node:fs` — que o `tsc` do build não conhece,
 // porque o app é feito para o navegador e não deve enxergar o Node.
-import fonte from './cliente.ts?raw';
+//
+// SÃO CINCO ARQUIVOS DESDE 17/10/2026, e não mais um. `cliente.ts` virou barril
+// de reexportação; varrer só ele passou a varrer nada, e estes três testes
+// caíram na mesma hora — que é exatamente o que eles existem para fazer.
+//
+// A LISTA PRECISA CRESCER COM A PASTA: um arquivo novo em `src/api/` que faça
+// chamada e não entre aqui fica fora da varredura, e a garantia vira falsa em
+// silêncio. É a fraqueza deste desenho, e o preço de varrer texto.
+import nucleo from './nucleo.ts?raw';
+import acesso from './acesso.ts?raw';
+import crm from './crm.ts?raw';
+import score from './score.ts?raw';
+import importacao from './importacao.ts?raw';
+
+const ARQUIVOS: ReadonlyArray<readonly [string, string]> = [
+  ['nucleo.ts', nucleo],
+  ['acesso.ts', acesso],
+  ['crm.ts', crm],
+  ['score.ts', score],
+  ['importacao.ts', importacao],
+];
+
+/** Os cinco colados. Serve para o que é contagem global — `fetch` é um só no
+ *  produto inteiro —, e NÃO para o que depende de atribuir código a função. */
+const fonte = ARQUIVOS.map(([, texto]) => texto).join('\n');
 import { varrerChamadas } from './cliente.varredura';
 import { ROTAS_DO_CATALOGO, catalogoMudou, scoreMudou } from '@/dominio/sincronizacao';
 
@@ -240,12 +264,19 @@ describe('o código-fonte do cliente não tem escrita de catálogo fora desta li
   });
 
   it('toda chamada a `requisitar` está na forma canônica — a varredura não deixa passar o que não entende', () => {
-    const { problemas } = varrerChamadas(fonte);
-    expect(problemas).toEqual([]);
+    // UM ARQUIVO DE CADA VEZ, e não os cinco colados. `funcaoQueContem` atribui
+    // cada menção à última `export function` ANTES dela; concatenando, a última
+    // função de um arquivo adota o que o arquivo seguinte menciona. Deu três
+    // problemas fantasmas — `historicoDeAcesso`, `listarDocumentosDaReuniao` e
+    // `obterOpcoesDoRisco` acusadas pelo que vinha depois delas, noutro arquivo.
+    for (const [nome, texto] of ARQUIVOS) {
+      const { problemas } = varrerChamadas(texto);
+      expect(problemas, `em ${nome}`).toEqual([]);
+    }
   });
 
   it('cada função que escreve numa rota de catálogo está exercitada acima', () => {
-    const { chamadas } = varrerChamadas(fonte);
+    const chamadas = ARQUIVOS.flatMap(([, texto]) => varrerChamadas(texto).chamadas);
     const escrevem = chamadas.filter((c) => c.escreveNoCatalogo).map((c) => c.funcao);
 
     expect(escrevem.length, 'a varredura precisa achar as escritas').toBeGreaterThanOrEqual(10);
@@ -337,10 +368,23 @@ describe('a varredura recusa o que não sabe classificar', () => {
     expect(problemas).toEqual([]);
   });
 
-  it('sem a definição — ou com duas — é problema', () => {
+  it('sem origem — ou com duas — é problema', () => {
     expect(varrerChamadas('').problemas).toEqual([
-      'esperava uma definição de requisitar, achei 0',
+      'esperava UMA origem de requisitar (definição ou import), achei 0',
     ]);
     expect(varrerChamadas(definicao + definicao).problemas).toHaveLength(1);
+  });
+
+  it('o IMPORT vale como origem, e dois imports continuam sendo problema', () => {
+    //: Entrou com a divisão de `cliente.ts` em cinco arquivos (17/10/2026):
+    //: `nucleo.ts` define `requisitar`, os outros quatro o importam. Sem isto a
+    //: varredura acusava os quatro de não ter definição — e, de quebra, tratava
+    //: a própria linha do import como chamada mal formada.
+    const vindoDeFora = "import { requisitar } from './nucleo';\n";
+    expect(varrerChamadas(vindoDeFora).problemas).toEqual([]);
+
+    //: E A GARANTIA NÃO AFROUXOU: definir E importar continua sendo problema,
+    //: porque seriam dois caminhos de rede no mesmo arquivo.
+    expect(varrerChamadas(vindoDeFora + definicao).problemas).toHaveLength(1);
   });
 });

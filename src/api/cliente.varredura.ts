@@ -108,12 +108,23 @@ function pularEspaco(fonte: string, i: number): number {
 }
 
 /** Varre o fonte: cada menção a `requisitar` vira uma chamada classificada ou
- *  um problema. Uma definição, e só uma, é esperada. */
+ *  um problema. Uma ORIGEM, e só uma, é esperada.
+ *
+ *  ORIGEM É DEFINIÇÃO **OU** IMPORT, e era só definição até 17/10/2026. Naquele
+ *  dia `cliente.ts` se dividiu em cinco: `nucleo.ts` DEFINE `requisitar`, e os
+ *  outros quatro o IMPORTAM. A varredura, que assumia o monólito, acusou os
+ *  quatro de duas coisas ao mesmo tempo — "mencionada sem ser chamada" (a linha
+ *  do import) e "esperava uma definição, achei 0".
+ *
+ *  A GARANTIA NÃO AFROUXOU: continua sendo exatamente uma origem por arquivo.
+ *  Um arquivo que definisse E importasse, ou que importasse de dois lugares,
+ *  continua sendo problema — e é isso que impede um segundo caminho de rede
+ *  entrar sem ninguém ver. */
 export function varrerChamadas(fonteBruto: string): Varredura {
   const fonte = semComentarios(fonteBruto);
   const chamadas: Chamada[] = [];
   const problemas: string[] = [];
-  let definicoes = 0;
+  let origens = 0;
 
   for (const mencao of fonte.matchAll(/\brequisitar\b/g)) {
     const inicio = mencao.index;
@@ -121,7 +132,17 @@ export function varrerChamadas(fonteBruto: string): Varredura {
     const problema = (motivo: string) => problemas.push(`${funcao}: ${motivo}`);
 
     if (/(?:async )?function $/.test(fonte.slice(Math.max(0, inicio - 16), inicio))) {
-      definicoes += 1;
+      origens += 1;
+      continue;
+    }
+
+    // A LINHA DO IMPORT. Olha para trás até o começo da linha e exige que ela
+    // seja um `import … from …` — não basta a palavra `import` aparecer antes.
+    const comecoDaLinha = fonte.lastIndexOf('\n', inicio) + 1;
+    const fimDaLinha = fonte.indexOf(';', inicio);
+    const linha = fonte.slice(comecoDaLinha, fimDaLinha === -1 ? inicio : fimDaLinha + 1);
+    if (/^\s*import\b[\s\S]*\bfrom\b/.test(linha)) {
+      origens += 1;
       continue;
     }
 
@@ -193,6 +214,10 @@ export function varrerChamadas(fonteBruto: string): Varredura {
     });
   }
 
-  if (definicoes !== 1) problemas.push(`esperava uma definição de requisitar, achei ${definicoes}`);
+  if (origens !== 1) {
+    problemas.push(
+      `esperava UMA origem de requisitar (definição ou import), achei ${origens}`,
+    );
+  }
   return { chamadas, problemas };
 }
