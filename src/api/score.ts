@@ -112,6 +112,22 @@ export interface AssuntoNaoReconhecido {
   desativado: boolean;
 }
 
+/** Uma concessionária que a planilha traz e o cadastro central não resolve. */
+export interface ConcessionariaNaoReconhecida {
+  /** O texto como o fornecedor o escreveu — é o que se procura na planilha. */
+  nome: string;
+  /** Quantas linhas a citam. A lista vem ordenada por aqui. */
+  mencoes: number;
+  /** AS UNIDADES DO CADASTRO QUE ESTE NOME PODE SER, quando são mais de uma.
+   *
+   *  LISTA CHEIA E LISTA VAZIA SÃO PROBLEMAS DIFERENTES, e é por isso que o
+   *  campo é uma lista e não um booleano. Cheia: o nome está CERTO e mesmo
+   *  assim não liga — "Águas do Pará" são quatro blocos no cadastro, e o
+   *  conserto é o fornecedor informar qual. Vazia: o cadastro não tem nada
+   *  parecido, e o conserto é cadastrar a unidade. */
+  opcoes?: string[];
+}
+
 export interface ConferenciaDaPlanilhaDoScore {
   /** Uma linha por fonte irmã — o que a subida FARIA. */
   previsao: ImportacaoDoScore[];
@@ -131,6 +147,18 @@ export interface ConferenciaDaPlanilhaDoScore {
   mencoes_sem_assunto?: number;
   /** Os nomes que o cadastro não reconhece, por volume — os 30 maiores. */
   assuntos_nao_reconhecidos?: AssuntoNaoReconhecido[];
+  /** Quantas linhas achariam concessionária no cadastro central.
+   *
+   *  POR QUE ESTE NÚMERO IMPORTA: sem o vínculo, a dimensão "Concessionária"
+   *  agrupa pelo texto do fornecedor, e a mesma operação em duas grafias vira
+   *  duas barras no gráfico — a Corsan chega como "Corsan" e como "Companhia
+   *  Riograndense de Saneamento (Corsan)". */
+  mencoes_com_concessionaria?: number;
+  /** Quantas vieram SEM concessionária. Hoje são 37 em 104.670 — o número
+   *  aparece porque um export que a perca não deve passar em silêncio. */
+  mencoes_sem_concessionaria?: number;
+  /** As que o cadastro não resolve, por volume — as 30 maiores. */
+  concessionarias_nao_reconhecidas?: ConcessionariaNaoReconhecida[];
   /** O arquivo JÁ ESTÁ GUARDADO no servidor, e a confirmação pode citá-lo em
    *  vez de subir os mesmos bytes de novo.
    *
