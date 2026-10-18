@@ -94,6 +94,31 @@ function lenteValida(endereco: EnderecoDoDrill): string | null {
  */
 const ABAS_COM_GRAFICO = ['geral', 'lentes', 'drivers'];
 
+/** AS ABAS QUE NÃO DEPENDEM DO ÍNDICE, e por isso saem ANTES das guardas dele.
+ *
+ *  O QUE ISTO CONSERTA É UM IMPASSE DE ARRANQUE, relatado em 18/10/2026 num
+ *  ambiente recém-limpo: "ao acessar a página de base não aparece nada para
+ *  subir e tem essa mensagem: Nenhum mês com dado". E estava certo — a aba
+ *  `base` é a PORTA DE ENTRADA do dado, e ela estava atrás da guarda que exige
+ *  dado. Sem subida não há mês; sem mês, a tela da subida não aparecia. A única
+ *  saída era pelo banco.
+ *
+ *  A REGRA JÁ EXISTIA NO ARQUIVO, para uma aba só: `riscos` foi movida para cá
+ *  porque "morria no 'Nenhum mês com dado' quando houvesse agenda tensa no CRM
+ *  e nenhuma planilha subida". As outras três ficaram para trás — e o próprio
+ *  comentário do `Provider`, abaixo, já as declarava sem gráfico e sem índice:
+ *  `metodologia` é texto, `base-de-dados` é tabela, `base` é formulário.
+ *
+ *  O CRITÉRIO É "USA O ÍNDICE?", e não "tem gráfico": nenhuma das quatro recebe
+ *  `mes`, `indice` ou `opcoes`. Uma aba nova que também não os receba entra
+ *  aqui; uma que os receba fica abaixo das guardas, onde ela precisa estar.
+ *
+ *  E ELAS SAEM ANTES DO `FaixaDeErro` TAMBÉM, de propósito: se o cálculo do
+ *  índice falhar, subir planilha continua sendo possível — e é provavelmente o
+ *  que se quer fazer.
+ */
+const ABAS_SEM_INDICE = ['riscos', 'base', 'base-de-dados', 'metodologia'];
+
 //: DESLIGADO por pedido (2026-10-16), junto com o bloco "Drill down" em
 //: `DossieDaLente.tsx` (mesma trava `false &&` lá): sem o `aoEscolherNoDrill`
 //: da busca, o grupo "Consulta em profundidade" não aparece nas sugestões
@@ -303,10 +328,22 @@ export function Score({
   //: (desligado) e ficava sem o botão — o que estava CERTO pela regra antiga
   //: ("Visão geral, Painel e Lentes") e passou a estar errado pela nova ("onde
   //: tem gráfico"). A aba tem dois: a série do índice e a matriz dos 32 riscos.
-  if (aba === 'riscos') {
+  //: AS QUATRO ABAS QUE NÃO USAM O ÍNDICE — ver `ABAS_SEM_INDICE`. Só `riscos`
+  //: desenha gráfico, então só ela liga o botão de PNG.
+  if (ABAS_SEM_INDICE.includes(aba)) {
     return (
-      <ContextoDoPng.Provider value>
-        <RastreioDeRisco />
+      <ContextoDoPng.Provider value={aba === 'riscos'}>
+        {aba === 'riscos' ? (
+          <RastreioDeRisco />
+        ) : (
+          //: O MESMO EMBRULHO DO `return` PRINCIPAL, para as três não mudarem
+          //: de espaçamento ao sair de lá.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {aba === 'base' ? <BaseDoScore /> : null}
+            {aba === 'base-de-dados' ? <BaseDeDadosDoScore /> : null}
+            {aba === 'metodologia' ? <Metodologia /> : null}
+          </div>
+        )}
       </ContextoDoPng.Provider>
     );
   }
@@ -441,14 +478,10 @@ export function Score({
 
       {aba === 'drivers' ? <DriversERiscos mes={mes} /> : null}
 
-      {aba === 'metodologia' ? <Metodologia /> : null}
-
-      {/* A BASE E A PORTA DE ENTRADA DO DADO. O upload morava na Calibracao,
-          que e a REGUA do indice — la se decide quanto o dado pesa, aqui ele
-          entra. Ver o cabecalho de `BaseDoScore`. */}
-      {aba === 'base' ? <BaseDoScore /> : null}
-
-      {aba === 'base-de-dados' ? <BaseDeDadosDoScore /> : null}
+      {/* `metodologia`, `base` E `base-de-dados` SAÍRAM DAQUI, para antes das
+          guardas do índice — ver `ABAS_SEM_INDICE`. A `base` é a porta de
+          entrada do dado, e estar atrás da guarda que exige dado fazia dela um
+          impasse de arranque. */}
     </div>
     </ContextoDoPng.Provider>
   );
