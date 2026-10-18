@@ -156,12 +156,47 @@ describe('o botão PNG aparece onde tem gráfico', () => {
     //: Ela tem `return` antes do provider principal, porque não usa o ISR — e
     //: por isso precisa levar o contexto consigo. Sem isso ela cai no padrão
     //: (desligado) e fica sem o botão, com dois gráficos na tela.
+    //:
+    //: A ÂNCORA MUDOU EM 18/10/2026, e o teste caiu por isso — corretamente. O
+    //: `return` era só da aba de risco (`if (aba === 'riscos')`); hoje ele serve
+    //: às QUATRO abas que não usam o índice, porque a aba `base` estava atrás da
+    //: guarda "Nenhum mês com dado" e ficava inalcançável na base vazia. Ver
+    //: `ABAS_SEM_INDICE` e `Score.base-sem-dado.test.tsx`.
     const trecho = FONTE.slice(
-      FONTE.indexOf("if (aba === 'riscos')"),
+      FONTE.indexOf('if (ABAS_SEM_INDICE.includes(aba))'),
       FONTE.indexOf("if (erro && !indice)"),
     );
     expect(trecho).toContain('ContextoDoPng.Provider');
     expect(trecho).toContain('<RastreioDeRisco />');
+    //: E AGORA O TESTE DIZ MAIS: o PNG fica ligado SÓ para a de risco. As outras
+    //: três saem pelo mesmo `return` e são texto, tabela e formulário — ligar o
+    //: botão nelas ofereceria exportar uma tela sem gráfico.
+    expect(trecho).toContain("value={aba === 'riscos'}");
+  });
+
+  it('as quatro abas SEM ÍNDICE saem antes das guardas, e a `base` é uma delas', () => {
+    /** O IMPASSE DE ARRANQUE, prendido na fonte. Relatado em 18/10/2026 num
+     *  ambiente recém-limpo: a aba `base` é a porta de entrada do dado e estava
+     *  atrás de `if (!opcoes.meses.length) return <Vazio "Nenhum mês com dado">`.
+     *  Sem subida não há mês; sem mês, a tela da subida não aparecia.
+     *
+     *  AQUI SE AFIRMA A LISTA; o comportamento está em `Score.base-sem-dado`. Os
+     *  dois juntos é que fecham: a lista sem o comportamento passaria com as
+     *  abas renderizando errado, e o comportamento sem a lista não diria que a
+     *  regra tem nome.
+     */
+    const lista = FONTE.match(/const ABAS_SEM_INDICE = \[([^\]]*)\]/)?.[1] ?? '';
+    const abas = [...lista.matchAll(/'([^']+)'/g)].map((achado) => achado[1]);
+
+    expect(abas).toContain('base');
+    expect(abas).toContain('riscos');
+    expect(abas).toContain('base-de-dados');
+    expect(abas).toContain('metodologia');
+    //: E AS QUE USAM O ÍNDICE FICAM DE FORA: mostrá-las sem mês desenharia um
+    //: radar vazio, que se lê como "a reputação é zero" em vez de "não há dado".
+    expect(abas).not.toContain('geral');
+    expect(abas).not.toContain('lentes');
+    expect(abas).not.toContain('drivers');
   });
 
   it('e o provider principal usa a LISTA, não uma condição solta', () => {
