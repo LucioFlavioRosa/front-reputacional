@@ -628,25 +628,98 @@ export function BaseDoScore() {
             </div>
 
             {ocupado && !conferencia ? (
-              <p
+              <div
                 //: `role="status"` para quem ouve a tela: a contagem muda onze
                 //: vezes, e sem isto a mudança é invisível para leitor de tela.
                 role="status"
-                style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}
+                //: UMA BARRA, E NÃO UMA DICA DE 12px EM CINZA CLARO.
+                //:
+                //: O MESMO DEFEITO VOLTOU NOUTRA FORMA. A subida em partes foi
+                //: feita porque "uma tela parada por minutos se lê como
+                //: travada" — está escrito no teste desta área. Com ela, o
+                //: arquivo de 10,53 MB passou a subir em 11 partes e 19
+                //: segundos, e funcionou; mas o único sinal disso era um
+                //: parágrafo de 12px em `--cinza-2` embaixo do seletor. Quem
+                //: subiu relatou "está demorando" de novo, e disse que o
+                //: mecanismo "não estava mostrando" — ele estava, e ninguém o
+                //: viu. Sinal que não se lê não é sinal.
+                style={{
+                  marginTop: 14,
+                  padding: '12px 14px',
+                  border: '1px solid var(--borda)',
+                  borderRadius: 'var(--r-card-int)',
+                  background: 'var(--branco)',
+                  fontSize: 13,
+                  color: 'var(--cinza-3)',
+                }}
               >
                 {subida ? (
                   <>
-                    Enviando a planilha: parte {subida.enviadas} de {subida.total}.
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                      }}
+                    >
+                      <strong style={{ fontWeight: 600 }}>
+                        Enviando a planilha: parte {subida.enviadas} de {subida.total}.
+                      </strong>
+                      <span
+                        style={{
+                          //: `tabular-nums` para o número não dançar a cada
+                          //: parte — são onze trocas em poucos segundos.
+                          fontVariantNumeric: 'tabular-nums',
+                          color: 'var(--cinza-2)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {Math.round((subida.enviadas / subida.total) * 100)}%
+                      </span>
+                    </div>
+                    <div
+                      //: A BARRA É DECORAÇÃO PARA QUEM OUVE: o texto acima já
+                      //: diz tudo, e `aria-hidden` evita o leitor de tela
+                      //: anunciar a mesma coisa duas vezes.
+                      aria-hidden="true"
+                      style={{
+                        marginTop: 8,
+                        height: 6,
+                        borderRadius: 999,
+                        background: 'var(--cinza-1)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: '100%',
+                          borderRadius: 999,
+                          background: 'var(--azul-mar)',
+                          width: `${Math.round(
+                            Math.min(1, Math.max(0, subida.enviadas / subida.total)) * 100,
+                          )}%`,
+                          transition: 'width 160ms linear',
+                        }}
+                      />
+                    </div>
                     {/* O QUE ELA NÃO PODE FAZER vai escrito: fechar a aba no meio
                         perde a subida, e a pessoa não tem como saber disso. */}
-                    <span style={{ display: 'block', marginTop: 4 }}>
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: 'var(--cinza-2)',
+                      }}
+                    >
                       Arquivo grande sobe em pedaços. Deixe esta aba aberta.
                     </span>
                   </>
                 ) : (
                   'Lendo a planilha…'
                 )}
-              </p>
+              </div>
             ) : null}
 
             {aplicado ? (
