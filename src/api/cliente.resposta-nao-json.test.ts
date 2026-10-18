@@ -18,7 +18,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ErroDaApi, baixarModeloDeSubtemas, limparCacheDaApi, listarAcessos } from './cliente';
+import {
+  ErroDaApi,
+  baixarModeloDeSubtemas,
+  conferirPlanilhaDoScore,
+  limparCacheDaApi,
+  listarAcessos,
+} from './cliente';
 import { registrarErro } from '@/observabilidade/telemetria';
 
 //: SÓ `registrarErro` É DUBLÊ. Trocar o módulo inteiro obrigaria a repetir
@@ -203,5 +209,82 @@ describe('o que já funcionava continua funcionando', () => {
     expect(registrarErro).toHaveBeenCalledTimes(1);
     //: SEM os campos do corpo estranho: este corpo era JSON.
     expect(contextoRegistrado().corpoNaoEraJson).toBeUndefined();
+  });
+});
+
+describe('a subida de arquivo tem causa provável PRÓPRIA', () => {
+  /** POR QUE ISTO É TESTE, com data.
+   *
+   *  Em 18/10/2026, subindo a planilha da Bites no ambiente implantado, a tela
+   *  disse "sessão expirada, tempo esgotado no gateway, ou o serviço fora do
+   *  ar". NENHUMA DAS TRÊS ERA VERDADE: o nginx registrou `400` com zero byte
+   *  de corpo, duas vezes, a API não recebeu requisição nenhuma, e a causa era
+   *  local — o arquivo estava no OneDrive como "disponível quando online" e o
+   *  navegador não conseguiu lê-lo até o fim. A mesma planilha, copiada para
+   *  uma pasta local, subiu de primeira.
+   *
+   *  A mensagem mandou duas pessoas procurar no servidor por uma hora. É o
+   *  mesmo tipo de custo que o episódio de 12/10 cobrou, e que o cabeçalho
+   *  deste arquivo registra.
+   */
+  function arquivo(): File {
+    return new File([new Uint8Array([1, 2, 3])], 'bites.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  }
+
+  async function falhaDaSubida(): Promise<ErroDaApi> {
+    return (await conferirPlanilhaDoScore('bites', arquivo()).catch((e) => e)) as ErroDaApi;
+  }
+
+  it('um 400 com HTML numa SUBIDA fala do ARQUIVO, e não de sessão expirada', async () => {
+    responder(PAGINA_DO_INGRESS, 400, 'text/html');
+
+    const falha = await falhaDaSubida();
+
+    expect(falha.message).toContain('não ter conseguido LER');
+    expect(falha.message).toContain('OneDrive');
+    //: O TRIO QUE LOCALIZA A CAMADA CONTINUA: status, rota e tipo. A causa nova
+    //: entra ANTES dele, não no lugar dele.
+    expect(falha.message).toContain('400');
+    expect(falha.message).toContain('text/html');
+    //: E A INFRAESTRUTURA SEGUE CITADA, como alternativa — só deixou de abrir a
+    //: frase, porque abrir era o que fazia procurar no lugar errado.
+    expect(falha.message).toContain('infraestrutura');
+    expect(falha.message).not.toContain('sessão expirada');
+  });
+
+  it('o MESMO 400 num GET mantém a leitura antiga — ali a infra É a causa', async () => {
+    //: O CONTROLE QUE IMPEDE A TROCA DE UM PALPITE POR OUTRO. Num GET que volta
+    //: HTML não há arquivo nenhum, e dizer "confira seu arquivo" seria errar na
+    //: direção oposta. Foi o episódio de 12/10 que escreveu a frase antiga.
+    responder(PAGINA_DO_INGRESS, 400, 'text/html');
+
+    const falha = await falhaDe();
+
+    expect(falha.message).toContain('sessão expirada');
+    expect(falha.message).not.toContain('OneDrive');
+  });
+
+  it('falha de REDE numa subida não manda conferir o backend', async () => {
+    //: `fetch` que carrega um `File` ilegível falha exatamente como servidor
+    //: fora do ar. Mandar conferir o backend por causa de arquivo que só existe
+    //: na nuvem é a mesma investigação perdida, noutro galho do código.
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
+
+    const falha = await falhaDaSubida();
+
+    expect(falha.message).toContain('interrompida antes de chegar ao servidor');
+    expect(falha.message).toContain('OneDrive');
+    expect(falha.message).not.toContain('backend está no ar');
+  });
+
+  it('falha de REDE num GET continua mandando conferir o backend', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
+
+    const falha = await falhaDe();
+
+    expect(falha.message).toContain('backend está no ar');
+    expect(falha.message).not.toContain('OneDrive');
   });
 });

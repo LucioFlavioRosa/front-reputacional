@@ -69,18 +69,66 @@ function rotuloDoCorpoEstranho(corpo: string): string {
     .slice(0, 80);
 }
 
+/** O CORPO QUE NÃO CHEGOU, dito como tal — e não como "sessão expirada".
+ *
+ *  POR QUE ESTA FRASE EXISTE, com data. Em 18/10/2026, subindo a planilha da
+ *  Bites no ambiente implantado, a tela disse:
+ *
+ *      Falha 403 em /api/score/fontes/bites/conferencia: o servidor respondeu
+ *      text/html em vez de JSON. Isso costuma ser a infraestrutura respondendo
+ *      no lugar da API — sessão expirada, tempo esgotado no gateway, ou o
+ *      serviço fora do ar.
+ *
+ *  NENHUMA DAS TRÊS ERA VERDADE. O log do nginx registrou `400` com ZERO byte
+ *  de corpo, duas vezes, e a API não recebeu requisição nenhuma — nginx responde
+ *  assim quando o CLIENTE aborta o envio no meio. A causa era local: o arquivo
+ *  estava no OneDrive como "disponível quando online" e o navegador não
+ *  conseguiu lê-lo até o fim. A mensagem mandou duas pessoas procurar no
+ *  servidor por uma hora.
+ *
+ *  A MESMA PLANILHA, COPIADA PARA UMA PASTA LOCAL, subiu na primeira tentativa.
+ *  É isso que a frase precisa dizer.
+ *
+ *  SÓ NA SUBIDA, de propósito: num `GET` que volta HTML a leitura antiga está
+ *  certa — ali é mesmo a infraestrutura respondendo no lugar da API, e foi o
+ *  episódio de 12/10 que a escreveu. Dizer "confira seu arquivo" num GET seria
+ *  trocar um palpite errado por outro.
+ */
+function causaProvavelDaSubida(): string {
+  return (
+    `Numa subida de arquivo isto costuma ser o navegador não ter conseguido LER ` +
+    `o arquivo até o fim — e aí a requisição é abortada antes de chegar à API. ` +
+    `Acontece com arquivo que está só na nuvem (OneDrive "disponível quando ` +
+    `online"), em disco que foi removido, ou alterado depois de escolhido: ` +
+    `confira se ele está disponível neste dispositivo, ou copie-o para uma ` +
+    `pasta local e tente de novo.`
+  );
+}
+
 function mensagemDaFalha(
   resposta: Response,
   caminho: string,
   dados: { detalhe?: string; detail?: string } | null,
   eraJson: boolean,
+  eraSubidaDeArquivo: boolean,
 ): string {
   if (dados?.detalhe) return dados.detalhe;
   if (dados?.detail) return dados.detail;
   if (!eraJson) {
     const tipo = resposta.headers.get('content-type') ?? 'tipo não declarado';
+    const inicio = `Falha ${resposta.status} em ${caminho}: o servidor respondeu ${tipo} em vez de JSON. `;
+    //: A CAUSA MAIS PROVÁVEL PRIMEIRO, e a outra como alternativa — a ordem é a
+    //: mensagem. Antes a infraestrutura vinha sozinha, e era a errada.
+    if (eraSubidaDeArquivo) {
+      return (
+        inicio +
+        causaProvavelDaSubida() +
+        ` Se o arquivo estiver local e o erro continuar, então é a infraestrutura ` +
+        `respondendo no lugar da API.`
+      );
+    }
     return (
-      `Falha ${resposta.status} em ${caminho}: o servidor respondeu ${tipo} em vez de JSON. ` +
+      inicio +
       `Isso costuma ser a infraestrutura respondendo no lugar da API — sessão expirada, ` +
       `tempo esgotado no gateway, ou o serviço fora do ar.`
     );
@@ -315,9 +363,17 @@ async function buscarNaRede<T>(
       },
     });
   } catch (falhaDeRede) {
+    //: NUMA SUBIDA, "o backend está no ar?" É A PERGUNTA ERRADA. O `fetch` que
+    //: carrega um `File` ilegível falha aqui do mesmo jeito que um servidor
+    //: fora do ar — e mandar conferir o backend por causa de um arquivo que só
+    //: existe na nuvem é o que fez a investigação de 18/10/2026 durar uma hora.
+    //: Ver `causaProvavelDaSubida`.
     const erro = new ErroDaApi(
       0,
-      'Não foi possível falar com o servidor. Verifique se o backend está no ar.',
+      opcoes.body instanceof FormData
+        ? `Não consegui enviar o arquivo: a requisição foi interrompida antes de ` +
+          `chegar ao servidor. ${causaProvavelDaSubida()}`
+        : 'Não foi possível falar com o servidor. Verifique se o backend está no ar.',
     );
     // Falha de rede nunca chega ao servidor: se não for registrada aqui, não
     // existe em lugar nenhum.
@@ -374,7 +430,10 @@ async function buscarNaRede<T>(
   // não tendo respondido — roteamento, ou tela de login no lugar dela. Seguir
   // com `dados` nulo empurraria o erro para a tela, longe da causa.
   if (!resposta.ok || !eraJson) {
-    const erro = new ErroDaApi(resposta.status, mensagemDaFalha(resposta, caminho, dados, eraJson));
+    const erro = new ErroDaApi(
+      resposta.status,
+      mensagemDaFalha(resposta, caminho, dados, eraJson, opcoes.body instanceof FormData),
+    );
 
     // 5xx é defeito nosso e precisa aparecer. 4xx é o servidor recusando algo
     // esperado (filtro inválido, permissão) — registrar todos viraria ruído,
