@@ -547,6 +547,55 @@ describe('BaseDoScore', () => {
     expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
   });
 
+  it('O PROGRESSO SE LÊ: tem porcentagem, e não só a contagem em cinza claro', async () => {
+    /** O MESMO DEFEITO VOLTOU NOUTRA FORMA, e é por isto que isto é teste.
+     *
+     *  A subida em partes resolveu o transporte: o arquivo de 10,53 MB passou a
+     *  subir em 11 partes e 19 segundos, e o log do servidor prova que
+     *  funcionou. Mas o único sinal na tela era um parágrafo de 12px em
+     *  `--cinza-2` embaixo do seletor — e quem subiu relatou "está demorando"
+     *  outra vez, dizendo que o mecanismo "não estava mostrando". Ele estava.
+     *
+     *  Sinal que não se lê não é sinal. A porcentagem é o que torna a afirmação
+     *  verificável: "parte 3 de 11" sozinho já passava antes de a barra existir.
+     */
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(3, 11);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    //: 3 de 11 = 27%. O número vem da conta, não de um texto fixo.
+    await waitFor(() => expect(screen.getByText('27%')).toBeTruthy());
+    //: E A CONTAGEM CONTINUA NO MESMO `role="status"`: a barra é para os olhos,
+    //: o texto é para quem ouve a tela.
+    expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
+  });
+
+  it('a porcentagem acompanha a parte, e fecha em 100% na última', async () => {
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(11, 11);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    await waitFor(() => expect(screen.getByText('100%')).toBeTruthy());
+  });
+
   it('com UMA parte só, não diz "parte 1 de 1" — isso seria ruído', async () => {
     /** O caminho comum é o arquivo que cabe numa requisição, e ali a contagem
      *  não significa nada. Mostrá-la faria a pessoa procurar significado onde
