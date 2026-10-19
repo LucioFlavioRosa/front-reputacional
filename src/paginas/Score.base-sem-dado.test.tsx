@@ -98,6 +98,24 @@ describe('com ZERO meses na base', () => {
     expect(screen.queryByText('Nenhum mês com dado')).toBeNull();
   });
 
+  it.each(['base', 'base-de-dados', 'riscos', 'metodologia'])(
+    'a aba `%s` mantém o `h1` da página',
+    async (aba) => {
+      /** ACHADO DA REVISÃO DO CODEX. O `h1` oculto "KPIs Reputacionais" mora no
+       *  `return` principal, e sair antes dele deixava estas abas com `h2` como
+       *  título mais alto — uma página sem `h1`, que é defeito de acessibilidade
+       *  e não detalhe. A aba `riscos` já saía antes e já tinha esse buraco: ele
+       *  não era regressão desta mudança, mas as quatro o resolvem agora de uma
+       *  vez, porque saem pelo mesmo `return`.
+       */
+      render(<Score aba={aba} aoTrocarAba={() => {}} />);
+
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { level: 1, name: 'KPIs Reputacionais' })).toBeTruthy(),
+      );
+    },
+  );
+
   it.each(['geral', 'lentes', 'drivers'])(
     'a aba `%s` CONTINUA mostrando o vazio — ela depende do índice',
     async (aba) => {

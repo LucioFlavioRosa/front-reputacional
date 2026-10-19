@@ -94,6 +94,35 @@ function rotuloDoCorpoEstranho(corpo: string): string {
  *  episódio de 12/10 que a escreveu. Dizer "confira seu arquivo" num GET seria
  *  trocar um palpite errado por outro.
  */
+/** O corpo leva ARQUIVO de verdade? — e não "é um `FormData`".
+ *
+ *  ACHADO DA REVISÃO DO CODEX, e procedente. A primeira versão desta mudança
+ *  perguntava `opcoes.body instanceof FormData`, e isso é mais largo que
+ *  "upload": vários pedidos multipart não carregam arquivo nenhum —
+ *
+ *      score.ts:263  a ABERTURA da subida em partes (só `tamanho` e `nome`)
+ *      score.ts:320  o FECHAMENTO dela (só `partes`)
+ *      score.ts:57   a confirmação por `planilha_id`, que NÃO reenvia o arquivo
+ *      crm.ts:786    referência com anexo OPCIONAL (`if (arquivo)`)
+ *      crm.ts:819    idem, na nova versão de uma referência
+ *
+ *  E O PIOR CASO ERA JUSTO O CAMINHO DOS ARQUIVOS GRANDES: a abertura e o
+ *  fechamento da subida em partes passariam a culpar o arquivo da pessoa por
+ *  uma falha de infraestrutura — a inversão exata do defeito que esta mudança
+ *  existe para consertar.
+ *
+ *  `Blob` E NÃO `File`: `File` herda de `Blob`, e a parte de uma subida em
+ *  pedaços é um `Blob` fatiado (`arquivo.slice`), sem nome de arquivo. Procurar
+ *  `File` deixaria de fora exatamente as onze requisições que mais importam.
+ */
+function levaArquivo(corpo: BodyInit | null | undefined): boolean {
+  if (!(corpo instanceof FormData)) return false;
+  for (const valor of corpo.values()) {
+    if (valor instanceof Blob) return true;
+  }
+  return false;
+}
+
 function causaProvavelDaSubida(): string {
   return (
     `Numa subida de arquivo isto costuma ser o navegador não ter conseguido LER ` +
@@ -370,7 +399,7 @@ async function buscarNaRede<T>(
     //: Ver `causaProvavelDaSubida`.
     const erro = new ErroDaApi(
       0,
-      opcoes.body instanceof FormData
+      levaArquivo(opcoes.body)
         ? `Não consegui enviar o arquivo: a requisição foi interrompida antes de ` +
           `chegar ao servidor. ${causaProvavelDaSubida()}`
         : 'Não foi possível falar com o servidor. Verifique se o backend está no ar.',
@@ -432,7 +461,7 @@ async function buscarNaRede<T>(
   if (!resposta.ok || !eraJson) {
     const erro = new ErroDaApi(
       resposta.status,
-      mensagemDaFalha(resposta, caminho, dados, eraJson, opcoes.body instanceof FormData),
+      mensagemDaFalha(resposta, caminho, dados, eraJson, levaArquivo(opcoes.body)),
     );
 
     // 5xx é defeito nosso e precisa aparecer. 4xx é o servidor recusando algo

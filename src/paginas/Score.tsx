@@ -333,6 +333,12 @@ export function Score({
   if (ABAS_SEM_INDICE.includes(aba)) {
     return (
       <ContextoDoPng.Provider value={aba === 'riscos'}>
+        {/* O `h1` DA PÁGINA VEM JUNTO, e isto foi achado da revisão do Codex.
+            Ele mora no `return` principal (`KPIs Reputacionais`, oculto, só para
+            leitor de tela), e sair antes dele deixava estas abas com `h2` como
+            título mais alto — uma página sem `h1`. A aba `riscos` já saía antes
+            e já tinha esse buraco; agora as quatro o resolvem de uma vez. */}
+        <h1 style={SO_PARA_LEITOR_DE_TELA}>KPIs Reputacionais</h1>
         {aba === 'riscos' ? (
           <RastreioDeRisco />
         ) : (
