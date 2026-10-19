@@ -37,6 +37,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import type { FaixaDoEixo } from '@/dominio/eixoDaSerie';
 import { dominioDosBonds, faixaDoIndice } from '@/dominio/eixoDaSerie';
 
 const MARGEM_ESQUERDA = 44;
@@ -73,28 +74,75 @@ export interface PontoMensal {
   valor: number | null;
 }
 
-function emMilissegundos(iso: string): number {
-  //: `T00:00:00Z` EXPLÍCITO: `new Date('2026-01-05')` já é UTC, mas
-  //: `new Date('2026-01-05T00:00:00')` é local — e a diferença de fuso move o
-  //: ponto um dia inteiro no eixo. Fixar o sufixo tira a ambiguidade.
-  return Date.parse(`${iso}T00:00:00Z`);
+const SO_DATA = /^\d{4}-\d{2}-\d{2}/;
+
+/** A data em milissegundos, ou `null` quando a string não é uma data.
+ *
+ *  `T00:00:00Z` EXPLÍCITO: `new Date('2026-01-05')` já é UTC, mas
+ *  `new Date('2026-01-05T00:00:00')` é LOCAL — e a diferença de fuso move o
+ *  ponto um dia inteiro no eixo.
+ *
+ *  POR ISSO RECORTA OS DEZ PRIMEIROS CARACTERES em vez de concatenar, e isto é
+ *  conserto de achado: a versão anterior fazia `iso + 'T00:00:00Z'`, então um
+ *  `2026-01-05T00:00:00` vindo da API virava `…T00:00:00T00:00:00Z` e
+ *  `Date.parse` devolvia `NaN`. Como `inicio` e `fim` saem de `Math.min`/`max`,
+ *  UM ponto ruim contaminava TODAS as coordenadas do eixo, e o gráfico ficava
+ *  vazio sem nenhuma mensagem.
+ *
+ *  DEVOLVE `null` EM VEZ DE `NaN` para que quem chama tenha de decidir o que
+ *  fazer com o ponto inválido — `NaN` se propaga em silêncio por toda
+ *  aritmética, e é assim que ele apagou o eixo. */
+function emMilissegundos(iso: string): number | null {
+  if (!SO_DATA.test(iso)) return null;
+  const ms = Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(ms) ? null : ms;
 }
 
-/** O traçado de uma série datada, quebrado nos vãos grandes. */
-function caminhoDatado(
-  pontos: PontoDatado[],
+/** Os pontos com data válida, já em milissegundos. Os inválidos SAEM.
+ *
+ *  Descartar o ponto é melhor que deixá-lo contaminar o eixo — e melhor que
+ *  levantar, porque um papel com uma data torta não deve apagar os outros trinta.
+ */
+function datados(pontos: PontoDatado[]): { ms: number; valor: number }[] {
+  const bons: { ms: number; valor: number }[] = [];
+  for (const ponto of pontos) {
+    const ms = emMilissegundos(ponto.data);
+    if (ms !== null) bons.push({ ms, valor: ponto.valor });
+  }
+  return bons;
+}
+
+/** Os trechos contínuos de uma série, separados nos vãos grandes.
+ *
+ *  DEVOLVE OS TRECHOS, e não o `d` pronto, porque o desenho precisa saber quais
+ *  deles têm UM PONTO SÓ: um `M x,y` sem segmento não desenha NADA, e a série
+ *  de um pregão único ficava invisível — achado de revisão. O ponto isolado
+ *  recebe um marcador em vez de uma linha de comprimento zero.
+ */
+function trechos(pontos: { ms: number; valor: number }[]): { ms: number; valor: number }[][] {
+  const grupos: { ms: number; valor: number }[][] = [];
+  let atual: { ms: number; valor: number }[] = [];
+  let anterior: number | null = null;
+  for (const ponto of pontos) {
+    if (anterior !== null && ponto.ms - anterior > DIAS_PARA_QUEBRAR * UM_DIA) {
+      grupos.push(atual);
+      atual = [];
+    }
+    atual.push(ponto);
+    anterior = ponto.ms;
+  }
+  if (atual.length) grupos.push(atual);
+  return grupos;
+}
+
+function caminhoDoTrecho(
+  trecho: { ms: number; valor: number }[],
   x: (ms: number) => number,
   y: (valor: number) => number,
 ): string {
-  let d = '';
-  let anterior: number | null = null;
-  for (const ponto of pontos) {
-    const ms = emMilissegundos(ponto.data);
-    const quebra = anterior === null || ms - anterior > DIAS_PARA_QUEBRAR * UM_DIA;
-    d += `${quebra ? 'M' : 'L'} ${x(ms).toFixed(1)},${y(ponto.valor).toFixed(1)} `;
-    anterior = ms;
-  }
-  return d.trim();
+  return trecho
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.ms).toFixed(1)},${y(p.valor).toFixed(1)}`)
+    .join(' ');
 }
 
 /** O mês de calendário seguinte, em milissegundos. */
@@ -122,30 +170,45 @@ function mesSeguinte(iso: string): number {
  *  disto um degrau em vez de traços soltos: ela mostra o salto de um mês para o
  *  outro, que é exatamente a grandeza que o índice mede.
  */
-function caminhoEmDegraus(
+function mesesDoIndice(
   pontos: PontoMensal[],
+): { comeca: number; termina: number; valor: number }[] {
+  const bons: { comeca: number; termina: number; valor: number }[] = [];
+  for (const ponto of pontos) {
+    if (ponto.valor == null) continue;
+    const comeca = emMilissegundos(ponto.mes);
+    if (comeca === null) continue;
+    //: TERMINA NO FIM DO PRÓPRIO MÊS, SEMPRE — inclusive o último.
+    //:
+    //: A versão anterior fazia `Math.max(fimDoEixo, comeca)` no último, e com um
+    //: mês só (sem bonds no gráfico) `fimDoEixo` era igual a `comeca`: o degrau
+    //: saía com comprimento ZERO e não desenhava nada. Achado de revisão, e o
+    //: meu teste da régua direita renderizava exatamente esse caso e passava,
+    //: porque só olhava os rótulos do eixo.
+    //:
+    //: O mês é a unidade de medida do índice, então o degrau tem a largura do
+    //: mês. Quem garante que ele caiba no eixo é o cálculo do `fim`, que inclui
+    //: o fim do último mês.
+    bons.push({ comeca, termina: mesSeguinte(ponto.mes), valor: ponto.valor });
+  }
+  return bons;
+}
+
+function caminhoEmDegraus(
+  meses: { comeca: number; termina: number; valor: number }[],
   x: (ms: number) => number,
   y: (valor: number) => number,
-  fimDoEixo: number,
 ): string {
-  const comValor = pontos.filter(
-    (p): p is PontoMensal & { valor: number } => p.valor != null,
-  );
-  if (comValor.length === 0) return '';
-
   let d = '';
   let fimDoAnterior: number | null = null;
-  comValor.forEach((ponto, i) => {
-    const comeca = emMilissegundos(ponto.mes);
-    const ehOUltimo = i === comValor.length - 1;
-    const termina = ehOUltimo ? Math.max(fimDoEixo, comeca) : mesSeguinte(ponto.mes);
-    const altura = y(ponto.valor).toFixed(1);
+  for (const mes of meses) {
+    const altura = y(mes.valor).toFixed(1);
     //: EMENDA SÓ QUANDO O MÊS ANTERIOR TERMINA ONDE ESTE COMEÇA. Qualquer
     //: buraco de calendário quebra o traçado, e o vão é a informação.
-    d += `${fimDoAnterior === comeca ? 'L' : 'M'} ${x(comeca).toFixed(1)},${altura} `;
-    d += `L ${x(termina).toFixed(1)},${altura} `;
-    fimDoAnterior = termina;
-  });
+    d += `${fimDoAnterior === mes.comeca ? 'L' : 'M'} ${x(mes.comeca).toFixed(1)},${altura} `;
+    d += `L ${x(mes.termina).toFixed(1)},${altura} `;
+    fimDoAnterior = mes.termina;
+  }
   return d.trim();
 }
 
@@ -158,6 +221,7 @@ export function GraficoDeDoisEixos({
   bonds,
   indice,
   rotuloDaEsquerda,
+  faixaFixa,
   altura = 320,
   vazio = 'Sem cotação no período.',
 }: {
@@ -165,6 +229,13 @@ export function GraficoDeDoisEixos({
   indice: PontoMensal[];
   /** "Preço (% do par)" ou "Yield (%)" — o que o eixo esquerdo mede. */
   rotuloDaEsquerda: string;
+  /** A FAIXA FIXA DA MÉTRICA (`FAIXA_FIXA_DO_PRECO` / `FAIXA_FIXA_DO_YIELD`).
+   *
+   *  Ela é o que faz o eixo ESQUERDO não se reformar quando o período muda —
+   *  sem isto, só o eixo direito estava estável, e a coincidência visual entre
+   *  as duas curvas continuava sendo artefato do recorte. Omiti-la volta à
+   *  régua puramente automática. */
+  faixaFixa?: FaixaDoEixo;
   altura?: number;
   vazio?: string;
 }) {
@@ -184,19 +255,30 @@ export function GraficoDeDoisEixos({
     return () => observador.disconnect();
   }, []);
 
-  const comPontos = bonds.filter((s) => s.pontos.length > 0);
-  const todosOsValores = comPontos.flatMap((s) => s.pontos.map((p) => p.valor));
-  const faixaEsquerda = dominioDosBonds(todosOsValores);
+  //: CADA SÉRIE VIRA SEUS TRECHOS, uma vez: o desenho precisa deles e a conta
+  //: do eixo também, e refazê-los duas vezes deixaria as duas discordarem no
+  //: dia em que a regra de quebra mudasse.
+  const series = bonds
+    .map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }))
+    .filter((s) => s.trechos.length > 0);
+  const todosOsValores = series.flatMap((s) =>
+    s.trechos.flatMap((t) => t.map((p) => p.valor)),
+  );
+  const faixaEsquerda = dominioDosBonds(todosOsValores, faixaFixa);
   const faixaDireita = faixaDoIndice();
 
-  const datas = comPontos.flatMap((s) => s.pontos.map((p) => emMilissegundos(p.data)));
-  const dosMeses = indice
-    .filter((p) => p.valor != null)
-    .map((p) => emMilissegundos(p.mes));
-  //: O EIXO X COBRE AS DUAS SÉRIES. Recortá-lo só pelos bonds deixaria o degrau
-  //: de um mês sem cotação fora da tela — e é justamente o mês em que o papel
-  //: não negociou que a pessoa quer ver ao lado do índice.
-  const todasAsDatas = [...datas, ...dosMeses];
+  const meses = mesesDoIndice(indice);
+
+  const datas = series.flatMap((s) => s.trechos.flatMap((t) => t.map((p) => p.ms)));
+  //: O EIXO X COBRE AS DUAS SÉRIES, E O FIM DO ÚLTIMO DEGRAU. Recortá-lo só
+  //: pelos bonds deixaria o degrau de um mês sem cotação fora da tela — e é
+  //: justamente o mês em que o papel não negociou que a pessoa quer ver ao lado
+  //: do índice. Incluir o `termina` é o que dá largura ao degrau de um mês só.
+  const todasAsDatas = [
+    ...datas,
+    ...meses.map((m) => m.comeca),
+    ...meses.map((m) => m.termina),
+  ];
   const inicio = todasAsDatas.length ? Math.min(...todasAsDatas) : 0;
   const fim = todasAsDatas.length ? Math.max(...todasAsDatas) : 1;
   const intervalo = Math.max(1, fim - inicio);
@@ -215,7 +297,7 @@ export function GraficoDeDoisEixos({
     alturaDoPlot *
       (1 - (valor - faixaDireita.minimo) / (faixaDireita.maximo - faixaDireita.minimo));
 
-  if (comPontos.length === 0 && dosMeses.length === 0) {
+  if (series.length === 0 && meses.length === 0) {
     return (
       <div ref={container}>
         <p style={{ color: 'var(--cinza-2)', fontSize: 13, margin: 0 }}>{vazio}</p>
@@ -223,17 +305,34 @@ export function GraficoDeDoisEixos({
     );
   }
 
-  const meses = indice.filter((p) => p.valor != null).map((p) => p.mes);
+  /** O que um leitor de tela ouve.
+   *
+   *  OS VALORES ENTRAM, como `GraficoDeLinha` faz — era divergência minha dar
+   *  só uma frase genérica ("preço dos bonds e índice reputacional"), que não
+   *  diz quais papéis, nem quanto, nem quando. Para uma série longa vão as
+   *  pontas: ler 1.100 pregões em voz alta não é acesso, é ruído.
+   */
+  const descricao = [
+    `${rotuloDaEsquerda} e índice reputacional de 0 a 100.`,
+    ...series.map((s) => {
+      const pontos = s.trechos.flat();
+      const primeiro = pontos[0];
+      const ultimo = pontos[pontos.length - 1];
+      const comoData = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+      return pontos.length === 1
+        ? `${s.rotulo}: ${primeiro.valor} em ${comoData(primeiro.ms)}.`
+        : `${s.rotulo}: de ${primeiro.valor} em ${comoData(primeiro.ms)} a ` +
+          `${ultimo.valor} em ${comoData(ultimo.ms)}, ${pontos.length} pregões.`;
+    }),
+    meses.length
+      ? `Índice: ${meses.map((m) => m.valor).join(', ')} nos ${meses.length} meses do período.`
+      : 'Índice sem valor no período.',
+  ].join(' ');
 
   return (
     <div ref={container} style={{ width: '100%' }}>
       {largura > 0 ? (
-        <svg
-          width={largura}
-          height={altura}
-          role="img"
-          aria-label={`${rotuloDaEsquerda} dos bonds e índice reputacional, no período`}
-        >
+        <svg width={largura} height={altura} role="img" aria-label={descricao}>
           {/* a régua da esquerda: três marcas, que é o que cabe sem poluir */}
           {[0, 0.5, 1].map((fracao) => {
             const valor =
@@ -278,24 +377,43 @@ export function GraficoDeDoisEixos({
           ))}
 
           {/* o índice, em degraus e tracejado */}
-          <path
-            d={caminhoEmDegraus(indice, x, yDireita, fim)}
-            fill="none"
-            stroke="var(--ok-fg)"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-          />
-
-          {/* os bonds, em linha reta entre pregões */}
-          {comPontos.map((serie) => (
+          {meses.length ? (
             <path
-              key={serie.chave}
-              d={caminhoDatado(serie.pontos, x, yEsquerda)}
+              d={caminhoEmDegraus(meses, x, yDireita)}
               fill="none"
-              stroke={serie.cor}
+              stroke="var(--ok-fg)"
               strokeWidth={2}
-              strokeLinejoin="round"
+              strokeDasharray="6 4"
             />
+          ) : null}
+
+          {/* os bonds: um traçado por trecho contínuo, e um MARCADOR para o
+              trecho de um ponto só — `M x,y` sem segmento não desenha nada, e a
+              série de um pregão único ficava invisível. */}
+          {series.map((serie) => (
+            <g key={serie.chave}>
+              <title>{serie.rotulo}</title>
+              {serie.trechos.map((trecho, i) =>
+                trecho.length === 1 ? (
+                  <circle
+                    key={i}
+                    cx={x(trecho[0].ms)}
+                    cy={yEsquerda(trecho[0].valor)}
+                    r={3}
+                    fill={serie.cor}
+                  />
+                ) : (
+                  <path
+                    key={i}
+                    d={caminhoDoTrecho(trecho, x, yEsquerda)}
+                    fill="none"
+                    stroke={serie.cor}
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                  />
+                ),
+              )}
+            </g>
           ))}
 
           {/* o eixo x: um rótulo por mês, no máximo seis */}
@@ -303,14 +421,14 @@ export function GraficoDeDoisEixos({
             .filter((_, i) => i % Math.ceil(Math.max(1, meses.length) / 6) === 0)
             .map((mes) => (
               <text
-                key={mes}
-                x={x(emMilissegundos(mes))}
+                key={mes.comeca}
+                x={x(mes.comeca)}
                 y={altura - 6}
                 textAnchor="middle"
                 fontSize={11}
                 fill="var(--cinza-2)"
               >
-                {mesLegivel(mes)}
+                {mesLegivel(new Date(mes.comeca).toISOString().slice(0, 10))}
               </text>
             ))}
         </svg>
