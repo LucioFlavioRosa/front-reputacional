@@ -397,23 +397,43 @@ export function InteligenciaDeMercado() {
         </div>
       ) : null}
 
-      {/* O GRÁFICO FICA ESMAECIDO ENQUANTO BUSCA, e com `aria-busy`: a curva
-          antiga continua visível (sumir com ela a cada clique faria a tela
-          piscar), mas deixa de se apresentar como a resposta da pergunta nova.
-          `aria-busy` é o que diz o mesmo a quem usa leitor de tela. */}
-      <div aria-busy={buscando} style={{ opacity: buscando ? 0.5 : 1 }}>
+      {/* "ESTOU TRABALHANDO", E NÃO "ESTOU DESLIGADO". Era `opacity: 0.5`, e meia
+          opacidade é o idioma de controle desabilitado: numa tela que já se
+          suspeitava travada, o apagamento confirmava a suspeita errada — achado
+          da passada de UX.
+
+          Quem dá o recado agora é o selo sobre o gráfico. A curva antiga fica
+          legível de propósito: ela é o melhor dado disponível até a resposta
+          nova chegar, e o selo é o que a impede de se apresentar como a resposta
+          da pergunta nova. `aria-busy` diz o mesmo a quem usa leitor de tela. */}
+      <div aria-busy={buscando} style={{ position: 'relative', opacity: buscando ? 0.92 : 1 }}>
         <GraficoDeDoisEixos
           bonds={series}
           indice={indice}
           rotuloDaEsquerda={naMetrica.eixo}
           faixaFixa={naMetrica.codigo === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
         />
+        {buscando ? (
+          <p
+            role="status"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              margin: 0,
+              padding: '3px 10px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--azul-mar)',
+              background: 'var(--branco)',
+              border: '1px solid var(--borda)',
+              borderRadius: 999,
+            }}
+          >
+            Atualizando…
+          </p>
+        ) : null}
       </div>
-      {buscando ? (
-        <p role="status" style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
-          Atualizando…
-        </p>
-      ) : null}
 
       {/* O PAPEL ESCOLHIDO QUE NÃO TEM CURVA DIZ POR QUÊ. Sem esta linha, ligar
           um papel sem cotação no período é indistinguível de a tela ter parado
@@ -424,7 +444,17 @@ export function InteligenciaDeMercado() {
         <p
           data-testid="sem-cotacao"
           role="status"
-          style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '8px 0 0' }}
+          //: 13px E NÃO 12: a 12 ela ficava do tamanho das legendas dos eixos e
+          //: se lia como ornamento do gráfico. É a frase que explica por que uma
+          //: curva pedida não apareceu — achado da passada de UX.
+          style={{
+            fontSize: 13,
+            color: 'var(--atencao-fg)',
+            background: 'var(--atencao-bg)',
+            borderRadius: 'var(--r-card-int)',
+            padding: '8px 12px',
+            margin: '10px 0 0',
+          }}
         >
           {mudos.length === 1
             ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva dele no gráfico.`
@@ -438,6 +468,27 @@ export function InteligenciaDeMercado() {
           decisões diferentes: ver o próprio papel é o padrão, comparar com par
           é uma escolha. */}
       <div style={{ marginTop: 16 }}>
+        {/* O CONTADOR, E O LIMITE JUNTO COM ELE. Duas coisas da passada de UX
+            viviam mal aqui: não havia como saber quantas séries estão no gráfico
+            sem contar os chips acesos, e o limite de oito só aparecia DEPOIS das
+            duas listas, em 12px, como recusa no nono clique.
+
+            UMA LINHA RESOLVE AS DUAS, e ela fica ACIMA dos chips — onde a pessoa
+            olha antes de clicar, e não depois. O limite deixa de ser surpresa:
+            está escrito "6 de 8" muito antes de alguém chegar ao oitavo. */}
+        <p
+          data-testid="contador-de-series"
+          style={{
+            fontSize: 13,
+            color: semCorLivre ? 'var(--atencao-fg)' : 'var(--cinza-3)',
+            margin: '0 0 8px',
+            fontWeight: semCorLivre ? 500 : 400,
+          }}
+        >
+          {Object.keys(emVigor).length} de {CORES.length} séries no gráfico
+          {semCorLivre ? ' — desligue uma para ligar outra' : null}
+        </p>
+
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 4px' }}>Aegea</p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {daAegea.map((papel) => (
@@ -468,14 +519,6 @@ export function InteligenciaDeMercado() {
           ))}
         </div>
 
-        {/* O LIMITE DITO EM VOZ ALTA. Sem esta linha, clicar num chip e nada
-            acontecer é indistinguível de um botão quebrado. */}
-        {semCorLivre ? (
-          <p style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '12px 0 0' }}>
-            {CORES.length} séries é o máximo que o gráfico distingue por cor.
-            Desligue uma para ligar outra.
-          </p>
-        ) : null}
       </div>
     </section>
   );
