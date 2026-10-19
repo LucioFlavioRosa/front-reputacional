@@ -19,12 +19,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ImpactoNaJanela, SerieDeMercado } from '@/api/cliente';
 
-const { obterSerieDeMercado, obterImpactoPorN2 } = vi.hoisted(() => ({
+const { obterSerieDeMercado, obterImpactoNaJanela } = vi.hoisted(() => ({
   obterSerieDeMercado: vi.fn(),
-  obterImpactoPorN2: vi.fn(),
+  obterImpactoNaJanela: vi.fn(),
 }));
 
-vi.mock('@/api/cliente', () => ({ obterSerieDeMercado, obterImpactoPorN2 }));
+vi.mock('@/api/cliente', () => ({ obterSerieDeMercado, obterImpactoNaJanela }));
 
 //: O GRÁFICO VIRA MARCADOR: ele tem os próprios 15 testes, e montá-lo aqui
 //: traria o `ResizeObserver` e a aritmética do SVG para dentro de um teste que
@@ -57,16 +57,17 @@ function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
     mes: '2026-05-01',
     regua: 'contagem',
     positivos: [
-      { id: 11, n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 },
-      { id: 12, n2: 'Obras e investimentos', n1: 'Crescimento', impacto: 0.8, mencoes: 6 },
+      { id: 11, rotulo: 'Contratos e regulação', contexto: 'Governança', impacto: 1.5, mencoes: 10 },
+      { id: 12, rotulo: 'Obras e investimentos', contexto: 'Crescimento', impacto: 0.8, mencoes: 6 },
     ],
     negativos: [
-      { id: 21, n2: 'Abastecimento de água', n1: 'Eficiência operacional', impacto: -2.3, mencoes: 14 },
-      { id: 22, n2: 'Tarifa', n1: 'Eficiência operacional', impacto: -0.9, mencoes: 5 },
+      { id: 21, rotulo: 'Abastecimento de água', contexto: 'Eficiência operacional', impacto: -2.3, mencoes: 14 },
+      { id: 22, rotulo: 'Tarifa', contexto: 'Eficiência operacional', impacto: -0.9, mencoes: 5 },
     ],
     total_positivos: 2,
     total_negativos: 2,
-    sem_n2: 0,
+    sem_grupo: 0,
+    nivel: 'n2',
     sem_data: 0,
     mes_sem_base: false,
     lente: 'imprensa',
@@ -122,7 +123,7 @@ function resposta(parcial: Partial<SerieDeMercado> = {}): SerieDeMercado {
 }
 
 beforeEach(() => {
-  obterImpactoPorN2.mockImplementation(() => Promise.resolve(impacto()));
+  obterImpactoNaJanela.mockImplementation(() => Promise.resolve(impacto()));
   //: O DUBLÊ ECOA A MÉTRICA PEDIDA, como o servidor faz.
   //:
   //: Antes ele devolvia `metrica: 'preco'` SEMPRE, e isso fazia o teste do
@@ -691,7 +692,7 @@ describe('os temas da janela, ao clicar numa data', () => {
 
     expect(screen.queryByTestId('quadro-positivos')).toBeNull();
     expect(screen.queryByTestId('quadro-negativos')).toBeNull();
-    expect(obterImpactoPorN2).not.toHaveBeenCalled();
+    expect(obterImpactoNaJanela).not.toHaveBeenCalled();
     expect(screen.getByText(/clique numa data/i)).toBeTruthy();
   });
 
@@ -701,7 +702,7 @@ describe('os temas da janela, ao clicar numa data', () => {
 
     escolherData('2026-05-20');
 
-    await waitFor(() => expect(obterImpactoPorN2).toHaveBeenCalledWith('2026-05-20', 15));
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n2', 15));
     await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
 
     const positivos = screen.getByTestId('quadro-positivos');
@@ -731,10 +732,10 @@ describe('os temas da janela, ao clicar numa data', () => {
   });
 
   it('o quadro com MENOS de cinco diz o tamanho real', async () => {
-    obterImpactoPorN2.mockImplementation(() =>
+    obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(
         impacto({
-          positivos: [{ id: 11, n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 }],
+          positivos: [{ id: 11, rotulo: 'Contratos e regulação', contexto: 'Governança', impacto: 1.5, mencoes: 10 }],
           total_positivos: 1,
         }),
       ),
@@ -749,7 +750,7 @@ describe('os temas da janela, ao clicar numa data', () => {
   });
 
   it('o quadro VAZIO diz que não houve, em vez de ficar em branco', async () => {
-    obterImpactoPorN2.mockImplementation(() =>
+    obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(impacto({ negativos: [], total_negativos: 0 })),
     );
     render(<InteligenciaDeMercado />);
@@ -758,13 +759,13 @@ describe('os temas da janela, ao clicar numa data', () => {
     escolherData('2026-05-20');
 
     await waitFor(() => expect(screen.getByTestId('quadro-negativos')).toBeTruthy());
-    expect(screen.getByTestId('quadro-negativos').textContent).toMatch(/nenhum tema/i);
+    expect(screen.getByTestId('quadro-negativos').textContent).toMatch(/nada empurrou/i);
   });
 
   it('o MÊS SEM BASE diz outra coisa que não "nada impactou"', async () => {
     /** "Não há como medir" e "nada impactou" são diferentes, e os dois quadros
      *  vazios parecem iguais. */
-    obterImpactoPorN2.mockImplementation(() =>
+    obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(
         impacto({ positivos: [], negativos: [], total_positivos: 0, total_negativos: 0, mes_sem_base: true }),
       ),
@@ -781,8 +782,8 @@ describe('os temas da janela, ao clicar numa data', () => {
   it('o que ficou de FORA da conta é dito', async () => {
     /** Menção sem N1 e menção sem data: as duas existem, pesam no índice e não
      *  aparecem nos quadros. Engoli-las faria os quadros parecerem o todo. */
-    obterImpactoPorN2.mockImplementation(() =>
-      Promise.resolve(impacto({ sem_n2: 7, sem_data: 12 })),
+    obterImpactoNaJanela.mockImplementation(() =>
+      Promise.resolve(impacto({ sem_grupo: 7, sem_data: 12 })),
     );
     render(<InteligenciaDeMercado />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
@@ -810,7 +811,7 @@ describe('os temas da janela, ao clicar numa data', () => {
   it('a falha da janela NÃO engole o gráfico', async () => {
     /** A mesma lição do beco sem saída de hoje: a janela é um pedaço da tela, e
      *  a falha dela não pode levar o resto. */
-    obterImpactoPorN2.mockImplementation(() =>
+    obterImpactoNaJanela.mockImplementation(() =>
       Promise.reject(new Error('Não foi possível ler a janela.')),
     );
     render(<InteligenciaDeMercado />);
@@ -840,7 +841,7 @@ describe('os temas da janela, ao clicar numa data', () => {
     );
 
     //: a segunda resposta NUNCA chega: é a janela que o defeito ocupava
-    obterImpactoPorN2.mockImplementation(() => new Promise(() => {}));
+    obterImpactoNaJanela.mockImplementation(() => new Promise(() => {}));
     escolherData('2026-04-10');
 
     //: OS QUADROS ANTIGOS SAEM, e a tela diz que está lendo a data nova.
@@ -866,6 +867,71 @@ describe('os temas da janela, ao clicar numa data', () => {
     const regua = screen.getByTestId('regua-da-janela');
     expect(regua.textContent).toContain('05/2026');
     expect(regua.textContent?.toLowerCase()).toContain('contagem');
+  });
+
+  it('a CHAVE troca o nível e busca de novo o MESMO dia', async () => {
+    /** O PEDIDO: "você sugere que que haja uma chave para mostrar o n1 ou n2
+     *  para aquele recorte de data?" — sim, e por medição: o pilar cobre ~98%
+     *  da Clipei e agrupa grosso; o tema tem sete vezes mais grupos e alcança o
+     *  quarto que está classificado (a migration 0098 mede 72.590 menções com
+     *  pilar e sem tema). Nenhum dos dois responde sozinho.
+     *
+     *  ABRE NO TEMA, que é o que ele pediu primeiro. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n2', 15));
+
+    screen.getByRole('button', { name: 'Pilar' }).click();
+
+    //: O MESMO DIA, O NÍVEL NOVO.
+    await waitFor(() =>
+      expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n1', 15),
+    );
+  });
+
+  it('a palavra do "fora da conta" segue a RESPOSTA, não o botão', async () => {
+    /** Enquanto a busca nova não chega, o botão já mudou e os números são os do
+     *  nível anterior: dizer "sem pilar" sobre uma contagem de temas seria o
+     *  mesmo defeito do eixo que mentia sobre a métrica. */
+    obterImpactoNaJanela.mockImplementation(() =>
+      Promise.resolve(impacto({ sem_grupo: 9, nivel: 'n1' })),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    escolherData('2026-05-20');
+
+    await waitFor(() => expect(screen.getByTestId('fora-da-conta')).toBeTruthy());
+    const fora = screen.getByTestId('fora-da-conta');
+    expect(fora.textContent).toContain('sem pilar atribuído');
+    expect(fora.textContent).not.toContain('tema estratégico');
+  });
+
+  it('no PILAR a linha não mostra contexto, porque ele é o topo', async () => {
+    obterImpactoNaJanela.mockImplementation(() =>
+      Promise.resolve(
+        impacto({
+          nivel: 'n1',
+          positivos: [{ id: 3, rotulo: 'Governança', contexto: null, impacto: 1.2, mencoes: 8 }],
+          total_positivos: 1,
+        }),
+      ),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    escolherData('2026-05-20');
+
+    await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+    const linha = screen.getByTestId('quadro-positivos').querySelector('li');
+    //: NA LINHA, E NÃO NO QUADRO: o `·` também aparece no contador ("1 de 1") e
+    //: na contagem de menções ("pt · 8") — olhar o quadro inteiro faria a
+    //: asserção falhar por texto que não é o contexto. Foi o que aconteceu.
+    //:
+    //: O RÓTULO COLADO NO SINAL é o que prova a ausência: no tema a linha lê
+    //: "Tarifa · Eficiência operacional−0,9 pt", e no pilar "Governança+1,2 pt".
+    expect(linha?.textContent).toBe('Governança+1,2 pt · 8');
   });
 
   it('a data escolhida chega ao GRÁFICO, para ele marcá-la', async () => {
