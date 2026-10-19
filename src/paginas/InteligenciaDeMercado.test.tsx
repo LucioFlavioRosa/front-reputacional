@@ -326,13 +326,32 @@ describe('a cor das séries', () => {
       screen.getByRole('button', { name: new RegExp(`PAR${i}\\b`) }).click();
     }
 
-    await waitFor(() =>
-      expect(screen.getByText(/máximo que o gráfico distingue por cor/)).toBeTruthy(),
-    );
+    //: O LIMITE É DITO NO CONTADOR, E AO LADO DOS CHIPS. Era uma frase solta
+    //: DEPOIS das duas listas, em 12px: longe de onde a pessoa clica e fácil de
+    //: não ver — achado da passada de UX. Agora a mesma informação vive no
+    //: contador que fica ACIMA dos chips e está sempre na tela, então o limite
+    //: deixa de ser surpresa no nono clique.
+    await waitFor(() => expect(screen.getByTestId('contador-de-series')).toBeTruthy());
+    const contador = screen.getByTestId('contador-de-series');
+    expect(contador.textContent).toContain('8 de 8');
+    expect(contador.textContent).toContain('desligue uma para ligar outra');
     //: e o nono chip fica DESABILITADO, dizendo o que fazer
     const nono = screen.getByRole('button', { name: /PAR5\b/ });
     expect(nono.hasAttribute('disabled')).toBe(true);
     expect(nono.getAttribute('title')).toContain('Desligue uma série');
+  });
+
+  it('o contador diz quantas séries estão no gráfico ANTES de o limite chegar', async () => {
+    /** "nenhum contador do tipo '3 papéis selecionados'" — achado da passada de
+     *  UX. Sem ele, quantas séries estão ligadas só se descobre contando os
+     *  chips acesos, e o limite de oito aparece como recusa no clique. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    const contador = screen.getByTestId('contador-de-series');
+    expect(contador.textContent).toContain('3 de 8');
+    //: SEM O PEDIDO DE DESLIGAR, que só faz sentido quando acabaram as cores.
+    expect(contador.textContent).not.toContain('desligue uma');
   });
 });
 
@@ -372,6 +391,26 @@ describe('enquanto a resposta nova não chega', () => {
         'true',
       ),
     );
+  });
+
+  it('o gráfico NÃO fica com cara de desabilitado enquanto busca', async () => {
+    /** `opacity: 0.5` foi achado da passada de UX: meia opacidade é o idioma de
+     *  "este controle está desligado", e numa tela que a pessoa já suspeitava de
+     *  travada isso confirmava a suspeita errada. O recado é "estou trabalhando",
+     *  e quem o dá é o selo "Atualizando…" sobre o gráfico — não o apagamento.
+     *
+     *  A CURVA ANTIGA CONTINUA LEGÍVEL, que é o ponto: ela é o melhor dado
+     *  disponível até a resposta nova chegar, e some só se estiver errada. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: '1M' }).click();
+
+    await waitFor(() => expect(screen.getByText('Atualizando…')).toBeTruthy());
+    const moldura = screen.getByText('GRAFICO').closest('[aria-busy]') as HTMLElement;
+    const opacidade = Number(moldura.style.opacity || '1');
+    expect(opacidade).toBeGreaterThanOrEqual(0.85);
   });
 
   it('o gráfico fica com `aria-busy`, para o leitor de tela saber', async () => {
