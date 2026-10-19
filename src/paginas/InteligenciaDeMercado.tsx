@@ -26,7 +26,7 @@ import { obterSerieDeMercado } from '@/api/cliente';
 import type { MetricaDoBond, SerieDeMercado } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
-import { GraficoDeDoisEixos } from '@/graficos/GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, temCurva } from '@/graficos/GraficoDeDoisEixos';
 import { mercadoMudou } from '@/dominio/sincronizacao';
 import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
 
@@ -83,6 +83,14 @@ const PERIODOS = [
   { codigo: '6M', rotulo: '6 meses', dias: 180 },
   { codigo: 'tudo', rotulo: 'Tudo', dias: null },
 ] as const;
+
+/** Quanto a tela espera antes de desistir de uma busca, em milissegundos.
+ *
+ *  VINTE SEGUNDOS porque esta leitura é curta: o servidor responde em 60–95ms
+ *  no ambiente, então vinte segundos sem resposta não é lentidão, é algo
+ *  perdido no caminho. Exportado para o teste não precisar esperar de verdade.
+ */
+export const TETO_DA_BUSCA = 20_000;
 
 const METRICAS: { codigo: MetricaDoBond; rotulo: string; eixo: string }[] = [
   { codigo: 'preco', rotulo: 'Preço', eixo: 'Preço (% do par)' },
@@ -145,6 +153,24 @@ export function InteligenciaDeMercado() {
     let ativo = true;
     definirErro(null);
     definirBuscando(true);
+    //: O TETO DA ESPERA. A guarda `ativo` descarta resposta velha, mas nada
+    //: protegia contra uma promessa que NUNCA resolve nem rejeita: `buscando`
+    //: ficava `true` eternamente, o gráfico em `opacity: 0.5` e o "Atualizando…"
+    //: não saía — que é exatamente o que ele descreveu como travar, com o F5
+    //: como única saída. Achado de revisão.
+    //:
+    //: AQUI, E NÃO NO `requisitar`: pôr um teto no transporte mudaria o
+    //: comportamento de toda a plataforma, inclusive das subidas de planilha,
+    //: que demoram de propósito. Esta tela faz leitura curta — o servidor
+    //: responde em 60-95ms no ambiente — então vinte segundos sem resposta é
+    //: sinal de que algo se perdeu no caminho, não de lentidão.
+    const relogio = setTimeout(() => {
+      if (!ativo) return;
+      definirErro(
+        'A busca demorou demais e foi interrompida. O servidor pode estar fora do ar.',
+      );
+      definirBuscando(false);
+    }, TETO_DA_BUSCA);
     obterSerieDeMercado({
       tickers: pedidos ? pedidos.split(',') : undefined,
       de: dias === null ? undefined : diasAtras(dias),
@@ -152,16 +178,22 @@ export function InteligenciaDeMercado() {
     })
       .then((lida) => {
         if (!ativo) return;
+        clearTimeout(relogio);
         definirDados(lida);
         definirBuscando(false);
       })
       .catch((falha: unknown) => {
         if (!ativo) return;
+        clearTimeout(relogio);
         definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
         definirBuscando(false);
       });
     return () => {
       ativo = false;
+      //: O RELÓGIO MORRE COM O EFEITO, senão um teto de uma busca já superada
+      //: dispararia sobre a busca nova e diria "demorou demais" sobre uma
+      //: pergunta que acabou de sair.
+      clearTimeout(relogio);
     };
     //: pedidos É STRING, e não o array: um array novo a cada renderização
     //: faria este efeito rodar em todas elas, e a tela buscaria sem parar.
@@ -223,8 +255,32 @@ export function InteligenciaDeMercado() {
     [dados],
   );
 
-  if (erro) return <FaixaDeErro mensagem={erro} />;
-  if (!dados) return <Carregando />;
+  /** Repete a busca. É o contador do barramento que serve: ele já está nas
+   *  dependências do efeito, e uma segunda via faria duas portas para a mesma
+   *  coisa. */
+  const tentarDeNovo = () => definirVersao((v) => v + 1);
+
+  //: A FALHA NÃO ENGOLE A TELA. Isto era `if (erro) return <FaixaDeErro/>`, e
+  //: trocava a tela INTEIRA pela faixa: período, métrica e os chips sumiam
+  //: junto. Quem pegasse uma falha de rede num clique não tinha mais nada para
+  //: clicar, e a única saída era o F5 — a faixa dizia o que aconteceu e tirava
+  //: da pessoa a capacidade de reagir.
+  //:
+  //: SEM CATÁLOGO NÃO HÁ CONTROLE PARA MANTER, e aí a faixa é a tela toda
+  //: mesmo: é a primeira busca que falhou, não existe seletor nem gráfico
+  //: anteriores. O que faltava era a saída, e é o botão.
+  if (!dados) {
+    return erro ? (
+      <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
+        <FaixaDeErro mensagem={erro} />
+        <button type="button" onClick={tentarDeNovo} style={{ ...botao(false), marginTop: 12 }}>
+          Tentar de novo
+        </button>
+      </section>
+    ) : (
+      <Carregando />
+    );
+  }
 
   const daAegea = dados.papeis.filter((p) => p.e_aegea);
   const pares = dados.papeis.filter((p) => !p.e_aegea);
@@ -259,6 +315,27 @@ export function InteligenciaDeMercado() {
   };
 
   const semCorLivre = slotLivre(emVigor) === null;
+
+  /** Os papéis LIGADOS que voltaram sem cotação nenhuma no período.
+   *
+   *  O CLIQUE SEM EFEITO VISÍVEL ERA O PIOR DEFEITO DESTA TELA, e foi relatado
+   *  como travamento: "a tela trava quando eu mudo alguma fonte de dados ou
+   *  métrica, daí preciso dar F5". O servidor respondia 200 em 60ms, e a tela
+   *  engolia a resposta — o chip acendia com cor e curva nenhuma aparecia.
+   *
+   *  O BACK DEVOLVE A SÉRIE VAZIA DE PROPÓSITO (semeia `por_ticker` com cada
+   *  ticker pedido), e o gráfico descarta quem não tem ponto. Nenhum dos dois
+   *  está errado; faltava alguém DIZER.
+   *
+   *  ACONTECE DE DOIS JEITOS: o papel que não negociou na janela escolhida — ou
+   *  foi emitido depois dela —, e o papel que tem preço e não tem yield, que
+   *  desaparece só ao trocar a métrica. */
+  //: `temCurva`, E NÃO `pontos.length`: a regra é a do gráfico, e as duas
+  //: divergiam numa série com pontos de DATA TORTA — ela não desenhava curva e
+  //: não entrava no aviso, que é o estado silencioso que este aviso existe para
+  //: acabar. Achado de revisão, dentro desta própria correção.
+  const comPonto = new Set(dados.bonds.filter((s) => temCurva(s.pontos)).map((s) => s.ticker));
+  const mudos = Object.keys(emVigor).filter((t) => !comPonto.has(t));
 
   return (
     <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
@@ -306,6 +383,20 @@ export function InteligenciaDeMercado() {
         </fieldset>
       </div>
 
+      {/* A FALHA FICA AO LADO DO QUE CONTINUA FUNCIONANDO, e não no lugar dele:
+          a curva anterior segue na tela (apagá-la perderia o que a pessoa
+          estava lendo por causa de uma falha que pode durar um segundo), os
+          controles seguem de pé, e o botão repete a busca sem recarregar a
+          página. */}
+      {erro ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 12px', flexWrap: 'wrap' }}>
+          <FaixaDeErro mensagem={erro} />
+          <button type="button" onClick={tentarDeNovo} style={botao(false)}>
+            Tentar de novo
+          </button>
+        </div>
+      ) : null}
+
       {/* O GRÁFICO FICA ESMAECIDO ENQUANTO BUSCA, e com `aria-busy`: a curva
           antiga continua visível (sumir com ela a cada clique faria a tela
           piscar), mas deixa de se apresentar como a resposta da pergunta nova.
@@ -321,6 +412,24 @@ export function InteligenciaDeMercado() {
       {buscando ? (
         <p role="status" style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
           Atualizando…
+        </p>
+      ) : null}
+
+      {/* O PAPEL ESCOLHIDO QUE NÃO TEM CURVA DIZ POR QUÊ. Sem esta linha, ligar
+          um papel sem cotação no período é indistinguível de a tela ter parado
+          de responder — e a saída que sobra para quem está usando é o F5.
+          `role="status"` porque a frase aparece como RESPOSTA a um clique: quem
+          usa leitor de tela precisa ouvi-la sem ir procurar. */}
+      {mudos.length ? (
+        <p
+          data-testid="sem-cotacao"
+          role="status"
+          style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '8px 0 0' }}
+        >
+          {mudos.length === 1
+            ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva dele no gráfico.`
+            : `${mudos.join(', ')} não têm cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva delas no gráfico.`}{' '}
+          Experimente um período maior ou a outra métrica.
         </p>
       ) : null}
 

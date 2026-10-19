@@ -14,7 +14,7 @@
  *  4. que o índice venha DESTA rota, e não de `/api/score/serie`.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SerieDeMercado } from '@/api/cliente';
@@ -27,7 +27,14 @@ vi.mock('@/api/cliente', () => ({ obterSerieDeMercado }));
 //: traria o `ResizeObserver` e a aritmética do SVG para dentro de um teste que
 //: é sobre a TELA. O que interessa é o que a tela PASSA para ele.
 const recebido: { bonds?: unknown; indice?: unknown; faixaFixa?: unknown; rotulo?: string } = {};
-vi.mock('@/graficos/GraficoDeDoisEixos', () => ({
+//: SÓ O COMPONENTE É DUBLADO. `temCurva` vem do módulo DE VERDADE, de propósito:
+//: é a regra que decide se uma série desenha curva, e a tela a usa para dizer
+//: quais papéis voltaram mudos. Dublá-la faria este arquivo testar uma regra
+//: inventada aqui em vez da que roda no navegador — e foi justamente a
+//: divergência entre duas regras (`pontos.length` aqui, data válida lá) que a
+//: revisão pegou.
+vi.mock('@/graficos/GraficoDeDoisEixos', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('@/graficos/GraficoDeDoisEixos')>()),
   GraficoDeDoisEixos: (props: {
     bonds: unknown;
     indice: unknown;
@@ -44,7 +51,7 @@ vi.mock('@/graficos/GraficoDeDoisEixos', () => ({
 
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { mercadoMudou } from '@/dominio/sincronizacao';
-import { InteligenciaDeMercado } from './InteligenciaDeMercado';
+import { InteligenciaDeMercado, TETO_DA_BUSCA } from './InteligenciaDeMercado';
 
 const CATALOGO: SerieDeMercado['papeis'] = [
   { ticker: 'AEGEBZ29', descricao: null, emissor: 'Aegea', e_aegea: true },
@@ -436,6 +443,130 @@ describe('depois de subir a planilha, sem F5', () => {
     await waitFor(() =>
       expect((recebido.bonds as { pontos: unknown[] }[])[0].pontos).toHaveLength(3),
     );
+  });
+
+  it('o papel LIGADO que voltou SEM COTAÇÃO é dito pelo nome', async () => {
+    /** RELATADO EM 19/10/2026: "em alguns momentos a tela trava quando eu mudo
+     *  alguma fonte de dados ou métrica, daí preciso dar F5".
+     *
+     *  NÃO ERA O SERVIDOR: os logs do ambiente mostram 200 em 60–95ms para
+     *  TODAS as requisições daquela sessão, inclusive `tickers=AEGEBZ29` — que é
+     *  o papel sem cotação na planilha. O back semeia a série vazia e a devolve
+     *  de propósito (`serie_de_mercado.py:153` e `:168`), e o gráfico descarta
+     *  quem não tem ponto (`GraficoDeDoisEixos.tsx:263`).
+     *
+     *  O RESULTADO ERA UM CLIQUE SEM EFEITO VISÍVEL: o chip acende, ganha cor, e
+     *  curva nenhuma aparece. Nada na tela distinguia "este papel não negociou
+     *  neste período" de "a tela parou de responder" — e a saída que sobra é o
+     *  F5. Vale para a troca de métrica também: um papel com preço e sem yield
+     *  desaparece ao trocar para yield.
+     *
+     *  O DUBLÊ JÁ ERA ASSIM desde o primeiro teste deste arquivo: o catálogo tem
+     *  três papéis da Aegea (todos ligados por padrão) e a resposta traz série de
+     *  UM. Os outros dois já estavam acesos e mudos aqui, e ninguém viu. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    const aviso = screen.getByTestId('sem-cotacao');
+    expect(aviso.textContent).toContain('AEGEBZ29');
+    expect(aviso.textContent).toContain('AEGEBZ36');
+    //: O QUE TEM DADO NÃO ENTRA NA LISTA, senão o aviso não informa nada.
+    expect(aviso.textContent).not.toContain('AEGEBZ31');
+    //: NEM O QUE ESTÁ DESLIGADO: PETBRA30 não foi escolhido, e dizer que ele não
+    //: tem cotação seria reclamar de uma pergunta que ninguém fez.
+    expect(aviso.textContent).not.toContain('PETBRA30');
+  });
+
+  it('com TODAS as séries cheias o aviso NÃO aparece', async () => {
+    /** O controle: um aviso que está sempre na tela é ruído, e deixa de ser
+     *  lido justamente quando passa a importar. */
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(
+        resposta({
+          bonds: [
+            { ticker: 'AEGEBZ29', pontos: [{ data: '2026-01-05', valor: 99 }] },
+            { ticker: 'AEGEBZ31', pontos: [{ data: '2026-01-05', valor: 95.5 }] },
+            { ticker: 'AEGEBZ36', pontos: [{ data: '2026-01-05', valor: 97 }] },
+          ],
+        }),
+      ),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    expect(screen.queryByTestId('sem-cotacao')).toBeNull();
+  });
+
+  it('a falha NÃO engole os controles, e dá para tentar de novo', async () => {
+    /** O BECO SEM SAÍDA: `if (erro) return <FaixaDeErro/>` trocava a tela
+     *  INTEIRA pela faixa — período, métrica e os chips sumiam junto. Quem
+     *  pegasse uma falha de rede num clique não tinha mais nada para clicar, e a
+     *  única saída era o F5. A faixa dizia o que aconteceu e tirava da pessoa a
+     *  capacidade de reagir.
+     *
+     *  A FORMA CERTA É A QUE O `buscando` JÁ USAVA: a curva anterior continua na
+     *  tela, os controles continuam de pé, e a falha aparece como faixa ao lado
+     *  — com um botão que repete a busca. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.reject(new Error('Não foi possível falar com o servidor.')),
+    );
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() => expect(screen.getByText(/não foi possível falar/i)).toBeTruthy());
+    //: OS CONTROLES CONTINUAM LÁ.
+    expect(screen.getByRole('button', { name: 'Yield' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '6M' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /AEGEBZ31/ })).toBeTruthy();
+    //: E O GRÁFICO ANTERIOR TAMBÉM: apagá-lo perderia o que a pessoa estava
+    //: lendo por causa de uma falha que pode ser de um segundo.
+    expect(screen.getByText('GRAFICO')).toBeTruthy();
+
+    //: TENTAR DE NOVO BUSCA DE NOVO, e volta ao normal quando dá certo.
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta()));
+    const antesDoRetry = obterSerieDeMercado.mock.calls.length;
+    screen.getByRole('button', { name: 'Tentar de novo' }).click();
+
+    //: A CHAMADA NOVA É O QUE PROVA O BOTÃO — achado de revisão: sem esta
+    //: asserção, um botão que só limpasse o erro sem rebuscar passaria no teste.
+    await waitFor(() =>
+      expect(obterSerieDeMercado.mock.calls.length).toBeGreaterThan(antesDoRetry),
+    );
+    await waitFor(() => expect(screen.queryByText(/não foi possível falar/i)).toBeNull());
+  });
+
+  it('a busca que NUNCA responde não deixa a tela em "Atualizando…" para sempre', async () => {
+    /** O ÚNICO MECANISMO QUE AINDA SOBRAVA para a tela ficar visualmente presa.
+     *
+     *  A revisão foi clara: a guarda `ativo` está correta e descarta resposta
+     *  velha, mas nada protege contra uma promessa que NUNCA resolve nem
+     *  rejeita. Nesse caso `buscando` fica `true` eternamente, o gráfico fica em
+     *  `opacity: 0.5` e o "Atualizando…" não sai — que é exatamente o que ele
+     *  descreveu como travar, e aí só o F5 resolve.
+     *
+     *  NÃO APARECEU NOS LOGS daquela sessão (todas as respostas vieram em
+     *  60–95ms), mas a lacuna é real e o conserto é o mesmo que a falha já tem:
+     *  dizer o que houve e oferecer saída. */
+    vi.useFakeTimers();
+    try {
+      obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+      render(<InteligenciaDeMercado />);
+
+      //: DENTRO DE `act`: o relógio muda estado FORA de um evento do React, e
+      //: sem isto a renderização não é aplicada antes da asserção — o teste
+      //: falharia dizendo que a frase não existe, com a correção no lugar.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(TETO_DA_BUSCA + 100);
+      });
+
+      expect(screen.getByText(/demorou demais/i)).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeTruthy();
+      expect(screen.queryByText('Atualizando…')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('SEM aviso nenhum a tela não fica rebuscando sozinha', async () => {

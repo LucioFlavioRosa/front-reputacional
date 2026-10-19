@@ -21,7 +21,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { GraficoDeDoisEixos } from './GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, temCurva } from './GraficoDeDoisEixos';
 
 //: O `ResizeObserver` não existe no jsdom, e sem ele a largura fica em zero e
 //: o SVG nem é renderizado. O dublê responde uma largura fixa, que é o que
@@ -416,6 +416,87 @@ describe('a acessibilidade', () => {
     const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
     expect(rotulo).toContain('Aegea 2036: 95 em 2026-01-05');
     expect(rotulo).not.toContain('pregões');
+  });
+
+  it('a série SEM PONTO NENHUM não derruba a tela, e é dita', () => {
+    /** O DEFEITO QUE TRAVAVA A TELA, relatado em 19/10/2026: "em alguns
+     *  momentos a tela trava quando eu mudo alguma fonte de dados ou métrica,
+     *  daí preciso dar F5".
+     *
+     *  O servidor nunca falhou — os logs mostram 200 em 60ms para todas as
+     *  requisições, inclusive `tickers=AEGEBZ29`, que é o papel SEM COTAÇÃO na
+     *  planilha. O back semeia a série com lista vazia e a devolve assim
+     *  (`serie_de_mercado.py:153` e `:168`), de propósito: o papel pedido
+     *  aparece na resposta mesmo sem dado.
+     *
+     *  Aqui, `pontos.length === 1` era falso, o ternário caía no outro lado e
+     *  lia `primeiro.valor` com `primeiro === undefined`. O TypeError acontecia
+     *  DURANTE A RENDERIZAÇÃO, o `LimiteDeErro` de `App.tsx` o capturava, e um
+     *  limite de erro do React não se recupera sozinho: a única saída era
+     *  remontar — o F5.
+     *
+     *  O caso de UM ponto tem teste desde o começo (logo acima). O de ZERO
+     *  não tinha. */
+    const renderizar = () =>
+      render(
+        <GraficoDeDoisEixos
+          rotuloDaEsquerda="Preço (% do par)"
+          indice={[{ mes: '2026-01-01', valor: 52 }]}
+          bonds={[
+            {
+              chave: 'AEGEBZ31',
+              rotulo: 'Aegea 2031',
+              cor: AZUL,
+              pontos: [{ data: '2026-01-05', valor: 95 }],
+            },
+            { chave: 'AEGEBZ29', rotulo: 'Aegea 2029', cor: AZUL, pontos: [] },
+          ]}
+        />,
+      );
+
+    expect(renderizar).not.toThrow();
+
+    const { container } = renderizar();
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    //: DITA, e não omitida: a curva que não aparece precisa de explicação, ou
+    //: quem ligou o papel conclui que a tela está quebrada.
+    expect(rotulo).toContain('Aegea 2029: sem cotação no período');
+    //: E a série que TEM dado continua descrita.
+    expect(rotulo).toContain('Aegea 2031: 95 em 2026-01-05');
+  });
+
+  it('a série de pontos com DATA TORTA conta como sem cotação', () => {
+    /** ACHADO DE REVISÃO, e dentro da MINHA correção: o aviso da tela olhava
+     *  `pontos.length` e o gráfico olha os pontos com DATA VÁLIDA (`datados()`
+     *  descarta o resto). Uma série com pontos e datas tortas não desenhava
+     *  curva E não disparava o aviso — o pior dos dois mundos, que é o estado
+     *  silencioso que esta mudança existe para acabar.
+     *
+     *  `temCurva` passou a ser a regra ÚNICA, e é a mesma que o filtro do
+     *  desenho usa. */
+    expect(temCurva([{ data: '2026-01-05', valor: 95 }])).toBe(true);
+    expect(temCurva([])).toBe(false);
+    expect(temCurva([{ data: 'ontem', valor: 95 }])).toBe(false);
+    expect(temCurva([{ data: '2026-13-45', valor: 95 }])).toBe(false);
+
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        bonds={[
+          {
+            chave: 'AEGEBZ31',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [{ data: '2026-01-05', valor: 95 }],
+          },
+          { chave: 'X', rotulo: 'Torto', cor: AZUL, pontos: [{ data: 'ontem', valor: 9 }] },
+        ]}
+      />,
+    );
+
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    expect(rotulo).toContain('Torto: sem cotação no período');
   });
 
   it('cada série tem `title`, para o nome aparecer no hover nativo', () => {
