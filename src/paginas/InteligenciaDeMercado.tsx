@@ -718,17 +718,28 @@ function JanelaDosTemas({
           menções de dois meses e o denominador é de um, então o número pode
           passar do que aquele mês inteiro movimentou. A ORDEM dos temas
           continua exata — todos dividem pelo mesmo denominador —, a escala não.
-          Quem lê precisa saber qual das duas coisas está olhando. */}
+          Quem lê precisa saber qual das duas coisas está olhando.
+
+          E DE QUAL NOTA, que é a pergunta que ele fez depois de ver no ar:
+          "esse desconto de pontos de cada pilar ou tema é em relação à
+          pontuação total? ou só da lente?". É da LENTE — o denominador é
+          `denominador_do_mes(lente_id, ...)`, só as fontes ligadas dela. Mas a
+          LINHA DO GRÁFICO, dez centímetros acima, é o ÍNDICE: a média
+          ponderada das cinco lentes, em que a imprensa pesa 30 de 100 por
+          padrão. Dois números na mesma tela em réguas diferentes, e nada
+          dizendo isso — era convite à subtração errada. "A nota da lente X" diz
+          a lente da RESPOSTA, não a palavra "imprensa" fixa aqui: quando a
+          segunda lente chegar, esta linha continua verdadeira. */}
       <p
         data-testid="regua-da-janela"
         style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}
       >
-        Pontos da nota de {porExtenso(janela.mes).slice(3)}, medida pela régua de{' '}
-        {janela.regua}
+        Pontos da nota da lente {janela.lente} em {porExtenso(janela.mes).slice(3)},
+        medida pela régua de {janela.regua}
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
           ? ' — a janela atravessa a virada do mês, então a ordem é exata e a escala é a daquele mês'
           : null}
-        .
+        . Não são pontos do índice da linha acima: a lente é uma parte dele.
       </p>
 
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios

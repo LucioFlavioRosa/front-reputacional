@@ -869,6 +869,34 @@ describe('os temas da janela, ao clicar numa data', () => {
     expect(regua.textContent?.toLowerCase()).toContain('contagem');
   });
 
+  it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async () => {
+    /** A PERGUNTA DELE, depois de ver a janela no ar: "esse desconto de pontos de
+     *  cada pilar ou tema é em relação à pontuação total? ou só da lente?".
+     *
+     *  É DA LENTE: o denominador do back é `denominador_do_mes(lente_id, ...)`,
+     *  só as fontes ligadas dela. Mas a LINHA do gráfico, logo acima, é o
+     *  ÍNDICE — a média ponderada das cinco lentes, em que a imprensa pesa 30 de
+     *  100. A tela dizia "Pontos da nota de 05/2026" e deixava os dois números em
+     *  réguas diferentes sem avisar: quem lê subtrai um do outro e erra.
+     *
+     *  A LENTE VEM DA RESPOSTA, e é por isso que o teste a troca: uma linha com
+     *  "imprensa" escrito à mão passaria neste arquivo e mentiria no dia em que a
+     *  segunda lente chegasse. */
+    obterImpactoNaJanela.mockImplementation(() =>
+      Promise.resolve(impacto({ lente: 'mercado' })),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    escolherData('2026-05-20');
+
+    await waitFor(() => expect(screen.getByTestId('regua-da-janela')).toBeTruthy());
+    const regua = screen.getByTestId('regua-da-janela');
+    expect(regua.textContent).toContain('nota da lente mercado');
+    //: e que NÃO são pontos do índice, que é a confusão que a linha desfaz
+    expect(regua.textContent?.toLowerCase()).toContain('não são pontos do índice');
+  });
+
   it('a CHAVE troca o nível e busca de novo o MESMO dia', async () => {
     /** O PEDIDO: "você sugere que que haja uma chave para mostrar o n1 ou n2
      *  para aquele recorte de data?" — sim, e por medição: o pilar cobre ~98%
