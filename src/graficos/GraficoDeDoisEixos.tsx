@@ -112,6 +112,48 @@ function datados(pontos: PontoDatado[]): { ms: number; valor: number }[] {
   return bons;
 }
 
+/** A data sob um pixel da área do gráfico — a inversa da escala do eixo x.
+ *
+ *  FUNÇÃO PURA, E EXPORTADA, porque é esta conta que erra: um erro de meia tela
+ *  aqui aponta uma janela inteira errada sem nada parecer quebrado. Testar a
+ *  inversa direto é mais barato e mais exato que caçá-la por cliques simulados.
+ *
+ *  PRENDE NAS PONTAS em vez de extrapolar: arrastar o clique para fora da área
+ *  pediria uma janela que o gráfico não mostra — ou, para a esquerda, uma data
+ *  anterior ao próprio eixo.
+ *
+ *  LARGURA ZERO DEVOLVE O COMEÇO, e não `NaN`: há um quadro, antes de o
+ *  `ResizeObserver` responder, em que a largura é zero. `NaN` ali faria
+ *  `toISOString` lançar `RangeError` — e fora da renderização, onde o
+ *  `LimiteDeErro` não alcança.
+ */
+export function dataNoPixel(
+  px: number,
+  inicio: number,
+  fim: number,
+  larguraDoPlot: number,
+): string {
+  if (!(larguraDoPlot > 0)) return new Date(inicio).toISOString().slice(0, 10);
+  const fracao = Math.min(1, Math.max(0, px / larguraDoPlot));
+  const ms = inicio + fracao * (fim - inicio);
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** O último dia do mês de `iso`, sem passar do fim do eixo.
+ *
+ *  O RÓTULO DO EIXO É UM MÊS E A JANELA PRECISA DE UM DIA. O último do mês é o
+ *  que faz os quinze dias caírem DENTRO do mês clicado; pegar o dia 1º jogaria a
+ *  janela quase toda para o mês anterior, que não é o que alguém clicando em
+ *  "set" quer ver.
+ */
+function ultimoDiaDoMes(iso: string, fimDoEixo: number): string {
+  const [ano, mes] = iso.split('-').map(Number);
+  //: DIA 0 DO MÊS SEGUINTE é o último do mês atual, inclusive em fevereiro de
+  //: ano bissexto — a conta de dias por mês fica com o calendário, não comigo.
+  const ultimo = Date.UTC(ano, mes, 0);
+  return new Date(Math.min(ultimo, fimDoEixo)).toISOString().slice(0, 10);
+}
+
 /** Esta série desenha alguma curva?
  *
  *  A REGRA ÚNICA, exportada porque a TELA precisa da MESMA: o aviso de "sem
@@ -238,6 +280,9 @@ export function GraficoDeDoisEixos({
   faixaFixa,
   altura = 320,
   vazio = 'Sem cotação no período.',
+  aoEscolherData,
+  dataEscolhida = null,
+  diasDaJanela = 15,
 }: {
   bonds: SerieDatada[];
   indice: PontoMensal[];
@@ -252,6 +297,19 @@ export function GraficoDeDoisEixos({
   faixaFixa?: FaixaDoEixo;
   altura?: number;
   vazio?: string;
+  /** Escolher um dia clicando no gráfico ou num rótulo do eixo.
+   *
+   *  OMITIDA, O GRÁFICO NÃO FICA CLICÁVEL — e isso é de propósito: as outras
+   *  telas montam este componente e não devem ganhar uma área de clique
+   *  invisível, nem um cursor de mãozinha prometendo interação que não existe. */
+  aoEscolherData?: (iso: string) => void;
+  /** O dia escolhido, para o gráfico marcá-lo. Sem a marca, o clique muda o que
+   *  está embaixo e o gráfico fica igual — e aí não há como saber qual janela
+   *  está na tela. */
+  dataEscolhida?: string | null;
+  /** Quantos dias a janela cobre, só para sombreá-la. A conta de verdade é do
+   *  servidor (ver `impacto_por_n1_na_janela`); aqui é desenho. */
+  diasDaJanela?: number;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [largura, definirLargura] = useState(0);
@@ -335,6 +393,22 @@ export function GraficoDeDoisEixos({
    *  diz quais papéis, nem quanto, nem quando. Para uma série longa vão as
    *  pontas: ler 1.100 pregões em voz alta não é acesso, é ruído.
    */
+  /** Onde desenhar a faixa da janela, em pixels — `null` sem data escolhida.
+   *
+   *  PRESO AO EIXO nas duas pontas: a janela de quinze dias pode começar antes
+   *  do primeiro ponto do gráfico, e uma faixa que vaza para a esquerda da
+   *  régua sugere dado que o gráfico não mostra. */
+  const janela = (() => {
+    if (!dataEscolhida) return null;
+    const ms = emMilissegundos(dataEscolhida);
+    if (ms === null) return null;
+    const comeca = ms - (diasDaJanela - 1) * UM_DIA;
+    return {
+      de: x(Math.max(inicio, Math.min(fim, comeca))),
+      ate: x(Math.max(inicio, Math.min(fim, ms))),
+    };
+  })();
+
   const descricao = [
     `${rotuloDaEsquerda} e índice reputacional de 0 a 100.`,
     //: DE `bonds`, E NÃO DE `series`: `series` já descartou (linha 263) quem não
@@ -367,6 +441,33 @@ export function GraficoDeDoisEixos({
     <div ref={container} style={{ width: '100%' }}>
       {largura > 0 ? (
         <svg width={largura} height={altura} role="img" aria-label={descricao}>
+          {/* A JANELA ESCOLHIDA, ATRÁS DE TUDO. Primeiro no documento é primeiro
+              a ser pintado, então a faixa fica por baixo das curvas — ela é
+              contexto, e cobrir o dado com o recorte do dado seria inverter o
+              que importa. */}
+          {janela ? (
+            <>
+              <rect
+                data-testid="faixa-da-janela"
+                x={janela.de}
+                y={MARGEM_SUPERIOR}
+                width={Math.max(1, janela.ate - janela.de)}
+                height={alturaDoPlot}
+                fill="var(--azul-mar)"
+                opacity={0.08}
+              />
+              <line
+                data-testid="marca-da-data"
+                x1={janela.ate}
+                x2={janela.ate}
+                y1={MARGEM_SUPERIOR}
+                y2={MARGEM_SUPERIOR + alturaDoPlot}
+                stroke="var(--azul-mar)"
+                strokeWidth={2}
+              />
+            </>
+          ) : null}
+
           {/* a régua da esquerda: três marcas, que é o que cabe sem poluir */}
           {[0, 0.5, 1].map((fracao) => {
             const valor =
@@ -453,18 +554,68 @@ export function GraficoDeDoisEixos({
           {/* o eixo x: um rótulo por mês, no máximo seis */}
           {meses
             .filter((_, i) => i % Math.ceil(Math.max(1, meses.length) / 6) === 0)
-            .map((mes) => (
-              <text
-                key={mes.comeca}
-                x={x(mes.comeca)}
-                y={altura - 6}
-                textAnchor="middle"
-                fontSize={11}
-                fill="var(--cinza-2)"
-              >
-                {mesLegivel(new Date(mes.comeca).toISOString().slice(0, 10))}
-              </text>
-            ))}
+            .map((mes) => {
+              const iso = new Date(mes.comeca).toISOString().slice(0, 10);
+              const escolher = aoEscolherData
+                ? () => aoEscolherData(ultimoDiaDoMes(iso, fim))
+                : undefined;
+              return (
+                <text
+                  key={mes.comeca}
+                  data-mes={iso}
+                  x={x(mes.comeca)}
+                  y={altura - 6}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={aoEscolherData ? 'var(--azul-mar)' : 'var(--cinza-2)'}
+                  //: O RÓTULO É BOTÃO DE VERDADE quando dá para clicar: papel,
+                  //: foco e tecla. Um `onClick` sozinho num `<text>` seria
+                  //: inalcançável por teclado — e o eixo é justamente a porta
+                  //: que ele pediu ("seja no gráfico ou seja no eixo").
+                  role={aoEscolherData ? 'button' : undefined}
+                  tabIndex={aoEscolherData ? 0 : undefined}
+                  style={aoEscolherData ? { cursor: 'pointer' } : undefined}
+                  onClick={escolher}
+                  onKeyDown={
+                    escolher
+                      ? (evento) => {
+                          if (evento.key === 'Enter' || evento.key === ' ') {
+                            evento.preventDefault();
+                            escolher();
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  {mesLegivel(iso)}
+                </text>
+              );
+            })}
+
+          {/* A ÁREA DE CLIQUE VEM POR ÚLTIMO, por cima de tudo: em SVG a ordem
+              do documento é a ordem de pintura, e uma área de clique desenhada
+              antes das curvas teria os cliques capturados por elas em cima dos
+              traços. Transparente e sem traço — ela existe para receber o
+              clique, não para aparecer. */}
+          {aoEscolherData ? (
+            <rect
+              data-testid="area-de-clique"
+              x={MARGEM_ESQUERDA}
+              y={MARGEM_SUPERIOR}
+              width={larguraDoPlot}
+              height={alturaDoPlot}
+              fill="transparent"
+              style={{ cursor: 'crosshair' }}
+              onClick={(evento) => {
+                //: O PIXEL É RELATIVO AO SVG, e não à janela: o gráfico pode
+                //: estar rolado ou deslocado na página.
+                const svg = evento.currentTarget.ownerSVGElement;
+                const caixa = svg?.getBoundingClientRect();
+                const px = evento.clientX - (caixa?.left ?? 0) - MARGEM_ESQUERDA;
+                aoEscolherData(dataNoPixel(px, inicio, fim, larguraDoPlot));
+              }}
+            />
+          ) : null}
         </svg>
       ) : null}
 

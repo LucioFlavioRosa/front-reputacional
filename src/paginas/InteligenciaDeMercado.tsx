@@ -22,9 +22,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { obterSerieDeMercado } from '@/api/cliente';
-import type { MetricaDoBond, SerieDeMercado } from '@/api/cliente';
+import { obterImpactoPorN1, obterSerieDeMercado } from '@/api/cliente';
+import type {
+  ImpactoNaJanela,
+  MetricaDoBond,
+  PilarNaJanela,
+  SerieDeMercado,
+} from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
+import { numero } from '@/dominio/formato';
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { GraficoDeDoisEixos, temCurva } from '@/graficos/GraficoDeDoisEixos';
 import { mercadoMudou } from '@/dominio/sincronizacao';
@@ -92,6 +98,13 @@ const PERIODOS = [
  */
 export const TETO_DA_BUSCA = 20_000;
 
+/** Quantos dias a janela dos pilares cobre, contados para trás do dia clicado.
+ *
+ *  QUINZE, por pedido ("pega a data e subtrai 15 dias"). O servidor tem o mesmo
+ *  número como padrão; a tela o manda explícito porque é ela que o diz na
+ *  legenda, e dois lugares com o mesmo valor calado divergiriam em silêncio. */
+export const DIAS_DA_JANELA = 15;
+
 const METRICAS: { codigo: MetricaDoBond; rotulo: string; eixo: string }[] = [
   { codigo: 'preco', rotulo: 'Preço', eixo: 'Preço (% do par)' },
   { codigo: 'yield', rotulo: 'Yield', eixo: 'Yield (%)' },
@@ -143,6 +156,44 @@ export function InteligenciaDeMercado() {
   //: atualiza o gráfico na outra.
   const [versao, definirVersao] = useState(0);
   useEffect(() => mercadoMudou.assinar(() => definirVersao((v) => v + 1)), []);
+
+  //: A JANELA DOS PILARES: o dia clicado, o que o servidor respondeu, e a falha
+  //: dela — SEPARADA da falha do gráfico, porque são dois pedaços independentes
+  //: da tela. A janela falhar não pode levar o gráfico, que é a lição do beco
+  //: sem saída que esta tela já teve.
+  const [diaEscolhido, definirDiaEscolhido] = useState<string | null>(null);
+  const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
+  const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (diaEscolhido === null) {
+      definirJanela(null);
+      definirErroDaJanela(null);
+      return;
+    }
+    let ativo = true;
+    definirErroDaJanela(null);
+    obterImpactoPorN1(diaEscolhido, DIAS_DA_JANELA)
+      .then((lida) => {
+        if (ativo) definirJanela(lida);
+      })
+      .catch((falha: unknown) => {
+        if (!ativo) return;
+        //: A JANELA ANTIGA SAI junto com a falha: ela descrevia OUTRO dia, e
+        //: deixá-la na tela ao lado de um erro faria os quadros afirmarem a
+        //: janela errada — o mesmo defeito do rótulo do eixo que mentia sobre a
+        //: métrica enquanto a resposta nova não chegava.
+        definirJanela(null);
+        definirErroDaJanela(
+          falha instanceof Error ? falha.message : 'Não foi possível ler a janela.',
+        );
+      });
+    return () => {
+      ativo = false;
+    };
+    //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês, e
+    //: os quadros abertos passariam a descrever o dado de antes.
+  }, [diaEscolhido, versao]);
 
   const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
@@ -412,6 +463,9 @@ export function InteligenciaDeMercado() {
           indice={indice}
           rotuloDaEsquerda={naMetrica.eixo}
           faixaFixa={naMetrica.codigo === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
+          aoEscolherData={definirDiaEscolhido}
+          dataEscolhida={diaEscolhido}
+          diasDaJanela={DIAS_DA_JANELA}
         />
         {buscando ? (
           <p
@@ -462,6 +516,17 @@ export function InteligenciaDeMercado() {
           Experimente um período maior ou a outra métrica.
         </p>
       ) : null}
+
+      {/* OS PILARES DA JANELA, logo abaixo do gráfico — onde ele pediu.
+
+          A JANELA É UM PEDAÇO INDEPENDENTE DA TELA: a falha dela mostra a faixa
+          aqui e não leva o gráfico nem os controles junto. */}
+      <JanelaDosPilares
+        dia={diaEscolhido}
+        janela={janela}
+        erro={erroDaJanela}
+        aoFechar={() => definirDiaEscolhido(null)}
+      />
 
       {/* A LEGENDA É TAMBÉM O SELETOR, como no mockup: clicar liga e desliga a
           série. Duas listas separadas — a companhia e os pares — porque são
@@ -522,6 +587,207 @@ export function InteligenciaDeMercado() {
       </div>
     </section>
   );
+}
+
+/** Os dois quadros dos pilares, e o convite que os antecede.
+ *
+ *  O CONVITE EXISTE porque dois quadros vazios na abertura seriam ruído — e
+ *  pior, pareceriam dado que não carregou. É ele que liga o gráfico aos quadros:
+ *  sem uma frase dizendo que a data é clicável, a interação não se descobre.
+ *
+ *  A LENTE E A JANELA SAEM DA RESPOSTA, nunca do que a tela pediu: os dois
+ *  divergem enquanto a resposta não chega, e foi assim que o rótulo do eixo
+ *  mentiu sobre a métrica — achado de revisão daquele bloco.
+ */
+function JanelaDosPilares({
+  dia,
+  janela,
+  erro,
+  aoFechar,
+}: {
+  dia: string | null;
+  janela: ImpactoNaJanela | null;
+  erro: string | null;
+  aoFechar: () => void;
+}) {
+  if (dia === null) {
+    return (
+      <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
+        Clique numa data do gráfico — ou num mês do eixo — para ver os pilares que
+        mais empurraram a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
+      </p>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0 0', flexWrap: 'wrap' }}>
+        <FaixaDeErro mensagem={erro} />
+        <button type="button" onClick={aoFechar} style={botao(false)}>
+          Fechar a janela
+        </button>
+      </div>
+    );
+  }
+
+  if (!janela) {
+    return (
+      <p role="status" style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
+        Lendo os pilares de {porExtenso(dia)}…
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ margin: '14px 0 0' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 8,
+        }}
+      >
+        <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+          Lente {janela.lente}: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
+        </p>
+        <button type="button" onClick={aoFechar} style={botao(false)}>
+          Fechar a janela
+        </button>
+      </div>
+
+      {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
+          parecem iguais. O mês sem base não tem denominador: sem ele não há
+          pergunta a responder, e mostrar quadros vazios afirmaria que os pilares
+          daquela janela não impactaram nada — o que é falso, porque as menções
+          estão lá. */}
+      {janela.mes_sem_base ? (
+        <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
+          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
+          {janela.lente}, então não há como calcular quanto cada pilar empurrou a
+          nota. Não é que nada impactou — é que a régua do mês ainda não existe.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <QuadroDePilares
+            testId="quadro-positivos"
+            titulo="Mais empurraram para CIMA"
+            pilares={janela.positivos}
+            total={janela.total_positivos}
+            cor="var(--sucesso-fg)"
+          />
+          <QuadroDePilares
+            testId="quadro-negativos"
+            titulo="Mais empurraram para BAIXO"
+            pilares={janela.negativos}
+            total={janela.total_negativos}
+            cor="var(--erro-fg)"
+          />
+        </div>
+      )}
+
+      {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
+          pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
+          o todo, e a soma deles não fecharia com o impacto do período. */}
+      {janela.sem_n1 || janela.sem_data_no_mes ? (
+        <p
+          data-testid="fora-da-conta"
+          style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}
+        >
+          Fora desta conta:{' '}
+          {janela.sem_n1 ? `${numero(janela.sem_n1)} menções da janela sem pilar atribuído` : null}
+          {janela.sem_n1 && janela.sem_data_no_mes ? '; ' : null}
+          {janela.sem_data_no_mes
+            ? `${numero(janela.sem_data_no_mes)} menções do mês sem data, que pertencem ao mês e não a um dia`
+            : null}
+          .
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Um quadro: até cinco pilares, do que mais empurrou para o que menos. */
+function QuadroDePilares({
+  testId,
+  titulo,
+  pilares,
+  total,
+  cor,
+}: {
+  testId: string;
+  titulo: string;
+  pilares: PilarNaJanela[];
+  total: number;
+  cor: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        flex: '1 1 300px',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-card-int)',
+        padding: '10px 12px',
+      }}
+    >
+      <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
+        {titulo}
+        {/* O TAMANHO REAL, por decisão dele: "mostra os que houver e diz o
+            total". Com três pilares aparecem três, e a tela diz "3 de 3" em vez
+            de completar com linha vazia — linha vazia é indistinguível de dado
+            que não carregou. */}
+        {total ? ` · ${numero(pilares.length)} de ${numero(total)}` : null}
+      </p>
+      {pilares.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+          Nenhum pilar empurrou a nota para este lado nesta janela.
+        </p>
+      ) : (
+        <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+          {pilares.map((pilar) => (
+            <li
+              key={pilar.n1}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '4px 0',
+                fontSize: 13,
+                borderTop: '1px solid var(--borda-fraca, var(--borda))',
+              }}
+            >
+              <span>{pilar.n1}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>
+                <strong style={{ color: cor }}>{comSinal(pilar.impacto)}</strong>{' '}
+                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(pilar.mencoes)}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/** `2026-05-20` como `20/05/2026`. */
+function porExtenso(iso: string): string {
+  const [ano, mes, dia] = iso.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** O impacto com sinal e uma decimal, no padrão de casa (vírgula, menos real).
+ *
+ *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o pilar que
+ *  sustentou e o que derrubou. O `+` explícito é o que torna a leitura simétrica.
+ *  O menos é `−` (U+2212), não hífen — é o que o resto da plataforma usa. */
+function comSinal(valor: number): string {
+  const absoluto = Math.abs(valor).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${valor < 0 ? '−' : '+'}${absoluto}`;
 }
 
 function botao(ativo: boolean) {

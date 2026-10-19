@@ -80,6 +80,52 @@ export function obterSerieDeMercado(opcoes: {
 }
 
 
+/* -- os pilares da janela ----------------------------------------------------
+ *
+ * O PEDIDO: clicar numa data do gráfico e ver, logo abaixo, os cinco pilares
+ * (N1) que mais empurraram a nota para cima e para baixo nos quinze dias
+ * anteriores — só na lente de imprensa, por ora.
+ */
+
+export interface PilarNaJanela {
+  n1: string;
+  /** Pontos na nota do MÊS: positivo empurra para cima, negativo para baixo. */
+  impacto: number;
+  mencoes: number;
+}
+
+export interface ImpactoNaJanela {
+  de: string;
+  ate: string;
+  /** O mês cuja régua e cujo denominador medem esta conta. */
+  mes: string;
+  regua: string;
+  positivos: PilarNaJanela[];
+  negativos: PilarNaJanela[];
+  /** Quantos existem de cada lado — a tela diz "3 de 3" em vez de fingir cinco. */
+  total_positivos: number;
+  total_negativos: number;
+  /** As duas formas de uma menção ficar de fora, e as duas são ditas na tela. */
+  sem_n1: number;
+  sem_data_no_mes: number;
+  /** "Não há como medir" é diferente de "nada impactou", e os dois quadros
+   *  vazios parecem iguais. */
+  mes_sem_base: boolean;
+  /** A lente e a janela VOLTAM NA RESPOSTA, como `metrica` volta na série: é o
+   *  que permite a tela afirmar "imprensa, 06/05 a 20/05" com o dado que
+   *  desenhou, e não com o que pediu — os dois divergem enquanto a resposta não
+   *  chega. */
+  lente: string;
+  dias: number;
+}
+
+export function obterImpactoPorN1(ate: string, dias?: number): Promise<ImpactoNaJanela> {
+  const parametros = new URLSearchParams({ ate });
+  if (dias !== undefined) parametros.set('dias', String(dias));
+  return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-por-n1?${parametros}`);
+}
+
+
 /* -- a subida da planilha de bonds ------------------------------------------
  *
  * MESMO IDIOMA DA PLANILHA DO SCORE (`conferirPlanilhaDoScore`): `FormData` com

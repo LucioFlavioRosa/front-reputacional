@@ -21,7 +21,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { GraficoDeDoisEixos, temCurva } from './GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, dataNoPixel, temCurva } from './GraficoDeDoisEixos';
 
 //: O `ResizeObserver` não existe no jsdom, e sem ele a largura fica em zero e
 //: o SVG nem é renderizado. O dublê responde uma largura fixa, que é o que
@@ -360,6 +360,149 @@ describe('o estado vazio e o aviso', () => {
   });
 });
 
+
+describe('escolher uma data no gráfico', () => {
+  /** O PEDIDO: "quero poder clicar em alguma data seja no gráfico ou seja no
+   *  eixo, que você pega a data e subtrai 15 dias".
+   *
+   *  A MATEMÁTICA FICA NUMA FUNÇÃO PURA porque é ela que erra: converter pixel
+   *  em data é a inversa da escala do eixo, e um erro de meia tela aqui aponta
+   *  uma janela inteira errada sem nada parecer quebrado. Testada direto, sem
+   *  DOM no meio.
+   */
+  const INICIO = Date.UTC(2026, 0, 1);
+  const FIM = Date.UTC(2026, 0, 31);
+
+  it('a borda esquerda é o começo e a direita é o fim', () => {
+    expect(dataNoPixel(0, INICIO, FIM, 100)).toBe('2026-01-01');
+    expect(dataNoPixel(100, INICIO, FIM, 100)).toBe('2026-01-31');
+  });
+
+  it('o meio é o meio', () => {
+    expect(dataNoPixel(50, INICIO, FIM, 100)).toBe('2026-01-16');
+  });
+
+  it('fora da área, PRENDE nas pontas em vez de inventar data', () => {
+    //: Arrastar o clique para fora não deve pedir uma janela que o gráfico não
+    //: mostra — nem uma data negativa, que o servidor recusaria.
+    expect(dataNoPixel(-40, INICIO, FIM, 100)).toBe('2026-01-01');
+    expect(dataNoPixel(500, INICIO, FIM, 100)).toBe('2026-01-31');
+  });
+
+  it('largura zero não produz NaN', () => {
+    //: Um quadro antes de o `ResizeObserver` responder, a largura é zero. A
+    //: divisão daria `NaN` e o `toISOString` lançaria `RangeError` — fora da
+    //: renderização, onde o limite de erro não alcança.
+    expect(dataNoPixel(10, INICIO, FIM, 0)).toBe('2026-01-01');
+  });
+
+  function comClique(aoEscolher: (iso: string) => void) {
+    return render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[
+          { mes: '2026-01-01', valor: 50 },
+          { mes: '2026-02-01', valor: 55 },
+        ]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-02-20', valor: 97 },
+            ],
+          },
+        ]}
+        aoEscolherData={aoEscolher}
+      />,
+    );
+  }
+
+  it('clicar na área do gráfico escolhe a data daquele ponto', () => {
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const area = container.querySelector('[data-testid="area-de-clique"]') as Element;
+    area.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 400 }));
+
+    expect(escolhida).toHaveLength(1);
+    expect(escolhida[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('clicar no RÓTULO DO MÊS escolhe o último dia dele dentro do gráfico', () => {
+    /** "ou seja no eixo". O rótulo é um mês, e a janela precisa de um DIA: o
+     *  último do mês é o que faz os quinze dias caírem DENTRO do mês clicado —
+     *  pegar o dia 1º jogaria a janela quase toda para o mês anterior, que não é
+     *  o que alguém clicando em "jan" quer ver. */
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    rotulo.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(escolhida).toEqual(['2026-01-31']);
+  });
+
+  it('o rótulo do mês responde ao TECLADO', () => {
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    expect(rotulo.getAttribute('role')).toBe('button');
+    expect(rotulo.getAttribute('tabindex')).toBe('0');
+    rotulo.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+
+    expect(escolhida).toEqual(['2026-01-31']);
+  });
+
+  it('SEM o `aoEscolherData`, o gráfico não fica clicável', () => {
+    /** As outras telas montam este gráfico sem a função. Elas não devem ganhar
+     *  uma área de clique invisível que não faz nada — nem um cursor de mãozinha
+     *  prometendo interação que não existe. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        bonds={[{ chave: 'A', rotulo: 'A', cor: AZUL, pontos: [{ data: '2026-01-05', valor: 95 }] }]}
+      />,
+    );
+
+    expect(container.querySelector('[data-testid="area-de-clique"]')).toBeNull();
+    expect(container.querySelector('[data-mes]')?.getAttribute('role')).not.toBe('button');
+  });
+
+  it('a data escolhida é MARCADA, com a janela sombreada', () => {
+    /** Sem a marca, o clique muda os quadros embaixo e o gráfico fica igual —
+     *  e aí não há como saber qual janela está sendo mostrada. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'A',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-01-25', valor: 96 },
+            ],
+          },
+        ]}
+        dataEscolhida="2026-01-20"
+        diasDaJanela={15}
+      />,
+    );
+
+    expect(container.querySelector('[data-testid="marca-da-data"]')).not.toBeNull();
+    const faixa = container.querySelector('[data-testid="faixa-da-janela"]');
+    expect(faixa).not.toBeNull();
+    //: A FAIXA TEM LARGURA: uma de largura zero é indistinguível de não existir.
+    expect(Number(faixa?.getAttribute('width'))).toBeGreaterThan(0);
+  });
+});
 
 describe('a acessibilidade', () => {
   it('o rótulo diz QUAIS séries, com valores e datas', () => {
