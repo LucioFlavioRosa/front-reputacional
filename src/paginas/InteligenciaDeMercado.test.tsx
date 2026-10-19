@@ -63,7 +63,16 @@ function resposta(parcial: Partial<SerieDeMercado> = {}): SerieDeMercado {
 }
 
 beforeEach(() => {
-  obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta()));
+  //: O DUBLÊ ECOA A MÉTRICA PEDIDA, como o servidor faz.
+  //:
+  //: Antes ele devolvia `metrica: 'preco'` SEMPRE, e isso fazia o teste do
+  //: yield passar sem provar nada — achado de revisão. Agora que o rótulo do
+  //: eixo sai da RESPOSTA e não do botão (para não dizer "Yield" sobre uma
+  //: curva de preço), um dublê que mente sobre a métrica derruba o teste, que é
+  //: o certo.
+  obterSerieDeMercado.mockImplementation((opcoes?: { metrica?: 'preco' | 'yield' }) =>
+    Promise.resolve(resposta({ metrica: opcoes?.metrica ?? 'preco' })),
+  );
 });
 
 afterEach(() => {
@@ -201,5 +210,172 @@ describe('o erro', () => {
     await waitFor(() =>
       expect(screen.getByText(/ainda não foi lançado/)).toBeTruthy(),
     );
+  });
+});
+
+
+describe('a cor das séries', () => {
+  /** OS DOIS DEFEITOS QUE EU MESMO SUSPEITEI, antes de a revisão chegar.
+   *
+   *  A primeira versão escolhia a cor pela POSIÇÃO NO CATÁLOGO e repetia a
+   *  última do oitavo papel em diante. Com dois pares de posição alta ligados,
+   *  as duas linhas ficavam IDÊNTICAS — e duas linhas da mesma cor afirmam que
+   *  são a mesma série. O chip do par, por cima, usava um cinza FIXO: ligar um
+   *  par desenhava uma curva que a legenda não identificava.
+   */
+
+  const cores = () => (recebido.bonds as { chave: string; cor: string }[]) ?? [];
+
+  it('a tela abre com as TRÊS cores da especificação', async () => {
+    /** 2029 laranja, 2031 azul-mar, 2036 violeta — os slots 0, 1 e 2. Sem a
+     *  semeadura, as três curvas nasceriam na primeira cor. */
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(
+        resposta({
+          bonds: [
+            { ticker: 'AEGEBZ29', pontos: [{ data: '2026-01-05', valor: 95 }] },
+            { ticker: 'AEGEBZ31', pontos: [{ data: '2026-01-05', valor: 96 }] },
+            { ticker: 'AEGEBZ36', pontos: [{ data: '2026-01-05', valor: 97 }] },
+          ],
+        }),
+      ),
+    );
+
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(cores()).toHaveLength(3));
+
+    expect(cores().map((s) => s.cor)).toEqual(['#FE952B', '#0027BD', '#A11FFF']);
+  });
+
+  it('DESLIGAR uma série não repinta as que ficaram', async () => {
+    /** A REGRA DE QUALQUER GRÁFICO HONESTO: a cor acompanha a entidade, nunca a
+     *  posição dela numa lista que muda. Quem está olhando a curva azul tem de
+     *  continuar olhando a MESMA curva azul quando outra sai. */
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(
+        resposta({
+          bonds: [
+            { ticker: 'AEGEBZ29', pontos: [{ data: '2026-01-05', valor: 95 }] },
+            { ticker: 'AEGEBZ31', pontos: [{ data: '2026-01-05', valor: 96 }] },
+            { ticker: 'AEGEBZ36', pontos: [{ data: '2026-01-05', valor: 97 }] },
+          ],
+        }),
+      ),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(cores()).toHaveLength(3));
+    const azulAntes = cores().find((s) => s.chave === 'AEGEBZ31')?.cor;
+
+    //: desliga o PRIMEIRO, que numa alocação por posição faria o 2031 andar
+    //: para o slot 0 e trocar de cor
+    screen.getByRole('button', { name: /AEGEBZ29/ }).click();
+
+    await waitFor(() => {
+      const ultima = obterSerieDeMercado.mock.calls.at(-1)?.[0];
+      expect(ultima?.tickers).not.toContain('AEGEBZ29');
+    });
+    expect(cores().find((s) => s.chave === 'AEGEBZ31')?.cor).toBe(azulAntes);
+  });
+
+  it('o par ligado recebe uma cor PRÓPRIA, e o chip mostra ela', async () => {
+    /** O chip usava cinza fixo, então a legenda não dizia qual curva era a do
+     *  par. Agora o quadradinho do chip tem a cor da linha. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    const chip = screen.getByRole('button', { name: /PETBRA30/ });
+    chip.click();
+
+    await waitFor(() => {
+      const ultima = obterSerieDeMercado.mock.calls.at(-1)?.[0];
+      expect(ultima?.tickers).toContain('PETBRA30');
+    });
+    //: o quadrado do chip deixou de ser transparente — ele tem cor de série
+    const quadrado = chip.querySelector('span');
+    expect(quadrado?.getAttribute('style')).toMatch(/background:/);
+    expect(quadrado?.getAttribute('style')).not.toContain('transparent');
+  });
+
+  it('a nona série é RECUSADA, com o limite dito na tela', async () => {
+    /** Repetir cor faria duas curvas afirmarem que são a mesma série. O limite
+     *  dito em voz alta é melhor — clicar e nada acontecer é indistinguível de
+     *  um botão quebrado. */
+    const muitos = Array.from({ length: 12 }, (_, i) => ({
+      ticker: `PAR${i}`,
+      descricao: null,
+      emissor: `Empresa ${i}`,
+      e_aegea: false,
+    }));
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(resposta({ papeis: [...CATALOGO, ...muitos], bonds: [] })),
+    );
+
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('AEGEBZ31')).toBeTruthy());
+
+    //: os três da Aegea já ocupam 3 slots; ligar cinco pares fecha os oito
+    for (const i of [0, 1, 2, 3, 4]) {
+      screen.getByRole('button', { name: new RegExp(`PAR${i}\\b`) }).click();
+    }
+
+    await waitFor(() =>
+      expect(screen.getByText(/máximo que o gráfico distingue por cor/)).toBeTruthy(),
+    );
+    //: e o nono chip fica DESABILITADO, dizendo o que fazer
+    const nono = screen.getByRole('button', { name: /PAR5\b/ });
+    expect(nono.hasAttribute('disabled')).toBe(true);
+    expect(nono.getAttribute('title')).toContain('Desligue uma série');
+  });
+});
+
+describe('enquanto a resposta nova não chega', () => {
+  /** O ACHADO MAIS GRAVE DA REVISÃO: trocar de preço para yield mudava o rótulo
+   *  do eixo e a faixa fixa NA HORA, enquanto os pontos continuavam sendo os de
+   *  preço até a resposta chegar. O gráfico dizia "Yield (%)" sobre uma curva
+   *  de preço — dado falso, com aparência de certo.
+   */
+
+  it('o rótulo do eixo NÃO muda antes dos pontos', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    expect(recebido.rotulo).toContain('Preço');
+
+    //: a segunda busca NUNCA responde: é a janela que o defeito ocupava
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() => expect(screen.getByText('Atualizando…')).toBeTruthy());
+    //: o rótulo e a faixa continuam os do dado DESENHADO
+    expect(recebido.rotulo).toContain('Preço');
+    expect(recebido.faixaFixa).toEqual(FAIXA_FIXA_DO_PRECO);
+  });
+
+  it('o botão JÁ mostra a escolha, para o clique não parecer perdido', async () => {
+    /** As duas coisas convivem: o botão diz o que a pessoa pediu, o gráfico diz
+     *  o que está desenhado, e o "Atualizando…" liga os dois. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Yield' }).getAttribute('aria-pressed')).toBe(
+        'true',
+      ),
+    );
+  });
+
+  it('o gráfico fica com `aria-busy`, para o leitor de tela saber', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: '1M' }).click();
+
+    await waitFor(() => {
+      const moldura = screen.getByText('GRAFICO').closest('[aria-busy]');
+      expect(moldura?.getAttribute('aria-busy')).toBe('true');
+    });
   });
 });

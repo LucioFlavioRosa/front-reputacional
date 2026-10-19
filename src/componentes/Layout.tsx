@@ -149,7 +149,13 @@ export function Layout({
       ? 'KPIs Reputacionais'
       : view === 'compartilhado'
         ? 'Cadastro compartilhado'
-        : 'CRM';
+        : //: O TERCEIRO PORTAL PRECISA DO PRÓPRIO NOME. Sem esta linha ele caía
+          //: no `'CRM'` do fim e o cabeçalho dizia "CRM dos Stakeholders" sobre
+          //: a tela de bonds — achado de revisão. Mesmo nome que a capa usa no
+          //: cartão dele, ver `Inicio.tsx`.
+          view === 'mercado'
+          ? 'Inteligência de Mercado'
+          : 'CRM';
   //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
   //: `Inicio.tsx`. Faltam `admin` e `plataforma` aqui ainda: caem no CRM por
@@ -387,7 +393,14 @@ export function Layout({
             cadastrando uma instituição, um tema ou um representante. Fazia
             sentido só enquanto essas telas viviam dentro do CRM; fora dele,
             sobrou sem função. */}
-        {view !== 'cadastro' && view !== 'score' && view !== 'compartilhado' ? (
+        {/* O PAINEL DE MERCADO TAMBÉM NÃO: o recorte da `BarraDeRecorte` é por
+            frente e período de AGENDA, e esta tela escolhe período de pregão no
+            próprio corpo. Deixá-la aqui ofereceria dois seletores de período
+            discordando na mesma tela — e o de cima não faria nada. */}
+        {view !== 'cadastro' &&
+        view !== 'score' &&
+        view !== 'compartilhado' &&
+        view !== 'mercado' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
