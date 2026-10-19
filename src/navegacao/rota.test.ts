@@ -22,6 +22,12 @@ describe('ler e escrever o caminho', () => {
     ['/base', { destino: 'base' }],
     ['/relatorios', { destino: 'relatorios' }],
   ['/score', { destino: 'score', aba: 'geral' }],
+    //: O MERCADO ENTRA NA TABELA, e faltar aqui foi o que deixou passar o
+    //: defeito: `/mercado` lia `aba: undefined`, a barra de cima compara
+    //: `item.aba === abaAtiva` e a aba "Bonds e reputação" nunca acendia.
+    //: Mesmo par que `/score` ↔ `geral` já protege.
+    ['/mercado', { destino: 'mercado', aba: 'bonds' }],
+    ['/mercado/importacao', { destino: 'mercado', aba: 'importacao' }],
     ['/preparar', { destino: 'preparar' }],
     ['/admin', { destino: 'admin', aba: undefined }],
     ['/admin/porta-vozes', { destino: 'admin', aba: 'porta-vozes' }],
@@ -126,6 +132,13 @@ describe('o nome da tela para a telemetria', () => {
       'base:cadeia',
     );
     expect(nomeDaTela({ destino: 'admin', aba: 'assuntos' })).toBe('admin:assuntos');
+    //: AS DUAS TELAS DO MERCADO SE DISTINGUEM: ler o gráfico e subir a planilha
+    //: da semana chegavam as duas como `mercado`, e é essa diferença que diz se
+    //: alguém usa a importação.
+    expect(nomeDaTela({ destino: 'mercado', aba: 'bonds' })).toBe('mercado:bonds');
+    expect(nomeDaTela({ destino: 'mercado', aba: 'importacao' })).toBe(
+      'mercado:importacao',
+    );
   });
 });
 

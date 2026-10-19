@@ -112,6 +112,62 @@ function datados(pontos: PontoDatado[]): { ms: number; valor: number }[] {
   return bons;
 }
 
+/** A data sob um pixel da área do gráfico — a inversa da escala do eixo x.
+ *
+ *  FUNÇÃO PURA, E EXPORTADA, porque é esta conta que erra: um erro de meia tela
+ *  aqui aponta uma janela inteira errada sem nada parecer quebrado. Testar a
+ *  inversa direto é mais barato e mais exato que caçá-la por cliques simulados.
+ *
+ *  PRENDE NAS PONTAS em vez de extrapolar: arrastar o clique para fora da área
+ *  pediria uma janela que o gráfico não mostra — ou, para a esquerda, uma data
+ *  anterior ao próprio eixo.
+ *
+ *  LARGURA ZERO DEVOLVE O COMEÇO, e não `NaN`: há um quadro, antes de o
+ *  `ResizeObserver` responder, em que a largura é zero. `NaN` ali faria
+ *  `toISOString` lançar `RangeError` — e fora da renderização, onde o
+ *  `LimiteDeErro` não alcança.
+ */
+export function dataNoPixel(
+  px: number,
+  inicio: number,
+  fim: number,
+  larguraDoPlot: number,
+): string {
+  if (!(larguraDoPlot > 0)) return new Date(inicio).toISOString().slice(0, 10);
+  const fracao = Math.min(1, Math.max(0, px / larguraDoPlot));
+  const ms = inicio + fracao * (fim - inicio);
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** O último dia do mês de `iso`, sem passar do fim do eixo.
+ *
+ *  O RÓTULO DO EIXO É UM MÊS E A JANELA PRECISA DE UM DIA. O último do mês é o
+ *  que faz os quinze dias caírem DENTRO do mês clicado; pegar o dia 1º jogaria a
+ *  janela quase toda para o mês anterior, que não é o que alguém clicando em
+ *  "set" quer ver.
+ */
+function ultimoDiaDoMes(iso: string, fimDoEixo: number): string {
+  const [ano, mes] = iso.split('-').map(Number);
+  //: DIA 0 DO MÊS SEGUINTE é o último do mês atual, inclusive em fevereiro de
+  //: ano bissexto — a conta de dias por mês fica com o calendário, não comigo.
+  const ultimo = Date.UTC(ano, mes, 0);
+  return new Date(Math.min(ultimo, fimDoEixo)).toISOString().slice(0, 10);
+}
+
+/** Esta série desenha alguma curva?
+ *
+ *  A REGRA ÚNICA, exportada porque a TELA precisa da MESMA: o aviso de "sem
+ *  cotação no período" nasceu olhando `pontos.length`, e o desenho olha os
+ *  pontos com DATA VÁLIDA. Uma série com pontos e datas tortas não desenhava
+ *  curva e não disparava o aviso — exatamente o estado silencioso que o aviso
+ *  existe para acabar. Achado de revisão.
+ *
+ *  MORA AQUI porque é aqui que "o que é desenhável" se decide: `datados`
+ *  descarta data inválida e `trechos` agrupa o que sobra. */
+export function temCurva(pontos: PontoDatado[]): boolean {
+  return trechos(datados(pontos)).length > 0;
+}
+
 /** Os trechos contínuos de uma série, separados nos vãos grandes.
  *
  *  DEVOLVE OS TRECHOS, e não o `d` pronto, porque o desenho precisa saber quais
@@ -224,6 +280,9 @@ export function GraficoDeDoisEixos({
   faixaFixa,
   altura = 320,
   vazio = 'Sem cotação no período.',
+  aoEscolherData,
+  dataEscolhida = null,
+  diasDaJanela = 15,
 }: {
   bonds: SerieDatada[];
   indice: PontoMensal[];
@@ -238,6 +297,19 @@ export function GraficoDeDoisEixos({
   faixaFixa?: FaixaDoEixo;
   altura?: number;
   vazio?: string;
+  /** Escolher um dia clicando no gráfico ou num rótulo do eixo.
+   *
+   *  OMITIDA, O GRÁFICO NÃO FICA CLICÁVEL — e isso é de propósito: as outras
+   *  telas montam este componente e não devem ganhar uma área de clique
+   *  invisível, nem um cursor de mãozinha prometendo interação que não existe. */
+  aoEscolherData?: (iso: string) => void;
+  /** O dia escolhido, para o gráfico marcá-lo. Sem a marca, o clique muda o que
+   *  está embaixo e o gráfico fica igual — e aí não há como saber qual janela
+   *  está na tela. */
+  dataEscolhida?: string | null;
+  /** Quantos dias a janela cobre, só para sombreá-la. A conta de verdade é do
+   *  servidor (ver `impacto_por_n2_na_janela`); aqui é desenho. */
+  diasDaJanela?: number;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [largura, definirLargura] = useState(0);
@@ -248,7 +320,13 @@ export function GraficoDeDoisEixos({
   useEffect(() => {
     const alvo = container.current;
     if (!alvo) return;
-    const observador = new ResizeObserver(([entrada]) => {
+    const observador = new ResizeObserver((entradas) => {
+      //: A LISTA PODE VIR VAZIA, e `entradas[0].contentRect` então lança DENTRO
+      //: do callback do observador — fora da renderização, onde o
+      //: `LimiteDeErro` não alcança: o erro sobe sem nada na tela explicando, e
+      //: a largura nunca mais chega. Achado de revisão, defensivo e barato.
+      const entrada = entradas[0];
+      if (!entrada) return;
       definirLargura(entrada.contentRect.width);
     });
     observador.observe(alvo);
@@ -258,9 +336,12 @@ export function GraficoDeDoisEixos({
   //: CADA SÉRIE VIRA SEUS TRECHOS, uma vez: o desenho precisa deles e a conta
   //: do eixo também, e refazê-los duas vezes deixaria as duas discordarem no
   //: dia em que a regra de quebra mudasse.
-  const series = bonds
-    .map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }))
-    .filter((s) => s.trechos.length > 0);
+  //: UMA TRANSFORMAÇÃO SÓ, e duas vistas dela: `series` é o que se DESENHA e
+  //: `comTrechos` é o que se DESCREVE (inclui quem não tem ponto). Calcular
+  //: `datados`/`trechos` duas vezes — uma para cada — era convite para as duas
+  //: discordarem no dia em que a regra de quebra mudasse; achado de revisão.
+  const comTrechos = bonds.map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }));
+  const series = comTrechos.filter((s) => s.trechos.length > 0);
   const todosOsValores = series.flatMap((s) =>
     s.trechos.flatMap((t) => t.map((p) => p.valor)),
   );
@@ -312,13 +393,40 @@ export function GraficoDeDoisEixos({
    *  diz quais papéis, nem quanto, nem quando. Para uma série longa vão as
    *  pontas: ler 1.100 pregões em voz alta não é acesso, é ruído.
    */
+  /** Onde desenhar a faixa da janela, em pixels — `null` sem data escolhida.
+   *
+   *  PRESO AO EIXO nas duas pontas: a janela de quinze dias pode começar antes
+   *  do primeiro ponto do gráfico, e uma faixa que vaza para a esquerda da
+   *  régua sugere dado que o gráfico não mostra. */
+  const janela = (() => {
+    if (!dataEscolhida) return null;
+    const ms = emMilissegundos(dataEscolhida);
+    if (ms === null) return null;
+    const comeca = ms - (diasDaJanela - 1) * UM_DIA;
+    return {
+      de: x(Math.max(inicio, Math.min(fim, comeca))),
+      ate: x(Math.max(inicio, Math.min(fim, ms))),
+    };
+  })();
+
   const descricao = [
     `${rotuloDaEsquerda} e índice reputacional de 0 a 100.`,
-    ...series.map((s) => {
+    //: DE `bonds`, E NÃO DE `series`: `series` já descartou (linha 263) quem não
+    //: tem ponto nenhum, e descrever só os que sobraram faz a série escolhida
+    //: desaparecer de TUDO — do desenho, da descrição e de qualquer aviso. Quem
+    //: ligou o papel clica, nada muda, e a conclusão é que a tela travou.
+    //:
+    //: É O CASO DO PAPEL SEM COTAÇÃO NO PERÍODO — um papel emitido depois do
+    //: início da janela, ou que só tem preço e não tem yield na métrica
+    //: escolhida. Relatado em 19/10/2026 como "mudo a fonte de dados e a tela
+    //: trava": o servidor respondia 200 em 60ms com a série vazia, de propósito,
+    //: e era a tela que engolia a resposta em silêncio.
+    ...comTrechos.map((s) => {
       const pontos = s.trechos.flat();
       const primeiro = pontos[0];
       const ultimo = pontos[pontos.length - 1];
       const comoData = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+      if (pontos.length === 0) return `${s.rotulo}: sem cotação no período.`;
       return pontos.length === 1
         ? `${s.rotulo}: ${primeiro.valor} em ${comoData(primeiro.ms)}.`
         : `${s.rotulo}: de ${primeiro.valor} em ${comoData(primeiro.ms)} a ` +
@@ -329,10 +437,70 @@ export function GraficoDeDoisEixos({
       : 'Índice sem valor no período.',
   ].join(' ');
 
+  //: O CLIQUE MORA NO `<svg>`, e não numa área transparente por cima.
+  //:
+  //: ERA UM `<rect>` COBRINDO O PLOT, e isso foi achado de revisão: em SVG a
+  //: ordem do documento é a ordem de pintura E a de alvo do ponteiro, então a
+  //: área virava o alvo sobre as curvas e impedia o `<title>` de cada série de
+  //: aparecer no hover nativo — o único jeito de identificar uma curva com o
+  //: mouse.
+  //:
+  //: O `<svg>` É ANCESTRAL DE TUDO: recebe o clique das curvas por propagação e
+  //: não cobre nada. Os rótulos do eixo param a propagação, senão o clique neles
+  //: seria resolvido duas vezes — pelo rótulo e pelo pixel embaixo dele.
   return (
     <div ref={container} style={{ width: '100%' }}>
       {largura > 0 ? (
-        <svg width={largura} height={altura} role="img" aria-label={descricao}>
+        <svg
+          width={largura}
+          height={altura}
+          role="img"
+          aria-label={descricao}
+          style={aoEscolherData ? { cursor: 'crosshair' } : undefined}
+          onClick={
+            aoEscolherData
+              ? (evento) => {
+                  //: O PIXEL É RELATIVO AO SVG, e não à janela: o gráfico pode
+                  //: estar rolado ou deslocado na página.
+                  const caixa = evento.currentTarget.getBoundingClientRect();
+                  const px = evento.clientX - caixa.left - MARGEM_ESQUERDA;
+                  //: FORA DO PLOT NÃO ESCOLHE NADA. A régua da esquerda ocupa 44
+                  //: pixels, e clicar nela pedia a data presa na ponta — um
+                  //: recorte que ninguém pediu, de um clique que não era no
+                  //: gráfico.
+                  if (px < 0 || px > larguraDoPlot) return;
+                  aoEscolherData(dataNoPixel(px, inicio, fim, larguraDoPlot));
+                }
+              : undefined
+          }
+        >
+          {/* A JANELA ESCOLHIDA, ATRÁS DE TUDO. Primeiro no documento é primeiro
+              a ser pintado, então a faixa fica por baixo das curvas — ela é
+              contexto, e cobrir o dado com o recorte do dado seria inverter o
+              que importa. */}
+          {janela ? (
+            <>
+              <rect
+                data-testid="faixa-da-janela"
+                x={janela.de}
+                y={MARGEM_SUPERIOR}
+                width={Math.max(1, janela.ate - janela.de)}
+                height={alturaDoPlot}
+                fill="var(--azul-mar)"
+                opacity={0.08}
+              />
+              <line
+                data-testid="marca-da-data"
+                x1={janela.ate}
+                x2={janela.ate}
+                y1={MARGEM_SUPERIOR}
+                y2={MARGEM_SUPERIOR + alturaDoPlot}
+                stroke="var(--azul-mar)"
+                strokeWidth={2}
+              />
+            </>
+          ) : null}
+
           {/* a régua da esquerda: três marcas, que é o que cabe sem poluir */}
           {[0, 0.5, 1].map((fracao) => {
             const valor =
@@ -419,18 +587,51 @@ export function GraficoDeDoisEixos({
           {/* o eixo x: um rótulo por mês, no máximo seis */}
           {meses
             .filter((_, i) => i % Math.ceil(Math.max(1, meses.length) / 6) === 0)
-            .map((mes) => (
-              <text
-                key={mes.comeca}
-                x={x(mes.comeca)}
-                y={altura - 6}
-                textAnchor="middle"
-                fontSize={11}
-                fill="var(--cinza-2)"
-              >
-                {mesLegivel(new Date(mes.comeca).toISOString().slice(0, 10))}
-              </text>
-            ))}
+            .map((mes) => {
+              const iso = new Date(mes.comeca).toISOString().slice(0, 10);
+              //: PARA A PROPAGAÇÃO: sem isto o clique no rótulo seria resolvido
+              //: DUAS vezes — pelo rótulo (último dia do mês) e pelo `<svg>`
+              //: embaixo (o pixel sob o cursor), e o segundo venceria. O mês
+              //: clicado deixaria de ser o mês escolhido.
+              const escolher = aoEscolherData
+                ? (evento?: { stopPropagation: () => void }) => {
+                    evento?.stopPropagation();
+                    aoEscolherData(ultimoDiaDoMes(iso, fim));
+                  }
+                : undefined;
+              return (
+                <text
+                  key={mes.comeca}
+                  data-mes={iso}
+                  x={x(mes.comeca)}
+                  y={altura - 6}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={aoEscolherData ? 'var(--azul-mar)' : 'var(--cinza-2)'}
+                  //: O RÓTULO É BOTÃO DE VERDADE quando dá para clicar: papel,
+                  //: foco e tecla. Um `onClick` sozinho num `<text>` seria
+                  //: inalcançável por teclado — e o eixo é justamente a porta
+                  //: que ele pediu ("seja no gráfico ou seja no eixo").
+                  role={aoEscolherData ? 'button' : undefined}
+                  tabIndex={aoEscolherData ? 0 : undefined}
+                  style={aoEscolherData ? { cursor: 'pointer' } : undefined}
+                  onClick={escolher}
+                  onKeyDown={
+                    escolher
+                      ? (evento) => {
+                          if (evento.key === 'Enter' || evento.key === ' ') {
+                            evento.preventDefault();
+                            escolher(evento);
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  {mesLegivel(iso)}
+                </text>
+              );
+            })}
+
         </svg>
       ) : null}
 

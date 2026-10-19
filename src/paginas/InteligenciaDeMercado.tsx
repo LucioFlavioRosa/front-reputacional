@@ -22,11 +22,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { obterSerieDeMercado } from '@/api/cliente';
-import type { MetricaDoBond, SerieDeMercado } from '@/api/cliente';
+import { obterImpactoNaJanela, obterSerieDeMercado } from '@/api/cliente';
+import type {
+  ImpactoNaJanela,
+  MetricaDoBond,
+  GrupoNaJanela,
+  NivelDaJanela,
+  SerieDeMercado,
+} from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
+import { numero } from '@/dominio/formato';
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
-import { GraficoDeDoisEixos } from '@/graficos/GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, temCurva } from '@/graficos/GraficoDeDoisEixos';
+import { mercadoMudou } from '@/dominio/sincronizacao';
 import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
 
 /** As cores das séries. AS TRÊS PRIMEIRAS SÃO AS DA ESPECIFICAÇÃO (2029
@@ -83,6 +91,21 @@ const PERIODOS = [
   { codigo: 'tudo', rotulo: 'Tudo', dias: null },
 ] as const;
 
+/** Quanto a tela espera antes de desistir de uma busca, em milissegundos.
+ *
+ *  VINTE SEGUNDOS porque esta leitura é curta: o servidor responde em 60–95ms
+ *  no ambiente, então vinte segundos sem resposta não é lentidão, é algo
+ *  perdido no caminho. Exportado para o teste não precisar esperar de verdade.
+ */
+export const TETO_DA_BUSCA = 20_000;
+
+/** Quantos dias a janela dos temas cobre, contados para trás do dia clicado.
+ *
+ *  QUINZE, por pedido ("pega a data e subtrai 15 dias"). O servidor tem o mesmo
+ *  número como padrão; a tela o manda explícito porque é ela que o diz na
+ *  legenda, e dois lugares com o mesmo valor calado divergiriam em silêncio. */
+export const DIAS_DA_JANELA = 15;
+
 const METRICAS: { codigo: MetricaDoBond; rotulo: string; eixo: string }[] = [
   { codigo: 'preco', rotulo: 'Preço', eixo: 'Preço (% do par)' },
   { codigo: 'yield', rotulo: 'Yield', eixo: 'Yield (%)' },
@@ -123,6 +146,74 @@ export function InteligenciaDeMercado() {
   //: anterior — e sem dizer isso ele AFIRMA ser a resposta da pergunta nova.
   //: Ver `naMetrica` e o aviso de atualização abaixo.
   const [buscando, definirBuscando] = useState(true);
+  //: A TELA ESCUTA O BARRAMENTO DO MERCADO, pelo mesmo motivo que a do Score
+  //: passou a escutar o dela: subir a planilha na aba Importação tem de
+  //: aparecer AQUI sem F5. `api/nucleo.ts` avisa depois de qualquer escrita
+  //: bem-sucedida sob `/api/mercado` e já esqueceu o cache — mas esquecer o
+  //: cache não faz ninguém buscar de novo, só garante que a próxima busca seja
+  //: de verdade. Este contador é quem busca.
+  //:
+  //: ATRAVESSA ABAS DO NAVEGADOR de graça (`BroadcastChannel`): subir numa aba
+  //: atualiza o gráfico na outra.
+  const [versao, definirVersao] = useState(0);
+  useEffect(() => mercadoMudou.assinar(() => definirVersao((v) => v + 1)), []);
+
+  //: A JANELA DOS TEMAS: o dia clicado, o que o servidor respondeu, e a falha
+  //: dela — SEPARADA da falha do gráfico, porque são dois pedaços independentes
+  //: da tela. A janela falhar não pode levar o gráfico, que é a lição do beco
+  //: sem saída que esta tela já teve.
+  const [diaEscolhido, definirDiaEscolhido] = useState<string | null>(null);
+  //: A CHAVE ENTRE OS DOIS NÍVEIS, por pedido dele depois de ver os dois no ar.
+  //:
+  //: O PILAR TEM COBERTURA (~98% na Clipei) e diz "a imprensa está amplamente
+  //: positiva" sobre o TODO. O TEMA tem sete vezes mais grupos e acha o bolsão
+  //: negativo, mas sobre o quarto que está classificado — a migration 0098 mede
+  //: 72.590 menções com pilar e sem tema. Escolher um perderia uma pergunta.
+  //:
+  //: ABRE NO TEMA, que é o que ele pediu primeiro; o pilar fica a um clique. E a
+  //: cobertura do tema MELHORA com o tempo: depende de o fornecedor mandar o N3
+  //: que o cadastro reconhece, trabalho em curso com eles.
+  const [nivel, definirNivel] = useState<NivelDaJanela>('n2');
+  const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
+  const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (diaEscolhido === null) {
+      definirJanela(null);
+      definirErroDaJanela(null);
+      return;
+    }
+    let ativo = true;
+    definirErroDaJanela(null);
+    //: A JANELA ANTIGA SAI JÁ, e não quando a nova chega — achado de revisão, do
+    //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica. Ao clicar
+    //: numa data nova, os quadros antigos continuavam na tela com o cabeçalho do
+    //: período anterior, enquanto a marca do gráfico já apontava para a data
+    //: nova: os números afirmavam uma janela e o gráfico afirmava outra.
+    definirJanela(null);
+    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA)
+      .then((lida) => {
+        if (ativo) definirJanela(lida);
+      })
+      .catch((falha: unknown) => {
+        if (!ativo) return;
+        //: A JANELA ANTIGA SAI junto com a falha: ela descrevia OUTRO dia, e
+        //: deixá-la na tela ao lado de um erro faria os quadros afirmarem a
+        //: janela errada — o mesmo defeito do rótulo do eixo que mentia sobre a
+        //: métrica enquanto a resposta nova não chegava.
+        definirJanela(null);
+        definirErroDaJanela(
+          falha instanceof Error ? falha.message : 'Não foi possível ler a janela.',
+        );
+      });
+    return () => {
+      ativo = false;
+    };
+    //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês, e
+    //: os quadros abertos passariam a descrever o dado de antes.
+    //: O NÍVEL ENTRA NAS DEPENDÊNCIAS: trocar a chave é uma pergunta nova sobre
+    //: o MESMO dia, e sem isto a tela mostraria a resposta do nível anterior.
+  }, [diaEscolhido, nivel, versao]);
 
   const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
@@ -133,6 +224,24 @@ export function InteligenciaDeMercado() {
     let ativo = true;
     definirErro(null);
     definirBuscando(true);
+    //: O TETO DA ESPERA. A guarda `ativo` descarta resposta velha, mas nada
+    //: protegia contra uma promessa que NUNCA resolve nem rejeita: `buscando`
+    //: ficava `true` eternamente, o gráfico em `opacity: 0.5` e o "Atualizando…"
+    //: não saía — que é exatamente o que ele descreveu como travar, com o F5
+    //: como única saída. Achado de revisão.
+    //:
+    //: AQUI, E NÃO NO `requisitar`: pôr um teto no transporte mudaria o
+    //: comportamento de toda a plataforma, inclusive das subidas de planilha,
+    //: que demoram de propósito. Esta tela faz leitura curta — o servidor
+    //: responde em 60-95ms no ambiente — então vinte segundos sem resposta é
+    //: sinal de que algo se perdeu no caminho, não de lentidão.
+    const relogio = setTimeout(() => {
+      if (!ativo) return;
+      definirErro(
+        'A busca demorou demais e foi interrompida. O servidor pode estar fora do ar.',
+      );
+      definirBuscando(false);
+    }, TETO_DA_BUSCA);
     obterSerieDeMercado({
       tickers: pedidos ? pedidos.split(',') : undefined,
       de: dias === null ? undefined : diasAtras(dias),
@@ -140,20 +249,26 @@ export function InteligenciaDeMercado() {
     })
       .then((lida) => {
         if (!ativo) return;
+        clearTimeout(relogio);
         definirDados(lida);
         definirBuscando(false);
       })
       .catch((falha: unknown) => {
         if (!ativo) return;
+        clearTimeout(relogio);
         definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
         definirBuscando(false);
       });
     return () => {
       ativo = false;
+      //: O RELÓGIO MORRE COM O EFEITO, senão um teto de uma busca já superada
+      //: dispararia sobre a busca nova e diria "demorou demais" sobre uma
+      //: pergunta que acabou de sair.
+      clearTimeout(relogio);
     };
     //: pedidos É STRING, e não o array: um array novo a cada renderização
     //: faria este efeito rodar em todas elas, e a tela buscaria sem parar.
-  }, [dias, metrica, pedidos]);
+  }, [dias, metrica, pedidos, versao]);
 
   /** Os slots EM VIGOR: os escolhidos, ou os do padrão deduzidos na hora.
    *
@@ -211,8 +326,32 @@ export function InteligenciaDeMercado() {
     [dados],
   );
 
-  if (erro) return <FaixaDeErro mensagem={erro} />;
-  if (!dados) return <Carregando />;
+  /** Repete a busca. É o contador do barramento que serve: ele já está nas
+   *  dependências do efeito, e uma segunda via faria duas portas para a mesma
+   *  coisa. */
+  const tentarDeNovo = () => definirVersao((v) => v + 1);
+
+  //: A FALHA NÃO ENGOLE A TELA. Isto era `if (erro) return <FaixaDeErro/>`, e
+  //: trocava a tela INTEIRA pela faixa: período, métrica e os chips sumiam
+  //: junto. Quem pegasse uma falha de rede num clique não tinha mais nada para
+  //: clicar, e a única saída era o F5 — a faixa dizia o que aconteceu e tirava
+  //: da pessoa a capacidade de reagir.
+  //:
+  //: SEM CATÁLOGO NÃO HÁ CONTROLE PARA MANTER, e aí a faixa é a tela toda
+  //: mesmo: é a primeira busca que falhou, não existe seletor nem gráfico
+  //: anteriores. O que faltava era a saída, e é o botão.
+  if (!dados) {
+    return erro ? (
+      <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
+        <FaixaDeErro mensagem={erro} />
+        <button type="button" onClick={tentarDeNovo} style={{ ...botao(false), marginTop: 12 }}>
+          Tentar de novo
+        </button>
+      </section>
+    ) : (
+      <Carregando />
+    );
+  }
 
   const daAegea = dados.papeis.filter((p) => p.e_aegea);
   const pares = dados.papeis.filter((p) => !p.e_aegea);
@@ -247,6 +386,27 @@ export function InteligenciaDeMercado() {
   };
 
   const semCorLivre = slotLivre(emVigor) === null;
+
+  /** Os papéis LIGADOS que voltaram sem cotação nenhuma no período.
+   *
+   *  O CLIQUE SEM EFEITO VISÍVEL ERA O PIOR DEFEITO DESTA TELA, e foi relatado
+   *  como travamento: "a tela trava quando eu mudo alguma fonte de dados ou
+   *  métrica, daí preciso dar F5". O servidor respondia 200 em 60ms, e a tela
+   *  engolia a resposta — o chip acendia com cor e curva nenhuma aparecia.
+   *
+   *  O BACK DEVOLVE A SÉRIE VAZIA DE PROPÓSITO (semeia `por_ticker` com cada
+   *  ticker pedido), e o gráfico descarta quem não tem ponto. Nenhum dos dois
+   *  está errado; faltava alguém DIZER.
+   *
+   *  ACONTECE DE DOIS JEITOS: o papel que não negociou na janela escolhida — ou
+   *  foi emitido depois dela —, e o papel que tem preço e não tem yield, que
+   *  desaparece só ao trocar a métrica. */
+  //: `temCurva`, E NÃO `pontos.length`: a regra é a do gráfico, e as duas
+  //: divergiam numa série com pontos de DATA TORTA — ela não desenhava curva e
+  //: não entrava no aviso, que é o estado silencioso que este aviso existe para
+  //: acabar. Achado de revisão, dentro desta própria correção.
+  const comPonto = new Set(dados.bonds.filter((s) => temCurva(s.pontos)).map((s) => s.ticker));
+  const mudos = Object.keys(emVigor).filter((t) => !comPonto.has(t));
 
   return (
     <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
@@ -294,29 +454,128 @@ export function InteligenciaDeMercado() {
         </fieldset>
       </div>
 
-      {/* O GRÁFICO FICA ESMAECIDO ENQUANTO BUSCA, e com `aria-busy`: a curva
-          antiga continua visível (sumir com ela a cada clique faria a tela
-          piscar), mas deixa de se apresentar como a resposta da pergunta nova.
-          `aria-busy` é o que diz o mesmo a quem usa leitor de tela. */}
-      <div aria-busy={buscando} style={{ opacity: buscando ? 0.5 : 1 }}>
+      {/* A FALHA FICA AO LADO DO QUE CONTINUA FUNCIONANDO, e não no lugar dele:
+          a curva anterior segue na tela (apagá-la perderia o que a pessoa
+          estava lendo por causa de uma falha que pode durar um segundo), os
+          controles seguem de pé, e o botão repete a busca sem recarregar a
+          página. */}
+      {erro ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 12px', flexWrap: 'wrap' }}>
+          <FaixaDeErro mensagem={erro} />
+          <button type="button" onClick={tentarDeNovo} style={botao(false)}>
+            Tentar de novo
+          </button>
+        </div>
+      ) : null}
+
+      {/* "ESTOU TRABALHANDO", E NÃO "ESTOU DESLIGADO". Era `opacity: 0.5`, e meia
+          opacidade é o idioma de controle desabilitado: numa tela que já se
+          suspeitava travada, o apagamento confirmava a suspeita errada — achado
+          da passada de UX.
+
+          Quem dá o recado agora é o selo sobre o gráfico. A curva antiga fica
+          legível de propósito: ela é o melhor dado disponível até a resposta
+          nova chegar, e o selo é o que a impede de se apresentar como a resposta
+          da pergunta nova. `aria-busy` diz o mesmo a quem usa leitor de tela. */}
+      <div aria-busy={buscando} style={{ position: 'relative', opacity: buscando ? 0.92 : 1 }}>
         <GraficoDeDoisEixos
           bonds={series}
           indice={indice}
           rotuloDaEsquerda={naMetrica.eixo}
           faixaFixa={naMetrica.codigo === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
+          aoEscolherData={definirDiaEscolhido}
+          dataEscolhida={diaEscolhido}
+          diasDaJanela={DIAS_DA_JANELA}
         />
+        {buscando ? (
+          <p
+            role="status"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              margin: 0,
+              padding: '3px 10px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--azul-mar)',
+              background: 'var(--branco)',
+              border: '1px solid var(--borda)',
+              borderRadius: 999,
+            }}
+          >
+            Atualizando…
+          </p>
+        ) : null}
       </div>
-      {buscando ? (
-        <p role="status" style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
-          Atualizando…
+
+      {/* O PAPEL ESCOLHIDO QUE NÃO TEM CURVA DIZ POR QUÊ. Sem esta linha, ligar
+          um papel sem cotação no período é indistinguível de a tela ter parado
+          de responder — e a saída que sobra para quem está usando é o F5.
+          `role="status"` porque a frase aparece como RESPOSTA a um clique: quem
+          usa leitor de tela precisa ouvi-la sem ir procurar. */}
+      {mudos.length ? (
+        <p
+          data-testid="sem-cotacao"
+          role="status"
+          //: 13px E NÃO 12: a 12 ela ficava do tamanho das legendas dos eixos e
+          //: se lia como ornamento do gráfico. É a frase que explica por que uma
+          //: curva pedida não apareceu — achado da passada de UX.
+          style={{
+            fontSize: 13,
+            color: 'var(--atencao-fg)',
+            background: 'var(--atencao-bg)',
+            borderRadius: 'var(--r-card-int)',
+            padding: '8px 12px',
+            margin: '10px 0 0',
+          }}
+        >
+          {mudos.length === 1
+            ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva dele no gráfico.`
+            : `${mudos.join(', ')} não têm cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva delas no gráfico.`}{' '}
+          Experimente um período maior ou a outra métrica.
         </p>
       ) : null}
+
+      {/* OS TEMAS DA JANELA, logo abaixo do gráfico — onde ele pediu.
+
+          A JANELA É UM PEDAÇO INDEPENDENTE DA TELA: a falha dela mostra a faixa
+          aqui e não leva o gráfico nem os controles junto. */}
+      <JanelaDosTemas
+        dia={diaEscolhido}
+        janela={janela}
+        erro={erroDaJanela}
+        nivel={nivel}
+        aoTrocarNivel={definirNivel}
+        aoFechar={() => definirDiaEscolhido(null)}
+      />
 
       {/* A LEGENDA É TAMBÉM O SELETOR, como no mockup: clicar liga e desliga a
           série. Duas listas separadas — a companhia e os pares — porque são
           decisões diferentes: ver o próprio papel é o padrão, comparar com par
           é uma escolha. */}
       <div style={{ marginTop: 16 }}>
+        {/* O CONTADOR, E O LIMITE JUNTO COM ELE. Duas coisas da passada de UX
+            viviam mal aqui: não havia como saber quantas séries estão no gráfico
+            sem contar os chips acesos, e o limite de oito só aparecia DEPOIS das
+            duas listas, em 12px, como recusa no nono clique.
+
+            UMA LINHA RESOLVE AS DUAS, e ela fica ACIMA dos chips — onde a pessoa
+            olha antes de clicar, e não depois. O limite deixa de ser surpresa:
+            está escrito "6 de 8" muito antes de alguém chegar ao oitavo. */}
+        <p
+          data-testid="contador-de-series"
+          style={{
+            fontSize: 13,
+            color: semCorLivre ? 'var(--atencao-fg)' : 'var(--cinza-3)',
+            margin: '0 0 8px',
+            fontWeight: semCorLivre ? 500 : 400,
+          }}
+        >
+          {Object.keys(emVigor).length} de {CORES.length} séries no gráfico
+          {semCorLivre ? ' — desligue uma para ligar outra' : null}
+        </p>
+
         <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 4px' }}>Aegea</p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {daAegea.map((papel) => (
@@ -347,17 +606,287 @@ export function InteligenciaDeMercado() {
           ))}
         </div>
 
-        {/* O LIMITE DITO EM VOZ ALTA. Sem esta linha, clicar num chip e nada
-            acontecer é indistinguível de um botão quebrado. */}
-        {semCorLivre ? (
-          <p style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '12px 0 0' }}>
-            {CORES.length} séries é o máximo que o gráfico distingue por cor.
-            Desligue uma para ligar outra.
-          </p>
-        ) : null}
       </div>
     </section>
   );
+}
+
+/** Os dois quadros dos temas, e o convite que os antecede.
+ *
+ *  O CONVITE EXISTE porque dois quadros vazios na abertura seriam ruído — e
+ *  pior, pareceriam dado que não carregou. É ele que liga o gráfico aos quadros:
+ *  sem uma frase dizendo que a data é clicável, a interação não se descobre.
+ *
+ *  A LENTE E A JANELA SAEM DA RESPOSTA, nunca do que a tela pediu: os dois
+ *  divergem enquanto a resposta não chega, e foi assim que o rótulo do eixo
+ *  mentiu sobre a métrica — achado de revisão daquele bloco.
+ */
+function JanelaDosTemas({
+  dia,
+  janela,
+  erro,
+  nivel,
+  aoTrocarNivel,
+  aoFechar,
+}: {
+  dia: string | null;
+  janela: ImpactoNaJanela | null;
+  erro: string | null;
+  nivel: NivelDaJanela;
+  aoTrocarNivel: (nivel: NivelDaJanela) => void;
+  aoFechar: () => void;
+}) {
+  if (dia === null) {
+    return (
+      <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
+        Clique numa data do gráfico — ou num mês do eixo — para ver o que mais
+        empurrou a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
+      </p>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0 0', flexWrap: 'wrap' }}>
+        <FaixaDeErro mensagem={erro} />
+        <button type="button" onClick={aoFechar} style={botao(false)}>
+          Fechar a janela
+        </button>
+      </div>
+    );
+  }
+
+  if (!janela) {
+    return (
+      <p role="status" style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
+        Lendo {nivel === 'n2' ? 'os temas' : 'os pilares'} de {porExtenso(dia)}…
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ margin: '14px 0 0' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 8,
+        }}
+      >
+        <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+          Lente {janela.lente}: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
+        </p>
+
+        {/* A CHAVE ENTRE OS DOIS NÍVEIS, dentro da janela e não na barra de cima:
+            ela só faz sentido com uma data escolhida, e um controle que fica
+            desabilitado a maior parte do tempo é ruído na tela.
+
+            O RÓTULO DIZ O NÍVEL E O QUE ELE DÁ, porque é essa a escolha: o pilar
+            cobre quase tudo e agrupa grosso, o tema é fino e só alcança o que
+            está classificado. Sem isso, "N1" e "N2" não dizem nada a quem não
+            conhece a taxonomia por dentro. */}
+        <div role="group" aria-label="Nível do agrupamento" style={{ display: 'flex', gap: 4 }}>
+          {([
+            ['n2', 'Tema', 'mais fino, só o que está classificado'],
+            ['n1', 'Pilar', 'mais grosso, cobre quase tudo'],
+          ] as const).map(([codigo, rotulo, ajuda]) => (
+            <button
+              key={codigo}
+              type="button"
+              aria-pressed={nivel === codigo}
+              title={ajuda}
+              onClick={() => aoTrocarNivel(codigo)}
+              style={botao(nivel === codigo)}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+
+        <button type="button" onClick={aoFechar} style={botao(false)}>
+          Fechar a janela
+        </button>
+      </div>
+
+      {/* DE QUAL MÊS SÃO OS PONTOS, E COM QUE RÉGUA. Achado de revisão: a
+          resposta trazia as duas coisas e a tela mostrava só lente e datas —
+          e aí "−2,3 pt" não diz pontos DE QUÊ.
+
+          IMPORTA MAIS QUANDO A JANELA ATRAVESSA A VIRADA: o numerador tem
+          menções de dois meses e o denominador é de um, então o número pode
+          passar do que aquele mês inteiro movimentou. A ORDEM dos temas
+          continua exata — todos dividem pelo mesmo denominador —, a escala não.
+          Quem lê precisa saber qual das duas coisas está olhando. */}
+      <p
+        data-testid="regua-da-janela"
+        style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}
+      >
+        Pontos da nota de {porExtenso(janela.mes).slice(3)}, medida pela régua de{' '}
+        {janela.regua}
+        {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
+          ? ' — a janela atravessa a virada do mês, então a ordem é exata e a escala é a daquele mês'
+          : null}
+        .
+      </p>
+
+      {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
+          parecem iguais. O mês sem base não tem denominador: sem ele não há
+          pergunta a responder, e mostrar quadros vazios afirmaria que os grupos
+          daquela janela não impactaram nada — o que é falso, porque as menções
+          estão lá. */}
+      {janela.mes_sem_base ? (
+        <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
+          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
+          {janela.lente}, então não há como calcular quanto cada grupo empurrou a
+          nota. Não é que nada impactou — é que a régua do mês ainda não existe.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <QuadroDeTemas
+            testId="quadro-positivos"
+            titulo="Mais empurraram para CIMA"
+            grupos={janela.positivos}
+            total={janela.total_positivos}
+            cor="var(--sucesso-fg)"
+          />
+          <QuadroDeTemas
+            testId="quadro-negativos"
+            titulo="Mais empurraram para BAIXO"
+            grupos={janela.negativos}
+            total={janela.total_negativos}
+            cor="var(--erro-fg)"
+          />
+        </div>
+      )}
+
+      {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
+          pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
+          o todo, e a soma deles não fecharia com o impacto do período. */}
+      {janela.sem_grupo || janela.sem_data ? (
+        <p
+          data-testid="fora-da-conta"
+          style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}
+        >
+          Fora desta conta:{' '}
+          {/* A PALAVRA SEGUE O NÍVEL, e vem da RESPOSTA e não do botão: enquanto
+              a busca nova não chega, o botão já mudou e os números são os do
+              nível anterior — dizer "sem pilar" sobre uma contagem de temas
+              seria o mesmo defeito do eixo que mentia sobre a métrica. */}
+          {janela.sem_grupo
+            ? `${numero(janela.sem_grupo)} menções da janela sem ${
+                janela.nivel === 'n2' ? 'tema estratégico' : 'pilar'
+              } atribuído`
+            : null}
+          {janela.sem_grupo && janela.sem_data ? '; ' : null}
+          {janela.sem_data
+            ? //: "DOS MESES DA JANELA", e não "do mês": o número passou a contar
+              //: todos os meses que a janela atravessa — achado de revisão, ele
+              //: contava só o da ponta e omitia as do mês anterior.
+              `${numero(janela.sem_data)} menções sem data nos meses da janela, que pertencem ao mês e não a um dia`
+            : null}
+          .
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Um quadro: até cinco grupos, do que mais empurrou para o que menos. */
+function QuadroDeTemas({
+  testId,
+  titulo,
+  grupos,
+  total,
+  cor,
+}: {
+  testId: string;
+  titulo: string;
+  grupos: GrupoNaJanela[];
+  total: number;
+  cor: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        flex: '1 1 300px',
+        border: '1px solid var(--borda)',
+        borderRadius: 'var(--r-card-int)',
+        padding: '10px 12px',
+      }}
+    >
+      <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
+        {titulo}
+        {/* O TAMANHO REAL, por decisão dele: "mostra os que houver e diz o
+            total". Com três grupos aparecem três, e a tela diz "3 de 3" em vez
+            de completar com linha vazia — linha vazia é indistinguível de dado
+            que não carregou. */}
+        {total ? ` · ${numero(grupos.length)} de ${numero(total)}` : null}
+      </p>
+      {grupos.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+          Nada empurrou a nota para este lado nesta janela.
+        </p>
+      ) : (
+        <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+          {grupos.map((grupo) => (
+            <li
+              //: A CHAVE É O id, e não o nome — achado de revisão: dois temas
+              //: homônimos sob pilares diferentes dariam a MESMA chave, e o
+              //: React desenharia uma linha só.
+              key={grupo.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '4px 0',
+                fontSize: 13,
+                borderTop: '1px solid var(--borda-fraca, var(--borda))',
+              }}
+            >
+              {/* O TEMA É O RÓTULO E O PILAR É O CONTEXTO. São 41 temas contra
+                  7 pilares: a lista ganhou granularidade — que é a razão da
+                  troca — e perderia legibilidade sem dizer de qual pilar cada
+                  um vem, ainda mais para quem estava lendo os pilares até
+                  ontem. O pilar pode faltar quando o cadastro não resolve o
+                  pai; aí só o tema aparece, em vez de um travessão solto. */}
+              <span>
+                {grupo.rotulo}
+                {grupo.contexto ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · {grupo.contexto}</span>
+                ) : null}
+              </span>
+              <span style={{ whiteSpace: 'nowrap' }}>
+                <strong style={{ color: cor }}>{comSinal(grupo.impacto)}</strong>{' '}
+                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(grupo.mencoes)}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/** `2026-05-20` como `20/05/2026`. */
+function porExtenso(iso: string): string {
+  const [ano, mes, dia] = iso.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** O impacto com sinal e uma decimal, no padrão de casa (vírgula, menos real).
+ *
+ *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o grupo que
+ *  sustentou e o que derrubou. O `+` explícito é o que torna a leitura simétrica.
+ *  O menos é `−` (U+2212), não hífen — é o que o resto da plataforma usa. */
+function comSinal(valor: number): string {
+  const absoluto = Math.abs(valor).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${valor < 0 ? '−' : '+'}${absoluto}`;
 }
 
 function botao(ativo: boolean) {

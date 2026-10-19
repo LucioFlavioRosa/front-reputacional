@@ -21,7 +21,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { GraficoDeDoisEixos } from './GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, dataNoPixel, temCurva } from './GraficoDeDoisEixos';
 
 //: O `ResizeObserver` não existe no jsdom, e sem ele a largura fica em zero e
 //: o SVG nem é renderizado. O dublê responde uma largura fixa, que é o que
@@ -361,6 +361,205 @@ describe('o estado vazio e o aviso', () => {
 });
 
 
+describe('escolher uma data no gráfico', () => {
+  /** O PEDIDO: "quero poder clicar em alguma data seja no gráfico ou seja no
+   *  eixo, que você pega a data e subtrai 15 dias".
+   *
+   *  A MATEMÁTICA FICA NUMA FUNÇÃO PURA porque é ela que erra: converter pixel
+   *  em data é a inversa da escala do eixo, e um erro de meia tela aqui aponta
+   *  uma janela inteira errada sem nada parecer quebrado. Testada direto, sem
+   *  DOM no meio.
+   */
+  const INICIO = Date.UTC(2026, 0, 1);
+  const FIM = Date.UTC(2026, 0, 31);
+
+  it('a borda esquerda é o começo e a direita é o fim', () => {
+    expect(dataNoPixel(0, INICIO, FIM, 100)).toBe('2026-01-01');
+    expect(dataNoPixel(100, INICIO, FIM, 100)).toBe('2026-01-31');
+  });
+
+  it('o meio é o meio', () => {
+    expect(dataNoPixel(50, INICIO, FIM, 100)).toBe('2026-01-16');
+  });
+
+  it('fora da área, PRENDE nas pontas em vez de inventar data', () => {
+    //: Arrastar o clique para fora não deve pedir uma janela que o gráfico não
+    //: mostra — nem uma data negativa, que o servidor recusaria.
+    expect(dataNoPixel(-40, INICIO, FIM, 100)).toBe('2026-01-01');
+    expect(dataNoPixel(500, INICIO, FIM, 100)).toBe('2026-01-31');
+  });
+
+  it('largura zero não produz NaN', () => {
+    //: Um quadro antes de o `ResizeObserver` responder, a largura é zero. A
+    //: divisão daria `NaN` e o `toISOString` lançaria `RangeError` — fora da
+    //: renderização, onde o limite de erro não alcança.
+    expect(dataNoPixel(10, INICIO, FIM, 0)).toBe('2026-01-01');
+  });
+
+  function comClique(aoEscolher: (iso: string) => void) {
+    return render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[
+          { mes: '2026-01-01', valor: 50 },
+          { mes: '2026-02-01', valor: 55 },
+        ]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-02-20', valor: 97 },
+            ],
+          },
+        ]}
+        aoEscolherData={aoEscolher}
+      />,
+    );
+  }
+
+  it('clicar na área do gráfico escolhe EXATAMENTE a data daquele ponto', () => {
+    /** ACHADO DE REVISÃO: este teste só conferia que a função foi chamada com
+     *  ALGUMA data no formato ISO. Com `getBoundingClientRect` zerado no jsdom,
+     *  um erro na margem ou na escala continuaria passando — e é justamente a
+     *  conta que erra sem nada parecer quebrado.
+     *
+     *  A CONTA, À MÃO: o dublê do `ResizeObserver` responde 800 de largura, as
+     *  margens são 44 de cada lado, então o plot tem 712. Clicar em 400 dá
+     *  400 − 44 = 356 pixels dentro do plot, que é a METADE exata. O eixo vai de
+     *  01/01 a 31/01 (trinta dias), então a metade é 16/01. */
+    const escolhida: string[] = [];
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-01', valor: 95 },
+              { data: '2026-01-31', valor: 97 },
+            ],
+          },
+        ]}
+        aoEscolherData={(iso) => escolhida.push(iso)}
+      />,
+    );
+
+    const svg = container.querySelector('svg') as Element;
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 400 }));
+
+    expect(escolhida).toEqual(['2026-01-16']);
+  });
+
+  it('clicar FORA da área do plot não escolhe data nenhuma', () => {
+    /** A régua da esquerda ocupa 44 pixels, e clicar nela pedia a data presa na
+     *  ponta — um recorte que a pessoa não pediu, a partir de um clique que não
+     *  era no gráfico. */
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const svg = container.querySelector('svg') as Element;
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10 }));
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 790 }));
+
+    expect(escolhida).toEqual([]);
+  });
+
+  it('a área de clique NÃO cobre as curvas, para o hover delas sobreviver', () => {
+    /** ACHADO DE REVISÃO, e era real: a área de clique era um `<rect>`
+     *  transparente desenhado POR CIMA de tudo. Em SVG a ordem do documento é a
+     *  ordem de pintura e também a de alvo do ponteiro, então ela virava o alvo
+     *  sobre as curvas e impedia o `<title>` de cada série de aparecer no hover
+     *  nativo — o único jeito de identificar uma curva com o mouse.
+     *
+     *  A SOLUÇÃO FOI TIRAR O `rect`: o clique mora no próprio `<svg>`, que é o
+     *  ancestral de tudo. Recebe o clique das curvas por propagação, e não
+     *  cobre nada. */
+    const { container } = comClique(() => {});
+
+    expect(container.querySelector('[data-testid="area-de-clique"]')).toBeNull();
+    //: E OS `title` DAS SÉRIES CONTINUAM LÁ, alcançáveis.
+    expect(container.querySelectorAll('g > title').length).toBeGreaterThan(0);
+  });
+
+  it('clicar no RÓTULO DO MÊS escolhe o último dia dele dentro do gráfico', () => {
+    /** "ou seja no eixo". O rótulo é um mês, e a janela precisa de um DIA: o
+     *  último do mês é o que faz os quinze dias caírem DENTRO do mês clicado —
+     *  pegar o dia 1º jogaria a janela quase toda para o mês anterior, que não é
+     *  o que alguém clicando em "jan" quer ver. */
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    rotulo.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(escolhida).toEqual(['2026-01-31']);
+  });
+
+  it('o rótulo do mês responde ao TECLADO', () => {
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    expect(rotulo.getAttribute('role')).toBe('button');
+    expect(rotulo.getAttribute('tabindex')).toBe('0');
+    rotulo.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+
+    expect(escolhida).toEqual(['2026-01-31']);
+  });
+
+  it('SEM o `aoEscolherData`, o gráfico não fica clicável', () => {
+    /** As outras telas montam este gráfico sem a função. Elas não devem ganhar
+     *  um cursor prometendo interação que não existe, nem rótulos de eixo que
+     *  parecem botões. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        bonds={[{ chave: 'A', rotulo: 'A', cor: AZUL, pontos: [{ data: '2026-01-05', valor: 95 }] }]}
+      />,
+    );
+
+    expect(container.querySelector('[data-mes]')?.getAttribute('role')).not.toBe('button');
+    expect((container.querySelector('svg') as SVGSVGElement).style.cursor).toBe('');
+  });
+
+  it('a data escolhida é MARCADA, com a janela sombreada', () => {
+    /** Sem a marca, o clique muda os quadros embaixo e o gráfico fica igual —
+     *  e aí não há como saber qual janela está sendo mostrada. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'A',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-01-25', valor: 96 },
+            ],
+          },
+        ]}
+        dataEscolhida="2026-01-20"
+        diasDaJanela={15}
+      />,
+    );
+
+    expect(container.querySelector('[data-testid="marca-da-data"]')).not.toBeNull();
+    const faixa = container.querySelector('[data-testid="faixa-da-janela"]');
+    expect(faixa).not.toBeNull();
+    //: A FAIXA TEM LARGURA: uma de largura zero é indistinguível de não existir.
+    expect(Number(faixa?.getAttribute('width'))).toBeGreaterThan(0);
+  });
+});
+
 describe('a acessibilidade', () => {
   it('o rótulo diz QUAIS séries, com valores e datas', () => {
     /** ACHADO DA REVISÃO, e era divergência da casa: `GraficoDeLinha` põe os
@@ -416,6 +615,87 @@ describe('a acessibilidade', () => {
     const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
     expect(rotulo).toContain('Aegea 2036: 95 em 2026-01-05');
     expect(rotulo).not.toContain('pregões');
+  });
+
+  it('a série SEM PONTO NENHUM não derruba a tela, e é dita', () => {
+    /** O DEFEITO QUE TRAVAVA A TELA, relatado em 19/10/2026: "em alguns
+     *  momentos a tela trava quando eu mudo alguma fonte de dados ou métrica,
+     *  daí preciso dar F5".
+     *
+     *  O servidor nunca falhou — os logs mostram 200 em 60ms para todas as
+     *  requisições, inclusive `tickers=AEGEBZ29`, que é o papel SEM COTAÇÃO na
+     *  planilha. O back semeia a série com lista vazia e a devolve assim
+     *  (`serie_de_mercado.py:153` e `:168`), de propósito: o papel pedido
+     *  aparece na resposta mesmo sem dado.
+     *
+     *  Aqui, `pontos.length === 1` era falso, o ternário caía no outro lado e
+     *  lia `primeiro.valor` com `primeiro === undefined`. O TypeError acontecia
+     *  DURANTE A RENDERIZAÇÃO, o `LimiteDeErro` de `App.tsx` o capturava, e um
+     *  limite de erro do React não se recupera sozinho: a única saída era
+     *  remontar — o F5.
+     *
+     *  O caso de UM ponto tem teste desde o começo (logo acima). O de ZERO
+     *  não tinha. */
+    const renderizar = () =>
+      render(
+        <GraficoDeDoisEixos
+          rotuloDaEsquerda="Preço (% do par)"
+          indice={[{ mes: '2026-01-01', valor: 52 }]}
+          bonds={[
+            {
+              chave: 'AEGEBZ31',
+              rotulo: 'Aegea 2031',
+              cor: AZUL,
+              pontos: [{ data: '2026-01-05', valor: 95 }],
+            },
+            { chave: 'AEGEBZ29', rotulo: 'Aegea 2029', cor: AZUL, pontos: [] },
+          ]}
+        />,
+      );
+
+    expect(renderizar).not.toThrow();
+
+    const { container } = renderizar();
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    //: DITA, e não omitida: a curva que não aparece precisa de explicação, ou
+    //: quem ligou o papel conclui que a tela está quebrada.
+    expect(rotulo).toContain('Aegea 2029: sem cotação no período');
+    //: E a série que TEM dado continua descrita.
+    expect(rotulo).toContain('Aegea 2031: 95 em 2026-01-05');
+  });
+
+  it('a série de pontos com DATA TORTA conta como sem cotação', () => {
+    /** ACHADO DE REVISÃO, e dentro da MINHA correção: o aviso da tela olhava
+     *  `pontos.length` e o gráfico olha os pontos com DATA VÁLIDA (`datados()`
+     *  descarta o resto). Uma série com pontos e datas tortas não desenhava
+     *  curva E não disparava o aviso — o pior dos dois mundos, que é o estado
+     *  silencioso que esta mudança existe para acabar.
+     *
+     *  `temCurva` passou a ser a regra ÚNICA, e é a mesma que o filtro do
+     *  desenho usa. */
+    expect(temCurva([{ data: '2026-01-05', valor: 95 }])).toBe(true);
+    expect(temCurva([])).toBe(false);
+    expect(temCurva([{ data: 'ontem', valor: 95 }])).toBe(false);
+    expect(temCurva([{ data: '2026-13-45', valor: 95 }])).toBe(false);
+
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        bonds={[
+          {
+            chave: 'AEGEBZ31',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [{ data: '2026-01-05', valor: 95 }],
+          },
+          { chave: 'X', rotulo: 'Torto', cor: AZUL, pontos: [{ data: 'ontem', valor: 9 }] },
+        ]}
+      />,
+    );
+
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    expect(rotulo).toContain('Torto: sem cotação no período');
   });
 
   it('cada série tem `title`, para o nome aparecer no hover nativo', () => {
