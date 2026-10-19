@@ -69,7 +69,18 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
-  if (primeira === 'mercado') return { destino: 'mercado' };
+  //: AS ABAS DO MERCADO GANHAM ENDEREÇO, pela mesma razão das do Score: uma
+  //: barra cujos itens não são links não se compartilha, não volta no histórico
+  //: e não recarrega onde estava. `bonds` é o padrão e NÃO vai na URL — ver
+  //: `caminhoDe` abaixo, mesmo tratamento que `geral` recebe no Score.
+  //: `?? 'bonds'`, E NÃO `partes[1]` CRU — eu escrevi "mesmo tratamento que
+  //: `geral` recebe no Score" e fiz o contrário, com o comentário de nove
+  //: linhas que descreve este defeito logo abaixo: `caminhoDe` omite "bonds"
+  //: do caminho, então sem o default aqui a volta perde a informação,
+  //: `rota.aba` virava `undefined`, e a barra de cima (que compara
+  //: `item.aba === abaAtiva` em `Layout.tsx`) nunca marcava "Bonds e
+  //: reputação" como aba ativa — só "Importação", que tem segmento na URL.
+  if (primeira === 'mercado') return { destino: 'mercado', aba: partes[1] ?? 'bonds' };
   // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
   // barra de cima daquela divisão, e uma barra cujos itens não são links não
   // se compartilha, não volta no histórico e não recarrega onde estava.
@@ -128,7 +139,7 @@ export function caminhoDe(rota: Rota): string {
     case 'sinais':
       return '/sinais';
     case 'mercado':
-      return '/mercado';
+      return rota.aba && rota.aba !== 'bonds' ? `/mercado/${rota.aba}` : '/mercado';
     case 'score':
       return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':
@@ -226,6 +237,12 @@ export function consultaDe(recorte: Recorte): string {
 export function nomeDaTela(rota: Rota): string {
   if (rota.sobre) return `${rota.destino}:${rota.sobre}`;
   if (rota.destino === 'admin' && rota.aba) return `admin:${rota.aba}`;
+  //: O MERCADO PASSOU A TER DUAS TELAS, e sem isto as duas chegavam à
+  //: telemetria como `mercado`: ler o gráfico e subir a planilha da semana
+  //: ficavam indistinguíveis justamente na medida que diria se alguém usa a
+  //: importação. O Score não precisa da linha porque já vem por `admin`/`sobre`
+  //: ou com aba na URL.
+  if (rota.destino === 'mercado' && rota.aba) return `mercado:${rota.aba}`;
   return rota.destino;
 }
 

@@ -273,3 +273,62 @@ export const MENSAGEM_DO_SCORE = 'score-mudou';
  *  planilha do mês na aba Base deixava o drill mostrando a árvore antiga a
  *  sessão inteira, enquanto a Jornada logo acima já mostrava a nota nova. */
 export const scoreMudou = new Sincronizador(canalDoNavegador('score'), MENSAGEM_DO_SCORE);
+
+
+/** As rotas cujas escritas mudam os NÚMEROS DO PAINEL DE MERCADO: hoje, a
+ *  subida da planilha de cotação de bonds.
+ *
+ *  BARRAMENTO PRÓPRIO, e não o do Score — ainda que a tela de mercado leia o
+ *  índice do Score. Um barramento só faria toda subida de planilha de
+ *  fornecedor rebuscar a série de bonds, e toda subida de bonds rebuscar a
+ *  árvore da Consulta em profundidade. É a mesma razão pela qual catálogo e
+ *  agendas são dois: "cadastrar um tema não precisa rebuscar a base, e
+ *  confirmar uma importação não precisa rebuscar os dicionários".
+ *
+ *  O ÍNDICE MUDAR NÃO AVISA AQUI, e é uma lacuna conhecida: subir a planilha do
+ *  Score muda a linha do eixo direito do gráfico de bonds, e quem estiver com a
+ *  tela de mercado aberta só vê isso ao voltar nela. O caminho honesto seria a
+ *  tela de mercado assinar os DOIS barramentos; fica registrado em vez de
+ *  resolvido porque as duas telas não se usam ao mesmo tempo hoje, e assinar
+ *  dois sem necessidade é o defeito que `nucleo.ts` já descreve em
+ *  `useConsultaDaLente` (dispara duas buscas e descarta a primeira). */
+export const ROTAS_DO_MERCADO = ['/api/mercado'] as const;
+
+/** Os POSTs sob `/api/mercado` que NÃO gravam nada.
+ *
+ *  A CONFERÊNCIA É UM POST QUE SÓ LÊ: ela recebe a planilha, conta o que
+ *  entraria e devolve a conta — nenhum número do painel muda. Classificá-la
+ *  como escrita só por ser POST fazia a tela do gráfico rebuscar DUAS VEZES por
+ *  subida: uma na conferência, à toa, e outra na gravação.
+ *
+ *  A EXCEÇÃO É A LISTA CURTA, e o padrão continua "avisa": uma rota de escrita
+ *  nova no painel chega avisando sem ninguém lembrar de cadastrá-la aqui. Só o
+ *  que comprovadamente não grava entra nesta lista — o erro de esquecer é uma
+ *  busca a mais, e o de incluir é a tela mentir sobre o dado. */
+const ROTAS_DO_MERCADO_QUE_SO_LEEM = ['/api/mercado/bonds/conferencia'] as const;
+
+/** Esta requisição, se der certo, muda algum número do Painel de Mercado? */
+export function escreveNoMercado(metodo: string, caminho: string): boolean {
+  if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
+  const soOCaminho = caminho.split('?')[0];
+  if (ROTAS_DO_MERCADO_QUE_SO_LEEM.some((rota) => soOCaminho === rota)) return false;
+  return ROTAS_DO_MERCADO.some(
+    (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
+  );
+}
+
+/** A mensagem do canal do Mercado. */
+export const MENSAGEM_DO_MERCADO = 'mercado-mudou';
+
+/** Os dados do Painel de Mercado mudaram — nesta aba ou em outra.
+ *
+ *  A TELA DO GRÁFICO ESCUTA AQUI. Sem o aviso, subir a planilha na aba
+ *  Importação e voltar para a aba do gráfico mostraria a série de antes até
+ *  alguém dar F5 — exatamente o defeito que o Score teve e que o
+ *  `Sincronizador` existe para não repetir.
+ *
+ *  ATRAVESSA ABAS DO NAVEGADOR de graça, porque roda sobre `BroadcastChannel`. */
+export const mercadoMudou = new Sincronizador(
+  canalDoNavegador('mercado'),
+  MENSAGEM_DO_MERCADO,
+);
