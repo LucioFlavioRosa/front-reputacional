@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { ContextoDoPng } from '@/componentes/contextoDoPng';
+import { scoreMudou } from '@/dominio/sincronizacao';
 import type { ReactNode } from 'react';
 
 import {
@@ -219,6 +220,27 @@ export function Score({
   const [serie, definirSerie] = useState<PontoDaSerie[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
 
+  //: ESTA TELA ESCUTA O BARRAMENTO DO SCORE, e passou a escutar por defeito
+  //: relatado: "subo uma planilha com dados novos e não vejo o resultado na
+  //: lente; preciso dar F5".
+  //:
+  //: O AVISO JÁ EXISTIA E JÁ DISPARAVA CERTO. Toda escrita sob `/api/score`
+  //: chama `scoreMudou.avisar()` e esquece o cache da API (`api/nucleo.ts`) —
+  //: só que o barramento tinha UM ÚNICO ouvinte, o cache da Consulta em
+  //: profundidade. Esquecer o cache não faz ninguém buscar de novo: garante
+  //: que a PRÓXIMA busca seja de verdade. E as três cargas desta tela rodavam
+  //: na montagem, então a subida acontecia na aba Base ao lado e os números
+  //: ficavam os de antes pela sessão inteira.
+  //:
+  //: UM CONTADOR, e não três assinaturas: as três cargas precisam da mesma
+  //: notícia, e uma assinatura por efeito as faria chegar em tempos
+  //: diferentes — a lente mostrando o índice novo com a série velha.
+  //:
+  //: ATRAVESSA ABAS de graça, porque `Sincronizador` roda sobre
+  //: `BroadcastChannel`: quem sobe a planilha numa aba atualiza a outra.
+  const [versaoDoScore, definirVersaoDoScore] = useState(0);
+  useEffect(() => scoreMudou.assinar(() => definirVersaoDoScore((v) => v + 1)), []);
+
   //: O MÊS NÃO VAI PARA A URL de propósito: a consulta pertence ao recorte
   //: (`estado/painel.tsx` a reescreve a cada filtro), e um parâmetro estranho
   //: ali seria apagado no primeiro clique de qualquer outra tela.
@@ -247,7 +269,10 @@ export function Score({
     return () => {
       ativo = false;
     };
-  }, []);
+    //: ersaoDoScore NAS DEPENDÊNCIAS é o que torna a subida visível: sem
+    //: ele este efeito roda só na montagem, e a LISTA DE MESES nunca ganha o
+    //: mês que a planilha trouxe.
+  }, [versaoDoScore]);
 
   //: A SÉRIE SAI JUNTO COM AS OPÇÕES, e não atrás delas.
   //:
@@ -292,7 +317,7 @@ export function Score({
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [versaoDoScore]);
 
   // DEVOLVE A PROMESSA, e quem grava a espera: sem isso, quem edita dois
   // campos em seguida manda o segundo com a régua ANTERIOR — e a primeira
@@ -308,7 +333,7 @@ export function Score({
       .catch((falha: unknown) =>
         definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.'),
       );
-  }, [mes]);
+  }, [mes, versaoDoScore]);
 
   // O `void` NÃO É DECORATIVO: `recarregar` agora devolve promessa, para quem
   // grava esperar a régua nova, e um efeito que devolve promessa faz o React
@@ -482,7 +507,11 @@ export function Score({
         />
       ) : null}
 
-      {aba === 'drivers' ? <DriversERiscos mes={mes} /> : null}
+      {/* `versao` DESCE COMO PROP, e não vira uma segunda assinatura do
+          barramento: este painel aparece ao lado dos números que a tela já
+          recarrega, e duas assinaturas os fariam chegar em tiques diferentes —
+          drivers novos sobre um índice velho, sem nada indicando a mistura. */}
+      {aba === 'drivers' ? <DriversERiscos mes={mes} versao={versaoDoScore} /> : null}
 
       {/* `metodologia`, `base` E `base-de-dados` SAÍRAM DAQUI, para antes das
           guardas do índice — ver `ABAS_SEM_INDICE`. A `base` é a porta de
@@ -817,7 +846,7 @@ function ChipDeVariacao({ rotulo, delta }: { rotulo: string; delta: number | nul
 
 /* -- drivers e riscos ---------------------------------------------------------- */
 
-function DriversERiscos({ mes }: { mes: string }) {
+function DriversERiscos({ mes, versao }: { mes: string; versao: number }) {
   const [drivers, definirDrivers] = useState<DriversDoScore | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
 
@@ -835,7 +864,7 @@ function DriversERiscos({ mes }: { mes: string }) {
     return () => {
       ativo = false;
     };
-  }, [mes]);
+  }, [mes, versao]);
 
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (!drivers) return <Carregando />;
