@@ -437,10 +437,43 @@ export function GraficoDeDoisEixos({
       : 'Índice sem valor no período.',
   ].join(' ');
 
+  //: O CLIQUE MORA NO `<svg>`, e não numa área transparente por cima.
+  //:
+  //: ERA UM `<rect>` COBRINDO O PLOT, e isso foi achado de revisão: em SVG a
+  //: ordem do documento é a ordem de pintura E a de alvo do ponteiro, então a
+  //: área virava o alvo sobre as curvas e impedia o `<title>` de cada série de
+  //: aparecer no hover nativo — o único jeito de identificar uma curva com o
+  //: mouse.
+  //:
+  //: O `<svg>` É ANCESTRAL DE TUDO: recebe o clique das curvas por propagação e
+  //: não cobre nada. Os rótulos do eixo param a propagação, senão o clique neles
+  //: seria resolvido duas vezes — pelo rótulo e pelo pixel embaixo dele.
   return (
     <div ref={container} style={{ width: '100%' }}>
       {largura > 0 ? (
-        <svg width={largura} height={altura} role="img" aria-label={descricao}>
+        <svg
+          width={largura}
+          height={altura}
+          role="img"
+          aria-label={descricao}
+          style={aoEscolherData ? { cursor: 'crosshair' } : undefined}
+          onClick={
+            aoEscolherData
+              ? (evento) => {
+                  //: O PIXEL É RELATIVO AO SVG, e não à janela: o gráfico pode
+                  //: estar rolado ou deslocado na página.
+                  const caixa = evento.currentTarget.getBoundingClientRect();
+                  const px = evento.clientX - caixa.left - MARGEM_ESQUERDA;
+                  //: FORA DO PLOT NÃO ESCOLHE NADA. A régua da esquerda ocupa 44
+                  //: pixels, e clicar nela pedia a data presa na ponta — um
+                  //: recorte que ninguém pediu, de um clique que não era no
+                  //: gráfico.
+                  if (px < 0 || px > larguraDoPlot) return;
+                  aoEscolherData(dataNoPixel(px, inicio, fim, larguraDoPlot));
+                }
+              : undefined
+          }
+        >
           {/* A JANELA ESCOLHIDA, ATRÁS DE TUDO. Primeiro no documento é primeiro
               a ser pintado, então a faixa fica por baixo das curvas — ela é
               contexto, e cobrir o dado com o recorte do dado seria inverter o
@@ -556,8 +589,15 @@ export function GraficoDeDoisEixos({
             .filter((_, i) => i % Math.ceil(Math.max(1, meses.length) / 6) === 0)
             .map((mes) => {
               const iso = new Date(mes.comeca).toISOString().slice(0, 10);
+              //: PARA A PROPAGAÇÃO: sem isto o clique no rótulo seria resolvido
+              //: DUAS vezes — pelo rótulo (último dia do mês) e pelo `<svg>`
+              //: embaixo (o pixel sob o cursor), e o segundo venceria. O mês
+              //: clicado deixaria de ser o mês escolhido.
               const escolher = aoEscolherData
-                ? () => aoEscolherData(ultimoDiaDoMes(iso, fim))
+                ? (evento?: { stopPropagation: () => void }) => {
+                    evento?.stopPropagation();
+                    aoEscolherData(ultimoDiaDoMes(iso, fim));
+                  }
                 : undefined;
               return (
                 <text
@@ -581,7 +621,7 @@ export function GraficoDeDoisEixos({
                       ? (evento) => {
                           if (evento.key === 'Enter' || evento.key === ' ') {
                             evento.preventDefault();
-                            escolher();
+                            escolher(evento);
                           }
                         }
                       : undefined
@@ -592,30 +632,6 @@ export function GraficoDeDoisEixos({
               );
             })}
 
-          {/* A ÁREA DE CLIQUE VEM POR ÚLTIMO, por cima de tudo: em SVG a ordem
-              do documento é a ordem de pintura, e uma área de clique desenhada
-              antes das curvas teria os cliques capturados por elas em cima dos
-              traços. Transparente e sem traço — ela existe para receber o
-              clique, não para aparecer. */}
-          {aoEscolherData ? (
-            <rect
-              data-testid="area-de-clique"
-              x={MARGEM_ESQUERDA}
-              y={MARGEM_SUPERIOR}
-              width={larguraDoPlot}
-              height={alturaDoPlot}
-              fill="transparent"
-              style={{ cursor: 'crosshair' }}
-              onClick={(evento) => {
-                //: O PIXEL É RELATIVO AO SVG, e não à janela: o gráfico pode
-                //: estar rolado ou deslocado na página.
-                const svg = evento.currentTarget.ownerSVGElement;
-                const caixa = svg?.getBoundingClientRect();
-                const px = evento.clientX - (caixa?.left ?? 0) - MARGEM_ESQUERDA;
-                aoEscolherData(dataNoPixel(px, inicio, fim, larguraDoPlot));
-              }}
-            />
-          ) : null}
         </svg>
       ) : null}
 

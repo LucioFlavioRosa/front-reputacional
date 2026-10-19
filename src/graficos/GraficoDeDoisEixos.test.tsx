@@ -420,15 +420,71 @@ describe('escolher uma data no gráfico', () => {
     );
   }
 
-  it('clicar na área do gráfico escolhe a data daquele ponto', () => {
+  it('clicar na área do gráfico escolhe EXATAMENTE a data daquele ponto', () => {
+    /** ACHADO DE REVISÃO: este teste só conferia que a função foi chamada com
+     *  ALGUMA data no formato ISO. Com `getBoundingClientRect` zerado no jsdom,
+     *  um erro na margem ou na escala continuaria passando — e é justamente a
+     *  conta que erra sem nada parecer quebrado.
+     *
+     *  A CONTA, À MÃO: o dublê do `ResizeObserver` responde 800 de largura, as
+     *  margens são 44 de cada lado, então o plot tem 712. Clicar em 400 dá
+     *  400 − 44 = 356 pixels dentro do plot, que é a METADE exata. O eixo vai de
+     *  01/01 a 31/01 (trinta dias), então a metade é 16/01. */
+    const escolhida: string[] = [];
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-01', valor: 95 },
+              { data: '2026-01-31', valor: 97 },
+            ],
+          },
+        ]}
+        aoEscolherData={(iso) => escolhida.push(iso)}
+      />,
+    );
+
+    const svg = container.querySelector('svg') as Element;
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 400 }));
+
+    expect(escolhida).toEqual(['2026-01-16']);
+  });
+
+  it('clicar FORA da área do plot não escolhe data nenhuma', () => {
+    /** A régua da esquerda ocupa 44 pixels, e clicar nela pedia a data presa na
+     *  ponta — um recorte que a pessoa não pediu, a partir de um clique que não
+     *  era no gráfico. */
     const escolhida: string[] = [];
     const { container } = comClique((iso) => escolhida.push(iso));
 
-    const area = container.querySelector('[data-testid="area-de-clique"]') as Element;
-    area.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 400 }));
+    const svg = container.querySelector('svg') as Element;
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10 }));
+    svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 790 }));
 
-    expect(escolhida).toHaveLength(1);
-    expect(escolhida[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(escolhida).toEqual([]);
+  });
+
+  it('a área de clique NÃO cobre as curvas, para o hover delas sobreviver', () => {
+    /** ACHADO DE REVISÃO, e era real: a área de clique era um `<rect>`
+     *  transparente desenhado POR CIMA de tudo. Em SVG a ordem do documento é a
+     *  ordem de pintura e também a de alvo do ponteiro, então ela virava o alvo
+     *  sobre as curvas e impedia o `<title>` de cada série de aparecer no hover
+     *  nativo — o único jeito de identificar uma curva com o mouse.
+     *
+     *  A SOLUÇÃO FOI TIRAR O `rect`: o clique mora no próprio `<svg>`, que é o
+     *  ancestral de tudo. Recebe o clique das curvas por propagação, e não
+     *  cobre nada. */
+    const { container } = comClique(() => {});
+
+    expect(container.querySelector('[data-testid="area-de-clique"]')).toBeNull();
+    //: E OS `title` DAS SÉRIES CONTINUAM LÁ, alcançáveis.
+    expect(container.querySelectorAll('g > title').length).toBeGreaterThan(0);
   });
 
   it('clicar no RÓTULO DO MÊS escolhe o último dia dele dentro do gráfico', () => {
@@ -459,8 +515,8 @@ describe('escolher uma data no gráfico', () => {
 
   it('SEM o `aoEscolherData`, o gráfico não fica clicável', () => {
     /** As outras telas montam este gráfico sem a função. Elas não devem ganhar
-     *  uma área de clique invisível que não faz nada — nem um cursor de mãozinha
-     *  prometendo interação que não existe. */
+     *  um cursor prometendo interação que não existe, nem rótulos de eixo que
+     *  parecem botões. */
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
@@ -469,8 +525,8 @@ describe('escolher uma data no gráfico', () => {
       />,
     );
 
-    expect(container.querySelector('[data-testid="area-de-clique"]')).toBeNull();
     expect(container.querySelector('[data-mes]')?.getAttribute('role')).not.toBe('button');
+    expect((container.querySelector('svg') as SVGSVGElement).style.cursor).toBe('');
   });
 
   it('a data escolhida é MARCADA, com a janela sombreada', () => {

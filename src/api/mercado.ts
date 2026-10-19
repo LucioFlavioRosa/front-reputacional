@@ -107,7 +107,7 @@ export interface ImpactoNaJanela {
   total_negativos: number;
   /** As duas formas de uma menção ficar de fora, e as duas são ditas na tela. */
   sem_n1: number;
-  sem_data_no_mes: number;
+  sem_data: number;
   /** "Não há como medir" é diferente de "nada impactou", e os dois quadros
    *  vazios parecem iguais. */
   mes_sem_base: boolean;
