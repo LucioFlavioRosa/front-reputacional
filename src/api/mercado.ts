@@ -87,13 +87,18 @@ export function obterSerieDeMercado(opcoes: {
  * anteriores — só na lente de imprensa, por ora.
  */
 
-export interface TemaNaJanela {
+export type NivelDaJanela = 'n1' | 'n2';
+
+export interface GrupoNaJanela {
   /** A CHAVE do cadastro. A lista se desenha por ela, e não pelo nome: dois
    *  temas homônimos sob pilares diferentes são duas linhas. */
   id: number;
-  n2: string;
-  /** O pilar (N1) a que o tema pertence, como contexto. */
-  n1: string | null;
+  /** O nome do grupo — o pilar ou o tema, conforme o nível pedido. */
+  rotulo: string;
+  /** O nível de cima, como contexto: o pilar de um tema. 
+ull no nível do
+   *  pilar, que é o topo da árvore. */
+  contexto: string | null;
   /** Pontos na nota do MÊS: positivo empurra para cima, negativo para baixo. */
   impacto: number;
   mencoes: number;
@@ -105,13 +110,16 @@ export interface ImpactoNaJanela {
   /** O mês cuja régua e cujo denominador medem esta conta. */
   mes: string;
   regua: string;
-  positivos: TemaNaJanela[];
-  negativos: TemaNaJanela[];
+  positivos: GrupoNaJanela[];
+  negativos: GrupoNaJanela[];
   /** Quantos existem de cada lado — a tela diz "3 de 3" em vez de fingir cinco. */
   total_positivos: number;
   total_negativos: number;
   /** As duas formas de uma menção ficar de fora, e as duas são ditas na tela. */
-  sem_n2: number;
+  /** As menções da janela sem o nível pedido. */
+  sem_grupo: number;
+  /** O nível que ESTA resposta descreve — como metrica na série. */
+  nivel: NivelDaJanela;
   sem_data: number;
   /** "Não há como medir" é diferente de "nada impactou", e os dois quadros
    *  vazios parecem iguais. */
@@ -124,10 +132,14 @@ export interface ImpactoNaJanela {
   dias: number;
 }
 
-export function obterImpactoPorN2(ate: string, dias?: number): Promise<ImpactoNaJanela> {
-  const parametros = new URLSearchParams({ ate });
+export function obterImpactoNaJanela(
+  ate: string,
+  nivel: NivelDaJanela,
+  dias?: number,
+): Promise<ImpactoNaJanela> {
+  const parametros = new URLSearchParams({ ate, nivel });
   if (dias !== undefined) parametros.set('dias', String(dias));
-  return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-por-n2?${parametros}`);
+  return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-na-janela?${parametros}`);
 }
 
 

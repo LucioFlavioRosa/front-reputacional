@@ -22,11 +22,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { obterImpactoPorN2, obterSerieDeMercado } from '@/api/cliente';
+import { obterImpactoNaJanela, obterSerieDeMercado } from '@/api/cliente';
 import type {
   ImpactoNaJanela,
   MetricaDoBond,
-  TemaNaJanela,
+  GrupoNaJanela,
+  NivelDaJanela,
   SerieDeMercado,
 } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
@@ -162,6 +163,17 @@ export function InteligenciaDeMercado() {
   //: da tela. A janela falhar não pode levar o gráfico, que é a lição do beco
   //: sem saída que esta tela já teve.
   const [diaEscolhido, definirDiaEscolhido] = useState<string | null>(null);
+  //: A CHAVE ENTRE OS DOIS NÍVEIS, por pedido dele depois de ver os dois no ar.
+  //:
+  //: O PILAR TEM COBERTURA (~98% na Clipei) e diz "a imprensa está amplamente
+  //: positiva" sobre o TODO. O TEMA tem sete vezes mais grupos e acha o bolsão
+  //: negativo, mas sobre o quarto que está classificado — a migration 0098 mede
+  //: 72.590 menções com pilar e sem tema. Escolher um perderia uma pergunta.
+  //:
+  //: ABRE NO TEMA, que é o que ele pediu primeiro; o pilar fica a um clique. E a
+  //: cobertura do tema MELHORA com o tempo: depende de o fornecedor mandar o N3
+  //: que o cadastro reconhece, trabalho em curso com eles.
+  const [nivel, definirNivel] = useState<NivelDaJanela>('n2');
   const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
   const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
 
@@ -179,7 +191,7 @@ export function InteligenciaDeMercado() {
     //: período anterior, enquanto a marca do gráfico já apontava para a data
     //: nova: os números afirmavam uma janela e o gráfico afirmava outra.
     definirJanela(null);
-    obterImpactoPorN2(diaEscolhido, DIAS_DA_JANELA)
+    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA)
       .then((lida) => {
         if (ativo) definirJanela(lida);
       })
@@ -199,7 +211,9 @@ export function InteligenciaDeMercado() {
     };
     //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês, e
     //: os quadros abertos passariam a descrever o dado de antes.
-  }, [diaEscolhido, versao]);
+    //: O NÍVEL ENTRA NAS DEPENDÊNCIAS: trocar a chave é uma pergunta nova sobre
+    //: o MESMO dia, e sem isto a tela mostraria a resposta do nível anterior.
+  }, [diaEscolhido, nivel, versao]);
 
   const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
@@ -531,6 +545,8 @@ export function InteligenciaDeMercado() {
         dia={diaEscolhido}
         janela={janela}
         erro={erroDaJanela}
+        nivel={nivel}
+        aoTrocarNivel={definirNivel}
         aoFechar={() => definirDiaEscolhido(null)}
       />
 
@@ -609,18 +625,22 @@ function JanelaDosTemas({
   dia,
   janela,
   erro,
+  nivel,
+  aoTrocarNivel,
   aoFechar,
 }: {
   dia: string | null;
   janela: ImpactoNaJanela | null;
   erro: string | null;
+  nivel: NivelDaJanela;
+  aoTrocarNivel: (nivel: NivelDaJanela) => void;
   aoFechar: () => void;
 }) {
   if (dia === null) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
-        Clique numa data do gráfico — ou num mês do eixo — para ver os temas que
-        mais empurraram a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
+        Clique numa data do gráfico — ou num mês do eixo — para ver o que mais
+        empurrou a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
       </p>
     );
   }
@@ -639,7 +659,7 @@ function JanelaDosTemas({
   if (!janela) {
     return (
       <p role="status" style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
-        Lendo os temas de {porExtenso(dia)}…
+        Lendo {nivel === 'n2' ? 'os temas' : 'os pilares'} de {porExtenso(dia)}…
       </p>
     );
   }
@@ -658,6 +678,33 @@ function JanelaDosTemas({
         <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
           Lente {janela.lente}: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
         </p>
+
+        {/* A CHAVE ENTRE OS DOIS NÍVEIS, dentro da janela e não na barra de cima:
+            ela só faz sentido com uma data escolhida, e um controle que fica
+            desabilitado a maior parte do tempo é ruído na tela.
+
+            O RÓTULO DIZ O NÍVEL E O QUE ELE DÁ, porque é essa a escolha: o pilar
+            cobre quase tudo e agrupa grosso, o tema é fino e só alcança o que
+            está classificado. Sem isso, "N1" e "N2" não dizem nada a quem não
+            conhece a taxonomia por dentro. */}
+        <div role="group" aria-label="Nível do agrupamento" style={{ display: 'flex', gap: 4 }}>
+          {([
+            ['n2', 'Tema', 'mais fino, só o que está classificado'],
+            ['n1', 'Pilar', 'mais grosso, cobre quase tudo'],
+          ] as const).map(([codigo, rotulo, ajuda]) => (
+            <button
+              key={codigo}
+              type="button"
+              aria-pressed={nivel === codigo}
+              title={ajuda}
+              onClick={() => aoTrocarNivel(codigo)}
+              style={botao(nivel === codigo)}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+
         <button type="button" onClick={aoFechar} style={botao(false)}>
           Fechar a janela
         </button>
@@ -679,20 +726,20 @@ function JanelaDosTemas({
         Pontos da nota de {porExtenso(janela.mes).slice(3)}, medida pela régua de{' '}
         {janela.regua}
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
-          ? ' — a janela atravessa a virada do mês, então a ordem dos temas é exata e a escala é a daquele mês'
+          ? ' — a janela atravessa a virada do mês, então a ordem é exata e a escala é a daquele mês'
           : null}
         .
       </p>
 
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
           parecem iguais. O mês sem base não tem denominador: sem ele não há
-          pergunta a responder, e mostrar quadros vazios afirmaria que os temas
+          pergunta a responder, e mostrar quadros vazios afirmaria que os grupos
           daquela janela não impactaram nada — o que é falso, porque as menções
           estão lá. */}
       {janela.mes_sem_base ? (
         <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
           O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
-          {janela.lente}, então não há como calcular quanto cada tema empurrou a
+          {janela.lente}, então não há como calcular quanto cada grupo empurrou a
           nota. Não é que nada impactou — é que a régua do mês ainda não existe.
         </p>
       ) : (
@@ -700,14 +747,14 @@ function JanelaDosTemas({
           <QuadroDeTemas
             testId="quadro-positivos"
             titulo="Mais empurraram para CIMA"
-            temas={janela.positivos}
+            grupos={janela.positivos}
             total={janela.total_positivos}
             cor="var(--sucesso-fg)"
           />
           <QuadroDeTemas
             testId="quadro-negativos"
             titulo="Mais empurraram para BAIXO"
-            temas={janela.negativos}
+            grupos={janela.negativos}
             total={janela.total_negativos}
             cor="var(--erro-fg)"
           />
@@ -717,14 +764,22 @@ function JanelaDosTemas({
       {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
           pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
           o todo, e a soma deles não fecharia com o impacto do período. */}
-      {janela.sem_n2 || janela.sem_data ? (
+      {janela.sem_grupo || janela.sem_data ? (
         <p
           data-testid="fora-da-conta"
           style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}
         >
           Fora desta conta:{' '}
-          {janela.sem_n2 ? `${numero(janela.sem_n2)} menções da janela sem tema estratégico atribuído` : null}
-          {janela.sem_n2 && janela.sem_data ? '; ' : null}
+          {/* A PALAVRA SEGUE O NÍVEL, e vem da RESPOSTA e não do botão: enquanto
+              a busca nova não chega, o botão já mudou e os números são os do
+              nível anterior — dizer "sem pilar" sobre uma contagem de temas
+              seria o mesmo defeito do eixo que mentia sobre a métrica. */}
+          {janela.sem_grupo
+            ? `${numero(janela.sem_grupo)} menções da janela sem ${
+                janela.nivel === 'n2' ? 'tema estratégico' : 'pilar'
+              } atribuído`
+            : null}
+          {janela.sem_grupo && janela.sem_data ? '; ' : null}
           {janela.sem_data
             ? //: "DOS MESES DA JANELA", e não "do mês": o número passou a contar
               //: todos os meses que a janela atravessa — achado de revisão, ele
@@ -738,17 +793,17 @@ function JanelaDosTemas({
   );
 }
 
-/** Um quadro: até cinco temas, do que mais empurrou para o que menos. */
+/** Um quadro: até cinco grupos, do que mais empurrou para o que menos. */
 function QuadroDeTemas({
   testId,
   titulo,
-  temas,
+  grupos,
   total,
   cor,
 }: {
   testId: string;
   titulo: string;
-  temas: TemaNaJanela[];
+  grupos: GrupoNaJanela[];
   total: number;
   cor: string;
 }) {
@@ -765,23 +820,23 @@ function QuadroDeTemas({
       <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
         {titulo}
         {/* O TAMANHO REAL, por decisão dele: "mostra os que houver e diz o
-            total". Com três temas aparecem três, e a tela diz "3 de 3" em vez
+            total". Com três grupos aparecem três, e a tela diz "3 de 3" em vez
             de completar com linha vazia — linha vazia é indistinguível de dado
             que não carregou. */}
-        {total ? ` · ${numero(temas.length)} de ${numero(total)}` : null}
+        {total ? ` · ${numero(grupos.length)} de ${numero(total)}` : null}
       </p>
-      {temas.length === 0 ? (
+      {grupos.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-          Nenhum tema empurrou a nota para este lado nesta janela.
+          Nada empurrou a nota para este lado nesta janela.
         </p>
       ) : (
         <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-          {temas.map((tema) => (
+          {grupos.map((grupo) => (
             <li
               //: A CHAVE É O id, e não o nome — achado de revisão: dois temas
               //: homônimos sob pilares diferentes dariam a MESMA chave, e o
               //: React desenharia uma linha só.
-              key={tema.id}
+              key={grupo.id}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -798,14 +853,14 @@ function QuadroDeTemas({
                   ontem. O pilar pode faltar quando o cadastro não resolve o
                   pai; aí só o tema aparece, em vez de um travessão solto. */}
               <span>
-                {tema.n2}
-                {tema.n1 ? (
-                  <span style={{ color: 'var(--cinza-2)' }}> · {tema.n1}</span>
+                {grupo.rotulo}
+                {grupo.contexto ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · {grupo.contexto}</span>
                 ) : null}
               </span>
               <span style={{ whiteSpace: 'nowrap' }}>
-                <strong style={{ color: cor }}>{comSinal(tema.impacto)}</strong>{' '}
-                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(tema.mencoes)}</span>
+                <strong style={{ color: cor }}>{comSinal(grupo.impacto)}</strong>{' '}
+                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(grupo.mencoes)}</span>
               </span>
             </li>
           ))}
@@ -823,7 +878,7 @@ function porExtenso(iso: string): string {
 
 /** O impacto com sinal e uma decimal, no padrão de casa (vírgula, menos real).
  *
- *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o tema que
+ *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o grupo que
  *  sustentou e o que derrubou. O `+` explícito é o que torna a leitura simétrica.
  *  O menos é `−` (U+2212), não hífen — é o que o resto da plataforma usa. */
 function comSinal(valor: number): string {
