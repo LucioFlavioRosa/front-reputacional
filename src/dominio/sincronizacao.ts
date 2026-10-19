@@ -294,10 +294,24 @@ export const scoreMudou = new Sincronizador(canalDoNavegador('score'), MENSAGEM_
  *  `useConsultaDaLente` (dispara duas buscas e descarta a primeira). */
 export const ROTAS_DO_MERCADO = ['/api/mercado'] as const;
 
+/** Os POSTs sob `/api/mercado` que NÃO gravam nada.
+ *
+ *  A CONFERÊNCIA É UM POST QUE SÓ LÊ: ela recebe a planilha, conta o que
+ *  entraria e devolve a conta — nenhum número do painel muda. Classificá-la
+ *  como escrita só por ser POST fazia a tela do gráfico rebuscar DUAS VEZES por
+ *  subida: uma na conferência, à toa, e outra na gravação.
+ *
+ *  A EXCEÇÃO É A LISTA CURTA, e o padrão continua "avisa": uma rota de escrita
+ *  nova no painel chega avisando sem ninguém lembrar de cadastrá-la aqui. Só o
+ *  que comprovadamente não grava entra nesta lista — o erro de esquecer é uma
+ *  busca a mais, e o de incluir é a tela mentir sobre o dado. */
+const ROTAS_DO_MERCADO_QUE_SO_LEEM = ['/api/mercado/bonds/conferencia'] as const;
+
 /** Esta requisição, se der certo, muda algum número do Painel de Mercado? */
 export function escreveNoMercado(metodo: string, caminho: string): boolean {
   if (METODOS_QUE_LEEM.has(metodo.toUpperCase())) return false;
   const soOCaminho = caminho.split('?')[0];
+  if (ROTAS_DO_MERCADO_QUE_SO_LEEM.some((rota) => soOCaminho === rota)) return false;
   return ROTAS_DO_MERCADO.some(
     (rota) => soOCaminho === rota || soOCaminho.startsWith(`${rota}/`),
   );

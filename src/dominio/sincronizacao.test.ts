@@ -6,6 +6,7 @@ import {
   ROTAS_DO_CATALOGO,
   Sincronizador,
   escreveNoCatalogo,
+  escreveNoMercado,
 } from './sincronizacao';
 
 describe('escreveNoCatalogo — a regra que decide quem avisa', () => {
@@ -46,6 +47,33 @@ describe('escreveNoCatalogo — a regra que decide quem avisa', () => {
   it('a query string não engana a regra', () => {
     expect(escreveNoCatalogo('POST', '/api/temas?forcar=1')).toBe(true);
     expect(escreveNoCatalogo('POST', '/api/interacoes?x=/api/temas')).toBe(false);
+  });
+});
+
+describe('escreveNoMercado — a conferência não é escrita', () => {
+  it('importar avisa; conferir NÃO', () => {
+    // A CONFERÊNCIA É UM POST QUE NÃO GRAVA NADA: ela lê a planilha, conta o
+    // que entraria e devolve. Classificá-la como escrita só por ser POST faz a
+    // tela do gráfico buscar de novo duas vezes por subida — uma na
+    // conferência, que não mudou número nenhum, e outra na gravação.
+    expect(escreveNoMercado('POST', '/api/mercado/bonds/importar')).toBe(true);
+    expect(escreveNoMercado('POST', '/api/mercado/bonds/conferencia')).toBe(false);
+  });
+
+  it('ler não é escrever, e a query não engana', () => {
+    expect(escreveNoMercado('GET', '/api/mercado/bonds/serie')).toBe(false);
+    expect(escreveNoMercado('POST', '/api/mercado/bonds/conferencia?x=importar')).toBe(
+      false,
+    );
+    expect(escreveNoMercado('POST', '/api/mercado/bonds/importar?forcar=1')).toBe(true);
+  });
+
+  it('escrita nova sob /api/mercado avisa por padrão', () => {
+    // A LISTA DE EXCEÇÃO É CURTA DE PROPÓSITO: uma rota de escrita nova no
+    // painel avisa sem ninguém lembrar de cadastrá-la. Só o que comprovadamente
+    // não grava sai da conta.
+    expect(escreveNoMercado('POST', '/api/mercado/bonds/anotacao')).toBe(true);
+    expect(escreveNoMercado('DELETE', '/api/mercado/bonds/9f3a')).toBe(true);
   });
 });
 
