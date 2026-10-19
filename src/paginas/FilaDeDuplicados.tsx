@@ -480,7 +480,8 @@ export function FilaDeDuplicados() {
                       titulo={
                         `O cadastro fica chamado «${candidato.nome}». As ` +
                         `${mencoes(perfil.mencoes)} de ${perfil.nome} passam para ele, ` +
-                        'e a outra linha sai do cadastro. Não tem volta. É a sugestão: ' +
+                        `e «${perfil.nome}» vira apelido — o fornecedor que mandar esse ` +
+                        'nome continua caindo aqui. Não tem volta. É a sugestão: ' +
                         'tem mais menções, ou é o cadastro curado.'
                       }
                     >
@@ -495,7 +496,8 @@ export function FilaDeDuplicados() {
                       titulo={
                         `O cadastro fica chamado «${perfil.nome}». As ` +
                         `${mencoes(candidato.mencoes)} de ${candidato.nome} passam para ` +
-                        'ele, e a outra linha sai do cadastro. Não tem volta.'
+                        `ele, e «${candidato.nome}» vira apelido — o fornecedor que ` +
+                        'mandar esse nome continua caindo aqui. Não tem volta.'
                       }
                     >
                       {`Manter «${perfil.nome}»`}
