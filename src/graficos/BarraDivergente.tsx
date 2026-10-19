@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ScoreDivergente } from '@/dominio/derivacoes';
 import { CORES_DE_CLIMA } from '@/dominio/frentes';
 import { dataCompleta } from '@/dominio/formato';
@@ -64,8 +65,12 @@ export function BarraDivergente({
   aoAbrirAgenda,
   vazio = 'Nenhum tema com termômetro registrado neste recorte.',
   variante = 'padrao',
+  detalhe,
 }: {
   itens: ScoreDivergente[];
+  /** O QUE ABRE AO CLICAR NA LINHA, quando não é a lista de agendas — o
+   *  "Termômetro por público" mostra o Top 10 de instituições do público. */
+  detalhe?: (item: ScoreDivergente) => ReactNode;
   /** Navega até a Ficha da agenda. Sem isto, a linha ainda abre a lista —
    *  só não dá para ir além dela. */
   aoAbrirAgenda?: (id: string) => void;
@@ -258,7 +263,18 @@ export function BarraDivergente({
               )}
             </div>
 
-            {expandido ? (
+            {expandido && detalhe ? (
+              <div
+                style={{
+                  margin: '2px -6px 6px',
+                  padding: '8px 10px',
+                  background: 'var(--bg-trilho)',
+                  borderRadius: 'var(--r-card-int)',
+                }}
+              >
+                {detalhe(item)}
+              </div>
+            ) : expandido ? (
               <div
                 style={{
                   margin: '2px -6px 6px',

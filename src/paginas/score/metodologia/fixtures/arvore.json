@@ -1,0 +1,1361 @@
+{
+ "pilares": [
+  {
+   "id": 5,
+   "nome": "Governança",
+   "ordem": 1
+  },
+  {
+   "id": 6,
+   "nome": "Eficiência Operacional e Qualidade",
+   "ordem": 2
+  },
+  {
+   "id": 7,
+   "nome": "Crescimento e Solidez Financeira",
+   "ordem": 3
+  },
+  {
+   "id": 8,
+   "nome": "Responsabilidade Social",
+   "ordem": 4
+  },
+  {
+   "id": 9,
+   "nome": "Responsabilidade Ambiental",
+   "ordem": 5
+  },
+  {
+   "id": 10,
+   "nome": "Inovação e Tecnologia",
+   "ordem": 6
+  },
+  {
+   "id": 11,
+   "nome": "Prosperidade Compartilhada",
+   "ordem": 7
+  }
+ ],
+ "temas": [
+  {
+   "id": 21,
+   "nome": "Governança corporativa",
+   "ordem": 1,
+   "pilar_id": 5
+  },
+  {
+   "id": 26,
+   "nome": "Abastecimento de água",
+   "ordem": 1,
+   "pilar_id": 6
+  },
+  {
+   "id": 33,
+   "nome": "Tarifa",
+   "ordem": 1,
+   "pilar_id": 7
+  },
+  {
+   "id": 39,
+   "nome": "Ações Sociais",
+   "ordem": 1,
+   "pilar_id": 8
+  },
+  {
+   "id": 46,
+   "nome": "Proteção ambiental",
+   "ordem": 1,
+   "pilar_id": 9
+  },
+  {
+   "id": 52,
+   "nome": "Tecnologia operação",
+   "ordem": 1,
+   "pilar_id": 10
+  },
+  {
+   "id": 57,
+   "nome": "Universalização",
+   "ordem": 1,
+   "pilar_id": 11
+  },
+  {
+   "id": 22,
+   "nome": "Contratos e Regulação",
+   "ordem": 2,
+   "pilar_id": 5
+  },
+  {
+   "id": 27,
+   "nome": "Qualidade da água",
+   "ordem": 2,
+   "pilar_id": 6
+  },
+  {
+   "id": 34,
+   "nome": "Desempenho financeiro",
+   "ordem": 2,
+   "pilar_id": 7
+  },
+  {
+   "id": 40,
+   "nome": "Inclusão sanitária / Acessibilidade econômica",
+   "ordem": 2,
+   "pilar_id": 8
+  },
+  {
+   "id": 47,
+   "nome": "Meio ambiente e clima",
+   "ordem": 2,
+   "pilar_id": 9
+  },
+  {
+   "id": 53,
+   "nome": "Automação e inteligência artificial",
+   "ordem": 2,
+   "pilar_id": 10
+  },
+  {
+   "id": 58,
+   "nome": "Investimento em infraestrutura",
+   "ordem": 2,
+   "pilar_id": 11
+  },
+  {
+   "id": 23,
+   "nome": "Integridade",
+   "ordem": 3,
+   "pilar_id": 5
+  },
+  {
+   "id": 28,
+   "nome": "Esgoto",
+   "ordem": 3,
+   "pilar_id": 6
+  },
+  {
+   "id": 35,
+   "nome": "Estrutura de capital",
+   "ordem": 3,
+   "pilar_id": 7
+  },
+  {
+   "id": 41,
+   "nome": "Relacionamento comunitário",
+   "ordem": 3,
+   "pilar_id": 8
+  },
+  {
+   "id": 48,
+   "nome": "Energia",
+   "ordem": 3,
+   "pilar_id": 9
+  },
+  {
+   "id": 54,
+   "nome": "Experiência digital do cliente",
+   "ordem": 3,
+   "pilar_id": 10
+  },
+  {
+   "id": 59,
+   "nome": "Legado e impacto",
+   "ordem": 3,
+   "pilar_id": 11
+  },
+  {
+   "id": 24,
+   "nome": "Modelo de negócio",
+   "ordem": 4,
+   "pilar_id": 5
+  },
+  {
+   "id": 29,
+   "nome": "Obras e intervenções",
+   "ordem": 4,
+   "pilar_id": 6
+  },
+  {
+   "id": 36,
+   "nome": "Crédito e rating",
+   "ordem": 4,
+   "pilar_id": 7
+  },
+  {
+   "id": 42,
+   "nome": "Educação e conscientização",
+   "ordem": 4,
+   "pilar_id": 8
+  },
+  {
+   "id": 49,
+   "nome": "Mudanças climáticas",
+   "ordem": 4,
+   "pilar_id": 9
+  },
+  {
+   "id": 55,
+   "nome": "Pesquisa e desenvolvimento",
+   "ordem": 4,
+   "pilar_id": 10
+  },
+  {
+   "id": 60,
+   "nome": "Emprego e renda",
+   "ordem": 4,
+   "pilar_id": 11
+  },
+  {
+   "id": 25,
+   "nome": "Político-institucional",
+   "ordem": 5,
+   "pilar_id": 5
+  },
+  {
+   "id": 30,
+   "nome": "Atendimento ao cliente",
+   "ordem": 5,
+   "pilar_id": 6
+  },
+  {
+   "id": 37,
+   "nome": "Crescimento e portfólio",
+   "ordem": 5,
+   "pilar_id": 7
+  },
+  {
+   "id": 43,
+   "nome": "Pessoas",
+   "ordem": 5,
+   "pilar_id": 8
+  },
+  {
+   "id": 50,
+   "nome": "Licenciamento ambiental",
+   "ordem": 5,
+   "pilar_id": 9
+  },
+  {
+   "id": 56,
+   "nome": "Segurança da informação",
+   "ordem": 5,
+   "pilar_id": 10
+  },
+  {
+   "id": 61,
+   "nome": "Cadeia de valor",
+   "ordem": 5,
+   "pilar_id": 11
+  },
+  {
+   "id": 31,
+   "nome": "Faturamento e cobrança",
+   "ordem": 6,
+   "pilar_id": 6
+  },
+  {
+   "id": 38,
+   "nome": "Novos negócios",
+   "ordem": 6,
+   "pilar_id": 7
+  },
+  {
+   "id": 44,
+   "nome": "Saúde e segurança",
+   "ordem": 6,
+   "pilar_id": 8
+  },
+  {
+   "id": 51,
+   "nome": "Economia circular e reúso",
+   "ordem": 6,
+   "pilar_id": 9
+  },
+  {
+   "id": 32,
+   "nome": "Segurança operacional e patrimonial",
+   "ordem": 7,
+   "pilar_id": 6
+  },
+  {
+   "id": 45,
+   "nome": "Relações de trabalho",
+   "ordem": 7,
+   "pilar_id": 8
+  }
+ ],
+ "subtemas": [
+  {
+   "id": 20,
+   "nome": "Gestão da qualidade da água",
+   "tema_id": 27,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 23,
+   "nome": "Universalização e metas de cobertura",
+   "tema_id": 57,
+   "lso": null,
+   "risco_id": 5
+  },
+  {
+   "id": 25,
+   "nome": "Pavimentação e recomposição",
+   "tema_id": 29,
+   "lso": "credibilidade",
+   "risco_id": 8
+  },
+  {
+   "id": 26,
+   "nome": "Acidentes e danos a terceiros",
+   "tema_id": 29,
+   "lso": "credibilidade",
+   "risco_id": 13
+  },
+  {
+   "id": 32,
+   "nome": "Tarifa social",
+   "tema_id": 40,
+   "lso": null,
+   "risco_id": 23
+  },
+  {
+   "id": 33,
+   "nome": "Taxa de lixo",
+   "tema_id": 38,
+   "lso": null,
+   "risco_id": 17
+  },
+  {
+   "id": 45,
+   "nome": "Resiliência hídrica e novas fontes",
+   "tema_id": 47,
+   "lso": "confianca",
+   "risco_id": 21
+  },
+  {
+   "id": 48,
+   "nome": "Programas sociais e comunidade",
+   "tema_id": 39,
+   "lso": "confianca",
+   "risco_id": 23
+  },
+  {
+   "id": 49,
+   "nome": "Atração e desenvolvimento",
+   "tema_id": 43,
+   "lso": "confianca",
+   "risco_id": 7
+  },
+  {
+   "id": 55,
+   "nome": "Estrutura de governança / Conselho e comitês",
+   "tema_id": 21,
+   "lso": "credibilidade",
+   "risco_id": null
+  },
+  {
+   "id": 56,
+   "nome": "Acionistas",
+   "tema_id": 21,
+   "lso": "credibilidade",
+   "risco_id": 3
+  },
+  {
+   "id": 57,
+   "nome": "Cumprimento contratual",
+   "tema_id": 22,
+   "lso": "legitimidade",
+   "risco_id": 5
+  },
+  {
+   "id": 58,
+   "nome": "Revisão e renovação de contratos",
+   "tema_id": 22,
+   "lso": "legitimidade",
+   "risco_id": 5
+  },
+  {
+   "id": 59,
+   "nome": "Reequilíbrio econômico-financeiro",
+   "tema_id": 22,
+   "lso": "legitimidade",
+   "risco_id": 5
+  },
+  {
+   "id": 60,
+   "nome": "Segurança jurídica",
+   "tema_id": 22,
+   "lso": "legitimidade",
+   "risco_id": 5
+  },
+  {
+   "id": 61,
+   "nome": "Fiscalização regulatória",
+   "tema_id": 22,
+   "lso": "legitimidade",
+   "risco_id": 5
+  },
+  {
+   "id": 62,
+   "nome": "Multa e processos",
+   "tema_id": 22,
+   "lso": "credibilidade",
+   "risco_id": 28
+  },
+  {
+   "id": 63,
+   "nome": "Agências reguladoras",
+   "tema_id": 22,
+   "lso": null,
+   "risco_id": 2
+  },
+  {
+   "id": 64,
+   "nome": "Ética e conduta",
+   "tema_id": 23,
+   "lso": "credibilidade",
+   "risco_id": 6
+  },
+  {
+   "id": 65,
+   "nome": "Investigações e Acordo",
+   "tema_id": 23,
+   "lso": "credibilidade",
+   "risco_id": 6
+  },
+  {
+   "id": 66,
+   "nome": "Controles internos / Prevenção à fraude e corrupção",
+   "tema_id": 23,
+   "lso": "credibilidade",
+   "risco_id": 6
+  },
+  {
+   "id": 67,
+   "nome": "Demonstrações de resultados e auditoria",
+   "tema_id": 23,
+   "lso": "credibilidade",
+   "risco_id": 26
+  },
+  {
+   "id": 68,
+   "nome": "Modelo Operacional Aegea",
+   "tema_id": 24,
+   "lso": "credibilidade",
+   "risco_id": null
+  },
+  {
+   "id": 69,
+   "nome": "Políticas públicas e setoriais",
+   "tema_id": 25,
+   "lso": "credibilidade",
+   "risco_id": 1
+  },
+  {
+   "id": 70,
+   "nome": "Patrocínios institucionais",
+   "tema_id": 25,
+   "lso": "credibilidade",
+   "risco_id": 2
+  },
+  {
+   "id": 71,
+   "nome": "Debate público versus privado",
+   "tema_id": 25,
+   "lso": "credibilidade",
+   "risco_id": 1
+  },
+  {
+   "id": 72,
+   "nome": "Judicialização e CPIs",
+   "tema_id": 25,
+   "lso": "credibilidade",
+   "risco_id": 5
+  },
+  {
+   "id": 73,
+   "nome": "Marco Legal do Saneamento",
+   "tema_id": 25,
+   "lso": null,
+   "risco_id": 1
+  },
+  {
+   "id": 74,
+   "nome": "Agenda Associações (Políticas setoriais)",
+   "tema_id": 25,
+   "lso": "credibilidade",
+   "risco_id": 2
+  },
+  {
+   "id": 75,
+   "nome": "Frequência, Continuidade",
+   "tema_id": 26,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 76,
+   "nome": "Perdas, fraudes, furtos e ligações irregulares",
+   "tema_id": 26,
+   "lso": "legitimidade",
+   "risco_id": 15
+  },
+  {
+   "id": 77,
+   "nome": "Rompimento de adutora",
+   "tema_id": 26,
+   "lso": "legitimidade",
+   "risco_id": 15
+  },
+  {
+   "id": 78,
+   "nome": "Plano de contingência e redundância",
+   "tema_id": 26,
+   "lso": "legitimidade",
+   "risco_id": 30
+  },
+  {
+   "id": 80,
+   "nome": "Monitoramento e controle de qualidade da água",
+   "tema_id": 27,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 81,
+   "nome": "Potabilidade",
+   "tema_id": 27,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 82,
+   "nome": "Rede e Coleta de esgoto",
+   "tema_id": 28,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 83,
+   "nome": "Tratamento de esgoto",
+   "tema_id": 28,
+   "lso": "legitimidade",
+   "risco_id": 16
+  },
+  {
+   "id": 84,
+   "nome": "Lançamento irregular e extravasamento",
+   "tema_id": 28,
+   "lso": "legitimidade",
+   "risco_id": 14
+  },
+  {
+   "id": 85,
+   "nome": "Balneabilidade",
+   "tema_id": 28,
+   "lso": "legitimidade",
+   "risco_id": 14
+  },
+  {
+   "id": 86,
+   "nome": "Odor e incômodo",
+   "tema_id": 28,
+   "lso": null,
+   "risco_id": 23
+  },
+  {
+   "id": 87,
+   "nome": "Custos e eficiência",
+   "tema_id": 29,
+   "lso": "credibilidade",
+   "risco_id": 8
+  },
+  {
+   "id": 89,
+   "nome": "Expansão da rede",
+   "tema_id": 29,
+   "lso": "credibilidade",
+   "risco_id": 8
+  },
+  {
+   "id": 91,
+   "nome": "Manutenção, interdições e transtornos urbanos",
+   "tema_id": 29,
+   "lso": "credibilidade",
+   "risco_id": 23
+  },
+  {
+   "id": 92,
+   "nome": "Canais de atendimento",
+   "tema_id": 30,
+   "lso": "credibilidade",
+   "risco_id": 24
+  },
+  {
+   "id": 93,
+   "nome": "Atendimento ao cliente",
+   "tema_id": 30,
+   "lso": "credibilidade",
+   "risco_id": 24
+  },
+  {
+   "id": 94,
+   "nome": "Órgãos de defesa ao cliente (Ouvidoria, Procon, Reclame Aqui)",
+   "tema_id": 30,
+   "lso": "credibilidade",
+   "risco_id": 24
+  },
+  {
+   "id": 95,
+   "nome": "Medição e leitura",
+   "tema_id": 31,
+   "lso": null,
+   "risco_id": 24
+  },
+  {
+   "id": 96,
+   "nome": "Conta errada, Tarifa abusiva",
+   "tema_id": 31,
+   "lso": null,
+   "risco_id": 24
+  },
+  {
+   "id": 97,
+   "nome": "Inadimplência, Corte e religação",
+   "tema_id": 31,
+   "lso": null,
+   "risco_id": 25
+  },
+  {
+   "id": 98,
+   "nome": "Segurança, ameaças e invasões",
+   "tema_id": 32,
+   "lso": null,
+   "risco_id": 15
+  },
+  {
+   "id": 99,
+   "nome": "Reajuste/ Revisão tarifária",
+   "tema_id": 33,
+   "lso": null,
+   "risco_id": 5
+  },
+  {
+   "id": 100,
+   "nome": "Estrutura e composição tarifária",
+   "tema_id": 33,
+   "lso": null,
+   "risco_id": 5
+  },
+  {
+   "id": 101,
+   "nome": "Resultados financeiros e operacionais",
+   "tema_id": 34,
+   "lso": null,
+   "risco_id": 29
+  },
+  {
+   "id": 102,
+   "nome": "Projeções e guidance",
+   "tema_id": 34,
+   "lso": null,
+   "risco_id": 29
+  },
+  {
+   "id": 103,
+   "nome": "Endividamento e alavancagem",
+   "tema_id": 35,
+   "lso": null,
+   "risco_id": 4
+  },
+  {
+   "id": 104,
+   "nome": "Aportes dos acionistas",
+   "tema_id": 35,
+   "lso": null,
+   "risco_id": 3
+  },
+  {
+   "id": 105,
+   "nome": "Dividendos e distribuição de capital",
+   "tema_id": 35,
+   "lso": null,
+   "risco_id": 3
+  },
+  {
+   "id": 106,
+   "nome": "Emissão de dívida / Debêntures e bonds",
+   "tema_id": 35,
+   "lso": null,
+   "risco_id": 4
+  },
+  {
+   "id": 107,
+   "nome": "IPO e acesso ao mercado de ações",
+   "tema_id": 35,
+   "lso": null,
+   "risco_id": 3
+  },
+  {
+   "id": 108,
+   "nome": "Percepção de risco de crédito / Rating corporativo",
+   "tema_id": 36,
+   "lso": null,
+   "risco_id": 4
+  },
+  {
+   "id": 109,
+   "nome": "Covenants",
+   "tema_id": 36,
+   "lso": null,
+   "risco_id": 4
+  },
+  {
+   "id": 110,
+   "nome": "Novos Negócios e Leilões",
+   "tema_id": 37,
+   "lso": null,
+   "risco_id": 31
+  },
+  {
+   "id": 111,
+   "nome": "M&A e parcerias",
+   "tema_id": 37,
+   "lso": null,
+   "risco_id": 31
+  },
+  {
+   "id": 112,
+   "nome": "Venda de ativo",
+   "tema_id": 37,
+   "lso": null,
+   "risco_id": 3
+  },
+  {
+   "id": 113,
+   "nome": "Entrada em novos mercados",
+   "tema_id": 37,
+   "lso": null,
+   "risco_id": 31
+  },
+  {
+   "id": 114,
+   "nome": "Coleta de resíduos / Tratamento e Destinação",
+   "tema_id": 38,
+   "lso": null,
+   "risco_id": 17
+  },
+  {
+   "id": 116,
+   "nome": "Reúso de água",
+   "tema_id": 38,
+   "lso": null,
+   "risco_id": 32
+  },
+  {
+   "id": 119,
+   "nome": "Cadastro e elegibilidade",
+   "tema_id": 40,
+   "lso": null,
+   "risco_id": 24
+  },
+  {
+   "id": 120,
+   "nome": "Renegociação e apoio ao cliente",
+   "tema_id": 40,
+   "lso": null,
+   "risco_id": 25
+  },
+  {
+   "id": 121,
+   "nome": "Prêmios, Projetos e incentivos à comunidade",
+   "tema_id": 41,
+   "lso": null,
+   "risco_id": 23
+  },
+  {
+   "id": 122,
+   "nome": "Educação ambiental / Engajamento em saneamento e saúde / Uso consciente da água",
+   "tema_id": 42,
+   "lso": null,
+   "risco_id": 23
+  },
+  {
+   "id": 123,
+   "nome": "Contratação",
+   "tema_id": 43,
+   "lso": "confianca",
+   "risco_id": 7
+  },
+  {
+   "id": 125,
+   "nome": "Equidade, Diversidade e inclusão",
+   "tema_id": 43,
+   "lso": "confianca",
+   "risco_id": 7
+  },
+  {
+   "id": 126,
+   "nome": "Segurança, condições e relações de trabalho",
+   "tema_id": 43,
+   "lso": "confianca",
+   "risco_id": 13
+  },
+  {
+   "id": 127,
+   "nome": "Cultura organizacional",
+   "tema_id": 43,
+   "lso": null,
+   "risco_id": 7
+  },
+  {
+   "id": 128,
+   "nome": "Segurança dos trabalhadores / Acidentes de trabalho",
+   "tema_id": 44,
+   "lso": null,
+   "risco_id": 13
+  },
+  {
+   "id": 129,
+   "nome": "Relações sindicais",
+   "tema_id": 45,
+   "lso": null,
+   "risco_id": 7
+  },
+  {
+   "id": 130,
+   "nome": "Relacionamento com terceiros",
+   "tema_id": 45,
+   "lso": null,
+   "risco_id": 8
+  },
+  {
+   "id": 131,
+   "nome": "Proteção de mananciais / Recuperação ambiental",
+   "tema_id": 46,
+   "lso": "confianca",
+   "risco_id": 14
+  },
+  {
+   "id": 132,
+   "nome": "Oceanos",
+   "tema_id": 46,
+   "lso": "confianca",
+   "risco_id": 14
+  },
+  {
+   "id": 133,
+   "nome": "Biodiversidade",
+   "tema_id": 46,
+   "lso": null,
+   "risco_id": 10
+  },
+  {
+   "id": 135,
+   "nome": "Eficiência energética / Energia renovável / Autoprodução e geração distribuída",
+   "tema_id": 48,
+   "lso": "confianca",
+   "risco_id": 11
+  },
+  {
+   "id": 136,
+   "nome": "Emissão gases efeito estufa",
+   "tema_id": 49,
+   "lso": "confianca",
+   "risco_id": 22
+  },
+  {
+   "id": 137,
+   "nome": "Eventos Climáticos",
+   "tema_id": 49,
+   "lso": null,
+   "risco_id": 21
+  },
+  {
+   "id": 138,
+   "nome": "Adaptação e resiliência",
+   "tema_id": 49,
+   "lso": null,
+   "risco_id": 21
+  },
+  {
+   "id": 139,
+   "nome": "Licenças e autorizações / Condicionantes ambientais / Fiscalização e autuações",
+   "tema_id": 50,
+   "lso": null,
+   "risco_id": 12
+  },
+  {
+   "id": 140,
+   "nome": "Aproveitamento de subprodutos",
+   "tema_id": 51,
+   "lso": null,
+   "risco_id": 32
+  },
+  {
+   "id": 141,
+   "nome": "Gestão de lodo",
+   "tema_id": 51,
+   "lso": null,
+   "risco_id": 14
+  },
+  {
+   "id": 142,
+   "nome": "Redução e valorização de resíduos",
+   "tema_id": 51,
+   "lso": null,
+   "risco_id": 22
+  },
+  {
+   "id": 143,
+   "nome": "Monitoramento em tempo real",
+   "tema_id": 52,
+   "lso": "credibilidade",
+   "risco_id": 9
+  },
+  {
+   "id": 144,
+   "nome": "Gestão de ativos",
+   "tema_id": 52,
+   "lso": "credibilidade",
+   "risco_id": 15
+  },
+  {
+   "id": 145,
+   "nome": "Sensoriamento e telemetria",
+   "tema_id": 52,
+   "lso": "credibilidade",
+   "risco_id": 9
+  },
+  {
+   "id": 146,
+   "nome": "Automação de processos",
+   "tema_id": 53,
+   "lso": "credibilidade",
+   "risco_id": 9
+  },
+  {
+   "id": 147,
+   "nome": "Inteligência artificial / Eficiência baseada em dados / Análise preditiva",
+   "tema_id": 53,
+   "lso": "credibilidade",
+   "risco_id": 9
+  },
+  {
+   "id": 148,
+   "nome": "Canais digitais / Autoatendimento",
+   "tema_id": 54,
+   "lso": "credibilidade",
+   "risco_id": 24
+  },
+  {
+   "id": 149,
+   "nome": "Medição e fatura digital",
+   "tema_id": 54,
+   "lso": "credibilidade",
+   "risco_id": 9
+  },
+  {
+   "id": 150,
+   "nome": "Novas tecnologias",
+   "tema_id": 55,
+   "lso": "credibilidade",
+   "risco_id": 32
+  },
+  {
+   "id": 151,
+   "nome": "Parcerias com universidades e startups",
+   "tema_id": 55,
+   "lso": "credibilidade",
+   "risco_id": 32
+  },
+  {
+   "id": 152,
+   "nome": "Proteção de dados / Privacidade / Cybersegurança / Continuidade",
+   "tema_id": 56,
+   "lso": "credibilidade",
+   "risco_id": 18
+  },
+  {
+   "id": 154,
+   "nome": "Volume de investimentos",
+   "tema_id": 58,
+   "lso": null,
+   "risco_id": 3
+  },
+  {
+   "id": 155,
+   "nome": "Benefícios do saneamento (saúde, educação, imóveis, socioeconômico)",
+   "tema_id": 59,
+   "lso": null,
+   "risco_id": null
+  },
+  {
+   "id": 156,
+   "nome": "Geração de empregos / Contratação local / Capacitação profissional",
+   "tema_id": 60,
+   "lso": null,
+   "risco_id": 23
+  },
+  {
+   "id": 157,
+   "nome": "Desenvolvimento de fornecedores / Fornecedores locais / Compras responsáveis",
+   "tema_id": 61,
+   "lso": null,
+   "risco_id": 8
+  },
+  {
+   "id": 158,
+   "nome": "Drenagem urbana e águas pluviais",
+   "tema_id": 61,
+   "lso": null,
+   "risco_id": null
+  }
+ ],
+ "clusters": [
+  {
+   "id": 1,
+   "nome": "Riscos Geopolíticos e Estratégicos",
+   "ordem": 1
+  },
+  {
+   "id": 2,
+   "nome": "Riscos em Investimentos de Capital",
+   "ordem": 2
+  },
+  {
+   "id": 3,
+   "nome": "Riscos Operacionais",
+   "ordem": 3
+  },
+  {
+   "id": 4,
+   "nome": "Riscos de Tecnologia",
+   "ordem": 4
+  },
+  {
+   "id": 5,
+   "nome": "Riscos ESG",
+   "ordem": 5
+  },
+  {
+   "id": 6,
+   "nome": "Riscos com Clientes",
+   "ordem": 6
+  },
+  {
+   "id": 7,
+   "nome": "Riscos com Finanças e Contabilidade",
+   "ordem": 7
+  },
+  {
+   "id": 8,
+   "nome": "Riscos com Stakeholders e novos negócios",
+   "ordem": 8
+  }
+ ],
+ "riscos": [
+  {
+   "id": 1,
+   "nome": "Instabilidade Política / Econômica",
+   "ordem": 1,
+   "cluster_id": 1,
+   "severidade": "moderado"
+  },
+  {
+   "id": 8,
+   "nome": "Gestão de Contratos e Terceiros",
+   "ordem": 1,
+   "cluster_id": 2,
+   "severidade": "moderado"
+  },
+  {
+   "id": 11,
+   "nome": "Gestão de Insumos",
+   "ordem": 1,
+   "cluster_id": 3,
+   "severidade": "moderado"
+  },
+  {
+   "id": 18,
+   "nome": "Cybersecurity e Continuidade Operacional",
+   "ordem": 1,
+   "cluster_id": 4,
+   "severidade": "critico"
+  },
+  {
+   "id": 21,
+   "nome": "Externalidades e Mudanças Climáticas",
+   "ordem": 1,
+   "cluster_id": 5,
+   "severidade": "critico"
+  },
+  {
+   "id": 24,
+   "nome": "Regularidade, Atendimento e Satisfação",
+   "ordem": 1,
+   "cluster_id": 6,
+   "severidade": "alto"
+  },
+  {
+   "id": 26,
+   "nome": "Integridade das Demonstrações Financeiras",
+   "ordem": 1,
+   "cluster_id": 7,
+   "severidade": "moderado"
+  },
+  {
+   "id": 29,
+   "nome": "Integridade das Informações ao Mercado",
+   "ordem": 1,
+   "cluster_id": 8,
+   "severidade": "moderado"
+  },
+  {
+   "id": 2,
+   "nome": "Relações Institucionais e Governamentais",
+   "ordem": 2,
+   "cluster_id": 1,
+   "severidade": "moderado"
+  },
+  {
+   "id": 9,
+   "nome": "Adoção e Efetividade de Novas Tecnologias",
+   "ordem": 2,
+   "cluster_id": 2,
+   "severidade": "alto"
+  },
+  {
+   "id": 12,
+   "nome": "Gestão de Licenças",
+   "ordem": 2,
+   "cluster_id": 3,
+   "severidade": "alto"
+  },
+  {
+   "id": 19,
+   "nome": "Proteção de Dados e informações",
+   "ordem": 2,
+   "cluster_id": 4,
+   "severidade": "alto"
+  },
+  {
+   "id": 22,
+   "nome": "Gestão ESG e Sustentabilidade",
+   "ordem": 2,
+   "cluster_id": 5,
+   "severidade": "alto"
+  },
+  {
+   "id": 25,
+   "nome": "Gestão de Crédito e Inadimplência",
+   "ordem": 2,
+   "cluster_id": 6,
+   "severidade": "moderado"
+  },
+  {
+   "id": 27,
+   "nome": "Cobertura de Seguros",
+   "ordem": 2,
+   "cluster_id": 7,
+   "severidade": "moderado"
+  },
+  {
+   "id": 30,
+   "nome": "Gestão de Crises",
+   "ordem": 2,
+   "cluster_id": 8,
+   "severidade": "critico"
+  },
+  {
+   "id": 3,
+   "nome": "Gestão de Portfólio e Estrutura de Capital",
+   "ordem": 3,
+   "cluster_id": 1,
+   "severidade": "alto"
+  },
+  {
+   "id": 10,
+   "nome": "Gestão Ambiental em Projetos e Obras",
+   "ordem": 3,
+   "cluster_id": 2,
+   "severidade": "alto"
+  },
+  {
+   "id": 13,
+   "nome": "Saúde e Segurança",
+   "ordem": 3,
+   "cluster_id": 3,
+   "severidade": "alto"
+  },
+  {
+   "id": 20,
+   "nome": "Proteção de Dados – LGPD",
+   "ordem": 3,
+   "cluster_id": 4,
+   "severidade": "moderado"
+  },
+  {
+   "id": 23,
+   "nome": "Relações com as Comunidades",
+   "ordem": 3,
+   "cluster_id": 5,
+   "severidade": "alto"
+  },
+  {
+   "id": 28,
+   "nome": "Contingências e Provisões",
+   "ordem": 3,
+   "cluster_id": 7,
+   "severidade": "moderado"
+  },
+  {
+   "id": 31,
+   "nome": "Assunção de novos negócios",
+   "ordem": 3,
+   "cluster_id": 8,
+   "severidade": "moderado"
+  },
+  {
+   "id": 4,
+   "nome": "Liquidez, Gestão da Dívida e Quebra de Covenants de financiamentos",
+   "ordem": 4,
+   "cluster_id": 1,
+   "severidade": "alto"
+  },
+  {
+   "id": 14,
+   "nome": "Meio ambiente operacional",
+   "ordem": 4,
+   "cluster_id": 3,
+   "severidade": "alto"
+  },
+  {
+   "id": 32,
+   "nome": "Novas Tendências e Futuro",
+   "ordem": 4,
+   "cluster_id": 8,
+   "severidade": "moderado"
+  },
+  {
+   "id": 5,
+   "nome": "Legal e Regulatório",
+   "ordem": 5,
+   "cluster_id": 1,
+   "severidade": "moderado"
+  },
+  {
+   "id": 15,
+   "nome": "Integridade e Confiabilidade dos Ativos",
+   "ordem": 5,
+   "cluster_id": 3,
+   "severidade": "alto"
+  },
+  {
+   "id": 6,
+   "nome": "Práticas Ilegais ou Antiéticas",
+   "ordem": 6,
+   "cluster_id": 1,
+   "severidade": "alto"
+  },
+  {
+   "id": 16,
+   "nome": "Entrega de água e tratamento de esgoto",
+   "ordem": 6,
+   "cluster_id": 3,
+   "severidade": "critico"
+  },
+  {
+   "id": 7,
+   "nome": "Gestão do Capital Humano",
+   "ordem": 7,
+   "cluster_id": 1,
+   "severidade": "moderado"
+  },
+  {
+   "id": 17,
+   "nome": "Tratamento de resíduos sólidos urbanos (RSU)",
+   "ordem": 7,
+   "cluster_id": 3,
+   "severidade": "alto"
+  }
+ ],
+ "cores": [
+  {
+   "chave": "sev",
+   "nome": "Severidade",
+   "titulo": "Severidade do risco primário",
+   "explicacao": "Cor do subtema: severidade do risco primário, onde o dano se materializa.",
+   "alvo": "risco",
+   "campo": "severidade",
+   "valores": [
+    {
+     "codigo": "critico",
+     "nome": "Crítico",
+     "cor": "#FF5C60",
+     "hachurado": false
+    },
+    {
+     "codigo": "alto",
+     "nome": "Alto",
+     "cor": "#FE952B",
+     "hachurado": false
+    },
+    {
+     "codigo": "moderado",
+     "nome": "Moderado",
+     "cor": "#F8DC00",
+     "hachurado": false
+    }
+   ],
+   "vazio": {
+    "codigo": "sem_risco",
+    "nome": "Sem risco",
+    "cor": "#C4C8D6",
+    "hachurado": false
+   }
+  },
+  {
+   "chave": "lso",
+   "nome": "LSO",
+   "titulo": "Licença Social para Operar",
+   "explicacao": "Cor do subtema: nível de Licença Social para Operar. Hachurado: ainda a definir.",
+   "alvo": "subtema",
+   "campo": "lso",
+   "valores": [
+    {
+     "codigo": "confianca",
+     "nome": "Confiança",
+     "cor": "#0027BD",
+     "hachurado": false
+    },
+    {
+     "codigo": "credibilidade",
+     "nome": "Credibilidade",
+     "cor": "#17E3CB",
+     "hachurado": false
+    },
+    {
+     "codigo": "legitimidade",
+     "nome": "Legitimidade",
+     "cor": "#9DEEE7",
+     "hachurado": false
+    },
+    {
+     "codigo": "nao_se_aplica",
+     "nome": "Não se aplica",
+     "cor": "#C4C8D6",
+     "hachurado": false
+    }
+   ],
+   "vazio": {
+    "codigo": "a_definir",
+    "nome": "A definir",
+    "cor": "#E2E5F0",
+    "hachurado": true
+   }
+  }
+ ]
+}
