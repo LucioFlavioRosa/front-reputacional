@@ -667,6 +667,21 @@ export function BaseDoScore() {
                         Enviando a planilha: parte {subida.enviadas} de {subida.total}.
                       </strong>
                       <span
+                        //: `aria-hidden` NA PORCENTAGEM, e é achado da revisão
+                        //: do Codex — com uma correção de leitura: o anúncio
+                        //: repetido onze vezes NÃO é regressão desta mudança. O
+                        //: `role="status"` com a contagem mutável já existia, e
+                        //: o comentário dele diz que a contagem mudar onze vezes
+                        //: é a RAZÃO de ele estar lá.
+                        //:
+                        //: O QUE EU PIOREI FOI O TAMANHO DE CADA ANÚNCIO, ao
+                        //: somar a porcentagem ao texto vivo. Escondendo-a do
+                        //: leitor de tela, cada anúncio volta a ser o de antes
+                        //: ("parte 3 de 11") e a porcentagem segue para os
+                        //: olhos, junto da barra. Reduzir a FREQUÊNCIA é outra
+                        //: decisão, do dono do produto, e não se toma de
+                        //: passagem num conserto de upload.
+                        aria-hidden="true"
                         style={{
                           //: `tabular-nums` para o número não dançar a cada
                           //: parte — são onze trocas em poucos segundos.

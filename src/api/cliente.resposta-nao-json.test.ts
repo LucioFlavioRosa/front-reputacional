@@ -22,8 +22,10 @@ import {
   ErroDaApi,
   baixarModeloDeSubtemas,
   conferirPlanilhaDoScore,
+  conferirPlanilhaDoScoreEmPartes,
   limparCacheDaApi,
   listarAcessos,
+  requisitar,
 } from './cliente';
 import { registrarErro } from '@/observabilidade/telemetria';
 
@@ -283,6 +285,89 @@ describe('a subida de arquivo tem causa provável PRÓPRIA', () => {
     vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
 
     const falha = await falhaDe();
+
+    expect(falha.message).toContain('backend está no ar');
+    expect(falha.message).not.toContain('OneDrive');
+  });
+});
+
+describe('`FormData` NAO e sinonimo de upload de arquivo', () => {
+  /** ACHADO DA REVISAO DO CODEX, e procedente — o pior caso era justo o caminho
+   *  dos arquivos grandes.
+   *
+   *  A primeira versao perguntava `opcoes.body instanceof FormData`, e isso e
+   *  mais largo que "upload": a ABERTURA da subida em partes manda so `tamanho`
+   *  e `nome`, e o FECHAMENTO manda so `partes`. Nenhum dos dois leva arquivo.
+   *  Entao uma falha de infraestrutura na abertura passaria a dizer "confira se
+   *  o arquivo esta disponivel neste dispositivo" — a inversao exata do defeito
+   *  que a mudanca existe para consertar, e na subida que mais importa.
+   *
+   *  Outros tres caminhos sao multipart sem arquivo: a confirmacao por
+   *  `planilha_id`, e as duas de referencia do CRM, onde o anexo e opcional.
+   */
+  function arquivo(): File {
+    return new File([new Uint8Array(4096)], 'clipei.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  }
+
+  it('a ABERTURA da subida em partes nao fala do arquivo — ela nao leva arquivo', async () => {
+    //: Ela manda `tamanho` e `nome`, dois campos de texto. Se ela falhar com
+    //: HTML, a causa E a infraestrutura, e a mensagem antiga esta certa.
+    responder(PAGINA_DO_INGRESS, 400, 'text/html');
+
+    const falha = (await conferirPlanilhaDoScoreEmPartes('clipei', arquivo()).catch(
+      (e) => e,
+    )) as ErroDaApi;
+
+    expect(falha.message).toContain('infraestrutura');
+    expect(falha.message).not.toContain('OneDrive');
+    expect(falha.message).not.toContain('conseguido LER');
+  });
+
+  it('mas a PARTE, que leva um Blob fatiado, fala do arquivo', async () => {
+    /** O CONTROLE QUE PROVA O DETECTOR. A parte de uma subida em pedacos e
+     *  `arquivo.slice(...)` — um `Blob`, nao um `File`, e sem nome de arquivo.
+     *  Um detector que procurasse `File` deixaria de fora exatamente as onze
+     *  requisicoes que carregam os bytes.
+     */
+    const corpo = new FormData();
+    corpo.append('parte', arquivo().slice(0, 1024), 'parte-0');
+    responder(PAGINA_DO_INGRESS, 400, 'text/html');
+
+    const falha = (await requisitar('/api/qualquer', { method: 'PUT', body: corpo }).catch(
+      (e) => e,
+    )) as ErroDaApi;
+
+    expect(falha.message).toContain('conseguido LER');
+    expect(falha.message).toContain('OneDrive');
+  });
+
+  it('multipart com anexo OPCIONAL ausente nao fala do arquivo', async () => {
+    //: `crm.ts` monta `if (arquivo) corpo.append('arquivo', arquivo)` em duas
+    //: funcoes de referencia. Sem anexo, nao ha arquivo para culpar.
+    const corpo = new FormData();
+    corpo.append('titulo', 'Uma referencia sem anexo');
+    corpo.append('conteudo', 'texto');
+    responder(PAGINA_DO_INGRESS, 400, 'text/html');
+
+    const falha = (await requisitar('/api/referencias', { method: 'POST', body: corpo }).catch(
+      (e) => e,
+    )) as ErroDaApi;
+
+    expect(falha.message).toContain('infraestrutura');
+    expect(falha.message).not.toContain('OneDrive');
+  });
+
+  it('e o galho de REDE segue a mesma regra', async () => {
+    //: O `catch` do `fetch` tinha a mesma classificacao larga.
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
+    const semArquivo = new FormData();
+    semArquivo.append('partes', '11');
+
+    const falha = (await requisitar('/api/fecha', { method: 'POST', body: semArquivo }).catch(
+      (e) => e,
+    )) as ErroDaApi;
 
     expect(falha.message).toContain('backend está no ar');
     expect(falha.message).not.toContain('OneDrive');

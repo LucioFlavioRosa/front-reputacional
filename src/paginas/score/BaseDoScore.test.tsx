@@ -574,6 +574,11 @@ describe('BaseDoScore', () => {
 
     //: 3 de 11 = 27%. O número vem da conta, não de um texto fixo.
     await waitFor(() => expect(screen.getByText('27%')).toBeTruthy());
+    //: E ELA É PARA OS OLHOS, NÃO PARA O OUVIDO. Achado da revisão do Codex: o
+    //: `role="status"` anuncia a cada parte, e somar a porcentagem ao texto vivo
+    //: alongava cada um dos onze anúncios. Com `aria-hidden`, o anúncio volta a
+    //: ser o de antes ("parte 3 de 11") e o número segue na tela.
+    expect(screen.getByText('27%').getAttribute('aria-hidden')).toBe('true');
     //: E A CONTAGEM CONTINUA NO MESMO `role="status"`: a barra é para os olhos,
     //: o texto é para quem ouve a tela.
     expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
