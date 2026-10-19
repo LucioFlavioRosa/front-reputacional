@@ -26,11 +26,12 @@
  *
  *      nível "CRM"      ← `acessa_crm`
  *      nível "KPIs"     ← `acessa_score`
- *      nível "Mercado"  ← `acessa_sintese`   (!)
+ *      nível "Mercado"  ← `acessa_inteligencia_de_mercado`   (!)
  *
  *  O rótulo do segundo cartão da capa virou "KPIs Reputacionais" e "Painel de
- *  Inteligência de Mercado" foi para o cartão de `sintese`, que está em
- *  construção — está escrito em `paginas/Inicio.tsx`, junto do porquê. Procurar
+ *  Inteligência de Mercado" foi para o cartão de `inteligencia_de_mercado`, que
+ *  está em construção — está escrito em `paginas/Inicio.tsx`, junto do porquê.
+ *  Até a migration 0095 esse portal se chamava `sintese`, e procurar
  *  um portal `mercado` não acha nada, e acreditar que ele falta leva a criá-lo:
  *  foi o que uma primeira versão desta mudança fez, com uma migration que
  *  acrescentava um quarto portal a um painel que já tinha o seu. O nível
@@ -110,7 +111,7 @@ export function nivel(id: NivelId): Nivel {
  * O nível de um papel do catálogo, ou nulo se ele não cai em nenhum.
  *
  *  NULO É UM RESULTADO LEGÍTIMO, e não um erro. Os pares da Síntese
- *  (`sintese_leitura` / `sintese_edicao`) abrem um painel que o descritivo não
+ *  (`inteligencia_de_mercado_leitura` / `inteligencia_de_mercado_edicao`) abrem um painel que o descritivo não
  *  trata como nível próprio, e devolver `'crm'` para eles seria mentira com
  *  consequência: a tela mostraria "CRM", quem administra salvaria sem mudar
  *  nada de propósito, e o papel da pessoa trocaria para `crm_leitura` — uma
@@ -126,12 +127,14 @@ export function nivelDoPapel(papel: PapelDisponivel): NivelId | null {
   const portais = portaisDe(papel);
   const abre = (p: Portal) => portais.has(p);
 
-  if (abre('crm') && abre('score') && abre('sintese')) return 'exec';
-  if (abre('crm') && !abre('score') && !abre('sintese')) return 'crm';
-  if (abre('score') && !abre('crm') && !abre('sintese')) return 'kpi';
-  //: O NÍVEL "MERCADO" É O PORTAL `sintese`. Não há portal chamado `mercado`:
-  //: o rótulo da capa mudou e o nome interno não. Ver o comentário de `NIVEIS`.
-  if (abre('sintese') && !abre('crm') && !abre('score')) return 'mercado';
+  if (abre('crm') && abre('score') && abre('inteligencia_de_mercado')) return 'exec';
+  if (abre('crm') && !abre('score') && !abre('inteligencia_de_mercado')) return 'crm';
+  if (abre('score') && !abre('crm') && !abre('inteligencia_de_mercado')) return 'kpi';
+  //: O NÍVEL "MERCADO" É O PORTAL `inteligencia_de_mercado` — o nome interno
+  //: passou a seguir o rótulo na migration 0095. O NÍVEL continua se chamando
+  //: `mercado` porque é assim que o descritivo de perfis o nomeia; ele não é um
+  //: portal. Ver o comentário de `NIVEIS`.
+  if (abre('inteligencia_de_mercado') && !abre('crm') && !abre('score')) return 'mercado';
   return null;
 }
 

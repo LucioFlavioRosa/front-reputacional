@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonds da Aegea e episódios por subtema</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F6FC}
+a{color:#0027BD;text-decoration:none}a:hover{color:#111799;text-decoration:underline}
+.card{background:#fff;border:1px solid #E2E5F0;border-radius:4px}
+.k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6B7186}
+.ttl{margin:0;font-size:20px;line-height:1.3;font-weight:700;color:#0027BD}
+.syn{margin:6px 0 0;font-size:15px;line-height:1.5;color:#191B23}
+.num{font-variant-numeric:tabular-nums}
+.tab{display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:4px;font-size:14px;font-weight:500;color:#44495C}
+.tab-on{background:#EEF1F8;color:#0027BD;font-weight:700}
+.selo{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:3px;font-size:12px;font-weight:700;white-space:nowrap}
+.s-pos{background:#DFFAF6;color:#0A6B60}.s-neu{background:#EEF1F8;color:#44495C}.s-neg{background:#FFE7E8;color:#B32328}
+.tier{background:#E6EAFB;color:#0027BD}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.seg{display:inline-flex;align-items:center;justify-content:center;height:36px;min-width:44px;padding:0 12px;border:1px solid #D5DAEA;margin-left:-1px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#44495C;cursor:pointer}
+.seg:first-child{border-radius:4px 0 0 4px;margin-left:0}.seg:last-child{border-radius:0 4px 4px 0}
+.seg-on{background:#0027BD;border-color:#0027BD;color:#fff;font-weight:700;position:relative}
+.lg{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #E2E5F0;border-radius:3px;background:#fff;font:inherit;font-size:13px;font-weight:700;color:#191B23;cursor:pointer}
+.lg-off{color:#A6ABBD;font-weight:500;background:#FAFBFE}
+.col{flex:1 1 0;min-width:0;height:100%;padding:0;margin:0;border:0;background:transparent;cursor:crosshair}
+.badge{position:absolute;width:24px;height:24px;margin-left:-12px;border:2px solid #fff;border-radius:50%;padding:0;font:inherit;font-size:11px;font-weight:800;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:4;box-shadow:0 1px 3px rgba(25,27,35,.2)}
+.badge:hover{box-shadow:0 0 0 3px rgba(0,39,189,.2)}
+.pill{position:absolute;height:22px;min-width:22px;border:0;border-radius:11px;padding:0 6px;transform:translateX(-11px);font:inherit;font-size:11px;font-weight:800;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.pill:hover{box-shadow:0 0 0 3px rgba(0,39,189,.18)}
+.epr{display:grid;grid-template-columns:26px minmax(0,1fr) 150px;gap:12px;align-items:center;width:100%;padding:12px 20px;border:0;border-top:1px solid #E2E5F0;background:#fff;font:inherit;color:#191B23;text-align:left;cursor:pointer}
+.epr:hover{background:#F8FAFF}
+.epr-on{background:#E6EAFB}
+.epr-on:hover{background:#E6EAFB}
+.nb{width:24px;height:24px;border-radius:50%;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.tb{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 4px;border:0;border-bottom:3px solid transparent;background:transparent;font:inherit;font-size:15px;font-weight:500;color:#44495C;cursor:pointer}
+.tb-on{border-bottom-color:#0027BD;color:#0027BD;font-weight:700}
+.row{display:grid;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #E2E5F0}
+.row:hover{background:#F8FAFF}
+.thd{position:sticky;top:0;z-index:2;display:grid;align-items:center;gap:16px;padding:10px 20px;background:#FAFBFE;border-bottom:1px solid #E2E5F0}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.btn-out{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid #0027BD;border-radius:4px;font-size:13px;font-weight:700;color:#0027BD;white-space:nowrap;background:#fff}
+.btn-out:hover{background:#0027BD;color:#fff;text-decoration:none}
+.xbtn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:3px;background:transparent;color:#0027BD;cursor:pointer;font:inherit}
+.lnk{border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:700;color:#0027BD;cursor:pointer}
+.lnk:hover{text-decoration:underline}
+:focus-visible{outline:2px solid #0027BD;outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<template id="tpl">
+<div style="background:#F4F6FC;font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:#191B23;-webkit-font-smoothing:antialiased">
+<header style="background:#fff;border-bottom:1px solid #E2E5F0;border-top:3px solid #0027BD">
+<div style="max-width:1440px;margin:0 auto;padding:10px 32px;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:14px"><span style="font-weight:800;font-size:22px;letter-spacing:-.02em;color:#0027BD">aegea</span><span style="width:1px;height:22px;background:#E2E5F0"></span><span style="font-weight:700;font-size:15px">Inteligência de Mercado</span></div>
+<nav aria-label="Seções" style="display:flex;gap:4px;flex-wrap:wrap"><a class="tab" href="#">Indicadores por unidade</a><a class="tab tab-on" href="#" aria-current="page">Bonds e reputação</a><a class="tab" href="#">Papers e cases</a><a class="tab" href="#">Busca por tema</a></nav>
+<div style="font-size:13px;color:#44495C">Corte em 16/10/2026 <span style="color:#6B7186">· dados fictícios</span></div>
+</div>
+</header>
+
+<main style="max-width:1440px;margin:0 auto;padding:24px 32px 48px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px">
+
+<section class="card" aria-label="Bonds da Aegea e índice de Mercado" style="display:flex;flex-wrap:wrap">
+<div style="flex:999 1 760px;min-width:0;padding:20px 24px">
+<div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-start;justify-content:space-between">
+<div style="flex:1 1 420px;min-width:0"><h1 class="ttl">Bonds da Aegea e índice reputacional de Mercado</h1><p class="syn">{{chartSyn}}</p></div>
+<div style="display:flex" role="group" aria-label="Período"><sc-for list="{{rngSeg}}" as="r" hint-placeholder-count="3"><button type="button" class="seg {{r.cls}}" onClick="{{r.pick}}" aria-pressed="{{r.on}}">{{r.lab}}</button></sc-for></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px" role="group" aria-label="Séries no gráfico">
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="4"><button type="button" class="lg {{l.cls}}" onClick="{{l.toggle}}" aria-pressed="{{l.on}}"><svg width="20" height="8" aria-hidden="true"><line x1="0" y1="4" x2="20" y2="4" stroke="{{l.cor}}" stroke-width="3" stroke-dasharray="{{l.dash}}" stroke-opacity="{{l.op}}"></line></svg>{{l.nome}}</button></sc-for>
+</div>
+<div style="position:relative;height:320px;margin-top:{{chartMt}}" onMouseLeave="{{clearHov}}">
+<div style="position:absolute;left:56px;right:56px;top:6px;bottom:30px">
+<sc-for list="{{lTicks}}" as="t" hint-placeholder-count="5"><div style="position:absolute;left:0;right:0;top:{{t.top}};border-top:1px solid #EEF1F8"><span class="num" style="position:absolute;right:calc(100% + 10px);top:-8px;font-size:12px;color:#6B7186;white-space:nowrap">{{t.lab}}</span></div></sc-for>
+<sc-for list="{{rTicks}}" as="t" hint-placeholder-count="3"><div style="position:absolute;right:0;top:{{t.top}};width:0"><span class="num" style="position:absolute;left:10px;top:-8px;font-size:12px;color:#0A6B60">{{t.lab}}</span></div></sc-for>
+<sc-for list="{{xLabs}}" as="x" hint-placeholder-count="6"><div style="position:absolute;top:100%;left:{{x.left}};transform:translateX(-50%);padding-top:10px;font-size:12px;color:#6B7186;white-space:nowrap">{{x.lab}}</div></sc-for>
+<sc-for list="{{bands}}" as="b" hint-placeholder-count="8"><div style="position:absolute;top:0;bottom:0;left:{{b.left}};width:{{b.w}};background:{{b.bg}};{{b.brd}}"></div></sc-for>
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="3"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none"><polyline points="{{l.pts}}" fill="none" stroke="{{l.cor}}" stroke-width="{{l.w}}" stroke-dasharray="{{l.dash}}" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg></sc-for>
+<sc-if value="{{hasHov}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:0;bottom:0;left:{{hovX}};width:1px;background:#191B23;opacity:.3"></div></sc-if>
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="3"><div style="position:absolute;left:{{d.left}};top:{{d.top}};width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:{{d.cor}};border:2px solid #fff;box-shadow:0 0 0 1px {{d.cor}}"></div></sc-for>
+<div style="position:absolute;inset:0;display:flex;z-index:3"><sc-for list="{{cols}}" as="c" hint-placeholder-count="20"><button type="button" class="col" onMouseEnter="{{c.hov}}" onFocus="{{c.hov}}" aria-label="{{c.lab}}"></button></sc-for></div>
+<sc-for list="{{badges}}" as="p" hint-placeholder-count="8"><div style="position:absolute;left:{{p.left}};top:{{p.ctop}};height:{{p.ch}};border-left:1px dotted {{p.bg}};opacity:{{p.op}}"></div><button type="button" class="badge" style="left:{{p.left}};top:{{p.top}};background:{{p.bg}};opacity:{{p.op}};{{p.ring}}" onClick="{{p.pick}}" aria-label="{{p.aria}}" aria-pressed="{{p.on}}">{{p.n}}</button></sc-for>
+<sc-for list="{{tags}}" as="t" hint-placeholder-count="3"><div class="num" style="position:absolute;left:100%;top:{{t.top}};transform:translate(6px,-50%);padding:2px 6px;border-radius:3px;background:{{t.cor}};color:#fff;font-size:11px;font-weight:800;white-space:nowrap;z-index:2">{{t.txt}}</div></sc-for>
+<sc-if value="{{hasHov}}" hint-placeholder-val="{{false}}">
+<div style="position:absolute;top:8px;left:{{hovX}};transform:{{tipTf}};width:210px;background:#fff;border:1px solid #E2E5F0;border-radius:4px;box-shadow:0 4px 14px rgba(25,27,35,.16);padding:10px 12px;z-index:5;pointer-events:none">
+<div style="font-size:13px;font-weight:700">{{tipData}}</div>
+<div style="display:flex;flex-direction:column;gap:5px;margin-top:8px"><sc-for list="{{tipRows}}" as="r" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:10px;height:10px;border-radius:50%;background:{{r.cor}}"></span><span style="flex:1;color:#44495C">{{r.nome}}</span><b class="num">{{r.val}}</b></div></sc-for></div>
+</div>
+</sc-if>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;padding-left:56px;font-size:12px;color:#6B7186"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:10px;background:rgba(255,92,96,.16)"></span><span style="width:14px;height:10px;background:rgba(23,227,203,.22)"></span>Episódio por subtema (N3). Clique no número para filtrar.</span></div>
+</div>
+
+<aside style="flex:1 1 340px;min-width:0;border-left:1px solid #E2E5F0;padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span class="k">Cotações</span><span style="font-size:12px;color:#6B7186">{{fechLab}}</span></div>
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div style="flex:1 1 0;min-height:96px;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:14px 16px;border:1px solid #E2E5F0;border-radius:4px;{{k.bgS}}">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#191B23"><span style="width:10px;height:10px;border-radius:50%;background:{{k.cor}};flex:0 0 auto"></span>{{k.nome}}</span><span style="font-size:11px;color:#6B7186;white-space:nowrap">{{k.unit}}</span></div>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+<span class="num" style="font-size:32px;font-weight:800;line-height:1;letter-spacing:-.02em">{{k.val}}</span>
+<div style="display:flex;gap:16px;text-align:right">
+<div><div style="font-size:11px;color:#6B7186">{{k.dLab}}</div><div class="num" style="font-size:15px;font-weight:800;color:{{k.dCol}}">{{k.d}}</div></div>
+<div><div style="font-size:11px;color:#6B7186">{{k.mLab}}</div><div class="num" style="font-size:15px;font-weight:800;color:{{k.mCol}}">{{k.m}}</div></div>
+</div>
+</div>
+</div>
+</sc-for>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B7186">Preço em % do valor de face, fechamento diário. Índice de 0 a 100, cálculo semanal.</p>
+</aside>
+</section>
+
+<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+<sc-for list="{{lists}}" as="g" hint-placeholder-count="2">
+<section class="card" aria-label="{{g.ttl}}" style="flex:1 1 560px;min-width:0">
+<div style="padding:18px 20px 14px"><h2 class="ttl">{{g.ttl}}</h2><p class="syn">{{g.syn}}</p></div>
+<div style="max-height:380px;overflow-y:auto">
+<sc-for list="{{g.rows}}" as="e" hint-placeholder-count="5">
+<button type="button" class="epr {{e.cls}}" onClick="{{e.pick}}" aria-pressed="{{e.on}}">
+<span class="nb" style="background:{{e.cor}}">{{e.n}}</span>
+<span style="min-width:0"><span style="display:block;font-size:15px;font-weight:700">{{e.n3}}</span><span style="display:block;margin-top:2px;font-size:12px;color:#6B7186">{{e.sub}}</span></span>
+<span style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><span class="num" style="font-size:16px;font-weight:800;color:{{e.iCol}}">{{e.imp}}</span><span style="width:100%;height:6px;background:#EEF1F8;border-radius:2px;display:flex;justify-content:{{e.just}}"><span style="width:{{e.bw}};background:{{e.bc}};border-radius:2px"></span></span><span class="num" style="font-size:11px;color:#6B7186">2031 no período: <b style="color:{{e.bCol}}">{{e.bond}}</b></span></span>
+</button>
+</sc-for>
+<sc-if value="{{g.empty}}" hint-placeholder-val="{{false}}"><div style="padding:20px;border-top:1px solid #E2E5F0;font-size:14px;color:#44495C">Nenhum episódio no período.</div></sc-if>
+</div>
+</section>
+</sc-for>
+</div>
+
+<section class="card" aria-label="Notícias de mercado">
+<div style="padding:20px 20px 16px">
+<div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start;justify-content:space-between">
+<div style="flex:1 1 560px;min-width:0"><h2 class="ttl">{{tblTtl}}</h2><p class="syn">{{tblSyn}}</p></div>
+<sc-if value="{{hasEp}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap"><button type="button" class="lnk" onClick="{{toggleAll}}">{{allLab}}</button><span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 4px 0 10px;background:#E6EAFB;border-radius:3px;font-size:13px;font-weight:700;color:#0027BD">{{chip}}<button type="button" class="xbtn" onClick="{{clearEp}}" aria-label="Limpar filtro de subtema"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.6"></path></svg></button></span></span></sc-if>
+</div>
+
+</div>
+<div style="overflow-x:auto;border-top:1px solid #E2E5F0"><div style="min-width:960px;max-height:440px;overflow-y:auto">
+<div class="thd" style="grid-template-columns:62px minmax(0,1.2fr) minmax(0,3.2fr) minmax(0,1.3fr) 76px 140px"><span class="k">Data</span><span class="k">{{colFonte}}</span><span class="k">{{colItem}}</span><span class="k">Subtema (N3)</span><span class="k" style="text-align:right">Impacto</span><span></span></div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns:62px minmax(0,1.2fr) minmax(0,3.2fr) minmax(0,1.3fr) 76px 140px">
+<span class="num" style="font-size:13px;font-weight:700">{{r.data}}</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">{{r.fonte}}</div><div style="font-size:12px;color:#6B7186">{{r.fonteSub}}</div></div>
+<div style="min-width:0"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:5px"><span class="selo {{r.sc}}"><span class="dot" style="background:{{r.dc}}"></span>{{r.sl}}</span><span class="selo tier">{{r.tag}}</span></div><div class="clamp2" style="font-size:15px;line-height:1.4">{{r.tit}}</div></div>
+<div style="font-size:13px;color:#44495C"><b style="color:#191B23">{{r.n3}}</b><br>{{r.conc}}</div>
+<span class="num" style="text-align:right;font-weight:800;font-size:15px;color:{{r.iCol}}">{{r.imp}}</span>
+<div style="text-align:right"><a class="btn-out" href="#">{{r.cta}} ↗</a></div>
+</div>
+</sc-for>
+<sc-if value="{{rowsEmpty}}" hint-placeholder-val="{{false}}"><div style="padding:24px 20px;font-size:14px;color:#44495C">Nenhum item nesta aba para o filtro atual.</div></sc-if>
+</div></div>
+</section>
+
+<footer style="font-size:12px;line-height:1.5;color:#6B7186">Imprensa restrita a veículos de mercado financeiro e de capitais (Valor Econômico, Bloomberg Línea, Brazil Journal, InfoMoney, Exame, NeoFeed). Episódio: notícias do mesmo subtema (N3) com até 7 dias entre si; aparece quando a soma do impacto passa de 0,8 pt. Fontes: cotações ilustrativas (provedor a definir, fonte 4 do Foundation), clipping Clipei e painel de KPIs Reputacionais. Corte em 16/10/2026. Dados fictícios.</footer>
+</main>
+</div>
+</template>
+<script>
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+class DCLogic {
+  constructor(props) { this.props = props; this.state = null; }
+  setState(o) {
+    const prev = this.state || {};
+    let changed = !this.state;
+    for (const k in o) { if (prev[k] !== o[k]) { changed = true; break; } }
+    if (!changed) return;
+    this.state = Object.assign({}, prev, o);
+    scheduleRender();
+  }
+}
+class Component extends DCLogic {
+  build() {
+    if (this._d) return this._d;
+    const DAY = 86400000;
+    const days = [];
+    for (let t = Date.UTC(2026, 4, 1); t <= Date.UTC(2026, 9, 16); t += DAY) { const w = new Date(t).getUTCDay(); if (w !== 0 && w !== 6) days.push(t); }
+    const key = t => new Date(t).toISOString().slice(5, 10);
+    const idx = {};
+    days.forEach((t, i) => { idx[key(t)] = i; });
+    const toT = k => Date.UTC(2026, Number(k.slice(0, 2)) - 1, Number(k.slice(3, 5)));
+    const noise = (i, s) => { const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return x - Math.floor(x) - 0.5; };
+    const interp = (anch, amp, seed) => {
+      const A = anch.map(a => [toT(a[0]), a[1]]);
+      const isA = {};
+      anch.forEach(a => { isA[a[0]] = 1; });
+      return days.map((t, i) => {
+        let v = A[A.length - 1][1];
+        if (t <= A[0][0]) v = A[0][1];
+        else { for (let j = 0; j < A.length - 1; j++) { if (t >= A[j][0] && t <= A[j + 1][0]) { const f = (t - A[j][0]) / (A[j + 1][0] - A[j][0]); v = A[j][1] + (A[j + 1][1] - A[j][1]) * f; break; } } }
+        if (!isA[key(t)]) v += noise(i, seed) * amp;
+        return v;
+      });
+    };
+    const ser = [
+      { id: 'b29', nome: 'Aegea 2029', cor: '#FE952B', w: 2.2, dash: '', kind: 'bond',
+        v: interp([['05-01', 97.2], ['05-14', 97.6], ['06-03', 98.0], ['06-18', 98.5], ['07-09', 98.0], ['07-30', 97.8], ['07-31', 96.4], ['08-05', 96.1], ['08-06', 94.3], ['08-26', 94.6], ['08-27', 94.2], ['09-14', 94.9], ['09-15', 95.6], ['09-17', 96.0], ['10-07', 95.9], ['10-08', 95.4], ['10-16', 95.3]], 0.1, 2) },
+      { id: 'b31', nome: 'Aegea 2031', cor: '#0027BD', w: 3, dash: '', kind: 'bond',
+        v: interp([['05-01', 93.8], ['05-13', 94.0], ['05-14', 94.9], ['06-02', 95.6], ['06-03', 96.3], ['06-17', 96.6], ['06-18', 97.4], ['07-08', 96.8], ['07-09', 95.9], ['07-30', 95.2], ['07-31', 92.6], ['08-05', 92.0], ['08-06', 88.7], ['08-26', 89.4], ['08-27', 88.6], ['09-14', 89.8], ['09-15', 92.1], ['09-16', 92.4], ['09-17', 93.3], ['10-07', 92.9], ['10-08', 91.9], ['10-16', 91.6]], 0.16, 1) },
+      { id: 'b36', nome: 'Aegea 2036', cor: '#A11FFF', w: 2.2, dash: '', kind: 'bond',
+        v: interp([['05-01', 90.5], ['05-13', 90.7], ['05-14', 91.9], ['06-02', 92.6], ['06-03', 93.5], ['06-17', 93.8], ['06-18', 94.9], ['07-08', 94.1], ['07-09', 92.9], ['07-30', 92.0], ['07-31', 88.6], ['08-05', 87.8], ['08-06', 83.6], ['08-26', 84.5], ['08-27', 83.4], ['09-14', 85.0], ['09-15', 87.9], ['09-16', 88.3], ['09-17', 89.6], ['10-07', 89.1], ['10-08', 87.8], ['10-16', 87.4]], 0.2, 3) },
+      { id: 'mer', nome: 'Índice de Mercado', cor: '#0A6B60', w: 2.4, dash: '5 3', kind: 'score',
+        v: interp([['05-01', 58], ['05-13', 58], ['05-14', 62], ['06-02', 62], ['06-03', 66], ['06-17', 66], ['06-18', 71], ['07-08', 70], ['07-09', 68], ['07-30', 69], ['07-31', 64], ['08-05', 62], ['08-06', 57], ['08-26', 58], ['08-27', 56], ['09-14', 58], ['09-15', 63], ['09-30', 63], ['10-07', 63], ['10-08', 61], ['10-16', 62]], 0.8, 8).map(v => Math.round(v)) }
+    ];
+    const wbase = Date.UTC(2026, 3, 27);
+    const wkOf = t => Math.floor((t - wbase) / (7 * DAY));
+    const lastOfWk = {};
+    days.forEach((t, i) => { lastOfWk[wkOf(t)] = i; });
+    const merD = ser[3].v.slice();
+    ser[3].v = days.map(t => merD[lastOfWk[wkOf(t)]]);
+    ser[3].nome = 'Índice de Mercado (semanal)';
+    const CF = 'Crescimento e Solidez Financeira', EO = 'Eficiência Operacional e Qualidade', GV = 'Governança', RA = 'Responsabilidade Ambiental', RS = 'Responsabilidade Social', PC = 'Prosperidade Compartilhada', H = 'Aegea (holding)';
+    const imp = [
+      ['08-06', 'Valor Econômico', 1, H, CF, 'Crédito e rating', 'Classificação de risco', 'neg', -2.4, '2,1 mi', 'Agência coloca rating da Aegea em observação negativa após adiamento de balanço'],
+      ['08-07', 'Brazil Journal', 1, H, CF, 'Crédito e rating', 'Classificação de risco', 'neg', -0.8, '0,7 mi', 'Bonds da Aegea renovam mínima após aviso da agência de rating'],
+      ['07-31', 'InfoMoney', 2, H, GV, 'Transparência e prestação de contas', 'Divulgação de resultados', 'neg', -0.6, '0,6 mi', 'O que o novo adiamento do balanço da Aegea significa para o credor'],
+      ['09-16', 'Brazil Journal', 1, H, GV, 'Transparência e prestação de contas', 'Divulgação de resultados', 'pos', 0.7, '0,6 mi', 'Balanço da Aegea tira o principal fantasma dos bonds, dizem gestores'],
+      ['07-10', 'InfoMoney', 2, 'Águas do Rio', EO, 'Fiscalização e sanções', 'Multa regulatória', 'neg', -0.5, '0,5 mi', 'Multa no Rio entra na conta de risco regulatório da Aegea'],
+      ['10-09', 'Exame', 2, 'Águas de Manaus', EO, 'Continuidade do abastecimento', 'Intermitência', 'neg', -0.6, '0,5 mi', 'Crise de abastecimento em Manaus testa a Aegea a meses do IPO'],
+      ['08-28', 'InfoMoney', 2, 'Corsan', CF, 'Tarifa', 'Reajuste tarifário', 'neg', -0.5, '0,4 mi', 'Disputa sobre reajuste da Corsan adiciona incerteza à receita do grupo'],
+      ['05-15', 'Valor Econômico', 1, H, CF, 'Novos negócios', 'Leilões', 'pos', 0.6, '0,9 mi', 'Leilão amplia carteira da Aegea e reforça tese de crescimento'],
+      ['07-31', 'Bloomberg Línea', 1, H, GV, 'Transparência e prestação de contas', 'Divulgação de resultados', 'neg', -2.1, '1,4 mi', 'Aegea adia pela segunda vez a divulgação dos resultados do segundo trimestre'],
+      ['08-04', 'Brazil Journal', 1, H, GV, 'Transparência e prestação de contas', 'Relação com credores', 'neg', -1.2, '0,6 mi', 'Credores pedem mais informação sobre ajustes contábeis da Aegea'],
+      ['08-05', 'InfoMoney', 2, 'Águas do Rio', EO, 'Atendimento ao cliente', 'Reclamações em órgãos de defesa', 'neg', -0.9, '0,9 mi', 'Águas do Rio lidera reclamações no Procon-RJ e analistas veem risco regulatório'],
+      ['08-03', 'Exame', 2, H, CF, 'Investimentos', 'Plano de investimentos', 'pos', 0.4, '0,8 mi', 'Aegea mantém plano de investimentos de R$ 6 bilhões para 2026'],
+      ['07-09', 'Valor Econômico', 1, 'Águas do Rio', EO, 'Fiscalização e sanções', 'Multa regulatória', 'neg', -1.6, '1,3 mi', 'Multa à Águas do Rio reacende dúvida de investidores sobre a operação no estado'],
+      ['07-06', 'Valor Econômico', 1, 'Águas do Rio', RA, 'Universalização', 'Coleta e tratamento de esgoto', 'pos', 0.5, '0,9 mi', 'Águas do Rio conclui obra de coleta de esgoto na Baixada Fluminense'],
+      ['08-27', 'Valor Econômico', 1, 'Corsan', CF, 'Tarifa', 'Reajuste tarifário', 'neg', -1.3, '1,1 mi', 'MP questiona reajuste da Corsan e analistas veem risco para a receita de 2027'],
+      ['09-15', 'Valor Econômico', 1, H, GV, 'Transparência e prestação de contas', 'Divulgação de resultados', 'pos', 1.8, '1,6 mi', 'Aegea publica balanço, reconhece ajustes e reafirma meta de alavancagem'],
+      ['09-16', 'InfoMoney', 2, H, CF, 'Desempenho financeiro', 'Percepção de analistas', 'pos', 0.9, '0,7 mi', 'Teleconferência reduz incerteza sobre a Aegea, avaliam analistas'],
+      ['09-10', 'NeoFeed', 2, 'Setor', PC, 'Ambiente setorial', 'Investimento estrangeiro', 'neu', 0.2, '1,1 mi', 'Saneamento atrai investidor estrangeiro com novos leilões no pipeline'],
+      ['06-18', 'Valor Econômico', 1, H, CF, 'Crédito e rating', 'Classificação de risco', 'pos', 1.2, '1,0 mi', 'Rating da Aegea é reafirmado com perspectiva estável'],
+      ['06-03', 'Bloomberg Línea', 1, H, CF, 'Estrutura de capital', 'Captação', 'pos', 1.1, '0,9 mi', 'Aegea capta R$ 2 bilhões em debêntures com demanda 2,4 vezes maior que a oferta'],
+      ['05-14', 'InfoMoney', 1, H, CF, 'Novos negócios', 'Leilões', 'pos', 1.4, '2,4 mi', 'Aegea vence leilão de concessão de saneamento no Nordeste'],
+      ['10-08', 'Bloomberg Línea', 1, 'Águas de Manaus', EO, 'Continuidade do abastecimento', 'Intermitência', 'neg', -1.1, '0,9 mi', 'Falta d’água em Manaus pressiona discurso operacional da Aegea antes do IPO'],
+      ['10-13', 'Valor Econômico', 1, H, CF, 'Mercado de capitais', 'Abertura de capital', 'pos', 0.6, '1,2 mi', 'Aegea retoma preparação para IPO em 2027, dizem fontes'],
+      ['07-28', 'Valor Econômico', 1, 'Setor', CF, 'Percepção de investidores', 'Fluxo para crédito corporativo', 'neg', -0.5, '0,8 mi', 'Gestores reduzem exposição a bonds de saneamento à espera de balanços']
+    ].map(a => ({ tipo: 'imp', t: toT(a[0]), fonte: a[1], fonteSub: a[9] + ' de alcance', tag: 'Tier ' + a[2], conc: a[3], pilar: a[4], n2: a[5], n3: a[6], sent: a[7], imp: a[8], tit: a[10] }));
+    const items = imp;
+    const nearIdx = t => { let b = 0; days.forEach((d, i) => { if (d <= t) b = i; }); return b; };
+    const byN3 = {};
+    items.forEach(it => { (byN3[it.n3] = byN3[it.n3] || []).push(it); });
+    let eps = [];
+    Object.keys(byN3).forEach(n3 => {
+      const arr = byN3[n3].slice().sort((x, y) => x.t - y.t);
+      let cur = null;
+      arr.forEach(it => {
+        if (cur && it.t - cur.tb <= 7 * DAY) { cur.items.push(it); cur.tb = it.t; }
+        else { cur = { n3, ta: it.t, tb: it.t, items: [it] }; eps.push(cur); }
+      });
+    });
+    eps = eps.map(e => {
+      const sum = e.items.reduce((x, it) => x + it.imp, 0);
+      const concs = [];
+      e.items.forEach(it => { if (concs.indexOf(it.conc) < 0) concs.push(it.conc); });
+      return Object.assign(e, { sum, ia: nearIdx(e.ta), ib: nearIdx(e.tb), n2: e.items[0].n2, pilar: e.items[0].pilar, concs });
+    }).filter(e => Math.abs(e.sum) >= 0.8).sort((x, y) => x.ta - y.ta);
+    eps.forEach((e, k) => { e.n = k + 1; e.id = 'e' + (k + 1); });
+    this._d = { days, idx, ser, items, eps, DAY, wkOf, lastOfWk };
+    return this._d;
+  }
+
+  renderVals() {
+    const D = this.build();
+    const P = this.props || {};
+    const dflt = { rng: P.periodoInicial || '6M', off: [], tab: 'imp', all: false, hov: null };
+    const s = Object.assign(dflt, this.state || {});
+    if (s.ep === undefined) { s.ep = P.comSelecao === false ? null : D.eps.slice().sort((x, y) => x.sum - y.sum)[0].id; }
+    const set = o => this.setState(o);
+    const N = D.days.length;
+    const cm = v => String(v).replace('.', ',');
+    const f1 = v => cm(Math.abs(v).toFixed(1));
+    const sg1 = v => { const r = Math.round(v * 10) / 10; return (r > 0 ? '+' : r < 0 ? '−' : '') + f1(r); };
+    const sg0 = v => (Math.round(v) > 0 ? '+' : Math.round(v) < 0 ? '−' : '') + Math.abs(Math.round(v));
+    const GOOD = '#0A6B60', BAD = '#B32328', NEU = '#44495C';
+    const colUp = v => { const r = Math.round(v * 10) / 10; return r > 0 ? GOOD : r < 0 ? BAD : NEU; };
+    const wk = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    const mes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const ddmm = t => { const d = new Date(t); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0'); };
+    const span = { '1M': 22, '3M': 64, '6M': N }[s.rng] || N;
+    const st = Math.max(0, N - span);
+    const len = N - st;
+    const X = i => (i - st) / (len - 1) * 100;
+    const byId = {};
+    D.ser.forEach(x => { byId[x.id] = x; });
+    const A = D.ser.filter(x => s.off.indexOf(x.id) < 0);
+    const B = A.filter(x => x.kind === 'bond');
+    let lo = Infinity, hi = -Infinity;
+    B.forEach(x => { for (let i = st; i < N; i++) { if (x.v[i] < lo) lo = x.v[i]; if (x.v[i] > hi) hi = x.v[i]; } });
+    if (!B.length) { lo = 80; hi = 100; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const raw = (hi - lo) / 4, p10 = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].find(c => c * p10 >= raw) * p10;
+    const a0 = Math.floor(lo / step) * step, b0 = Math.ceil(hi / step) * step;
+    const Y = (v, k) => k === 'score' ? (1 - (v - 40) / 40) * 100 : (1 - (v - a0) / (b0 - a0)) * 100;
+    const lTicks = [];
+    if (B.length) for (let v = a0; v <= b0 + step / 2; v += step) lTicks.push({ top: Y(v) + '%', lab: cm(v.toFixed(step < 1 ? 1 : 0)) });
+    const rTicks = byId.mer && s.off.indexOf('mer') < 0 ? [40, 50, 60, 70, 80].map(v => ({ top: Y(v, 'score') + '%', lab: String(v) })) : [];
+    const lines = A.map(x => {
+      const pts = [];
+      for (let i = st; i < N; i++) pts.push(X(i).toFixed(2) + ',' + Y(x.v[i], x.kind).toFixed(2));
+      return { pts: pts.join(' '), cor: x.cor, w: x.w, dash: x.dash };
+    });
+    const fmtV = (x, v) => x.kind === 'score' ? String(Math.round(v)) : cm(v.toFixed(1));
+    const tags = A.map(x => ({ y: Math.max(0, Math.min(100, Y(x.v[N - 1], x.kind))), cor: x.cor, txt: fmtV(x, x.v[N - 1]) })).sort((p, q) => p.y - q.y);
+    for (let i = 1; i < tags.length; i++) { if (tags[i].y - tags[i - 1].y < 8) tags[i].y = tags[i - 1].y + 8; }
+    tags.forEach(t => { t.top = t.y + '%'; });
+    const xLabs = [];
+    for (let i = st; i < N; i++) {
+      const d = new Date(D.days[i]);
+      if (s.rng === '1M') { if ((N - 1 - i) % 5 === 0) xLabs.push({ left: X(i) + '%', lab: ddmm(D.days[i]) }); }
+      else if (i > st && new Date(D.days[i - 1]).getUTCMonth() !== d.getUTCMonth()) xLabs.push({ left: X(i) + '%', lab: mes[d.getUTCMonth()] + '/26' });
+      else if (i === 0) xLabs.push({ left: '0%', lab: mes[d.getUTCMonth()] + '/26' });
+    }
+    const legend = D.ser.map(x => { const on = s.off.indexOf(x.id) < 0; return { nome: x.nome, cor: x.cor, dash: x.dash, op: on ? 1 : 0.35, on, cls: on ? '' : 'lg-off', toggle: () => set({ off: on ? s.off.concat([x.id]) : s.off.filter(y => y !== x.id) }) }; });
+
+    const h = s.hov;
+    const hasHov = h !== null && h !== undefined && h >= st;
+    const cols = [];
+    for (let i = st; i < N; i++) { const ii = i; cols.push({ hov: () => set({ hov: ii }), lab: wk[new Date(D.days[ii]).getUTCDay()] + ', ' + ddmm(D.days[ii]) }); }
+    const dots = hasHov ? A.map(x => ({ left: X(h) + '%', top: Y(x.v[h], x.kind) + '%', cor: x.cor })) : [];
+    const tipRows = hasHov ? A.map(x => ({ cor: x.cor, nome: x.nome, val: fmtV(x, x.v[h]) })) : [];
+
+    const pm = D.idx['09-30'];
+    const wNow = D.wkOf(D.days[N - 1]);
+    const sepW = D.lastOfWk[D.wkOf(Date.UTC(2026, 8, 25))];
+    const kpis = D.ser.map(x => {
+      const isS = x.kind === 'score';
+      const cur = x.v[N - 1];
+      const prev = isS ? x.v[D.lastOfWk[wNow - 1]] : x.v[N - 2];
+      const mo = isS ? x.v[sepW] : x.v[pm];
+      const fd = v => isS ? sg0(v) : sg1(v);
+      return { nome: isS ? 'Índice de Mercado financeiro' : x.nome + ' · USD', cor: x.cor, val: fmtV(x, cur), unit: isS ? 'reputacional, 0 a 100' : '% do par', d: fd(cur - prev), dCol: colUp(cur - prev), dLab: isS ? 'Na semana' : 'No dia', m: fd(cur - mo), mCol: colUp(cur - mo), mLab: isS ? 'vs. setembro' : 'vs. 30/09', bgS: isS ? 'background:#FAFBFE' : '' };
+    });
+    const d31 = byId.b31.v[N - 1] - byId.b31.v[pm], d36 = byId.b36.v[N - 1] - byId.b36.v[pm], dM = byId.mer.v[N - 1] - byId.mer.v[sepW];
+    const chartSyn = 'Desde o fechamento de setembro, o 2031 ' + (d31 < 0 ? 'caiu ' : 'subiu ') + f1(d31) + ' ponto' + (Math.abs(d31) >= 2 ? 's' : '') + ' e o 2036 ' + (d36 < 0 ? 'caiu ' : 'subiu ') + f1(d36) + '. O índice de Mercado ' + (dM < 0 ? 'recuou ' : dM > 0 ? 'avançou ' : 'ficou estável ') + (dM ? Math.abs(dM) + ' ponto' + (Math.abs(dM) > 1 ? 's' : '') : '') + '.';
+
+    const eps = D.eps.filter(e => e.ib >= st);
+    const sel = eps.find(e => e.id === s.ep) || null;
+    const bands = eps.map(e => {
+      const on = s.ep === e.id, neg = e.sum < 0;
+      const l = X(Math.max(e.ia, st)), w = Math.max(X(e.ib) - l, 1.2);
+      const alpha = sel ? (on ? (neg ? '.22' : '.28') : '.05') : (neg ? '.12' : '.16');
+      return { left: (w === 1.2 ? l - 0.6 : l) + '%', w: w + '%', bg: neg ? 'rgba(255,92,96,' + alpha + ')' : 'rgba(23,227,203,' + alpha + ')', brd: on ? 'border-left:1px dashed ' + (neg ? BAD : GOOD) + ';border-right:1px dashed ' + (neg ? BAD : GOOD) : '' };
+    });
+    const rowsEnd = [];
+    const badges = eps.map(e => ({ e, c: (X(Math.max(e.ia, st)) + X(e.ib)) / 2 })).sort((x, y) => x.c - y.c).map(o => {
+      const e = o.e, on = s.ep === e.id, neg = e.sum < 0;
+      let r = rowsEnd.findIndex(end => o.c - end >= 2.8);
+      if (r < 0) { rowsEnd.push(o.c); r = rowsEnd.length - 1; } else rowsEnd[r] = o.c;
+      const top = -(30 + r * 28);
+      return {
+        n: e.n, left: o.c + '%', top: top + 'px', ctop: (top + 24) + 'px', ch: (-(top + 24)) + 'px',
+        bg: neg ? BAD : GOOD, op: sel && !on ? 0.4 : 1, on, ring: on ? 'box-shadow:0 0 0 3px #0027BD' : '',
+        aria: 'Episódio ' + e.n + ': ' + e.n3 + ', ' + sg1(e.sum) + ' pt', pick: () => set({ ep: on ? null : e.id, all: false })
+      };
+    });
+    const chartMt = (24 + Math.max(1, rowsEnd.length) * 28) + 'px';
+    const p31 = byId.b31.v;
+    const maxAbs = Math.max.apply(null, eps.map(e => Math.abs(e.sum)).concat([1]));
+    const per = e => ddmm(e.ta) + (e.ia === e.ib ? '' : ' a ' + ddmm(e.tb));
+    const mkRow = e => {
+      const on = s.ep === e.id;
+      const db = p31[e.ib] - p31[Math.max(e.ia - 1, 0)];
+      return {
+        n: e.n, cor: e.sum < 0 ? BAD : GOOD, n3: e.n3, sub: e.n2 + ' · ' + e.concs.join(', ') + ' · ' + per(e) + ' · ' + e.items.length + (e.items.length > 1 ? ' notícias' : ' notícia'),
+        imp: sg1(e.sum) + ' pt', iCol: e.sum < 0 ? BAD : GOOD, bw: (Math.abs(e.sum) / maxAbs * 100) + '%', bc: e.sum < 0 ? '#FF5C60' : '#17E3CB', just: 'flex-end',
+        bond: sg1(db) + ' pts', bCol: colUp(db), on, cls: on ? 'epr-on' : '', pick: () => set({ ep: on ? null : e.id, all: false })
+      };
+    };
+    const pos = eps.filter(e => e.sum > 0).sort((x, y) => y.sum - x.sum);
+    const neg = eps.filter(e => e.sum < 0).sort((x, y) => x.sum - y.sum);
+    const tot = arr => arr.reduce((x, e) => x + e.sum, 0);
+    const lists = [
+      { ttl: 'Impactam positivamente', syn: pos.length ? pos.length + ' subtemas somam ' + sg1(tot(pos)) + ' pt no score. Maior: ' + pos[0].n3 + '.' : 'Nenhum episódio positivo no período.', rows: pos.map(mkRow), empty: !pos.length },
+      { ttl: 'Impactam negativamente', syn: neg.length ? neg.length + ' subtemas somam ' + sg1(tot(neg)) + ' pt no score. Maior: ' + neg[0].n3 + '.' : 'Nenhum episódio negativo no período.', rows: neg.map(mkRow), empty: !neg.length }
+    ];
+
+    let pool;
+    if (sel && !s.all) pool = sel.items;
+    else if (sel && s.all) pool = D.items.filter(it => it.n3 === sel.n3 && it.t >= D.days[st]);
+    else pool = D.items.filter(it => it.t >= D.days[st]);
+    const pi = pool.filter(it => it.tipo === 'imp'), pr = [];
+    const seg = (opts, cur, k) => opts.map(o => ({ lab: o[1], on: cur === o[0], cls: cur === o[0] ? 'seg-on' : '', pick: () => { const u = {}; u[k] = o[0]; set(u); } }));
+    const rngSeg = seg([['1M', '1M'], ['3M', '3M'], ['6M', '6M']], s.rng, 'rng');
+    const tabs = [['imp', 'Imprensa de mercado', pi.length], ['red', 'Redes sociais', pr.length]].map(t => ({ lab: t[1], n: t[2], on: s.tab === t[0], cls: s.tab === t[0] ? 'tb-on' : '', pick: () => set({ tab: t[0] }) }));
+    const sentL = { neg: ['s-neg', 'Negativo', '#FF5C60'], pos: ['s-pos', 'Positivo', '#17E3CB'], neu: ['s-neu', 'Neutro', '#B0B9C8'] };
+    const rows = (s.tab === 'imp' ? pi : pr).slice().sort((x, y) => Math.abs(y.imp) - Math.abs(x.imp)).map(it => ({
+      data: ddmm(it.t), fonte: it.fonte, fonteSub: it.fonteSub, sc: sentL[it.sent][0], sl: sentL[it.sent][1], dc: sentL[it.sent][2], tag: it.tag,
+      tit: it.tit, n3: it.n3, conc: it.conc, imp: sg1(it.imp), iCol: it.imp < 0 ? BAD : GOOD, cta: it.tipo === 'imp' ? 'Abrir matéria' : 'Abrir post'
+    }));
+    const net = pool.reduce((x, it) => x + it.imp, 0);
+    let tblTtl, tblSyn;
+    if (sel) {
+      tblTtl = sel.n3;
+      const db = p31[sel.ib] - p31[Math.max(sel.ia - 1, 0)];
+      tblSyn = (s.all ? 'No período inteiro, ' : (sel.ia === sel.ib ? 'Em ' : 'De ') + per(sel) + ', ') + pi.length + (pi.length > 1 ? ' notícias somaram ' : ' notícia somou ') + sg1(net) + ' pt no score.' + (s.all ? '' : ' O 2031 variou ' + sg1(db) + ' pontos no mesmo intervalo.');
+    } else {
+      tblTtl = 'Notícias de mercado';
+      tblSyn = 'Todas no período: ' + pi.length + ' notícias, impacto de ' + sg1(net) + ' pt no score.';
+    }
+    return {
+      chartSyn, rngSeg, legend, lTicks, rTicks, xLabs, lines, tags, cols, dots,
+      hasHov, hovX: hasHov ? X(h) + '%' : '0%', tipTf: hasHov && X(h) > 60 ? 'translateX(calc(-100% - 14px))' : 'translateX(14px)',
+      tipData: hasHov ? wk[new Date(D.days[h]).getUTCDay()] + ', ' + ddmm(D.days[h]) + '/2026' : '', tipRows, clearHov: () => set({ hov: null }),
+      bands, badges, chartMt, kpis, fechLab: 'Fechamento de ' + ddmm(D.days[N - 1]),
+      lists, tabs, rows, rowsEmpty: rows.length === 0, tblTtl, tblSyn,
+      hasEp: !!sel, chip: sel ? 'N3: ' + sel.n3 : '', clearEp: () => set({ ep: null, all: false }),
+      toggleAll: () => set({ all: !s.all }), allLab: s.all ? 'Ver só o episódio' : 'Ver este subtema no período todo',
+      colFonte: s.tab === 'imp' ? 'Veículo' : 'Perfil', colItem: s.tab === 'imp' ? 'Matéria' : 'Publicação'
+    };
+  }
+}
+const PROPS = {"comSelecao": true, "periodoInicial": "6M"};
+const app = document.getElementById('app');
+const tpl = document.getElementById('tpl').content;
+const comp = new Component(PROPS);
+function lookup(path, scope) {
+  path = path.trim();
+  if (path === 'true') return true;
+  if (path === 'false') return false;
+  if (/^-?\d+(\.\d+)?$/.test(path)) return Number(path);
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope);
+}
+const WHOLE = /^\s*\{\{([^}]+)\}\}\s*$/;
+function interp(str, scope) {
+  const w = str.match(WHOLE);
+  if (w) return lookup(w[1], scope);
+  return str.replace(/\{\{([^}]+)\}\}/g, (_, p) => { const v = lookup(p, scope); return v == null ? '' : String(v); });
+}
+function renderChildren(node, scope, out) { node.childNodes.forEach(c => renderNode(c, scope, out)); }
+function renderNode(node, scope, out) {
+  if (node.nodeType === 3) { const t = interp(node.nodeValue, scope); out.push(document.createTextNode(t == null ? '' : String(t))); return; }
+  if (node.nodeType !== 1) return;
+  const tag = node.localName;
+  if (tag === 'sc-for') {
+    const list = interp(node.getAttribute('list'), scope) || [];
+    const as = node.getAttribute('as') || 'item';
+    list.forEach((it, i) => { const sc = Object.assign({}, scope); sc[as] = it; sc.$index = i; renderChildren(node, sc, out); });
+    return;
+  }
+  if (tag === 'sc-if') { if (interp(node.getAttribute('value'), scope)) renderChildren(node, scope, out); return; }
+  const el = node.namespaceURI === SVGNS ? document.createElementNS(SVGNS, tag) : document.createElement(tag);
+  for (const a of Array.from(node.attributes)) {
+    if (a.name.startsWith('hint-')) continue;
+    if (a.name.startsWith('on')) { const fn = interp(a.value, scope); if (typeof fn === 'function') el.addEventListener(a.name.slice(2), fn); continue; }
+    const v = interp(a.value, scope);
+    if (v === undefined || v === null) continue;
+    el.setAttribute(a.name, String(v));
+  }
+  const kids = [];
+  renderChildren(node, scope, kids);
+  kids.forEach(k => el.appendChild(k));
+  out.push(el);
+}
+let pending = false;
+function scheduleRender() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
+function render() {
+  const scrolls = Array.from(app.querySelectorAll('*')).map(e => e.scrollTop);
+  const vals = comp.renderVals();
+  const out = [];
+  renderChildren(tpl, vals, out);
+  app.replaceChildren(...out);
+  const all = app.querySelectorAll('*');
+  scrolls.forEach((v, i) => { if (v && all[i]) all[i].scrollTop = v; });
+}
+render();
+
+</script>
+</body>
+</html>

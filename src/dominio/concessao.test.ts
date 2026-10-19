@@ -119,7 +119,7 @@ describe('impedimento', () => {
       pode_editar_tudo: false,
       pode_exportar: false,
       acessa_crm: true,
-      acessa_sintese: false,
+      acessa_inteligencia_de_mercado: false,
       acessa_score: false,
     };
 

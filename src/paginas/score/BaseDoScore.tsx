@@ -299,6 +299,119 @@ function SecaoDosAssuntos({
   );
 }
 
+/** O que a planilha diz de CONCESSIONÁRIA, e o que o cadastro central resolve.
+ *
+ *  POR QUE ISTO APARECE NA CONFERÊNCIA. Sem o vínculo, a dimensão
+ *  "Concessionária" agrupa pelo texto do fornecedor, e a mesma operação em duas
+ *  grafias vira duas barras no gráfico: a Corsan chega como "Corsan" e como
+ *  "Companhia Riograndense de Saneamento (Corsan)", e recortar por uma perde a
+ *  outra. O vínculo é também a única ponte entre a menção e a agenda do CRM,
+ *  que usa o cadastro em todas as linhas.
+ *
+ *  A LISTA DIZ QUAL É O CONSERTO, e são dois. Quando o cadastro tem mais de uma
+ *  candidata, o nome da planilha está CERTO e mesmo assim não liga — "Águas do
+ *  Pará" são quatro blocos, e quem resolve é o fornecedor informando qual.
+ *  Quando não tem nenhuma, a operação não está cadastrada. Mandar as duas
+ *  pessoas para o mesmo lugar seria mandar uma delas para o lugar errado.
+ *
+ *  SÓ APARECE QUANDO HÁ O QUE DIZER: fonte que não manda concessionária não
+ *  ganha uma seção vazia.
+ */
+function SecaoDasConcessionarias({
+  conferencia,
+}: {
+  conferencia: ConferenciaDaPlanilhaDoScore;
+}) {
+  const comUnidade = conferencia.mencoes_com_concessionaria ?? 0;
+  const semUnidade = conferencia.mencoes_sem_concessionaria ?? 0;
+  const naoReconhecidas = conferencia.concessionarias_nao_reconhecidas ?? [];
+  if (!comUnidade && !semUnidade && naoReconhecidas.length === 0) return null;
+
+  const total = conferencia.previsao[0]?.linhas ?? 0;
+  return (
+    <Secao
+      titulo="Concessionárias"
+      subtitulo="A concessionária da planilha é casada com o cadastro central pelo nome, mais os apelidos declarados. É o vínculo que faz as duas grafias da mesma empresa virarem uma linha no gráfico e no filtro — e o que liga a menção à agenda do CRM."
+    >
+      <Cartao>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13 }}>
+          <span>
+            <strong>{numero(comUnidade)}</strong> acham a concessionária no cadastro
+            {total ? ` de ${numero(total)} linhas` : ''}
+          </span>
+          {semUnidade ? (
+            <span style={{ color: 'var(--cinza-2)' }}>
+              {numero(semUnidade)} vêm sem concessionária
+            </span>
+          ) : null}
+        </div>
+
+        {naoReconhecidas.length ? (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '12px 0 8px' }}>
+              Estas o cadastro não resolve. As menções delas entram, mas ficam
+              fora de qualquer recorte por concessionária.
+            </p>
+            <ul
+              style={{
+                listStyle: 'none',
+                margin: 0,
+                padding: 0,
+                border: '1px solid var(--borda)',
+                borderRadius: 'var(--r-card-int)',
+                background: 'var(--branco)',
+              }}
+            >
+              {naoReconhecidas.map((unidade) => (
+                <li
+                  key={unidade.nome}
+                  style={{
+                    borderTop: '1px solid var(--borda)',
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'baseline',
+                    padding: '7px 12px',
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {unidade.nome}
+                    {/* AS OPÇÕES DO CADASTRO, quando são mais de uma: é o que
+                        diz a quem lê que o nome está certo e falta o bloco. */}
+                    {unidade.opcoes?.length ? (
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 11,
+                          color: 'var(--cinza-3)',
+                          marginTop: 2,
+                        }}
+                      >
+                        o cadastro tem {unidade.opcoes.length}:{' '}
+                        {unidade.opcoes.join(' · ')} — a planilha precisa dizer qual
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--cinza-3)',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {numero(unidade.mencoes)} menç.
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </Cartao>
+    </Secao>
+  );
+}
+
 export function BaseDoScore() {
   const [subaba, definirSubaba] = useState<IdDaSubaba>('planilha');
   const [fontes, definirFontes] = useState<FonteDoScore[] | null>(null);
@@ -515,25 +628,113 @@ export function BaseDoScore() {
             </div>
 
             {ocupado && !conferencia ? (
-              <p
+              <div
                 //: `role="status"` para quem ouve a tela: a contagem muda onze
                 //: vezes, e sem isto a mudança é invisível para leitor de tela.
                 role="status"
-                style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 0' }}
+                //: UMA BARRA, E NÃO UMA DICA DE 12px EM CINZA CLARO.
+                //:
+                //: O MESMO DEFEITO VOLTOU NOUTRA FORMA. A subida em partes foi
+                //: feita porque "uma tela parada por minutos se lê como
+                //: travada" — está escrito no teste desta área. Com ela, o
+                //: arquivo de 10,53 MB passou a subir em 11 partes e 19
+                //: segundos, e funcionou; mas o único sinal disso era um
+                //: parágrafo de 12px em `--cinza-2` embaixo do seletor. Quem
+                //: subiu relatou "está demorando" de novo, e disse que o
+                //: mecanismo "não estava mostrando" — ele estava, e ninguém o
+                //: viu. Sinal que não se lê não é sinal.
+                style={{
+                  marginTop: 14,
+                  padding: '12px 14px',
+                  border: '1px solid var(--borda)',
+                  borderRadius: 'var(--r-card-int)',
+                  background: 'var(--branco)',
+                  fontSize: 13,
+                  color: 'var(--cinza-3)',
+                }}
               >
                 {subida ? (
                   <>
-                    Enviando a planilha: parte {subida.enviadas} de {subida.total}.
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                      }}
+                    >
+                      <strong style={{ fontWeight: 600 }}>
+                        Enviando a planilha: parte {subida.enviadas} de {subida.total}.
+                      </strong>
+                      <span
+                        //: `aria-hidden` NA PORCENTAGEM, e é achado da revisão
+                        //: do Codex — com uma correção de leitura: o anúncio
+                        //: repetido onze vezes NÃO é regressão desta mudança. O
+                        //: `role="status"` com a contagem mutável já existia, e
+                        //: o comentário dele diz que a contagem mudar onze vezes
+                        //: é a RAZÃO de ele estar lá.
+                        //:
+                        //: O QUE EU PIOREI FOI O TAMANHO DE CADA ANÚNCIO, ao
+                        //: somar a porcentagem ao texto vivo. Escondendo-a do
+                        //: leitor de tela, cada anúncio volta a ser o de antes
+                        //: ("parte 3 de 11") e a porcentagem segue para os
+                        //: olhos, junto da barra. Reduzir a FREQUÊNCIA é outra
+                        //: decisão, do dono do produto, e não se toma de
+                        //: passagem num conserto de upload.
+                        aria-hidden="true"
+                        style={{
+                          //: `tabular-nums` para o número não dançar a cada
+                          //: parte — são onze trocas em poucos segundos.
+                          fontVariantNumeric: 'tabular-nums',
+                          color: 'var(--cinza-2)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {Math.round((subida.enviadas / subida.total) * 100)}%
+                      </span>
+                    </div>
+                    <div
+                      //: A BARRA É DECORAÇÃO PARA QUEM OUVE: o texto acima já
+                      //: diz tudo, e `aria-hidden` evita o leitor de tela
+                      //: anunciar a mesma coisa duas vezes.
+                      aria-hidden="true"
+                      style={{
+                        marginTop: 8,
+                        height: 6,
+                        borderRadius: 999,
+                        background: 'var(--cinza-1)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: '100%',
+                          borderRadius: 999,
+                          background: 'var(--azul-mar)',
+                          width: `${Math.round(
+                            Math.min(1, Math.max(0, subida.enviadas / subida.total)) * 100,
+                          )}%`,
+                          transition: 'width 160ms linear',
+                        }}
+                      />
+                    </div>
                     {/* O QUE ELA NÃO PODE FAZER vai escrito: fechar a aba no meio
                         perde a subida, e a pessoa não tem como saber disso. */}
-                    <span style={{ display: 'block', marginTop: 4 }}>
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: 'var(--cinza-2)',
+                      }}
+                    >
                       Arquivo grande sobe em pedaços. Deixe esta aba aberta.
                     </span>
                   </>
                 ) : (
                   'Lendo a planilha…'
                 )}
-              </p>
+              </div>
             ) : null}
 
             {aplicado ? (
@@ -577,6 +778,12 @@ export function BaseDoScore() {
             </Secao>
 
             <SecaoDosAssuntos conferencia={conferencia} />
+
+            {/* DEPOIS DOS ASSUNTOS E ANTES DOS VEÍCULOS: as três seções
+                respondem "o cadastro reconhece o que a planilha diz?", e as
+                duas primeiras não criam nada — só cobram. A dos veículos cria,
+                e por isso é a última e a que pede decisão. */}
+            <SecaoDasConcessionarias conferencia={conferencia} />
 
             <Secao
               titulo={`Veículos novos (${numero(marcados.length)} de ${numero(novos.length)} marcados)`}

@@ -39,7 +39,7 @@ const ONDA_1: {
     // O SEGUNDO MÓDULO FICA COM O SCORE porque ele EXISTE: a tela está de pé,
     // lendo as planilhas dos quatro fornecedores — só o rótulo do cartão virou
     // "KPIs Reputacionais" (pedido do Jones), enquanto "Painel de Inteligência
-    // de Mercado" foi para o cartão de 'sintese', ainda não pronto. A ordem
+    // de Mercado" foi para o cartão de 'inteligencia_de_mercado', ainda não pronto. A ordem
     // aqui segue o que está pronto: os dois disponíveis primeiro, o "em
     // construção" por último.
     view: 'score',
@@ -54,7 +54,7 @@ const ONDA_1: {
     pronto: true,
   },
   {
-    portal: 'sintese',
+    portal: 'inteligencia_de_mercado',
     view: null,
     titulo: 'Painel de Inteligência de Mercado',
     descricao:
@@ -70,7 +70,7 @@ const ONDA_1: {
  *  de Inteligência de Mercado leem igualmente. Misturá-lo na mesma grade dos
  *  três painéis o apresentaria como um painel a mais — e a permissão que abre
  *  esta porta também é outra: `administra_dicionarios`, não um portal
- *  (`acessa_crm`/`acessa_score`/`acessa_sintese`) como os três acima.
+ *  (`acessa_crm`/`acessa_score`/`acessa_inteligencia_de_mercado`) como os três acima.
  *
  *  UM CARTÃO SÓ PARA OS TRÊS, e não três cartões: quem cadastra uma faz as
  *  outras (ver `PortalDoCadastroCompartilhado`), e três cartões repetiriam o

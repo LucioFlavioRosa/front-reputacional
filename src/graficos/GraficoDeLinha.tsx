@@ -4,11 +4,17 @@
  *  EIXO Y AUTOMÁTICO, não fixo em -100/+100: o NSS PODE ir de -100 a +100,
  *  mas na prática costuma oscilar bem menos que isso — e uma régua fixa
  *  nesse intervalo inteiro fazia qualquer variação real (10, 20 pontos)
- *  parecer uma linha quase reta colada no zero. A escala agora nasce do
- *  MENOR e MAIOR valor de TODAS as séries (mais uma folga de 25%), sempre
- *  incluindo o zero e nunca passando de -100/+100 — e os rótulos de eixo à
- *  esquerda (mínimo, zero, máximo) dizem exatamente que régua é essa, para
- *  a escala automática não enganar sobre o tamanho real da variação.
+ *  parecer uma linha quase reta colada no zero. A escala nasce do MENOR e
+ *  MAIOR valor de TODAS as séries (mais uma folga de 25%), sempre incluindo
+ *  o zero e nunca passando de -100/+100 — e os rótulos de eixo à esquerda
+ *  (mínimo, zero, máximo) dizem exatamente que régua é essa, para a escala
+ *  automática não enganar sobre o tamanho real da variação.
+ *
+ *  A CONTA DA RÉGUA MORA EM `dominio/eixoDaSerie` (`dominioDoNss`), e não
+ *  aqui: ela decide o que a pessoa lê como TAMANHO da variação, e uma régua
+ *  errada não quebra nada — só mente sobre a altura do degrau. Lá ela está ao
+ *  lado da régua do índice (`jornadaDoIndice.dominioDe`), com o porquê de
+ *  serem duas e o que uma terceira teria de decidir.
  *
  *  VÁRIAS SÉRIES (`series`), não uma linha só — pedido para comparar o NSS
  *  "Geral" contra o de um ou mais públicos adicionados (cada um com a
@@ -36,6 +42,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { dominioDoNss } from '@/dominio/eixoDaSerie';
 import { numero } from '@/dominio/formato';
 
 const ALTURA_DO_ROTULO_DO_VALOR = 16;
@@ -45,14 +52,6 @@ const MARGEM_DIREITA = 8;
 //: MESMA IDEIA de `LIMITE_DE_ROTULOS_NO_EIXO` em `BarrasEmpilhadas` — em
 //: semana (dezenas de pontos), um rótulo por ponto colaria um no outro.
 const LIMITE_DE_ROTULOS_NO_EIXO = 10;
-//: QUANTO DE FOLGA acima do maior valor e abaixo do menor, em fração da
-//: amplitude — sem isto, o ponto mais alto/baixo encostaria na borda do
-//: gráfico, junto do próprio rótulo de valor dele.
-const FRACAO_DE_FOLGA = 0.25;
-//: AMPLITUDE MÍNIMA do eixo — um recorte com toda a série em 0 (ou muito
-//: parecida) não vira uma régua de 1 ponto de altura, que exageraria
-//: qualquer ruído mínimo como se fosse uma virada grande.
-const AMPLITUDE_MINIMA = 10;
 
 export interface PontoDeLinha {
   chave: string;
@@ -172,23 +171,18 @@ export function GraficoDeLinha({
     );
   }
 
-  // A RÉGUA AUTOMÁTICA — ver o comentário no topo do arquivo. Sempre inclui
-  // o zero (é a referência de "equilíbrio"), e sempre a linha de
-  // referência, se houver uma — ela nunca pode ficar fora do que se vê.
+  // A RÉGUA AUTOMÁTICA — a conta mora em `dominio/eixoDaSerie`, com as outras
+  // réguas de série temporal do produto e com o que a próxima tem de decidir.
   const valoresConhecidos = series.flatMap((serie) =>
     serie.pontos
       .filter((ponto): ponto is { chave: string; valor: number } => ponto.valor != null)
       .map((ponto) => ponto.valor),
   );
-  const paraORango = linhaDeReferencia
-    ? [...valoresConhecidos, linhaDeReferencia.valor]
-    : valoresConhecidos;
-  const menorValor = Math.min(0, ...paraORango);
-  const maiorValor = Math.max(0, ...paraORango);
-  const amplitude = Math.max(AMPLITUDE_MINIMA, maiorValor - menorValor);
-  const folga = Math.round(amplitude * FRACAO_DE_FOLGA);
-  const minimoEfetivo = minimo ?? Math.max(-100, menorValor - folga);
-  const maximoEfetivo = maximo ?? Math.min(100, maiorValor + folga);
+  const { minimo: minimoEfetivo, maximo: maximoEfetivo } = dominioDoNss(valoresConhecidos, {
+    referencia: linhaDeReferencia?.valor,
+    minimo,
+    maximo,
+  });
 
   const alturaDoTrilho = altura - ALTURA_DO_ROTULO_DO_VALOR - ALTURA_DO_EIXO;
   const larguraUtil = Math.max(0, largura - MARGEM_ESQUERDA - MARGEM_DIREITA);

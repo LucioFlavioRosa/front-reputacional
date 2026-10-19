@@ -46,7 +46,7 @@ import {
   medidaDaColuna,
   medidaPeloConteudo,
 } from '@/paginas/importacao/medidas';
-import { porUrgencia } from '@/paginas/importacao/grupos';
+import { porUrgencia } from '@/dominio/conferenciaDaImportacao';
 
 interface Props {
   id: string;

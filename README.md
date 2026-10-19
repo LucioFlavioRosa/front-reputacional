@@ -64,9 +64,22 @@ src/
 ```
 
 **`dominio/` não importa React.** É a regra que vale para o resto se orientar:
-o que está ali é função pura, testável sem montar componente, e é onde moram
-15 dos 20 arquivos de teste. Se um arquivo de `dominio/` precisar de `useState`,
-ele está na pasta errada.
+o que está ali é função pura, testável sem montar componente. Se um arquivo de
+`dominio/` precisar de `useState`, ele está na pasta errada.
+
+**E `dominio/` não CHAMA tela.** A direção é `paginas` → `dominio`/`api`, nunca
+o contrário: uma tela servindo de biblioteca para a regra significa que a regra
+deixou de poder ser lida sem a tela. Isso é **conferido**, não prometido —
+`src/dominio/oDominioNaoChamaTela.test.ts` varre o fonte de `dominio/` e de
+`api/` a cada execução.
+
+Ele separa valor de tipo, e não é frouxidão: `import type` não existe depois da
+compilação — não cria dependência de execução, não cria ciclo e não arrasta
+código para o bundle. Import de **valor** de `paginas`/`componentes`/`graficos` é
+recusado sem exceção (hoje são zero). Import de **tipo** é permitido só para as
+duas entradas nomeadas no próprio teste, cada uma com o motivo de ainda estar
+lá. A lista é **teto, não piso**: uma entrada nova falha, e uma que foi paga
+também — senão ela vira cemitério.
 
 ### Quando uma parte precisa sair da página
 
@@ -160,9 +173,11 @@ string, o SDK do Application Insights sai inteiro do bundle.
 
 ## Testes
 
-Vitest, 346 testes em 20 arquivos. A maior parte cobre `dominio/` — as regras
-puras, que é onde o teste rende —, e o resto cobre `api/`, `navegacao/`,
-`observabilidade/` e o menu do usuário. Moram ao lado do arquivo que testam
+Vitest, **1.646 testes em 121 arquivos** (medido em 16/10/2026; eram 346 em 20
+quando este parágrafo foi escrito). **36 deles cobrem `dominio/`** — as regras
+puras, que é onde o teste rende —, e o resto cobre `api/`, `graficos/`,
+`navegacao/`, `observabilidade/`, os componentes e as páginas. Moram ao lado do
+arquivo que testam
 (`formato.ts` e `formato.test.ts`), que é o costume do ecossistema — diferente
 do back, onde os testes ficam numa pasta `tests/`, porque lá o costume é
 outro.

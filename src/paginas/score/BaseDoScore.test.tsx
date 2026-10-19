@@ -157,6 +157,55 @@ describe('BaseDoScore', () => {
     expect(screen.queryByText('Assuntos')).toBeNull();
   });
 
+  it('A CONFERÊNCIA SEPARA A CONCESSIONÁRIA AMBÍGUA DA DESCONHECIDA', async () => {
+    // SÃO DOIS CONSERTOS, feitos por pessoas diferentes. "Águas do Pará" está
+    // escrito CERTO e mesmo assim não liga — o cadastro tem quatro blocos, e
+    // quem resolve é o fornecedor informando qual. "Águas de Sinop" o cadastro
+    // não tem, e quem resolve é quem cadastra. Uma tela que dissesse só "não
+    // reconhecido" mandaria uma das duas para o lugar errado.
+    await subir(
+      conferencia({
+        previsao: [resumo({ linhas: 100, ingeridas: 100 })],
+        mencoes_com_concessionaria: 70,
+        mencoes_sem_concessionaria: 3,
+        concessionarias_nao_reconhecidas: [
+          {
+            nome: 'Águas do Pará',
+            mencoes: 20,
+            opcoes: [
+              'Águas do Pará — Bloco A',
+              'Águas do Pará — Bloco B',
+              'Águas do Pará — Bloco C',
+              'Águas do Pará — Bloco D',
+            ],
+          },
+          { nome: 'Águas de Sinop', mencoes: 7, opcoes: [] },
+        ],
+      }),
+    );
+
+    expect(screen.getByText('Concessionárias')).toBeTruthy();
+    expect(screen.getByText(/3 vêm sem concessionária/)).toBeTruthy();
+
+    const linhas = screen.getAllByRole('listitem').map((l) => l.textContent ?? '');
+    const ambigua = linhas.find((t) => t.includes('Águas do Pará'));
+    // A AMBÍGUA MOSTRA AS OPÇÕES: é o que diz que o nome está certo e falta o
+    // bloco, em vez de mandar procurar um erro na planilha.
+    expect(ambigua).toContain('o cadastro tem 4');
+    expect(ambigua).toContain('Bloco C');
+    expect(ambigua).toContain('a planilha precisa dizer qual');
+
+    const desconhecida = linhas.find((t) => t.includes('Águas de Sinop'));
+    expect(desconhecida).toBeTruthy();
+    expect(desconhecida).not.toContain('o cadastro tem');
+  });
+
+  it('a seção de concessionárias NÃO APARECE quando a fonte não a manda', async () => {
+    await subir(conferencia());
+
+    expect(screen.queryByText('Concessionárias')).toBeNull();
+  });
+
   it('A BASE TEM DUAS ABAS: subir a planilha e a curadoria dos veículos', async () => {
     // A lista de veículos de investidores é curadoria de cadastro, e não um
     // gesto do fechamento do mês. Embaixo do upload, os 81 nomes ficariam
@@ -496,6 +545,60 @@ describe('BaseDoScore', () => {
     //: `role="status"` para quem ouve a tela: a contagem muda onze vezes, e sem
     //: isto a mudança é invisível para leitor de tela.
     expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
+  });
+
+  it('O PROGRESSO SE LÊ: tem porcentagem, e não só a contagem em cinza claro', async () => {
+    /** O MESMO DEFEITO VOLTOU NOUTRA FORMA, e é por isto que isto é teste.
+     *
+     *  A subida em partes resolveu o transporte: o arquivo de 10,53 MB passou a
+     *  subir em 11 partes e 19 segundos, e o log do servidor prova que
+     *  funcionou. Mas o único sinal na tela era um parágrafo de 12px em
+     *  `--cinza-2` embaixo do seletor — e quem subiu relatou "está demorando"
+     *  outra vez, dizendo que o mecanismo "não estava mostrando". Ele estava.
+     *
+     *  Sinal que não se lê não é sinal. A porcentagem é o que torna a afirmação
+     *  verificável: "parte 3 de 11" sozinho já passava antes de a barra existir.
+     */
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(3, 11);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    //: 3 de 11 = 27%. O número vem da conta, não de um texto fixo.
+    await waitFor(() => expect(screen.getByText('27%')).toBeTruthy());
+    //: E ELA É PARA OS OLHOS, NÃO PARA O OUVIDO. Achado da revisão do Codex: o
+    //: `role="status"` anuncia a cada parte, e somar a porcentagem ao texto vivo
+    //: alongava cada um dos onze anúncios. Com `aria-hidden`, o anúncio volta a
+    //: ser o de antes ("parte 3 de 11") e o número segue na tela.
+    expect(screen.getByText('27%').getAttribute('aria-hidden')).toBe('true');
+    //: E A CONTAGEM CONTINUA NO MESMO `role="status"`: a barra é para os olhos,
+    //: o texto é para quem ouve a tela.
+    expect(screen.getByRole('status').textContent).toContain('parte 3 de 11');
+  });
+
+  it('a porcentagem acompanha a parte, e fecha em 100% na última', async () => {
+    vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
+    vi.mocked(conferirPlanilhaDoScoreComoCouber).mockImplementation(
+      (_codigo, _arquivo, aoProgresso) => {
+        aoProgresso?.(11, 11);
+        return new Promise(() => {});
+      },
+    );
+    const pessoa = userEvent.setup();
+    render(<BaseDoScore />);
+    await waitFor(() => expect(screen.getByLabelText('Planilha do fornecedor')).toBeTruthy());
+
+    await pessoa.upload(screen.getByLabelText('Planilha do fornecedor'), PLANILHA);
+
+    await waitFor(() => expect(screen.getByText('100%')).toBeTruthy());
   });
 
   it('com UMA parte só, não diz "parte 1 de 1" — isso seria ruído', async () => {

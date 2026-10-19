@@ -1,6 +1,21 @@
 /** A jornada de UMA lente — a nota dela, 0 a 100, mês a mês, no mesmo
  *  desenho da jornada do índice geral.
  *
+ *  ⚠ PRONTA E NÃO LIGADA A NENHUMA TELA. Conferido em 16/10/2026: o único
+ *  importador é `jornadaDaLente.test.ts`. Não há página que a chame.
+ *
+ *  NÃO É CÓDIGO MORTO, e a distinção decide o que fazer com ela: está completa,
+ *  documentada e coberta por teste, e o desenho que ela alimenta
+ *  (`graficos/JornadaDoIndice.tsx`) existe e é usado pela jornada do índice.
+ *  O que falta é a tela da lente chamá-la.
+ *
+ *  QUEM FOR LIGAR tem o trabalho quase todo feito: a função devolve o objeto
+ *  `Jornada` que o componente já sabe desenhar.
+ *
+ *  QUEM FOR REMOVER está decidindo que a jornada por lente não vai existir —
+ *  e aí saem também este arquivo, o teste e as duas menções a ele em
+ *  `JornadaDoIndice.tsx:175` e `jornadaDoIndice.ts:36`.
+ *
  *  POR QUE UMA FUNÇÃO IRMÃ, E NÃO A MESMA. `jornadaDoIndice` (em
  *  `dominio/jornadaDoIndice.ts`) tem conceitos que só existem no ISR
  *  agregado: "mês parcial" (quantas das 5 lentes mediram), "maior

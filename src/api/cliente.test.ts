@@ -20,7 +20,31 @@ import * as cliente from './cliente';
 // O FONTE DO CLIENTE, como texto. `?raw` é do Vite, e o vitest fala Vite: é o
 // que permite varrer o código sem `node:fs` — que o `tsc` do build não conhece,
 // porque o app é feito para o navegador e não deve enxergar o Node.
-import fonte from './cliente.ts?raw';
+//
+// SÃO CINCO ARQUIVOS DESDE 17/10/2026, e não mais um. `cliente.ts` virou barril
+// de reexportação; varrer só ele passou a varrer nada, e estes três testes
+// caíram na mesma hora — que é exatamente o que eles existem para fazer.
+//
+// A PASTA SE DESCOBRE SOZINHA, e a primeira versão disto era uma LISTA ESCRITA
+// À MÃO. A revisão apontou o buraco: um sexto arquivo em `src/api/` que fizesse
+// chamada e não entrasse na lista ficaria fora da varredura, e a garantia
+// viraria falsa em silêncio — sem nada quebrar.
+//
+// O QUE FICA DE FORA, e por quê: os testes (não são produto), `cliente.ts` (é
+// só barril, e varrê-lo duplicaria tudo) e `cliente.varredura.ts` (é a própria
+// varredura; ela fala de `requisitar` sem chamá-lo).
+const BRUTOS = import.meta.glob(
+  ['./*.ts', '!./*.test.ts', '!./cliente.ts', '!./cliente.varredura.ts'],
+  { eager: true, query: '?raw', import: 'default' },
+) as Record<string, string>;
+
+const ARQUIVOS: ReadonlyArray<readonly [string, string]> = Object.entries(BRUTOS)
+  .map(([caminho, texto]) => [caminho.replace('./', ''), texto] as const)
+  .sort(([a], [b]) => a.localeCompare(b));
+
+/** Os cinco colados. Serve para o que é contagem global — `fetch` é um só no
+ *  produto inteiro —, e NÃO para o que depende de atribuir código a função. */
+const fonte = ARQUIVOS.map(([, texto]) => texto).join('\n');
 import { varrerChamadas } from './cliente.varredura';
 import { ROTAS_DO_CATALOGO, catalogoMudou, scoreMudou } from '@/dominio/sincronizacao';
 
@@ -240,12 +264,19 @@ describe('o código-fonte do cliente não tem escrita de catálogo fora desta li
   });
 
   it('toda chamada a `requisitar` está na forma canônica — a varredura não deixa passar o que não entende', () => {
-    const { problemas } = varrerChamadas(fonte);
-    expect(problemas).toEqual([]);
+    // UM ARQUIVO DE CADA VEZ, e não os cinco colados. `funcaoQueContem` atribui
+    // cada menção à última `export function` ANTES dela; concatenando, a última
+    // função de um arquivo adota o que o arquivo seguinte menciona. Deu três
+    // problemas fantasmas — `historicoDeAcesso`, `listarDocumentosDaReuniao` e
+    // `obterOpcoesDoRisco` acusadas pelo que vinha depois delas, noutro arquivo.
+    for (const [nome, texto] of ARQUIVOS) {
+      const { problemas } = varrerChamadas(texto);
+      expect(problemas, `em ${nome}`).toEqual([]);
+    }
   });
 
   it('cada função que escreve numa rota de catálogo está exercitada acima', () => {
-    const { chamadas } = varrerChamadas(fonte);
+    const chamadas = ARQUIVOS.flatMap(([, texto]) => varrerChamadas(texto).chamadas);
     const escrevem = chamadas.filter((c) => c.escreveNoCatalogo).map((c) => c.funcao);
 
     expect(escrevem.length, 'a varredura precisa achar as escritas').toBeGreaterThanOrEqual(10);
@@ -337,10 +368,55 @@ describe('a varredura recusa o que não sabe classificar', () => {
     expect(problemas).toEqual([]);
   });
 
-  it('sem a definição — ou com duas — é problema', () => {
+  it('sem origem — ou com duas — é problema', () => {
     expect(varrerChamadas('').problemas).toEqual([
-      'esperava uma definição de requisitar, achei 0',
+      'esperava UMA origem de requisitar (definição ou import), achei 0',
     ]);
     expect(varrerChamadas(definicao + definicao).problemas).toHaveLength(1);
+  });
+
+  it('a varredura cobre TODO arquivo de produto da pasta, e não uma lista', () => {
+    //: A LISTA ESCRITA À MÃO era o buraco: um sexto arquivo com chamada ficaria
+    //: fora, e a garantia viraria falsa sem nada quebrar. Achado da revisão.
+    //:
+    //: Afirma o PISO e o conteúdo, e não a lista exata — acrescentar um arquivo
+    //: de domínio novo (a Inteligência de Mercado vem aí) não deve derrubar
+    //: este teste, mas tirar um deve.
+    const nomes = ARQUIVOS.map(([nome]) => nome);
+    expect(nomes.length).toBeGreaterThanOrEqual(5);
+    for (const esperado of ['nucleo.ts', 'acesso.ts', 'crm.ts', 'score.ts', 'importacao.ts']) {
+      expect(nomes).toContain(esperado);
+    }
+    expect(nomes).not.toContain('cliente.ts');
+    expect(nomes.filter((n) => n.includes('.test.'))).toEqual([]);
+  });
+
+  it('`requisitar` RENOMEADA no import é problema, e não origem', () => {
+    //: O ESCAPE QUE A REVISÃO ACHOU: `import { requisitar as r } from './outro'`
+    //: passava como origem, e as chamadas por `r` não eram varridas por nada —
+    //: um segundo caminho de rede entrando sem ninguém ver.
+    const renomeada = "import { requisitar as r } from './outro';\n";
+    expect(varrerChamadas(renomeada).problemas.length).toBeGreaterThan(0);
+
+    //: E de OUTRO MÓDULO também não vale, mesmo sem renomear.
+    const deOutroLugar = "import { requisitar } from './outro';\n";
+    expect(varrerChamadas(deOutroLugar).problemas.length).toBeGreaterThan(0);
+
+    //: Nem `import type` — tipo não traz função nenhuma em runtime.
+    const soTipo = "import type { requisitar } from './nucleo';\n";
+    expect(varrerChamadas(soTipo).problemas.length).toBeGreaterThan(0);
+  });
+
+  it('o IMPORT vale como origem, e dois imports continuam sendo problema', () => {
+    //: Entrou com a divisão de `cliente.ts` em cinco arquivos (17/10/2026):
+    //: `nucleo.ts` define `requisitar`, os outros quatro o importam. Sem isto a
+    //: varredura acusava os quatro de não ter definição — e, de quebra, tratava
+    //: a própria linha do import como chamada mal formada.
+    const vindoDeFora = "import { requisitar } from './nucleo';\n";
+    expect(varrerChamadas(vindoDeFora).problemas).toEqual([]);
+
+    //: E A GARANTIA NÃO AFROUXOU: definir E importar continua sendo problema,
+    //: porque seriam dois caminhos de rede no mesmo arquivo.
+    expect(varrerChamadas(vindoDeFora + definicao).problemas).toHaveLength(1);
   });
 });

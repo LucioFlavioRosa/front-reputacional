@@ -1,10 +1,18 @@
-/** A lógica da tela de conferência da importação.
+/** O vocabulário e a ordem da conferência da importação.
  *
  *  FORA DO COMPONENTE PORQUE ERRAR AQUI CUSTA CARO: se a ordem errar, o
  *  botão acende com pendência aberta e alguém cria 54 agendas que não foram
  *  conferidas. O critério é o do README — não o tamanho do arquivo, mas "o que
  *  acontece se isto estiver errado?" —, e teste dentro de JSX é teste que não se
  *  escreve.
+ *
+ *  E FORA DA PASTA DA TELA, desde 17/10/2026. Era `paginas/importacao/grupos.ts`,
+ *  e `api/importacao.ts` importava `Grupo` e `ACriar` de lá — o módulo do
+ *  CONTRATO dependendo de uma pasta de tela. `Grupo` é a forma que
+ *  `GET /api/importacoes/{id}` devolve: ela descreve a resposta, não o
+ *  componente que a desenha. Aqui os três tipos ficam ao lado dos outros tipos
+ *  de resposta do domínio, e a dependência corre no sentido certo —
+ *  `paginas/importacao/` e `api/importacao.ts` leem daqui.
  */
 
 /** Um grupo de divergência, como `GET /api/importacoes/{id}` o devolve. */
