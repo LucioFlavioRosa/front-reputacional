@@ -67,7 +67,7 @@ function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
     total_positivos: 2,
     total_negativos: 2,
     sem_n1: 0,
-    sem_data_no_mes: 0,
+    sem_data: 0,
     mes_sem_base: false,
     lente: 'imprensa',
     dias: 15,
@@ -779,7 +779,7 @@ describe('os pilares da janela, ao clicar numa data', () => {
     /** Menção sem N1 e menção sem data: as duas existem, pesam no índice e não
      *  aparecem nos quadros. Engoli-las faria os quadros parecerem o todo. */
     obterImpactoPorN1.mockImplementation(() =>
-      Promise.resolve(impacto({ sem_n1: 7, sem_data_no_mes: 12 })),
+      Promise.resolve(impacto({ sem_n1: 7, sem_data: 12 })),
     );
     render(<InteligenciaDeMercado />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
@@ -818,6 +818,51 @@ describe('os pilares da janela, ao clicar numa data', () => {
     await waitFor(() => expect(screen.getByText(/não foi possível ler a janela/i)).toBeTruthy());
     expect(screen.getByText('GRAFICO')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Yield' })).toBeTruthy();
+  });
+
+  it('o SEGUNDO clique não deixa a janela ANTIGA na tela', async () => {
+    /** ACHADO DE REVISÃO, e é do mesmo tipo que o rótulo do eixo que mentia
+     *  sobre a métrica: ao clicar numa data nova, o código limpava o erro e NÃO
+     *  a janela. Até a resposta chegar, os quadros antigos continuavam na tela —
+     *  com o cabeçalho do período anterior — enquanto a marca do gráfico já
+     *  apontava para a data nova. Os números afirmavam uma janela, e o gráfico
+     *  afirmava outra.
+     *
+     *  O teste de antes cobria UM clique só, e por isso não via nada. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() =>
+      expect(screen.getByTestId('cabecalho-da-janela').textContent).toContain('20/05/2026'),
+    );
+
+    //: a segunda resposta NUNCA chega: é a janela que o defeito ocupava
+    obterImpactoPorN1.mockImplementation(() => new Promise(() => {}));
+    escolherData('2026-04-10');
+
+    //: OS QUADROS ANTIGOS SAEM, e a tela diz que está lendo a data nova.
+    await waitFor(() => expect(screen.queryByTestId('quadro-positivos')).toBeNull());
+    expect(screen.getByText(/lendo os pilares de 10\/04\/2026/i)).toBeTruthy();
+  });
+
+  it('a tela diz DE QUAL MÊS são os pontos, e com que régua', async () => {
+    /** ACHADO DE REVISÃO: a resposta trazia `mes` e `regua` e a tela mostrava só
+     *  lente e datas. Sem isso, "−2,3 pt" não diz pontos DE QUÊ — e o contrato
+     *  da conta é justamente que o denominador é o do mês do clique.
+     *
+     *  IMPORTA MAIS QUANDO A JANELA ATRAVESSA A VIRADA: aí o numerador tem
+     *  menções de dois meses e o denominador é de um, então o número pode passar
+     *  do que aquele mês inteiro movimentou. A ordem dos pilares continua exata;
+     *  a escala, não — e quem lê precisa saber disso. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    escolherData('2026-05-20');
+
+    await waitFor(() => expect(screen.getByTestId('cabecalho-da-janela')).toBeTruthy());
+    const regua = screen.getByTestId('regua-da-janela');
+    expect(regua.textContent).toContain('05/2026');
+    expect(regua.textContent?.toLowerCase()).toContain('contagem');
   });
 
   it('a data escolhida chega ao GRÁFICO, para ele marcá-la', async () => {

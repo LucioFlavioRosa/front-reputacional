@@ -173,6 +173,12 @@ export function InteligenciaDeMercado() {
     }
     let ativo = true;
     definirErroDaJanela(null);
+    //: A JANELA ANTIGA SAI JÁ, e não quando a nova chega — achado de revisão, do
+    //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica. Ao clicar
+    //: numa data nova, os quadros antigos continuavam na tela com o cabeçalho do
+    //: período anterior, enquanto a marca do gráfico já apontava para a data
+    //: nova: os números afirmavam uma janela e o gráfico afirmava outra.
+    definirJanela(null);
     obterImpactoPorN1(diaEscolhido, DIAS_DA_JANELA)
       .then((lida) => {
         if (ativo) definirJanela(lida);
@@ -657,6 +663,27 @@ function JanelaDosPilares({
         </button>
       </div>
 
+      {/* DE QUAL MÊS SÃO OS PONTOS, E COM QUE RÉGUA. Achado de revisão: a
+          resposta trazia as duas coisas e a tela mostrava só lente e datas —
+          e aí "−2,3 pt" não diz pontos DE QUÊ.
+
+          IMPORTA MAIS QUANDO A JANELA ATRAVESSA A VIRADA: o numerador tem
+          menções de dois meses e o denominador é de um, então o número pode
+          passar do que aquele mês inteiro movimentou. A ORDEM dos pilares
+          continua exata — todos dividem pelo mesmo denominador —, a escala não.
+          Quem lê precisa saber qual das duas coisas está olhando. */}
+      <p
+        data-testid="regua-da-janela"
+        style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}
+      >
+        Pontos da nota de {porExtenso(janela.mes).slice(3)}, medida pela régua de{' '}
+        {janela.regua}
+        {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
+          ? ' — a janela atravessa a virada do mês, então a ordem dos pilares é exata e a escala é a daquele mês'
+          : null}
+        .
+      </p>
+
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
           parecem iguais. O mês sem base não tem denominador: sem ele não há
           pergunta a responder, e mostrar quadros vazios afirmaria que os pilares
@@ -690,16 +717,19 @@ function JanelaDosPilares({
       {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
           pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
           o todo, e a soma deles não fecharia com o impacto do período. */}
-      {janela.sem_n1 || janela.sem_data_no_mes ? (
+      {janela.sem_n1 || janela.sem_data ? (
         <p
           data-testid="fora-da-conta"
           style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}
         >
           Fora desta conta:{' '}
           {janela.sem_n1 ? `${numero(janela.sem_n1)} menções da janela sem pilar atribuído` : null}
-          {janela.sem_n1 && janela.sem_data_no_mes ? '; ' : null}
-          {janela.sem_data_no_mes
-            ? `${numero(janela.sem_data_no_mes)} menções do mês sem data, que pertencem ao mês e não a um dia`
+          {janela.sem_n1 && janela.sem_data ? '; ' : null}
+          {janela.sem_data
+            ? //: "DOS MESES DA JANELA", e não "do mês": o número passou a contar
+              //: todos os meses que a janela atravessa — achado de revisão, ele
+              //: contava só o da ponta e omitia as do mês anterior.
+              `${numero(janela.sem_data)} menções sem data nos meses da janela, que pertencem ao mês e não a um dia`
             : null}
           .
         </p>
