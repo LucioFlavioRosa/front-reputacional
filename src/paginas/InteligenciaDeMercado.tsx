@@ -22,11 +22,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { obterImpactoPorN1, obterSerieDeMercado } from '@/api/cliente';
+import { obterImpactoPorN2, obterSerieDeMercado } from '@/api/cliente';
 import type {
   ImpactoNaJanela,
   MetricaDoBond,
-  PilarNaJanela,
+  TemaNaJanela,
   SerieDeMercado,
 } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
@@ -98,7 +98,7 @@ const PERIODOS = [
  */
 export const TETO_DA_BUSCA = 20_000;
 
-/** Quantos dias a janela dos pilares cobre, contados para trás do dia clicado.
+/** Quantos dias a janela dos temas cobre, contados para trás do dia clicado.
  *
  *  QUINZE, por pedido ("pega a data e subtrai 15 dias"). O servidor tem o mesmo
  *  número como padrão; a tela o manda explícito porque é ela que o diz na
@@ -157,7 +157,7 @@ export function InteligenciaDeMercado() {
   const [versao, definirVersao] = useState(0);
   useEffect(() => mercadoMudou.assinar(() => definirVersao((v) => v + 1)), []);
 
-  //: A JANELA DOS PILARES: o dia clicado, o que o servidor respondeu, e a falha
+  //: A JANELA DOS TEMAS: o dia clicado, o que o servidor respondeu, e a falha
   //: dela — SEPARADA da falha do gráfico, porque são dois pedaços independentes
   //: da tela. A janela falhar não pode levar o gráfico, que é a lição do beco
   //: sem saída que esta tela já teve.
@@ -179,7 +179,7 @@ export function InteligenciaDeMercado() {
     //: período anterior, enquanto a marca do gráfico já apontava para a data
     //: nova: os números afirmavam uma janela e o gráfico afirmava outra.
     definirJanela(null);
-    obterImpactoPorN1(diaEscolhido, DIAS_DA_JANELA)
+    obterImpactoPorN2(diaEscolhido, DIAS_DA_JANELA)
       .then((lida) => {
         if (ativo) definirJanela(lida);
       })
@@ -523,11 +523,11 @@ export function InteligenciaDeMercado() {
         </p>
       ) : null}
 
-      {/* OS PILARES DA JANELA, logo abaixo do gráfico — onde ele pediu.
+      {/* OS TEMAS DA JANELA, logo abaixo do gráfico — onde ele pediu.
 
           A JANELA É UM PEDAÇO INDEPENDENTE DA TELA: a falha dela mostra a faixa
           aqui e não leva o gráfico nem os controles junto. */}
-      <JanelaDosPilares
+      <JanelaDosTemas
         dia={diaEscolhido}
         janela={janela}
         erro={erroDaJanela}
@@ -595,7 +595,7 @@ export function InteligenciaDeMercado() {
   );
 }
 
-/** Os dois quadros dos pilares, e o convite que os antecede.
+/** Os dois quadros dos temas, e o convite que os antecede.
  *
  *  O CONVITE EXISTE porque dois quadros vazios na abertura seriam ruído — e
  *  pior, pareceriam dado que não carregou. É ele que liga o gráfico aos quadros:
@@ -605,7 +605,7 @@ export function InteligenciaDeMercado() {
  *  divergem enquanto a resposta não chega, e foi assim que o rótulo do eixo
  *  mentiu sobre a métrica — achado de revisão daquele bloco.
  */
-function JanelaDosPilares({
+function JanelaDosTemas({
   dia,
   janela,
   erro,
@@ -619,7 +619,7 @@ function JanelaDosPilares({
   if (dia === null) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
-        Clique numa data do gráfico — ou num mês do eixo — para ver os pilares que
+        Clique numa data do gráfico — ou num mês do eixo — para ver os temas que
         mais empurraram a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
       </p>
     );
@@ -639,7 +639,7 @@ function JanelaDosPilares({
   if (!janela) {
     return (
       <p role="status" style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
-        Lendo os pilares de {porExtenso(dia)}…
+        Lendo os temas de {porExtenso(dia)}…
       </p>
     );
   }
@@ -669,7 +669,7 @@ function JanelaDosPilares({
 
           IMPORTA MAIS QUANDO A JANELA ATRAVESSA A VIRADA: o numerador tem
           menções de dois meses e o denominador é de um, então o número pode
-          passar do que aquele mês inteiro movimentou. A ORDEM dos pilares
+          passar do que aquele mês inteiro movimentou. A ORDEM dos temas
           continua exata — todos dividem pelo mesmo denominador —, a escala não.
           Quem lê precisa saber qual das duas coisas está olhando. */}
       <p
@@ -679,35 +679,35 @@ function JanelaDosPilares({
         Pontos da nota de {porExtenso(janela.mes).slice(3)}, medida pela régua de{' '}
         {janela.regua}
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
-          ? ' — a janela atravessa a virada do mês, então a ordem dos pilares é exata e a escala é a daquele mês'
+          ? ' — a janela atravessa a virada do mês, então a ordem dos temas é exata e a escala é a daquele mês'
           : null}
         .
       </p>
 
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
           parecem iguais. O mês sem base não tem denominador: sem ele não há
-          pergunta a responder, e mostrar quadros vazios afirmaria que os pilares
+          pergunta a responder, e mostrar quadros vazios afirmaria que os temas
           daquela janela não impactaram nada — o que é falso, porque as menções
           estão lá. */}
       {janela.mes_sem_base ? (
         <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
           O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
-          {janela.lente}, então não há como calcular quanto cada pilar empurrou a
+          {janela.lente}, então não há como calcular quanto cada tema empurrou a
           nota. Não é que nada impactou — é que a régua do mês ainda não existe.
         </p>
       ) : (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <QuadroDePilares
+          <QuadroDeTemas
             testId="quadro-positivos"
             titulo="Mais empurraram para CIMA"
-            pilares={janela.positivos}
+            temas={janela.positivos}
             total={janela.total_positivos}
             cor="var(--sucesso-fg)"
           />
-          <QuadroDePilares
+          <QuadroDeTemas
             testId="quadro-negativos"
             titulo="Mais empurraram para BAIXO"
-            pilares={janela.negativos}
+            temas={janela.negativos}
             total={janela.total_negativos}
             cor="var(--erro-fg)"
           />
@@ -717,14 +717,14 @@ function JanelaDosPilares({
       {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
           pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
           o todo, e a soma deles não fecharia com o impacto do período. */}
-      {janela.sem_n1 || janela.sem_data ? (
+      {janela.sem_n2 || janela.sem_data ? (
         <p
           data-testid="fora-da-conta"
           style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}
         >
           Fora desta conta:{' '}
-          {janela.sem_n1 ? `${numero(janela.sem_n1)} menções da janela sem pilar atribuído` : null}
-          {janela.sem_n1 && janela.sem_data ? '; ' : null}
+          {janela.sem_n2 ? `${numero(janela.sem_n2)} menções da janela sem tema estratégico atribuído` : null}
+          {janela.sem_n2 && janela.sem_data ? '; ' : null}
           {janela.sem_data
             ? //: "DOS MESES DA JANELA", e não "do mês": o número passou a contar
               //: todos os meses que a janela atravessa — achado de revisão, ele
@@ -738,17 +738,17 @@ function JanelaDosPilares({
   );
 }
 
-/** Um quadro: até cinco pilares, do que mais empurrou para o que menos. */
-function QuadroDePilares({
+/** Um quadro: até cinco temas, do que mais empurrou para o que menos. */
+function QuadroDeTemas({
   testId,
   titulo,
-  pilares,
+  temas,
   total,
   cor,
 }: {
   testId: string;
   titulo: string;
-  pilares: PilarNaJanela[];
+  temas: TemaNaJanela[];
   total: number;
   cor: string;
 }) {
@@ -765,20 +765,20 @@ function QuadroDePilares({
       <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
         {titulo}
         {/* O TAMANHO REAL, por decisão dele: "mostra os que houver e diz o
-            total". Com três pilares aparecem três, e a tela diz "3 de 3" em vez
+            total". Com três temas aparecem três, e a tela diz "3 de 3" em vez
             de completar com linha vazia — linha vazia é indistinguível de dado
             que não carregou. */}
-        {total ? ` · ${numero(pilares.length)} de ${numero(total)}` : null}
+        {total ? ` · ${numero(temas.length)} de ${numero(total)}` : null}
       </p>
-      {pilares.length === 0 ? (
+      {temas.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-          Nenhum pilar empurrou a nota para este lado nesta janela.
+          Nenhum tema empurrou a nota para este lado nesta janela.
         </p>
       ) : (
         <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-          {pilares.map((pilar) => (
+          {temas.map((tema) => (
             <li
-              key={pilar.n1}
+              key={tema.n2}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -788,10 +788,21 @@ function QuadroDePilares({
                 borderTop: '1px solid var(--borda-fraca, var(--borda))',
               }}
             >
-              <span>{pilar.n1}</span>
+              {/* O TEMA É O RÓTULO E O PILAR É O CONTEXTO. São 41 temas contra
+                  7 pilares: a lista ganhou granularidade — que é a razão da
+                  troca — e perderia legibilidade sem dizer de qual pilar cada
+                  um vem, ainda mais para quem estava lendo os pilares até
+                  ontem. O pilar pode faltar quando o cadastro não resolve o
+                  pai; aí só o tema aparece, em vez de um travessão solto. */}
+              <span>
+                {tema.n2}
+                {tema.n1 ? (
+                  <span style={{ color: 'var(--cinza-2)' }}> · {tema.n1}</span>
+                ) : null}
+              </span>
               <span style={{ whiteSpace: 'nowrap' }}>
-                <strong style={{ color: cor }}>{comSinal(pilar.impacto)}</strong>{' '}
-                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(pilar.mencoes)}</span>
+                <strong style={{ color: cor }}>{comSinal(tema.impacto)}</strong>{' '}
+                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(tema.mencoes)}</span>
               </span>
             </li>
           ))}
@@ -809,7 +820,7 @@ function porExtenso(iso: string): string {
 
 /** O impacto com sinal e uma decimal, no padrão de casa (vírgula, menos real).
  *
- *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o pilar que
+ *  O SINAL É A INFORMAÇÃO, e não enfeite: `1,5` e `−1,5` são o tema que
  *  sustentou e o que derrubou. O `+` explícito é o que torna a leitura simétrica.
  *  O menos é `−` (U+2212), não hífen — é o que o resto da plataforma usa. */
 function comSinal(valor: number): string {

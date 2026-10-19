@@ -82,13 +82,15 @@ export function obterSerieDeMercado(opcoes: {
 
 /* -- os pilares da janela ----------------------------------------------------
  *
- * O PEDIDO: clicar numa data do gráfico e ver, logo abaixo, os cinco pilares
+ * O PEDIDO: clicar numa data do gráfico e ver, logo abaixo, os cinco temas estrategicos
  * (N1) que mais empurraram a nota para cima e para baixo nos quinze dias
  * anteriores — só na lente de imprensa, por ora.
  */
 
-export interface PilarNaJanela {
-  n1: string;
+export interface TemaNaJanela {
+  n2: string;
+  /** O pilar (N1) a que o tema pertence, como contexto. */
+  n1: string | null;
   /** Pontos na nota do MÊS: positivo empurra para cima, negativo para baixo. */
   impacto: number;
   mencoes: number;
@@ -100,13 +102,13 @@ export interface ImpactoNaJanela {
   /** O mês cuja régua e cujo denominador medem esta conta. */
   mes: string;
   regua: string;
-  positivos: PilarNaJanela[];
-  negativos: PilarNaJanela[];
+  positivos: TemaNaJanela[];
+  negativos: TemaNaJanela[];
   /** Quantos existem de cada lado — a tela diz "3 de 3" em vez de fingir cinco. */
   total_positivos: number;
   total_negativos: number;
   /** As duas formas de uma menção ficar de fora, e as duas são ditas na tela. */
-  sem_n1: number;
+  sem_n2: number;
   sem_data: number;
   /** "Não há como medir" é diferente de "nada impactou", e os dois quadros
    *  vazios parecem iguais. */
@@ -119,10 +121,10 @@ export interface ImpactoNaJanela {
   dias: number;
 }
 
-export function obterImpactoPorN1(ate: string, dias?: number): Promise<ImpactoNaJanela> {
+export function obterImpactoPorN2(ate: string, dias?: number): Promise<ImpactoNaJanela> {
   const parametros = new URLSearchParams({ ate });
   if (dias !== undefined) parametros.set('dias', String(dias));
-  return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-por-n1?${parametros}`);
+  return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-por-n2?${parametros}`);
 }
 
 
