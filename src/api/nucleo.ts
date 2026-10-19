@@ -7,7 +7,7 @@
  */
 
 import { registrarErro } from '@/observabilidade/telemetria';
-import { Sincronizador, agendasMudaram, catalogoMudou, escreveAgendas, escreveNoCatalogo, escreveNoScore, scoreMudou } from '@/dominio/sincronizacao';
+import { Sincronizador, agendasMudaram, catalogoMudou, escreveAgendas, escreveNoCatalogo, escreveNoMercado, escreveNoScore, mercadoMudou, scoreMudou } from '@/dominio/sincronizacao';
 
 export const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8001';
 
@@ -540,6 +540,10 @@ function sincronizarAposSucesso(metodo: string, caminho: string): void {
   // Consulta em profundidade, que senão mostraria a árvore antiga ao lado da
   // Jornada já atualizada.
   if (escreveNoScore(metodo, caminho)) scoreMudou.avisar();
+  // E O PAINEL DE MERCADO: subir a planilha de bonds na aba Importação tem de
+  // aparecer no gráfico da aba ao lado sem F5 — o mesmo que o Score passou a
+  // fazer. Barramento próprio, ver ROTAS_DO_MERCADO.
+  if (escreveNoMercado(metodo, caminho)) mercadoMudou.avisar();
 }
 
 /* -- interações ----------------------------------------------------------- */

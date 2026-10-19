@@ -31,6 +31,23 @@ const DO_CRM: ItemDoMenu[] = [
   { view: 'relatorios', rotulo: 'Relatórios Executivos' },
 ];
 
+/** As abas do Painel de Inteligência de Mercado.
+ *
+ *  MESMA FORMA DO SCORE: as duas telas moram na rota `/mercado` e se distinguem
+ *  pela `aba`, que vai para o endereço — é o que faz a barra de cima ter itens
+ *  que se compartilham, voltam no histórico e recarregam onde estavam.
+ *
+ *  A IMPORTAÇÃO VEM POR ÚLTIMO, e é a mesma decisão que o Score tomou: ela é a
+ *  porta de entrada do dado, e quem abre o painel quer LER o gráfico. Quem sobe
+ *  planilha vai atrás dela.
+ *
+ *  AS OUTRAS ABAS DA ESPECIFICAÇÃO (Indicadores por unidade, Papers e cases,
+ *  Busca por tema) entram aqui quando chegarem. */
+const DO_MERCADO: ItemDoMenu[] = [
+  { view: 'mercado', rotulo: 'Bonds e reputação', aba: 'bonds' },
+  { view: 'mercado', rotulo: 'Importação', aba: 'importacao' },
+];
+
 const DO_SCORE: ItemDoMenu[] = [
   { view: 'score', rotulo: 'Visão geral', aba: 'geral' },
   { view: 'score', rotulo: 'Lentes', aba: 'lentes' },
@@ -73,10 +90,7 @@ export function areaDe(view: Destino): ItemDoMenu[] {
   // exatamente o tipo de esquecimento que um `if/else` deixa passar e um
   // `switch` exaustivo pegaria.
   //
-  // MENU VAZIO porque ele tem UMA tela. Quando as outras abas da especificação
-  // chegarem (Indicadores por unidade, Papers e cases, Busca por tema), elas
-  // entram aqui como `DO_MERCADO`, no mesmo formato de `DO_SCORE`.
-  if (view === 'mercado') return [];
+  if (view === 'mercado') return DO_MERCADO;
   return DO_CRM;
 }
 

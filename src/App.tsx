@@ -28,6 +28,7 @@ import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
 import { PrepararAgenda } from '@/paginas/PrepararAgenda';
 import { Score } from '@/paginas/Score';
 import { InteligenciaDeMercado } from '@/paginas/InteligenciaDeMercado';
+import { ImportacaoDeBonds } from '@/paginas/mercado/ImportacaoDeBonds';
 import { SinaisDeMercado } from '@/paginas/SinaisDeMercado';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
@@ -305,7 +306,15 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               nomes enganam: ele é um bloco do CRM sobre fatos de mercado, dentro
               do portal `crm`. Este é o portal `inteligencia_de_mercado`, cujo
               cartão existia na capa sem levar a lugar nenhum. */}
-          {rota.destino === 'mercado' ? <InteligenciaDeMercado /> : null}
+          {/* DUAS ABAS NA MESMA ROTA, como o Score: `bonds` é o padrão (o
+              gráfico, que é o que se vem ler) e `importacao` é a porta de
+              entrada do dado, que vem por último na barra. */}
+          {rota.destino === 'mercado' && rota.aba === 'importacao' ? (
+            <ImportacaoDeBonds />
+          ) : null}
+          {rota.destino === 'mercado' && rota.aba !== 'importacao' ? (
+            <InteligenciaDeMercado />
+          ) : null}
 
           {rota.destino === 'score' ? (
             <Score

@@ -27,6 +27,7 @@ import type { MetricaDoBond, SerieDeMercado } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { GraficoDeDoisEixos } from '@/graficos/GraficoDeDoisEixos';
+import { mercadoMudou } from '@/dominio/sincronizacao';
 import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
 
 /** As cores das séries. AS TRÊS PRIMEIRAS SÃO AS DA ESPECIFICAÇÃO (2029
@@ -123,6 +124,17 @@ export function InteligenciaDeMercado() {
   //: anterior — e sem dizer isso ele AFIRMA ser a resposta da pergunta nova.
   //: Ver `naMetrica` e o aviso de atualização abaixo.
   const [buscando, definirBuscando] = useState(true);
+  //: A TELA ESCUTA O BARRAMENTO DO MERCADO, pelo mesmo motivo que a do Score
+  //: passou a escutar o dela: subir a planilha na aba Importação tem de
+  //: aparecer AQUI sem F5. `api/nucleo.ts` avisa depois de qualquer escrita
+  //: bem-sucedida sob `/api/mercado` e já esqueceu o cache — mas esquecer o
+  //: cache não faz ninguém buscar de novo, só garante que a próxima busca seja
+  //: de verdade. Este contador é quem busca.
+  //:
+  //: ATRAVESSA ABAS DO NAVEGADOR de graça (`BroadcastChannel`): subir numa aba
+  //: atualiza o gráfico na outra.
+  const [versao, definirVersao] = useState(0);
+  useEffect(() => mercadoMudou.assinar(() => definirVersao((v) => v + 1)), []);
 
   const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
@@ -153,7 +165,7 @@ export function InteligenciaDeMercado() {
     };
     //: pedidos É STRING, e não o array: um array novo a cada renderização
     //: faria este efeito rodar em todas elas, e a tela buscaria sem parar.
-  }, [dias, metrica, pedidos]);
+  }, [dias, metrica, pedidos, versao]);
 
   /** Os slots EM VIGOR: os escolhidos, ou os do padrão deduzidos na hora.
    *

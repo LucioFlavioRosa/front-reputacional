@@ -78,3 +78,78 @@ export function obterSerieDeMercado(opcoes: {
     `/api/mercado/bonds/serie${consulta ? `?${consulta}` : ''}`,
   );
 }
+
+
+/* -- a subida da planilha de bonds ------------------------------------------
+ *
+ * MESMO IDIOMA DA PLANILHA DO SCORE (`conferirPlanilhaDoScore`): `FormData` com
+ * um campo `arquivo`, e o transporte de `nucleo.ts` por baixo — ele é quem
+ * manda o `X-CSRF-Token`, esquece o cache depois da escrita e traduz a falha de
+ * upload numa frase legível.
+ *
+ * SEM SUBIDA EM PARTES AQUI, e é medição e não esquecimento: o export tem 1,05
+ * MB e o limiar do front para fatiar é 1.258.291 bytes (1,2 MB), então ele já
+ * cabe numa requisição. A montagem por partes de `planilha_do_score` é por
+ * FONTE DO SCORE e generalizá-la para outro domínio exigiria rota nova no
+ * servidor — seria código sem usuário enquanto o arquivo cresce ~3 KB por
+ * semana (cinco pregões × 31 tickers), o que põe a travessia do limiar a anos.
+ *
+ * CONFERIR ANTES DE GRAVAR, as duas em requisições separadas. A conferência não
+ * escreve nada; é ela que mostra a conta antes de a pessoa decidir. A razão
+ * está escrita na importação de agendas: "importação de planilha sem
+ * conferência humana cria duplicata em massa, e desfazer isso depois é pior que
+ * digitar de novo".
+ */
+
+/** O que a subida FARIA — nada é gravado por esta chamada. */
+export interface ConferenciaDeBonds {
+  primeira_data: string | null;
+  ultima_data: string | null;
+  /** Todas as cotações lidas, inclusive de papel que o cadastro não tem. */
+  cotacoes_no_arquivo: number;
+  a_inserir: number;
+  /** A subida semanal é um `upsert`: o arquivo é cumulativo, então quase tudo
+   *  dele cai aqui. É este número que diz que subir de novo é inofensivo. */
+  a_atualizar: number;
+  por_ticker: Record<string, number>;
+  /** O QUE NÃO VAI ENTRAR, em quatro listas separadas de propósito — cada uma
+   *  pede uma decisão diferente de quem lê. */
+  tickers_desconhecidos: string[];
+  tickers_sem_valor: string[];
+  rotulos_ignorados: [string, string][];
+  pares_repetidos: [string, string][];
+  /** A linha com conteúdo e sem data que encerrou a leitura, quando houve. */
+  linha_que_encerrou: number | null;
+}
+
+export interface ImportacaoDeBonds {
+  inseridas: number;
+  atualizadas: number;
+  /** Papéis cujo catálogo (descrição, id Bloomberg, montante) foi completado. */
+  papeis_completados: number;
+}
+
+/** Lê o export e diz o que a subida faria. NÃO grava. */
+export function conferirPlanilhaDeBonds(arquivo: File): Promise<ConferenciaDeBonds> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ConferenciaDeBonds>('/api/mercado/bonds/conferencia', {
+    method: 'POST',
+    body: corpo,
+  });
+}
+
+/** Grava as cotações, por `upsert` na chave `(ticker, data)`.
+ *
+ *  REENVIA O ARQUIVO, e não um identificador do que a conferência leu: a
+ *  conferência não guarda bytes (ela não escreve nada). Subir o mesmo arquivo
+ *  duas vezes é inofensivo — é propriedade da chave composta, não gentileza
+ *  desta função. */
+export function importarPlanilhaDeBonds(arquivo: File): Promise<ImportacaoDeBonds> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  return requisitar<ImportacaoDeBonds>('/api/mercado/bonds/importar', {
+    method: 'POST',
+    body: corpo,
+  });
+}

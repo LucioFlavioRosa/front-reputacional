@@ -69,7 +69,14 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
-  if (primeira === 'mercado') return { destino: 'mercado' };
+  //: AS ABAS DO MERCADO GANHAM ENDEREÇO, pela mesma razão das do Score: uma
+  //: barra cujos itens não são links não se compartilha, não volta no histórico
+  //: e não recarrega onde estava. `bonds` é o padrão e NÃO vai na URL — ver
+  //: `caminhoDe` abaixo, mesmo tratamento que `geral` recebe no Score.
+  if (primeira === 'mercado') {
+    const aba = partes[1];
+    return aba ? { destino: 'mercado', aba } : { destino: 'mercado' };
+  }
   // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
   // barra de cima daquela divisão, e uma barra cujos itens não são links não
   // se compartilha, não volta no histórico e não recarrega onde estava.
@@ -128,7 +135,7 @@ export function caminhoDe(rota: Rota): string {
     case 'sinais':
       return '/sinais';
     case 'mercado':
-      return '/mercado';
+      return rota.aba && rota.aba !== 'bonds' ? `/mercado/${rota.aba}` : '/mercado';
     case 'score':
       return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':

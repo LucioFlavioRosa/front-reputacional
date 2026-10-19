@@ -43,6 +43,7 @@ vi.mock('@/graficos/GraficoDeDoisEixos', () => ({
 }));
 
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
+import { mercadoMudou } from '@/dominio/sincronizacao';
 import { InteligenciaDeMercado } from './InteligenciaDeMercado';
 
 const CATALOGO: SerieDeMercado['papeis'] = [
@@ -377,5 +378,75 @@ describe('enquanto a resposta nova não chega', () => {
       const moldura = screen.getByText('GRAFICO').closest('[aria-busy]');
       expect(moldura?.getAttribute('aria-busy')).toBe('true');
     });
+  });
+});
+
+describe('depois de subir a planilha, sem F5', () => {
+  /** O PEDIDO, nas palavras dele: "ao subir os dados eu gostaria de ver
+   *  automaticamente os dados no gráfico sem ficar dando F5, como já feito em
+   *  lentes do score".
+   *
+   *  O MECANISMO É O MESMO do Score, e a lição também: o `Sincronizador` avisa
+   *  depois de qualquer escrita bem-sucedida sob `/api/mercado` e já esqueceu o
+   *  cache da API — mas **esquecer o cache não faz ninguém buscar de novo**, só
+   *  garante que a próxima busca seja de verdade. Quem busca é este contador.
+   *
+   *  BARRAMENTO PRÓPRIO, e não o do Score: `ROTAS_DO_SCORE` é `/api/score`, e
+   *  a subida de bonds não casa com ele. Um barramento só faria toda subida de
+   *  planilha de fornecedor rebuscar a série de bonds.
+   */
+
+  it('o aviso do barramento faz a tela buscar de novo', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    const antes = obterSerieDeMercado.mock.calls.length;
+
+    //: O QUE A SUBIDA FAZ, exatamente: `api/nucleo.ts` chama isto depois do
+    //: POST em `/api/mercado/bonds/importar`.
+    mercadoMudou.avisar();
+
+    await waitFor(() =>
+      expect(obterSerieDeMercado.mock.calls.length).toBeGreaterThan(antes),
+    );
+  });
+
+  it('a série nova aparece no gráfico', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    expect((recebido.bonds as { pontos: unknown[] }[])[0].pontos).toHaveLength(1);
+
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(
+        resposta({
+          bonds: [
+            {
+              ticker: 'AEGEBZ31',
+              pontos: [
+                { data: '2026-01-05', valor: 95.5 },
+                { data: '2026-01-06', valor: 96.1 },
+                { data: '2026-01-07', valor: 96.4 },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+    mercadoMudou.avisar();
+
+    await waitFor(() =>
+      expect((recebido.bonds as { pontos: unknown[] }[])[0].pontos).toHaveLength(3),
+    );
+  });
+
+  it('SEM aviso nenhum a tela não fica rebuscando sozinha', async () => {
+    /** O controle negativo que impede o conserto de virar um laço — o mesmo
+     *  que o da tela do Score tem. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    const assentado = obterSerieDeMercado.mock.calls.length;
+
+    await new Promise((resolver) => setTimeout(resolver, 60));
+
+    expect(obterSerieDeMercado.mock.calls.length).toBe(assentado);
   });
 });
