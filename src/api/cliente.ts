@@ -18,4 +18,5 @@ export * from './nucleo';
 export * from './acesso';
 export * from './crm';
 export * from './score';
+export * from './mercado';
 export * from './importacao';

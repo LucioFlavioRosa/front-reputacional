@@ -27,6 +27,7 @@ import { Base } from '@/paginas/Base';
 import { RelatoriosExecutivos } from '@/paginas/RelatoriosExecutivos';
 import { PrepararAgenda } from '@/paginas/PrepararAgenda';
 import { Score } from '@/paginas/Score';
+import { InteligenciaDeMercado } from '@/paginas/InteligenciaDeMercado';
 import { SinaisDeMercado } from '@/paginas/SinaisDeMercado';
 import { Cadastro } from '@/paginas/Cadastro';
 import { Ficha } from '@/paginas/Ficha';
@@ -299,6 +300,12 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
           {rota.destino === 'preparar' ? <PrepararAgenda aoAbrirAgenda={abrirAgenda} /> : null}
 
           {rota.destino === 'sinais' ? <SinaisDeMercado aoAbrirAgenda={abrirAgenda} /> : null}
+
+          {/* O TERCEIRO PORTAL. `SinaisDeMercado` logo acima é outra coisa, e os
+              nomes enganam: ele é um bloco do CRM sobre fatos de mercado, dentro
+              do portal `crm`. Este é o portal `inteligencia_de_mercado`, cujo
+              cartão existia na capa sem levar a lugar nenhum. */}
+          {rota.destino === 'mercado' ? <InteligenciaDeMercado /> : null}
 
           {rota.destino === 'score' ? (
             <Score
