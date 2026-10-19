@@ -84,6 +84,7 @@ import {
   rankingDePortaVozes,
   resumoDeClimaPorFrente,
   scorePorCategoriaPublico,
+  instituicoesDoPublico,
   scorePorInstituicao,
   scorePorTema,
   serieMensal,
@@ -92,7 +93,7 @@ import {
   topInstituicoesPorTier,
   ROTULO_DO_NIVEL_DE_TEMA,
 } from '@/dominio/derivacoes';
-import type { Catalogo, Granularidade, NivelDeTema } from '@/dominio/derivacoes';
+import type { Catalogo, Granularidade, InstituicaoDoPublico, NivelDeTema } from '@/dominio/derivacoes';
 
 //: A MESMA PALETA usada em `temasMaisRecorrentes` — reaproveitada aqui para
 //: colorir as categorias do popup de histórico de tier/público, que não têm
@@ -234,10 +235,14 @@ const FORMATADORES_DE_ROTULO: Record<Granularidade, (chave: string) => string> =
 
 export function Painel({
   aoAbrirAgenda,
+  aoAbrirBase,
 }: {
   /** Abre a Ficha de uma agenda específica — usado pela lista que se abre ao
    *  clicar num tema na barra divergente. */
   aoAbrirAgenda: (id: string) => void;
+  /** Vai para a Base, levando o recorte da URL — a instituição clicada no
+   *  Top 10 do "Termômetro por público" já entra nele. */
+  aoAbrirBase?: () => void;
 }) {
   const {
     interacoes,
@@ -950,6 +955,17 @@ export function Painel({
           aoAbrirAgenda={aoAbrirAgenda}
           vazio="Nenhum público com termômetro registrado neste recorte."
           variante="termometro"
+          //: O TOP 10 DE INSTITUIÇÕES do público, por pedido, no lugar da lista
+          //: de agendas; clicar numa abre a Base filtrada por ela.
+          detalhe={(item) => (
+            <InstituicoesDoPublico
+              instituicoes={instituicoesDoPublico(interacoes, catalogo, Number(item.chave))}
+              aoAbrir={(nome) => {
+                definirRecorte({ ...recorte, entidade: nome });
+                aoAbrirBase?.();
+              }}
+            />
+          )}
         />
       </Secao>
       </ComFaixaDoTopo>
@@ -1068,8 +1084,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="% de Interações por Temas"
-          subtitulo={`Distribuição das interações por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao].toLowerCase()} no recorte`}
-          ajuda="Cada retângulo é um tema no nível escolhido — Atributo (N1), Tema estratégico (N2) ou Subtema (N3) —, com a área proporcional ao total de interações com ele no recorte. Uma interação com dois subtemas do mesmo atributo conta uma vez para o atributo. No N3, a cor mostra a classificação do tema (Sensível, Estratégico ou Geral)."
+          subtitulo={`Quanto cada ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao].replace(/ \(N\d\)$/, '').toLowerCase()} aparece nas interações do recorte`}
+          ajuda="Mostra de que se falou nas interações do recorte. Escolha o nível ao lado: N1 Atributo reputacional (o mais amplo), N2 Tema estratégico (dentro do atributo) ou N3 Subtema (o mais específico). Cada retângulo é um tema desse nível, e o tamanho é proporcional ao número de interações que trataram dele. Uma interação com dois subtemas do mesmo atributo conta uma vez para o atributo. No N3, a cor mostra a classificação do subtema: Sensível, Estratégico ou Geral. Ao lado, os 5 temas e os 5 públicos com mais interações; clique num deles para filtrar o painel."
           acao={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <SeletorDeNivelDeTema
@@ -1319,8 +1335,8 @@ export function Painel({
 
         <ComFaixaDoTopo>
         <Secao
-          titulo="Temas no tempo"
-          subtitulo="Recorrência dos pilares (N1) ao longo do tempo"
+          titulo="Recorrência dos Atributos Reputacionais"
+          subtitulo="Quanto cada atributo reputacional (N1) aparece nas interações, período a período"
           ajuda="Interações por período em cada pilar (N1) da taxonomia de temas. Uma interação com temas de dois pilares conta em cada um deles; dois temas do mesmo pilar contam uma vez só."
         >
           <BarrasEmpilhadas
@@ -1716,6 +1732,94 @@ function SeletorDeGranularidade({
 /** N1 · N2 · N3 — o nível da taxonomia que um gráfico de tema lê. Mesmo
  *  desenho do `SeletorDeGranularidade`: são controles da mesma natureza
  *  ("como enxergar"), e dois desenhos para isso confundiriam. */
+//: A DESCRIÇÃO AO LADO DO N1/N2/N3, por pedido: o botão diz qual nível é.
+const DESCRICAO_DO_NIVEL: Record<NivelDeTema, string> = {
+  n1: 'Atributo',
+  n2: 'Tema estratégico',
+  n3: 'Subtema',
+};
+
+/** O Top 10 de instituições de um público; cada uma abre a Base filtrada. */
+function InstituicoesDoPublico({
+  instituicoes,
+  aoAbrir,
+}: {
+  instituicoes: InstituicaoDoPublico[];
+  aoAbrir: (nome: string) => void;
+}) {
+  if (!instituicoes.length) {
+    return <p style={{ margin: 0, fontSize: 12.5, color: 'var(--cinza-2)' }}>Nenhuma instituição neste recorte.</p>;
+  }
+  return (
+    <div>
+      <div className="kicker" style={{ marginBottom: 6 }}>
+        Top {instituicoes.length} instituições · clique para ver na Base
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+        {instituicoes.map((instituicao, posicao) => (
+          <li key={instituicao.nome}>
+            <button
+              type="button"
+              onClick={(evento) => {
+                evento.stopPropagation();
+                aoAbrir(instituicao.nome);
+              }}
+              title={`Abrir a Base filtrada por ${instituicao.nome}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '22px 1fr auto auto 14px',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
+                padding: '6px 8px',
+                border: 'none',
+                borderRadius: 'var(--r-btn)',
+                background: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: 12.5,
+                color: 'var(--cinza-4)',
+              }}
+            >
+              <span className="tabular" style={{ color: 'var(--cinza-2)' }}>
+                {posicao + 1}.
+              </span>
+              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {instituicao.nome}
+              </span>
+              <span className="tabular" style={{ color: 'var(--cinza-2)' }}>
+                {instituicao.total} {instituicao.total === 1 ? 'interação' : 'interações'}
+              </span>
+              <span
+                className="tabular"
+                title="Termômetro: (propositivas menos reativas) ÷ total com termômetro"
+                style={{
+                  minWidth: 36,
+                  textAlign: 'right',
+                  fontWeight: 700,
+                  color:
+                    instituicao.score == null
+                      ? 'var(--cinza-2)'
+                      : instituicao.score > 0
+                        ? 'var(--ok-fg)'
+                        : instituicao.score < 0
+                          ? 'var(--erro-fg)'
+                          : 'var(--cinza-3)',
+                }}
+              >
+                {instituicao.score == null ? '—' : `${instituicao.score > 0 ? '+' : ''}${instituicao.score}`}
+              </span>
+              <span aria-hidden style={{ color: 'var(--cinza-2)' }}>
+                →
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function SeletorDeNivelDeTema({
   valor,
   aoEscolher,
@@ -1746,7 +1850,8 @@ function SeletorDeNivelDeTema({
               cursor: 'pointer',
             }}
           >
-            {chave.toUpperCase()}
+            <strong>{chave.toUpperCase()}</strong>
+            <span style={{ fontWeight: ativo ? 600 : 400 }}> · {DESCRICAO_DO_NIVEL[chave]}</span>
           </button>
         );
       })}
