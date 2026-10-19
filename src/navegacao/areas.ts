@@ -67,6 +67,16 @@ export function areaDe(view: Destino): ItemDoMenu[] {
   // NEM CRM NEM SCORE: ganhou cartão próprio na Início exatamente para não
   // parecer dono de nenhum dos dois — ver `Inicio.tsx`.
   if (view === 'plataforma' || view === 'compartilhado') return [];
+  // O PAINEL DE INTELIGÊNCIA DE MERCADO É O TERCEIRO PORTAL, e cair no `return`
+  // abaixo o vestia de CRM: o cabeçalho dizia "CRM dos Stakeholders", com o
+  // menu, a busca e a engrenagem de outra divisão. Achado de revisão, e era
+  // exatamente o tipo de esquecimento que um `if/else` deixa passar e um
+  // `switch` exaustivo pegaria.
+  //
+  // MENU VAZIO porque ele tem UMA tela. Quando as outras abas da especificação
+  // chegarem (Indicadores por unidade, Papers e cases, Busca por tema), elas
+  // entram aqui como `DO_MERCADO`, no mesmo formato de `DO_SCORE`.
+  if (view === 'mercado') return [];
   return DO_CRM;
 }
 
@@ -87,6 +97,10 @@ export function areaDe(view: Destino): ItemDoMenu[] {
 export function configuracaoDe(view: Destino): Destino | null {
   if (view === 'score' || view === 'config-score') return 'config-score';
   if (view === 'plataforma' || view === 'compartilhado') return null;
+  //: O PAINEL DE MERCADO AINDA NÃO TEM CONFIGURAÇÃO, e cair no `admin` abaixo
+  //: punha no cabeçalho dele a engrenagem da administração do CRM — uma porta
+  //: para outra divisão, oferecida de dentro desta.
+  if (view === 'mercado') return null;
   return 'admin';
 }
 

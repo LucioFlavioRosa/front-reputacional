@@ -119,6 +119,10 @@ export function InteligenciaDeMercado() {
   const [slots, definirSlots] = useState<Record<string, number> | null>(null);
   const [dados, definirDados] = useState<SerieDeMercado | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
+  //: BUSCANDO. Enquanto a resposta nova não chega, o gráfico continua com a
+  //: anterior — e sem dizer isso ele AFIRMA ser a resposta da pergunta nova.
+  //: Ver `naMetrica` e o aviso de atualização abaixo.
+  const [buscando, definirBuscando] = useState(true);
 
   const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
@@ -128,18 +132,21 @@ export function InteligenciaDeMercado() {
   useEffect(() => {
     let ativo = true;
     definirErro(null);
+    definirBuscando(true);
     obterSerieDeMercado({
       tickers: pedidos ? pedidos.split(',') : undefined,
       de: dias === null ? undefined : diasAtras(dias),
       metrica,
     })
       .then((lida) => {
-        if (ativo) definirDados(lida);
+        if (!ativo) return;
+        definirDados(lida);
+        definirBuscando(false);
       })
       .catch((falha: unknown) => {
-        if (ativo) {
-          definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
-        }
+        if (!ativo) return;
+        definirErro(falha instanceof Error ? falha.message : 'Não foi possível carregar.');
+        definirBuscando(false);
       });
     return () => {
       ativo = false;
@@ -165,7 +172,19 @@ export function InteligenciaDeMercado() {
     return Object.fromEntries(doPadrao.map((p, i) => [p.ticker, i]));
   }, [slots, dados]);
 
-  const naMetrica = METRICAS.find((m) => m.codigo === metrica) ?? METRICAS[0];
+  /** A métrica QUE ESTÁ DESENHADA, e não a que o botão mostra selecionado.
+   *
+   *  ACHADO DE REVISÃO, e era o mais grave da tela: trocar de preço para yield
+   *  mudava o rótulo do eixo e a faixa fixa NA HORA, enquanto os pontos
+   *  continuavam sendo os de preço até a resposta chegar. O gráfico dizia
+   *  "Yield (%)" sobre uma curva de preço — dado falso, com aparência de certo.
+   *
+   *  A ROTA DEVOLVE `metrica` NA RESPOSTA, e é dela que o rótulo sai: o que a
+   *  tela afirma passa a vir do MESMO lugar que os pontos, e os dois não têm
+   *  como discordar. O botão continua mostrando a escolha da pessoa — é o
+   *  `buscando` que diz que ela ainda não chegou. */
+  const naMetrica =
+    METRICAS.find((m) => m.codigo === (dados?.metrica ?? metrica)) ?? METRICAS[0];
 
   /** As séries no formato do gráfico, com cor e rótulo.
    *
@@ -275,12 +294,23 @@ export function InteligenciaDeMercado() {
         </fieldset>
       </div>
 
-      <GraficoDeDoisEixos
-        bonds={series}
-        indice={indice}
-        rotuloDaEsquerda={naMetrica.eixo}
-        faixaFixa={metrica === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
-      />
+      {/* O GRÁFICO FICA ESMAECIDO ENQUANTO BUSCA, e com `aria-busy`: a curva
+          antiga continua visível (sumir com ela a cada clique faria a tela
+          piscar), mas deixa de se apresentar como a resposta da pergunta nova.
+          `aria-busy` é o que diz o mesmo a quem usa leitor de tela. */}
+      <div aria-busy={buscando} style={{ opacity: buscando ? 0.5 : 1 }}>
+        <GraficoDeDoisEixos
+          bonds={series}
+          indice={indice}
+          rotuloDaEsquerda={naMetrica.eixo}
+          faixaFixa={naMetrica.codigo === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
+        />
+      </div>
+      {buscando ? (
+        <p role="status" style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
+          Atualizando…
+        </p>
+      ) : null}
 
       {/* A LEGENDA É TAMBÉM O SELETOR, como no mockup: clicar liga e desliga a
           série. Duas listas separadas — a companhia e os pares — porque são
@@ -384,9 +414,14 @@ function ChipDeSerie({
         border: '1px solid var(--borda)',
         background: 'var(--branco)',
         //: DESLIGADO FICA APAGADO, não escondido: a pessoa precisa ver o que
-        //: existe para poder ligar. `0.6` e não `0.45`, para o texto do chip
-        //: continuar passando o contraste mínimo sobre o branco.
-        opacity: ligado ? 1 : 0.6,
+        //: existe para poder ligar.
+        //:
+        //: SEM `opacity` NO BOTÃO, e isto é conserto de achado: opacidade de
+        //: 0,45 no botão inteiro derrubava o contraste do TEXTO abaixo do
+        //: mínimo, e um chip operável que não se lê é pior que um escondido. O
+        //: apagado agora é o token de texto secundário, que passa contraste por
+        //: construção, e a diferença visual real fica no quadrado da cor.
+        color: ligado ? 'var(--cinza-3)' : 'var(--cinza-2)',
         cursor: bloqueado ? 'not-allowed' : 'pointer',
       }}
     >

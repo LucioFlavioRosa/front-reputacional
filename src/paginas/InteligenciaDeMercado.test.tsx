@@ -63,7 +63,16 @@ function resposta(parcial: Partial<SerieDeMercado> = {}): SerieDeMercado {
 }
 
 beforeEach(() => {
-  obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta()));
+  //: O DUBLÊ ECOA A MÉTRICA PEDIDA, como o servidor faz.
+  //:
+  //: Antes ele devolvia `metrica: 'preco'` SEMPRE, e isso fazia o teste do
+  //: yield passar sem provar nada — achado de revisão. Agora que o rótulo do
+  //: eixo sai da RESPOSTA e não do botão (para não dizer "Yield" sobre uma
+  //: curva de preço), um dublê que mente sobre a métrica derruba o teste, que é
+  //: o certo.
+  obterSerieDeMercado.mockImplementation((opcoes?: { metrica?: 'preco' | 'yield' }) =>
+    Promise.resolve(resposta({ metrica: opcoes?.metrica ?? 'preco' })),
+  );
 });
 
 afterEach(() => {
@@ -316,5 +325,57 @@ describe('a cor das séries', () => {
     const nono = screen.getByRole('button', { name: /PAR5\b/ });
     expect(nono.hasAttribute('disabled')).toBe(true);
     expect(nono.getAttribute('title')).toContain('Desligue uma série');
+  });
+});
+
+describe('enquanto a resposta nova não chega', () => {
+  /** O ACHADO MAIS GRAVE DA REVISÃO: trocar de preço para yield mudava o rótulo
+   *  do eixo e a faixa fixa NA HORA, enquanto os pontos continuavam sendo os de
+   *  preço até a resposta chegar. O gráfico dizia "Yield (%)" sobre uma curva
+   *  de preço — dado falso, com aparência de certo.
+   */
+
+  it('o rótulo do eixo NÃO muda antes dos pontos', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    expect(recebido.rotulo).toContain('Preço');
+
+    //: a segunda busca NUNCA responde: é a janela que o defeito ocupava
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() => expect(screen.getByText('Atualizando…')).toBeTruthy());
+    //: o rótulo e a faixa continuam os do dado DESENHADO
+    expect(recebido.rotulo).toContain('Preço');
+    expect(recebido.faixaFixa).toEqual(FAIXA_FIXA_DO_PRECO);
+  });
+
+  it('o botão JÁ mostra a escolha, para o clique não parecer perdido', async () => {
+    /** As duas coisas convivem: o botão diz o que a pessoa pediu, o gráfico diz
+     *  o que está desenhado, e o "Atualizando…" liga os dois. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Yield' }).getAttribute('aria-pressed')).toBe(
+        'true',
+      ),
+    );
+  });
+
+  it('o gráfico fica com `aria-busy`, para o leitor de tela saber', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+    screen.getByRole('button', { name: '1M' }).click();
+
+    await waitFor(() => {
+      const moldura = screen.getByText('GRAFICO').closest('[aria-busy]');
+      expect(moldura?.getAttribute('aria-busy')).toBe('true');
+    });
   });
 });
