@@ -14,7 +14,7 @@
  *  4. que o índice venha DESTA rota, e não de `/api/score/serie`.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SerieDeMercado } from '@/api/cliente';
@@ -27,7 +27,14 @@ vi.mock('@/api/cliente', () => ({ obterSerieDeMercado }));
 //: traria o `ResizeObserver` e a aritmética do SVG para dentro de um teste que
 //: é sobre a TELA. O que interessa é o que a tela PASSA para ele.
 const recebido: { bonds?: unknown; indice?: unknown; faixaFixa?: unknown; rotulo?: string } = {};
-vi.mock('@/graficos/GraficoDeDoisEixos', () => ({
+//: SÓ O COMPONENTE É DUBLADO. `temCurva` vem do módulo DE VERDADE, de propósito:
+//: é a regra que decide se uma série desenha curva, e a tela a usa para dizer
+//: quais papéis voltaram mudos. Dublá-la faria este arquivo testar uma regra
+//: inventada aqui em vez da que roda no navegador — e foi justamente a
+//: divergência entre duas regras (`pontos.length` aqui, data válida lá) que a
+//: revisão pegou.
+vi.mock('@/graficos/GraficoDeDoisEixos', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('@/graficos/GraficoDeDoisEixos')>()),
   GraficoDeDoisEixos: (props: {
     bonds: unknown;
     indice: unknown;
@@ -44,7 +51,7 @@ vi.mock('@/graficos/GraficoDeDoisEixos', () => ({
 
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { mercadoMudou } from '@/dominio/sincronizacao';
-import { InteligenciaDeMercado } from './InteligenciaDeMercado';
+import { InteligenciaDeMercado, TETO_DA_BUSCA } from './InteligenciaDeMercado';
 
 const CATALOGO: SerieDeMercado['papeis'] = [
   { ticker: 'AEGEBZ29', descricao: null, emissor: 'Aegea', e_aegea: true },
@@ -519,9 +526,47 @@ describe('depois de subir a planilha, sem F5', () => {
 
     //: TENTAR DE NOVO BUSCA DE NOVO, e volta ao normal quando dá certo.
     obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta()));
+    const antesDoRetry = obterSerieDeMercado.mock.calls.length;
     screen.getByRole('button', { name: 'Tentar de novo' }).click();
 
+    //: A CHAMADA NOVA É O QUE PROVA O BOTÃO — achado de revisão: sem esta
+    //: asserção, um botão que só limpasse o erro sem rebuscar passaria no teste.
+    await waitFor(() =>
+      expect(obterSerieDeMercado.mock.calls.length).toBeGreaterThan(antesDoRetry),
+    );
     await waitFor(() => expect(screen.queryByText(/não foi possível falar/i)).toBeNull());
+  });
+
+  it('a busca que NUNCA responde não deixa a tela em "Atualizando…" para sempre', async () => {
+    /** O ÚNICO MECANISMO QUE AINDA SOBRAVA para a tela ficar visualmente presa.
+     *
+     *  A revisão foi clara: a guarda `ativo` está correta e descarta resposta
+     *  velha, mas nada protege contra uma promessa que NUNCA resolve nem
+     *  rejeita. Nesse caso `buscando` fica `true` eternamente, o gráfico fica em
+     *  `opacity: 0.5` e o "Atualizando…" não sai — que é exatamente o que ele
+     *  descreveu como travar, e aí só o F5 resolve.
+     *
+     *  NÃO APARECEU NOS LOGS daquela sessão (todas as respostas vieram em
+     *  60–95ms), mas a lacuna é real e o conserto é o mesmo que a falha já tem:
+     *  dizer o que houve e oferecer saída. */
+    vi.useFakeTimers();
+    try {
+      obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
+      render(<InteligenciaDeMercado />);
+
+      //: DENTRO DE `act`: o relógio muda estado FORA de um evento do React, e
+      //: sem isto a renderização não é aplicada antes da asserção — o teste
+      //: falharia dizendo que a frase não existe, com a correção no lugar.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(TETO_DA_BUSCA + 100);
+      });
+
+      expect(screen.getByText(/demorou demais/i)).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeTruthy();
+      expect(screen.queryByText('Atualizando…')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('SEM aviso nenhum a tela não fica rebuscando sozinha', async () => {

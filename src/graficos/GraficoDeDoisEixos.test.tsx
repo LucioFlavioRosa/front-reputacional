@@ -21,7 +21,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { GraficoDeDoisEixos } from './GraficoDeDoisEixos';
+import { GraficoDeDoisEixos, temCurva } from './GraficoDeDoisEixos';
 
 //: O `ResizeObserver` não existe no jsdom, e sem ele a largura fica em zero e
 //: o SVG nem é renderizado. O dublê responde uma largura fixa, que é o que
@@ -463,6 +463,40 @@ describe('a acessibilidade', () => {
     expect(rotulo).toContain('Aegea 2029: sem cotação no período');
     //: E a série que TEM dado continua descrita.
     expect(rotulo).toContain('Aegea 2031: 95 em 2026-01-05');
+  });
+
+  it('a série de pontos com DATA TORTA conta como sem cotação', () => {
+    /** ACHADO DE REVISÃO, e dentro da MINHA correção: o aviso da tela olhava
+     *  `pontos.length` e o gráfico olha os pontos com DATA VÁLIDA (`datados()`
+     *  descarta o resto). Uma série com pontos e datas tortas não desenhava
+     *  curva E não disparava o aviso — o pior dos dois mundos, que é o estado
+     *  silencioso que esta mudança existe para acabar.
+     *
+     *  `temCurva` passou a ser a regra ÚNICA, e é a mesma que o filtro do
+     *  desenho usa. */
+    expect(temCurva([{ data: '2026-01-05', valor: 95 }])).toBe(true);
+    expect(temCurva([])).toBe(false);
+    expect(temCurva([{ data: 'ontem', valor: 95 }])).toBe(false);
+    expect(temCurva([{ data: '2026-13-45', valor: 95 }])).toBe(false);
+
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        bonds={[
+          {
+            chave: 'AEGEBZ31',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [{ data: '2026-01-05', valor: 95 }],
+          },
+          { chave: 'X', rotulo: 'Torto', cor: AZUL, pontos: [{ data: 'ontem', valor: 9 }] },
+        ]}
+      />,
+    );
+
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    expect(rotulo).toContain('Torto: sem cotação no período');
   });
 
   it('cada série tem `title`, para o nome aparecer no hover nativo', () => {

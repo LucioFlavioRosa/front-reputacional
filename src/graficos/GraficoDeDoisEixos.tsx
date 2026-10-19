@@ -112,6 +112,20 @@ function datados(pontos: PontoDatado[]): { ms: number; valor: number }[] {
   return bons;
 }
 
+/** Esta série desenha alguma curva?
+ *
+ *  A REGRA ÚNICA, exportada porque a TELA precisa da MESMA: o aviso de "sem
+ *  cotação no período" nasceu olhando `pontos.length`, e o desenho olha os
+ *  pontos com DATA VÁLIDA. Uma série com pontos e datas tortas não desenhava
+ *  curva e não disparava o aviso — exatamente o estado silencioso que o aviso
+ *  existe para acabar. Achado de revisão.
+ *
+ *  MORA AQUI porque é aqui que "o que é desenhável" se decide: `datados`
+ *  descarta data inválida e `trechos` agrupa o que sobra. */
+export function temCurva(pontos: PontoDatado[]): boolean {
+  return trechos(datados(pontos)).length > 0;
+}
+
 /** Os trechos contínuos de uma série, separados nos vãos grandes.
  *
  *  DEVOLVE OS TRECHOS, e não o `d` pronto, porque o desenho precisa saber quais
@@ -248,7 +262,13 @@ export function GraficoDeDoisEixos({
   useEffect(() => {
     const alvo = container.current;
     if (!alvo) return;
-    const observador = new ResizeObserver(([entrada]) => {
+    const observador = new ResizeObserver((entradas) => {
+      //: A LISTA PODE VIR VAZIA, e `entradas[0].contentRect` então lança DENTRO
+      //: do callback do observador — fora da renderização, onde o
+      //: `LimiteDeErro` não alcança: o erro sobe sem nada na tela explicando, e
+      //: a largura nunca mais chega. Achado de revisão, defensivo e barato.
+      const entrada = entradas[0];
+      if (!entrada) return;
       definirLargura(entrada.contentRect.width);
     });
     observador.observe(alvo);
@@ -258,9 +278,12 @@ export function GraficoDeDoisEixos({
   //: CADA SÉRIE VIRA SEUS TRECHOS, uma vez: o desenho precisa deles e a conta
   //: do eixo também, e refazê-los duas vezes deixaria as duas discordarem no
   //: dia em que a regra de quebra mudasse.
-  const series = bonds
-    .map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }))
-    .filter((s) => s.trechos.length > 0);
+  //: UMA TRANSFORMAÇÃO SÓ, e duas vistas dela: `series` é o que se DESENHA e
+  //: `comTrechos` é o que se DESCREVE (inclui quem não tem ponto). Calcular
+  //: `datados`/`trechos` duas vezes — uma para cada — era convite para as duas
+  //: discordarem no dia em que a regra de quebra mudasse; achado de revisão.
+  const comTrechos = bonds.map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }));
+  const series = comTrechos.filter((s) => s.trechos.length > 0);
   const todosOsValores = series.flatMap((s) =>
     s.trechos.flatMap((t) => t.map((p) => p.valor)),
   );
@@ -324,8 +347,8 @@ export function GraficoDeDoisEixos({
     //: escolhida. Relatado em 19/10/2026 como "mudo a fonte de dados e a tela
     //: trava": o servidor respondia 200 em 60ms com a série vazia, de propósito,
     //: e era a tela que engolia a resposta em silêncio.
-    ...bonds.map((s) => {
-      const pontos = trechos(datados(s.pontos)).flat();
+    ...comTrechos.map((s) => {
+      const pontos = s.trechos.flat();
       const primeiro = pontos[0];
       const ultimo = pontos[pontos.length - 1];
       const comoData = (ms: number) => new Date(ms).toISOString().slice(0, 10);
