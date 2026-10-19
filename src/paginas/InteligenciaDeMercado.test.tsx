@@ -57,12 +57,12 @@ function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
     mes: '2026-05-01',
     regua: 'contagem',
     positivos: [
-      { n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 },
-      { n2: 'Obras e investimentos', n1: 'Crescimento', impacto: 0.8, mencoes: 6 },
+      { id: 11, n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 },
+      { id: 12, n2: 'Obras e investimentos', n1: 'Crescimento', impacto: 0.8, mencoes: 6 },
     ],
     negativos: [
-      { n2: 'Abastecimento de água', n1: 'Eficiência operacional', impacto: -2.3, mencoes: 14 },
-      { n2: 'Tarifa', n1: 'Eficiência operacional', impacto: -0.9, mencoes: 5 },
+      { id: 21, n2: 'Abastecimento de água', n1: 'Eficiência operacional', impacto: -2.3, mencoes: 14 },
+      { id: 22, n2: 'Tarifa', n1: 'Eficiência operacional', impacto: -0.9, mencoes: 5 },
     ],
     total_positivos: 2,
     total_negativos: 2,
@@ -673,11 +673,12 @@ describe('depois de subir a planilha, sem F5', () => {
   });
 });
 
-describe('os pilares da janela, ao clicar numa data', () => {
+describe('os temas da janela, ao clicar numa data', () => {
   /** O PEDIDO: "quero poder clicar em alguma data seja no gráfico ou seja no
    *  eixo, que você pega a data e subtrai 15 dias, pega esse recorte de data e
-   *  me traga dois quadros logo abaixo do gráfico, um quadro com os 5 N1 que
-   *  mais impactaram positivamente o score e 5 N1 que mais impactaram
+   *  me traga dois quadros logo abaixo do gráfico, um quadro com os 5 N2 que
+   *  mais impactaram positivamente o score e 5 N1 que mais impactaram (os quadros
+   *  passaram para o N2 depois, por pedido dele: ver somas_por_n2_na_janela)
    *  negativamente, mas para isso considere nesse momento somente dados da
    *  lente de impressa".
    */
@@ -733,7 +734,7 @@ describe('os pilares da janela, ao clicar numa data', () => {
     obterImpactoPorN2.mockImplementation(() =>
       Promise.resolve(
         impacto({
-          positivos: [{ n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 }],
+          positivos: [{ id: 11, n2: 'Contratos e regulação', n1: 'Governança', impacto: 1.5, mencoes: 10 }],
           total_positivos: 1,
         }),
       ),

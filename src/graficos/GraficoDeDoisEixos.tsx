@@ -308,7 +308,7 @@ export function GraficoDeDoisEixos({
    *  está na tela. */
   dataEscolhida?: string | null;
   /** Quantos dias a janela cobre, só para sombreá-la. A conta de verdade é do
-   *  servidor (ver `impacto_por_n1_na_janela`); aqui é desenho. */
+   *  servidor (ver `impacto_por_n2_na_janela`); aqui é desenho. */
   diasDaJanela?: number;
 }) {
   const container = useRef<HTMLDivElement>(null);
