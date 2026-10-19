@@ -438,6 +438,92 @@ describe('depois de subir a planilha, sem F5', () => {
     );
   });
 
+  it('o papel LIGADO que voltou SEM COTAÇÃO é dito pelo nome', async () => {
+    /** RELATADO EM 19/10/2026: "em alguns momentos a tela trava quando eu mudo
+     *  alguma fonte de dados ou métrica, daí preciso dar F5".
+     *
+     *  NÃO ERA O SERVIDOR: os logs do ambiente mostram 200 em 60–95ms para
+     *  TODAS as requisições daquela sessão, inclusive `tickers=AEGEBZ29` — que é
+     *  o papel sem cotação na planilha. O back semeia a série vazia e a devolve
+     *  de propósito (`serie_de_mercado.py:153` e `:168`), e o gráfico descarta
+     *  quem não tem ponto (`GraficoDeDoisEixos.tsx:263`).
+     *
+     *  O RESULTADO ERA UM CLIQUE SEM EFEITO VISÍVEL: o chip acende, ganha cor, e
+     *  curva nenhuma aparece. Nada na tela distinguia "este papel não negociou
+     *  neste período" de "a tela parou de responder" — e a saída que sobra é o
+     *  F5. Vale para a troca de métrica também: um papel com preço e sem yield
+     *  desaparece ao trocar para yield.
+     *
+     *  O DUBLÊ JÁ ERA ASSIM desde o primeiro teste deste arquivo: o catálogo tem
+     *  três papéis da Aegea (todos ligados por padrão) e a resposta traz série de
+     *  UM. Os outros dois já estavam acesos e mudos aqui, e ninguém viu. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    const aviso = screen.getByTestId('sem-cotacao');
+    expect(aviso.textContent).toContain('AEGEBZ29');
+    expect(aviso.textContent).toContain('AEGEBZ36');
+    //: O QUE TEM DADO NÃO ENTRA NA LISTA, senão o aviso não informa nada.
+    expect(aviso.textContent).not.toContain('AEGEBZ31');
+    //: NEM O QUE ESTÁ DESLIGADO: PETBRA30 não foi escolhido, e dizer que ele não
+    //: tem cotação seria reclamar de uma pergunta que ninguém fez.
+    expect(aviso.textContent).not.toContain('PETBRA30');
+  });
+
+  it('com TODAS as séries cheias o aviso NÃO aparece', async () => {
+    /** O controle: um aviso que está sempre na tela é ruído, e deixa de ser
+     *  lido justamente quando passa a importar. */
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(
+        resposta({
+          bonds: [
+            { ticker: 'AEGEBZ29', pontos: [{ data: '2026-01-05', valor: 99 }] },
+            { ticker: 'AEGEBZ31', pontos: [{ data: '2026-01-05', valor: 95.5 }] },
+            { ticker: 'AEGEBZ36', pontos: [{ data: '2026-01-05', valor: 97 }] },
+          ],
+        }),
+      ),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    expect(screen.queryByTestId('sem-cotacao')).toBeNull();
+  });
+
+  it('a falha NÃO engole os controles, e dá para tentar de novo', async () => {
+    /** O BECO SEM SAÍDA: `if (erro) return <FaixaDeErro/>` trocava a tela
+     *  INTEIRA pela faixa — período, métrica e os chips sumiam junto. Quem
+     *  pegasse uma falha de rede num clique não tinha mais nada para clicar, e a
+     *  única saída era o F5. A faixa dizia o que aconteceu e tirava da pessoa a
+     *  capacidade de reagir.
+     *
+     *  A FORMA CERTA É A QUE O `buscando` JÁ USAVA: a curva anterior continua na
+     *  tela, os controles continuam de pé, e a falha aparece como faixa ao lado
+     *  — com um botão que repete a busca. */
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.reject(new Error('Não foi possível falar com o servidor.')),
+    );
+    screen.getByRole('button', { name: 'Yield' }).click();
+
+    await waitFor(() => expect(screen.getByText(/não foi possível falar/i)).toBeTruthy());
+    //: OS CONTROLES CONTINUAM LÁ.
+    expect(screen.getByRole('button', { name: 'Yield' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '6M' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /AEGEBZ31/ })).toBeTruthy();
+    //: E O GRÁFICO ANTERIOR TAMBÉM: apagá-lo perderia o que a pessoa estava
+    //: lendo por causa de uma falha que pode ser de um segundo.
+    expect(screen.getByText('GRAFICO')).toBeTruthy();
+
+    //: TENTAR DE NOVO BUSCA DE NOVO, e volta ao normal quando dá certo.
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta()));
+    screen.getByRole('button', { name: 'Tentar de novo' }).click();
+
+    await waitFor(() => expect(screen.queryByText(/não foi possível falar/i)).toBeNull());
+  });
+
   it('SEM aviso nenhum a tela não fica rebuscando sozinha', async () => {
     /** O controle negativo que impede o conserto de virar um laço — o mesmo
      *  que o da tela do Score tem. */

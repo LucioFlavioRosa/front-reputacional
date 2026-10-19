@@ -418,6 +418,53 @@ describe('a acessibilidade', () => {
     expect(rotulo).not.toContain('pregões');
   });
 
+  it('a série SEM PONTO NENHUM não derruba a tela, e é dita', () => {
+    /** O DEFEITO QUE TRAVAVA A TELA, relatado em 19/10/2026: "em alguns
+     *  momentos a tela trava quando eu mudo alguma fonte de dados ou métrica,
+     *  daí preciso dar F5".
+     *
+     *  O servidor nunca falhou — os logs mostram 200 em 60ms para todas as
+     *  requisições, inclusive `tickers=AEGEBZ29`, que é o papel SEM COTAÇÃO na
+     *  planilha. O back semeia a série com lista vazia e a devolve assim
+     *  (`serie_de_mercado.py:153` e `:168`), de propósito: o papel pedido
+     *  aparece na resposta mesmo sem dado.
+     *
+     *  Aqui, `pontos.length === 1` era falso, o ternário caía no outro lado e
+     *  lia `primeiro.valor` com `primeiro === undefined`. O TypeError acontecia
+     *  DURANTE A RENDERIZAÇÃO, o `LimiteDeErro` de `App.tsx` o capturava, e um
+     *  limite de erro do React não se recupera sozinho: a única saída era
+     *  remontar — o F5.
+     *
+     *  O caso de UM ponto tem teste desde o começo (logo acima). O de ZERO
+     *  não tinha. */
+    const renderizar = () =>
+      render(
+        <GraficoDeDoisEixos
+          rotuloDaEsquerda="Preço (% do par)"
+          indice={[{ mes: '2026-01-01', valor: 52 }]}
+          bonds={[
+            {
+              chave: 'AEGEBZ31',
+              rotulo: 'Aegea 2031',
+              cor: AZUL,
+              pontos: [{ data: '2026-01-05', valor: 95 }],
+            },
+            { chave: 'AEGEBZ29', rotulo: 'Aegea 2029', cor: AZUL, pontos: [] },
+          ]}
+        />,
+      );
+
+    expect(renderizar).not.toThrow();
+
+    const { container } = renderizar();
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    //: DITA, e não omitida: a curva que não aparece precisa de explicação, ou
+    //: quem ligou o papel conclui que a tela está quebrada.
+    expect(rotulo).toContain('Aegea 2029: sem cotação no período');
+    //: E a série que TEM dado continua descrita.
+    expect(rotulo).toContain('Aegea 2031: 95 em 2026-01-05');
+  });
+
   it('cada série tem `title`, para o nome aparecer no hover nativo', () => {
     /** Enquanto a legenda da tela (bloco 6) não existe, é o que torna a linha
      *  identificável — sem isto ninguém sabe qual curva é 2031 e qual é 2036. */

@@ -223,8 +223,32 @@ export function InteligenciaDeMercado() {
     [dados],
   );
 
-  if (erro) return <FaixaDeErro mensagem={erro} />;
-  if (!dados) return <Carregando />;
+  /** Repete a busca. É o contador do barramento que serve: ele já está nas
+   *  dependências do efeito, e uma segunda via faria duas portas para a mesma
+   *  coisa. */
+  const tentarDeNovo = () => definirVersao((v) => v + 1);
+
+  //: A FALHA NÃO ENGOLE A TELA. Isto era `if (erro) return <FaixaDeErro/>`, e
+  //: trocava a tela INTEIRA pela faixa: período, métrica e os chips sumiam
+  //: junto. Quem pegasse uma falha de rede num clique não tinha mais nada para
+  //: clicar, e a única saída era o F5 — a faixa dizia o que aconteceu e tirava
+  //: da pessoa a capacidade de reagir.
+  //:
+  //: SEM CATÁLOGO NÃO HÁ CONTROLE PARA MANTER, e aí a faixa é a tela toda
+  //: mesmo: é a primeira busca que falhou, não existe seletor nem gráfico
+  //: anteriores. O que faltava era a saída, e é o botão.
+  if (!dados) {
+    return erro ? (
+      <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
+        <FaixaDeErro mensagem={erro} />
+        <button type="button" onClick={tentarDeNovo} style={{ ...botao(false), marginTop: 12 }}>
+          Tentar de novo
+        </button>
+      </section>
+    ) : (
+      <Carregando />
+    );
+  }
 
   const daAegea = dados.papeis.filter((p) => p.e_aegea);
   const pares = dados.papeis.filter((p) => !p.e_aegea);
@@ -259,6 +283,23 @@ export function InteligenciaDeMercado() {
   };
 
   const semCorLivre = slotLivre(emVigor) === null;
+
+  /** Os papéis LIGADOS que voltaram sem cotação nenhuma no período.
+   *
+   *  O CLIQUE SEM EFEITO VISÍVEL ERA O PIOR DEFEITO DESTA TELA, e foi relatado
+   *  como travamento: "a tela trava quando eu mudo alguma fonte de dados ou
+   *  métrica, daí preciso dar F5". O servidor respondia 200 em 60ms, e a tela
+   *  engolia a resposta — o chip acendia com cor e curva nenhuma aparecia.
+   *
+   *  O BACK DEVOLVE A SÉRIE VAZIA DE PROPÓSITO (semeia `por_ticker` com cada
+   *  ticker pedido), e o gráfico descarta quem não tem ponto. Nenhum dos dois
+   *  está errado; faltava alguém DIZER.
+   *
+   *  ACONTECE DE DOIS JEITOS: o papel que não negociou na janela escolhida — ou
+   *  foi emitido depois dela —, e o papel que tem preço e não tem yield, que
+   *  desaparece só ao trocar a métrica. */
+  const comPonto = new Set(dados.bonds.filter((s) => s.pontos.length).map((s) => s.ticker));
+  const mudos = Object.keys(emVigor).filter((t) => !comPonto.has(t));
 
   return (
     <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
@@ -306,6 +347,20 @@ export function InteligenciaDeMercado() {
         </fieldset>
       </div>
 
+      {/* A FALHA FICA AO LADO DO QUE CONTINUA FUNCIONANDO, e não no lugar dele:
+          a curva anterior segue na tela (apagá-la perderia o que a pessoa
+          estava lendo por causa de uma falha que pode durar um segundo), os
+          controles seguem de pé, e o botão repete a busca sem recarregar a
+          página. */}
+      {erro ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 12px', flexWrap: 'wrap' }}>
+          <FaixaDeErro mensagem={erro} />
+          <button type="button" onClick={tentarDeNovo} style={botao(false)}>
+            Tentar de novo
+          </button>
+        </div>
+      ) : null}
+
       {/* O GRÁFICO FICA ESMAECIDO ENQUANTO BUSCA, e com `aria-busy`: a curva
           antiga continua visível (sumir com ela a cada clique faria a tela
           piscar), mas deixa de se apresentar como a resposta da pergunta nova.
@@ -321,6 +376,24 @@ export function InteligenciaDeMercado() {
       {buscando ? (
         <p role="status" style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '4px 0 0' }}>
           Atualizando…
+        </p>
+      ) : null}
+
+      {/* O PAPEL ESCOLHIDO QUE NÃO TEM CURVA DIZ POR QUÊ. Sem esta linha, ligar
+          um papel sem cotação no período é indistinguível de a tela ter parado
+          de responder — e a saída que sobra para quem está usando é o F5.
+          `role="status"` porque a frase aparece como RESPOSTA a um clique: quem
+          usa leitor de tela precisa ouvi-la sem ir procurar. */}
+      {mudos.length ? (
+        <p
+          data-testid="sem-cotacao"
+          role="status"
+          style={{ fontSize: 12, color: 'var(--atencao-fg)', margin: '8px 0 0' }}
+        >
+          {mudos.length === 1
+            ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva dele no gráfico.`
+            : `${mudos.join(', ')} não têm cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva delas no gráfico.`}{' '}
+          Experimente um período maior ou a outra métrica.
         </p>
       ) : null}
 

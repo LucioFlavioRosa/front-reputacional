@@ -314,11 +314,22 @@ export function GraficoDeDoisEixos({
    */
   const descricao = [
     `${rotuloDaEsquerda} e índice reputacional de 0 a 100.`,
-    ...series.map((s) => {
-      const pontos = s.trechos.flat();
+    //: DE `bonds`, E NÃO DE `series`: `series` já descartou (linha 263) quem não
+    //: tem ponto nenhum, e descrever só os que sobraram faz a série escolhida
+    //: desaparecer de TUDO — do desenho, da descrição e de qualquer aviso. Quem
+    //: ligou o papel clica, nada muda, e a conclusão é que a tela travou.
+    //:
+    //: É O CASO DO PAPEL SEM COTAÇÃO NO PERÍODO — um papel emitido depois do
+    //: início da janela, ou que só tem preço e não tem yield na métrica
+    //: escolhida. Relatado em 19/10/2026 como "mudo a fonte de dados e a tela
+    //: trava": o servidor respondia 200 em 60ms com a série vazia, de propósito,
+    //: e era a tela que engolia a resposta em silêncio.
+    ...bonds.map((s) => {
+      const pontos = trechos(datados(s.pontos)).flat();
       const primeiro = pontos[0];
       const ultimo = pontos[pontos.length - 1];
       const comoData = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+      if (pontos.length === 0) return `${s.rotulo}: sem cotação no período.`;
       return pontos.length === 1
         ? `${s.rotulo}: ${primeiro.valor} em ${comoData(primeiro.ms)}.`
         : `${s.rotulo}: de ${primeiro.valor} em ${comoData(primeiro.ms)} a ` +
