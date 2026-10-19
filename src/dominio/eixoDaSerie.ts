@@ -114,3 +114,96 @@ export function dominioDoNss(
     maximo: maximo ?? Math.min(NSS_MAXIMO, maior + folga),
   };
 }
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * A TERCEIRA RÉGUA: a cotação de bonds.
+ *
+ * O cabeçalho deste arquivo deixou as três perguntas formuladas. As respostas:
+ *
+ *   1. LIMITE NATURAL? NÃO. Preço é % do valor de face e passa de 100 quando o
+ *      papel negocia com ágio — medido no export de 16/10/2026: 111,2048. Yield
+ *      não tem teto; o maior medido é 61,93 (papel em aflição). Prender o eixo
+ *      em 0–100 como o do índice recusaria dado real.
+ *
+ *   2. REFERÊNCIA QUE NUNCA SAI DO EIXO? NÃO, e é o oposto da régua do NSS. O
+ *      par (100) é referência conceitual — acima é ágio, abaixo é deságio —,
+ *      mas forçá-lo no eixo quando a série inteira vive entre 95 e 97 achataria
+ *      a variação a um traço. O que a tela responde é "quanto se moveu no
+ *      período", não "está acima ou abaixo do par"; o painel de cotações ao
+ *      lado dá o nível, o gráfico dá o movimento.
+ *
+ *   3. PISO DE AMPLITUDE? SIM, e é o parâmetro que mais importa aqui. Preço de
+ *      bond se move centésimos num dia calmo, e sem piso uma semana de ±0,05
+ *      preencheria o gráfico inteiro — ruído desenhado como virada. O piso é em
+ *      PONTOS, não em fração: dois pontos de preço é a menor variação que vale
+ *      um gráfico, e abaixo disso o eixo para de encolher.
+ *
+ * E A FOLGA É MENOR QUE A DO NSS (8% contra 25%), seguindo a especificação. O
+ * NSS mostra o valor escrito em cima de cada bolinha e precisa de espaço para o
+ * rótulo; aqui a etiqueta fica na borda direita, fora da área de plotagem.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/** A folga do eixo dos bonds, em fração da amplitude. 8% é o da especificação. */
+export const FOLGA_DOS_BONDS = 0.08;
+
+/** O piso da amplitude do eixo dos bonds, EM PONTOS da métrica.
+ *
+ *  DIFERENTE DE `AMPLITUDE_MINIMA_DA_FOLGA`, que só entra no cálculo da folga:
+ *  este é piso do EIXO. Uma série que varia 0,3 ponto recebe uma régua de 2
+ *  pontos centrada nela, e a curva aparece como a oscilação pequena que é. */
+export const AMPLITUDE_MINIMA_DOS_BONDS = 2;
+
+/** A régua do eixo ESQUERDO: preço ou yield, automática e sem referência fixa.
+ *
+ *  `null` NÃO ENTRA, pela mesma razão do NSS: dia sem pregão abre vão, e
+ *  contá-lo como zero puxaria a régua para um valor que não foi medido. A
+ *  assinatura pede `number[]` para que o filtro fique visível na chamada.
+ *
+ *  SÉRIE VAZIA devolve uma faixa simbólica em vez de `-Infinity`: a tela pode
+ *  renderizar o eixo antes de o dado chegar, e `Math.min()` sem argumento
+ *  devolve `Infinity`, que vira um SVG com coordenadas `NaN` — um gráfico em
+ *  branco sem erro no console, que é o pior jeito de não funcionar. */
+export function dominioDosBonds(valores: readonly number[]): FaixaDoEixo {
+  if (valores.length === 0) return { minimo: 0, maximo: AMPLITUDE_MINIMA_DOS_BONDS };
+
+  const menor = Math.min(...valores);
+  const maior = Math.max(...valores);
+  const medido = maior - menor;
+
+  //: O PISO CENTRA, não estica só para cima: esticar por um lado deslocaria a
+  //: curva na vertical sem o dado ter mudado, e duas cargas seguidas do mesmo
+  //: período desenhariam a linha em alturas diferentes.
+  const falta = Math.max(0, AMPLITUDE_MINIMA_DOS_BONDS - medido) / 2;
+  const amplitude = Math.max(AMPLITUDE_MINIMA_DOS_BONDS, medido);
+  const folga = amplitude * FOLGA_DOS_BONDS;
+
+  return {
+    //: NUNCA ABAIXO DE ZERO: preço e yield negativos não existem, e um eixo que
+    //: começa em −1,2 sugere que exista.
+    minimo: Math.max(0, menor - falta - folga),
+    maximo: maior + falta + folga,
+  };
+}
+
+/** A faixa do eixo DIREITO: o índice reputacional, FIXA em 0–100.
+ *
+ *  FIXA, E NÃO AUTOMÁTICA — e esta é a decisão que faz o gráfico de dois eixos
+ *  não mentir. Com régua automática, trocar o período de 3M para 6M mudaria a
+ *  FORMA da curva do índice sem o dado ter mudado, e a coincidência visual
+ *  entre ela e a curva do bond passaria a ser artefato do recorte: dá para
+ *  "criar" correlação só escolhendo os limites.
+ *
+ *  O dono do produto escolheu os dois eixos sabendo disso (a alternativa
+ *  oferecida foi indexar tudo a uma base comum). Fixar a escala é o que resta
+ *  para que a comparação signifique a mesma coisa em todo recorte.
+ *
+ *  0–100 E NÃO 40–80, que era a premissa do mockup: o índice é definido de 0 a
+ *  100, e uma janela estreita escolhida por como os dados estão HOJE volta a
+ *  ser uma régua que muda de significado quando eles mudarem. */
+export const INDICE_MINIMO = 0;
+export const INDICE_MAXIMO = 100;
+
+export function faixaDoIndice(): FaixaDoEixo {
+  return { minimo: INDICE_MINIMO, maximo: INDICE_MAXIMO };
+}
