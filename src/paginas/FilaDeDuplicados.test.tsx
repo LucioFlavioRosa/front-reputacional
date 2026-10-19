@@ -41,9 +41,18 @@ const UM_PAR = [
     nome: 'valoreconomico',
     tipo: 'perfil_rede',
     cargo: 'Imprensa',
+    //: AS ORIGENS DOS DOIS LADOS, que é o que explica a duplicata: o handle
+    //: chegou pelo social listening, o veículo pelo clipping.
+    origens: ['sociedade'],
     mencoes: 11,
     candidatos: [
-      { id: 'v1', nome: 'Valor Econômico', tipo: 'veiculo', mencoes: 88 },
+      {
+        id: 'v1',
+        nome: 'Valor Econômico',
+        tipo: 'veiculo',
+        mencoes: 88,
+        origens: ['imprensa', 'mercado'],
+      },
     ],
   },
 ];
@@ -77,7 +86,7 @@ it('mostra os dois lados com as mencoes de cada um', async () => {
 it('Fundir manda o PERFIL como quem sai', async () => {
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
-    name: 'Fundir valoreconomico em Valor Econômico',
+    name: 'Manter Valor Econômico e apagar valoreconomico',
   });
 
   await userEvent.click(botao);
@@ -85,7 +94,98 @@ it('Fundir manda o PERFIL como quem sai', async () => {
   //: A ORDEM É A REGRA DE NEGÓCIO INTEIRA: trocada, o pedido apagaria o
   //: veículo curado dentro do handle do fornecedor. O servidor também recusa,
   //: mas a tela não deve nem pedir.
-  await waitFor(() => expect(fundirCadastro).toHaveBeenCalledWith('p1', 'v1'));
+  //: E O TERCEIRO ARGUMENTO É `false`: este é o caminho PROPOSTO pelo servidor,
+  //: e não a escolha contrária. Mandar `true` aqui desligaria a guarda que
+  //: protege a linha curada em TODO clique — inclusive no que ninguém escolheu.
+  await waitFor(() => expect(fundirCadastro).toHaveBeenCalledWith('p1', 'v1', false));
+});
+
+it('o OUTRO botao escolhe o cadastro CONTRARIO a proposta', async () => {
+  /** O PEDIDO DO DONO DO PRODUTO: "não basta termos uma opção de dizer se são ou
+   *  não o mesmo, além de mostrar quais podem se juntar temos que dizer qual é o
+   *  real para ser considerado na unificação".
+   *
+   *  A TELA TINHA UM BOTÃO SÓ, e a direção vinha do servidor: sobrevive a linha
+   *  com história. A proposta está certa quase sempre — e continua sendo a
+   *  sugestão —, mas só quem conhece o ator sabe quando o cadastro certo é o
+   *  outro.
+   *
+   *  TRÊS COISAS NUMA CHAMADA, e cada uma erraria sozinha: quem SAI é o
+   *  candidato (`v1`), quem FICA é o perfil (`p1`), e o `true` diz ao servidor
+   *  que a escolha é de propósito — sem ele a resposta é 422, porque é essa
+   *  guarda que protege o clique errado. */
+  render(<FilaDeDuplicados />);
+  const botao = await screen.findByRole('button', {
+    name: 'Manter valoreconomico e apagar Valor Econômico',
+  });
+
+  await userEvent.click(botao);
+
+  await waitFor(() => expect(fundirCadastro).toHaveBeenCalledWith('v1', 'p1', true));
+});
+
+it('a linha diz DE ONDE vem cada lado', async () => {
+  //: A EVIDÊNCIA DA DUPLICATA: "pode vir do crm, pode vir de mídias sociais,
+  //: pode vir de mercado, pode ter várias fontes distintas, mas a instituição é
+  //: a mesma". Dois nomes parecidos e duas contagens não dizem POR QUE existem
+  //: dois cadastros; as origens dizem.
+  //:
+  //: E `sociedade` APARECE COMO "redes sociais": código de lente é vocabulário
+  //: de dentro, e quem lê a fila pensa em rede social.
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+
+  expect(screen.getByText(/Perfil de rede · Imprensa · 11 menções · vem de redes sociais/))
+    .toBeTruthy();
+  expect(screen.getByText(/88 menções · vem de imprensa e mercado/)).toBeTruthy();
+});
+
+it('a BUSCA acha o par pelos DOIS lados, e nao so pela ancora', async () => {
+  /** O PEDIDO: "deve uma barra de busca para facilitar buscar de instituições
+   *  chave". Com 209 pares, chegar ao Valor Econômico pela paginação é folhear
+   *  vinte páginas.
+   *
+   *  PELOS DOIS LADOS, e é o ponto do teste: a pergunta está ancorada no handle
+   *  `valoreconomico`, e quem procura digita "Econômico" — o nome do veículo, que
+   *  está no OUTRO lado do par. Uma busca que olhasse só a âncora não acharia
+   *  nada, e a tela diria que a instituição-chave não tem duplicata. */
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    ...UM_PAR,
+    {
+      id: 'p9',
+      nome: 'gazeta_de_piracicaba',
+      tipo: 'perfil_rede',
+      cargo: null,
+      origens: [],
+      mencoes: 1,
+      candidatos: [
+        { id: 'v9', nome: 'Gazeta de Piracicaba', tipo: 'veiculo', mencoes: 7, origens: [] },
+      ],
+    },
+  ]);
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+
+  await userEvent.type(screen.getByLabelText('Buscar'), 'Econômico');
+
+  //: O par do Valor fica — achado pelo nome do CANDIDATO.
+  expect(screen.getByText('valoreconomico')).toBeTruthy();
+  //: E o outro sai da lista.
+  expect(screen.queryByText('gazeta_de_piracicaba')).toBeNull();
+  //: O TOTAL DA FILA CONTINUA NO TÍTULO: a busca filtra a lista, não resolve
+  //: trabalho. Um título que caísse para (1) diria que só há um par a decidir.
+  expect(screen.getByRole('button', { name: /Possíveis duplicados \(2\)/ })).toBeTruthy();
+});
+
+it('a BUSCA que nao acha nada DIZ isso', async () => {
+  //: Sem esta linha o cartão fica com a barra de busca e um vazio embaixo, e
+  //: quem digitou não sabe se errou o nome ou se não há par nenhum com ele.
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+
+  await userEvent.type(screen.getByLabelText('Buscar'), 'infomoney');
+
+  expect(screen.getByText(/Nenhum par com «infomoney»/)).toBeTruthy();
 });
 
 it('Nao e o mesmo GRAVA a decisao, e nao funde', async () => {
@@ -151,9 +251,16 @@ it('o tipo de quem vai sair vem do SERVIDOR, e nao fixo em perfil de rede', asyn
       nome: 'Prefeitura de Campinas',
       tipo: 'orgao',
       cargo: null,
+      origens: [],
       mencoes: 2,
       candidatos: [
-        { id: 'o2', nome: 'Prefeitura Municipal de Campinas', tipo: 'orgao', mencoes: 9 },
+        {
+          id: 'o2',
+          nome: 'Prefeitura Municipal de Campinas',
+          tipo: 'orgao',
+          mencoes: 9,
+          origens: [],
+        },
       ],
     },
   ]);
@@ -176,9 +283,10 @@ it('a fila de duplicados PAGINA em 10', async () => {
       nome: `perfil${String(n).padStart(2, '0')}`,
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 2,
       candidatos: [
-        { id: `v${n}`, nome: `Veiculo ${n}`, tipo: 'veiculo', mencoes: 9 },
+        { id: `v${n}`, nome: `Veiculo ${n}`, tipo: 'veiculo', mencoes: 9, origens: [] },
       ],
     })),
   );
@@ -204,8 +312,11 @@ it('o TOTAL fica no titulo, e e ele que diz se o trabalho anda', async () => {
       nome: `perfil${n}`,
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 2,
-      candidatos: [{ id: `v${n}`, nome: `V ${n}`, tipo: 'veiculo', mencoes: 9 }],
+      candidatos: [
+        { id: `v${n}`, nome: `V ${n}`, tipo: 'veiculo', mencoes: 9, origens: [] },
+      ],
     })),
   );
 
@@ -251,8 +362,11 @@ it('a CONTAGEM do titulo cai na hora, junto com a linha', async () => {
       nome: 'outro handle',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 1,
-      candidatos: [{ id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40 }],
+      candidatos: [
+        { id: 'v2', nome: 'Outro Veículo', tipo: 'veiculo', mencoes: 40, origens: [] },
+      ],
     },
   ]);
 
@@ -284,10 +398,11 @@ it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
       nome: 'bmc.news',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 3,
       candidatos: [
-        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
-        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: [] },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20, origens: [] },
       ],
     },
     {
@@ -295,16 +410,19 @@ it('FUNDIR tira TODAS as perguntas sobre o cadastro que saiu', async () => {
       nome: 'bmcnews',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 1,
       //: O MESMO `v1` aparece aqui como candidato. Fundir `bmc.news` em `v1` NÃO
       //: apaga `v1` — ele é o sobrevivente —, então esta pergunta FICA.
-      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: [] },
+      ],
     },
   ]);
 
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
-    name: 'Fundir bmc.news em BMC News',
+    name: 'Manter BMC News e apagar bmc.news',
   });
 
   vi.mocked(duplicadosDeCadastro).mockReturnValue(new Promise(() => {}));
@@ -327,10 +445,11 @@ it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
       nome: 'bmc.news',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 3,
       candidatos: [
-        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 },
-        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20 },
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: [] },
+        { id: 'v9', nome: 'BMC Notícias', tipo: 'veiculo', mencoes: 20, origens: [] },
       ],
     },
   ]);
@@ -339,7 +458,7 @@ it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
 
   render(<FilaDeDuplicados />);
   const primeiro = await screen.findByRole('button', {
-    name: 'Fundir bmc.news em BMC News',
+    name: 'Manter BMC News e apagar bmc.news',
   });
 
   await userEvent.click(primeiro);
@@ -347,7 +466,7 @@ it('a mesma PERGUNTA nao aceita duas decisoes em voo', async () => {
   await waitFor(() =>
     expect(
       screen
-        .getByRole('button', { name: 'Fundir bmc.news em BMC Notícias' })
+        .getByRole('button', { name: 'Manter BMC Notícias e apagar bmc.news' })
         .hasAttribute('disabled'),
     ).toBe(true),
   );
@@ -368,23 +487,29 @@ it('FUNDIR passa as mencoes ao sobrevivente, onde ele aparecer', async () => {
       nome: 'bmc.news',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 3,
-      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: [] },
+      ],
     },
     {
       id: 'p3',
       nome: 'bmcnews',
       tipo: 'perfil_rede',
       cargo: null,
+      origens: [],
       mencoes: 1,
       //: O MESMO sobrevivente, em outra pergunta.
-      candidatos: [{ id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50 }],
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: [] },
+      ],
     },
   ]);
 
   render(<FilaDeDuplicados />);
   const botao = await screen.findByRole('button', {
-    name: 'Fundir bmc.news em BMC News',
+    name: 'Manter BMC News e apagar bmc.news',
   });
 
   await userEvent.click(botao);

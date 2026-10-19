@@ -299,6 +299,15 @@ export interface CandidatoDeFusao {
   nome: string;
   tipo: string;
   mencoes: number;
+  /** DE ONDE VÊM OS REGISTROS deste lado: códigos de lente (`imprensa`,
+   *  `mercado`, `sociedade`, `clientes`, `institucional`) e `crm`.
+   *
+   *  É A EVIDÊNCIA DA DUPLICATA, e o pedido do dono do produto: "o Valor
+   *  Econômico pode vir do crm, pode vir de mídias sociais, pode vir de mercado,
+   *  pode ter várias fontes distintas, mas a instituição é a mesma". Dois nomes
+   *  parecidos e duas contagens não dizem POR QUE existem dois cadastros; as
+   *  origens dizem. */
+  origens: string[];
 }
 
 export interface CadastroDuplicado {
@@ -315,6 +324,8 @@ export interface CadastroDuplicado {
   cargo: string | null;
   mencoes: number;
   candidatos: CandidatoDeFusao[];
+  /** Ver `CandidatoDeFusao.origens`. */
+  origens: string[];
 }
 
 /** Os perfis de rede que se parecem com outro cadastro já existente.
@@ -339,14 +350,31 @@ export function duplicadosDeCadastro(): Promise<CadastroDuplicado[]> {
  *
  *  O SOBREVIVENTE HERDA os campos que estiverem vazios nele e preenchidos em
  *  quem sai; se os dois tiverem valores diferentes no mesmo campo, o servidor
- *  recusa (422) listando quais. Não tem volta. */
+ *  recusa (422) listando quais. Não tem volta.
+ *
+ *  `contraAProposta` É A ESCOLHA DE QUEM CONHECE O ATOR, e é o pedido do dono do
+ *  produto: "além de mostrar quais podem se juntar temos que dizer qual é o real
+ *  para ser considerado na unificação". Sem ela, o servidor recusa a direção
+ *  inversa com 422 — o que protege o clique errado; com ela, a escolha vale.
+ *
+ *  O QUE A ESCOLHA CONTRÁRIA CUSTA: o cadastro que fica mantém o NOME dele.
+ *  `nome` e `tipo` não são herdados, porque trocá-los faria a fusão virar
+ *  renomeação — então escolher o handle como o real deixa o cadastro chamado
+ *  `valoreconomico`, com as menções do Valor Econômico dentro. */
 export function fundirCadastro(
   queSaiId: string,
   sobreviventeId: string,
+  contraAProposta = false,
 ): Promise<{ id: string; nome: string }> {
   return requisitar<{ id: string; nome: string }>(
     `/api/instituicoes/${queSaiId}/fundir`,
-    { method: 'POST', body: JSON.stringify({ sobrevivente_id: sobreviventeId }) },
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        sobrevivente_id: sobreviventeId,
+        contra_a_proposta: contraAProposta,
+      }),
+    },
   );
 }
 
