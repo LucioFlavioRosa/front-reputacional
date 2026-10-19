@@ -52,10 +52,10 @@ describe('sugestões do Radar', () => {
     expect(aguas).toMatchObject({ rotulo: 'Águas do Rio', grupo: 'Concessionária', lente: 'clientes' });
   });
 
-  it('o mesmo tema em duas lentes vira duas sugestões, como Pilar (N1)', () => {
+  it('o mesmo tema em duas lentes vira duas sugestões, como Atributo (N1)', () => {
     const tarifa = filtrarSugestoes(todas, 'tarifa');
     expect(tarifa.map((s) => s.lente).sort()).toEqual(['imprensa', 'sociedade']);
-    expect(tarifa.every((s) => s.grupo === 'Pilar (N1)')).toBe(true);
+    expect(tarifa.every((s) => s.grupo === 'Atributo (N1)')).toBe(true);
   });
 
   it('a lente vem antes dos filtros, e acha pelo público', () => {

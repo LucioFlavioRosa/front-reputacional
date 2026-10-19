@@ -608,6 +608,10 @@ export interface MencaoDaBase {
    *  entra na nota. */
   fonte_no_calculo: boolean;
   veiculo: string | null;
+  /** O veículo no CADASTRO COMPARTILHADO, pelo id — nulo quando a menção não
+   *  bateu com nenhum veículo cadastrado. É o que delimita quais interlocutores
+   *  (jornalistas) podem ser vinculados a ela. */
+  instituicao_id: string | null;
   tier: string | null;
   sentimento: string | null;
   atributo: string | null;
@@ -705,6 +709,20 @@ export function obterOpcoesDaBase(lente: string, de?: string, ate?: string): Pro
 
 export function obterOpcoesDoScore(): Promise<OpcoesDoScore> {
   return requisitar<OpcoesDoScore>('/api/score/opcoes');
+}
+
+/** Vincula — ou, com `null`, desvincula — o jornalista da menção a um
+ *  interlocutor do cadastro compartilhado. O servidor confere que o
+ *  interlocutor pertence à mesma instituição da matéria; aqui só se manda a
+ *  escolha. */
+export function editarJornalistaDaMencao(
+  id: string,
+  interlocutorId: string | null,
+): Promise<{ autor: string | null }> {
+  return requisitar<{ autor: string | null }>(`/api/score/base/mencoes/${id}/jornalista`, {
+    method: 'PATCH',
+    body: JSON.stringify({ interlocutor_id: interlocutorId }),
+  });
 }
 
 /** Grava uma VERSÃO NOVA da régua — a tabela só cresce, para saber com que

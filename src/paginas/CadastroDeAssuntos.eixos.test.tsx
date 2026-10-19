@@ -190,11 +190,11 @@ describe('o LSO deixou de ser obrigatório', () => {
     ).toBeTruthy();
   });
 
-  it('dá para cadastrar com pilar e tema estratégico, sem LSO e sem risco', async () => {
+  it('dá para cadastrar com atributo e tema estratégico, sem LSO e sem risco', async () => {
     // A taxonomia deixa 47 dos 104 subtemas sem LSO e 4 sem enquadramento de
     // risco. Exigir qualquer um dos dois travaria classificação que a planilha
-    // considera completa. Pilar e Tema estratégico seguem exigidos: a planilha
-    // os preenche em 104 de 104.
+    // considera completa. Atributo e Tema estratégico seguem exigidos: a
+    // planilha os preenche em 104 de 104.
     const usuario = userEvent.setup();
     render(<CadastroDeAssuntos />);
     await pronto();
@@ -203,7 +203,7 @@ describe('o LSO deixou de ser obrigatório', () => {
     expect(botao).toHaveProperty('disabled', true);
 
     await usuario.type(screen.getByPlaceholderText('Reajuste tarifário'), 'Assunto novo');
-    await usuario.selectOptions(screen.getByRole('combobox', { name: /Pilar/ }), '1');
+    await usuario.selectOptions(screen.getByRole('combobox', { name: /Atributo/ }), '1');
     await usuario.selectOptions(
       screen.getByRole('combobox', { name: /Tema estratégico/ }),
       '1',

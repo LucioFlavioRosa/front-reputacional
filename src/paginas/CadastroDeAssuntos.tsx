@@ -179,10 +179,10 @@ export function CadastroDeAssuntos() {
     }
   };
 
-  //: O QUE FALTA PARA PODER CADASTRAR. A tela marca Pilar e Tema estratégico
+  //: O QUE FALTA PARA PODER CADASTRAR. A tela marca Atributo e Tema estratégico
   //: com asterisco e deixava gravar só com o nome — um assunto criado assim
   //: nasce ATIVO e fora da hierarquia v4: aparece no filtro e no formulário,
-  //: mas não pertence a pilar nenhum, que é exatamente o estado dos 45 que a
+  //: mas não pertence a atributo nenhum, que é exatamente o estado dos 45 que a
   //: `0058` deixou para reconciliar. A tela não pode fabricar mais deles.
   //:
   //: LSO E RISCO FICAM DE FORA da exigência, cada um pela sua razão, e as duas

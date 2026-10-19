@@ -118,11 +118,11 @@ export function tiposCadastraveis(): { tipo: string; rotulo: string }[] {
 }
 
 
-/** Pilar (N1) → Tema estratégico (N2) → LSO, em cascata.
+/** Atributo (N1) → Tema estratégico (N2) → LSO, em cascata.
  *
  *  UMA ÚNICA VEZ, reaproveitado no formulário de criar e no de editar — a
- *  lógica de filtrar os 41 temas estratégicos pelo pilar escolhido não vale a
- *  pena duplicar.
+ *  lógica de filtrar os 41 temas estratégicos pelo atributo escolhido não
+ *  vale a pena duplicar.
  */
 export function SeletorDeHierarquia({
   blocos,
@@ -138,7 +138,7 @@ export function SeletorDeHierarquia({
   const macrosDoPilar = macros.filter((m) => m.bloco_tema_id === rascunho.bloco_tema_id);
   return (
     <>
-      <Campo rotulo="Pilar (N1)" obrigatorio>
+      <Campo rotulo="Atributo (N1)" obrigatorio>
         <select
           style={estiloDeEntrada}
           value={rascunho.bloco_tema_id ?? ''}
@@ -185,7 +185,7 @@ export function SeletorDeHierarquia({
       {/* NÃO É OBRIGATÓRIO, e a razão está na fonte: a taxonomia v4 deixa 47 dos
           104 subtemas SEM LSO. Marcá-lo com asterisco e exigi-lo travaria 45%
           das classificações válidas, e afirmaria uma camada que a Aegea não
-          atribuiu. Pilar e Tema estratégico ficam obrigatórios porque a
+          atribuiu. Atributo e Tema estratégico ficam obrigatórios porque a
           planilha os preenche em 104 de 104, sem uma exceção. */}
       <Campo
         rotulo="LSO"

@@ -433,17 +433,18 @@ export function porQueADimensaoEstaVazia(dimensao: DimensaoDoFiltro): string {
  *      tema_n3  ->  "Subtema (N3)"           <- o N3 do CADASTRO
  *      subtema  ->  "Subtema (fornecedor)"   <- o texto cru do fornecedor
  *
- *  `tema_n1` NÃO SEGUE MAIS ESSA LISTA SOZINHO: era "Pilar (N1)" em todo
- *  lugar; por pedido (2026-10-16), virou "Atributo (N1)" na Base das
- *  Lentes/Base do Score e aqui no Risk Tracking (mesma convenção, amarrada
- *  pelo teste `o vocabulário dos níveis` logo abaixo) — mas CONTINUA "Pilar
- *  (N1)" no painel de filtros do CRM (onde virou "Atributos", plural, sem o
- *  "(N1)") e nos lugares que não entraram nesse pedido (treemap do `Painel`,
- *  cadastro compartilhado, dossiê da Consulta em profundidade, filtros da
- *  aba Lentes). Não é mais uma convenção única — é uma divergência
- *  deliberada. `tema_n3` passou pelo mesmo vaivém no mesmo dia — chegou a
- *  perder o "(N3)" e ganhou de volta, por pedido, para ficar em paridade
- *  visual com "(N1)" e "(N2)" ao lado.
+ *  `tema_n1` ERA "Pilar (N1)" EM TODO LUGAR; por pedido (2026-10-16), virou
+ *  "Atributo (N1)" — primeiro só na Base das Lentes/Base do Score e aqui no
+ *  Risk Tracking, com o painel de filtros do CRM à parte (onde virou
+ *  "Atributos", plural, sem o "(N1)") e uns tantos lugares (treemap do
+ *  `Painel`, cadastro compartilhado, filtros da aba Lentes) ainda dizendo
+ *  "Pilar (N1)" — uma divergência deliberada por um tempo. NO MESMO DIA, o
+ *  pedido virou geral: a palavra "Pilar" sai de TODA a aplicação, sem
+ *  exceção — e os lugares que tinham ficado de fora entraram também. Só o
+ *  painel de filtros do CRM mantém a forma própria ("Atributos", plural).
+ *  `tema_n3` passou pelo mesmo vaivém no mesmo dia — chegou a perder o "(N3)"
+ *  e ganhou de volta, por pedido, para ficar em paridade visual com "(N1)" e
+ *  "(N2)" ao lado.
  *
  *  O QUALIFICADOR "(N3)" NÃO É DECORATIVO: sem ele, "Subtema" colidiria com
  *  "Subtema (fornecedor)", que é outra coisa — o que o fornecedor escreveu, e

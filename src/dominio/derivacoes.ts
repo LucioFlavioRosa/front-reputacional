@@ -239,13 +239,15 @@ export function nomesDosTemas(catalogo: Catalogo, ids: number[]): string[] {
   return ids.map((id) => porId.get(id)).filter((n): n is string => Boolean(n));
 }
 
-/** Os três níveis da taxonomia de temas v4: o pilar (N1, `blocos_tema`), o
+/** Os três níveis da taxonomia de temas v4: o atributo (N1, `blocos_tema`), o
  *  tema estratégico (N2, `macro_temas`) e o tema propriamente dito (N3, os
  *  104 de `temas`). Uma interação guarda só os N3; os de cima se derivam. */
 export type NivelDeTema = 'n1' | 'n2' | 'n3';
 
+//: "ATRIBUTO", e não "Pilar" — por pedido (2026-10-16), a palavra sai de toda
+//: a aplicação.
 export const ROTULO_DO_NIVEL_DE_TEMA: Record<NivelDeTema, string> = {
-  n1: 'Pilar (N1)',
+  n1: 'Atributo (N1)',
   n2: 'Tema estratégico (N2)',
   n3: 'Subtema (N3)',
 };

@@ -202,7 +202,7 @@ const ABAS_DA_BASE: readonly Aba<IdDaSubaba>[] = [
 
 /** O que a planilha diz de ASSUNTO, e o que o cadastro reconhece.
  *
- *  POR QUE ISTO APARECE NA CONFERÊNCIA. O dossiê recorta por Pilar (N1), Tema
+ *  POR QUE ISTO APARECE NA CONFERÊNCIA. O dossiê recorta por Atributo (N1), Tema
  *  estratégico (N2) e Subtema (N3) pelo vínculo da menção com o tema do
  *  cadastro — e quem decide o vínculo é o nome que vem na planilha. Menção sem
  *  vínculo não entra em recorte nenhum: subir um arquivo cujo assunto não casa
@@ -226,7 +226,7 @@ function SecaoDosAssuntos({
   return (
     <Secao
       titulo="Assuntos"
-      subtitulo="O assunto da planilha é casado com o cadastro de temas pelo nome. É o vínculo que faz o dossiê filtrar por Pilar, Tema estratégico e Subtema — e dele saem também os riscos, sem a planilha informar nada além do subtema."
+      subtitulo="O assunto da planilha é casado com o cadastro de temas pelo nome. É o vínculo que faz o dossiê filtrar por Atributo, Tema estratégico e Subtema — e dele saem também os riscos, sem a planilha informar nada além do subtema."
     >
       <Cartao>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13 }}>

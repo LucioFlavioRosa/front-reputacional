@@ -19,10 +19,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 
-import { listarMencoesDaBase } from '@/api/cliente';
+import { editarJornalistaDaMencao, listarInterlocutores, listarMencoesDaBase } from '@/api/cliente';
 import type { ConsultaDaBase, PaginaDaBase } from '@/api/cliente';
+import type { Interlocutor } from '@/dominio/tipos';
 import { Abas } from '@/componentes/Abas';
 import { Botao, Cartao, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
+import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { celula } from '@/componentes/estilos';
 import { Linha, Tabela } from '@/componentes/Tabela';
@@ -37,7 +39,7 @@ import {
   periodoDoAtalho,
 } from '@/dominio/baseDasLentes';
 import { corForteDaLente } from '@/dominio/score';
-import { CORES_DE_CLIMA } from '@/dominio/frentes';
+import { CORES_DE_CLIMA, interlocutoresDaInstituicao } from '@/dominio/frentes';
 
 const TAMANHO_DA_PAGINA = 50;
 //: QUANTO A EXPORTAÇÃO LEVA: dez páginas de 500. Mais que isso pede uma
@@ -86,6 +88,18 @@ export function BaseDeDadosDoScore() {
   const [resposta, definirResposta] = useState<{ chave: string; dados: PaginaDaBase } | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [exportando, definirExportando] = useState(false);
+
+  //: O JORNALISTA edita uma linha por vez — igual ao Dicionários. A lista de
+  //: interlocutores carrega uma vez (são poucas centenas, a mesma suposição do
+  //: formulário de agenda) e o filtro por instituição acontece aqui.
+  const [interlocutores, definirInterlocutores] = useState<Interlocutor[] | null>(null);
+  const [emEdicao, definirEmEdicao] = useState<string | null>(null);
+  const [salvandoJornalista, definirSalvandoJornalista] = useState(false);
+  useEffect(() => {
+    listarInterlocutores()
+      .then(definirInterlocutores)
+      .catch(() => definirInterlocutores([]));
+  }, []);
 
   //: O PERÍODO: as datas digitadas vencem o atalho.
   const periodo =
@@ -143,6 +157,24 @@ export function BaseDeDadosDoScore() {
 
   const dados = resposta?.chave.startsWith(`${lente}|`) ? resposta.dados : null;
   const atualizando = resposta?.chave !== chaveDaConsulta;
+
+  //: RECARREGA DO SERVIDOR em vez de corrigir a linha local: a mesma escolha
+  //: do Dicionários — garante que o que a tela mostra é o que o banco gravou,
+  //: e não exige duplicar aqui a lógica de quem vê ou não o diretório.
+  const salvarJornalista = (mencaoId: string, interlocutorId: string | null) => {
+    definirSalvandoJornalista(true);
+    editarJornalistaDaMencao(mencaoId, interlocutorId)
+      .then(() => {
+        definirEmEdicao(null);
+        definirErro(null);
+        return listarMencoesDaBase(lente, consulta);
+      })
+      .then((dados) => definirResposta({ chave: chaveDaConsulta, dados }))
+      .catch((falha: unknown) =>
+        definirErro(falha instanceof Error ? falha.message : 'Não foi possível salvar o jornalista.'),
+      )
+      .finally(() => definirSalvandoJornalista(false));
+  };
 
   const trocarLente = (nova: string) => {
     definirLente(nova);
@@ -393,6 +425,69 @@ export function BaseDeDadosDoScore() {
                               fora do cálculo
                             </span>
                           ) : null}
+                        </td>
+                      );
+                    }
+                    //: SÓ "JORNALISTA" EDITA, e só quando a matéria tem um
+                    //: veículo do cadastro — sem `instituicao_id` não há de
+                    //: onde tirar a lista de quem oferecer.
+                    if (coluna.rotulo === 'Jornalista') {
+                      if (emEdicao !== mencao.id) {
+                        return (
+                          <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
+                            {mencao.instituicao_id ? (
+                              <button
+                                type="button"
+                                onClick={() => definirEmEdicao(mencao.id)}
+                                style={{
+                                  all: 'unset',
+                                  cursor: 'pointer',
+                                  color: mencao.autor ? 'var(--cinza-4)' : 'var(--cinza-2)',
+                                  textDecoration: 'underline dotted',
+                                  textUnderlineOffset: 3,
+                                }}
+                              >
+                                {mencao.autor ?? 'Vincular jornalista…'}
+                              </button>
+                            ) : (
+                              mencao.autor
+                            )}
+                          </td>
+                        );
+                      }
+                      const opcoes = interlocutoresDaInstituicao(
+                        interlocutores ?? [],
+                        mencao.instituicao_id ?? '',
+                        [],
+                        true,
+                      ).map((i) => ({ valor: i.id, rotulo: i.nome }));
+                      return (
+                        <td key={coluna.rotulo} style={celulaDaColuna(coluna.rotulo)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                              <CampoQueCompleta
+                                ariaLabel={`Jornalista de "${mencao.titulo ?? mencao.veiculo ?? 'matéria'}"`}
+                                opcoes={opcoes}
+                                valor=""
+                                vazio="Sem jornalista vinculado"
+                                placeholder={interlocutores ? 'Buscar jornalista…' : 'Carregando…'}
+                                aoEscolher={(valor) => salvarJornalista(mencao.id, valor || null)}
+                              />
+                            </div>
+                            {salvandoJornalista ? (
+                              <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>salvando…</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => definirEmEdicao(null)}
+                                aria-label="Cancelar edição do jornalista"
+                                title="Cancelar"
+                                style={{ all: 'unset', cursor: 'pointer', color: 'var(--cinza-2)', fontSize: 13, padding: '0 2px' }}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </td>
                       );
                     }
