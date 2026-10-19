@@ -80,14 +80,17 @@ export function obterSerieDeMercado(opcoes: {
 }
 
 
-/* -- os pilares da janela ----------------------------------------------------
+/* -- os temas da janela ----------------------------------------------------
  *
  * O PEDIDO: clicar numa data do gráfico e ver, logo abaixo, os cinco temas estrategicos
- * (N1) que mais empurraram a nota para cima e para baixo nos quinze dias
+ * (N2) que mais empurraram a nota para cima e para baixo nos quinze dias
  * anteriores — só na lente de imprensa, por ora.
  */
 
 export interface TemaNaJanela {
+  /** A CHAVE do cadastro. A lista se desenha por ela, e não pelo nome: dois
+   *  temas homônimos sob pilares diferentes são duas linhas. */
+  id: number;
   n2: string;
   /** O pilar (N1) a que o tema pertence, como contexto. */
   n1: string | null;

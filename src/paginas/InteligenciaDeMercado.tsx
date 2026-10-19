@@ -778,7 +778,10 @@ function QuadroDeTemas({
         <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {temas.map((tema) => (
             <li
-              key={tema.n2}
+              //: A CHAVE É O id, e não o nome — achado de revisão: dois temas
+              //: homônimos sob pilares diferentes dariam a MESMA chave, e o
+              //: React desenharia uma linha só.
+              key={tema.id}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
