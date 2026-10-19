@@ -520,3 +520,49 @@ it('FUNDIR passa as mencoes ao sobrevivente, onde ele aparecer', async () => {
   );
   expect(screen.queryByText(/50 menções/)).toBeNull();
 });
+
+it('AS ORIGENS tambem passam ao sobrevivente', async () => {
+  /** ACHADO MÉDIA DE REVISÃO, e é a mesma família do número de menções velho: a
+   *  tela somava a contagem e deixava as ORIGENS antigas. Fundir um cadastro que
+   *  "vem de imprensa" dentro de um que "vem de CRM" deixava a linha dizendo só
+   *  CRM — com a contagem dos dois. Uma afirmação falsa até a próxima recarga, e
+   *  justamente sobre o dado que explica a duplicata. */
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([
+    {
+      id: 'p1',
+      nome: 'bmc.news',
+      tipo: 'perfil_rede',
+      cargo: null,
+      origens: ['sociedade'],
+      mencoes: 3,
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: ['crm'] },
+      ],
+    },
+    {
+      id: 'p3',
+      nome: 'bmcnews',
+      tipo: 'perfil_rede',
+      cargo: null,
+      origens: [],
+      mencoes: 1,
+      //: O MESMO sobrevivente, em outra pergunta — é lá que a linha dele
+      //: continua desenhada depois da fusão.
+      candidatos: [
+        { id: 'v1', nome: 'BMC News', tipo: 'veiculo', mencoes: 50, origens: ['crm'] },
+      ],
+    },
+  ]);
+
+  render(<FilaDeDuplicados />);
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Manter BMC News e apagar bmc.news' }),
+  );
+
+  //: AS DUAS ORIGENS, em ordem, e com a contagem somada na mesma linha.
+  await waitFor(() =>
+    expect(
+      screen.getByText(/53 menções · vem de CRM e redes sociais/),
+    ).toBeTruthy(),
+  );
+});

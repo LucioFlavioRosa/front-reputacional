@@ -161,17 +161,35 @@ function semOCadastro(
   queSaiuId: string,
   sobreviventeId: string,
   mencoesQuePassam: number,
+  //: AS ORIGENS DE QUEM SAIU, que passam a ser do sobrevivente junto com as
+  //: menções — achado MÉDIA de revisão. A tela somava a contagem e deixava as
+  //: origens antigas: fundir um cadastro que "vem de imprensa" dentro de um que
+  //: "vem de CRM" deixava a linha dizendo só CRM, com a contagem dos dois. Uma
+  //: afirmação falsa até a próxima recarga — e é a MESMA família do número de
+  //: menções velho: a tela afirma de onde vem um dossiê que já mudou.
+  origensQuePassam: string[] = [],
 ): CadastroDuplicado[] {
   const somar = (quantas: number, id: string) =>
     id === sobreviventeId ? quantas + mencoesQuePassam : quantas;
+  //: ORDENADAS E SEM REPETIR, como o servidor as manda: a linha não deve trocar
+  //: de ordem só porque a fusão aconteceu na sessão desta pessoa.
+  const unir = (origens: string[], id: string) =>
+    id === sobreviventeId
+      ? [...new Set([...origens, ...origensQuePassam])].sort()
+      : origens;
   return fila
     .filter((perfil) => perfil.id !== queSaiuId)
     .map((perfil) => ({
       ...perfil,
       mencoes: somar(perfil.mencoes, perfil.id),
+      origens: unir(perfil.origens, perfil.id),
       candidatos: perfil.candidatos
         .filter((c) => c.id !== queSaiuId)
-        .map((c) => ({ ...c, mencoes: somar(c.mencoes, c.id) })),
+        .map((c) => ({
+          ...c,
+          mencoes: somar(c.mencoes, c.id),
+          origens: unir(c.origens, c.id),
+        })),
     }))
     .filter((perfil) => perfil.candidatos.length > 0);
 }
@@ -290,7 +308,9 @@ export function FilaDeDuplicados() {
         //: errado de quem não estava escolhendo nada.
         await fundirCadastro(sai.id, fica.id, quemFica === 'perfil');
         definirFila((antes) =>
-          antes ? semOCadastro(antes, sai.id, fica.id, sai.mencoes) : antes,
+          antes
+            ? semOCadastro(antes, sai.id, fica.id, sai.mencoes, sai.origens)
+            : antes,
         );
       } else {
         await declararCadastroDistinto(perfil.id, candidato.id);
