@@ -555,17 +555,24 @@ export type Perfil =
  *
  *  OS NOMES INTERNOS NÃO SÃO OS RÓTULOS, e vale saber antes de mexer:
  *
- *      crm      "CRM dos Stakeholders"
- *      score    "KPIs Reputacionais"
- *      sintese  "Painel de Inteligência de Mercado" — EM CONSTRUÇÃO
+ *      crm                      "CRM dos Stakeholders"
+ *      score                    "KPIs Reputacionais"
+ *      inteligencia_de_mercado  "Painel de Inteligência de Mercado"
  *
- *  `sintese` é o portal do painel que a capa chama de Inteligência de Mercado:
- *  o rótulo mudou e o nome interno não (ver `paginas/Inicio.tsx`). NÃO existe um
- *  portal `mercado`, e procurar um leva a criá-lo — ver `dominio/perfis.ts`.
+ *  ESTE COMENTÁRIO ESTAVA DESATUALIZADO e dizia que o terceiro portal se chamava
+ *  `sintese`. Ele foi renomeado para `inteligencia_de_mercado`, e `Portal` logo
+ *  abaixo sempre foi a fonte da verdade — mas quem lesse o comentário primeiro
+ *  iria procurar um nome que não existe mais. Fica registrado porque o nome
+ *  antigo ainda aparece em conversas e em anotações.
  *
- *  `sintese` é também o único que pode estar FECHADO por configuração: ver
- *  `Eu.mercado_lancado`. Alcance e porta são coisas diferentes — alguém pode ter
- *  o portal no papel e ver o cartão como "em construção".
+ *  O rótulo e o nome interno mudaram em momentos diferentes, e é por isso que
+ *  eles não se correspondem com os outros dois (ver `paginas/Inicio.tsx`). NÃO
+ *  existe um portal `mercado`, e procurar um leva a criá-lo — ver
+ *  `dominio/perfis.ts`.
+ *
+ *  `inteligencia_de_mercado` é também o único que pode estar FECHADO por
+ *  configuração: ver `Eu.mercado_lancado`. Alcance e porta são coisas diferentes
+ *  — alguém pode ter o portal no papel e as rotas recusarem para todos.
  *
  *  A "Síntese Executiva" que aparece DENTRO do Painel do CRM é outra coisa e não
  *  tem portal: é um bloco que lê a base do CRM. */

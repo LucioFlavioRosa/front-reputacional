@@ -54,6 +54,28 @@ function caminhos(container: HTMLElement): string[] {
   return [...container.querySelectorAll('path')].map((p) => p.getAttribute('d') ?? '');
 }
 
+/** Os traçados dos bonds (dentro do `<g>` de série), sem o do índice. */
+function dosBonds(container: HTMLElement): string[] {
+  return [...container.querySelectorAll('g path')].map((p) => p.getAttribute('d') ?? '');
+}
+
+function circulos(container: HTMLElement): Element[] {
+  return [...container.querySelectorAll('circle')];
+}
+
+/** O `d` como lista de comandos, para afirmar a FORMA e não só contar letras.
+ *
+ *  CONTAR `M` NÃO BASTA — é achado da revisão: uma reta simples passaria no
+ *  teste de "meses consecutivos emendam", porque ela também tem um `M` só. O
+ *  degrau tem forma própria: horizontal, vertical, horizontal. */
+function comandos(d: string): { tipo: string; x: number; y: number }[] {
+  return [...d.matchAll(/([ML]) (-?[\d.]+),(-?[\d.]+)/g)].map((m) => ({
+    tipo: m[1],
+    x: Number(m[2]),
+    y: Number(m[3]),
+  }));
+}
+
 const AZUL = '#0027BD';
 
 describe('a linha do bond', () => {
@@ -82,9 +104,62 @@ describe('a linha do bond', () => {
       />,
     );
 
-    const doBond = caminhos(container).find((d) => d.startsWith('M'));
-    //: DOIS `M` = dois pedaços. Um só significaria a reta atravessando.
-    expect((doBond?.match(/M /g) ?? []).length).toBe(2);
+    //: UM TRAÇADO (os dois pregões de janeiro) MAIS UM CÍRCULO (o pregão
+    //: isolado de junho). Um traçado só significaria a reta atravessando os
+    //: cinco meses em que o papel não negociou.
+    expect(dosBonds(container)).toHaveLength(1);
+    expect(circulos(container)).toHaveLength(1);
+    expect(comandos(dosBonds(container)[0])).toHaveLength(2);
+  });
+
+  it('um pregão ISOLADO recebe marcador, e não desaparece', () => {
+    /** ACHADO DA REVISÃO, e era defeito real: um `M x,y` sem segmento não
+     *  desenha NADA. A série de um pregão único — um papel emitido na véspera
+     *  do corte — ficava invisível, e nada na tela dizia que ela existia. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          { chave: 'A', rotulo: 'A', cor: AZUL, pontos: [{ data: '2026-01-05', valor: 95 }] },
+        ]}
+      />,
+    );
+
+    expect(circulos(container)).toHaveLength(1);
+    expect(dosBonds(container)).toHaveLength(0);
+  });
+
+  it('data com timestamp NÃO contamina o eixo inteiro', () => {
+    /** ACHADO DA REVISÃO. A versão anterior concatenava `T00:00:00Z`, então
+     *  `2026-01-05T00:00:00` virava string dupla, `Date.parse` devolvia `NaN`,
+     *  e como `inicio`/`fim` saem de `Math.min`/`max` UM ponto ruim apagava
+     *  TODAS as coordenadas — gráfico vazio, sem mensagem.
+     *
+     *  Agora o ponto torto é descartado e os bons continuam. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'A',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: 'nao e data', valor: 96 },
+              { data: '2026-01-06T00:00:00', valor: 97 },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const d = dosBonds(container)[0] ?? '';
+    expect(d).not.toContain('NaN');
+    //: `2026-01-05` e `2026-01-06T00:00:00` (recortado) entram; `nao e data` sai.
+    expect(comandos(d)).toHaveLength(2);
   });
 
   it('fim de semana NÃO quebra a linha', () => {
@@ -108,8 +183,8 @@ describe('a linha do bond', () => {
       />,
     );
 
-    const doBond = caminhos(container).find((d) => d.startsWith('M'));
-    expect((doBond?.match(/M /g) ?? []).length).toBe(1);
+    expect(dosBonds(container)).toHaveLength(1);
+    expect(circulos(container)).toHaveLength(0);
   });
 });
 
@@ -150,8 +225,40 @@ describe('o degrau do índice', () => {
       />,
     );
 
-    const doIndice = caminhos(container).find((d) => d.includes('M'));
-    expect((doIndice?.match(/M /g) ?? []).length).toBe(1);
+    //: A FORMA, e não a contagem de `M` — achado da revisão: contar `M` deixava
+    //: uma reta simples passar, porque ela também tem um `M` só. O degrau é
+    //: horizontal, salta na vertical, e segue horizontal.
+    const passos = comandos(caminhos(container)[0]);
+    expect(passos.map((p) => p.tipo)).toEqual(['M', 'L', 'L', 'L']);
+    //: o primeiro trecho é HORIZONTAL (mesmo y, x cresce)
+    expect(passos[1].y).toBe(passos[0].y);
+    expect(passos[1].x).toBeGreaterThan(passos[0].x);
+    //: o salto é VERTICAL (mesmo x, y muda) — é o degrau
+    expect(passos[2].x).toBe(passos[1].x);
+    expect(passos[2].y).not.toBe(passos[1].y);
+    //: e o segundo trecho é horizontal de novo
+    expect(passos[3].y).toBe(passos[2].y);
+    expect(passos[3].x).toBeGreaterThan(passos[2].x);
+  });
+
+  it('UM MÊS SÓ desenha um degrau com largura', () => {
+    /** ACHADO DA REVISÃO, e era defeito real: o último degrau terminava em
+     *  `max(fimDoEixo, comeca)`, e com um mês só (sem bonds) `fimDoEixo` era
+     *  igual a `comeca` — o traçado saía com comprimento ZERO e não desenhava
+     *  nada. O meu teste da régua direita renderizava exatamente este caso e
+     *  passava, porque só olhava os rótulos do eixo. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={[{ mes: '2026-01-01', valor: 50 }]}
+      />,
+    );
+
+    const passos = comandos(caminhos(container)[0]);
+    expect(passos).toHaveLength(2);
+    expect(passos[1].x).toBeGreaterThan(passos[0].x);
+    expect(passos[1].y).toBe(passos[0].y);
   });
 
   it('o mês sem valor é descartado, e não desenhado como zero', () => {
@@ -250,5 +357,90 @@ describe('o estado vazio e o aviso', () => {
     expect(
       getByText(/não afirma que uma explica a outra/),
     ).toBeTruthy();
+  });
+});
+
+
+describe('a acessibilidade', () => {
+  it('o rótulo diz QUAIS séries, com valores e datas', () => {
+    /** ACHADO DA REVISÃO, e era divergência da casa: `GraficoDeLinha` põe os
+     *  pontos no `aria-label`, e o meu dava só "Preço dos bonds e índice
+     *  reputacional, no período" — que não diz quais papéis, nem quanto, nem
+     *  quando. E o campo `rotulo` da série não era usado em lugar nenhum.
+     *
+     *  PARA SÉRIE LONGA VÃO AS PONTAS: ler 1.100 pregões em voz alta não é
+     *  acesso, é ruído. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        bonds={[
+          {
+            chave: 'AEGEBZ31',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-01-06', valor: 96.4 },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    expect(rotulo).toContain('Aegea 2031');
+    expect(rotulo).toContain('95');
+    expect(rotulo).toContain('96.4');
+    expect(rotulo).toContain('2026-01-05');
+    expect(rotulo).toContain('2026-01-06');
+    expect(rotulo).toContain('52');
+  });
+
+  it('a série de um ponto é descrita sem "de X a X"', () => {
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2036',
+            cor: AZUL,
+            pontos: [{ data: '2026-01-05', valor: 95 }],
+          },
+        ]}
+      />,
+    );
+
+    const rotulo = container.querySelector('svg')?.getAttribute('aria-label') ?? '';
+    expect(rotulo).toContain('Aegea 2036: 95 em 2026-01-05');
+    expect(rotulo).not.toContain('pregões');
+  });
+
+  it('cada série tem `title`, para o nome aparecer no hover nativo', () => {
+    /** Enquanto a legenda da tela (bloco 6) não existe, é o que torna a linha
+     *  identificável — sem isto ninguém sabe qual curva é 2031 e qual é 2036. */
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={[]}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-01-06', valor: 96 },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect([...container.querySelectorAll('title')].map((t) => t.textContent)).toEqual([
+      'Aegea 2031',
+    ]);
   });
 });

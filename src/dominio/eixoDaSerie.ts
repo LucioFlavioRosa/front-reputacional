@@ -147,6 +147,32 @@ export function dominioDoNss(
 /** A folga do eixo dos bonds, em fração da amplitude. 8% é o da especificação. */
 export const FOLGA_DOS_BONDS = 0.08;
 
+/** A FAIXA FIXA DE CADA MÉTRICA, que só se expande quando o dado sai dela.
+ *
+ *  POR QUE ELA EXISTE, e é um conserto de raciocínio meu. Eu havia fixado só o
+ *  eixo DIREITO (o índice) e descrito isso como "o que impede o gráfico de
+ *  mentir". Uma revisão apontou que está incompleto: com o esquerdo automático,
+ *  trocar o período de 3M para 6M ainda muda a FORMA da curva dos bonds, então
+ *  a coincidência visual entre as duas curvas continua se mexendo com o
+ *  recorte. Fixar um eixo só resolve metade e descreve o todo.
+ *
+ *  FIXA, MAS NÃO RÍGIDA. Uma faixa que ignora o dado esconderia um papel em
+ *  colapso — e é exatamente nessa hora que alguém olha o gráfico. A régua é a
+ *  UNIÃO da faixa fixa com o que o dado pede: no caso normal ela não se mexe
+ *  entre recortes, e no caso extremo ela se abre e o extremo aparece.
+ *
+ *  OS NÚMEROS SÃO MEDIDOS no export de 16/10/2026, não escolhidos:
+ *
+ *    preço  os bonds da Aegea vivem entre 95 e 97; o maior preço de toda a
+ *           base é 111,2048 (papel com ágio). A faixa 90–110 contém o caso
+ *           normal e o par (100), que é a referência de leitura de quem é de RI;
+ *    yield  os da Aegea ficam entre 7 e 9; o maior de toda a base é 61,93, de
+ *           um par em aflição. A faixa 0–15 contém o caso normal, e o par em
+ *           aflição a expande — que é o certo, porque é ele a notícia.
+ */
+export const FAIXA_FIXA_DO_PRECO: FaixaDoEixo = { minimo: 90, maximo: 110 };
+export const FAIXA_FIXA_DO_YIELD: FaixaDoEixo = { minimo: 0, maximo: 15 };
+
 /** O piso da amplitude do eixo dos bonds, EM PONTOS da métrica.
  *
  *  DIFERENTE DE `AMPLITUDE_MINIMA_DA_FOLGA`, que só entra no cálculo da folga:
@@ -154,35 +180,60 @@ export const FOLGA_DOS_BONDS = 0.08;
  *  pontos centrada nela, e a curva aparece como a oscilação pequena que é. */
 export const AMPLITUDE_MINIMA_DOS_BONDS = 2;
 
-/** A régua do eixo ESQUERDO: preço ou yield, automática e sem referência fixa.
+/** A régua do eixo ESQUERDO: a faixa fixa da métrica, aberta pelo que o dado
+ *  pedir.
+ *
+ *  `base` É A FAIXA FIXA (`FAIXA_FIXA_DO_PRECO` ou `FAIXA_FIXA_DO_YIELD`), e
+ *  omiti-la volta ao comportamento puramente automático — o que serve a quem
+ *  plote uma métrica nova sem faixa medida ainda.
  *
  *  `null` NÃO ENTRA, pela mesma razão do NSS: dia sem pregão abre vão, e
  *  contá-lo como zero puxaria a régua para um valor que não foi medido. A
  *  assinatura pede `number[]` para que o filtro fique visível na chamada.
  *
- *  SÉRIE VAZIA devolve uma faixa simbólica em vez de `-Infinity`: a tela pode
+ *  SÉRIE VAZIA devolve a faixa fixa, ou uma simbólica sem ela: a tela pode
  *  renderizar o eixo antes de o dado chegar, e `Math.min()` sem argumento
  *  devolve `Infinity`, que vira um SVG com coordenadas `NaN` — um gráfico em
  *  branco sem erro no console, que é o pior jeito de não funcionar. */
-export function dominioDosBonds(valores: readonly number[]): FaixaDoEixo {
-  if (valores.length === 0) return { minimo: 0, maximo: AMPLITUDE_MINIMA_DOS_BONDS };
+export function dominioDosBonds(
+  valores: readonly number[],
+  base?: FaixaDoEixo,
+): FaixaDoEixo {
+  if (valores.length === 0) {
+    return base ?? { minimo: 0, maximo: AMPLITUDE_MINIMA_DOS_BONDS };
+  }
 
   const menor = Math.min(...valores);
   const maior = Math.max(...valores);
   const medido = maior - menor;
 
-  //: O PISO CENTRA, não estica só para cima: esticar por um lado deslocaria a
-  //: curva na vertical sem o dado ter mudado, e duas cargas seguidas do mesmo
-  //: período desenhariam a linha em alturas diferentes.
+  //: O PISO AFASTA AS DUAS PONTAS em igual medida, para a curva não se deslocar
+  //: na vertical quando a amplitude é pequena — duas cargas do mesmo período
+  //: desenhariam alturas diferentes.
+  //:
+  //: "EM IGUAL MEDIDA" E NÃO "CENTRA", e esta frase é correção de uma revisão:
+  //: o `Math.max(0, …)` abaixo vence perto de zero, e aí a série deixa de ficar
+  //: no meio. Para `[0,4; 0,5]` o eixo sai 0–1,61 e o centro vai para 0,805,
+  //: contra 0,45 da série. É compressão visual, não valor falso — e com a faixa
+  //: fixa de cada métrica o caso deixou de aparecer na prática.
   const falta = Math.max(0, AMPLITUDE_MINIMA_DOS_BONDS - medido) / 2;
   const amplitude = Math.max(AMPLITUDE_MINIMA_DOS_BONDS, medido);
   const folga = amplitude * FOLGA_DOS_BONDS;
 
-  return {
-    //: NUNCA ABAIXO DE ZERO: preço e yield negativos não existem, e um eixo que
-    //: começa em −1,2 sugere que exista.
+  //: NUNCA ABAIXO DE ZERO: preço e yield negativos não existem, e um eixo que
+  //: começa em −1,2 sugere que existam.
+  const pedido = {
     minimo: Math.max(0, menor - falta - folga),
     maximo: maior + falta + folga,
+  };
+  if (!base) return pedido;
+
+  //: A UNIÃO: no caso normal a faixa fixa contém o pedido e o eixo NÃO SE MEXE
+  //: entre recortes — que é o ponto. No caso extremo ela se abre, e o extremo
+  //: aparece.
+  return {
+    minimo: Math.min(base.minimo, pedido.minimo),
+    maximo: Math.max(base.maximo, pedido.maximo),
   };
 }
 

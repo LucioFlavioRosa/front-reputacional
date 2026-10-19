@@ -55,11 +55,23 @@ const ONDA_1: {
   },
   {
     portal: 'inteligencia_de_mercado',
-    view: null,
+    // O TERCEIRO MÓDULO ABRIU. Ele nasceu aqui com `view: null` e
+    // `pronto: false` — o cartão aparecia e não levava a lugar nenhum —, e a
+    // primeira tela dele é o cruzamento das cotações dos bonds com o índice
+    // reputacional da companhia.
+    //
+    // A PORTA DE VERDADE NÃO É ESTA. `configuracao.mercado_lancado`, no back,
+    // é quem decide se as rotas servem dado; esconder ou mostrar o cartão é
+    // conveniência de tela. Enquanto a bandeira estiver desligada, clicar aqui
+    // leva uma tela de erro do servidor em vez de um gráfico — e isso é
+    // melhor que um cartão que mente sobre estar pronto.
+    view: 'mercado',
     titulo: 'Painel de Inteligência de Mercado',
     descricao:
-      'O tracking da saúde reputacional da Aegea, traduzido em indicadores para decisão estratégica.',
-    pronto: false,
+      'Como as cotações dos bonds da Aegea se moveram e como o índice reputacional da companhia se moveu no mesmo período.',
+    fontes:
+      'Cotação diária dos papéis em circulação (export do provedor de preço) e o índice mensal do painel de KPIs.',
+    pronto: true,
   },
 ];
 

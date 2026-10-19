@@ -31,6 +31,7 @@ export type Destino =
   | 'relatorios'
   | 'preparar'
   | 'sinais'
+  | 'mercado'
   | 'score'
   | 'cadastro'
   | 'admin'
@@ -68,6 +69,7 @@ export function lerCaminho(caminho: string): Rota {
   if (primeira === 'relatorios') return { destino: 'relatorios' };
   if (primeira === 'preparar') return { destino: 'preparar' };
   if (primeira === 'sinais') return { destino: 'sinais' };
+  if (primeira === 'mercado') return { destino: 'mercado' };
   // AS TELAS DO SCORE GANHAM ENDEREÇO, e não é detalhe: elas passaram a ser a
   // barra de cima daquela divisão, e uma barra cujos itens não são links não
   // se compartilha, não volta no histórico e não recarrega onde estava.
@@ -125,6 +127,8 @@ export function caminhoDe(rota: Rota): string {
       return '/preparar';
     case 'sinais':
       return '/sinais';
+    case 'mercado':
+      return '/mercado';
     case 'score':
       return rota.aba && rota.aba !== 'geral' ? `/score/${rota.aba}` : '/score';
     case 'admin':
