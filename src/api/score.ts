@@ -9,7 +9,8 @@
 import type { Bloco, Dossie } from '@/dominio/dossie';
 import type { Dados as ConsultaDaLente } from '@/paginas/score/consulta/dados/tipos';
 import type { FiltroDoRisco, OpcoesDoRisco, PaginaDeIncidentes, PainelDeRisco } from '@/dominio/riscos';
-import type { Calibracao, CalibracaoEntrada, DriversDoScore, FatoDoMes, FonteDoScore, ImportacaoDoScore, IndiceDoScore, OpcoesDoScore, PontoDaSerie } from '@/dominio/score';
+import type { Calibracao, CalibracaoEntrada, DriversDoScore, FatoDoMes, FonteDoScore, ImportacaoDoScore, IndiceDoScore, ListaDeVeiculos, OpcoesDoScore, PontoDaSerie } from '@/dominio/score';
+import { LISTA_DO_MERCADO } from '@/dominio/score';
 import { requisitar } from './nucleo';
 
 /** O índice do mês, com as lentes que o formaram.
@@ -386,7 +387,7 @@ export function conferirPlanilhaDoScoreComoCouber(
 
 /** O que a gravação da lista de veículos de investidores mudou. */
 export interface VeiculosDeInvestidoresSalvos {
-  /** Quantos entraram na lente Mercado agora. */
+  /** Quantos entraram na lente agora. */
   marcados: number;
   /** Quantos saíram. É o número que a tela repete de volta: remover é a
    *  operação que a pessoa quer ver confirmada. */
@@ -418,11 +419,15 @@ export interface VeiculosDeInvestidoresSalvos {
 export function definirVeiculosDeInvestidores(
   ids: string[],
   conhecidos: string[],
+  lista: ListaDeVeiculos = LISTA_DO_MERCADO,
 ): Promise<VeiculosDeInvestidoresSalvos> {
-  return requisitar<VeiculosDeInvestidoresSalvos>('/api/score/veiculos-de-investidores', {
-    method: 'PUT',
-    body: JSON.stringify({ ids, conhecidos }),
-  });
+  return requisitar<VeiculosDeInvestidoresSalvos>(
+    `/api/score/veiculos-da-lista/${lista}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ ids, conhecidos }),
+    },
+  );
 }
 
 /** Um veículo que passa a contar na lente, ou que deixa de contar. */
@@ -457,17 +462,21 @@ export interface Reconciliacao {
  *
  *  POR QUE A PRÉVIA EXISTE: aplicar reescreve o agregado de meses FECHADOS, e o
  *  índice daqueles meses muda — o número que já foi citado em reunião. */
-export function previaDaReconciliacao(): Promise<Reconciliacao[]> {
+export function previaDaReconciliacao(
+  lista: ListaDeVeiculos = LISTA_DO_MERCADO,
+): Promise<Reconciliacao[]> {
   return requisitar<Reconciliacao[]>(
-    '/api/score/veiculos-de-investidores/reconciliacao',
+    `/api/score/veiculos-da-lista/${lista}/reconciliacao`,
   );
 }
 
 /** Faz a lista de agora valer para TODOS os meses já ingeridos, nos dois
  *  sentidos: o que entrou na lista passa a contar, o que saiu deixa. */
-export function aplicarReconciliacao(): Promise<Reconciliacao[]> {
+export function aplicarReconciliacao(
+  lista: ListaDeVeiculos = LISTA_DO_MERCADO,
+): Promise<Reconciliacao[]> {
   return requisitar<Reconciliacao[]>(
-    '/api/score/veiculos-de-investidores/reconciliacao',
+    `/api/score/veiculos-da-lista/${lista}/reconciliacao`,
     { method: 'POST' },
   );
 }

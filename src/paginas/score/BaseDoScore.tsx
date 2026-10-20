@@ -47,7 +47,10 @@ import {
 import { Abas } from '@/componentes/Abas';
 import type { Aba } from '@/componentes/Abas';
 import { Paginacao } from '@/componentes/Paginacao';
-import { VeiculosDeInvestidores } from '@/paginas/score/VeiculosDeInvestidores';
+import {
+  VeiculosDeInvestidores,
+  VeiculosInstitucionais,
+} from '@/paginas/score/VeiculosDeInvestidores';
 import { numero } from '@/dominio/formato';
 import { ROTULO_DO_AVISO, ROTULO_DO_DESCARTE } from '@/dominio/score';
 
@@ -193,11 +196,18 @@ function LinhaDoResumo({ resumo }: { resumo: ImportacaoDoScore }) {
  *  natureza — é curadoria de cadastro. Empilhadas, a lista de 81 nomes ficaria
  *  entre quem sobe a planilha e o resultado da conferência.
  */
-type IdDaSubaba = 'planilha' | 'investidores';
+type IdDaSubaba = 'planilha' | 'investidores' | 'institucionais';
 
+/** TRÊS DESDE 20/10/2026, e a terceira é gêmea da segunda: a lente
+ *  Institucional passou a recortar a mesma Clipei pela subcategoria
+ *  "Institucional", e mantém a lista dela pelo mesmo gesto.
+ *
+ *  DUAS ABAS, E NÃO UMA COM SELETOR, por pedido do dono do produto. Por baixo
+ *  é o mesmo componente — o que muda é a lista. */
 const ABAS_DA_BASE: readonly Aba<IdDaSubaba>[] = [
   { id: 'planilha', rotulo: 'Subir planilha' },
   { id: 'investidores', rotulo: 'Veículos de investidores' },
+  { id: 'institucionais', rotulo: 'Veículos institucionais' },
 ];
 
 /** O que a planilha diz de ASSUNTO, e o que o cadastro reconhece.
@@ -925,7 +935,9 @@ export function BaseDoScore() {
         aria-labelledby={`base-${subaba}`}
         tabIndex={-1}
       >
-        {subaba === 'investidores' ? <VeiculosDeInvestidores /> : painelDaPlanilha()}
+        {subaba === 'investidores' ? <VeiculosDeInvestidores /> : null}
+        {subaba === 'institucionais' ? <VeiculosInstitucionais /> : null}
+        {subaba === 'planilha' ? painelDaPlanilha() : null}
       </div>
     </div>
   );

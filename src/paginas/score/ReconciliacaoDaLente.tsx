@@ -30,6 +30,7 @@ import {
   previaDaReconciliacao,
   type Reconciliacao,
 } from '@/api/cliente';
+import { LISTA_DO_MERCADO, type ListaDeVeiculos } from '@/dominio/score';
 import { Botao, Cartao, FaixaDeErro, Modal } from '@/componentes/basicos';
 import { numero } from '@/dominio/formato';
 import { catalogoMudou } from '@/dominio/sincronizacao';
@@ -140,7 +141,22 @@ function rotuloDoBotao(total: number): string {
 
 export function ReconciliacaoDaLente({
   confirmarApos = 0,
+  lista = LISTA_DO_MERCADO,
+  lente = 'Mercado',
 }: {
+  /** QUAL lista este painel reconcilia.
+   *
+   *  Com duas abas no ar (investidores e institucionais), o painel precisa
+   *  saber de quem está falando: ler a prévia da outra lista mostraria números
+   *  certos sobre a lente errada — e aplicar reescreveria o histórico dela. O
+   *  padrão é o Mercado, que é a única que existia quando este painel nasceu. */
+  lista?: ListaDeVeiculos;
+  /** O nome da lente, para as frases deste painel.
+   *
+   *  ACHADO DE REVISÃO: elas diziam "lente Mercado" fixo, e na aba
+   *  Institucional o painel reconciliava a lista certa afirmando a lente
+   *  errada — o pior tipo de texto, porque o número ao lado dele está certo. */
+  lente?: string;
   /** Um contador que o Salvar da lista incrementa.
    *
    *  POR QUE UM CONTADOR, e não um booleano: o pedido do dono do produto é que
@@ -193,10 +209,13 @@ export function ReconciliacaoDaLente({
 
   const carregar = useCallback(() => {
     const minha = ++versao.current;
-    previaDaReconciliacao()
-      .then((lista) => {
+    //: `lidas`, E NÃO `lista`: o parâmetro antigo tinha o mesmo nome da prop
+    //: nova e a sombreava. Funciona, e é exatamente o tipo de nome que faz a
+    //: próxima edição ler a variável errada sem o compilador reclamar.
+    previaDaReconciliacao(lista)
+      .then((lidas) => {
         if (!vivo.current || minha !== versao.current) return;
-        definirMedidas(lista);
+        definirMedidas(lidas);
         definirErro('');
       })
       .catch((falha: Error) => {
@@ -204,7 +223,7 @@ export function ReconciliacaoDaLente({
         definirMedidas([]);
         definirErro(falha.message);
       });
-  }, []);
+  }, [lista]);
 
   useEffect(carregar, [carregar]);
 
@@ -237,14 +256,14 @@ export function ReconciliacaoDaLente({
     if (confirmarApos <= 0) return;
     let valido = true;
     const minha = ++versao.current;
-    previaDaReconciliacao()
-      .then((lista) => {
+    previaDaReconciliacao(lista)
+      .then((lidas) => {
         if (!valido || !vivo.current || minha !== versao.current) return;
-        definirMedidas(lista);
+        definirMedidas(lidas);
         definirErro('');
         //: SEM DESVIO, SEM JANELA: salvar uma mudança que não alcança nenhum
         //: mês já ingerido não tem nada a confirmar.
-        if (temDesvio(lista)) definirAConfirmar(lista);
+        if (temDesvio(lidas)) definirAConfirmar(lidas);
       })
       .catch((falha: Error) => {
         if (!valido || !vivo.current || minha !== versao.current) return;
@@ -262,7 +281,7 @@ export function ReconciliacaoDaLente({
     return () => {
       valido = false;
     };
-  }, [confirmarApos]);
+  }, [confirmarApos, lista]);
 
   async function aplicar() {
     definirAplicando(true);
@@ -272,7 +291,7 @@ export function ReconciliacaoDaLente({
     //: poderia pousar por cima e ressuscitar o desvio que acabou de sumir.
     const minha = ++versao.current;
     try {
-      const depois = await aplicarReconciliacao();
+      const depois = await aplicarReconciliacao(lista);
       if (!vivo.current) return;
       versao.current = minha;
       //: O RESULTADO VEM DA RESPOSTA, e não do que a prévia tinha dito: entre
@@ -284,7 +303,7 @@ export function ReconciliacaoDaLente({
         0,
       );
       definirFeito(
-        `Pronto: a lente Mercado passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
+        `Pronto: a lente ${lente} passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
       );
       definirMedidas(depois);
       definirAConfirmar(null);
@@ -369,7 +388,7 @@ export function ReconciliacaoDaLente({
   return (
     <Cartao>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
-        A lente Mercado ainda não reflete esta lista
+        A lente {lente} ainda não reflete esta lista
       </p>
       {/* O QUE O BOTÃO FAZ, ANTES DE ELE SER CLICADO. Aplicar reescreve meses
           fechados: o índice deles muda. Quem clica precisa saber disso e ver

@@ -10,6 +10,26 @@
  *  faixa, o rótulo de uma régua, como se lê um delta.
  */
 
+/** AS LISTAS DE VEÍCULOS QUE EXISTEM, pelo nome que o servidor conhece.
+ *
+ *  O NOME É O CONTRATO, e ele vem do domínio do back (`LISTAS_DE_VEICULOS`): a
+ *  mesma lista que a ingestão usa para recortar é a que a tela mantém. Um nome
+ *  inventado não viraria lista vazia — o servidor responde 404, de propósito,
+ *  para o erro doer em quem o escreveu.
+ *
+ *  SÃO DUAS, e a segunda é o pedido de 20/10/2026: a lente Institucional
+ *  recorta a MESMA Clipei pela subcategoria "Institucional", como a Mercado faz
+ *  pela "Econômica e de negócios".
+ *
+ *  NO DOMÍNIO, E NÃO EM `api/score`: doze arquivos de teste dublam
+ *  `@/api/cliente`, e uma CONSTANTE que mora lá precisa ser repetida em cada
+ *  dublê — a tela quebraria no teste por um valor que não tem nada de API.
+ *  Nome de lista é vocabulário: o endereço que o usa é que é transporte. */
+export type ListaDeVeiculos = 'imprensa_economica' | 'imprensa_institucional';
+
+export const LISTA_DO_MERCADO: ListaDeVeiculos = 'imprensa_economica';
+export const LISTA_INSTITUCIONAL: ListaDeVeiculos = 'imprensa_institucional';
+
 export interface LenteDoScore {
   codigo: string;
   nome: string;

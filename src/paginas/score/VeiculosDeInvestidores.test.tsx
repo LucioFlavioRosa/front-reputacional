@@ -19,7 +19,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { VeiculosDeInvestidores } from '@/paginas/score/VeiculosDeInvestidores';
+import {
+  VeiculosDeInvestidores,
+  VeiculosInstitucionais,
+} from '@/paginas/score/VeiculosDeInvestidores';
 import type { Instituicao } from '@/dominio/tipos';
 
 vi.mock('@/api/cliente', () => ({
@@ -40,6 +43,7 @@ const { criarInstituicao, definirVeiculosDeInvestidores, previaDaReconciliacao }
 //: um teste com id 1 passaria mesmo se o código usasse o primeiro da lista.
 const IMPRENSA = 4;
 const MERCADO = 12;
+const INSTITUCIONAL = 14;
 
 const DICIONARIOS = {
   esferas: [],
@@ -70,6 +74,13 @@ const DICIONARIOS = {
       codigo: 'geral_nacional',
       nome: 'Geral nacional',
       ordem: 2,
+      categoria_publico_id: IMPRENSA,
+    },
+    {
+      id: INSTITUCIONAL,
+      codigo: 'institucional',
+      nome: 'Institucional',
+      ordem: 5,
       categoria_publico_id: IMPRENSA,
     },
   ],
@@ -172,7 +183,73 @@ function naTela(): string[] {
     );
 }
 
+describe('a aba gêmea do Institucional', () => {
+  /** As duas abas são o MESMO componente com outra lista — e é justamente por
+   *  isso que estes testes existem: o que as separa é um parâmetro, e um
+   *  parâmetro trocado manda a gravação para a lente errada. */
+
+  it('MOSTRA A LISTA DELA, e não a do Mercado', () => {
+    catalogoAtual = catalogoCom([
+      veiculo('Valor Econômico', MERCADO),
+      veiculo('Agência Brasil', INSTITUCIONAL),
+    ]);
+    render(<VeiculosInstitucionais />);
+
+    expect(screen.getByText(/Veículos institucionais \(1\)/)).toBeTruthy();
+    expect(naTela()).toEqual(['Agência Brasil']);
+  });
+
+  it('SALVA NA LISTA DELA: o endereço carrega a lente', async () => {
+    //: É A ASSERÇÃO QUE IMPORTA NESTE PAR DE ABAS. Sem o terceiro argumento, a
+    //: tela do Institucional gravaria na subcategoria do Mercado — e, como a
+    //: gravação é DECLARATIVA ("estes são os veículos"), ela esvaziaria a lista
+    //: do Mercado inteira no primeiro Salvar. O Mercado é 20% do índice.
+    const pessoa = userEvent.setup();
+    catalogoAtual = catalogoCom([veiculo('Agência Brasil', INSTITUCIONAL)]);
+    render(<VeiculosInstitucionais />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    await waitFor(() =>
+      expect(definirVeiculosDeInvestidores).toHaveBeenCalledWith(
+        [],
+        ['id-Agência Brasil'],
+        'imprensa_institucional',
+      ),
+    );
+  });
+
+  it('A PRÉVIA DA RECONCILIAÇÃO é a da lista dela', async () => {
+    //: O painel lê na montagem; se ele lesse a prévia do Mercado, mostraria
+    //: números certos sobre a lente errada — e aplicar reescreveria o
+    //: histórico daquela, não desta.
+    catalogoAtual = catalogoCom([veiculo('Agência Brasil', INSTITUCIONAL)]);
+    render(<VeiculosInstitucionais />);
+
+    await waitFor(() =>
+      expect(previaDaReconciliacao).toHaveBeenCalledWith('imprensa_institucional'),
+    );
+  });
+});
+
 describe('VeiculosDeInvestidores', () => {
+  it('SALVA NA LISTA DO MERCADO, e o endereço diz qual é', async () => {
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    await waitFor(() =>
+      expect(definirVeiculosDeInvestidores).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(Array),
+        'imprensa_economica',
+      ),
+    );
+  });
+
   it('MOSTRA SÓ OS DA LENTE MERCADO: a aba é sobre eles, não sobre o cadastro', () => {
     render(<VeiculosDeInvestidores />);
 
