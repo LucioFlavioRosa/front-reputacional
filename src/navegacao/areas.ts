@@ -48,6 +48,18 @@ const DO_MERCADO: ItemDoMenu[] = [
   { view: 'mercado', rotulo: 'Importação', aba: 'importacao' },
 ];
 
+//: DESLIGADA por pedido (2026-10-20): a aba "Drivers e riscos" sai da barra do
+//: Score, sem sair do código — a tela (`aba === 'drivers'` em `Score.tsx`) e a
+//: rota continuam existindo, só não aparecem mais no menu. Virar `true`
+//: religa, sem mexer em mais nada.
+const DRIVERS_E_RISCOS_NO_MENU = false;
+
+const ITEM_DRIVERS_E_RISCOS: ItemDoMenu = {
+  view: 'score',
+  rotulo: 'Drivers e riscos',
+  aba: 'drivers',
+};
+
 const DO_SCORE: ItemDoMenu[] = [
   { view: 'score', rotulo: 'Visão geral', aba: 'geral' },
   { view: 'score', rotulo: 'Lentes', aba: 'lentes' },
@@ -55,11 +67,12 @@ const DO_SCORE: ItemDoMenu[] = [
   //: tocam a matriz de risco corporativo, e quem acabou de ler uma lente é
   //: quem pergunta "e disto, o que é risco".
   //:
-  //: NÃO CONFUNDIR COM "Drivers e riscos", logo ao lado: lá são os drivers do
-  //: ÍNDICE (o que empurra a nota), aqui são os RISCOS DA MATRIZ corporativa —
-  //: 32 riscos em 8 clusters, com severidade atribuída pela companhia.
+  //: NÃO CONFUNDIR COM "Drivers e riscos", logo ao lado (quando ligada): lá são
+  //: os drivers do ÍNDICE (o que empurra a nota), aqui são os RISCOS DA MATRIZ
+  //: corporativa — 32 riscos em 8 clusters, com severidade atribuída pela
+  //: companhia.
   { view: 'score', rotulo: 'Risk Tracking', aba: 'riscos' },
-  { view: 'score', rotulo: 'Drivers e riscos', aba: 'drivers' },
+  ...(DRIVERS_E_RISCOS_NO_MENU ? [ITEM_DRIVERS_E_RISCOS] : []),
   { view: 'score', rotulo: 'Metodologia', aba: 'metodologia' },
   //: A BASE DE DADOS É A CONSULTA: as menções de cada lente como chegaram da
   //: fonte, para quem quer entrar no detalhe. Não confundir com a Importação,
