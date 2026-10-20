@@ -73,9 +73,20 @@ export function RegistrosDaJanela({
   const [dados, definirDados] = useState<Pagina | null>(null);
   const [erro, definirErro] = useState('');
 
-  //: VIVO: o modal fecha enquanto a leitura está no ar, e `setState` depois do
-  //: desmonte é aviso no console de quem for depurar outra coisa.
+  //: VIVO E VERSÃO: duas guardas pequenas para duas corridas reais.
+  //:
+  //: `vivo` impede `setState` depois do desmonte — o modal fecha enquanto a
+  //: leitura está no ar, e aviso no console atrapalha quem for depurar outra
+  //: coisa.
+  //:
+  //: `versao` impede que uma leitura ANTIGA sobrescreva uma mais nova, e aqui
+  //: isso é fácil de provocar: duas páginas seguidas na paginação disparam duas
+  //: leituras, e quem termina por último vence. ACHADO DE REVISÃO — como a
+  //: lista velha fica na tela enquanto a nova não chega (de propósito), a
+  //: resposta atrasada da página 1 pousaria POR CIMA da página 2 e a tabela
+  //: passaria a discordar do número da paginação logo abaixo dela.
   const vivo = useRef(true);
+  const versao = useRef(0);
   useEffect(
     () => () => {
       vivo.current = false;
@@ -89,14 +100,15 @@ export function RegistrosDaJanela({
     //: render a mais), a lista antiga é melhor companhia que um vazio: a página
     //: 2 chega em milissegundos, e o pisca-pisca de uma tabela sumindo e
     //: voltando é pior que ela ficar parada por um instante.
+    const minha = ++versao.current;
     obterRegistrosDaJanela(ate, grupo.id, nivel, pagina)
       .then((lida) => {
-        if (!vivo.current) return;
+        if (!vivo.current || minha !== versao.current) return;
         definirDados(lida);
         definirErro('');
       })
       .catch((falha: Error) => {
-        if (!vivo.current) return;
+        if (!vivo.current || minha !== versao.current) return;
         definirErro(falha.message);
       });
   }, [ate, grupo.id, nivel, pagina]);

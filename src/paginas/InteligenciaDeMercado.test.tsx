@@ -929,6 +929,14 @@ describe('os temas da janela, ao clicar numa data', () => {
 it('FECHAR a janela leva o modal dos registros com ela', async () => {
   //: O modal é uma camada acima da janela, e viver mais que ela seria o mesmo
   //: defeito do "segundo clique" que deixava a janela antiga na tela.
+  //:
+  //: ESTE TESTE É ESTRUTURAL, e a revisão tem razão ao dizer que o GESTO não é
+  //: o de quem usa: o modal é `aria-modal` com overlay, então com ele aberto o
+  //: botão "Fechar a janela" está coberto — no navegador ninguém o alcança, e no
+  //: jsdom o clique chega. O que ele protege é a POSSE do estado: `aberto` mora
+  //: dentro da janela, e subi-lo para a página faria o modal sobreviver a ela.
+  //: O caminho que a pessoa tem de verdade é o teste seguinte: Esc fecha o
+  //: modal, a janela fica, e só então ela é fechada.
   obterRegistrosDaJanela.mockImplementation(() =>
     Promise.resolve({ itens: [], total: 0, pagina: 1, tamanho: 50 }),
   );
@@ -946,6 +954,46 @@ it('FECHAR a janela leva o modal dos registros com ela', async () => {
   await userEvent.click(screen.getByRole('button', { name: /fechar a janela/i }));
 
   expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull();
+});
+
+it('ESC fecha o modal dos registros e deixa a janela no lugar', async () => {
+  /** O CAMINHO QUE A PESSOA TEM. Com o modal aberto, o overlay cobre a janela:
+   *  o único gesto disponível é fechar o modal — Esc, ou o X do diálogo. Ele
+   *  tem de levar só a si mesmo: levar a janela junto obrigaria a pessoa a
+   *  clicar a data no gráfico outra vez para ver o quadro de que ela acabou de
+   *  sair, e o quadro é o lugar de onde se abre o tema seguinte.
+   */
+  obterRegistrosDaJanela.mockImplementation(() =>
+    Promise.resolve({ itens: [], total: 0, pagina: 1, tamanho: 50 }),
+  );
+  render(<InteligenciaDeMercado />);
+  await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+  escolherData('2026-05-20');
+  await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+  await userEvent.click(
+    within(screen.getByTestId('quadro-positivos')).getByRole('button', {
+      name: /Governança/,
+    }),
+  );
+  expect(await screen.findByText(/Nenhuma menção neste recorte/)).toBeTruthy();
+
+  await userEvent.keyboard('{Escape}');
+
+  //: O MODAL FOI, O QUADRO FICOU — e com ele o botão de fechar a janela, que
+  //: agora está alcançável de novo.
+  await waitFor(() =>
+    expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull(),
+  );
+  expect(screen.getByTestId('quadro-positivos')).toBeTruthy();
+  expect(screen.getByRole('button', { name: /fechar a janela/i })).toBeTruthy();
+
+  //: E O SEGUNDO TEMA ABRE, sem passar pelo gráfico outra vez.
+  await userEvent.click(
+    within(screen.getByTestId('quadro-positivos')).getByRole('button', {
+      name: /Crescimento/,
+    }),
+  );
+  expect(await screen.findByText(/Nenhuma menção neste recorte/)).toBeTruthy();
 });
 
 it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async () => {
