@@ -181,6 +181,60 @@ it('a previa e refeita quando a LISTA muda', async () => {
   ).toBeTruthy();
 });
 
+it('salvar a lista ABRE a janela com os numeros, no mesmo gesto', async () => {
+  /** O PEDIDO, nas duas mensagens dele: "se eu disser que uma instituição
+   *  pertence a essa categoria, todos seus registros devem ser movidos" e "deve
+   *  acontecer no momento que clico em salvar; é um clique só".
+   *
+   *  A aba incrementa `confirmarApos` ao salvar, e o painel relê e pergunta. O
+   *  salvamento da lista JÁ aconteceu — por isso o botão de recusa diz "Agora
+   *  não", e não "Cancelar". */
+  const { rerender } = render(<ReconciliacaoDaLente confirmarApos={0} />);
+  await waitFor(() => expect(previaDaReconciliacao).toHaveBeenCalledTimes(1));
+
+  rerender(<ReconciliacaoDaLente confirmarApos={1} />);
+
+  expect(
+    await screen.findByText(/Isto também reescreve os meses fechados/),
+  ).toBeTruthy();
+  //: OS NÚMEROS ESTÃO NA JANELA, e não só no painel: é ali que a decisão é
+  //: tomada.
+  expect(screen.getByTestId('meses-que-mudam').textContent).toContain(
+    '08/2026: 0 → 49',
+  );
+  expect(screen.getByRole('button', { name: 'Agora não' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /Aplicar a 1 mês/ })).toBeTruthy();
+});
+
+it('"Agora nao" fecha a janela e DEIXA o painel avisando', async () => {
+  //: Adiar não é resolver: o desvio continua, e a tela continua dizendo isso.
+  const { rerender } = render(<ReconciliacaoDaLente confirmarApos={0} />);
+  await waitFor(() => expect(previaDaReconciliacao).toHaveBeenCalledTimes(1));
+  rerender(<ReconciliacaoDaLente confirmarApos={1} />);
+  await screen.findByText(/Isto também reescreve os meses fechados/);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Agora não' }));
+
+  expect(screen.queryByText(/Isto também reescreve/)).toBeNull();
+  expect(screen.getByText(/A lente Mercado ainda não reflete esta lista/)).toBeTruthy();
+  expect(aplicarReconciliacao).not.toHaveBeenCalled();
+});
+
+it('salvar SEM desvio nao abre janela nenhuma', async () => {
+  //: Um salvamento que não alcança nenhum mês já ingerido não tem o que
+  //: confirmar — e uma janela ali seria ruído em cima de um gesto comum.
+  vi.mocked(previaDaReconciliacao).mockResolvedValue([
+    medida({ meses: [{ mes: '2026-08-01', antes: 7, depois: 7, mudou: false }], entram: [] }),
+  ]);
+  const { rerender, container } = render(<ReconciliacaoDaLente confirmarApos={0} />);
+  await waitFor(() => expect(previaDaReconciliacao).toHaveBeenCalledTimes(1));
+
+  rerender(<ReconciliacaoDaLente confirmarApos={1} />);
+  await waitFor(() => expect(previaDaReconciliacao).toHaveBeenCalledTimes(2));
+
+  expect(container.textContent).toBe('');
+});
+
 it('a falha da previa NAO derruba a aba', async () => {
   //: O painel é acessório: a manutenção da lista não pode depender de uma
   //: leitura que é sobre outra coisa.

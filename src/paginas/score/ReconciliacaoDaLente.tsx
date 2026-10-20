@@ -30,7 +30,7 @@ import {
   previaDaReconciliacao,
   type Reconciliacao,
 } from '@/api/cliente';
-import { Botao, Cartao, FaixaDeErro } from '@/componentes/basicos';
+import { Botao, Cartao, FaixaDeErro, Modal } from '@/componentes/basicos';
 import { numero } from '@/dominio/formato';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 
@@ -88,11 +88,72 @@ function Quadro({
   );
 }
 
-export function ReconciliacaoDaLente() {
+/** O resumo do que muda, em números. O MESMO desenho no painel e na janela de
+ *  confirmação: duas pinturas do mesmo dado divergiriam no dia em que alguém
+ *  ajustasse uma delas. */
+function Resumo({ medidas }: { medidas: Reconciliacao[] }) {
+  return (
+    <>
+      {medidas
+        .filter((medida) => mesesQueMudam(medida).length > 0)
+        .map((medida) => (
+          <div key={medida.fonte} style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <Quadro
+                titulo="Passam a contar"
+                veiculos={medida.entram}
+                cor="var(--sucesso-fg)"
+              />
+              <Quadro
+                titulo="Deixam de contar"
+                veiculos={medida.saem}
+                cor="var(--erro-fg)"
+              />
+            </div>
+            <p
+              data-testid="meses-que-mudam"
+              style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}
+            >
+              {mesesQueMudam(medida)
+                .map(
+                  (mes) =>
+                    `${mesPorExtenso(mes.mes)}: ${numero(mes.antes)} → ${numero(mes.depois)}`,
+                )
+                .join(' · ')}
+            </p>
+          </div>
+        ))}
+    </>
+  );
+}
+
+function rotuloDoBotao(total: number): string {
+  return total === 1 ? 'Aplicar a 1 mês' : `Aplicar aos ${total} meses`;
+}
+
+export function ReconciliacaoDaLente({
+  confirmarApos = 0,
+}: {
+  /** Um contador que o Salvar da lista incrementa.
+   *
+   *  POR QUE UM CONTADOR, e não um booleano: o pedido do dono do produto é que
+   *  a reescrita aconteça NO CLIQUE DO SALVAR, num gesto só. Então, salvou,
+   *  este painel relê e — se a mudança alcança meses já ingeridos — abre a
+   *  janela com os números, ali mesmo. Dois salvamentos seguidos precisam abrir
+   *  a janela duas vezes, e um booleano que já estava `true` não avisaria o
+   *  segundo.
+   *
+   *  O SALVAMENTO DA LISTA JÁ ACONTECEU quando a janela abre, e isso é
+   *  deliberado: a lista é barata e reversível (é só marcar de novo), e o que
+   *  pede confirmação é a reescrita dos meses fechados. Por isso o botão de
+   *  recusa diz "Agora não", e não "Cancelar": não há o que cancelar. */
+  confirmarApos?: number;
+}) {
   const [medidas, definirMedidas] = useState<Reconciliacao[] | null>(null);
   const [erro, definirErro] = useState('');
   const [aplicando, definirAplicando] = useState(false);
   const [feito, definirFeito] = useState('');
+  const [perguntando, definirPerguntando] = useState(false);
 
   const carregar = useCallback(() => {
     previaDaReconciliacao()
@@ -125,6 +186,38 @@ export function ReconciliacaoDaLente() {
   //: porque o sincronizador escuta o `BroadcastChannel`.
   useEffect(() => catalogoMudou.assinar(carregar), [carregar]);
 
+  //: E DEPOIS DE SALVAR A LISTA, PERGUNTA NA HORA. É o pedido: a reescrita
+  //: acontece no clique do Salvar, num gesto só — e não como uma segunda
+  //: visita a um painel que a pessoa pode nem ver.
+  //:
+  //: RELÊ ANTES DE PERGUNTAR, em vez de usar o que já estava em `medidas`: o
+  //: que vale é o desvio DEPOIS do salvamento, e é ele que a janela mostra. A
+  //: assinatura do `catalogoMudou` acima também dispara uma releitura aqui, e
+  //: as duas convergem para o mesmo estado — esta é a que decide abrir.
+  useEffect(() => {
+    if (confirmarApos <= 0) return;
+    let valido = true;
+    previaDaReconciliacao()
+      .then((lista) => {
+        if (!valido) return;
+        definirMedidas(lista);
+        definirErro('');
+        //: SEM DESVIO, SEM JANELA: salvar uma mudança que não alcança nenhum
+        //: mês já ingerido não tem nada a confirmar.
+        if (temDesvio(lista)) definirPerguntando(true);
+      })
+      .catch((falha: Error) => {
+        if (!valido) return;
+        //: A FALHA AQUI NÃO VIRA JANELA. O salvamento da lista deu certo, e
+        //: dizer "não consegui" numa janela modal faria parecer que ele também
+        //: falhou. O painel abaixo mostra o erro, que é onde ele cabe.
+        definirErro(falha.message);
+      });
+    return () => {
+      valido = false;
+    };
+  }, [confirmarApos]);
+
   async function aplicar() {
     definirAplicando(true);
     definirErro('');
@@ -142,10 +235,16 @@ export function ReconciliacaoDaLente() {
         `Pronto: a lente Mercado passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
       );
       definirMedidas(depois);
+      definirPerguntando(false);
     } catch (falha) {
       definirErro(
         falha instanceof Error ? falha.message : 'Não consegui aplicar.',
       );
+      //: A JANELA FECHA MESMO NA FALHA, e o erro vai para o painel: uma modal
+      //: com um erro dentro prende quem só queria sair, e o painel continua
+      //: mostrando o desvio — que é a verdade depois de uma aplicação que não
+      //: aconteceu.
+      definirPerguntando(false);
     } finally {
       definirAplicando(false);
     }
@@ -176,6 +275,42 @@ export function ReconciliacaoDaLente() {
     0,
   );
 
+  //: A JANELA DO SALVAR. Ela é o caminho normal — o painel abaixo existe para
+  //: o desvio que chega por outro lado (outra aba, outra pessoa, um "Agora
+  //: não" de ontem).
+  if (perguntando) {
+    return (
+      <Modal
+        titulo="Isto também reescreve os meses fechados"
+        subtitulo="A lista foi salva. Ela vale para a próxima subida de cada mês — e, aplicando agora, vale também para os meses já ingeridos, o que reescreve a nota deles."
+        largura={620}
+        aoFechar={() => definirPerguntando(false)}
+        rodape={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {/* "AGORA NÃO", E NÃO "CANCELAR": a lista já está salva, e não há
+                o que cancelar. O que se adia é a reescrita — e o painel fica
+                na tela lembrando que ela ficou pendente. */}
+            <Botao
+              desabilitado={aplicando}
+              aoClicar={() => definirPerguntando(false)}
+            >
+              Agora não
+            </Botao>
+            <Botao
+              variante="primario"
+              desabilitado={aplicando}
+              aoClicar={() => void aplicar()}
+            >
+              {aplicando ? 'Aplicando…' : rotuloDoBotao(total)}
+            </Botao>
+          </div>
+        }
+      >
+        <Resumo medidas={medidas} />
+      </Modal>
+    );
+  }
+
   return (
     <Cartao>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
@@ -191,33 +326,7 @@ export function ReconciliacaoDaLente() {
         a nota desses meses, inclusive os fechados.
       </p>
 
-      {medidas.filter((medida) => mesesQueMudam(medida).length > 0).map((medida) => (
-        <div key={medida.fonte} style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <Quadro
-              titulo="Passam a contar"
-              veiculos={medida.entram}
-              cor="var(--sucesso-fg)"
-            />
-            <Quadro
-              titulo="Deixam de contar"
-              veiculos={medida.saem}
-              cor="var(--erro-fg)"
-            />
-          </div>
-          <p
-            data-testid="meses-que-mudam"
-            style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}
-          >
-            {mesesQueMudam(medida)
-              .map(
-                (mes) =>
-                  `${mesPorExtenso(mes.mes)}: ${numero(mes.antes)} → ${numero(mes.depois)}`,
-              )
-              .join(' · ')}
-          </p>
-        </div>
-      ))}
+      <Resumo medidas={medidas} />
 
       <Botao
         variante="primario"
@@ -225,11 +334,7 @@ export function ReconciliacaoDaLente() {
         aoClicar={() => void aplicar()}
         titulo="Reescreve a nota dos meses listados acima. Não tem volta automática: desfazer é mexer na lista de novo e aplicar outra vez."
       >
-        {aplicando
-          ? 'Aplicando…'
-          : total === 1
-            ? 'Aplicar a 1 mês'
-            : `Aplicar aos ${total} meses`}
+        {aplicando ? 'Aplicando…' : rotuloDoBotao(total)}
       </Botao>
     </Cartao>
   );
