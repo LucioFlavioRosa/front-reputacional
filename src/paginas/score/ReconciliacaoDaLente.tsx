@@ -23,7 +23,7 @@
  *  de uma leitura que é sobre outra coisa.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   aplicarReconciliacao,
@@ -63,14 +63,19 @@ function Quadro({
   titulo,
   veiculos,
   cor,
+  testId,
 }: {
   titulo: string;
   veiculos: Reconciliacao['entram'];
   cor: string;
+  //: Para a prova poder olhar DENTRO do quadro: o nome de um veículo aparece
+  //: também na lista da aba, atrás da janela, e um `getByText` solto encontra
+  //: os dois.
+  testId: string;
 }) {
   if (veiculos.length === 0) return null;
   return (
-    <div style={{ minWidth: 220, flex: '1 1 220px' }}>
+    <div data-testid={testId} style={{ minWidth: 220, flex: '1 1 220px' }}>
       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: cor }}>
         {titulo}
       </p>
@@ -100,11 +105,13 @@ function Resumo({ medidas }: { medidas: Reconciliacao[] }) {
           <div key={medida.fonte} style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <Quadro
+                testId="quadro-entram"
                 titulo="Passam a contar"
                 veiculos={medida.entram}
                 cor="var(--sucesso-fg)"
               />
               <Quadro
+                testId="quadro-saem"
                 titulo="Deixam de contar"
                 veiculos={medida.saem}
                 cor="var(--erro-fg)"
@@ -153,15 +160,47 @@ export function ReconciliacaoDaLente({
   const [erro, definirErro] = useState('');
   const [aplicando, definirAplicando] = useState(false);
   const [feito, definirFeito] = useState('');
-  const [perguntando, definirPerguntando] = useState(false);
+  //: A JANELA É DONA DOS PRÓPRIOS NÚMEROS, e não um booleano sobre `medidas`.
+  //:
+  //: ACHADO ALTO DE REVISÃO. Com um booleano, a janela desenhava o que
+  //: `medidas` tivesse no momento — e `medidas` muda sozinho: o painel relê a
+  //: cada aviso de `catalogoMudou`, inclusive os que vêm de OUTRA ABA. Uma
+  //: leitura que chegasse enquanto a pessoa lia a janela podia trocar os
+  //: números debaixo dela e, se viesse sem desvio, FECHAR a janela — porque a
+  //: condição de desenhar era `temDesvio(medidas)`.
+  //:
+  //: Congelado, o que a pessoa confirma é o que ela leu. O que o servidor
+  //: aplica é o estado dele na hora do POST, e por isso o "Pronto" vem da
+  //: RESPOSTA — essa diferença é inerente a qualquer par prévia/aplicar, e a
+  //: resposta é o que a desfaz.
+  const [aConfirmar, definirAConfirmar] = useState<Reconciliacao[] | null>(null);
+
+  //: VIVO E VERSÃO: duas guardas pequenas para duas corridas reais.
+  //:
+  //: `vivo` impede `setState` depois do desmonte — a aba pode ser trocada
+  //: enquanto uma leitura está no ar. `versao` impede que uma leitura ANTIGA
+  //: sobrescreva uma mais nova: salvar dispara `catalogoMudou` e o contador, e
+  //: as duas leem; sem a versão, a que terminar por último vence, e não é
+  //: necessariamente a mais recente.
+  const vivo = useRef(true);
+  const versao = useRef(0);
+  useEffect(
+    () => () => {
+      vivo.current = false;
+    },
+    [],
+  );
 
   const carregar = useCallback(() => {
+    const minha = ++versao.current;
     previaDaReconciliacao()
       .then((lista) => {
+        if (!vivo.current || minha !== versao.current) return;
         definirMedidas(lista);
         definirErro('');
       })
       .catch((falha: Error) => {
+        if (!vivo.current || minha !== versao.current) return;
         definirMedidas([]);
         definirErro(falha.message);
       });
@@ -197,21 +236,28 @@ export function ReconciliacaoDaLente({
   useEffect(() => {
     if (confirmarApos <= 0) return;
     let valido = true;
+    const minha = ++versao.current;
     previaDaReconciliacao()
       .then((lista) => {
-        if (!valido) return;
+        if (!valido || !vivo.current || minha !== versao.current) return;
         definirMedidas(lista);
         definirErro('');
         //: SEM DESVIO, SEM JANELA: salvar uma mudança que não alcança nenhum
         //: mês já ingerido não tem nada a confirmar.
-        if (temDesvio(lista)) definirPerguntando(true);
+        if (temDesvio(lista)) definirAConfirmar(lista);
       })
       .catch((falha: Error) => {
-        if (!valido) return;
-        //: A FALHA AQUI NÃO VIRA JANELA. O salvamento da lista deu certo, e
-        //: dizer "não consegui" numa janela modal faria parecer que ele também
-        //: falhou. O painel abaixo mostra o erro, que é onde ele cabe.
-        definirErro(falha.message);
+        if (!valido || !vivo.current || minha !== versao.current) return;
+        //: A FALHA AQUI NÃO VIRA JANELA, e DIZ QUE O SALVAMENTO DEU CERTO.
+        //:
+        //: ACHADO MÉDIO DE REVISÃO: a mensagem crua ("não foi possível falar
+        //: com o servidor") num cartão que aparece logo depois de salvar se lê
+        //: como "o salvamento falhou" — e ele não falhou. A frase separa as
+        //: duas coisas antes de dar a notícia ruim.
+        definirErro(
+          'A lista foi salva. Não consegui conferir se isto alcança meses já ' +
+            `ingeridos: ${falha.message}`,
+        );
       });
     return () => {
       valido = false;
@@ -221,8 +267,14 @@ export function ReconciliacaoDaLente({
   async function aplicar() {
     definirAplicando(true);
     definirErro('');
+    //: A LEITURA QUE VENHA DEPOIS DESTE POST É A QUE VALE: a resposta dele é
+    //: mais nova que qualquer prévia em voo, e sem bater a versão uma delas
+    //: poderia pousar por cima e ressuscitar o desvio que acabou de sumir.
+    const minha = ++versao.current;
     try {
       const depois = await aplicarReconciliacao();
+      if (!vivo.current) return;
+      versao.current = minha;
       //: O RESULTADO VEM DA RESPOSTA, e não do que a prévia tinha dito: entre
       //: ler a prévia e clicar, alguém pode ter mexido na lista. Repetir o
       //: número da prévia seria afirmar o que não foi medido.
@@ -235,8 +287,9 @@ export function ReconciliacaoDaLente({
         `Pronto: a lente Mercado passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
       );
       definirMedidas(depois);
-      definirPerguntando(false);
+      definirAConfirmar(null);
     } catch (falha) {
+      if (!vivo.current) return;
       definirErro(
         falha instanceof Error ? falha.message : 'Não consegui aplicar.',
       );
@@ -244,10 +297,48 @@ export function ReconciliacaoDaLente({
       //: com um erro dentro prende quem só queria sair, e o painel continua
       //: mostrando o desvio — que é a verdade depois de uma aplicação que não
       //: aconteceu.
-      definirPerguntando(false);
+      definirAConfirmar(null);
     } finally {
-      definirAplicando(false);
+      if (vivo.current) definirAplicando(false);
     }
+  }
+
+  //: A JANELA VEM ANTES DE TUDO, e isto é conserto do achado ALTO: enquanto
+  //: ela está aberta, nada do que chegar de fora pode fechá-la nem trocar o que
+  //: ela mostra. Ela desenha o SEU instantâneo (`aConfirmar`), e só sai por
+  //: decisão de quem está olhando — "Agora não", aplicar, ou fechar.
+  if (aConfirmar) {
+    const total = aConfirmar.reduce(
+      (soma, medida) => soma + mesesQueMudam(medida).length,
+      0,
+    );
+    return (
+      <Modal
+        titulo="Isto também reescreve os meses fechados"
+        subtitulo="A lista foi salva. Ela vale para a próxima subida de cada mês — e, aplicando agora, vale também para os meses já ingeridos, o que reescreve a nota deles."
+        largura={620}
+        aoFechar={() => definirAConfirmar(null)}
+        rodape={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {/* "AGORA NÃO", E NÃO "CANCELAR": a lista já está salva, e não há
+                o que cancelar. O que se adia é a reescrita — e o painel fica
+                na tela lembrando que ela ficou pendente. */}
+            <Botao desabilitado={aplicando} aoClicar={() => definirAConfirmar(null)}>
+              Agora não
+            </Botao>
+            <Botao
+              variante="primario"
+              desabilitado={aplicando}
+              aoClicar={() => void aplicar()}
+            >
+              {aplicando ? 'Aplicando…' : rotuloDoBotao(total)}
+            </Botao>
+          </div>
+        }
+      >
+        <Resumo medidas={aConfirmar} />
+      </Modal>
+    );
   }
 
   //: NADA A DECIDIR, NADA NA TELA — nem enquanto carrega. O painel é sobre uma
@@ -274,42 +365,6 @@ export function ReconciliacaoDaLente({
     (soma, medida) => soma + mesesQueMudam(medida).length,
     0,
   );
-
-  //: A JANELA DO SALVAR. Ela é o caminho normal — o painel abaixo existe para
-  //: o desvio que chega por outro lado (outra aba, outra pessoa, um "Agora
-  //: não" de ontem).
-  if (perguntando) {
-    return (
-      <Modal
-        titulo="Isto também reescreve os meses fechados"
-        subtitulo="A lista foi salva. Ela vale para a próxima subida de cada mês — e, aplicando agora, vale também para os meses já ingeridos, o que reescreve a nota deles."
-        largura={620}
-        aoFechar={() => definirPerguntando(false)}
-        rodape={
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            {/* "AGORA NÃO", E NÃO "CANCELAR": a lista já está salva, e não há
-                o que cancelar. O que se adia é a reescrita — e o painel fica
-                na tela lembrando que ela ficou pendente. */}
-            <Botao
-              desabilitado={aplicando}
-              aoClicar={() => definirPerguntando(false)}
-            >
-              Agora não
-            </Botao>
-            <Botao
-              variante="primario"
-              desabilitado={aplicando}
-              aoClicar={() => void aplicar()}
-            >
-              {aplicando ? 'Aplicando…' : rotuloDoBotao(total)}
-            </Botao>
-          </div>
-        }
-      >
-        <Resumo medidas={medidas} />
-      </Modal>
-    );
-  }
 
   return (
     <Cartao>
