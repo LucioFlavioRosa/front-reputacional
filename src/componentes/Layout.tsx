@@ -160,12 +160,19 @@ export function Layout({
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
   //: `Inicio.tsx`. Faltam `admin` e `plataforma` aqui ainda: caem no CRM por
   //: enquanto, dívida de antes desta tela existir.
+  //:
+  //: `mercado` também faltava aqui — o mesmo achado de revisão que corrigiu
+  //: `nomeDaArea` (20/10/2026), mas que só chegou até lá: esta variável é a
+  //: que o cabeçalho de fato mostra, e continuava caindo no `'CRM dos
+  //: Stakeholders'` do fim sobre a tela de bonds.
   const nomeDoPainel =
     view === 'score' || view === 'config-score'
       ? 'KPIs Reputacionais'
       : view === 'compartilhado'
         ? 'Cadastro compartilhado'
-        : 'CRM dos Stakeholders';
+        : view === 'mercado'
+          ? 'Inteligência de Mercado'
+          : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
