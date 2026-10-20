@@ -34,6 +34,7 @@ import { Carregando, FaixaDeErro } from '@/componentes/basicos';
 import { numero } from '@/dominio/formato';
 import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { GraficoDeDoisEixos, temCurva } from '@/graficos/GraficoDeDoisEixos';
+import { RegistrosDaJanela } from '@/paginas/RegistrosDaJanela';
 import { mercadoMudou } from '@/dominio/sincronizacao';
 import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
 
@@ -636,6 +637,12 @@ function JanelaDosTemas({
   aoTrocarNivel: (nivel: NivelDaJanela) => void;
   aoFechar: () => void;
 }) {
+  //: O GRUPO ABERTO NO MODAL. Mora aqui, e não na página: ele só existe
+  //: enquanto esta janela existe, e fechar a janela tem de levar o modal com
+  //: ela — foi o defeito do "segundo clique" que deixava a janela antiga na
+  //: tela, uma camada acima.
+  const [aberto, definirAberto] = useState<GrupoNaJanela | null>(null);
+
   if (dia === null) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
@@ -761,6 +768,7 @@ function JanelaDosTemas({
             grupos={janela.positivos}
             total={janela.total_positivos}
             cor="var(--sucesso-fg)"
+            aoAbrir={definirAberto}
           />
           <QuadroDeTemas
             testId="quadro-negativos"
@@ -768,9 +776,23 @@ function JanelaDosTemas({
             grupos={janela.negativos}
             total={janela.total_negativos}
             cor="var(--erro-fg)"
+            aoAbrir={definirAberto}
           />
         </div>
       )}
+
+      {/* OS REGISTROS DO GRUPO CLICADO. O modal lê do servidor com o MESMO
+          `ate` e o MESMO `nivel` que produziram este quadro — é isso que faz o
+          total dele ser o número da linha. */}
+      {aberto ? (
+        <RegistrosDaJanela
+          grupo={aberto}
+          ate={janela.ate}
+          de={janela.de}
+          nivel={janela.nivel}
+          aoFechar={() => definirAberto(null)}
+        />
+      ) : null}
 
       {/* O QUE FICOU DE FORA DA CONTA. As duas formas de uma menção existir,
           pesar no índice e não aparecer aqui. Sem esta linha os quadros parecem
@@ -811,12 +833,15 @@ function QuadroDeTemas({
   grupos,
   total,
   cor,
+  aoAbrir,
 }: {
   testId: string;
   titulo: string;
   grupos: GrupoNaJanela[];
   total: number;
   cor: string;
+  /** O que fazer quando a pessoa clica numa linha: abrir os registros dela. */
+  aoAbrir: (grupo: GrupoNaJanela) => void;
 }) {
   return (
     <div
@@ -849,14 +874,36 @@ function QuadroDeTemas({
               //: React desenharia uma linha só.
               key={grupo.id}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 10,
-                padding: '4px 0',
-                fontSize: 13,
                 borderTop: '1px solid var(--borda-fraca, var(--borda))',
               }}
             >
+              {/* A LINHA INTEIRA É O BOTÃO, e não um ícone ao lado: o alvo é o
+                  tema, e quem quer ver as matérias dele clica no nome. Um
+                  `<button>` de verdade, e não um `onClick` no `<li>`, porque é
+                  assim que ele chega pelo teclado e se anuncia como clicável.
+
+                  O PEDIDO: "se eu clicar em alguma dessas opções quero que abra
+                  um modal com os registros do tema ou pilar". */}
+              <button
+                type="button"
+                onClick={() => aoAbrir(grupo)}
+                title={`Ver as ${numero(grupo.mencoes)} menções de ${grupo.rotulo} nesta janela`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: 10,
+                  padding: '4px 0',
+                  fontSize: 13,
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  font: 'inherit',
+                }}
+              >
               {/* O TEMA É O RÓTULO E O PILAR É O CONTEXTO. São 41 temas contra
                   7 pilares: a lista ganhou granularidade — que é a razão da
                   troca — e perderia legibilidade sem dizer de qual pilar cada
@@ -873,6 +920,7 @@ function QuadroDeTemas({
                 <strong style={{ color: cor }}>{comSinal(grupo.impacto)}</strong>{' '}
                 <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(grupo.mencoes)}</span>
               </span>
+              </button>
             </li>
           ))}
         </ol>
