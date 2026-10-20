@@ -274,7 +274,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               FILTRA a própria tela, como todo gráfico dela. */}
           {rota.destino === 'painel' ? (
             <ContextoDoPng.Provider value>
-              <Painel aoAbrirAgenda={abrirAgenda} />
+              <Painel aoAbrirAgenda={abrirAgenda} aoAbrirBase={() => irPara({ destino: 'base' })} />
             </ContextoDoPng.Provider>
           ) : null}
 

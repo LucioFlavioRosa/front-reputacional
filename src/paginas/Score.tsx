@@ -53,6 +53,8 @@ import { navegarNoDrill, useEnderecoDoDrill } from '@/paginas/score/consulta/use
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { RadialDasLentes } from '@/graficos/RadialDasLentes';
 import { Ranking } from '@/graficos/Ranking';
+import { ArvoreDaTaxonomia } from '@/paginas/score/metodologia/ArvoreDaTaxonomia';
+import { Abas } from '@/componentes/Abas';
 import { numero } from '@/dominio/formato';
 import {
   FAIXAS,
@@ -1068,7 +1070,39 @@ const COBERTURA: { criterio: string; status: string; fundo: string; cor: string 
   },
 ];
 
+//: AS DUAS PÁGINAS DA METODOLOGIA. A escolhida fica na URL (`secao=arvore`),
+//: para o link da Árvore da taxonomia abrir direto nela.
+const SECOES_DA_METODOLOGIA = [
+  { id: 'indice', rotulo: 'Como o índice é calculado' },
+  { id: 'arvore', rotulo: 'Árvore da taxonomia' },
+];
+
 function Metodologia() {
+  const [secao, definirSecao] = useState(() =>
+    new URLSearchParams(window.location.search).get('secao') === 'arvore' ? 'arvore' : 'indice',
+  );
+  const trocar = (nova: string) => {
+    definirSecao(nova);
+    const url = new URL(window.location.href);
+    if (nova === 'arvore') url.searchParams.set('secao', 'arvore');
+    else url.searchParams.delete('secao');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <Abas
+        abas={SECOES_DA_METODOLOGIA}
+        ativa={secao}
+        aoTrocar={trocar}
+        rotulo="Página da Metodologia"
+        prefixo="metodologia"
+      />
+      {secao === 'arvore' ? <ArvoreDaTaxonomia /> : <MetodologiaDoIndice />}
+    </div>
+  );
+}
+
+function MetodologiaDoIndice() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <ComFaixaDoTopo>

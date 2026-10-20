@@ -1624,3 +1624,48 @@ export function novosContatos(comparativo: Comparativo<Interacao>): number {
 export function jaAconteceu(interacao: Interacao): boolean {
   return interacao.status === 'confirmada' && Boolean((interacao.relato ?? '').trim());
 }
+
+/** Uma instituição no Top 10 de um público, no "Termômetro por público". */
+export interface InstituicaoDoPublico {
+  nome: string;
+  /** Interações com ela no recorte — todas, com ou sem termômetro. */
+  total: number;
+  /** O placar (propositivas − reativas) ÷ com termômetro × 100, ou nulo sem
+   *  nenhuma interação com termômetro registrado. */
+  score: number | null;
+}
+
+/** As instituições de um público com que MAIS se falou no recorte.
+ *
+ *  POR PEDIDO, no lugar da lista de agendas: clicar num público no
+ *  "Termômetro por público" mostra com QUEM se fala nele; e clicar numa
+ *  instituição abre a Base filtrada por ela. O volume conta toda interação; o
+ *  placar, só as que têm termômetro, como no resto do painel. */
+export function instituicoesDoPublico(
+  interacoes: Interacao[],
+  catalogo: Catalogo,
+  categoriaPublicoId: number,
+  quantos = 10,
+): InstituicaoDoPublico[] {
+  const contagem = new Map<string, { total: number; comClima: number; positivas: number; negativas: number }>();
+  for (const interacao of interacoes) {
+    const instituicao = catalogo.instituicoes.get(interacao.instituicao_id);
+    if (!instituicao || instituicao.categoria_publico_id !== categoriaPublicoId) continue;
+    const atual = contagem.get(instituicao.nome) ?? { total: 0, comClima: 0, positivas: 0, negativas: 0 };
+    atual.total += 1;
+    if (interacao.clima) {
+      atual.comClima += 1;
+      if (interacao.clima === 'propositivo') atual.positivas += 1;
+      if (interacao.clima === 'tenso') atual.negativas += 1;
+    }
+    contagem.set(instituicao.nome, atual);
+  }
+  return [...contagem.entries()]
+    .map(([nome, c]) => ({
+      nome,
+      total: c.total,
+      score: c.comClima ? Math.round(((c.positivas - c.negativas) / c.comClima) * 100) : null,
+    }))
+    .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .slice(0, quantos);
+}

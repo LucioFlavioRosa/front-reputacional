@@ -94,7 +94,9 @@ describe('com ZERO meses na base', () => {
   ])('a aba `%s` também aparece sem mês nenhum', async (aba, marcador) => {
     render(<Score aba={aba} aoTrocarAba={() => {}} />);
 
-    await waitFor(() => expect(screen.getByText(marcador)).toBeTruthy());
+    //: `getAllByText`: na Metodologia o título é também o nome da aba "Como o
+    //: índice é calculado" (ao lado de "Árvore da taxonomia").
+    await waitFor(() => expect(screen.getAllByText(marcador).length).toBeGreaterThan(0));
     expect(screen.queryByText('Nenhum mês com dado')).toBeNull();
   });
 

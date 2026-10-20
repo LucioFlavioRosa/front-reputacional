@@ -859,3 +859,74 @@ export function listarIncidentesDeRisco(
 export function obterOpcoesDoRisco(filtro?: FiltroDoRisco): Promise<OpcoesDoRisco> {
   return requisitar<OpcoesDoRisco>(`/api/score/riscos/opcoes?${paraConsultaDoRisco(filtro)}`);
 }
+
+/* -- Árvore da taxonomia (Metodologia) ----------------------------------------- */
+
+export interface ItemDaArvore {
+  id: number;
+  nome: string;
+  ordem: number;
+}
+
+export interface TemaDaArvore extends ItemDaArvore {
+  pilar_id: number;
+}
+
+export interface SubtemaDaArvore {
+  id: number;
+  nome: string;
+  tema_id: number;
+  /** Código da camada de LSO, ou nulo quando ainda a definir. */
+  lso: string | null;
+  /** O risco primário, ou nulo: "Sem enquadramento de risco". */
+  risco_id: number | null;
+  [campo: string]: unknown;
+}
+
+export interface RiscoDaArvore extends ItemDaArvore {
+  cluster_id: number;
+  severidade: string;
+  [campo: string]: unknown;
+}
+
+export interface ValorDeCorDaArvore {
+  codigo: string;
+  nome: string;
+  cor: string;
+  hachurado: boolean;
+}
+
+/** Uma classificação que pinta o subtema (Severidade, LSO…). Vem pronta do
+ *  servidor: a tela não conhece nenhuma pelo nome. */
+export interface DimensaoDeCorDaArvore {
+  chave: string;
+  nome: string;
+  titulo: string;
+  explicacao: string;
+  /** `risco`: o valor sai do risco primário; `subtema`: do próprio subtema. */
+  alvo: 'risco' | 'subtema' | string;
+  /** O campo do risco ou do subtema que traz o valor. */
+  campo: string;
+  valores: ValorDeCorDaArvore[];
+  vazio: ValorDeCorDaArvore;
+}
+
+export interface ArvoreDaTaxonomia {
+  pilares: ItemDaArvore[];
+  temas: TemaDaArvore[];
+  subtemas: SubtemaDaArvore[];
+  clusters: ItemDaArvore[];
+  riscos: RiscoDaArvore[];
+  cores: DimensaoDeCorDaArvore[];
+}
+
+/** O Cadastro de Temas em leitura. SEM GUARDAR, de propósito: a página tem de
+ *  mostrar o cadastro como ele está agora, inclusive o que outra pessoa mudou
+ *  em outra máquina — e aí não há aviso entre abas que esqueça o guardado. */
+export function obterArvoreDaTaxonomia(): Promise<ArvoreDaTaxonomia> {
+  return requisitar<ArvoreDaTaxonomia>(
+    '/api/taxonomia/arvore',
+    { method: 'GET' },
+    { semGuardar: true },
+  );
+}

@@ -76,8 +76,23 @@ const CELULA_DE_UMA_LINHA: CSSProperties = {
 const celulaDaColuna = (rotulo: string): CSSProperties =>
   colunaQuebraLinha(rotulo) ? CELULA_QUE_QUEBRA : CELULA_DE_UMA_LINHA;
 
+/** O que a URL pede ao abrir a Base: a lente e o subtema (N3). É a porta do
+ *  botão "Explorar" da Árvore da taxonomia, e o link se compartilha. */
+function lerPedidoDaUrl(): { lente: string; subtema: string } {
+  const p = new URLSearchParams(window.location.search);
+  const lente = p.get('lente') ?? '';
+  return {
+    lente: LENTES_DA_BASE.some((item) => item.id === lente) ? lente : 'imprensa',
+    subtema: p.get('tema_n3') ?? '',
+  };
+}
+
 export function BaseDeDadosDoScore() {
-  const [lente, definirLente] = useState<string>('imprensa');
+  const [pedido] = useState(lerPedidoDaUrl);
+  const [lente, definirLente] = useState<string>(pedido.lente);
+  //: O SUBTEMA (N3) VINDO DA ÁRVORE DA TAXONOMIA: filtra pelo nome do cadastro
+  //: (`tema_n3`), aparece como etiqueta com × e sai da URL ao ser tirado.
+  const [subtema, definirSubtema] = useState(pedido.subtema);
   const [atalho, definirAtalho] = useState('tudo');
   const [deManual, definirDeManual] = useState('');
   const [ateManual, definirAteManual] = useState('');
@@ -130,6 +145,7 @@ export function BaseDeDadosDoScore() {
   const consulta: ConsultaDaBase = {
     ...periodo,
     q: busca,
+    filtros: subtema ? { tema_n3: subtema } : undefined,
     pagina,
     tamanho: TAMANHO_DA_PAGINA,
     ordenacao,
@@ -180,10 +196,19 @@ export function BaseDeDadosDoScore() {
     definirLente(nova);
     definirPagina(1);
   };
+  const tirarSubtema = () => {
+    definirSubtema('');
+    definirPagina(1);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('tema_n3');
+    url.searchParams.delete('lente');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  };
   const limparTudo = () => {
     definirTexto('');
     definirBusca('');
     definirPagina(1);
+    if (subtema) tirarSubtema();
   };
 
 
@@ -268,7 +293,31 @@ export function BaseDeDadosDoScore() {
             <span className="tabular" style={{ fontSize: 12, color: 'var(--cinza-2)' }} aria-live="polite">
               {atualizando ? 'atualizando…' : `${total.toLocaleString('pt-BR')} ${total === 1 ? 'menção' : 'menções'}`}
             </span>
-            {busca ? (
+            {subtema ? (
+              <button
+                type="button"
+                onClick={tirarSubtema}
+                aria-label={`Tirar o filtro Subtema: ${subtema}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  height: 26,
+                  padding: '0 10px',
+                  border: '1px solid var(--azul-mar)',
+                  borderRadius: 'var(--r-chip)',
+                  background: 'var(--branco)',
+                  color: 'var(--azul-mar)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ color: 'var(--cinza-2)' }}>Subtema</span>
+                <strong>{subtema}</strong>
+                <span aria-hidden>×</span>
+              </button>
+            ) : null}
+            {busca || subtema ? (
               <span style={{ marginLeft: 'auto' }}>
                 <Botao variante="fantasma" aoClicar={limparTudo}>
                   Limpar
