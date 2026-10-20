@@ -17,6 +17,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
+import { catalogoMudou } from '@/dominio/sincronizacao';
 import { ReconciliacaoDaLente } from '@/paginas/score/ReconciliacaoDaLente';
 
 vi.mock('@/api/cliente', () => ({
@@ -43,7 +44,19 @@ function medida(parcial = {}) {
 }
 
 beforeEach(() => {
+  //: AS CHAMADAS ANTERIORES SAEM DA CONTA. Sem isto, o teste que conta quantas
+  //: vezes a prévia foi lida enxerga as leituras dos testes de cima — e passa
+  //: ou falha por causa da ORDEM do arquivo, que é a pior razão possível.
+  vi.clearAllMocks();
   vi.mocked(previaDaReconciliacao).mockResolvedValue([medida()]);
+  //: A RESPOSTA DO APLICAR É A DO SERVIDOR DE VERDADE: `meses` descreve o
+  //: estado DEPOIS (nenhum `mudou`), e `entram` continua dizendo o que ESTA
+  //: aplicação moveu.
+  //:
+  //: A PRIMEIRA VERSÃO DESTE DUBLÊ ZERAVA `entram` E ERA O QUE FAZIA O TESTE
+  //: PASSAR POR MOTIVO ERRADO: o servidor devolvia `mudou: true` nos meses que
+  //: acabara de reescrever, a tela continuava mostrando o aviso, e aqui nada
+  //: pegava porque o dublê fabricava a resposta que eu queria.
   vi.mocked(aplicarReconciliacao).mockResolvedValue([
     medida({
       aplicada: true,
@@ -51,7 +64,6 @@ beforeEach(() => {
         { mes: '2026-08-01', antes: 49, depois: 49, mudou: false },
         { mes: '2026-09-01', antes: 12, depois: 12, mudou: false },
       ],
-      entram: [],
     }),
   ]);
 });
@@ -125,6 +137,48 @@ it('aplicar usa o numero da RESPOSTA, e nao o da previa', async () => {
   );
 
   expect(await screen.findByText(/passou a contar 7 menções/)).toBeTruthy();
+});
+
+it('depois de aplicar, o aviso SAI da tela', async () => {
+  /** ACHADO ALTO DE REVISÃO, e o teste anterior passava por motivo errado.
+   *
+   *  O servidor devolvia a medida de ANTES — com `mudou: true` nos meses que
+   *  acabara de reescrever —, e a tela, que pergunta "ainda há desvio?",
+   *  continuava mostrando o aviso e o botão depois de aplicar com sucesso. O
+   *  dublê daqui fabricava `mudou: false` e escondia isso.
+   *
+   *  Agora o dublê é a resposta real e o teste exige as duas coisas: a
+   *  confirmação aparece, e o aviso some. */
+  render(<ReconciliacaoDaLente />);
+  await userEvent.click(
+    await screen.findByRole('button', { name: /Aplicar a 1 mês/ }),
+  );
+
+  expect(await screen.findByText(/passou a contar/)).toBeTruthy();
+  expect(screen.queryByText(/ainda não reflete esta lista/)).toBeNull();
+  expect(screen.queryByRole('button', { name: /Aplicar/ })).toBeNull();
+});
+
+it('a previa e refeita quando a LISTA muda', async () => {
+  /** ACHADO ALTO DE REVISÃO. A prévia é sobre a diferença entre o cadastro e a
+   *  lente, e salvar a lista muda um dos dois lados. Lendo só na montagem, o
+   *  painel mentia logo depois do gesto que mais o afeta — e era preciso
+   *  recarregar a página, que é o que ninguém faz depois de ver "salvo". */
+  vi.mocked(previaDaReconciliacao).mockResolvedValue([
+    medida({ meses: [{ mes: '2026-08-01', antes: 7, depois: 7, mudou: false }], entram: [] }),
+  ]);
+  const { container } = render(<ReconciliacaoDaLente />);
+  await waitFor(() => expect(previaDaReconciliacao).toHaveBeenCalledTimes(1));
+  expect(container.textContent).toBe('');
+
+  //: Alguém acrescenta um veículo à lista e salva: a rota é de catálogo, e o
+  //: cliente da API avisa este barramento.
+  vi.mocked(previaDaReconciliacao).mockResolvedValue([medida()]);
+  catalogoMudou.avisar();
+
+  expect(
+    await screen.findByText(/A lente Mercado ainda não reflete esta lista/),
+  ).toBeTruthy();
 });
 
 it('a falha da previa NAO derruba a aba', async () => {

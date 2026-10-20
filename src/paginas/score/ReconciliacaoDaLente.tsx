@@ -32,6 +32,7 @@ import {
 } from '@/api/cliente';
 import { Botao, Cartao, FaixaDeErro } from '@/componentes/basicos';
 import { numero } from '@/dominio/formato';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 
 /** `2026-08-01` como `08/2026` — é mês, e o dia não diz nada aqui. */
 function mesPorExtenso(iso: string): string {
@@ -106,6 +107,23 @@ export function ReconciliacaoDaLente() {
   }, []);
 
   useEffect(carregar, [carregar]);
+
+  //: E DE NOVO QUANDO A LISTA MUDA, que é conserto de achado ALTO de revisão.
+  //:
+  //: A prévia é sobre a diferença entre o cadastro e a lente, e salvar a lista
+  //: muda exatamente um dos dois lados. Lendo só na montagem, o painel ficava
+  //: mentindo logo depois do gesto que mais o afeta: quem acrescentasse um
+  //: veículo e salvasse não via desvio nenhum (o painel some quando não havia
+  //: desvio antes), e quem já tinha desvio via os veículos e os meses ANTIGOS.
+  //: Era preciso recarregar a página — e ninguém recarrega uma página que
+  //: acabou de dizer que salvou.
+  //:
+  //: `catalogoMudou` É O AVISO CERTO: a rota que grava a lista está em
+  //: `ROTAS_DO_CATALOGO` porque escreve em `instituicao`, e é esse mesmo aviso
+  //: que faz o catálogo da aba se recarregar. Assinar aqui é dizer "a minha
+  //: pergunta depende do que acabou de mudar" — e atravessa abas de graça,
+  //: porque o sincronizador escuta o `BroadcastChannel`.
+  useEffect(() => catalogoMudou.assinar(carregar), [carregar]);
 
   async function aplicar() {
     definirAplicando(true);
