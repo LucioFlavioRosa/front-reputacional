@@ -142,6 +142,56 @@ export function obterImpactoNaJanela(
   return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-na-janela?${parametros}`);
 }
 
+/** Uma menção que compõe um grupo do quadro — uma linha do modal. */
+export interface RegistroDaJanela {
+  id: string;
+  data: string;
+  veiculo: string | null;
+  titulo: string | null;
+  link: string | null;
+  sentimento: string;
+  tier: string | null;
+}
+
+export interface RegistrosDaJanela {
+  itens: RegistroDaJanela[];
+  total: number;
+  pagina: number;
+  tamanho: number;
+}
+
+/** As menções que compõem UM grupo do quadro — o que abre ao clicar nele.
+ *
+ *  `grupo` É O ID, e não o rótulo: nome de tema estratégico não é único no
+ *  cadastro, e o quadro agrupa por id desde o achado dos homônimos.
+ *
+ *  OS MESMOS `ate`/`dias`/`nivel` DA JANELA, e não um par de datas: quem sabe o
+ *  que é uma janela de quinze dias é o servidor, e duas contas de data em dois
+ *  lugares divergem na primeira vez que alguém mudar o tamanho dela.
+ *
+ *  ROTA PRÓPRIA, e não a da Base das lentes: aquela casa a data por
+ *  `coalesce(data, mes)` e não tira as fontes que a calibração desligou. As duas
+ *  diferenças são deliberadas lá e fariam esta lista discordar do número que
+ *  está ao lado dela, no mesmo quadro. */
+export function obterRegistrosDaJanela(
+  ate: string,
+  grupo: number,
+  nivel: NivelDaJanela,
+  pagina = 1,
+  dias?: number,
+): Promise<RegistrosDaJanela> {
+  const parametros = new URLSearchParams({
+    ate,
+    grupo: String(grupo),
+    nivel,
+    pagina: String(pagina),
+  });
+  if (dias !== undefined) parametros.set('dias', String(dias));
+  return requisitar<RegistrosDaJanela>(
+    `/api/mercado/impacto-na-janela/registros?${parametros}`,
+  );
+}
+
 
 /* -- a subida da planilha de bonds ------------------------------------------
  *

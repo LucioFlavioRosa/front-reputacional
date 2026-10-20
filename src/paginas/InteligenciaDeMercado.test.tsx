@@ -14,17 +14,25 @@
  *  4. que o índice venha DESTA rota, e não de `/api/score/serie`.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ImpactoNaJanela, SerieDeMercado } from '@/api/cliente';
 
-const { obterSerieDeMercado, obterImpactoNaJanela } = vi.hoisted(() => ({
-  obterSerieDeMercado: vi.fn(),
-  obterImpactoNaJanela: vi.fn(),
-}));
+const { obterSerieDeMercado, obterImpactoNaJanela, obterRegistrosDaJanela } = vi.hoisted(
+  () => ({
+    obterSerieDeMercado: vi.fn(),
+    obterImpactoNaJanela: vi.fn(),
+    obterRegistrosDaJanela: vi.fn(),
+  }),
+);
 
-vi.mock('@/api/cliente', () => ({ obterSerieDeMercado, obterImpactoNaJanela }));
+vi.mock('@/api/cliente', () => ({
+  obterSerieDeMercado,
+  obterImpactoNaJanela,
+  obterRegistrosDaJanela,
+}));
 
 //: O GRÁFICO VIRA MARCADOR: ele tem os próprios 15 testes, e montá-lo aqui
 //: traria o `ResizeObserver` e a aritmética do SVG para dentro de um teste que
@@ -869,7 +877,78 @@ describe('os temas da janela, ao clicar numa data', () => {
     expect(regua.textContent?.toLowerCase()).toContain('contagem');
   });
 
-  it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async () => {
+  it('CLICAR num tema do quadro abre os registros dele', async () => {
+  /** O PEDIDO: "se eu clicar em alguma dessas opções quero que abra um modal
+   *  com os registros do tema ou pilar, assim como fazemos nas lentes no KPI".
+   *
+   *  O QUE O TESTE AMARRA, e é a razão de a rota ser própria: o modal pede o
+   *  grupo pelo **id** e repassa o MESMO `ate` e o MESMO `nivel` do quadro. Pelo
+   *  rótulo, dois temas homônimos sob pilares diferentes trariam a lista um do
+   *  outro; por datas montadas na tela, a janela do modal poderia divergir da
+   *  que produziu o número. */
+  obterRegistrosDaJanela.mockImplementation(() =>
+    Promise.resolve({
+      itens: [
+        {
+          id: 'm1',
+          data: '2026-05-18',
+          veiculo: 'Valor Econômico',
+          titulo: 'A matéria que empurrou',
+          link: 'https://exemplo/materia',
+          sentimento: 'pos',
+          tier: 'muito_relevante',
+        },
+      ],
+      total: 1,
+      pagina: 1,
+      tamanho: 50,
+    }),
+  );
+  render(<InteligenciaDeMercado />);
+  await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+  escolherData('2026-05-20');
+  await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+
+  const linha = within(screen.getByTestId('quadro-positivos')).getByRole('button', {
+    name: /Governança/,
+  });
+  await userEvent.click(linha);
+
+  expect(await screen.findByText('A matéria que empurrou')).toBeTruthy();
+  //: O ID DO GRUPO, O DIA CLICADO E O NÍVEL DO QUADRO.
+  expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1);
+  //: E AS CINCO COLUNAS, com o título servindo de link para a matéria.
+  expect(screen.getByText('Valor Econômico')).toBeTruthy();
+  expect(screen.getByText('Positiva')).toBeTruthy();
+  expect(screen.getByText('Tier 1')).toBeTruthy();
+  expect(
+    screen.getByRole('link', { name: 'A matéria que empurrou' }).getAttribute('href'),
+  ).toBe('https://exemplo/materia');
+});
+
+it('FECHAR a janela leva o modal dos registros com ela', async () => {
+  //: O modal é uma camada acima da janela, e viver mais que ela seria o mesmo
+  //: defeito do "segundo clique" que deixava a janela antiga na tela.
+  obterRegistrosDaJanela.mockImplementation(() =>
+    Promise.resolve({ itens: [], total: 0, pagina: 1, tamanho: 50 }),
+  );
+  render(<InteligenciaDeMercado />);
+  await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+  escolherData('2026-05-20');
+  await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+  await userEvent.click(
+    within(screen.getByTestId('quadro-positivos')).getByRole('button', {
+      name: /Governança/,
+    }),
+  );
+  expect(await screen.findByText(/Nenhuma menção neste recorte/)).toBeTruthy();
+
+  await userEvent.click(screen.getByRole('button', { name: /fechar a janela/i }));
+
+  expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull();
+});
+
+it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async () => {
     /** A PERGUNTA DELE, depois de ver a janela no ar: "esse desconto de pontos de
      *  cada pilar ou tema é em relação à pontuação total? ou só da lente?".
      *
