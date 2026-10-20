@@ -69,6 +69,12 @@ export const ROTAS_DO_CATALOGO = [
   // esta linha, marcar um veículo na aba Base não chegaria ao Cadastro
   // compartilhado nem aos filtros até um F5.
   '/api/score/veiculos-de-investidores',
+  //: O CAMINHO NOVO, por lista. A tela gêmea do Institucional grava na MESMA
+  //: coluna do cadastro (`subcategoria_publico_id`), então ela precisa do mesmo
+  //: aviso — sem esta linha, marcar um veículo como institucional não chegaria
+  //: ao Cadastro compartilhado nem aos filtros até um F5. O endereço antigo
+  //: fica enquanto a rota antiga existir.
+  '/api/score/veiculos-da-lista',
 ] as const;
 
 /** As rotas cujas escritas criam ou alteram AGENDAS.

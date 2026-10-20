@@ -33,6 +33,11 @@ import { useMemo, useState } from 'react';
 
 import { criarInstituicao, definirVeiculosDeInvestidores } from '@/api/cliente';
 import {
+  LISTA_DO_MERCADO,
+  LISTA_INSTITUCIONAL,
+  type ListaDeVeiculos,
+} from '@/dominio/score';
+import {
   Botao,
   Campo,
   Cartao,
@@ -58,6 +63,46 @@ import type { Instituicao } from '@/dominio/tipos';
  */
 const CATEGORIA_DA_IMPRENSA = 'Imprensa';
 const SUBCATEGORIA_DO_MERCADO = 'Econômica e de negócios';
+const SUBCATEGORIA_INSTITUCIONAL = 'Institucional';
+
+/** O que muda entre as duas abas, e é só isto.
+ *
+ *  DUAS TELAS, UM COMPONENTE — e a decisão é de risco, não de preguiça. Esta
+ *  tela carrega a prévia da reconciliação, a confirmação no clique do Salvar, a
+ *  guarda de concorrência (`conhecidos`) e as corridas que duas revisões
+ *  consertaram. Copiá-la para a lente Institucional seria assinar os mesmos
+ *  defeitos outra vez, em outro arquivo, para serem consertados uma vez só.
+ *
+ *  O DONO DO PRODUTO PEDIU DUAS ABAS, e são duas: cada lente tem a sua, com o
+ *  seu título e o seu endereço. O que elas compartilham é o funcionamento. */
+interface AbaDaLista {
+  /** O nome que o servidor conhece — ele é o contrato com a ingestão. */
+  lista: ListaDeVeiculos;
+  /** A subcategoria de público que define a lista, para achar o id no catálogo. */
+  subcategoria: string;
+  /** Como a aba se chama, e como a lente se chama dentro das frases. */
+  titulo: string;
+  lente: string;
+  subtitulo: string;
+}
+
+const MERCADO: AbaDaLista = {
+  lista: LISTA_DO_MERCADO,
+  subcategoria: SUBCATEGORIA_DO_MERCADO,
+  titulo: 'Veículos de investidores',
+  lente: 'Mercado',
+  subtitulo:
+    'É esta lista que define a lente Mercado: as menções destes veículos contam nela, além de contarem na Imprensa. O critério é a subcategoria de público do cadastro — quem entra aqui fica como imprensa econômica.',
+};
+
+const INSTITUCIONAL: AbaDaLista = {
+  lista: LISTA_INSTITUCIONAL,
+  subcategoria: SUBCATEGORIA_INSTITUCIONAL,
+  titulo: 'Veículos institucionais',
+  lente: 'Institucional',
+  subtitulo:
+    'É esta lista que define a lente Institucional: as menções destes veículos contam nela, além de contarem na Imprensa. O critério é a subcategoria de público do cadastro — quem entra aqui fica como imprensa institucional.',
+};
 
 /** Quantos por página. Cinquenta, como a lista de veículos novos da Base: aqui
  *  se confere em lote, não se procura um registro. */
@@ -71,6 +116,15 @@ const POR_PAGINA = 50;
 const RESULTADOS_DA_BUSCA = 15;
 
 export function VeiculosDeInvestidores() {
+  return <VeiculosDaLista aba={MERCADO} />;
+}
+
+/** A aba gêmea, para a lente Institucional (pedido de 20/10/2026). */
+export function VeiculosInstitucionais() {
+  return <VeiculosDaLista aba={INSTITUCIONAL} />;
+}
+
+function VeiculosDaLista({ aba }: { aba: AbaDaLista }) {
   const { catalogo } = usePainel();
   const [busca, definirBusca] = useState('');
   const [pagina, definirPagina] = useState(1);
@@ -95,11 +149,10 @@ export function VeiculosDeInvestidores() {
     );
     if (!imprensa) return null;
     const achada = dicionarios.subcategorias_publico.find(
-      (s) =>
-        s.categoria_publico_id === imprensa.id && s.nome === SUBCATEGORIA_DO_MERCADO,
+      (s) => s.categoria_publico_id === imprensa.id && s.nome === aba.subcategoria,
     );
     return achada?.id ?? null;
-  }, [catalogo]);
+  }, [catalogo, aba.subcategoria]);
 
   const idDaImprensa = useMemo(
     () =>
@@ -192,6 +245,7 @@ export function VeiculosDeInvestidores() {
       const saida = await definirVeiculosDeInvestidores(
         veiculos.filter((v) => naLista(v)).map((v) => v.id),
         doCatalogo,
+        aba.lista,
       );
       //: LIMPA A DIFERENÇA: o que foi gravado agora vem do catálogo, que o
       //: cliente da API já mandou recarregar (a rota está em
@@ -252,10 +306,10 @@ export function VeiculosDeInvestidores() {
 
   if (idDaSubcategoria === null) {
     return (
-      <Secao titulo="Veículos de investidores">
+      <Secao titulo={aba.titulo}>
         <Cartao>
           <FaixaDeErro
-            mensagem={`A subcategoria "${SUBCATEGORIA_DO_MERCADO}" da ${CATEGORIA_DA_IMPRENSA} não está cadastrada. Sem ela a lente Mercado não tem como se separar.`}
+            mensagem={`A subcategoria "${aba.subcategoria}" da ${CATEGORIA_DA_IMPRENSA} não está cadastrada. Sem ela a lente ${aba.lente} não tem como se separar.`}
           />
         </Cartao>
       </Secao>
@@ -266,8 +320,8 @@ export function VeiculosDeInvestidores() {
 
   return (
     <Secao
-      titulo={`Veículos de investidores (${numero(quantosNaLista)})`}
-      subtitulo="É esta lista que define a lente Mercado: as menções destes veículos contam nela, além de contarem na Imprensa. O critério é a subcategoria de público do cadastro — quem entra aqui fica como imprensa econômica."
+      titulo={`${aba.titulo} (${numero(quantosNaLista)})`}
+      subtitulo={aba.subtitulo}
       acao={
         <Botao variante="secundario" aoClicar={() => definirAcrescentando(true)}>
           Acrescentar veículo
@@ -278,7 +332,7 @@ export function VeiculosDeInvestidores() {
           lente a partir da próxima subida de cada mês; fazer valer para os
           meses já ingeridos reescreve a nota deles, e por isso é um gesto à
           parte, com os números na frente. Ver `ReconciliacaoDaLente`. */}
-      <ReconciliacaoDaLente confirmarApos={confirmarApos} />
+      <ReconciliacaoDaLente confirmarApos={confirmarApos} lista={aba.lista} />
 
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
@@ -302,7 +356,7 @@ export function VeiculosDeInvestidores() {
           <span style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
             {busca.trim()
               ? `${numero(filtrados.length)} de ${numero(daLente.length)}`
-              : `${numero(quantosNaLista)} na lente Mercado`}
+              : `${numero(quantosNaLista)} na lente ${aba.lente}`}
           </span>
         </div>
 
@@ -435,6 +489,7 @@ export function VeiculosDeInvestidores() {
 
       {acrescentando ? (
         <AcrescentarVeiculo
+          aba={aba}
           veiculos={veiculos}
           naLista={naLista}
           idDaImprensa={idDaImprensa}
@@ -461,6 +516,7 @@ export function VeiculosDeInvestidores() {
  *  cadastro.
  */
 function AcrescentarVeiculo({
+  aba,
   veiculos,
   naLista,
   idDaImprensa,
@@ -469,6 +525,8 @@ function AcrescentarVeiculo({
   aoAcrescentar,
   aoFechar,
 }: {
+  /** Qual lista está sendo mantida — é ela que nomeia a janela. */
+  aba: AbaDaLista;
   /** O cadastro inteiro de veículos. A janela filtra o que está FORA da
    *  lista — e mantém em tela o que acabou de entrar por ela. */
   veiculos: Instituicao[];
@@ -547,8 +605,8 @@ function AcrescentarVeiculo({
 
   return (
     <Modal
-      titulo="Acrescentar veículo à lente Mercado"
-      subtitulo="Procure no cadastro compartilhado. Se o veículo ainda não existir, cadastre-o aqui — ele nasce como imprensa econômica."
+      titulo={`Acrescentar veículo à lente ${aba.lente}`}
+      subtitulo={`Procure no cadastro compartilhado. Se o veículo ainda não existir, cadastre-o aqui — ele nasce com a subcategoria "${aba.subcategoria}".`}
       aoFechar={aoFechar}
       largura={620}
       rodape={

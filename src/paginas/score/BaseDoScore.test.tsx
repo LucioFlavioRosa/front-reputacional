@@ -206,15 +206,23 @@ describe('BaseDoScore', () => {
     expect(screen.queryByText('Concessionárias')).toBeNull();
   });
 
-  it('A BASE TEM DUAS ABAS: subir a planilha e a curadoria dos veículos', async () => {
-    // A lista de veículos de investidores é curadoria de cadastro, e não um
-    // gesto do fechamento do mês. Embaixo do upload, os 81 nomes ficariam
-    // entre quem sobe a planilha e o resultado da conferência.
+  it('A BASE TEM TRÊS ABAS: subir a planilha e a curadoria das DUAS listas', async () => {
+    // A lista de veículos é curadoria de cadastro, e não um gesto do
+    // fechamento do mês. Embaixo do upload, os 81 nomes ficariam entre quem
+    // sobe a planilha e o resultado da conferência.
+    //
+    // E SÃO DUAS LISTAS desde 20/10/2026: a lente Institucional recorta a
+    // mesma Clipei pela subcategoria "Institucional", e tem a aba dela. Cada
+    // lente com a sua, por pedido do dono do produto.
     vi.mocked(listarFontesDoScore).mockResolvedValue(FONTES);
     render(<BaseDoScore />);
 
     const abas = screen.getAllByRole('tab').map((a) => a.textContent);
-    expect(abas).toEqual(['Subir planilha', 'Veículos de investidores']);
+    expect(abas).toEqual([
+      'Subir planilha',
+      'Veículos de investidores',
+      'Veículos institucionais',
+    ]);
     // ABRE NA DO UPLOAD: é o que se faz todo mês.
     await waitFor(() => expect(screen.getByLabelText(/De qual fornecedor/)).toBeTruthy());
   });
