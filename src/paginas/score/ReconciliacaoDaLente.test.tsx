@@ -245,3 +245,22 @@ it('a falha da previa NAO derruba a aba', async () => {
 
   expect(await screen.findByText(/403 sem permissão/)).toBeTruthy();
 });
+
+it('na aba do INSTITUCIONAL, o painel fala da lente dela', async () => {
+  //: ACHADO DE REVISÃO: as frases diziam "lente Mercado" fixo. Na aba gêmea o
+  //: painel reconciliava a lista CERTA afirmando a lente ERRADA — o pior tipo
+  //: de texto, porque o número ao lado dele está certo e ninguém desconfia.
+  vi.mocked(previaDaReconciliacao).mockResolvedValue([
+    medida({ meses: [{ mes: '2026-08-01', antes: 0, depois: 4, mudou: true }] }),
+  ]);
+
+  render(
+    <ReconciliacaoDaLente lista="imprensa_institucional" lente="Institucional" />,
+  );
+
+  expect(
+    await screen.findByText(/A lente Institucional ainda não reflete esta lista/),
+  ).toBeTruthy();
+  //: E LÊ A LISTA DELA, não a do Mercado.
+  expect(previaDaReconciliacao).toHaveBeenCalledWith('imprensa_institucional');
+});

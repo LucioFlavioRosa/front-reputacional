@@ -142,6 +142,7 @@ function rotuloDoBotao(total: number): string {
 export function ReconciliacaoDaLente({
   confirmarApos = 0,
   lista = LISTA_DO_MERCADO,
+  lente = 'Mercado',
 }: {
   /** QUAL lista este painel reconcilia.
    *
@@ -150,6 +151,12 @@ export function ReconciliacaoDaLente({
    *  certos sobre a lente errada — e aplicar reescreveria o histórico dela. O
    *  padrão é o Mercado, que é a única que existia quando este painel nasceu. */
   lista?: ListaDeVeiculos;
+  /** O nome da lente, para as frases deste painel.
+   *
+   *  ACHADO DE REVISÃO: elas diziam "lente Mercado" fixo, e na aba
+   *  Institucional o painel reconciliava a lista certa afirmando a lente
+   *  errada — o pior tipo de texto, porque o número ao lado dele está certo. */
+  lente?: string;
   /** Um contador que o Salvar da lista incrementa.
    *
    *  POR QUE UM CONTADOR, e não um booleano: o pedido do dono do produto é que
@@ -296,7 +303,7 @@ export function ReconciliacaoDaLente({
         0,
       );
       definirFeito(
-        `Pronto: a lente Mercado passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
+        `Pronto: a lente ${lente} passou a contar ${mencoes(quantos)} nos meses já ingeridos.`,
       );
       definirMedidas(depois);
       definirAConfirmar(null);
@@ -381,7 +388,7 @@ export function ReconciliacaoDaLente({
   return (
     <Cartao>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
-        A lente Mercado ainda não reflete esta lista
+        A lente {lente} ainda não reflete esta lista
       </p>
       {/* O QUE O BOTÃO FAZ, ANTES DE ELE SER CLICADO. Aplicar reescreve meses
           fechados: o índice deles muda. Quem clica precisa saber disso e ver

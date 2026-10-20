@@ -332,7 +332,11 @@ function VeiculosDaLista({ aba }: { aba: AbaDaLista }) {
           lente a partir da próxima subida de cada mês; fazer valer para os
           meses já ingeridos reescreve a nota deles, e por isso é um gesto à
           parte, com os números na frente. Ver `ReconciliacaoDaLente`. */}
-      <ReconciliacaoDaLente confirmarApos={confirmarApos} lista={aba.lista} />
+      <ReconciliacaoDaLente
+        confirmarApos={confirmarApos}
+        lista={aba.lista}
+        lente={aba.lente}
+      />
 
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
