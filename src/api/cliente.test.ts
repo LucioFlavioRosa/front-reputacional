@@ -143,6 +143,13 @@ const ESCRITAS_DE_CATALOGO: Record<string, () => Promise<unknown>> = {
     cliente.subirVersaoDaReferencia('id-4', arquivo(), 'O texto da versão.', '2026-09-02'),
   definirVeiculosDeInvestidores: () =>
     cliente.definirVeiculosDeInvestidores(['id-6', 'id-7'], ['id-6']),
+  // A reconciliacao mora sob o mesmo caminho da lista, entao o barramento a
+  // trata como escrita de catalogo. Ela NAO escreve em `instituicao` — escreve
+  // em `mencao` e no agregado —, e recarregar o catalogo depois dela e trabalho
+  // a mais numa operacao rara. Manter o aviso custa um pedido; inventar uma
+  // excecao de caminho custa uma regra nova em `sincronizacao`, que e onde as
+  // regras deste tipo divergem.
+  aplicarReconciliacao: () => cliente.aplicarReconciliacao(),
   // Fundir apaga uma linha do catalogo e move as mencoes dela: o Cadastro
   // compartilhado precisa ver isso sem F5. Ja `declararCadastroDistinto` NAO
   // esta aqui de proposito — ela nao escreve em rota de catalogo, porque a

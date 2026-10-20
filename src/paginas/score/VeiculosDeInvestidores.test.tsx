@@ -25,6 +25,11 @@ import type { Instituicao } from '@/dominio/tipos';
 vi.mock('@/api/cliente', () => ({
   definirVeiculosDeInvestidores: vi.fn(),
   criarInstituicao: vi.fn(),
+  //: O PAINEL DA RECONCILIAÇÃO mora dentro desta aba e lê na montagem. Sem
+  //: estes dois, toda prova aqui quebraria por causa de uma leitura que não é
+  //: sobre o que elas testam — e o painel é acessório justamente para isso.
+  previaDaReconciliacao: vi.fn(async () => []),
+  aplicarReconciliacao: vi.fn(async () => []),
 }));
 
 const { criarInstituicao, definirVeiculosDeInvestidores } = await import('@/api/cliente');

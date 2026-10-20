@@ -425,6 +425,53 @@ export function definirVeiculosDeInvestidores(
   });
 }
 
+/** Um veículo que passa a contar na lente, ou que deixa de contar. */
+export interface VeiculoDaReconciliacao {
+  nome: string;
+  mencoes: number;
+}
+
+export interface MesDaReconciliacao {
+  mes: string;
+  antes: number;
+  depois: number;
+  /** SE O MÊS SERÁ REESCRITO, e NÃO é `antes !== depois`: um veículo que sai e
+   *  outro que entra com a mesma contagem deixam o total igual e o conjunto
+   *  diferente. Quem decide é o servidor; a tela não recalcula. */
+  mudou: boolean;
+}
+
+/** O que muda — ou o que mudou — quando a lista passa a valer para os meses já
+ *  ingeridos. */
+export interface Reconciliacao {
+  fonte: string;
+  espelho: string;
+  lista: string;
+  meses: MesDaReconciliacao[];
+  entram: VeiculoDaReconciliacao[];
+  saem: VeiculoDaReconciliacao[];
+  aplicada: boolean;
+}
+
+/** O que mudaria se a lista de AGORA valesse para trás. NÃO escreve.
+ *
+ *  POR QUE A PRÉVIA EXISTE: aplicar reescreve o agregado de meses FECHADOS, e o
+ *  índice daqueles meses muda — o número que já foi citado em reunião. */
+export function previaDaReconciliacao(): Promise<Reconciliacao[]> {
+  return requisitar<Reconciliacao[]>(
+    '/api/score/veiculos-de-investidores/reconciliacao',
+  );
+}
+
+/** Faz a lista de agora valer para TODOS os meses já ingeridos, nos dois
+ *  sentidos: o que entrou na lista passa a contar, o que saiu deixa. */
+export function aplicarReconciliacao(): Promise<Reconciliacao[]> {
+  return requisitar<Reconciliacao[]>(
+    '/api/score/veiculos-de-investidores/reconciliacao',
+    { method: 'POST' },
+  );
+}
+
 /** A aba de Drivers e riscos. Lê as menções uma a uma — ver `DriversDoScore`. */
 export function obterDriversDoScore(mes: string): Promise<DriversDoScore> {
   return requisitar<DriversDoScore>(`/api/score/drivers?mes=${mes}`);

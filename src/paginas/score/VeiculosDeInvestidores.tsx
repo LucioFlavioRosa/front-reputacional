@@ -43,6 +43,7 @@ import {
 } from '@/componentes/basicos';
 import { Paginacao } from '@/componentes/Paginacao';
 import { numero } from '@/dominio/formato';
+import { ReconciliacaoDaLente } from '@/paginas/score/ReconciliacaoDaLente';
 import { usePainel } from '@/estado/painel';
 import type { Instituicao } from '@/dominio/tipos';
 
@@ -81,6 +82,10 @@ export function VeiculosDeInvestidores() {
   const [erro, definirErro] = useState<string | null>(null);
   const [resultado, definirResultado] = useState<string | null>(null);
   const [acrescentando, definirAcrescentando] = useState(false);
+  //: O CONTADOR QUE PEDE A CONFIRMAÇÃO DA RECONCILIAÇÃO — ver `salvar` e
+  //: `ReconciliacaoDaLente`. Contador, e não booleano: dois salvamentos
+  //: seguidos precisam perguntar duas vezes.
+  const [confirmarApos, definirConfirmarApos] = useState(0);
 
   const idDaSubcategoria = useMemo(() => {
     const dicionarios = catalogo?.dicionarios;
@@ -214,6 +219,22 @@ export function VeiculosDeInvestidores() {
             ? null
             : 'Nada mudou — a lista já estava assim.',
       );
+      //: E AGORA PERGUNTA SE ISTO VALE PARA TRÁS, no mesmo gesto.
+      //:
+      //: O PEDIDO DO DONO DO PRODUTO: "se eu disser que uma instituição
+      //: pertence a essa categoria, todos seus registros devem ser movidos" —
+      //: e, quando perguntei quando isso deveria acontecer, "no momento que
+      //: clico em salvar; é um clique só".
+      //:
+      //: SÓ QUANDO ALGUMA COISA MUDOU na lista: um salvamento que não mexeu em
+      //: nada não tem o que reescrever, e abrir janela ali seria ruído.
+      //:
+      //: QUEM DECIDE SE A JANELA ABRE é `ReconciliacaoDaLente`, que relê o
+      //: desvio depois do salvamento — pode não haver mês algum a mudar, e aí
+      //: não há nada a perguntar. Aqui só se diz "acabei de salvar".
+      if (saida.marcados || saida.desmarcados) {
+        definirConfirmarApos((quantos) => quantos + 1);
+      }
     } catch (falha) {
       //: O 409 ("a lista mudou desde que esta tela carregou") chega aqui com a
       //: mensagem do servidor, que já diz o que fazer. A EDIÇÃO NÃO É
@@ -253,6 +274,12 @@ export function VeiculosDeInvestidores() {
         </Botao>
       }
     >
+      {/* O QUE A LISTA SIGNIFICA PARA TRÁS, e só quando há desvio. Ela define a
+          lente a partir da próxima subida de cada mês; fazer valer para os
+          meses já ingeridos reescreve a nota deles, e por isso é um gesto à
+          parte, com os números na frente. Ver `ReconciliacaoDaLente`. */}
+      <ReconciliacaoDaLente confirmarApos={confirmarApos} />
+
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
