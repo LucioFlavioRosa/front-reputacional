@@ -13,9 +13,9 @@ import type { Recorte } from '@/dominio/recorte';
 const CATALOGO = {
   dicionarios: {
     climas: [
-      { id: 1, codigo: 'propositivo', nome: 'Positivo', ordem: 1, cor_hex: '#17E3CB' },
+      { id: 1, codigo: 'propositivo', nome: 'Propositivo', ordem: 1, cor_hex: '#17E3CB' },
       { id: 2, codigo: 'neutro', nome: 'Neutro', ordem: 2, cor_hex: '#B0B9C8' },
-      { id: 3, codigo: 'tenso', nome: 'Negativo', ordem: 3, cor_hex: '#FF5C60' },
+      { id: 3, codigo: 'tenso', nome: 'Reativo', ordem: 3, cor_hex: '#FF5C60' },
     ],
   },
 } as unknown as Catalogo;
@@ -27,8 +27,8 @@ function gatilho(recorte: Recorte) {
 
 describe('Filtrar por Termômetro', () => {
   it.each([
-    ['propositivo', 'Positivo', 'rgb(23, 227, 203)'], // verde (turquesa Aegea)
-    ['tenso', 'Negativo', 'rgb(255, 92, 96)'], // vermelho
+    ['propositivo', 'Propositivo', 'rgb(23, 227, 203)'], // verde (turquesa Aegea)
+    ['tenso', 'Reativo', 'rgb(255, 92, 96)'], // vermelho
     ['neutro', 'Neutro', 'rgb(176, 185, 200)'], // cinza
   ])('com %s escolhido, fica na cor dele e diz qual é', (codigo, rotulo, cor) => {
     const botao = gatilho({ clima: codigo });

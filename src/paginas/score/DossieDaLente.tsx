@@ -58,8 +58,11 @@ import {
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
-import { serieDaLente } from '@/dominio/janelaDaJornada';
+import { ajustar, janelaDoAtalho, mesesMedidos, serieDaLente } from '@/dominio/janelaDaJornada';
+import type { Janela } from '@/dominio/janelaDaJornada';
+import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
+import { UltimasMaterias } from '@/paginas/score/UltimasMaterias';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { FILTROS_DAS_LENTES, LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa, corForteDaLente } from '@/dominio/score';
@@ -76,6 +79,8 @@ import {
 } from '@/graficos/PecasDoDossie';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
+import { ColunasEmpilhadas } from '@/graficos/ColunasEmpilhadas';
+import { CORES_DO_SENTIMENTO } from '@/dominio/explorador';
 
 //: `de` É A CONTRAÇÃO DO TÍTULO DA JORNADA, que concorda com o nome da lente:
 //: "Jornada da Imprensa", "do Mercado", "dos Clientes". Sem ela, um "da" fixo
@@ -153,6 +158,22 @@ export function DossieDaLente({
     definirDossie(null);
   }, [lente, mes]);
 
+  //: A JANELA DA JORNADA MORA AQUI, e não dentro dela: o filtro rápido
+  //: "Período" da barra e o gráfico mexem no MESMO estado (por pedido). Com a
+  //: lente junto: trocar de lente volta ao padrão, como a Jornada fazia ao
+  //: remontar (`key={lente}`).
+  const [janelaDaLente, definirJanelaDaLente] = useState<{ lente: string; janela: Janela | null }>({
+    lente,
+    janela: null,
+  });
+  const janelaEscolhida = janelaDaLente.lente === lente ? janelaDaLente.janela : null;
+  const definirJanela = (janela: Janela | null) => definirJanelaDaLente({ lente, janela });
+  const serieDestaLente = serieDaLente(serie, lente);
+  const mesesDaJornada = mesesMedidos(serieDestaLente);
+  const janelaAtual = janelaEscolhida
+    ? ajustar(janelaEscolhida, mesesDaJornada.length)
+    : janelaDoAtalho('6m', mesesDaJornada);
+
   useEffect(() => {
     // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
     // tem recorte, e buscar opções que a tela nem desenha
@@ -206,10 +227,9 @@ export function DossieDaLente({
   //: até o Nível 1 fecharia o bloco debaixo do clique, e depois de fechar à
   //: mão uma busca nova não o reabriria. É a NAVEGAÇÃO que abre, não o nível.
   const [abertos, definirAbertos] = useState(() => ({
-    sintese: false,
     drill: enderecoProfundo(),
   }));
-  const alternar = (bloco: 'sintese' | 'drill') =>
+  const alternar = (bloco: 'drill') =>
     definirAbertos((atual) => ({ ...atual, [bloco]: !atual[bloco] }));
 
   useEffect(() => {
@@ -258,6 +278,12 @@ export function DossieDaLente({
         filtro={filtro}
         definirFiltro={definirFiltro}
         opcoes={opcoes}
+        periodo={{
+          meses: mesesDaJornada,
+          janela: janelaAtual,
+          aoMudar: definirJanela,
+          padrao: janelaEscolhida === null,
+        }}
       />
 
       {/* A JORNADA DA LENTE ABRE A ABA, por pedido: o mesmo bloco da Visão
@@ -268,9 +294,11 @@ export function DossieDaLente({
         key={lente}
         titulo={`Jornada ${contracao} ${nomeDaLente}`}
         sujeito={`A lente ${nomeDaLente}`}
-        serie={serieDaLente(serie, lente)}
+        serie={serieDestaLente}
         mes={mes}
         aoEscolherMes={aoTrocarMes}
+        janela={janelaEscolhida}
+        aoMudarJanela={definirJanela}
         comIndiceGeral
         dica="Clique num mês para ver a lente naquele mês."
       />
@@ -278,23 +306,34 @@ export function DossieDaLente({
 
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
-      <BlocoExpansivel
-        titulo="Síntese executiva"
-        descricao="Os gráficos da lente: evolução, veículos, matérias, drivers, temas e onde está a causa."
-        aberto={abertos.sintese}
-        aoAlternar={() => alternar('sintese')}
+      {/* "SÍNTESE EXECUTIVA" COMO NO CRM DOS STAKEHOLDERS, por pedido: um
+          título grande e centralizado, no degradê da marca, e os gráficos
+          sempre à mostra — deixou de ser um bloco que se abre num botão. */}
+      <h2
+        style={{
+          textAlign: 'center',
+          fontSize: 34,
+          fontWeight: 800,
+          margin: '8px 0 0',
+          backgroundImage: 'linear-gradient(120deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+          WebkitTextFillColor: 'transparent',
+        }}
       >
-        {!dossie && !erro ? <Carregando /> : null}
-        {dossie ? (
-          <Conteudo
-            dossie={dossie}
-            filtro={filtro}
-            definirFiltro={definirFiltro}
-            serie={serie}
-            opcoes={opcoes}
-          />
-        ) : null}
-      </BlocoExpansivel>
+        Síntese Executiva
+      </h2>
+      {!dossie && !erro ? <Carregando /> : null}
+      {dossie ? (
+        <Conteudo
+          dossie={dossie}
+          filtro={filtro}
+          definirFiltro={definirFiltro}
+          serie={serie}
+          opcoes={opcoes}
+        />
+      ) : null}
 
       {DRILL_LIGADO && LENTES_COM_DRILL.includes(lente) ? (
         <BlocoExpansivel
@@ -392,7 +431,7 @@ function Conteudo({
           menções dela é a aba Base de dados, por outro caminho e outra rota —
           não este bloco. */}
       {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
-        <BlocoAmplo titulo="Últimas matérias" bloco={dossie.materias_recentes} />
+        <UltimasMaterias bloco={dossie.materias_recentes} />
       ) : null}
 
       {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução
@@ -400,15 +439,28 @@ function Conteudo({
       {LENTES_SEM_DRIVERS.includes(dossie.codigo) ? null : (
         <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
       )}
+      {/* N1 › N2 › N3 E O MAPA POR UF, por pedido, no lugar de "Drivers e
+          riscos" e "Temas mais falados": os três níveis da taxonomia lado a
+          lado, que se filtram com um clique, e o termômetro por estado. */}
+      {LENTES_COM_EXPLORADOR.includes(dossie.codigo) ? (
+        <ExploradorDaLente
+          key={`explorador-${dossie.codigo}-${dossie.mes}`}
+          codigo={dossie.codigo}
+          mes={dossie.mes}
+          filtro={filtro}
+        />
+      ) : null}
       {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
           painel a primeira aba é o Subtema — que é onde "Saneamento básico"
           deixa de ser um rótulo e passa a dizer o que aconteceu. */}
-      <BlocoAmplo
-        titulo="Temas mais falados"
-        bloco={dossie.temas_mais_falados}
-        filtro={filtro}
-        aoAprofundar={aoAprofundar}
-      />
+      {LENTES_SEM_TEMAS_MAIS_FALADOS.includes(dossie.codigo) ? null : (
+        <BlocoAmplo
+          titulo="Temas mais falados"
+          bloco={dossie.temas_mais_falados}
+          filtro={filtro}
+          aoAprofundar={aoAprofundar}
+        />
+      )}
 
       {/* O APROFUNDAMENTO, por cima de tudo. Montado só quando há recorte
           aberto: um modal montado e invisível continua carregando dados. */}
@@ -517,6 +569,37 @@ function Conteudo({
                   tema, igual à aba do cartão acima. Era isto que faltava para o
                   painel ser um degrau e não um quadro de leitura. */}
               <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
+              {/* EMBAIXO DO TIER × SENTIMENTO, por pedido: quais veículos do
+                  Tier 1 formaram aquela barra — os 10 com mais matérias, em
+                  QUANTIDADE (não 100%), como os outros gráficos por volume. */}
+              {painel.titulo === 'Tier do veículo × sentimento' && dossie.veiculos_tier1 ? (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
+                  <div className="kicker" style={{ marginBottom: 10 }}>
+                    Top 10 veículos Tier 1
+                  </div>
+                  <ColunasEmpilhadas
+                    cores={CORES_DO_SENTIMENTO}
+                    rotuloEmCima
+                    espessura={8}
+                    alturaMaxima={600}
+                    dica="Clique para filtrar a tela"
+                    vazio="Nenhuma matéria de veículo Tier 1 no recorte."
+                    ativo={filtro.veiculo}
+                    itens={dossie.veiculos_tier1.dados.map((linha) => ({
+                      rotulo: comoTexto(linha.rotulo),
+                      positivo: comoNumero(linha.positivo ?? 0),
+                      neutro: comoNumero(linha.neutro ?? 0),
+                      negativo: comoNumero(linha.negativo ?? 0),
+                    }))}
+                    aoClicar={(veiculo) =>
+                      definirFiltro({
+                        ...filtro,
+                        veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
+                      })
+                    }
+                  />
+                </div>
+              ) : null}
               <NotaDeFonte ficha={painel.ficha} />
             </Cartao>
           </ComFaixaDoTopo>
@@ -583,6 +666,9 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  */
 const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
 const LENTES_SEM_DRIVERS = ['imprensa'];
+//: A IMPRENSA TROCOU "Temas mais falados" pelo card N1 › N2 › N3, por pedido.
+const LENTES_SEM_TEMAS_MAIS_FALADOS = ['imprensa'];
+const LENTES_COM_EXPLORADOR = ['imprensa'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 
@@ -788,7 +874,7 @@ function VolumeETopVeiculos({
     <ComFaixaDoTopo>
     <Secao
       titulo="% Matérias por tier e Top veículos"
-      subtitulo="Volume de matérias pela relevância (tier) do veículo"
+      subtitulo="Volume de matérias pela relevância (tier) do veículo, e os 10 veículos que mais publicaram, com o sentimento dentro de cada barra"
       ajuda={GUIA_DO_BLOCO[rosca.titulo]}
       estilo={{ height: '100%' }}
     >
@@ -803,33 +889,34 @@ function VolumeETopVeiculos({
             rotuloCentral="matérias"
           />
         </div>
-        <div style={{ flex: '1 1 180px', minWidth: 160 }}>
-          <div className="kicker" style={{ marginBottom: 12 }}>
-            Top 5 veículos
+        <div style={{ flex: '1 1 220px', minWidth: 200 }}>
+          <div className="kicker" style={{ marginBottom: 10 }}>
+            Top 10 veículos
           </div>
-          {/* CLICÁVEL PELO MESMO MOTIVO DA ROSCA: clicar num veículo filtra
-              a tela inteira por ele — inclusive "Últimas matérias" mais
-              abaixo, que vira a lista de matérias DAQUELE veículo sem
-              precisar de um modal à parte. */}
-          <Ranking
-            itens={ranking.dados.map((linha) => ({
-              chave: comoTexto(linha.rotulo),
-              rotulo: comoTexto(linha.rotulo),
-              total: comoNumero(linha.valor ?? 0),
-              // CINZA ESCURO, não azul-mar — mesmo ajuste do Painel (CRM): o
-              // azul já é a cor do Tier 1 na rosca ao lado, e
-              // as duas barras do mesmo tom confundiam "isto é sobre tier"
-              // com "isto é o ranking de veículos".
-              cor: 'var(--cinza-4)',
-            }))}
+          {/* TOP 10, EMPILHADO PELO SENTIMENTO E EM QUANTIDADE, por pedido — a
+              rosca ao lado continua. CLICÁVEL PELO MESMO MOTIVO DA ROSCA:
+              clicar num veículo filtra a tela inteira por ele — inclusive
+              "Últimas matérias" mais abaixo. */}
+          <ColunasEmpilhadas
+            cores={CORES_DO_SENTIMENTO}
+            rotuloEmCima
+            espessura={8}
+            alturaMaxima={600}
+            dica="Clique para filtrar a tela"
+            vazio="Nada registrado no período."
             ativo={filtro.veiculo}
+            itens={ranking.dados.map((linha) => ({
+              rotulo: comoTexto(linha.rotulo),
+              positivo: comoNumero(linha.positivo ?? 0),
+              neutro: comoNumero(linha.neutro ?? 0),
+              negativo: comoNumero(linha.negativo ?? 0),
+            }))}
             aoClicar={(veiculo) =>
               definirFiltro({
                 ...filtro,
                 veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
               })
             }
-            vazio="Nada registrado no período."
           />
         </div>
       </div>
@@ -973,7 +1060,7 @@ function Painel({
             comoNumero(linha.positivo ?? 0) + comoNumero(linha.neutro ?? 0) + comoNumero(linha.negativo ?? 0);
           const [pos, neu, neg] = bloco.legenda.length
             ? bloco.legenda
-            : ['Positivo', 'Neutro', 'Negativo'];
+            : ['Propositivo', 'Neutro', 'Reativo'];
           // A COR, QUANDO O SERVIDOR MANDA (hoje só a institucional, com o
           // mesmo cor_hex do dicionário de clima que pinta o Painel), VENCE o
           // tom genérico — ver `BlocoSaida.cores` em `app/api/lentes.py`. Sem
@@ -1238,7 +1325,7 @@ function SinaisDoPeriodo({ dossie }: { dossie: Dossie }) {
             ))}
           </ul>
         ) : (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--cinza-2)' }}>
+          <p style={{ margin: 0, fontSize: 15, color: 'var(--cinza-2)' }}>
             Sem variação relevante no período pelas regras atuais.
           </p>
         )}
@@ -1257,21 +1344,28 @@ function LinhaDeSinal({ sinal, primeira }: { sinal: SinalDoDossie; primeira: boo
         gap: 12,
         alignItems: 'baseline',
         flexWrap: 'wrap',
-        padding: '10px 0',
+        padding: '13px 0',
         borderTop: primeira ? undefined : '1px solid var(--borda)',
       }}
     >
-      <Chip rotulo={sinal.tipo} fundo={cor.fundo} texto={cor.texto} />
-      <span style={{ fontSize: 11.5, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
+      {/* FONTE MAIOR, por pedido: o card é leitura de frase, e a 13,5px ele
+          era o texto mais miúdo da Síntese. */}
+      <Chip
+        rotulo={sinal.tipo}
+        fundo={cor.fundo}
+        texto={cor.texto}
+        estilo={{ fontSize: 13, padding: '4px 11px' }}
+      />
+      <span style={{ fontSize: 13.5, color: 'var(--cinza-2)', whiteSpace: 'nowrap' }}>
         {sinal.onde}
       </span>
-      <span style={{ fontSize: 13.5, flex: 1, minWidth: 220, lineHeight: 1.55 }}>
+      <span style={{ fontSize: 16, flex: 1, minWidth: 240, lineHeight: 1.55 }}>
         {sinal.frase}
       </span>
       <span
         className="tabular"
         style={{
-          fontSize: 14,
+          fontSize: 17,
           fontWeight: 700,
           whiteSpace: 'nowrap',
           color: sinal.tom === 'neu' ? 'var(--tinta)' : cor.texto,

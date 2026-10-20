@@ -39,7 +39,12 @@ export const VB = { largura: 1000, altura: 330 } as const;
  *  está comparando prints. */
 //: GRANDE O BASTANTE PARA O RÓTULO: o número fica sempre acima do ponto (por
 //: pedido), e o mês mais alto precisa de lugar para ele sem sair do desenho.
-export const PAD_TOPO = 56;
+//:
+//: 24, E NÃO MAIS 56, por pedido ("diminuir a distância para o Comparar com"):
+//: o eixo já põe o teto ao menos 8 pontos acima do mês mais alto
+//: (`dominioDe`), e com o gráfico de 420px esses 8 pontos somam ao menos
+//: ~40px — o rótulo cabe neles. Os 56 deixavam uma faixa vazia de ~70px.
+export const PAD_TOPO = 24;
 
 /** A folga EXTRA do lado em que o eixo bate no limite do índice.
  *

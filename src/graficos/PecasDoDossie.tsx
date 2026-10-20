@@ -58,7 +58,7 @@ export interface ItemDeComposicao {
 
 export function BarrasCemPorCento({
   itens,
-  legenda = ['Positivo', 'Neutro', 'Negativo'],
+  legenda = ['Propositivo', 'Neutro', 'Reativo'],
   // A COR, QUANDO O SERVIDOR MANDA (a lente institucional, com o cor_hex do
   // dicionário de clima que também pinta o Painel), VENCE o tom genérico —
   // mesmo contrato de `BarrasEmpilhadas`/`DossieDaLente.tsx`.
@@ -104,8 +104,8 @@ export function BarrasCemPorCento({
           const soSemClassificacao = !semBase && !classificadas;
           const dominante =
             item.negativo > item.positivo
-              ? `${Math.round((item.negativo / classificadas) * 100)}% negativo`
-              : `${Math.round((item.positivo / classificadas) * 100)}% positivo`;
+              ? `${Math.round((item.negativo / classificadas) * 100)}% reativo`
+              : `${Math.round((item.positivo / classificadas) * 100)}% propositivo`;
 
           const selecionado = ativo === item.rotulo;
 

@@ -66,8 +66,8 @@ describe.skip('DossieDaLente · bloco Drill down', () => {
   it.each(['sociedade', 'clientes', 'institucional'])('não aparece na lente %s (D2)', (lente) => {
     montar(lente);
     expect(botaoDoDrill()).toBeNull();
-    // A Síntese executiva continua.
-    expect(screen.getByRole('button', { name: /Síntese executiva/ })).toBeTruthy();
+    // A Síntese executiva continua — título, como no CRM, e não mais botão.
+    expect(screen.getByRole('heading', { name: 'Síntese Executiva' })).toBeTruthy();
   });
 
   it('abrir monta a raiz com a lente da aba', async () => {

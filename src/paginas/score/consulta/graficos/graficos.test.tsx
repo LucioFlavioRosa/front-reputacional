@@ -29,7 +29,7 @@ const num = (e: Element, atributo: string) => Number(e.getAttribute(atributo));
 describe('BarraSentimento (F.2)', () => {
   it('descreve os três percentuais e põe os segmentos na ordem pos, neu, neg', () => {
     render(<BarraSentimento sentimento={{ pos: 14, neu: 36, neg: 50 }} />);
-    const barra = screen.getByRole('img', { name: '14% positivas, 36% neutras, 50% negativas' });
+    const barra = screen.getByRole('img', { name: '14% propositivas, 36% neutras, 50% reativas' });
     const segmentos = [...barra.querySelectorAll<HTMLElement>('[data-segmento]')];
     expect(segmentos.map((s) => s.dataset.segmento)).toEqual(['positivo', 'neutro', 'negativo']);
     expect(segmentos.map((s) => s.style.width)).toEqual(['14%', '36%', '50%']);
@@ -257,7 +257,7 @@ describe('GraficoDiario (F.7)', () => {
     expect(svg.getAttribute('viewBox')).toBe('0 0 640 150');
     expect(svg.getAttribute('width')).toBe('100%');
     expect(svg.getAttribute('aria-label')).toBe(
-      'Matérias por dia. Destaque: 12 a 18/08 · 69 matérias. Pico: 13/08 · 16 matérias, 13 negativas.',
+      'Matérias por dia. Destaque: 12 a 18/08 · 69 matérias. Pico: 13/08 · 16 matérias, 13 reativas.',
     );
   });
 
@@ -282,7 +282,7 @@ describe('GraficoDiario (F.7)', () => {
   it('o mês vem de fora, não é fixo', () => {
     const { container } = render(<GraficoDiario porDia={porDia} mes="09" />);
     expect(el(container, '[data-frase]').textContent).toBe('12 a 18/09 · 69 matérias');
-    expect(el(container, '[data-dica="14"] title').textContent).toBe('14/09 · 12 matérias, 10 negativas');
+    expect(el(container, '[data-dica="14"] title').textContent).toBe('14/09 · 12 matérias, 10 reativas');
   });
 
   it('barras empilhadas: negativas embaixo, demais em cima, na escala ceil(maior × 1,1)', () => {
@@ -316,12 +316,12 @@ describe('GraficoDiario (F.7)', () => {
   it('dica por dia: "14/08 · 12 matérias, 10 negativas"', () => {
     const { container } = render(<GraficoDiario porDia={porDia} mes="08" />);
     expect(container.querySelectorAll('[data-dica] title')).toHaveLength(31);
-    expect(el(container, '[data-dica="14"] title').textContent).toBe('14/08 · 12 matérias, 10 negativas');
+    expect(el(container, '[data-dica="14"] title').textContent).toBe('14/08 · 12 matérias, 10 reativas');
   });
 
   it('legenda com Negativas e Demais', () => {
     render(<LegendaDoGraficoDiario />);
-    expect(screen.getByText('Negativas')).toBeInTheDocument();
+    expect(screen.getByText('Reativas')).toBeInTheDocument();
     expect(screen.getByText('Demais')).toBeInTheDocument();
   });
 });

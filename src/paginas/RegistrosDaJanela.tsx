@@ -39,8 +39,8 @@ function diaEMes(iso: string): string {
 /** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na
  *  Base de dados porque lá ele é filtro; aqui é leitura. */
 const ROTULO_DO_SENTIMENTO: Record<string, string> = {
-  pos: 'Positiva',
-  neg: 'Negativa',
+  pos: 'Propositiva',
+  neg: 'Reativa',
   neu: 'Neutra',
 };
 

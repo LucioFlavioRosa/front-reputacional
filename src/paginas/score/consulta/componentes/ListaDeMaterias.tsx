@@ -230,9 +230,9 @@ export function ListaDeMaterias({
 
   const abas: { valor: SentimentoDaLista; rotulo: string; numero?: string }[] = [
     { valor: 'todas', rotulo: 'Todas', numero: fmtInt(subtema.volume) },
-    { valor: 'negativas', rotulo: 'Negativas', numero: subtema.contagens && fmtInt(subtema.contagens.neg) },
+    { valor: 'negativas', rotulo: 'Reativas', numero: subtema.contagens && fmtInt(subtema.contagens.neg) },
     { valor: 'neutras', rotulo: 'Neutras', numero: subtema.contagens && fmtInt(subtema.contagens.neu) },
-    { valor: 'positivas', rotulo: 'Positivas', numero: subtema.contagens && fmtInt(subtema.contagens.pos) },
+    { valor: 'positivas', rotulo: 'Propositivas', numero: subtema.contagens && fmtInt(subtema.contagens.pos) },
   ];
 
   const rodape = filtroAtivo

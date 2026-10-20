@@ -919,7 +919,7 @@ describe('os temas da janela, ao clicar numa data', () => {
   expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1);
   //: E AS CINCO COLUNAS, com o título servindo de link para a matéria.
   expect(screen.getByText('Valor Econômico')).toBeTruthy();
-  expect(screen.getByText('Positiva')).toBeTruthy();
+  expect(screen.getByText('Propositiva')).toBeTruthy();
   expect(screen.getByText('Tier 1')).toBeTruthy();
   expect(
     screen.getByRole('link', { name: 'A matéria que empurrou' }).getAttribute('href'),

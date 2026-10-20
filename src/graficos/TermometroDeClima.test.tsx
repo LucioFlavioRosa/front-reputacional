@@ -9,9 +9,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { TermometroDeClima } from '@/graficos/TermometroDeClima';
 
 const FATIAS = [
-  { chave: 'propositivo', rotulo: 'Positivo', total: 6 },
+  { chave: 'propositivo', rotulo: 'Propositivo', total: 6 },
   { chave: 'neutro', rotulo: 'Neutro', total: 2 },
-  { chave: 'tenso', rotulo: 'Negativo', total: 2 },
+  { chave: 'tenso', rotulo: 'Reativo', total: 2 },
 ];
 
 describe('TermometroDeClima', () => {
@@ -19,14 +19,14 @@ describe('TermometroDeClima', () => {
     render(<TermometroDeClima fatias={FATIAS} />);
     expect(screen.getByLabelText('Saldo do termômetro +40')).toBeTruthy();
     expect(screen.getByRole('img').getAttribute('aria-label')).toBe(
-      'Negativo 20%, Neutro 20%, Positivo 60%',
+      'Reativo 20%, Neutro 20%, Propositivo 60%',
     );
   });
 
   it('clicar numa fatia filtra por aquele termômetro', async () => {
     const aoClicar = vi.fn();
     render(<TermometroDeClima fatias={FATIAS} aoClicar={aoClicar} />);
-    await userEvent.click(screen.getByTitle(/^Negativo: 20%/));
+    await userEvent.click(screen.getByTitle(/^Reativo: 20%/));
     expect(aoClicar).toHaveBeenCalledWith('tenso');
   });
 

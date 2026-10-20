@@ -368,7 +368,7 @@ test('roteiro G, passos 1 a 12: a descida da Imprensa, a história e a busca', a
   await capturar(page, '05-nivel4-rompimento', vigias);
 
   // 6 · Negativas e depois Data: 9 linhas, a primeira é a de 19/08 (Zero Hora).
-  await drill.getByRole('button', { name: 'Negativas 71' }).click();
+  await drill.getByRole('button', { name: 'Reativas 71' }).click();
   await drill.getByRole('button', { name: 'Data', exact: true }).click();
   await expect(page).toHaveURL(/sent=negativas/);
   await expect(page).toHaveURL(/ordem=data/);
@@ -403,7 +403,7 @@ test('roteiro G, passos 1 a 12: a descida da Imprensa, a história e a busca', a
   // 9 · voltar do navegador: Nível 4 com Negativas e Data preservados.
   await page.goBack();
   await conferirNivel(page, 4);
-  await expect(drill.getByRole('button', { name: 'Negativas 71' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(drill.getByRole('button', { name: 'Reativas 71' })).toHaveAttribute('aria-pressed', 'true');
   await expect(drill.getByRole('button', { name: 'Data', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(linhasDaLista(page)).toHaveCount(9);
   await expect(linhasDaLista(page).first()).toContainText('Zero Hora');
@@ -480,7 +480,7 @@ test('roteiro G, passos 13 a 16: Mercado no Nível 1; nas outras lentes o bloco 
   // 14 · Sociedade digital: sem bloco "Drill down" (D2).
   await abaDaLente(page, 'Sociedade digital').click();
   await expect(abaDaLente(page, 'Sociedade digital')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: /^Síntese executiva/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Síntese Executiva' })).toBeVisible();
   await expect(botaoDoDrill(page)).toHaveCount(0);
   await expect(drill).toHaveCount(0);
   await capturar(page, '14-sociedade-sem-drill', vigias);
@@ -492,7 +492,7 @@ test('roteiro G, passos 13 a 16: Mercado no Nível 1; nas outras lentes o bloco 
   ] as const) {
     await abaDaLente(page, nome).click();
     await expect(abaDaLente(page, nome)).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('button', { name: /^Síntese executiva/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Síntese Executiva' })).toBeVisible();
     await expect(botaoDoDrill(page)).toHaveCount(0);
     await expect(drill).toHaveCount(0);
     await capturar(page, arquivo, vigias);

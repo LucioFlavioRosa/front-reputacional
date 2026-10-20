@@ -20,12 +20,16 @@ export function FaixaDeFiltros({
   children,
   rodape,
   colada = true,
+  compacta = false,
 }: {
   children: ReactNode;
   rodape?: ReactNode;
   /** Sobe 28px para encostar no "Filtro avançado" do CRM. Sem o acordeão em
    *  cima (nas lentes do Score), `false`: senão ela cobre o que vem antes. */
   colada?: boolean;
+  /** MAIS BAIXA, para as lentes do Score (por pedido): a faixa das sublentes
+   *  ocupava altura demais acima da Jornada. O CRM segue com a de sempre. */
+  compacta?: boolean;
 }) {
   return (
     <div
@@ -63,7 +67,7 @@ export function FaixaDeFiltros({
           background: 'linear-gradient(90deg, var(--azul-mar) 0%, var(--turquesa-rio) 100%)',
           borderRadius: rodape ? 'var(--r-card) var(--r-card) 0 0' : 'var(--r-card)',
           // COMPACTO — era '10px 20px', ocupava altura demais por pedido.
-          padding: '7px 16px',
+          padding: compacta ? '3px 12px' : '7px 16px',
         }}
       >
         <span

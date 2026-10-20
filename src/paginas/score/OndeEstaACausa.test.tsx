@@ -37,7 +37,7 @@ function aba(titulo: string, recorta: string, dados: Bloco['dados']): Bloco {
     titulo,
     conclusao: null,
     dados,
-    legenda: ['Positivo', 'Neutro', 'Negativo'],
+    legenda: ['Propositivo', 'Neutro', 'Reativo'],
     cores: [],
     colunas: [],
     recorta,

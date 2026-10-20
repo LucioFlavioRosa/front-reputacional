@@ -59,7 +59,7 @@ export function NivelSubtema({
 
   const metricas: MetricaDoResumo[] = [{ rotulo: 'Matérias', valor: fmtInt(subtema.volume) }];
   if (subtema.contagens) {
-    metricas.push({ rotulo: 'Negativas', valor: fmtInt(subtema.contagens.neg), cor: 'var(--erro-fg)' });
+    metricas.push({ rotulo: 'Reativas', valor: fmtInt(subtema.contagens.neg), cor: 'var(--erro-fg)' });
   }
   if (subtema.tier1 !== undefined) metricas.push({ rotulo: 'Tier 1', valor: fmtInt(subtema.tier1) });
   metricas.push(metricaDeImpacto(subtema));

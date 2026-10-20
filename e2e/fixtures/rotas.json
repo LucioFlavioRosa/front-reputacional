@@ -63,5 +63,10 @@
     "metodo": "GET",
     "caminho": "/api/score/lentes/clientes/dossie/opcoes-de-filtro",
     "arquivo": "opcoes-de-filtro-clientes.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/explorador",
+    "arquivo": "explorador-imprensa.json"
   }
 ]
