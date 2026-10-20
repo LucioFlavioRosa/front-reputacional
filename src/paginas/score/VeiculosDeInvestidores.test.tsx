@@ -15,7 +15,7 @@
  *  e 72 nasceram dela).
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -32,7 +32,8 @@ vi.mock('@/api/cliente', () => ({
   aplicarReconciliacao: vi.fn(async () => []),
 }));
 
-const { criarInstituicao, definirVeiculosDeInvestidores } = await import('@/api/cliente');
+const { criarInstituicao, definirVeiculosDeInvestidores, previaDaReconciliacao } =
+  await import('@/api/cliente');
 
 //: A IMPRENSA É A CATEGORIA 4 e o Mercado a SUBCATEGORIA 12 nesta fixture —
 //: números quaisquer, de propósito: o componente tem de achá-los pelo NOME, e
@@ -146,6 +147,14 @@ beforeEach(() => {
     desmarcados: 0,
   });
   vi.mocked(criarInstituicao).mockResolvedValue({} as Instituicao);
+  //: E A PRÉVIA VOLTA AO PADRÃO "sem desvio".
+  //:
+  //: `vi.clearAllMocks()` limpa as CHAMADAS, não as implementações: um
+  //: `mockResolvedValue` posto num teste sobrevive aos seguintes. Sem esta
+  //: linha, o teste que faz a prévia devolver desvio deixava o painel
+  //: desenhado nos testes de baixo — e um deles, que conta os nomes na tela,
+  //: passava a ver os nomes do painel junto com os da lista.
+  vi.mocked(previaDaReconciliacao).mockResolvedValue([]);
 });
 
 /** Os nomes que a lista mostra. */
@@ -210,6 +219,74 @@ describe('VeiculosDeInvestidores', () => {
       'id-InfoMoney',
       'id-Valor Econômico',
     ]);
+  });
+
+  it('SALVAR abre a janela que pergunta sobre os meses ja ingeridos', async () => {
+    /** O CAMINHO INTEIRO, e é a lacuna que a revisão apontou: os testes do
+     *  painel empurram o contador por `rerender`, então passariam mesmo se esta
+     *  aba deixasse de incrementá-lo. Aqui se clica em Salvar de verdade.
+     *
+     *  O PEDIDO DO DONO DO PRODUTO: "deve acontecer no momento que clico em
+     *  salvar; é um click só". */
+    vi.mocked(definirVeiculosDeInvestidores).mockResolvedValue({
+      marcados: 0,
+      desmarcados: 1,
+      recusados: [],
+    });
+    vi.mocked(previaDaReconciliacao).mockResolvedValue([
+      {
+        fonte: 'clipei_investidores',
+        espelho: 'clipei',
+        lista: 'imprensa_economica',
+        meses: [{ mes: '2026-08-01', antes: 49, depois: 0, mudou: true }],
+        entram: [],
+        saem: [{ nome: 'Valor Econômico', mencoes: 49 }],
+        aplicada: false,
+      },
+    ]);
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    expect(
+      await screen.findByText(/Isto também reescreve os meses fechados/),
+    ).toBeTruthy();
+    //: OS NÚMEROS DO QUE SAI, DENTRO DO QUADRO: o nome do veículo aparece
+    //: também na lista atrás da janela, e um `getByText` solto acha os dois.
+    expect(
+      within(screen.getByTestId('quadro-saem')).getByText(/Valor Econômico/),
+    ).toBeTruthy();
+    expect(screen.getByTestId('meses-que-mudam').textContent).toContain(
+      '08/2026: 49 → 0',
+    );
+    expect(screen.getByRole('button', { name: /Aplicar a 1 mês/ })).toBeTruthy();
+  });
+
+  it('SALVAR que nao alcanca mes nenhum NAO abre janela', async () => {
+    /** A lista mudou, mas a mudança não alcança nenhum mês já ingerido — um
+     *  veículo que nunca foi mencionado, por exemplo. Não há o que reescrever,
+     *  e abrir janela ali seria ruído sobre um gesto comum.
+     *
+     *  QUEM DECIDE É O SERVIDOR: a aba só diz "acabei de salvar", e o painel
+     *  relê. A prévia volta sem desvio, e nada aparece. */
+    vi.mocked(definirVeiculosDeInvestidores).mockResolvedValue({
+      marcados: 0,
+      desmarcados: 1,
+      recusados: [],
+    });
+    const pessoa = userEvent.setup();
+    render(<VeiculosDeInvestidores />);
+
+    await pessoa.click(screen.getAllByText('Remover')[0]);
+    await pessoa.click(screen.getByText(/Salvar a lista/));
+
+    //: A PRÉVIA FOI PEDIDA DE NOVO — é o que prova que a aba avisou.
+    await waitFor(() =>
+      expect(vi.mocked(previaDaReconciliacao).mock.calls.length).toBeGreaterThan(1),
+    );
+    expect(screen.queryByText(/Isto também reescreve/)).toBeNull();
   });
 
   it('ACRESCENTAR acha no cadastro compartilhado quem está fora da lista', async () => {
