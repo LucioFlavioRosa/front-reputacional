@@ -146,6 +146,9 @@ export interface Dossie {
    *  de −100 a 100 — mesmo cálculo de "Clima por Instituições" do Painel
    *  (CRM), por veículo. Vazio na Institucional. */
   clima_por_veiculos: Bloco;
+  /** Os 10 veículos Tier 1 com mais matérias, com o sentimento — embaixo do
+   *  painel "Tier do veículo × sentimento". Nulo onde não há tier. */
+  veiculos_tier1?: Bloco | null;
   /** O que está puxando a lente pra cima ou pra baixo, por atributo
    *  reputacional. Vazio na Institucional — ela lê o CRM, não vem de clipping. */
   drivers_e_riscos: Bloco;
@@ -391,9 +394,9 @@ function destaqueDe(bloco: Bloco, chave: string) {
     // é a mesma régua de pos/neg/neu do resto do dossiê, só traduzida para a
     // coluna da tabela em vez de virar faixa de gráfico.
     return (linha: Record<string, unknown>) =>
-      linha.sentimento === 'Negativo'
+      linha.sentimento === 'Reativo'
         ? ('alerta' as const)
-        : linha.sentimento === 'Positivo'
+        : linha.sentimento === 'Propositivo'
           ? ('bom' as const)
           : null;
   }

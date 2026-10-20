@@ -39,6 +39,8 @@ vi.mock('@/api/cliente', () => ({
   obterDossieDaLente: (...argumentos: unknown[]) => obterDossieDaLente(...argumentos),
   obterRecorteDaLente: (...argumentos: unknown[]) => obterRecorteDaLente(...argumentos),
   obterOpcoesDeFiltroDaLente: vi.fn(() => Promise.resolve(null)),
+  //: O CARD N1 › N2 › N3 E O MAPA têm teste próprio; aqui ficam carregando.
+  obterExploradorDaLente: vi.fn(() => new Promise(() => {})),
 }));
 
 //: A Jornada e o drill saem do caminho: não são o assunto, e a Jornada busca
@@ -111,7 +113,7 @@ function dossieCom(codigo: string): Dossie {
         { mes: '2026-08', positivo: 144, neutro: 61, negativo: 11, sem_base: false },
         { mes: '2026-09', positivo: 63, neutro: 35, negativo: 13, sem_base: false },
       ],
-      legenda: ['Positivo', 'Neutro', 'Negativo'],
+      legenda: ['Propositivo', 'Neutro', 'Reativo'],
     }),
     sinais_da_evolucao: [],
     volume_por_tier: bloco({
@@ -135,7 +137,7 @@ function dossieCom(codigo: string): Dossie {
     materias_recentes: bloco({
       titulo: 'Últimas matérias',
       subtipo: 'materias',
-      dados: [{ quando: '12/09', veiculo: 'Valor Econômico', sentimento: 'Positivo' }],
+      dados: [{ quando: '12/09', veiculo: 'Valor Econômico', sentimento: 'Propositivo' }],
     }),
     fatos: [],
     paineis: [],
@@ -144,18 +146,16 @@ function dossieCom(codigo: string): Dossie {
   };
 }
 
-/** Monta a tela E ABRE A SÍNTESE EXECUTIVA.
+/** Monta a tela e espera a Síntese Executiva.
  *
- *  OS GRÁFICOS DA LENTE NASCEM DENTRO DE UMA SEÇÃO FECHADA ("Síntese
- *  executiva" — `BlocoExpansivel`), e isso é de propósito: a tela abre com a
- *  Jornada e os atalhos, e quem quer os gráficos pede. Um teste que afirmasse
- *  os blocos sem abrir estaria afirmando o estado fechado, e passaria para
- *  SEMPRE — mesmo com a regra invertida, porque nada aparece de qualquer jeito.
+ *  A SÍNTESE DEIXOU DE SER UM BLOCO QUE SE ABRE (por pedido, como no CRM): é
+ *  um título e os gráficos sempre à mostra. ESPERAR O TÍTULO E O DOSSIÊ, e não
+ *  um prazo: afirmar ausência antes de a seção pintar passaria sempre.
  */
 async function montarEAbrir(lente: string) {
   const resultado = montar(lente);
-  const abrir = await screen.findByRole('button', { name: /Síntese executiva/ });
-  await userEvent.click(abrir);
+  await screen.findByRole('heading', { name: 'Síntese Executiva' });
+  await screen.findAllByText('Evolução');
   return resultado;
 }
 
@@ -270,8 +270,11 @@ describe('os blocos de veículo do dossiê', () => {
     //: Por pedido: o popup N1 › N2 › N3 da Evolução já responde a pergunta.
     obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
     const { unmount } = await montarEAbrir('imprensa');
-    await waitFor(() => expect(screen.getAllByText('Temas mais falados').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
     expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
+    //: E SEM "Temas mais falados": o card N1 › N2 › N3 tomou o lugar dele.
+    expect(screen.queryAllByText('Temas mais falados')).toEqual([]);
+    expect(screen.getByText('Atributos, temas estratégicos e subtemas')).toBeTruthy();
     unmount();
 
     obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));

@@ -379,6 +379,9 @@ export function Painel({
         (catalogo.dicionarios.temas_inativos?.length ?? 0),
       nivelDaDistribuicao,
     );
+    //: "ATRIBUTOS REPUTACIONAIS NO TEMPO" MOSTRA OS 3 MAIS RECORRENTES do
+    //: recorte, por pedido — `temasMaisRecorrentes` já vem do maior para o menor.
+    const temasN1NoTempo = temasN1.slice(0, 3);
     const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
 
     const geo = distribuicaoPorUf(interacoes);
@@ -447,6 +450,7 @@ export function Painel({
       temas,
       todosOsTemas,
       temasN1,
+      temasN1NoTempo,
       categoriasPublico,
       categoriasDePublico,
       volumetriaPorPublico: completarPeriodos(
@@ -471,7 +475,7 @@ export function Painel({
       porTema: completarPeriodos(
         serieMensal(
           interacoes,
-          temasN1,
+          temasN1NoTempo,
           (i) => nomesDosTemasNoNivel(catalogo, i.temas, 'n1'),
           granularidade,
         ),
@@ -676,7 +680,7 @@ export function Painel({
           <Kpi
             rotulo="Eventos e participações"
             valor={numero(kpis.eventos)}
-            dica={`${derivado.resumoDeClima.eventos.positivas} pos, ${derivado.resumoDeClima.eventos.negativas} neg`}
+            dica={`${derivado.resumoDeClima.eventos.positivas} prop, ${derivado.resumoDeClima.eventos.negativas} reat`}
             cor={CORES_DE_FRENTE.eventos}
             aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'eventos'))}
           />
@@ -690,7 +694,7 @@ export function Painel({
           <Kpi
             rotulo="Proposições legislativas"
             valor={numero(kpis.legislativo)}
-            dica={`${derivado.resumoDeClima.legislativo.positivas} pos, ${derivado.resumoDeClima.legislativo.negativas} neg`}
+            dica={`${derivado.resumoDeClima.legislativo.positivas} prop, ${derivado.resumoDeClima.legislativo.negativas} reat`}
             cor={CORES_DE_FRENTE.legislativo}
             aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'legislativo'))}
           />
@@ -700,13 +704,13 @@ export function Painel({
           <Kpi
             rotulo="Interações institucionais"
             valor={numero(kpis.institucionais)}
-            dica={`${derivado.resumoDeClima.institucionais.positivas} pos, ${derivado.resumoDeClima.institucionais.negativas} neg`}
+            dica={`${derivado.resumoDeClima.institucionais.positivas} prop, ${derivado.resumoDeClima.institucionais.negativas} reat`}
             cor={CORES_DE_FRENTE.governo}
           />
           <Kpi
             rotulo={ROTULOS_DE_FRENTE.bancos_credores}
             valor={numero(derivado.resumoDeClima.bancosCredores.total)}
-            dica={`${derivado.resumoDeClima.bancosCredores.positivas} pos, ${derivado.resumoDeClima.bancosCredores.negativas} neg`}
+            dica={`${derivado.resumoDeClima.bancosCredores.positivas} prop, ${derivado.resumoDeClima.bancosCredores.negativas} reat`}
             cor={CORES_DE_FRENTE.bancos_credores}
             aoClicar={() => definirRecorte(alternar(recorte, 'frente', 'bancos_credores'))}
           />
@@ -892,7 +896,7 @@ export function Painel({
       <Secao
         titulo="Termômetro por público"
         subtitulo="Volume de interações por público e o termômetro percebido em cada um"
-        ajuda="Placar do termômetro por categoria de público: (interações positivas − negativas) ÷ total × 100, de −100 (só negativas) a +100 (só positivas). Considera só interações com termômetro registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
+        ajuda="Placar do termômetro por categoria de público: (interações propositivas − reativas) ÷ total × 100, de −100 (só reativas) a +100 (só propositivas). Considera só interações com termômetro registrado no recorte; mostra as 5 categorias com mais interações, com opção de ver outras."
       >
         {categoriaPublicoExtras.length || categoriaPublicoDisponiveis.length ? (
           <div
@@ -1067,7 +1071,7 @@ export function Painel({
           <Secao
             titulo="Termômetro por Instituições"
             subtitulo="Placar do termômetro das instituições mais presentes no recorte"
-            ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
+            ajuda="Cada barra é (interações propositivas − reativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
             acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
             estilo={{ height: '100%' }}
           >
@@ -1230,8 +1234,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="Termômetro das interações no tempo"
-          subtitulo="Evolução da classificação do termômetro (Positivo, Neutro e Negativo) no período"
-          ajuda="Cada coluna soma 100% das interações com termômetro registrado naquele período, divididas entre Positivo, Neutro e Negativo — mostra como a PROPORÇÃO do termômetro muda no tempo, não o volume total de interações."
+          subtitulo="Evolução da classificação do termômetro (Propositivo, Neutro e Reativo) no período"
+          ajuda="Cada coluna soma 100% das interações com termômetro registrado naquele período, divididas entre Propositivo, Neutro e Reativo — mostra como a PROPORÇÃO do termômetro muda no tempo, não o volume total de interações."
         >
           {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
               que varia é a fatia de cada clima — a pergunta aqui é "como o
@@ -1258,7 +1262,7 @@ export function Painel({
         <Secao
           titulo="Net Sentiment Score no tempo"
           subtitulo="Placar do termômetro do recorte, período a período, contra a média geral"
-          ajuda="NSS = (interações positivas − negativas) ÷ total com termômetro registrado × 100, de −100 a +100 — a mesma fórmula do placar do termômetro usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem termômetro registrado, o período fica sem ponto."
+          ajuda="NSS = (interações propositivas − reativas) ÷ total com termômetro registrado × 100, de −100 a +100 — a mesma fórmula do placar do termômetro usado nos outros gráficos, aqui ao longo do tempo. A linha tracejada é o NSS do recorte inteiro, para comparar cada período contra a média geral. Adicione um público para comparar a linha dele com a linha Geral. Sem termômetro registrado, o período fica sem ponto."
         >
           {nssPublicosExtras.length || nssPublicosDisponiveis.length ? (
             <div
@@ -1336,8 +1340,8 @@ export function Painel({
         <ComFaixaDoTopo>
         <Secao
           titulo="Recorrência dos Atributos Reputacionais"
-          subtitulo="Quanto cada atributo reputacional (N1) aparece nas interações, período a período"
-          ajuda="Interações por período em cada pilar (N1) da taxonomia de temas. Uma interação com temas de dois pilares conta em cada um deles; dois temas do mesmo pilar contam uma vez só."
+          subtitulo="Os 3 atributos (N1) mais recorrentes no recorte, ao longo do tempo"
+          ajuda="Interações por período nos 3 atributos reputacionais (N1) com mais interações no recorte. Uma interação com temas de dois atributos conta em cada um deles; dois temas do mesmo atributo contam uma vez só."
         >
           <BarrasEmpilhadas
             colunas={derivado.porTema}
@@ -1345,7 +1349,7 @@ export function Painel({
             formatarRotulo={FORMATADORES_DE_ROTULO[granularidade]}
           />
           <Legenda
-            itens={derivado.temasN1}
+            itens={derivado.temasN1NoTempo}
             ativo={temaAtivoNoNivel('n1')}
             aoClicar={(chave) => definirRecorte(alternarTemaNoNivel('n1', chave))}
             centralizada
@@ -1358,7 +1362,7 @@ export function Painel({
       <Secao
         titulo="Barra divergente por tema"
         subtitulo={`Desempenho comparativo do termômetro por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
-        ajuda="Cada barra é (interações positivas − negativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Atributo (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
+        ajuda="Cada barra é (interações propositivas − reativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Atributo (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
         acao={
           <SeletorDeNivelDeTema
             valor={nivelDaDivergente}
@@ -1474,7 +1478,7 @@ export function Painel({
 
               {/* A TEMPERATURA DO RECORTE, por pedido, embaixo do ranking: o
                   mapa diz onde, o ranking diz quem, e o termômetro diz como
-                  foi — Negativo, Neutro e Positivo numa barra só, com o
+                  foi — Reativo, Neutro e Propositivo numa barra só, com o
                   saldo. Clicar numa fatia filtra pelo clima, o mesmo campo
                   do filtro rápido "Filtrar por Clima". */}
               <div className="kicker" style={{ margin: '24px 0 12px' }}>

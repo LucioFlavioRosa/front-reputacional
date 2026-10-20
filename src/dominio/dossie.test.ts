@@ -125,8 +125,8 @@ describe('colunasDaTabela', () => {
       }),
     );
 
-    expect(coluna.destaque?.({ sentimento: 'Negativo' })).toBe('alerta');
-    expect(coluna.destaque?.({ sentimento: 'Positivo' })).toBe('bom');
+    expect(coluna.destaque?.({ sentimento: 'Reativo' })).toBe('alerta');
+    expect(coluna.destaque?.({ sentimento: 'Propositivo' })).toBe('bom');
     expect(coluna.destaque?.({ sentimento: 'Neutro' })).toBeNull();
   });
 
@@ -305,7 +305,7 @@ describe('avisoDeExemplo', () => {
 function sinal(parcial: Partial<SinalDoDossie>): SinalDoDossie {
   return {
     tipo: 'Virada',
-    frase: 'A nota caiu 10 pontos em junho: o negativo foi de 45% para 57%.',
+    frase: 'A nota caiu 10 pontos em junho: o reativo foi de 45% para 57%.',
     evidencia: '-10 pts',
     onde: 'Evolução',
     tom: 'neg',

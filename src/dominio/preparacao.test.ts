@@ -79,7 +79,7 @@ function material(ajustes: Partial<Material> = {}): Material {
 }
 
 const CLIMAS = [
-  { codigo: 'propositivo', nome: 'Proativo', cor_hex: '#1' },
+  { codigo: 'propositivo', nome: 'Propositivo', cor_hex: '#1' },
   { codigo: 'neutro', nome: 'Neutro', cor_hex: '#2' },
   { codigo: 'tenso', nome: 'Reativo', cor_hex: '#3' },
 ];
@@ -112,7 +112,7 @@ describe('contagemPorDicionario', () => {
   it('um segmento por valor do dicionário, mesmo com zero, na cor do dicionário', () => {
     const dados = [interacao({ clima: 'tenso' }), interacao({ clima: 'tenso' }), interacao({ clima: null })];
     expect(contagemPorDicionario(dados, CLIMAS, (a) => a.clima)).toEqual([
-      { chave: 'propositivo', rotulo: 'Proativo', total: 0, cor: '#1' },
+      { chave: 'propositivo', rotulo: 'Propositivo', total: 0, cor: '#1' },
       { chave: 'neutro', rotulo: 'Neutro', total: 0, cor: '#2' },
       { chave: 'tenso', rotulo: 'Reativo', total: 2, cor: '#3' },
     ]);

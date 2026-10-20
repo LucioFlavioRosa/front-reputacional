@@ -55,7 +55,7 @@ export function NivelTema({
           aoVoltar={() => aoIr(voltar)}
           metricas={[
             { rotulo: 'Matérias', valor: fmtInt(tema.volume) },
-            { rotulo: 'Negativas', valor: fmtPct(tema.sentimento.neg), cor: 'var(--erro-fg)' },
+            { rotulo: 'Reativas', valor: fmtPct(tema.sentimento.neg), cor: 'var(--erro-fg)' },
             metricaDeImpacto(tema),
             ...metricaVsMesAnterior(tema, meta.mesAnterior),
           ]}

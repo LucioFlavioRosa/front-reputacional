@@ -45,7 +45,7 @@ function composicao(item: ScoreDivergente): string {
   const partes: string[] = [];
   if (item.negativas > 0) partes.push(pluralizar(item.negativas, 'reativa'));
   if (neutras > 0) partes.push(pluralizar(neutras, 'neutra'));
-  if (item.positivas > 0) partes.push(pluralizar(item.positivas, 'proativa'));
+  if (item.positivas > 0) partes.push(pluralizar(item.positivas, 'propositiva'));
   return partes.join(', ');
 }
 

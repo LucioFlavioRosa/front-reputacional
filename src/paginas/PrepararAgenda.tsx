@@ -561,8 +561,8 @@ function ConsultaDinamicaDeInstituicao({
                   {consulta.comClima > 0 ? (
                     <>
                       Das <Num>{numero(consulta.comClima)}</Num> interações com termômetro registrado,{' '}
-                      <Num>{consulta.positivas}</Num> foram positivas, <Num>{consulta.neutras}</Num>{' '}
-                      neutras e <Num>{consulta.negativas}</Num> negativas — placar de{' '}
+                      <Num>{consulta.positivas}</Num> foram propositivas, <Num>{consulta.neutras}</Num>{' '}
+                      neutras e <Num>{consulta.negativas}</Num> reativas — placar de{' '}
                       <Num>
                         {(consulta.nss ?? 0) > 0 ? '+' : ''}
                         {consulta.nss}

@@ -103,12 +103,12 @@ describe('BarraDeFiltroDaLente', () => {
       <BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={definirFiltro} opcoes={DA_IMPRENSA} />,
     );
     await userEvent.click(screen.getByText('Sentimento'));
-    expect(screen.getAllByText(/^(Positivo|Neutro|Negativo)$/).map((item) => item.textContent)).toEqual([
-      'Positivo',
+    expect(screen.getAllByText(/^(Propositivo|Neutro|Reativo)$/).map((item) => item.textContent)).toEqual([
+      'Propositivo',
       'Neutro',
-      'Negativo',
+      'Reativo',
     ]);
-    await userEvent.click(screen.getByText('Negativo'));
+    await userEvent.click(screen.getByText('Reativo'));
     expect(definirFiltro).toHaveBeenCalledWith({ sentimento: 'neg' });
 
     rerender(
@@ -116,7 +116,7 @@ describe('BarraDeFiltroDaLente', () => {
     );
     const gatilho = screen.getByRole('button', { name: /Sentimento/ });
     expect(gatilho.style.background).toBe('rgb(255, 92, 96)');
-    expect(gatilho.textContent).toContain('Negativo');
+    expect(gatilho.textContent).toContain('Reativo');
   });
 
   it('Mercado: os mesmos filtros da Imprensa — Concessionária, Tier e Sentimento', () => {
@@ -175,5 +175,43 @@ describe('BarraDeFiltroDaLente', () => {
       />,
     );
     expect(screen.getByRole('button', { name: /limpar/i })).toBeTruthy();
+  });
+});
+
+describe('o filtro rápido de Período, ligado à janela da Jornada', () => {
+  const MESES = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'].map(
+    (mes) => ({ mes }),
+  );
+
+  it('é o primeiro campo, diz o período escolhido e escolher outro muda a janela', async () => {
+    const aoMudar = vi.fn();
+    render(
+      <BarraDeFiltroDaLente
+        lente="imprensa"
+        filtro={{}}
+        definirFiltro={vi.fn()}
+        opcoes={DA_IMPRENSA}
+        periodo={{ meses: MESES, janela: { inicio: 2, fim: 7 }, aoMudar, padrao: true }}
+      />,
+    );
+    const gatilhos = screen.getAllByRole('button');
+    expect(gatilhos[0].textContent).toContain('Período · Últimos 6 meses');
+    await userEvent.click(gatilhos[0]);
+    await userEvent.click(screen.getByRole('button', { name: 'Últimos 3 meses' }));
+    expect(aoMudar).toHaveBeenCalledWith({ inicio: 5, fim: 7 });
+  });
+
+  it('a janela arrastada à mão aparece pelos meses dela', () => {
+    render(
+      <BarraDeFiltroDaLente
+        lente="institucional"
+        filtro={{}}
+        definirFiltro={vi.fn()}
+        opcoes={null}
+        periodo={{ meses: MESES, janela: { inicio: 1, fim: 4 }, aoMudar: vi.fn(), padrao: false }}
+      />,
+    );
+    // A INSTITUCIONAL, sem filtro nenhum, ganha a faixa só pelo Período.
+    expect(screen.getAllByRole('button')[0].textContent).toContain('fev/26 – mai/26');
   });
 });

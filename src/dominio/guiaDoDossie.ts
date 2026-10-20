@@ -30,9 +30,9 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
  *  dois painéis e a evolução de cada lente. */
 export const GUIA_DO_BLOCO: Record<string, string> = {
   'Evolução mensal':
-    'Recorte com o volume de menções classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como o sentimento medido nesta lente muda ao longo do tempo.',
+    'Recorte com o volume de menções classificadas como propositivo, neutro e reativo, mês a mês. Essa visão mostra como o sentimento medido nesta lente muda ao longo do tempo.',
   'Termômetro das agendas, mês a mês':
-    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, mês a mês. Essa visão permite acompanhar como o termômetro das nossas interações evolui ao longo do tempo.',
+    'Recorte com os resultados das interações classificadas como propositivo, neutro e reativo, mês a mês. Essa visão permite acompanhar como o termômetro das nossas interações evolui ao longo do tempo.',
   'Eventograma · mercado e rating':
     'Linha do tempo dos fatos de mercado e rating registrados mês a mês — não é uma contagem de menções, é a sequência de eventos e como cada um afeta a reputação: sustenta, pressiona ou é misto.',
   'Mensagens recebidas e respondidas':
@@ -46,25 +46,25 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
   'Trajetória de rating':
     'Histórico das mudanças de rating de crédito feitas pelas agências, com a perspectiva de cada uma. Essa visão mostra a avaliação de crédito da Aegea ao longo do tempo.',
   'Sentimento por mês':
-    'Recorte com o volume de mensagens de clientes classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como está a satisfação dos clientes ao longo do tempo.',
+    'Recorte com o volume de mensagens de clientes classificadas como propositivo, neutro e reativo, mês a mês. Essa visão mostra como está a satisfação dos clientes ao longo do tempo.',
   'Teor das mensagens':
     'Classifica as mensagens de clientes pelo motivo — reclamação, dúvida, elogio ou informação — mês a mês. Essa visão mostra o que os clientes mais procuram ao entrar em contato.',
   'Temas × termômetro':
-    'Recorte com os resultados das interações classificadas como positivo, neutro e negativo, por tema. Essa visão nos permite enxergar como está o termômetro das nossas interações sobre cada tema.',
+    'Recorte com os resultados das interações classificadas como propositivo, neutro e reativo, por tema. Essa visão nos permite enxergar como está o termômetro das nossas interações sobre cada tema.',
   'Temas × sentimento':
-    'Recorte com o volume de menções classificadas como positivo, neutro e negativo, por tema debatido nas redes. Essa visão mostra qual tema concentra mais rejeição ou aprovação.',
+    'Recorte com o volume de menções classificadas como propositivo, neutro e reativo, por tema debatido nas redes. Essa visão mostra qual tema concentra mais rejeição ou aprovação.',
   'Órgãos com mais interações':
     'Ranking dos órgãos e entidades com mais agendas registradas no período. Essa visão mostra com quem a Aegea mais interagiu.',
   'Concessionárias com maior repercussão':
-    'Ranking das concessionárias/unidades com mais menções no período, somando positivas, neutras e negativas. Essa visão mostra onde a repercussão se concentra.',
+    'Ranking das concessionárias/unidades com mais menções no período, somando propositivas, neutras e reativas. Essa visão mostra onde a repercussão se concentra.',
   'Volume por tier':
     'Rosca com o volume de matérias do mês por tier do veículo (Tier 1, Tier 2, Tier 3). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
   'Termômetro por veículos':
-    'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar do termômetro por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
+    'Para os veículos com mais matérias no mês, o saldo (propositivas − reativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar do termômetro por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
   'Drivers e riscos':
-    'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume positivo, neutro e negativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
+    'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume propositivo, neutro e reativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
   'Temas mais falados':
-    'Ranking dos temas mais frequentes nas matérias do mês, no vocabulário da própria Clipei, com o volume positivo, neutro e negativo de cada um. Essa visão mostra sobre o que a imprensa mais falou e se o tom predominante foi favorável ou desfavorável.',
+    'Ranking dos temas mais frequentes nas matérias do mês, no vocabulário da própria Clipei, com o volume propositivo, neutro e reativo de cada um. Essa visão mostra sobre o que a imprensa mais falou e se o tom predominante foi favorável ou desfavorável.',
   'Últimas matérias':
     'As matérias mais recentes do mês, com veículo, data, classificação, tier, atributo e tema de cada uma. Essa visão é o drill-down até a linha: o detalhe concreto por trás dos números de cima.',
 };

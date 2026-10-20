@@ -154,7 +154,7 @@ export function GraficoDiario({
  *  mockup. */
 export function LegendaDoGraficoDiario() {
   const itens = [
-    { cor: COR_NEGATIVO_GRAFICO, texto: 'Negativas' },
+    { cor: COR_NEGATIVO_GRAFICO, texto: 'Reativas' },
     { cor: COR_NEUTRO_GRAFICO, texto: 'Demais' },
   ];
   return (

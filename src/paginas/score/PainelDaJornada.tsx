@@ -56,6 +56,8 @@ export function PainelDaJornada({
   lentesParaComparar,
   comIndiceGeral = false,
   dica,
+  janela: janelaDeFora,
+  aoMudarJanela,
 }: {
   titulo: string;
   /** Quem a frase do cabeçalho descreve: "O índice", "A lente Imprensa". */
@@ -72,6 +74,11 @@ export function PainelDaJornada({
   comIndiceGeral?: boolean;
   /** A linha que ensina o gesto, no fim da legenda. */
   dica: string;
+  /** A JANELA VINDA DE FORA, quando outro controle a divide com a Jornada — o
+   *  filtro rápido "Período" da lente. Ausente, a Jornada guarda a sua. `null`
+   *  é o padrão (últimos 6 meses). */
+  janela?: Janela | null;
+  aoMudarJanela?: (janela: Janela | null) => void;
 }) {
   //: VÁRIAS LENTES DE UMA VEZ: cada clique acrescenta a linha de uma lente, e
   //: ela fica até sair pelo ×. Estado de leitura — não muda número nenhum.
@@ -89,7 +96,10 @@ export function PainelDaJornada({
   const curvas = comIndiceGeral ? [CODIGO_DO_INDICE, ...comparadas] : comparadas;
 
   //: A JANELA, escolhida na mini linha do tempo. Nula = os últimos 6 meses.
-  const [janelaEscolhida, definirJanela] = useState<Janela | null>(null);
+  const [janelaPropria, definirJanelaPropria] = useState<Janela | null>(null);
+  const controlada = aoMudarJanela !== undefined;
+  const janelaEscolhida = controlada ? (janelaDeFora ?? null) : janelaPropria;
+  const definirJanela = controlada ? aoMudarJanela : definirJanelaPropria;
   const [mostrarPico, definirMostrarPico] = useState(true);
   const [mostrarVale, definirMostrarVale] = useState(true);
   const meses = mesesMedidos(serie);
@@ -165,7 +175,7 @@ export function PainelDaJornada({
             </div>
           ) : null}
 
-          <div style={{ marginTop: lentesParaComparar ? 12 : 18 }}>
+          <div style={{ marginTop: lentesParaComparar ? 4 : 10 }}>
             <JornadaDoIndice
               semDetalheDoMes
               serie={serieRecortada}
@@ -175,8 +185,9 @@ export function PainelDaJornada({
               aoEscolherMes={aoEscolherMes}
               aoAprofundarNoMes={aoAprofundarNoMes}
               // MAIS ALTO QUE O PADRÃO (260px): com os cartões em cima e o
-              // cartão do mês fora, o gráfico ganhou o espaço.
-              altura={330}
+              // cartão do mês fora, o gráfico ganhou o espaço. 420, e não mais
+              // 330, por pedido — vale para a Visão geral e todas as lentes.
+              altura={420}
               linhasDeReferencia={[
                 ...(mostrarPico && kpis.pico
                   ? [{ chave: 'pico', valor: kpis.pico.valor, rotulo: `Pico ${kpis.pico.valor}`, cor: COR_DO_PICO }]

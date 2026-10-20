@@ -98,7 +98,7 @@ describe('ListaDeMaterias (F.9)', () => {
     expect(data).toBe('12/08');
     expect(veiculo).toBe('O GloboRenata Moura');
     expect(materia).toContain('Rompimento de adutora deixa 14 bairros da Zona Norte sem água por três dias');
-    expect(materia).toContain('Negativo');
+    expect(materia).toContain('Reativo');
     expect(materia).toContain('Tier 1');
     expect(conc).toBe('Águas do RioRJ');
     expect(impacto).toBe('−0,12');
@@ -133,7 +133,7 @@ describe('ListaDeMaterias (F.9)', () => {
     montar();
     const grupo = screen.getByRole('group', { name: 'Sentimento' });
     const botoes = within(grupo).getAllByRole('button');
-    expect(botoes.map((b) => b.textContent)).toEqual(['Todas 96', 'Negativas 71', 'Neutras 17', 'Positivas 8']);
+    expect(botoes.map((b) => b.textContent)).toEqual(['Todas 96', 'Reativas 71', 'Neutras 17', 'Propositivas 8']);
     expect(botoes[0]).toHaveAttribute('aria-pressed', 'true');
     expect(botoes[1]).toHaveAttribute('aria-pressed', 'false');
     expect(botoes[0].style.height).toBe('40px');
@@ -147,7 +147,7 @@ describe('ListaDeMaterias (F.9)', () => {
   it('os controles escrevem no endereço, com o padrão virando chave ausente', async () => {
     const usuario = userEvent.setup();
     const { aoMudar } = montar({ sent: 'negativas', ordem: 'data' });
-    await usuario.click(screen.getByRole('button', { name: 'Positivas 8' }));
+    await usuario.click(screen.getByRole('button', { name: 'Propositivas 8' }));
     expect(aoMudar).toHaveBeenLastCalledWith({ sent: 'positivas' });
     await usuario.click(screen.getByRole('button', { name: 'Todas 96' }));
     expect(aoMudar).toHaveBeenLastCalledWith({ sent: undefined });
@@ -190,9 +190,9 @@ describe('ListaDeMaterias (F.9)', () => {
   it('o roteiro G passo 6 pelos cliques, sem estado próprio na lista', async () => {
     const usuario = userEvent.setup();
     render(<ComEndereco />);
-    await usuario.click(screen.getByRole('button', { name: 'Negativas 71' }));
+    await usuario.click(screen.getByRole('button', { name: 'Reativas 71' }));
     await usuario.click(screen.getByRole('button', { name: 'Data' }));
-    expect(screen.getByRole('button', { name: 'Negativas 71' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Reativas 71' })).toHaveAttribute('aria-pressed', 'true');
     expect(linhas()).toHaveLength(9);
     expect(celulas(linhas()[0])[0]).toBe('19/08');
   });

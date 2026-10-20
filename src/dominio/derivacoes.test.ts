@@ -793,7 +793,7 @@ describe('comReativoNaBase', () => {
       total: 3,
       segmentos: [
         { chave: 'tenso', rotulo: 'Reativo', cor: '#3', total: 1 },
-        { chave: 'propositivo', rotulo: 'Proativo', cor: '#1', total: 1 },
+        { chave: 'propositivo', rotulo: 'Propositivo', cor: '#1', total: 1 },
         { chave: 'novo', rotulo: 'Novo', cor: '#4', total: 1 },
       ],
     };

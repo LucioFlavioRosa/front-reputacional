@@ -44,7 +44,7 @@ const DO_RIO: Recorte = {
   composicao: { positivo: 1, neutro: 0, negativo: 3 },
   itens: 4,
   itens_no_mes: 6,
-  frase: 'Este recorte tira 2,1 pontos da nota de Sociedade digital, com 4 de 6 itens do mês e 75% de negativas.',
+  frase: 'Este recorte tira 2,1 pontos da nota de Sociedade digital, com 4 de 6 itens do mês e 75% de reativas.',
   ausencia: null,
   historico: [
     { mes: '2026-05', impacto: 0, itens: 0, sem_base: true, nota: null },
@@ -60,7 +60,7 @@ const DO_RIO: Recorte = {
         { rotulo: 'Cidadão', positivo: 1, neutro: 0, negativo: 2 },
         { rotulo: 'Figura pública', positivo: 0, neutro: 0, negativo: 1 },
       ],
-      legenda: ['Positivo', 'Neutro', 'Negativo'],
+      legenda: ['Propositivo', 'Neutro', 'Reativo'],
       cores: [],
       colunas: [],
       recorta: 'perfil_autor',
@@ -105,7 +105,7 @@ function abrir(recorte: Recorte, props: Partial<Parameters<typeof RecorteDaLente
       aoDescer={vi.fn()}
       aoSubir={vi.fn()}
       notaDoMes={() => null}
-      formula="NS = (positivas − negativas) ÷ total; score = (NS + 1) ÷ 2 × 100."
+      formula="NS = (propositivas − reativas) ÷ total; score = (NS + 1) ÷ 2 × 100."
       {...props}
     />,
   );
@@ -329,7 +329,7 @@ describe('RecorteDaLente', () => {
      *  SEM FECHAR O PAINEL é metade do trabalho: são dois `Modal` aninhados, e antes
      *  os dois ouviam o teclado no documento — um Escape fechava OS DOIS, e quem
      *  fechava a explicação perdia o recorte que estava lendo. */
-    abrir(DO_RIO, { formula: 'NS = (positivas − negativas) ÷ total; cada menção vale 1.' });
+    abrir(DO_RIO, { formula: 'NS = (propositivas − reativas) ÷ total; cada menção vale 1.' });
 
     await userEvent.click(await screen.findByRole('button', { name: /Como esta conta é feita/ }));
 

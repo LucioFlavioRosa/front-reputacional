@@ -73,6 +73,9 @@ export interface CampoDeFiltro {
   /** Pinta o gatilho fechado (`CampoSuspenso`) quando há escolha — hoje só
    *  o Clima usa, para a cor dizer de longe qual clima está filtrado. */
   destaque?: { fundo: string; texto: string };
+  /** O gatilho fechado diz O QUE está escolhido ("Período · Últimos 6 meses"),
+   *  e não quantos — para o campo que sempre tem um valor. */
+  mostrarEscolhido?: boolean;
 }
 
 /** O campo "Área(s)" por CATEGORIA (`CATEGORIAS_DE_AREA`), não por área

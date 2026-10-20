@@ -63,7 +63,7 @@ export function CampoSuspenso({
           {campo.rotulo}
           {/* COM DESTAQUE, O NOME DO ESCOLHIDO no lugar do "· 1": a cor sozinha
               não pode ser a única pista de qual clima está filtrado. */}
-          {destaque && escolhido
+          {(destaque || campo.mostrarEscolhido) && escolhido
             ? ` · ${escolhido}`
             : quantidadeSelecionada
               ? ` · ${quantidadeSelecionada}`
