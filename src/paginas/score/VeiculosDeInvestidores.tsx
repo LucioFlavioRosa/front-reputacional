@@ -43,6 +43,7 @@ import {
 } from '@/componentes/basicos';
 import { Paginacao } from '@/componentes/Paginacao';
 import { numero } from '@/dominio/formato';
+import { ReconciliacaoDaLente } from '@/paginas/score/ReconciliacaoDaLente';
 import { usePainel } from '@/estado/painel';
 import type { Instituicao } from '@/dominio/tipos';
 
@@ -253,6 +254,12 @@ export function VeiculosDeInvestidores() {
         </Botao>
       }
     >
+      {/* O QUE A LISTA SIGNIFICA PARA TRÁS, e só quando há desvio. Ela define a
+          lente a partir da próxima subida de cada mês; fazer valer para os
+          meses já ingeridos reescreve a nota deles, e por isso é um gesto à
+          parte, com os números na frente. Ver `ReconciliacaoDaLente`. */}
+      <ReconciliacaoDaLente />
+
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
