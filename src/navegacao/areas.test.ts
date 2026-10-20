@@ -49,11 +49,13 @@ describe('a divisão do CRM', () => {
 
 describe('a divisão do Score', () => {
   it('mostra as telas do Score, e nenhuma do CRM', () => {
+    // "Drivers e riscos" saiu da lista por pedido (2026-10-20, ver
+    // `DRIVERS_E_RISCOS_NO_MENU` em `areas.ts`) — a tela continua existindo,
+    // só não aparece mais na barra.
     expect(rotulos('score')).toEqual([
       'Visão geral',
       'Lentes',
       'Risk Tracking',
-      'Drivers e riscos',
       'Metodologia',
       // A BASE DE DADOS é a consulta das menções na fonte; a IMPORTAÇÃO (que
       // se chamava "Base") vem por último: é a porta de entrada do dado, e
@@ -89,10 +91,29 @@ describe('a divisão do Score', () => {
       //: DEPOIS DE LENTES, por pedido do dono do produto: a aba desce do índice
       //: para os incidentes que tocam a matriz de risco corporativo.
       'riscos',
-      'drivers',
       'metodologia',
       'base-de-dados',
       'base',
+    ]);
+  });
+});
+
+//: SUSPENSA por pedido (2026-10-20): "Drivers e riscos" saiu da barra
+//: (`DRIVERS_E_RISCOS_NO_MENU = false` em `areas.ts`), sem sair do código —
+//: a tela (`aba === 'drivers'` em `Score.tsx`) continua existindo. Este teste
+//: continua descrevendo a posição dela no menu para quando ela voltar; por
+//: isso `describe.skip`, e não apagado. Tirar o `.skip` junto com a flag
+//: religa as duas pontas.
+describe.skip('a divisão do Score · com "Drivers e riscos" ligada', () => {
+  it('"Drivers e riscos" aparece depois de Risk Tracking', () => {
+    expect(rotulos('score')).toEqual([
+      'Visão geral',
+      'Lentes',
+      'Risk Tracking',
+      'Drivers e riscos',
+      'Metodologia',
+      'Base de dados',
+      'Importação',
     ]);
   });
 });
