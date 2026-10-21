@@ -155,13 +155,33 @@ describe('BaseDeDadosDoScore', () => {
      *  das fontes; a cópia aqui decidia pelo código da lente. O teste antigo
      *  passava porque media a cópia, e não o que a pessoa vê. */
     const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
+    //: UMA RESPOSTA DISTINTIVA PARA A ABA, e não a tabela por si — achado da
+    //: revisão desta correção: `findByRole('table')` passaria mesmo sem
+    //: resposta, porque a tabela é montada antes de a leitura chegar. O que
+    //: prova a aba é uma LINHA que só a Institucional devolveria.
+    listar.mockImplementation((lente: string) =>
+      Promise.resolve({
+        itens: [
+          mencao(
+            lente === 'institucional'
+              ? { id: 'mi', titulo: 'Audiência pública na ARSESP', veiculo: 'Valor Econômico' }
+              : {},
+          ),
+        ],
+        total: 1,
+        pagina: 1,
+        tamanho: 50,
+      }),
+    );
     render(<BaseDeDadosDoScore />);
     await userEvent.click(screen.getByRole('tab', { name: 'Institucional' }));
 
     await waitFor(() =>
       expect(listar).toHaveBeenLastCalledWith('institucional', expect.anything()),
     );
-    expect(await screen.findByRole('table')).toBeTruthy();
+    //: A LINHA DA INSTITUCIONAL NA TELA, dentro da tabela.
+    const celula = await screen.findByText('Audiência pública na ARSESP');
+    expect(celula.closest('table')).toBeTruthy();
     //: E O TEXTO DO CRM NÃO APARECE MAIS EM LUGAR NENHUM.
     expect(screen.queryByText(/CRM dos Stakeholders/)).toBeNull();
   });
