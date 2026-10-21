@@ -52,9 +52,22 @@ export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
     proximasOndas: 'Próximas ondas: SAC, Reclame Aqui e pesquisas com clientes.',
   },
   institucional: {
-    objetivo: 'Mostra o termômetro da relação com governo, eventos e entidades.',
-    fonteUtilizada: 'CRM — termômetro das interações com governo e entidades',
+    //: ERA O CRM ATÉ A `0107`/`0108`, e este texto ficou dizendo que ainda é.
+    //: A lente trocou de fonte: deixou de ler o termômetro das interações e
+    //: passou a recortar a imprensa pela lista de veículos, como o Mercado — o
+    //: CRM foi aposentado por `ativo = false` e saiu do índice. A pessoa lia
+    //: aqui que a fonte era o CRM e via matérias de jornal na Base de dados.
+    objetivo: 'Mostra como a imprensa institucional retrata a Aegea.',
+    fonteUtilizada: 'Clipei, imprensa institucional de todos os tiers',
+    //: A REGRA DE VERDADE, conferida no back e no banco (21/10/2026): a fonte
+    //: `clipei_institucional` ("Clipei · imprensa institucional") recorta pela
+    //: lista `imprensa_institucional`, que é a subcategoria "Institucional" da
+    //: categoria Imprensa no Cadastro de Instituições. Mesma mecânica do
+    //: Mercado, e a `0107` tem um `do $$` que recusa a fonte se ela não
+    //: espelhar a Clipei e não recortar por essa lista.
+    premissa:
+      'Premissa do score: matérias da Clipei de veículos classificados no Cadastro de Instituições como Imprensa › Institucional, de todos os tiers e canais.',
     proximasOndas:
-      'Próximas ondas: nenhuma fonte nova prevista até aqui — a lente segue lendo o CRM dos Stakeholders.',
+      'Próximas ondas: somar as interações com essas instituições registradas no CRM dos Stakeholders.',
   },
 };
