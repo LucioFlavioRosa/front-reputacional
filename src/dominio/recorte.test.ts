@@ -9,6 +9,8 @@ import {
   alternarCategoriaDeArea,
   alternarCategoriaPublico,
   intervalo,
+  PERIODO_PADRAO_DO_CRM,
+  recorteDeAbertura,
   limparAreas,
   limparCategoriaPublico,
   paraParametros,
@@ -228,5 +230,19 @@ describe('destaque', () => {
   it('trocar de pílula troca o lado, em vez de desligar', () => {
     const ligado = alternar({}, 'destaque', true);
     expect(alternar(ligado, 'destaque', false).destaque).toBe(false);
+  });
+});
+
+describe('recorteDeAbertura: o CRM abre nos últimos 30 dias', () => {
+  it('sem nada no endereço, marca Últimos 30 dias no Período', () => {
+    expect(recorteDeAbertura({})).toEqual({ periodoPassado: 'ultimos-30' });
+    expect(PERIODO_PADRAO_DO_CRM).toBe('ultimos-30');
+  });
+
+  it('um link com filtros abre como foi mandado, sem período somado', () => {
+    expect(recorteDeAbertura({ entidade: 'ANA' })).toEqual({ entidade: 'ANA' });
+    expect(recorteDeAbertura({ periodoPassado: 'ultimos-90' })).toEqual({
+      periodoPassado: 'ultimos-90',
+    });
   });
 });

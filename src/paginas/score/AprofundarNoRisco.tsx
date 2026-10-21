@@ -129,7 +129,9 @@ export function AprofundarNoRisco({
     <Modal
       titulo={tituloDoPainel(filtro, ultimoDegrau, nomeDoValor)}
       aoFechar={aoFechar}
-      largura={720}
+      //: MAIS LARGO, por pedido: a trilha "cluster › risco" e a tabela de
+      //: registros cabem sem quebrar. O Modal limita à largura da tela.
+      largura={1080}
     >
       {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
@@ -140,44 +142,53 @@ export function AprofundarNoRisco({
           style={{
             display: 'flex',
             flexWrap: 'wrap',
+            alignItems: 'center',
             gap: 6,
             paddingBottom: 14,
             borderBottom: '1px solid var(--borda)',
           }}
         >
-          {trilha.map((degrau) => (
-            <span
-              key={degrau.chave}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 2,
-                padding: '3px 4px 3px 10px',
-                border: '1px solid var(--borda)',
-                borderRadius: 'var(--r-chip)',
-                background: 'var(--bg-trilho)',
-                fontSize: 12,
-                color: 'var(--cinza-3)',
-              }}
-            >
-              <strong style={{ fontWeight: 700 }}>{degrau.rotulo}:</strong> {degrau.valor}
-              <button
-                type="button"
-                aria-label={`Subir um nível — remover ${degrau.rotulo}: ${degrau.valor}`}
-                onClick={() => aoSubir(degrau.chave)}
+          {/* A SETA LÊ A TRILHA COMO DRILL DOWN: "Cluster › Risco", do macro ao
+              micro, na ordem do domínio. */}
+          {trilha.map((degrau, i) => (
+            <span key={degrau.chave} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {i > 0 ? (
+                <span aria-hidden="true" style={{ color: 'var(--cinza-2)', fontSize: 16 }}>
+                  ›
+                </span>
+              ) : null}
+              <span
                 style={{
-                  width: 22,
-                  height: 22,
-                  border: 0,
-                  background: 'transparent',
-                  color: 'var(--cinza-2)',
-                  fontSize: 15,
-                  lineHeight: 1,
-                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  padding: '3px 4px 3px 10px',
+                  border: '1px solid var(--borda)',
+                  borderRadius: 'var(--r-chip)',
+                  background: 'var(--bg-trilho)',
+                  fontSize: 12,
+                  color: 'var(--cinza-3)',
                 }}
               >
-                ×
-              </button>
+                <strong style={{ fontWeight: 700 }}>{degrau.rotulo}:</strong> {degrau.valor}
+                <button
+                  type="button"
+                  aria-label={`Subir um nível — remover ${degrau.rotulo}: ${degrau.valor}`}
+                  onClick={() => aoSubir(degrau.chave)}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    border: 0,
+                    background: 'transparent',
+                    color: 'var(--cinza-2)',
+                    fontSize: 15,
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ×
+                </button>
+              </span>
             </span>
           ))}
         </div>
