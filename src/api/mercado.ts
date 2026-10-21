@@ -179,6 +179,14 @@ export interface RegistroDaJanela {
   link: string | null;
   sentimento: string;
   tier: string | null;
+  /** DE QUAL LENTE VEM ESTE REGISTRO — o código, para a tela decidir cor e
+   *  ordem, e o nome, que é o que a pessoa lê.
+   *
+   *  O NOME VEM DO SERVIDOR, e não de um dicionário aqui: o nome de uma lente
+   *  mora no cadastro (`lente.nome`), e um mapa nesta camada seria uma segunda
+   *  fonte do mesmo nome — as duas só divergem calado. */
+  lente: string;
+  lente_nome: string;
 }
 
 export interface RegistrosDaJanela {
