@@ -64,7 +64,9 @@ export function useNavegacao() {
   }, []);
 
   return {
-    rota: lerCaminho(lugar.caminho),
+    //: A CONSULTA VAI JUNTO porque o endereço antigo da Árvore da taxonomia
+    //: mora nela (`/score/metodologia?secao=arvore`) — ver `lerCaminho`.
+    rota: lerCaminho(lugar.caminho, lugar.consulta),
     endereco: lugar.caminho + lugar.consulta,
     irPara,
     sincronizarConsulta,

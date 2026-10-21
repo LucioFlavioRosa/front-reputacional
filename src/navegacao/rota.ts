@@ -58,7 +58,18 @@ export interface Rota {
  *  Endereço desconhecido cai no início, e não numa tela de erro: um link
  *  antigo ou torto deve levar a algum lugar utilizável.
  */
-export function lerCaminho(caminho: string): Rota {
+/** A consulta pede a Árvore da taxonomia (o endereço antigo dela).
+ *
+ *  A CONSULTA VEM À PARTE porque `lerCaminho` lê o PATHNAME: quem a chama tem
+ *  os dois (`useNavegacao` guarda `caminho` e `consulta` separados). Opcional
+ *  para não obrigar todo chamador a passá-la — o endereço antigo é o único
+ *  caso em que a consulta decide o destino. */
+function ehDaArvore(consulta: string): boolean {
+  if (!consulta) return false;
+  return new URLSearchParams(consulta).get('secao') === 'arvore';
+}
+
+export function lerCaminho(caminho: string, consulta = ''): Rota {
   const partes = caminho.split('/').filter(Boolean);
 
   if (partes.length === 0) return { destino: 'inicio' };
@@ -91,6 +102,22 @@ export function lerCaminho(caminho: string): Rota {
   // compara `item.aba === abaAtiva` em `Layout.tsx`) nunca marcava "Visão
   // geral" como a aba ativa, nem entrando direto pela navegação principal
   // nem clicando nela — só as outras abas, que têm segmento próprio na URL.
+  // O ENDEREÇO ANTIGO DA ÁRVORE LEVA AO NOVO, e vem ANTES da linha do Score
+  // logo abaixo: `/score/metodologia` é caminho válido, então aquela linha
+  // responde primeiro e esta nunca rodaria depois dela. Foi assim que eu
+  // escrevi na primeira tentativa, e o teste pegou.
+  //
+  // A Árvore morou dentro da Metodologia do Score, numa aba escolhida pela URL
+  // e feita LINKÁVEL de propósito — "para o link da Árvore da taxonomia abrir
+  // direto nela", dizia o código de lá.
+  //
+  // ACHADO DE REVISÃO, e o comentário anterior afirmava o contrário do que
+  // acontecia: dizia que quem guardou aquele link "cai no Início, que é o mesmo
+  // tratamento de qualquer caminho que não existe mais". Não caía: abria a
+  // Metodologia do índice, que hoje não tem a árvore. Tela errada, calada.
+  if (primeira === 'score' && segunda === 'metodologia' && ehDaArvore(consulta)) {
+    return { destino: 'taxonomia' };
+  }
   if (primeira === 'score') return { destino: 'score', aba: segunda ?? 'geral' };
   if (primeira === 'admin') return { destino: 'admin', aba: segunda };
   // FORA DO PORTAL DO ADMIN DE PROPÓSITO: é o cadastro que ganhou cartão
@@ -98,10 +125,7 @@ export function lerCaminho(caminho: string): Rota {
   // Aegea), então precisa de endereço próprio também — ver `Inicio.tsx`.
   if (primeira === 'compartilhado') return { destino: 'compartilhado' };
   // FORA DO SCORE DE PROPÓSITO (20/10/2026): a Árvore da taxonomia é só
-  // leitura e não exige nenhum portal — ver o comentário em `Inicio.tsx`. Já
-  // teve endereço dentro do Score (`/score/metodologia?secao=arvore`); quem
-  // guardou aquele link cai no Início, que é o mesmo tratamento de qualquer
-  // caminho que não existe mais.
+  // leitura e não exige nenhum portal — ver o comentário em `Inicio.tsx`.
   if (primeira === 'taxonomia') return { destino: 'taxonomia' };
   // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
   // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está

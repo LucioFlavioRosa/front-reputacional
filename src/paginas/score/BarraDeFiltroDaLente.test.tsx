@@ -129,11 +129,23 @@ describe('BarraDeFiltroDaLente', () => {
     expect(texto.indexOf('Tier do veículo')).toBeLessThan(texto.indexOf('Sentimento'));
   });
 
-  it('Institucional não tem filtros: a barra não aparece', () => {
+  it('Institucional tem OS MESMOS filtros do Mercado', () => {
+    /** ESTE TESTE AFIRMAVA O CONTRÁRIO, e estava certo quando foi escrito: a
+     *  Institucional lia o CRM, não tinha menção, e barra de filtro de menção
+     *  ali não filtrava nada — `container.textContent` era vazio.
+     *
+     *  COM A `0111`/`0112` ELA VIROU LENTE DE CLIPPING: a mesma Clipei do
+     *  Mercado, recortada por outra subcategoria, com as mesmas colunas
+     *  preenchidas pela mesma ingestão. O back já oferecia as opções; era a
+     *  tela que não tinha barra. Achado de revisão. */
     const { container } = render(
       <BarraDeFiltroDaLente lente="institucional" filtro={{}} definirFiltro={vi.fn()} opcoes={DA_IMPRENSA} />,
     );
-    expect(container.textContent).toBe('');
+    const texto = container.textContent ?? '';
+    //: A MESMA ORDEM DO MERCADO, conferida no teste acima.
+    expect(texto.indexOf('Concessionária')).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf('Concessionária')).toBeLessThan(texto.indexOf('Tier do veículo'));
+    expect(texto.indexOf('Tier do veículo')).toBeLessThan(texto.indexOf('Sentimento'));
   });
 
   it('escolher ACRESCENTA ao recorte, sem apagar o que já havia', async () => {
