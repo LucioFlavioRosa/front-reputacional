@@ -16,6 +16,7 @@ import {
   corDaSeveridade,
   corDaVariacao,
   descendoEm,
+  descendoNoRisco,
   janelaDoRecorte,
   nomesDoRecorte,
   proximoNivelDoTema,
@@ -307,6 +308,20 @@ describe('descer e subir um degrau', () => {
       'ambiental',
     );
     expect(descido).toMatchObject({ bloco: 'ambiental', macro: null, tema: null });
+  });
+
+  it('DESCER NUM RISCO LEVA O CLUSTER DELE: a trilha sai "cluster › risco"', () => {
+    const clusters = [
+      { codigo: 'geo', riscos: [{ codigo: 'R7' }, { codigo: 'R8' }] },
+      { codigo: 'op', riscos: [{ codigo: 'R1' }] },
+    ];
+    expect(descendoNoRisco({ lentes: ['imprensa'] }, 'R7', clusters)).toEqual({
+      lentes: ['imprensa'],
+      cluster: 'geo',
+      risco: 'R7',
+    });
+    //: Risco que nenhum cluster conhece desce sozinho, como antes.
+    expect(descendoNoRisco({}, 'R99', clusters)).toEqual({ cluster: null, risco: 'R99' });
   });
 
   it('descer num cluster limpa o risco', () => {

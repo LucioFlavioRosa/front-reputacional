@@ -44,6 +44,7 @@ import {
   corDaSeveridade,
   corDaVariacao,
   descendoEm,
+  descendoNoRisco,
   janelaDoRecorte,
   nomesDoRecorte,
   recorteDaJanela,
@@ -146,8 +147,12 @@ export function RastreioDeRisco() {
   if (erro && !painel) return <FaixaDeErro mensagem={erro} />;
   if (!painel || !opcoes || !registros) return <Carregando rotulo="Carregando o rastreio…" />;
 
+  //: O RISCO DESCE COM O CLUSTER DELE (`descendoNoRisco`), venha da matriz ou
+  //: de dentro do painel: a trilha mostra "cluster › risco".
+  const descer = (de: FiltroDoRisco, chave: string, valor: string) =>
+    chave === 'risco' ? descendoNoRisco(de, valor, opcoes.clusters) : descendoEm(de, chave, valor);
   const abrir = (chave: string, valor: string) =>
-    definirAprofundando({ filtro: descendoEm(recorte, chave, valor), ultimo: chave });
+    definirAprofundando({ filtro: descer(recorte, chave, valor), ultimo: chave });
 
   //: OS MESES DA SÉRIE, e não `opcoes.meses`: a moldura indexa posições da série
   //: que ela desenha, e duas listas diferentes fariam a moldura marcar um mês ao
@@ -407,7 +412,7 @@ export function RastreioDeRisco() {
           //: trás fica onde estava.
           aoDescer={(chave, valor) =>
             definirAprofundando({
-              filtro: descendoEm(aprofundando.filtro, chave, valor),
+              filtro: descer(aprofundando.filtro, chave, valor),
               ultimo: chave,
             })
           }

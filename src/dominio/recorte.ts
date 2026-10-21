@@ -103,6 +103,22 @@ export interface Recorte {
 
 export const RECORTE_VAZIO: Recorte = {};
 
+//: O CRM ABRE NOS ÚLTIMOS 30 DIAS, já marcado no filtro rápido de Período —
+//: pedido do dono do produto (20/10/2026): quem entra quer o mês corrente, e
+//: não a base inteira. É só o ponto de partida: a pessoa troca, desmarca ou
+//: limpa como qualquer outro filtro.
+export const PERIODO_PADRAO_DO_CRM: AtalhoDoPassado = 'ultimos-30';
+
+/** O recorte com que o CRM abre.
+ *
+ *  SÓ QUANDO O ENDEREÇO NÃO TRAZ RECORTE NENHUM: um link com filtros é um
+ *  recorte que alguém escolheu e mandou, e somar 30 dias a ele estreitaria a
+ *  leitura de quem recebe, em silêncio. */
+export function recorteDeAbertura(lido: Recorte): Recorte {
+  if (Object.keys(lido).length) return lido;
+  return { periodoPassado: PERIODO_PADRAO_DO_CRM };
+}
+
 /** Campos que contam como "um filtro" no contador do botão Filtros. */
 const CAMPOS_CONTAVEIS: (keyof Recorte)[] = [
   'frente', 'unidade', 'uf', 'esfera', 'tier', 'clima', 'climaEsperado', 'resultado',

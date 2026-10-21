@@ -593,6 +593,23 @@ export function descendoEm(
   return { ...descido, [chave]: valor };
 }
 
+/** Descer num RISCO leva o CLUSTER dele junto.
+ *
+ *  PEDIDO DO DONO DO PRODUTO: clicar em "Instabilidade política / Econômica"
+ *  abre o aprofundamento com a trilha inteira, "Riscos geopolíticos e
+ *  estratégicos › Instabilidade política / Econômica", e não só o risco solto.
+ *  Não muda o que se conta (o risco já está dentro do cluster), só deixa o
+ *  caminho à vista e o degrau de cima removível. Risco que nenhum cluster
+ *  conhece desce sozinho, como antes. */
+export function descendoNoRisco(
+  filtro: FiltroDoRisco,
+  risco: string,
+  clusters: { codigo: string; riscos: { codigo: string }[] }[],
+): FiltroDoRisco {
+  const cluster = clusters.find((um) => um.riscos.some((r) => r.codigo === risco));
+  return { ...filtro, cluster: cluster?.codigo ?? filtro.cluster ?? null, risco };
+}
+
 /** Subir um degrau: tirar ele e os que dependem dele. */
 export function subindoDe(filtro: FiltroDoRisco, chave: string): FiltroDoRisco {
   const subido: FiltroDoRisco = { ...filtro };

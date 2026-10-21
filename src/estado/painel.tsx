@@ -28,6 +28,7 @@ import type { Catalogo } from '@/dominio/derivacoes';
 import { divergenciasDoCatalogo, montarCatalogo } from '@/dominio/derivacoes';
 import { registrarEvento } from '@/observabilidade/telemetria';
 import type { Recorte } from '@/dominio/recorte';
+import { recorteDeAbertura } from '@/dominio/recorte';
 import { consultaDe, lerRecorte } from '@/navegacao/rota';
 import type { Interacao } from '@/dominio/tipos';
 
@@ -90,8 +91,10 @@ export function ProvedorDoPainel({
   //: `replaceState`, e não `pushState`: ajustar um filtro é refinar a mesma
   //: leitura. Empilhar histórico a cada tecla digitada na busca faria o botão
   //: de voltar percorrer letra por letra antes de sair da tela.
+  //:
+  //: SEM NADA NO ENDEREÇO, abre nos últimos 30 dias (`recorteDeAbertura`).
   const [recorte, definirRecorteEstado] = useState<Recorte>(() =>
-    lerRecorte(window.location.search),
+    recorteDeAbertura(lerRecorte(window.location.search)),
   );
 
   //: O HASH VIAJA JUNTO. Ele é do drill da aba Lentes (`#consulta&…`, decisão
