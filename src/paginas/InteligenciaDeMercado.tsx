@@ -1003,7 +1003,7 @@ function JanelaDosTemas({
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
         Clique numa data do gráfico ou num rótulo do eixo para ver o que mais
-        empurrou a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
+        empurrou o índice nos {DIAS_DA_JANELA} dias anteriores.
       </p>
     );
   }
