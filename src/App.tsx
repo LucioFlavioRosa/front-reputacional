@@ -18,6 +18,7 @@ import { ProvedorDoPainel } from '@/estado/painel';
 import { PortalDaPlataforma } from '@/paginas/PortalDaPlataforma';
 import { PortalDoAdmin } from '@/paginas/PortalDoAdmin';
 import { PortalDoCadastroCompartilhado } from '@/paginas/PortalDoCadastroCompartilhado';
+import { ArvoreDaTaxonomia } from '@/paginas/ArvoreDaTaxonomia';
 import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
 import { Login } from '@/paginas/Login';
@@ -360,6 +361,11 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               `administra_dicionarios` chega aqui e recebe 403 do backend ao
               tentar salvar. */}
           {rota.destino === 'compartilhado' ? <PortalDoCadastroCompartilhado /> : null}
+          {/* FORA DO SCORE, com cartão próprio na Início (20/10/2026) — ver
+              `Inicio.tsx`. Só leitura, sem portal: `/api/taxonomia/arvore`
+              não exige nenhum papel além de estar logado, e o cartão
+              também não checa `portais`. */}
+          {rota.destino === 'taxonomia' ? <ArvoreDaTaxonomia /> : null}
           {/* ACESSOS SAIU DO PORTAL DO CRM: quem entra na plataforma não é
               assunto de agenda, vale igual para o Score, e agora tem botão
               próprio. */}

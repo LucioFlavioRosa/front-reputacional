@@ -4,10 +4,10 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import FIXTURE from '@/paginas/score/metodologia/fixtures/arvore.json';
+import FIXTURE from '@/paginas/fixtures/arvore.json';
 //: `?raw` é do Vite (como em `nginx.limites-do-proxy.test.ts`): o código da
 //: página como texto, para a busca por literais da taxonomia.
-import CODIGO_DA_PAGINA from '@/paginas/score/metodologia/ArvoreDaTaxonomia.tsx?raw';
+import CODIGO_DA_PAGINA from '@/paginas/ArvoreDaTaxonomia.tsx?raw';
 import CODIGO_DO_DOMINIO from '@/dominio/arvoreDaTaxonomia.ts?raw';
 
 const obterArvoreDaTaxonomia = vi.fn(() => Promise.resolve(structuredClone(FIXTURE)));
@@ -15,7 +15,7 @@ vi.mock('@/api/cliente', () => ({
   obterArvoreDaTaxonomia: () => obterArvoreDaTaxonomia(),
 }));
 
-import { ArvoreDaTaxonomia } from '@/paginas/score/metodologia/ArvoreDaTaxonomia';
+import { ArvoreDaTaxonomia } from '@/paginas/ArvoreDaTaxonomia';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 
 beforeAll(() => {
@@ -26,7 +26,12 @@ beforeAll(() => {
   } as unknown as typeof ResizeObserver;
   Element.prototype.scrollIntoView ??= () => {};
 });
-beforeEach(() => window.history.replaceState(null, '', '/score/metodologia?secao=arvore'));
+//: A URL BASE AQUI É `/taxonomia` DESDE 20/10/2026 — a árvore saiu do Score e
+//: ganhou endereço próprio (ver `Inicio.tsx`). O estado que a tela lê/escreve
+//: na URL é só a QUERY STRING (`lerEstado`/`escreverEstado`), então o caminho
+//: em si não muda nada do que este arquivo testa — só precisa bater com a
+//: rota de verdade.
+beforeEach(() => window.history.replaceState(null, '', '/taxonomia'));
 afterEach(cleanup);
 
 describe('Árvore da taxonomia: a tela', () => {

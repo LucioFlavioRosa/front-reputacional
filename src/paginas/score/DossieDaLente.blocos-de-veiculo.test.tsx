@@ -266,21 +266,20 @@ describe('os blocos de veículo do dossiê', () => {
     expect(obterRecorteDaLente.mock.calls[0]).toContain('2026-09');
   });
 
-  it('a IMPRENSA não desenha Drivers e riscos, e o Mercado continua desenhando', async () => {
-    //: Por pedido: o popup N1 › N2 › N3 da Evolução já responde a pergunta.
-    obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
-    const { unmount } = await montarEAbrir('imprensa');
-    await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
-    expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
-    //: E SEM "Temas mais falados": o card N1 › N2 › N3 tomou o lugar dele.
-    expect(screen.queryAllByText('Temas mais falados')).toEqual([]);
-    expect(screen.getByText('Atributos, temas estratégicos e subtemas')).toBeTruthy();
-    unmount();
-
-    obterDossieDaLente.mockResolvedValue(dossieCom('mercado'));
-    await montarEAbrir('mercado');
-    await waitFor(() => expect(screen.getAllByText('Drivers e riscos').length).toBeGreaterThan(0));
-  });
+  it.each(['imprensa', 'mercado'])(
+    'a %s não desenha Drivers e riscos nem Temas mais falados — o Explorador tomou o lugar',
+    async (lente) => {
+      //: O MERCADO ENTROU AQUI em 20/10/2026, por pedido de paridade visual com
+      //: a Imprensa — mesmo motivo, mesma regra (ver `LENTES_SEM_DRIVERS` e
+      //: `LENTES_COM_EXPLORADOR` em `DossieDaLente.tsx`).
+      obterDossieDaLente.mockResolvedValue(dossieCom(lente));
+      await montarEAbrir(lente);
+      await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
+      expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
+      expect(screen.queryAllByText('Temas mais falados')).toEqual([]);
+      expect(screen.getByText('Atributos, temas estratégicos e subtemas')).toBeTruthy();
+    },
+  );
 
   it('e os blocos que valem em TODA lente continuam valendo', () => {
     //: A contraprova da regra: se alguém trocasse a condição por algo que

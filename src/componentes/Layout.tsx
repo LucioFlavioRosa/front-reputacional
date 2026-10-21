@@ -149,13 +149,15 @@ export function Layout({
       ? 'KPIs Reputacionais'
       : view === 'compartilhado'
         ? 'Cadastro compartilhado'
-        : //: O TERCEIRO PORTAL PRECISA DO PRÓPRIO NOME. Sem esta linha ele caía
-          //: no `'CRM'` do fim e o cabeçalho dizia "CRM dos Stakeholders" sobre
-          //: a tela de bonds — achado de revisão. Mesmo nome que a capa usa no
-          //: cartão dele, ver `Inicio.tsx`.
-          view === 'mercado'
-          ? 'Inteligência de Mercado'
-          : 'CRM';
+        : view === 'taxonomia'
+          ? 'Árvore da taxonomia'
+          : //: O TERCEIRO PORTAL PRECISA DO PRÓPRIO NOME. Sem esta linha ele caía
+            //: no `'CRM'` do fim e o cabeçalho dizia "CRM dos Stakeholders" sobre
+            //: a tela de bonds — achado de revisão. Mesmo nome que a capa usa no
+            //: cartão dele, ver `Inicio.tsx`.
+            view === 'mercado'
+            ? 'Inteligência de Mercado'
+            : 'CRM';
   //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
   //: `Inicio.tsx`. Faltam `admin` e `plataforma` aqui ainda: caem no CRM por
@@ -170,9 +172,11 @@ export function Layout({
       ? 'KPIs Reputacionais'
       : view === 'compartilhado'
         ? 'Cadastro compartilhado'
-        : view === 'mercado'
-          ? 'Inteligência de Mercado'
-          : 'CRM dos Stakeholders';
+        : view === 'taxonomia'
+          ? 'Árvore da taxonomia'
+          : view === 'mercado'
+            ? 'Inteligência de Mercado'
+            : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa

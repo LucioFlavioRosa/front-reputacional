@@ -36,6 +36,7 @@ export type Destino =
   | 'cadastro'
   | 'admin'
   | 'compartilhado'
+  | 'taxonomia'
   | 'config-score'
   | 'importacao'
   | 'plataforma';
@@ -96,6 +97,12 @@ export function lerCaminho(caminho: string): Rota {
   // próprio na Início (Instituições e Contatos, Temas, Representantes
   // Aegea), então precisa de endereço próprio também — ver `Inicio.tsx`.
   if (primeira === 'compartilhado') return { destino: 'compartilhado' };
+  // FORA DO SCORE DE PROPÓSITO (20/10/2026): a Árvore da taxonomia é só
+  // leitura e não exige nenhum portal — ver o comentário em `Inicio.tsx`. Já
+  // teve endereço dentro do Score (`/score/metodologia?secao=arvore`); quem
+  // guardou aquele link cai no Início, que é o mesmo tratamento de qualquer
+  // caminho que não existe mais.
+  if (primeira === 'taxonomia') return { destino: 'taxonomia' };
   // CONFIGURAÇÃO MORA JUNTO DO QUE ELA CONFIGURA. A do Score é uma tela, e não
   // uma aba dentro do Score: quem ajusta a régua não está lendo o índice, está
   // mexendo na ferramenta que o produz.
@@ -146,6 +153,8 @@ export function caminhoDe(rota: Rota): string {
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'compartilhado':
       return '/compartilhado';
+    case 'taxonomia':
+      return '/taxonomia';
     case 'config-score':
       return rota.aba ? `/score-config/${rota.aba}` : '/score-config';
     case 'plataforma':

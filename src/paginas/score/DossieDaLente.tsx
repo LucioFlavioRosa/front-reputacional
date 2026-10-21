@@ -649,10 +649,20 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  *  graça; só lá deixaria a moldura na tela com o bloco vazio dentro.
  */
 const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
-const LENTES_SEM_DRIVERS = ['imprensa'];
-//: A IMPRENSA TROCOU "Temas mais falados" pelo card N1 › N2 › N3, por pedido.
-const LENTES_SEM_TEMAS_MAIS_FALADOS = ['imprensa'];
-const LENTES_COM_EXPLORADOR = ['imprensa'];
+//: O MERCADO ENTROU AQUI (20/10/2026, por pedido): ele é clipping recortado
+//: por público-alvo Investidores, não CRM — o mesmo motivo que já valia para
+//: a Imprensa. O Explorador, logo abaixo, é quem toma o lugar de Drivers e
+//: Temas para as duas.
+const LENTES_SEM_DRIVERS = ['imprensa', 'mercado'];
+//: A IMPRENSA E O MERCADO TROCARAM "Temas mais falados" pelo card N1 › N2 ›
+//: N3, por pedido (Mercado em 20/10/2026, mesmo motivo da Imprensa).
+const LENTES_SEM_TEMAS_MAIS_FALADOS = ['imprensa', 'mercado'];
+//: O MERCADO ENTROU AQUI (20/10/2026, por pedido de paridade visual com a
+//: Imprensa): `GET /{codigo}/explorador` já respondia para ele sem mudança
+//: nenhuma no backend — só a Institucional (lê o CRM) volta vazia dali, e
+//: por isso ela NÃO entra nesta lista. Ver `lente_e_interna` em
+//: `app/api/lentes.py`.
+const LENTES_COM_EXPLORADOR = ['imprensa', 'mercado'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 

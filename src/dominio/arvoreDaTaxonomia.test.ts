@@ -10,7 +10,7 @@ import {
   totais,
   valorDeCor,
 } from '@/dominio/arvoreDaTaxonomia';
-import FIXTURE from '@/paginas/score/metodologia/fixtures/arvore.json';
+import FIXTURE from '@/paginas/fixtures/arvore.json';
 
 //: A FIXTURE É A RESPOSTA DA ROTA com o cadastro carregado da planilha que
 //: fechou a taxonomia (20261008_..._Depara.xlsx) — o back confere a rota

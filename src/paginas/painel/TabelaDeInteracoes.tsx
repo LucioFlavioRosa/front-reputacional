@@ -378,13 +378,33 @@ export function TabelaDeInteracoes({
                       instituicao
                     )}
                   </td>
+                  {/* OVERFLOW + ELLIPSIS, não só `nowrap`: sem conter a largura, arrastar
+                      a coluna mais estreita que o texto deixava a palavra vazar por cima da
+                      célula vizinha, em vez de cortar — achado de revisão (20/10/2026). Mesmo
+                      conserto da Pauta, logo abaixo. */}
                   {reduzida ? null : (
-                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                    <td
+                      style={{
+                        ...celulaAtual,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'var(--cinza-2)',
+                      }}
+                    >
                       {nomeDoPublico(catalogo, interacao.instituicao_id)}
                     </td>
                   )}
                   {reduzida ? null : (
-                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap', color: 'var(--cinza-2)' }}>
+                    <td
+                      style={{
+                        ...celulaAtual,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'var(--cinza-2)',
+                      }}
+                    >
                       {nomeDoFormatoInteracao(catalogo, interacao.formato_interacao_id)}
                     </td>
                   )}
@@ -416,7 +436,7 @@ export function TabelaDeInteracoes({
                     </td>
                   )}
                   {reduzida ? null : (
-                    <td style={{ ...celulaAtual, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...celulaAtual, overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {rotuloDeRelevancia(catalogo, interacao.tier)}
                     </td>
                   )}
