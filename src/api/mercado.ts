@@ -41,6 +41,16 @@ export interface PontoDoIndice {
    *  MENSAL enquanto a do bond é diária. */
   mes: string;
   isr: number | null;
+  /** O SCORE DE CADA LENTE no mesmo mês, pelo código dela ("imprensa",
+   *  "mercado", "institucional", ...).
+   *
+   *  DA MESMA MEDIÇÃO QUE O `isr`: o servidor mede as cinco lentes para somar o
+   *  índice, e passou a devolvê-las em vez de descartá-las. Por isso a curva de
+   *  uma lente e o índice ao lado dela falam sempre do mesmo cálculo.
+   *
+   *  NULO É "NÃO MEDIDA NESTE MÊS", e não zero — a lente sem dado sai do
+   *  índice, e um zero no gráfico diria que a reputação foi péssima. */
+  lentes?: Record<string, number | null>;
 }
 
 export interface SerieDeMercado {

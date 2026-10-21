@@ -22,6 +22,18 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { GraficoDeDoisEixos, dataNoPixel, temCurva } from './GraficoDeDoisEixos';
+import type { PontoMensal, SerieMensal } from './GraficoDeDoisEixos';
+
+/** A curva mensal única que estes testes sempre tiveram.
+ *
+ *  A prop virou uma LISTA de séries quando o gráfico passou a poder mostrar o
+ *  índice e as notas das lentes ao mesmo tempo. Estes testes são sobre o
+ *  DESENHO de uma curva mensal — o degrau, o vão, a emenda, a régua —, e isso
+ *  não mudou: o auxiliar os mantém falando de uma curva só, que é o assunto
+ *  deles. Os testes de VÁRIAS curvas estão no fim do arquivo. */
+function umIndice(pontos: PontoMensal[]): SerieMensal[] {
+  return [{ chave: 'isr', rotulo: 'Índice', cor: 'var(--ok-fg)', pontos }];
+}
 
 //: O `ResizeObserver` não existe no jsdom, e sem ele a largura fica em zero e
 //: o SVG nem é renderizado. O dublê responde uma largura fixa, que é o que
@@ -54,9 +66,23 @@ function caminhos(container: HTMLElement): string[] {
   return [...container.querySelectorAll('path')].map((p) => p.getAttribute('d') ?? '');
 }
 
-/** Os traçados dos bonds (dentro do `<g>` de série), sem o do índice. */
+/** Os traçados dos BONDS, sem as curvas mensais.
+ *
+ *  A EXCLUSÃO É EXPLÍCITA desde que o gráfico passou a desenhar várias curvas
+ *  mensais: elas também moram num `<g>`, e `g path` sozinho passaria a contar
+ *  o índice entre os bonds — este auxiliar mediria outra coisa sem avisar. */
 function dosBonds(container: HTMLElement): string[] {
-  return [...container.querySelectorAll('g path')].map((p) => p.getAttribute('d') ?? '');
+  return [...container.querySelectorAll('g:not([data-mensal]) path')].map(
+    (p) => p.getAttribute('d') ?? '',
+  );
+}
+
+/** As curvas mensais do eixo direito, por chave. */
+function mensais(container: HTMLElement): { chave: string; cor: string }[] {
+  return [...container.querySelectorAll('g[data-mensal]')].map((g) => ({
+    chave: g.getAttribute('data-mensal') ?? '',
+    cor: g.querySelector('path')?.getAttribute('stroke') ?? '',
+  }));
 }
 
 function circulos(container: HTMLElement): Element[] {
@@ -88,7 +114,7 @@ describe('a linha do bond', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -119,7 +145,7 @@ describe('a linha do bond', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           { chave: 'A', rotulo: 'A', cor: AZUL, pontos: [{ data: '2026-01-05', valor: 95 }] },
         ]}
@@ -140,7 +166,7 @@ describe('a linha do bond', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -168,7 +194,7 @@ describe('a linha do bond', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -199,10 +225,10 @@ describe('o degrau do índice', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[
+        indice={umIndice([
           { mes: '2026-01-01', valor: 50 },
           { mes: '2026-03-01', valor: 60 },
-        ]}
+        ])}
       />,
     );
 
@@ -218,10 +244,10 @@ describe('o degrau do índice', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[
+        indice={umIndice([
           { mes: '2026-01-01', valor: 50 },
           { mes: '2026-02-01', valor: 60 },
-        ]}
+        ])}
       />,
     );
 
@@ -251,7 +277,7 @@ describe('o degrau do índice', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
       />,
     );
 
@@ -266,10 +292,10 @@ describe('o degrau do índice', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[
+        indice={umIndice([
           { mes: '2026-01-01', valor: 50 },
           { mes: '2026-02-01', valor: null },
-        ]}
+        ])}
       />,
     );
 
@@ -285,10 +311,10 @@ describe('o degrau do índice', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[
+        indice={umIndice([
           { mes: '2025-12-01', valor: 50 },
           { mes: '2026-01-01', valor: 55 },
-        ]}
+        ])}
       />,
     );
 
@@ -309,17 +335,17 @@ describe('a régua da direita', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
       />,
     );
     const longo = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[
+        indice={umIndice([
           { mes: '2026-01-01', valor: 10 },
           { mes: '2026-02-01', valor: 90 },
-        ]}
+        ])}
       />,
     );
 
@@ -336,7 +362,7 @@ describe('a régua da direita', () => {
 describe('o estado vazio e o aviso', () => {
   it('sem série nenhuma mostra a frase, e não um SVG em branco', () => {
     const { container, getByText } = render(
-      <GraficoDeDoisEixos rotuloDaEsquerda="Preço (% do par)" bonds={[]} indice={[]} />,
+      <GraficoDeDoisEixos rotuloDaEsquerda="Preço (% do par)" bonds={[]} indice={umIndice([])} />,
     );
 
     expect(getByText('Sem cotação no período.')).toBeTruthy();
@@ -350,7 +376,7 @@ describe('o estado vazio e o aviso', () => {
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
-        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
       />,
     );
 
@@ -400,10 +426,10 @@ describe('escolher uma data no gráfico', () => {
     return render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[
+        indice={umIndice([
           { mes: '2026-01-01', valor: 50 },
           { mes: '2026-02-01', valor: 55 },
-        ]}
+        ])}
         bonds={[
           {
             chave: 'A',
@@ -434,7 +460,7 @@ describe('escolher uma data no gráfico', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -520,7 +546,7 @@ describe('escolher uma data no gráfico', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
         bonds={[{ chave: 'A', rotulo: 'A', cor: AZUL, pontos: [{ data: '2026-01-05', valor: 95 }] }]}
       />,
     );
@@ -535,7 +561,7 @@ describe('escolher uma data no gráfico', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[{ mes: '2026-01-01', valor: 50 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
         bonds={[
           {
             chave: 'A',
@@ -572,7 +598,7 @@ describe('a acessibilidade', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 52 }])}
         bonds={[
           {
             chave: 'AEGEBZ31',
@@ -600,7 +626,7 @@ describe('a acessibilidade', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -640,7 +666,7 @@ describe('a acessibilidade', () => {
       render(
         <GraficoDeDoisEixos
           rotuloDaEsquerda="Preço (% do par)"
-          indice={[{ mes: '2026-01-01', valor: 52 }]}
+          indice={umIndice([{ mes: '2026-01-01', valor: 52 }])}
           bonds={[
             {
               chave: 'AEGEBZ31',
@@ -681,7 +707,7 @@ describe('a acessibilidade', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[{ mes: '2026-01-01', valor: 52 }]}
+        indice={umIndice([{ mes: '2026-01-01', valor: 52 }])}
         bonds={[
           {
             chave: 'AEGEBZ31',
@@ -704,7 +730,7 @@ describe('a acessibilidade', () => {
     const { container } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
-        indice={[]}
+        indice={umIndice([])}
         bonds={[
           {
             chave: 'A',
@@ -722,5 +748,89 @@ describe('a acessibilidade', () => {
     expect([...container.querySelectorAll('title')].map((t) => t.textContent)).toEqual([
       'Aegea 2031',
     ]);
+  });
+});
+
+describe('várias curvas mensais', () => {
+  /** O gráfico mostrava só o índice. Desde 20/10/2026 ele mostra também a nota
+   *  de cada lente, uma a uma, conforme os botões da tela. */
+
+  it('desenha UMA CURVA POR SÉRIE, cada uma com a sua cor', () => {
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={[
+          {
+            chave: 'isr',
+            rotulo: 'Índice geral',
+            cor: '#111111',
+            pontos: [{ mes: '2026-01-01', valor: 50 }],
+          },
+          {
+            chave: 'imprensa',
+            rotulo: 'Imprensa',
+            cor: '#222222',
+            pontos: [{ mes: '2026-01-01', valor: 70 }],
+          },
+        ]}
+      />,
+    );
+
+    expect(mensais(container)).toEqual([
+      { chave: 'isr', cor: '#111111' },
+      { chave: 'imprensa', cor: '#222222' },
+    ]);
+    //: E AS DUAS ESTÃO EM ALTURAS DIFERENTES: 50 e 70 na mesma régua 0–100.
+    //: Sem isto, duas curvas com a mesma cor e o mesmo traçado passariam.
+    const alturas = [...container.querySelectorAll('g[data-mensal] path')].map((p) =>
+      (p.getAttribute('d') ?? '').match(/,([\d.]+)/)?.[1],
+    );
+    expect(alturas[0]).not.toBe(alturas[1]);
+  });
+
+  it('o EIXO X cobre os meses de TODAS as curvas, e não os da primeira', () => {
+    //: Duas lentes podem ter meses diferentes — uma sem dado num mês que a
+    //: outra tem. Recortando pela primeira, o degrau da segunda sairia da
+    //: tela: a curva existiria no dado e não no desenho.
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={[
+          {
+            chave: 'isr',
+            rotulo: 'Índice geral',
+            cor: '#111111',
+            pontos: [{ mes: '2026-01-01', valor: 50 }],
+          },
+          {
+            chave: 'imprensa',
+            rotulo: 'Imprensa',
+            cor: '#222222',
+            pontos: [{ mes: '2026-06-01', valor: 70 }],
+          },
+        ]}
+      />,
+    );
+
+    const traçados = [...container.querySelectorAll('g[data-mensal] path')].map(
+      (p) => p.getAttribute('d') ?? '',
+    );
+    expect(traçados).toHaveLength(2);
+    //: Os dois começam em X diferentes — junho não foi espremido em cima de
+    //: janeiro, que é o que aconteceria se o eixo só conhecesse a primeira.
+    const xDe = (d: string) => Number(d.match(/M ([\d.]+)/)?.[1] ?? 0);
+    expect(xDe(traçados[1])).toBeGreaterThan(xDe(traçados[0]));
+  });
+
+  it('a lista VAZIA não desenha curva mensal nenhuma', () => {
+    //: É o caso de quem desligou todos os botões: o eixo direito continua
+    //: existindo (ele é fixo em 0–100), e nenhuma linha é desenhada.
+    const { container } = render(
+      <GraficoDeDoisEixos rotuloDaEsquerda="Preço (% do par)" bonds={[]} indice={[]} />,
+    );
+
+    expect(mensais(container)).toEqual([]);
   });
 });

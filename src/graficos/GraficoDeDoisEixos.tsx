@@ -74,6 +74,22 @@ export interface PontoMensal {
   valor: number | null;
 }
 
+/** Uma curva MENSAL no eixo direito — o índice, ou a nota de uma lente.
+ *
+ *  SÃO VÁRIAS DESDE 20/10/2026, por pedido: o gráfico mostrava só o índice
+ *  geral, e agora mostra também a nota da Imprensa, do Mercado e da
+ *  Institucional, uma a uma, conforme os botões da tela.
+ *
+ *  TODAS NA MESMA RÉGUA (0–100) e todas em DEGRAUS tracejados, porque todas
+ *  têm a mesma natureza: um valor por mês, ao lado de um bond que tem pregão
+ *  diário. O degrau é o que diz isso na própria forma. */
+export interface SerieMensal {
+  chave: string;
+  rotulo: string;
+  cor: string;
+  pontos: PontoMensal[];
+}
+
 const SO_DATA = /^\d{4}-\d{2}-\d{2}/;
 
 /** A data em milissegundos, ou `null` quando a string não é uma data.
@@ -285,7 +301,9 @@ export function GraficoDeDoisEixos({
   diasDaJanela = 15,
 }: {
   bonds: SerieDatada[];
-  indice: PontoMensal[];
+  /** As curvas mensais do eixo direito. Vazio, o eixo continua existindo e
+   *  nenhuma linha é desenhada — é o caso de quem desligou todas. */
+  indice: SerieMensal[];
   /** "Preço (% do par)" ou "Yield (%)" — o que o eixo esquerdo mede. */
   rotuloDaEsquerda: string;
   /** A FAIXA FIXA DA MÉTRICA (`FAIXA_FIXA_DO_PRECO` / `FAIXA_FIXA_DO_YIELD`).
@@ -348,7 +366,14 @@ export function GraficoDeDoisEixos({
   const faixaEsquerda = dominioDosBonds(todosOsValores, faixaFixa);
   const faixaDireita = faixaDoIndice();
 
-  const meses = mesesDoIndice(indice);
+  const mensais = indice.map((serie) => ({
+    ...serie,
+    degraus: mesesDoIndice(serie.pontos),
+  }));
+  //: O EIXO X PRECISA COBRIR TODAS as curvas mensais, e não a primeira: duas
+  //: lentes podem ter meses diferentes (uma sem dado num mês que a outra tem),
+  //: e recortar por uma esconderia o degrau da outra.
+  const meses = mensais.flatMap((serie) => serie.degraus);
 
   const datas = series.flatMap((s) => s.trechos.flatMap((t) => t.map((p) => p.ms)));
   //: O EIXO X COBRE AS DUAS SÉRIES, E O FIM DO ÚLTIMO DEGRAU. Recortá-lo só
@@ -545,15 +570,29 @@ export function GraficoDeDoisEixos({
           ))}
 
           {/* o índice, em degraus e tracejado */}
-          {meses.length ? (
-            <path
-              d={caminhoEmDegraus(meses, x, yDireita)}
-              fill="none"
-              stroke="var(--ok-fg)"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-            />
-          ) : null}
+          {/* AS CURVAS MENSAIS, uma por score ligado. Tracejadas e em degraus:
+              é o que as distingue, na própria forma, da linha diária de um
+              bond — e o que impede alguém de ler "a nota subiu um pouquinho a
+              cada dia". */}
+          {mensais.map((serie) =>
+            serie.degraus.length ? (
+              //: `data-mensal` NÃO É ENFEITE: as curvas mensais passaram a
+              //: morar num `<g>`, como as dos bonds, e sem uma marca no DOM
+              //: "os traçados dos bonds" e "os traçados mensais" viram o mesmo
+              //: seletor. Um teste que conte curvas de bond passaria a contar
+              //: o índice junto, e ninguém veria.
+              <g key={serie.chave} data-mensal={serie.chave}>
+                <title>{serie.rotulo}</title>
+                <path
+                  d={caminhoEmDegraus(serie.degraus, x, yDireita)}
+                  fill="none"
+                  stroke={serie.cor}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                />
+              </g>
+            ) : null,
+          )}
 
           {/* os bonds: um traçado por trecho contínuo, e um MARCADOR para o
               trecho de um ponto só — `M x,y` sem segmento não desenha nada, e a
