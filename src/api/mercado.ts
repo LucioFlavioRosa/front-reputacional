@@ -152,11 +152,20 @@ export interface ImpactoNaJanela {
   /** "Não há como medir" é diferente de "nada impactou", e os dois quadros
    *  vazios parecem iguais. */
   mes_sem_base: boolean;
-  /** A lente e a janela VOLTAM NA RESPOSTA, como `metrica` volta na série: é o
-   *  que permite a tela afirmar "imprensa, 06/05 a 20/05" com o dado que
-   *  desenhou, e não com o que pediu — os dois divergem enquanto a resposta não
-   *  chega. */
-  lente: string;
+  /** AS LENTES E A JANELA VOLTAM NA RESPOSTA, como `metrica` volta na série: é o
+   *  que permite a tela afirmar o que desenhou, e não o que pediu — os dois
+   *  divergem enquanto a resposta não chega.
+   *
+   *  ERA `lente: string`, uma só. O impacto passou a ser em pontos do SCORE
+   *  GERAL (21/10/2026), e por isso a conta soma as três lentes de clipping —
+   *  medir uma e chamar o resultado de impacto no índice omitiria as outras
+   *  duas que também o movem. A lista traz as que de fato ENTRARAM: a lente sem
+   *  dado no mês não contribui. */
+  lentes: string[];
+  /** Quanto por cento do índice essas lentes pesaram no mês, pela fórmula de
+   *  pesos do projeto (lente sem dado sai do numerador e do denominador). É o
+   *  fator que converteu o impacto, e a tela o diz para a conta ser conferível. */
+  fatia_das_lentes: number;
   dias: number;
 }
 

@@ -84,7 +84,8 @@ function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
     nivel: 'n2',
     sem_data: 0,
     mes_sem_base: false,
-    lente: 'imprensa',
+    lentes: ['imprensa', 'mercado', 'institucional'],
+    fatia_das_lentes: 65,
     dias: 15,
     ...parcial,
   };
@@ -838,10 +839,16 @@ describe('os temas da janela, ao clicar numa data', () => {
     expect(negativos.textContent).toContain('−2,3');
   });
 
-  it('a tela diz A JANELA e A LENTE que o servidor devolveu', async () => {
-    /** Não as que a tela pediu: os dois divergem enquanto a resposta não chega,
-     *  e foi assim que o rótulo do eixo mentiu sobre a métrica — achado da
-     *  revisão daquele bloco. */
+  it('a tela diz A JANELA que o servidor devolveu, e que o impacto é no ÍNDICE', async () => {
+    /** Não a que a tela pediu: as duas divergem enquanto a resposta não chega, e
+     *  foi assim que o rótulo do eixo mentiu sobre a métrica — achado da revisão
+     *  daquele bloco.
+     *
+     *  O CABEÇALHO DIZIA "Lente imprensa", de quando a conta media uma lente só.
+     *  O impacto passou a ser em ponto do score geral somando as três de
+     *  clipping, e nomear uma lente ali afirmaria um recorte que a conta não
+     *  tem mais. QUAIS lentes somaram está na linha da régua, logo abaixo, junto
+     *  da fatia delas — ver o teste próprio. */
     render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
@@ -851,7 +858,9 @@ describe('os temas da janela, ao clicar numa data', () => {
     const cabecalho = screen.getByTestId('cabecalho-da-janela');
     expect(cabecalho.textContent).toContain('06/05/2026');
     expect(cabecalho.textContent).toContain('20/05/2026');
-    expect(cabecalho.textContent?.toLowerCase()).toContain('imprensa');
+    expect(cabecalho.textContent?.toLowerCase()).toContain('índice');
+    //: E NÃO NOMEIA UMA LENTE, que seria dizer um recorte menor que o da conta.
+    expect(cabecalho.textContent?.toLowerCase()).not.toContain('lente');
   });
 
   it('o quadro com MENOS de cinco diz o tamanho real', async () => {
@@ -1119,21 +1128,22 @@ it('ESC fecha o modal dos registros e deixa a janela no lugar', async () => {
   expect(await screen.findByText(/Nenhuma menção neste recorte/)).toBeTruthy();
 });
 
-it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async () => {
-    /** A PERGUNTA DELE, depois de ver a janela no ar: "esse desconto de pontos de
-     *  cada pilar ou tema é em relação à pontuação total? ou só da lente?".
+it('a tela diz DE QUAL NOTA são os pontos: do ÍNDICE, e quais lentes somam', async () => {
+    /** A PERGUNTA DELE, feita DUAS VEZES. Primeiro para entender: "esse desconto
+     *  de pontos de cada pilar ou tema é em relação à pontuação total? ou só da
+     *  lente?" — era da lente, e a tela passou a dizer isso. Depois para MUDAR:
+     *  "garanta que todos os impactos sejam em relação ao score geral", e "tem
+     *  que pegar tanto registros que vêm de imprensa, mercado e institucional".
      *
-     *  É DA LENTE: o denominador do back é `denominador_do_mes(lente_id, ...)`,
-     *  só as fontes ligadas dela. Mas a LINHA do gráfico, logo acima, é o
-     *  ÍNDICE — a média ponderada das cinco lentes, em que a imprensa pesa 30 de
-     *  100. A tela dizia "Pontos da nota de 05/2026" e deixava os dois números em
-     *  réguas diferentes sem avisar: quem lê subtrai um do outro e erra.
+     *  ESTE TESTE AFIRMAVA O AVESSO e estava certo: cobrava "nota da lente
+     *  mercado" e "não são pontos do índice". As duas frases viraram falsas no
+     *  dia em que a conta passou a somar as três lentes pelo peso de cada uma.
      *
-     *  A LENTE VEM DA RESPOSTA, e é por isso que o teste a troca: uma linha com
-     *  "imprensa" escrito à mão passaria neste arquivo e mentiria no dia em que a
-     *  segunda lente chegasse. */
+     *  AS LENTES E A FATIA VÊM DA RESPOSTA, e é por isso que o teste as troca:
+     *  uma linha escrita à mão passaria aqui e mentiria no mês em que uma lente
+     *  ficasse sem dado e saísse da conta. */
     obterImpactoNaJanela.mockImplementation(() =>
-      Promise.resolve(impacto({ lente: 'mercado' })),
+      Promise.resolve(impacto({ lentes: ['imprensa', 'mercado'], fatia_das_lentes: 35.25 })),
     );
     render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
@@ -1142,9 +1152,13 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
 
     await waitFor(() => expect(screen.getByTestId('regua-da-janela')).toBeTruthy());
     const regua = screen.getByTestId('regua-da-janela');
-    expect(regua.textContent).toContain('nota da lente mercado');
-    //: e que NÃO são pontos do índice, que é a confusão que a linha desfaz
-    expect(regua.textContent?.toLowerCase()).toContain('não são pontos do índice');
+    expect(regua.textContent).toContain('Pontos do índice');
+    //: AS LENTES QUE SOMARAM, pelos rótulos da legenda do gráfico.
+    expect(regua.textContent).toContain('Imprensa e Mercado');
+    //: E A FATIA, que é o que torna a conta conferível.
+    expect(regua.textContent).toContain('35,3%');
+    //: A FRASE VELHA NÃO PODE VOLTAR: ela dizia o contrário do que a conta faz.
+    expect(regua.textContent?.toLowerCase()).not.toContain('não são pontos do índice');
   });
 
   it('a CHAVE troca o nível e busca de novo o MESMO dia', async () => {

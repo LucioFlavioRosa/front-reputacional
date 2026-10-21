@@ -11,12 +11,16 @@
  *  lentes (que já lista menção por período e por tema) traria linhas que o
  *  quadro excluiu, e a lista discordaria do número que está ao lado dela.
  *
- *  O TOTAL DEIXOU DE SER O NÚMERO DA LINHA DO QUADRO, e o cabeçalho mostra OS
- *  DOIS, nomeados: o quadro mede a IMPRENSA e esta lista mostra o tema nas
- *  três. Era uma igualdade que eu construí e testei quando este modal nasceu;
- *  ela cai junto com a premissa de uma lente só, e fingir que continua valendo
- *  seria pior do que perdê-la — mas apagar o número da linha também, porque é
- *  ele que a pessoa está conferindo quando abre o modal.
+ *  O CABEÇALHO MOSTRA OS DOIS NÚMEROS, nomeados, quando eles diferem. Por um
+ *  dia a razão da diferença era de UNIVERSO: esta lista mostrava as três lentes
+ *  e o quadro media a Imprensa. Deixou de ser em 21/10/2026, quando o impacto
+ *  virou ponto do score geral e o quadro passou a somar as mesmas três — os
+ *  dois contam o mesmo recorte, e no caso normal os números batem.
+ *
+ *  QUANDO AINDA DIFEREM, a razão é a lente SEM BASE DE MÊS: sem denominador ela
+ *  não contribui em ponto do índice, então o quadro a deixa de fora — e esta
+ *  lista mostra as menções dela de qualquer forma, porque elas existem. Apagar
+ *  o número da linha seria pior: é ele que a pessoa está conferindo.
  *
  *  SEIS COLUNAS: data, veículo, título com link, sentimento, tier e A LENTE.
  *  A coluna da lente foi pedida junto, e é ela que explica por que uma matéria
@@ -45,7 +49,7 @@ function diaEMes(iso: string): string {
   return `${dia}/${mes}`;
 }
 
-/** "42 registros; o quadro conta 40, só da Imprensa".
+/** "42 registros; o quadro conta 40".
  *
  *  OS DOIS NÚMEROS, NOMEADOS — e esta é a correção de um achado de revisão
  *  contra a minha primeira tentativa. Quando o modal passou a listar três
@@ -64,7 +68,14 @@ function diaEMes(iso: string): string {
 function contagemDoCabecalho(total: number, noQuadro: number): string {
   const registros = `${numero(total)} ${total === 1 ? 'registro' : 'registros'}`;
   if (total === noQuadro) return registros;
-  return `${registros}; o quadro conta ${numero(noQuadro)}, só da Imprensa`;
+  //: SEM DIZER "SÓ DA IMPRENSA", que era a razão da diferença e deixou de ser.
+  //: O quadro passou a somar as mesmas três lentes desta lista (21/10/2026,
+  //: quando o impacto virou ponto do score geral), então os dois números batem
+  //: no caso normal e esta frase quase não aparece. Quando aparece, a razão é
+  //: outra: o quadro deixa de fora a lente sem base de mês, porque sem
+  //: denominador ela não tem como contribuir em ponto do índice — e a lista
+  //: mostra as menções dela de qualquer forma.
+  return `${registros}; o quadro conta ${numero(noQuadro)}`;
 }
 
 /** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na

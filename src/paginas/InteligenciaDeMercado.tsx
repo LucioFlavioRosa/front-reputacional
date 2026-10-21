@@ -31,7 +31,7 @@ import type {
   SerieDeMercado,
 } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
-import { numero } from '@/dominio/formato';
+import { listaComE, numero } from '@/dominio/formato';
 import {
   ATALHOS_DO_PERIODO,
   corDaVariacao,
@@ -135,6 +135,26 @@ const SCORES_DO_GRAFICO = [
 ] as const;
 
 const SCORES_AO_ABRIR = ['isr'];
+
+/** "a Imprensa, o Mercado e a Institucional" — as lentes que a conta somou.
+ *
+ *  OS RÓTULOS SAEM DE `SCORES_DO_GRAFICO`, que já os tem para a legenda logo
+ *  acima: dois mapas de nome para as mesmas lentes divergiriam no dia em que
+ *  uma fosse renomeada. Código que não esteja lá aparece como veio do servidor,
+ *  porque esconder a lente seria pior do que mostrar o código dela. */
+function nomesDasLentes(lentes: string[]): string {
+  const rotulos = lentes.map(
+    (codigo) => SCORES_DO_GRAFICO.find((s) => s.chave === codigo)?.rotulo ?? codigo,
+  );
+  return listaComE(rotulos);
+}
+
+/** A fatia com uma decimal, e sem decimal quando é redonda: "30%" e "35,3%".
+ *  Ela vem exata do servidor justamente para a conta fechar. */
+function porcento(valor: number): string {
+  const arredondado = Math.round(valor * 10) / 10;
+  return `${arredondado.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+}
 
 
 /** Quanto a tela espera antes de desistir de uma busca, em milissegundos.
@@ -983,7 +1003,7 @@ function JanelaDosTemas({
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
         Clique numa data do gráfico ou num rótulo do eixo para ver o que mais
-        empurrou a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
+        empurrou o índice nos {DIAS_DA_JANELA} dias anteriores.
       </p>
     );
   }
@@ -1020,7 +1040,7 @@ function JanelaDosTemas({
         }}
       >
         <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
-          Lente {janela.lente}: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
+          Impacto no índice: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
         </p>
 
         {/* A CHAVE ENTRE OS DOIS NÍVEIS, dentro da janela e não na barra de cima:
@@ -1061,26 +1081,33 @@ function JanelaDosTemas({
           continua exata — todos dividem pelo mesmo denominador —, a escala não.
           Quem lê precisa saber qual das duas coisas está olhando.
 
-          E DE QUAL NOTA, que é a pergunta que ele fez depois de ver no ar:
-          "esse desconto de pontos de cada pilar ou tema é em relação à
-          pontuação total? ou só da lente?". É da LENTE — o denominador é
-          `denominador_do_mes(lente_id, ...)`, só as fontes ligadas dela. Mas a
-          LINHA DO GRÁFICO, dez centímetros acima, é o ÍNDICE: a média
-          ponderada das cinco lentes, em que a imprensa pesa 30 de 100 por
-          padrão. Dois números na mesma tela em réguas diferentes, e nada
-          dizendo isso — era convite à subtração errada. "A nota da lente X" diz
-          a lente da RESPOSTA, não a palavra "imprensa" fixa aqui: quando a
-          segunda lente chegar, esta linha continua verdadeira. */}
+          E DE QUAL NOTA — a pergunta que ele fez duas vezes. Primeiro para
+          entender ("esse desconto de pontos de cada pilar ou tema é em relação
+          à pontuação total? ou só da lente?"), e a resposta foi ROTULAR: era da
+          lente, e esta linha dizia isso. Depois para MUDAR: "garanta que todos
+          os impactos sejam em relação ao score geral".
+
+          AGORA SÃO PONTOS DO ÍNDICE, a mesma régua da linha do gráfico dez
+          centímetros acima — e foi isso que tirou daqui a frase "não são pontos
+          do índice", que passou a ser falsa. A conta soma as três lentes de
+          clipping, cada uma pela fatia com que pondera no índice naquele mês.
+
+          A FATIA FICA À VISTA porque é o que torna a conta conferível: "−0,7 pt
+          do índice" vem de "−2,3 pt na lente que pesa 30%", e sem o 30% ninguém
+          refaz a conta. E vem da RESPOSTA, não fixa aqui: lente sem dado no mês
+          sai do denominador dos pesos, então a mesma Imprensa pesa 30 de 85 num
+          mês e 30 de 100 noutro. */}
       <p
         data-testid="regua-da-janela"
         style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}
       >
-        Pontos da nota da lente {janela.lente} em {porExtenso(janela.mes).slice(3)},
-        medida pela régua de {janela.regua}
+        Pontos do índice em {porExtenso(janela.mes).slice(3)}, medidos pela régua de{' '}
+        {janela.regua}
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
           ? '. A janela atravessa a virada do mês: a ordem é exata e a escala é a daquele mês'
           : null}
-        . Não são pontos do índice da linha acima: a lente é uma parte dele.
+        . Somam {nomesDasLentes(janela.lentes)}, que pesaram{' '}
+        {porcento(janela.fatia_das_lentes)} do índice neste mês.
       </p>
 
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
@@ -1090,9 +1117,11 @@ function JanelaDosTemas({
           estão lá. */}
       {janela.mes_sem_base ? (
         <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
-          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
-          {janela.lente}, então não há como calcular quanto cada grupo empurrou a
-          nota. Não é que nada impactou: a régua do mês ainda não existe.
+          {/* NENHUMA DAS TRÊS, e não "a lente X": a conta soma as lentes de
+              clipping, e só chega aqui quando nenhuma delas tem base no mês. */}
+          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida em nenhuma das
+          lentes de clipping, então não há como calcular quanto cada grupo empurrou o
+          índice. Não é que nada impactou: a régua do mês ainda não existe.
         </p>
       ) : (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
