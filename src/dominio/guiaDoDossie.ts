@@ -22,8 +22,15 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
     'Nota de 0 a 100 com o saldo de sentimento das conversas sobre a companhia nas redes sociais em aberto — não nos canais próprios da Aegea.',
   clientes:
     'Nota de 0 a 100 com o saldo de sentimento das mensagens recebidas nos canais próprios da Aegea (atendimento e redes oficiais).',
+  //: ERA O TERMÔMETRO DO CRM, e este balão ficou dizendo que ainda é. A lente
+  //: trocou de fonte na `0107`/`0108` (hoje `0111`/`0112`): passou a recortar a
+  //: imprensa pela lista de veículos, como o Mercado, e o CRM saiu do índice.
+  //: TERCEIRA CÓPIA da mesma premissa velha a aparecer — as outras duas eram o
+  //: cartão da lente e o cartão dos KPIs na Início. Esta só apareceu quando eu
+  //: cacei a frase no BUNDLE SERVIDO depois de implantar as outras duas; a
+  //: varredura que eu tinha feito no código não a tinha achado.
   institucional:
-    'Nota de 0 a 100 com o saldo do termômetro das interações registradas com governo e entidades no CRM.',
+    'Nota de 0 a 100 com o saldo de sentimento das fontes desta lente — a cobertura dos veículos de imprensa classificados como institucionais.',
 };
 
 /** Pelo título exato do bloco (`evolucao.titulo` ou `painel.titulo`) — os
