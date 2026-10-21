@@ -153,12 +153,18 @@ describe('a coluna da lente', () => {
     //: dela, a divergência fica sem explicação — e "em 3 lentes" era contado na
     //: PÁGINA, então uma primeira página só de Imprensa mostrava 120 registros
     //: de três lentes sem dizer nada sobre lente.
+    //:
+    //: E A FRASE PERDEU O "SÓ DA IMPRENSA" em 21/10/2026: o quadro passou a
+    //: somar as mesmas três lentes desta lista (o impacto virou ponto do score
+    //: geral), então a diferença deixou de ser de universo. Quando os números
+    //: diferem agora, é porque o quadro deixa de fora a lente sem base de mês —
+    //: sem denominador ela não contribui em ponto do índice, e a lista mostra as
+    //: menções dela de qualquer forma.
     obterRegistrosDaJanela.mockResolvedValue(deTresLentes());
     montar({ ...GRUPO, mencoes: 1 });
 
-    expect(
-      await screen.findByText(/3 registros; o quadro conta 1, só da Imprensa/),
-    ).toBeTruthy();
+    expect(await screen.findByText(/3 registros; o quadro conta 1$/)).toBeTruthy();
+    expect(screen.queryByText(/só da Imprensa/)).toBeNull();
   });
 
   it('com os números IGUAIS, o cabeçalho diz um só', async () => {

@@ -64,7 +64,14 @@ function diaEMes(iso: string): string {
 function contagemDoCabecalho(total: number, noQuadro: number): string {
   const registros = `${numero(total)} ${total === 1 ? 'registro' : 'registros'}`;
   if (total === noQuadro) return registros;
-  return `${registros}; o quadro conta ${numero(noQuadro)}, só da Imprensa`;
+  //: SEM DIZER "SÓ DA IMPRENSA", que era a razão da diferença e deixou de ser.
+  //: O quadro passou a somar as mesmas três lentes desta lista (21/10/2026,
+  //: quando o impacto virou ponto do score geral), então os dois números batem
+  //: no caso normal e esta frase quase não aparece. Quando aparece, a razão é
+  //: outra: o quadro deixa de fora a lente sem base de mês, porque sem
+  //: denominador ela não tem como contribuir em ponto do índice — e a lista
+  //: mostra as menções dela de qualquer forma.
+  return `${registros}; o quadro conta ${numero(noQuadro)}`;
 }
 
 /** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na
