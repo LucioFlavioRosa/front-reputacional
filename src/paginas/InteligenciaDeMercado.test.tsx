@@ -182,7 +182,17 @@ describe('ao abrir', () => {
     render(<InteligenciaDeMercado />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
-    expect(recebido.indice).toEqual([{ mes: '2026-01-01', valor: 52 }]);
+    //: UMA CURVA, A DO ÍNDICE — é a única ligada ao abrir. As lentes entram
+    //: por botão; ver os testes dos scores, no fim deste arquivo.
+    expect(recebido.indice).toEqual([
+      {
+        chave: 'isr',
+        rotulo: 'Índice geral',
+        cor: expect.any(String),
+        traco: expect.any(String),
+        pontos: [{ mes: '2026-01-01', valor: 52 }],
+      },
+    ]);
   });
 
   it('o rótulo da série sai da DESCRIÇÃO quando ela existe', async () => {
@@ -1096,6 +1106,95 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
     escolherData('2026-05-20');
 
     await waitFor(() => expect(recebido.dataEscolhida).toBe('2026-05-20'));
+  });
+});
+
+describe('os scores no eixo direito', () => {
+  /** O PEDIDO (20/10/2026): "hoje trazemos no gráfico o score geral, gostaria
+   *  de adicionar o score das lentes imprensa, mercado e institucional, e
+   *  temos que adicionar os botões para selecionar os scores". */
+
+  const COM_LENTES = {
+    indice: [
+      {
+        mes: '2026-01-01',
+        isr: 52,
+        lentes: { imprensa: 61, mercado: 48, institucional: null },
+      },
+    ],
+  };
+
+  it('ABRE COM O ÍNDICE, e só com ele', async () => {
+    //: É como a tela sempre abriu. Com os quatro acesos, a primeira coisa
+    //: visível seriam quatro tracejados por cima das curvas dos bonds.
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    expect(recebido.indice).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Índice geral/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /^Imprensa/ }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('LIGAR UMA LENTE acrescenta a curva dela, sem tirar o índice', async () => {
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    await userEvent.click(screen.getByRole('button', { name: /^Imprensa/ }));
+
+    await waitFor(() => expect(recebido.indice).toHaveLength(2));
+    const curvas = recebido.indice as { chave: string; pontos: { valor: number | null }[] }[];
+    expect(curvas.map((c) => c.chave)).toEqual(['isr', 'imprensa']);
+    //: O VALOR É O DA LENTE, e não o do índice: é a conferência que pega a
+    //: troca de chave — as duas curvas teriam o mesmo formato com o ISR nas
+    //: duas, e ninguém veria.
+    expect(curvas[1].pontos).toEqual([{ mes: '2026-01-01', valor: 61 }]);
+  });
+
+  it('A LENTE SEM MEDIÇÃO no mês vira VÃO, e não zero', async () => {
+    //: Zero no eixo 0–100 diz "a reputação foi péssima". A Institucional sem
+    //: veículo classificado não foi MEDIDA — ela nem entra no índice daquele
+    //: mês. O nulo atravessa até o gráfico, que quebra o degrau.
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    await userEvent.click(screen.getByRole('button', { name: /^Institucional/ }));
+
+    await waitFor(() => expect(recebido.indice).toHaveLength(2));
+    const curvas = recebido.indice as { chave: string; pontos: { valor: number | null }[] }[];
+    expect(curvas[1].pontos).toEqual([{ mes: '2026-01-01', valor: null }]);
+  });
+
+  it('DESLIGAR O ÍNDICE tira só ele', async () => {
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    await userEvent.click(screen.getByRole('button', { name: /^Mercado/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Índice geral/ }));
+
+    await waitFor(() => {
+      const curvas = recebido.indice as { chave: string }[];
+      expect(curvas.map((c) => c.chave)).toEqual(['mercado']);
+    });
+  });
+
+  it('a lente que o servidor NÃO mandou não quebra a tela', async () => {
+    //: Uma base antiga (ou uma lente aposentada) devolve `lentes` sem a chave.
+    //: A curva fica vazia de valores, e a tela continua de pé.
+    obterSerieDeMercado.mockImplementation(() =>
+      Promise.resolve(resposta({ indice: [{ mes: '2026-01-01', isr: 52 }] })),
+    );
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    await userEvent.click(screen.getByRole('button', { name: /^Imprensa/ }));
+
+    await waitFor(() => expect(recebido.indice).toHaveLength(2));
+    const curvas = recebido.indice as { pontos: { valor: number | null }[] }[];
+    expect(curvas[1].pontos).toEqual([{ mes: '2026-01-01', valor: null }]);
   });
 });
 

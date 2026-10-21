@@ -85,6 +85,43 @@ function slotLivre(usados: Record<string, number>): number | null {
   return null;
 }
 
+/** OS SCORES QUE O EIXO DIREITO PODE MOSTRAR, e os botões que os ligam.
+ *
+ *  O PEDIDO (20/10/2026): "hoje trazemos no gráfico o score geral, gostaria de
+ *  adicionar o score das lentes imprensa, mercado e institucional, e temos que
+ *  adicionar os botões para selecionar os scores".
+ *
+ *  SÓ O ÍNDICE LIGADO DE SAÍDA, que é como a tela sempre abriu. Com os quatro
+ *  acesos, a primeira coisa que ela mostraria seriam quatro tracejados por
+ *  cima das curvas dos bonds — e o assunto da tela é o bond.
+ *
+ *  AS CORES NÃO SE REPETEM COM AS DOS BONDS, e agora isso está MEDIDO — antes
+ *  estava afirmado e errado, achado de revisão. A paleta `CORES` (acima) tem
+ *  `#0A6B60`, que é exatamente o `--ok-fg` com que o índice sempre foi
+ *  desenhado: com seis ou mais papéis ligados, a linha do ISR ficava
+ *  indistinguível da de um bond. Nenhum dos quatro tons abaixo está naquela
+ *  lista.
+ *
+ *  E ELAS SÃO ESCURAS DE PROPÓSITO. As duas primeiras que escolhi (#17E3CB e
+ *  #F2B705) tinham contraste de 1,6:1 e 1,8:1 sobre o fundo claro — numa linha
+ *  TRACEJADA e fina, isso é uma curva que some. Estas ficam acima de 4,5:1.
+ *
+ *  E A COR NÃO É A ÚNICA PISTA: cada score tem o seu tracejado. Quatro linhas
+ *  no mesmo eixo, para quem não separa matiz (ou para quem imprime em preto e
+ *  branco), seriam quatro curvas iguais — e o gráfico é o lugar onde isso mais
+ *  custa.
+ *
+ *  O CÓDIGO DA LENTE É A CHAVE, e ele vem do servidor dentro de `lentes`:
+ *  `isr` é o único que não é lente, e é o índice inteiro. */
+const SCORES_DO_GRAFICO = [
+  { chave: 'isr', rotulo: 'Índice geral', cor: '#0B3C49', traco: '6 4' },
+  { chave: 'imprensa', rotulo: 'Imprensa', cor: '#0E6E8C', traco: '2 3' },
+  { chave: 'mercado', rotulo: 'Mercado', cor: '#9A6700', traco: '10 4' },
+  { chave: 'institucional', rotulo: 'Institucional', cor: '#B5157C', traco: '6 3 2 3' },
+] as const;
+
+const SCORES_AO_ABRIR = ['isr'];
+
 const PERIODOS = [
   { codigo: '1M', rotulo: '1 mês', dias: 30 },
   { codigo: '3M', rotulo: '3 meses', dias: 90 },
@@ -163,6 +200,10 @@ export function InteligenciaDeMercado() {
   //: dela — SEPARADA da falha do gráfico, porque são dois pedaços independentes
   //: da tela. A janela falhar não pode levar o gráfico, que é a lição do beco
   //: sem saída que esta tela já teve.
+  //: QUAIS SCORES ESTÃO NO GRÁFICO. Lista, e não um só: o pedido é poder
+  //: comparar — ver o índice e uma lente ao mesmo tempo é o gesto inteiro.
+  const [scoresLigados, definirScoresLigados] = useState<string[]>(SCORES_AO_ABRIR);
+
   const [diaEscolhido, definirDiaEscolhido] = useState<string | null>(null);
   //: A CHAVE ENTRE OS DOIS NÍVEIS, por pedido dele depois de ver os dois no ar.
   //:
@@ -322,10 +363,25 @@ export function InteligenciaDeMercado() {
     }));
   }, [dados, emVigor]);
 
-  const indice = useMemo(
-    () => (dados?.indice ?? []).map((p) => ({ mes: p.mes, valor: p.isr })),
-    [dados],
-  );
+  const indice = useMemo(() => {
+    const pontos = dados?.indice ?? [];
+    return SCORES_DO_GRAFICO.filter((score) => scoresLigados.includes(score.chave)).map(
+      (score) => ({
+        chave: score.chave,
+        rotulo: score.rotulo,
+        cor: score.cor,
+        traco: score.traco,
+        //: O NULO ATRAVESSA, e é o que faz o mês sem medição virar VÃO no
+        //: degrau em vez de um ponto no chão. Zero ali diria que a reputação
+        //: daquele mês foi péssima; a lente sem dado simplesmente não foi
+        //: medida — e é assim que ela sai do índice também.
+        pontos: pontos.map((p) => ({
+          mes: p.mes,
+          valor: score.chave === 'isr' ? p.isr : (p.lentes?.[score.chave] ?? null),
+        })),
+      }),
+    );
+  }, [dados, scoresLigados]);
 
   /** Repete a busca. É o contador do barramento que serve: ele já está nas
    *  dependências do efeito, e uma segunda via faria duas portas para a mesma
@@ -451,6 +507,57 @@ export function InteligenciaDeMercado() {
                 {m.rotulo}
               </button>
             ))}
+          </div>
+        </fieldset>
+
+        {/* OS SCORES, e eles ligam e desligam INDEPENDENTES — não são um
+            seletor de um só, como período e métrica. O gesto é comparar: ver o
+            índice e uma lente lado a lado é a pergunta inteira.
+
+            O QUADRADINHO DE COR não é enfeite: com quatro tracejados possíveis
+            no mesmo eixo, é ele que liga o botão à curva. */}
+        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend style={{ fontSize: 12, color: 'var(--cinza-2)' }}>
+            Score no eixo direito
+          </legend>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {SCORES_DO_GRAFICO.map((s) => {
+              const ligado = scoresLigados.includes(s.chave);
+              return (
+                <button
+                  key={s.chave}
+                  type="button"
+                  aria-pressed={ligado}
+                  onClick={() =>
+                    definirScoresLigados((atuais) =>
+                      atuais.includes(s.chave)
+                        ? atuais.filter((c) => c !== s.chave)
+                        : [...atuais, s.chave],
+                    )
+                  }
+                  style={{
+                    ...botao(ligado),
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 2,
+                      background: s.cor,
+                      //: APAGADO QUANDO DESLIGADO, para o quadradinho não
+                      //: prometer uma curva que não está na tela.
+                      opacity: ligado ? 1 : 0.35,
+                    }}
+                  />
+                  {s.rotulo}
+                </button>
+              );
+            })}
           </div>
         </fieldset>
       </div>
