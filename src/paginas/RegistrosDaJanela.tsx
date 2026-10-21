@@ -11,11 +11,12 @@
  *  lentes (que já lista menção por período e por tema) traria linhas que o
  *  quadro excluiu, e a lista discordaria do número que está ao lado dela.
  *
- *  O TOTAL DEIXOU DE SER O NÚMERO DA LINHA DO QUADRO, e o cabeçalho diz isso em
- *  vez de repetir aquele número. Era uma igualdade que eu construí e testei
- *  quando este modal nasceu; ela cai junto com a premissa de uma lente só, e
- *  fingir que continua valendo seria pior do que perdê-la: o quadro mede a
- *  IMPRENSA e esta lista mostra o tema nas três.
+ *  O TOTAL DEIXOU DE SER O NÚMERO DA LINHA DO QUADRO, e o cabeçalho mostra OS
+ *  DOIS, nomeados: o quadro mede a IMPRENSA e esta lista mostra o tema nas
+ *  três. Era uma igualdade que eu construí e testei quando este modal nasceu;
+ *  ela cai junto com a premissa de uma lente só, e fingir que continua valendo
+ *  seria pior do que perdê-la — mas apagar o número da linha também, porque é
+ *  ele que a pessoa está conferindo quando abre o modal.
  *
  *  SEIS COLUNAS: data, veículo, título com link, sentimento, tier e A LENTE.
  *  A coluna da lente foi pedida junto, e é ela que explica por que uma matéria
@@ -44,18 +45,26 @@ function diaEMes(iso: string): string {
   return `${dia}/${mes}`;
 }
 
-/** "em 2 lentes", quando a PÁGINA mostra mais de uma.
+/** "42 registros; o quadro conta 40, só da Imprensa".
  *
- *  DA PÁGINA, E NÃO DO TOTAL, porque é o que esta tela sabe: o servidor manda
- *  50 registros por vez e não um resumo por lente. Dizer "em 3 lentes" com
- *  base numa página que só tem duas seria afirmar o que não se mediu — e o
- *  cabeçalho é justamente onde alguém confere se a lista é o que ele pensa.
+ *  OS DOIS NÚMEROS, NOMEADOS — e esta é a correção de um achado de revisão
+ *  contra a minha primeira tentativa. Quando o modal passou a listar três
+ *  lentes, eu tirei do cabeçalho o número da linha do quadro (que havia
+ *  deixado de ser igual ao desta lista) e o substituí por "em 3 lentes". Mas
+ *  quem abre o modal está conferindo a linha que clicou: omitir o número dela
+ *  deixa a divergência sem explicação, e "em 3 lentes" contado na PÁGINA não
+ *  descreve o total — numa primeira página só de Imprensa, 120 registros de
+ *  três lentes apareciam sem menção nenhuma a lente.
  *
- *  VAZIO COM UMA LENTE SÓ: "28 registros em 1 lente" não informa nada que o
- *  número já não diga. */
-function lentesNaLista(pagina: Pagina): string {
-  const quantas = new Set(pagina.itens.map((item) => item.lente)).size;
-  return quantas > 1 ? `${quantas} lentes` : '';
+ *  A SEGUNDA PARTE SÓ APARECE QUANDO OS NÚMEROS DIFEREM. Iguais, ela é ruído:
+ *  é o caso do tema que só tem matéria na Imprensa, que é a maioria.
+ *
+ *  E A CONTAGEM DE LENTES SAIU. Com os dois números nomeados ela não explica
+ *  mais nada, e a coluna "Lente" diz, linha por linha, o que ela resumia. */
+function contagemDoCabecalho(total: number, noQuadro: number): string {
+  const registros = `${numero(total)} ${total === 1 ? 'registro' : 'registros'}`;
+  if (total === noQuadro) return registros;
+  return `${registros}; o quadro conta ${numero(noQuadro)}, só da Imprensa`;
 }
 
 /** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na
@@ -147,17 +156,15 @@ export function RegistrosDaJanela({
         //: janela: sem as datas, a lista parece ser "todas as matérias deste
         //: tema" — e é só as de quinze dias.
         //:
-        //: E O NÚMERO É O DESTA LISTA, dito como "em 3 lentes" — não mais o da
-        //: linha do quadro. Enquanto o modal mostrava uma lente, os dois eram
-        //: o mesmo número; agora ele mostra três, e repetir o número da linha
-        //: seria afirmar uma igualdade que deixou de existir. Enquanto a
-        //: leitura não chega, o cabeçalho não arrisca número nenhum.
+        //: E OS DOIS NÚMEROS, NOMEADOS: o desta lista e o da linha clicada.
+        //: Enquanto o modal mostrava uma lente, eles eram o mesmo número e um
+        //: bastava; com três lentes a igualdade caiu, e quem abre o modal está
+        //: justamente conferindo a linha que clicou — ver
+        //: `contagemDoCabecalho`. Enquanto a leitura não chega, o cabeçalho não
+        //: arrisca número nenhum.
         `${grupo.contexto ? `${grupo.contexto} · ` : ''}` +
         `${diaEMes(de)} a ${diaEMes(ate)}` +
-        (dados
-          ? ` · ${numero(dados.total)} ${dados.total === 1 ? 'registro' : 'registros'}` +
-            `${lentesNaLista(dados) ? ` em ${lentesNaLista(dados)}` : ''}`
-          : '')
+        (dados ? ` · ${contagemDoCabecalho(dados.total, grupo.mencoes)}` : '')
       }
       largura={860}
       aoFechar={aoFechar}

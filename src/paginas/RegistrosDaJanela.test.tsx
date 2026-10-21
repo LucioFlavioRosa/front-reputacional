@@ -71,10 +71,10 @@ function presa(): { promessa: Promise<Pagina>; soltar: (p: Pagina) => void; recu
   return { promessa, soltar, recusar };
 }
 
-function montar() {
+function montar(grupo: GrupoNaJanela = GRUPO) {
   return render(
     <RegistrosDaJanela
-      grupo={GRUPO}
+      grupo={grupo}
       ate="2026-05-20"
       de="2026-05-06"
       nivel="n2"
@@ -146,39 +146,42 @@ describe('a coluna da lente', () => {
     ]);
   });
 
-  it('o CABEÇALHO conta os registros e diz em quantas lentes', async () => {
-    //: ELE PAROU DE REPETIR O NÚMERO DA LINHA DO QUADRO. Enquanto o modal
-    //: mostrava uma lente, os dois eram o mesmo número; com três, repetir o da
-    //: linha afirmaria uma igualdade que deixou de existir — o quadro mede a
-    //: Imprensa e esta lista mostra o tema nas três.
+  it('o CABEÇALHO nomeia OS DOIS números quando eles diferem', async () => {
+    //: ACHADO DE REVISÃO contra a minha primeira tentativa. Eu havia tirado do
+    //: cabeçalho o número da linha do quadro e escrito "em 3 lentes" no lugar.
+    //: Mas quem abre o modal está conferindo a linha que clicou: sem o número
+    //: dela, a divergência fica sem explicação — e "em 3 lentes" era contado na
+    //: PÁGINA, então uma primeira página só de Imprensa mostrava 120 registros
+    //: de três lentes sem dizer nada sobre lente.
     obterRegistrosDaJanela.mockResolvedValue(deTresLentes());
-    montar();
+    montar({ ...GRUPO, mencoes: 1 });
 
-    expect(await screen.findByText(/3 registros em 3 lentes/)).toBeTruthy();
-    //: E O NÚMERO DO GRUPO (120) NÃO APARECE: era ele que o cabeçalho repetia.
-    expect(screen.queryByText(/120/)).toBeNull();
+    expect(
+      await screen.findByText(/3 registros; o quadro conta 1, só da Imprensa/),
+    ).toBeTruthy();
   });
 
-  it('com UMA lente só, o cabeçalho não diz "em 1 lente"', async () => {
-    //: Não informa nada que o número já não diga. (`pagina(1)` é a fixture das
-    //: corridas: um item de uma lente, num total de 120.)
+  it('com os números IGUAIS, o cabeçalho diz um só', async () => {
+    //: É o caso da maioria dos temas: matéria só na Imprensa. Repetir o mesmo
+    //: número duas vezes seria ruído. (`pagina(1)` é a fixture das corridas, e
+    //: o total dela é justamente o do grupo: 120.)
     obterRegistrosDaJanela.mockResolvedValue(pagina(1));
     montar();
 
-    expect(await screen.findByText(/120 registros/)).toBeTruthy();
-    expect(screen.queryByText(/lentes/)).toBeNull();
+    expect(await screen.findByText(/120 registros$/)).toBeTruthy();
+    expect(screen.queryByText(/o quadro conta/)).toBeNull();
   });
 
   it('enquanto a leitura NÃO chega, o cabeçalho não arrisca número', async () => {
-    //: Antes ele mostrava o número do grupo nesse intervalo — e aquele número
-    //: passou a ser de outra conta. Melhor não dizer do que dizer errado.
+    //: Antes ele mostrava o número do grupo nesse intervalo, sozinho — e aquele
+    //: número passou a ser de outra conta. Melhor não dizer do que dizer sem
+    //: saber com o que comparar.
     const emVoo = presa();
     obterRegistrosDaJanela.mockImplementation(() => emVoo.promessa);
     montar();
 
     expect(await screen.findByText(/Lendo as menções/)).toBeTruthy();
     expect(screen.queryByText(/registro/)).toBeNull();
-    //: E O NÚMERO DO GRUPO TAMBÉM NÃO: era ele que aparecia neste intervalo.
     expect(screen.queryByText(/120/)).toBeNull();
 
     await act(async () => {
