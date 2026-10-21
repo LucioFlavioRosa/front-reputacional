@@ -659,10 +659,19 @@ const LENTES_SEM_DRIVERS = ['imprensa', 'mercado'];
 const LENTES_SEM_TEMAS_MAIS_FALADOS = ['imprensa', 'mercado'];
 //: O MERCADO ENTROU AQUI (20/10/2026, por pedido de paridade visual com a
 //: Imprensa): `GET /{codigo}/explorador` já respondia para ele sem mudança
-//: nenhuma no backend — só a Institucional (lê o CRM) volta vazia dali, e
-//: por isso ela NÃO entra nesta lista. Ver `lente_e_interna` em
-//: `app/api/lentes.py`.
-const LENTES_COM_EXPLORADOR = ['imprensa', 'mercado'];
+//: nenhuma no backend.
+//:
+//: E A INSTITUCIONAL ENTROU EM 21/10/2026, consertando uma exclusão que ficou
+//: velha. Ela estava fora porque "lê o CRM e volta vazia dali" — a rota
+//: devolve `grupos=[]` para lente interna (`lente_e_interna`). Isso deixou de
+//: ser verdade com a `0111`/`0112`: a Institucional passou a recortar a
+//: imprensa pela lista de veículos, o CRM foi aposentado, e `lente_e_interna`
+//: passou a responder `false` para ela — o explorador RESPONDE. O back já a
+//: tinha habilitado (`LENTES_DA_CONSULTA` e `DIMENSOES_DO_APROFUNDAMENTO`, com
+//: o comentário "não há razão para a Institucional ficar de fora de uma tela
+//: que as outras duas lentes de clipping já têm"); era a tela que não a
+//: desenhava, e o back calculava para ninguém. Achado de revisão.
+const LENTES_COM_EXPLORADOR = ['imprensa', 'mercado', 'institucional'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
 

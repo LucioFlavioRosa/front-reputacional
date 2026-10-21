@@ -68,6 +68,24 @@ describe('ler e escrever o caminho', () => {
     expect(lerCaminho('/explorar')).toEqual({ destino: 'inicio' });
   });
 
+  it('o endereço ANTIGO da Árvore da taxonomia leva à Árvore', () => {
+    // A Árvore morou dentro da Metodologia do Score, numa aba escolhida pela
+    // URL e feita LINKÁVEL de propósito ("para o link da Árvore abrir direto
+    // nela", dizia o código de lá). Quando ela ganhou endereço próprio, aquele
+    // link passou a abrir a Metodologia do índice — tela errada, calada, porque
+    // `/score/metodologia` continua sendo caminho VÁLIDO. Achado de revisão.
+    expect(lerCaminho('/score/metodologia', '?secao=arvore')).toEqual({
+      destino: 'taxonomia',
+    });
+    // E A METODOLOGIA SEM A CONSULTA CONTINUA SENDO A METODOLOGIA: o desvio é
+    // do link da árvore, não da tela.
+    expect(lerCaminho('/score/metodologia')).toEqual({ destino: 'score', aba: 'metodologia' });
+    expect(lerCaminho('/score/metodologia', '?mes=2026-09')).toEqual({
+      destino: 'score',
+      aba: 'metodologia',
+    });
+  });
+
   it('a ficha e a cadeia abrem sobre a Base', () => {
     // Aberto a frio, o endereço de uma agenda precisa de uma tela embaixo do
     // modal — senão o fundo é branco e fechar não leva a lugar nenhum.

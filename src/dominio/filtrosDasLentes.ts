@@ -108,6 +108,16 @@ export const FILTROS_DAS_LENTES: Record<
     rapidos: [concessionaria, tier, sentimento],
     avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
   },
+  //: A INSTITUCIONAL TEM AS MESMAS DIMENSÕES DO MERCADO, porque é a mesma
+  //: Clipei recortada por outra subcategoria — mesma ingestão, mesmas colunas
+  //: preenchidas. Ela ficava FORA deste mapa de quando lia o CRM: lá não havia
+  //: menção para filtrar. Com a `0111`/`0112` ela virou lente de clipping, o
+  //: back passou a oferecer as opções (`LENTES_DA_BASE`, `LENTES_DA_CONSULTA`,
+  //: `DIMENSOES_DO_APROFUNDAMENTO`) e a tela seguiu sem barra nenhuma.
+  institucional: {
+    rapidos: [concessionaria, tier, sentimento],
+    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
+  },
   sociedade: {
     rapidos: [
       { chave: 'veiculo', rotulo: 'Rede', de: 'veiculos' },
