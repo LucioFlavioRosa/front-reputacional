@@ -156,3 +156,21 @@ describe('cadastro compartilhado', () => {
     expect(configuracaoDe('compartilhado')).toBeNull();
   });
 });
+
+describe('árvore da taxonomia', () => {
+  it('não empresta a barra de divisão nenhuma', () => {
+    // MESMA RAZÃO DO CADASTRO COMPARTILHADO: saiu do Score (20/10/2026) e não
+    // é dono de divisão nenhuma — ver `ARVORE_DA_TAXONOMIA` em `Inicio.tsx`.
+    expect(areaDe('taxonomia')).toEqual([]);
+  });
+
+  it('não aparece na barra de divisão nenhuma', () => {
+    expect(rotulos('painel')).not.toContain('Árvore da taxonomia');
+    expect(rotulos('score')).not.toContain('Árvore da taxonomia');
+  });
+
+  it('não tem engrenagem própria', () => {
+    // Tem cartão próprio na Início; não precisa de porta de configuração.
+    expect(configuracaoDe('taxonomia')).toBeNull();
+  });
+});

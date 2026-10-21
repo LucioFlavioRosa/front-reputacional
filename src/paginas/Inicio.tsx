@@ -114,6 +114,49 @@ function IconeDeCadastro() {
   );
 }
 
+/** A ÁRVORE DA TAXONOMIA — fora de `ONDA_1` e fora do Cadastro compartilhado,
+ *  as duas de propósito.
+ *
+ *  NÃO É UM QUARTO PAINEL, pela mesma razão do Cadastro compartilhado: é
+ *  consulta ao dado mestre, não um recorte com nota própria.
+ *
+ *  E NÃO É O MESMO CARTÃO DO CADASTRO, mesmo os dois sendo "base compartilhada
+ *  que todos leem" — o Cadastro é onde o dado se EDITA (`administra_dicionarios`,
+ *  3 abas de formulário); a Árvore é só VISUALIZAÇÃO, aberta a qualquer pessoa
+ *  logada, sem papel nenhum — o backend não exige um
+ *  (`GET /api/taxonomia/arvore` só pede sessão, ver `app/api/arvore_da_taxonomia.py`).
+ *  Misturar as duas no mesmo cartão prometeria edição a quem só pode olhar, ou
+ *  esconderia a árvore de quem não administra cadastro — e ela foi pensada
+ *  para a empresa inteira entender a taxonomia, não só quem a mantém.
+ *
+ *  SAIU DE DENTRO DO SCORE (20/10/2026, por pedido): morar em "KPIs
+ *  Reputacionais" escondia de quem nunca abre aquele portal algo que não
+ *  depende dele — ver `Score.tsx`.
+ */
+const ARVORE_DA_TAXONOMIA = {
+  view: 'taxonomia' as const,
+  //: DIFERENTE DO RÓTULO DA SEÇÃO, pela mesma razão do Cadastro compartilhado.
+  titulo: 'Árvore da taxonomia',
+  descricao:
+    'Como os subtemas se organizam por atributo reputacional e por risco corporativo — para toda a equipe entender a organização por trás dos indicadores.',
+};
+
+/** Um galho se dividindo em três — o glifo da árvore. Mesma forma simples e
+ *  `currentColor` de `IconeDeCadastro`, acima. */
+function IconeDeArvore() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden focusable="false">
+      <path
+        d="M8 14V8M8 8L4 4M8 8l4-4M4 4V2M12 4V2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 //: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
 //: os dados que sustentam os três painéis executivos acima, o projeto
 //: atual; as próximas cinco descrevem para onde a plataforma vai, uma
@@ -299,63 +342,114 @@ export function Inicio({
 
       {/* FORA DA GRADE DOS TRÊS PAINÉIS DE PROPÓSITO — ver o comentário de
           `CADASTRO_COMPARTILHADO`: é a base que os três leem, não um painel a
-          mais. `administraCadastros` decide a visibilidade, não um portal.
-          O TRATAMENTO VISUAL TAMBÉM DIZ ISSO: uma faixa baixa e horizontal, com
-          borda tracejada e fundo acinzentado, em vez de um `Cartao` branco do
-          mesmo porte dos três painéis — e sem o selo "Disponível", que é
-          exatamente o que igualava a leitura dos quatro. */}
-      {administraCadastros ? (
-        <section>
-          <div className="kicker" style={{ marginBottom: 10 }}>
-            Cadastro compartilhado
-          </div>
-          <Cartao
-            aoClicar={() => irPara(CADASTRO_COMPARTILHADO.view)}
-            estilo={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              padding: '13px 18px',
-              maxWidth: 560,
-              background: 'var(--cinza-0)',
-              // SÓLIDA, e não tracejada: tracejado neste app é o vocabulário
-              // de "falta dado" (mês sem base, ponto parcial da Jornada,
-              // chip fantasma de filtro) — herdar isso aqui diria "incompleto"
-              // sobre uma área que está pronta e funcionando.
-              border: '1px solid var(--borda)',
-              // SEM `boxShadow` AQUI: sobrescrever para 'none' mataria o
-              // hover que `.cartao--clicavel:hover` já dá de graça (inline
-              // sempre vence classe) — o padrão do `Cartao` já é sutil o
-              // bastante para não competir com os painéis.
-            }}
-          >
-            <span
-              style={{
-                flexShrink: 0,
+          mais. `administraCadastros` decide a visibilidade do primeiro
+          cartão, não um portal; o segundo (`ARVORE_DA_TAXONOMIA`) não tem
+          condição nenhuma — ver o comentário dela, acima.
+          LADO A LADO, por pedido (20/10/2026): os dois são a mesma "classe"
+          de atalho — consulta ao dado mestre, não um painel com nota —, e
+          `flexWrap` empilha num celular sem precisar de duas larguras fixas.
+          O TRATAMENTO VISUAL TAMBÉM DIZ "não é painel": fundo acinzentado,
+          em vez de um `Cartao` branco do mesmo porte dos três painéis — e
+          sem o selo "Disponível", que é o que igualava a leitura dos quatro. */}
+      <section>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+          {administraCadastros ? (
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <div className="kicker" style={{ marginBottom: 10 }}>
+                Cadastro compartilhado
+              </div>
+              <Cartao
+                aoClicar={() => irPara(CADASTRO_COMPARTILHADO.view)}
+                estilo={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '13px 18px',
+                  height: '100%',
+                  background: 'var(--cinza-0)',
+                  // SÓLIDA, e não tracejada: tracejado neste app é o
+                  // vocabulário de "falta dado" (mês sem base, ponto parcial
+                  // da Jornada, chip fantasma de filtro) — herdar isso aqui
+                  // diria "incompleto" sobre uma área pronta e funcionando.
+                  border: '1px solid var(--borda)',
+                  // SEM `boxShadow` AQUI: sobrescrever para 'none' mataria o
+                  // hover que `.cartao--clicavel:hover` já dá de graça
+                  // (inline sempre vence classe) — o padrão do `Cartao` já é
+                  // sutil o bastante para não competir com os painéis.
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 'var(--r-chip)',
+                    background: 'var(--cinza-1)',
+                    color: 'var(--cinza-3)',
+                  }}
+                >
+                  <IconeDeCadastro />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 14 }}>{CADASTRO_COMPARTILHADO.titulo}</h2>
+                  <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2, lineHeight: 1.5 }}>
+                    {CADASTRO_COMPARTILHADO.descricao}
+                  </p>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--azul-mar)' }}>
+                  Abrir →
+                </span>
+              </Cartao>
+            </div>
+          ) : null}
+
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <div className="kicker" style={{ marginBottom: 10 }}>
+              Metodologia
+            </div>
+            <Cartao
+              aoClicar={() => irPara(ARVORE_DA_TAXONOMIA.view)}
+              estilo={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                borderRadius: 'var(--r-chip)',
-                background: 'var(--cinza-1)',
-                color: 'var(--cinza-3)',
+                gap: 14,
+                padding: '13px 18px',
+                height: '100%',
+                background: 'var(--cinza-0)',
+                border: '1px solid var(--borda)',
               }}
             >
-              <IconeDeCadastro />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ fontSize: 14 }}>{CADASTRO_COMPARTILHADO.titulo}</h2>
-              <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2, lineHeight: 1.5 }}>
-                {CADASTRO_COMPARTILHADO.descricao}
-              </p>
-            </div>
-            <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--azul-mar)' }}>
-              Abrir →
-            </span>
-          </Cartao>
-        </section>
-      ) : null}
+              <span
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 'var(--r-chip)',
+                  background: 'var(--cinza-1)',
+                  color: 'var(--cinza-3)',
+                }}
+              >
+                <IconeDeArvore />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 14 }}>{ARVORE_DA_TAXONOMIA.titulo}</h2>
+                <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2, lineHeight: 1.5 }}>
+                  {ARVORE_DA_TAXONOMIA.descricao}
+                </p>
+              </div>
+              <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--azul-mar)' }}>
+                Abrir →
+              </span>
+            </Cartao>
+          </div>
+        </div>
+      </section>
 
       <section>
         <div className="kicker" style={{ marginBottom: 12 }}>

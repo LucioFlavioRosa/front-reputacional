@@ -32,6 +32,7 @@ describe('ler e escrever o caminho', () => {
     ['/admin', { destino: 'admin', aba: undefined }],
     ['/admin/porta-vozes', { destino: 'admin', aba: 'porta-vozes' }],
     ['/compartilhado', { destino: 'compartilhado' }],
+    ['/taxonomia', { destino: 'taxonomia' }],
     ['/agenda/nova', { destino: 'cadastro', sobre: 'nova' }],
     ['/agenda/abc/editar', { destino: 'cadastro', agenda: 'abc', sobre: 'editar' }],
     ['/agenda/abc', { destino: 'base', agenda: 'abc', sobre: 'ficha' }],
