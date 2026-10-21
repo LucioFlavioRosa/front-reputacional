@@ -4,17 +4,26 @@
  *  os registros do tema ou pilar, assim como fazemos nas lentes no KPI
  *  reputacional".
  *
- *  O TOTAL DO MODAL É, POR CONSTRUÇÃO, O NÚMERO DO QUADRO. A rota que alimenta
- *  esta lista reusa o recorte exato da janela — mesma lente, mesma régua de
- *  datas, mesma exclusão das menções sem data, mesmas fontes ligadas, grupo por
- *  id. Reusar a rota da Base das lentes (que já lista menção por período e por
- *  tema) traria linhas que o quadro excluiu, e a lista discordaria do número
- *  que está ao lado dela na mesma tela.
+ *  AS TRÊS LENTES DE CLIPPING, desde 21/10/2026 ("quero adicionar os registros
+ *  de mercado e institucional também"). A rota reusa o recorte exato da janela
+ *  — mesma régua de datas, mesma exclusão das menções sem data, mesmas fontes
+ *  ligadas, grupo por id — e amplia só a lente. Reusar a rota da Base das
+ *  lentes (que já lista menção por período e por tema) traria linhas que o
+ *  quadro excluiu, e a lista discordaria do número que está ao lado dela.
  *
- *  CINCO COLUNAS, por decisão do dono do produto: data, veículo, título com
- *  link, sentimento e tier. A Base de dados tem mais — concessionária, UF,
- *  autor, subtema —, e aqui elas seriam ruído: quem clica num tema quer ver
- *  QUAIS matérias são, não reabrir a Base dentro de um modal.
+ *  O TOTAL DEIXOU DE SER O NÚMERO DA LINHA DO QUADRO, e o cabeçalho mostra OS
+ *  DOIS, nomeados: o quadro mede a IMPRENSA e esta lista mostra o tema nas
+ *  três. Era uma igualdade que eu construí e testei quando este modal nasceu;
+ *  ela cai junto com a premissa de uma lente só, e fingir que continua valendo
+ *  seria pior do que perdê-la — mas apagar o número da linha também, porque é
+ *  ele que a pessoa está conferindo quando abre o modal.
+ *
+ *  SEIS COLUNAS: data, veículo, título com link, sentimento, tier e A LENTE.
+ *  A coluna da lente foi pedida junto, e é ela que explica por que uma matéria
+ *  aparece aqui e não entrou na conta da linha clicada. A Base de dados tem
+ *  mais colunas — concessionária, UF, autor, subtema —, e aqui elas seriam
+ *  ruído: quem clica num tema quer ver QUAIS matérias são, não reabrir a Base
+ *  dentro de um modal.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,6 +43,28 @@ import { numero } from '@/dominio/formato';
 function diaEMes(iso: string): string {
   const [, mes, dia] = iso.split('-');
   return `${dia}/${mes}`;
+}
+
+/** "42 registros; o quadro conta 40, só da Imprensa".
+ *
+ *  OS DOIS NÚMEROS, NOMEADOS — e esta é a correção de um achado de revisão
+ *  contra a minha primeira tentativa. Quando o modal passou a listar três
+ *  lentes, eu tirei do cabeçalho o número da linha do quadro (que havia
+ *  deixado de ser igual ao desta lista) e o substituí por "em 3 lentes". Mas
+ *  quem abre o modal está conferindo a linha que clicou: omitir o número dela
+ *  deixa a divergência sem explicação, e "em 3 lentes" contado na PÁGINA não
+ *  descreve o total — numa primeira página só de Imprensa, 120 registros de
+ *  três lentes apareciam sem menção nenhuma a lente.
+ *
+ *  A SEGUNDA PARTE SÓ APARECE QUANDO OS NÚMEROS DIFEREM. Iguais, ela é ruído:
+ *  é o caso do tema que só tem matéria na Imprensa, que é a maioria.
+ *
+ *  E A CONTAGEM DE LENTES SAIU. Com os dois números nomeados ela não explica
+ *  mais nada, e a coluna "Lente" diz, linha por linha, o que ela resumia. */
+function contagemDoCabecalho(total: number, noQuadro: number): string {
+  const registros = `${numero(total)} ${total === 1 ? 'registro' : 'registros'}`;
+  if (total === noQuadro) return registros;
+  return `${registros}; o quadro conta ${numero(noQuadro)}, só da Imprensa`;
 }
 
 /** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na
@@ -115,7 +146,6 @@ export function RegistrosDaJanela({
 
   useEffect(carregar, [carregar]);
 
-  const total = dados?.total ?? grupo.mencoes;
   const paginas = dados ? Math.max(1, Math.ceil(dados.total / dados.tamanho)) : 1;
 
   return (
@@ -125,10 +155,16 @@ export function RegistrosDaJanela({
         //: O RECORTE NO CABEÇALHO, porque o modal é uma janela dentro de uma
         //: janela: sem as datas, a lista parece ser "todas as matérias deste
         //: tema" — e é só as de quinze dias.
+        //:
+        //: E OS DOIS NÚMEROS, NOMEADOS: o desta lista e o da linha clicada.
+        //: Enquanto o modal mostrava uma lente, eles eram o mesmo número e um
+        //: bastava; com três lentes a igualdade caiu, e quem abre o modal está
+        //: justamente conferindo a linha que clicou — ver
+        //: `contagemDoCabecalho`. Enquanto a leitura não chega, o cabeçalho não
+        //: arrisca número nenhum.
         `${grupo.contexto ? `${grupo.contexto} · ` : ''}` +
-        `${diaEMes(de)} a ${diaEMes(ate)} · ${numero(total)} ${
-          total === 1 ? 'menção' : 'menções'
-        }`
+        `${diaEMes(de)} a ${diaEMes(ate)}` +
+        (dados ? ` · ${contagemDoCabecalho(dados.total, grupo.mencoes)}` : '')
       }
       largura={860}
       aoFechar={aoFechar}
@@ -148,6 +184,11 @@ export function RegistrosDaJanela({
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--cinza-2)', fontSize: 12 }}>
               <th style={{ padding: '6px 8px 6px 0', whiteSpace: 'nowrap' }}>Data</th>
+              {/* A LENTE VEM CEDO, ao lado da data: ela é o que a pessoa
+                  procura quando estranha ver uma matéria aqui que não entrou
+                  na conta da linha que ela clicou. No fim da linha, ela só
+                  seria achada depois de a dúvida já ter nascido. */}
+              <th style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>Lente</th>
               <th style={{ padding: '6px 8px' }}>Veículo</th>
               <th style={{ padding: '6px 8px' }}>Título</th>
               <th style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>Sentimento</th>
@@ -159,6 +200,22 @@ export function RegistrosDaJanela({
               <tr key={registro.id} style={{ borderTop: '1px solid var(--borda)' }}>
                 <td style={{ padding: '6px 8px 6px 0', whiteSpace: 'nowrap' }}>
                   {diaEMes(registro.data)}
+                </td>
+                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>
+                  {/* O NOME VEM DO SERVIDOR, do cadastro das lentes. Um mapa
+                      de nomes aqui seria uma segunda fonte do mesmo nome, e
+                      duas fontes do mesmo nome só divergem calado. */}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 6px',
+                      borderRadius: 'var(--r-chip)',
+                      background: 'var(--bg-trilho)',
+                      color: 'var(--cinza-3)',
+                    }}
+                  >
+                    {registro.lente_nome}
+                  </span>
                 </td>
                 <td style={{ padding: '6px 8px' }}>{registro.veiculo ?? '—'}</td>
                 <td style={{ padding: '6px 8px' }}>
