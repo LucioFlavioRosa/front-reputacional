@@ -49,8 +49,13 @@ const ONDA_1: {
     // MESMAS FONTES DE `DESCRICAO_DAS_LENTES` (dominio/descricaoDasLentes.ts),
     // só resumidas por fornecedor em vez de por lente: é a mesma fonte única
     // de verdade, não um texto novo que pode divergir dela.
+    //
+    // O CRM SAIU DAQUI porque saiu do índice: a `0108` aposentou a fonte `crm`
+    // (`ativo = false`) quando a Institucional passou a recortar a imprensa, e
+    // `calcular_indice` deixou de contá-la. O CRM continua existindo e tem o
+    // portal dele — o que deixou de ser verdade é que ele alimenta esta nota.
     fontes:
-      'Monitoramento de imprensa e redes contratado pela Aegea (Clipei, Approach SL e Bites), o canal de atendimento (CM) e o próprio CRM.',
+      'Monitoramento de imprensa e redes contratado pela Aegea (Clipei, Approach SL e Bites) e o canal de atendimento (CM).',
     pronto: true,
   },
   {
