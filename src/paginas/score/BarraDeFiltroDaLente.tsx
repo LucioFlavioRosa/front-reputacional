@@ -29,61 +29,28 @@ import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FILTROS_DAS_LENTES, ordenarValores, rotuloDoValor } from '@/dominio/filtrosDasLentes';
 import type { DimensaoDaLente } from '@/dominio/filtrosDasLentes';
 import { mesCurto } from '@/dominio/dossie';
-import { ATALHOS_DA_JANELA, atalhoDaJanela, janelaDoAtalho } from '@/dominio/janelaDaJornada';
-import type { Janela, MesDaSerie } from '@/dominio/janelaDaJornada';
 
-/** O PERÍODO DA JORNADA, como filtro rápido (por pedido): é o MESMO estado da
- *  janela do gráfico — escolher "12M" aqui move a régua da Jornada, e arrastar a
- *  régua muda o que este campo mostra. */
-export interface PeriodoDaJornada {
-  meses: MesDaSerie[];
-  janela: Janela;
-  /** `null` volta ao padrão da Jornada (últimos 6 meses). */
-  aoMudar: (janela: Janela | null) => void;
-  /** A janela é a padrão — não há o que limpar. */
-  padrao: boolean;
+/** O MÊS DA SÍNTESE, como primeiro filtro rápido (pedido de 21/10/2026): no
+ *  lugar de "Últimos 3 meses", a escolha do mês que a pessoa quer ver. É o
+ *  MESMO mês da tela — escolher aqui é o mesmo que clicar no mês da Jornada. */
+export interface MesDaSintese {
+  /** Os meses medidos, `YYYY-MM-DD`. */
+  meses: string[];
+  mes: string;
+  aoEscolher: (mes: string) => void;
 }
 
-const PERSONALIZADO = 'personalizado';
-//: OS NOMES CURTOS DOS ATALHOS, para a lista caber na faixa; a descrição longa
-//: ("Do primeiro mês do ano…") fica no botão da Jornada.
-const ROTULO_DO_ATALHO: Record<string, string> = {
-  '3m': 'Últimos 3 meses',
-  '6m': 'Últimos 6 meses',
-  '12m': 'Últimos 12 meses',
-  ano: 'Ano atual',
-  tudo: 'Todo o histórico',
-};
-
-function campoDoPeriodo(periodo: PeriodoDaJornada): CampoDeFiltro {
-  const { meses, janela } = periodo;
-  const atalho = atalhoDaJanela(janela, meses);
-  //: A JANELA ARRASTADA À MÃO não é atalho nenhum: aparece como item próprio,
-  //: com os meses dela, para o campo nunca mentir sobre o que a Jornada mostra.
-  const personalizada =
-    !atalho && meses[janela.inicio] && meses[janela.fim]
-      ? [
-          {
-            valor: PERSONALIZADO,
-            rotulo: `${mesCurto(meses[janela.inicio].mes)} – ${mesCurto(meses[janela.fim].mes)}`,
-          },
-        ]
-      : [];
+function campoDoMes(mesDaSintese: MesDaSintese): CampoDeFiltro {
+  //: DO MAIS RECENTE PARA O MAIS ANTIGO: é o mês de agora que se procura.
+  const meses = [...new Set(mesDaSintese.meses)].sort().reverse();
   return {
-    chave: 'periodo',
-    rotulo: 'Período',
-    itens: [
-      ...personalizada,
-      ...ATALHOS_DA_JANELA.map((item) => ({
-        valor: item.chave,
-        rotulo: ROTULO_DO_ATALHO[item.chave] ?? item.descricao,
-      })),
-    ],
-    valorAtual: atalho ?? PERSONALIZADO,
+    chave: 'mes',
+    rotulo: 'Mês',
+    itens: meses.map((mes) => ({ valor: mes, rotulo: mesCurto(mes) })),
+    valorAtual: mesDaSintese.mes,
     mostrarEscolhido: true,
     aoEscolher: (valor) => {
-      if (valor === PERSONALIZADO || valor === atalho) return;
-      periodo.aoMudar(janelaDoAtalho(valor as (typeof ATALHOS_DA_JANELA)[number]['chave'], meses));
+      if (valor !== mesDaSintese.mes) mesDaSintese.aoEscolher(valor);
     },
   };
 }
@@ -118,17 +85,17 @@ export function BarraDeFiltroDaLente({
   filtro,
   definirFiltro,
   opcoes,
-  periodo,
+  mesDaSintese,
 }: {
   lente: string;
   filtro: FiltroDaLente;
   definirFiltro: (filtro: FiltroDaLente) => void;
   opcoes: OpcoesDeFiltroDaLente | null;
-  /** Presente, o primeiro campo da faixa é o período da Jornada. */
-  periodo?: PeriodoDaJornada;
+  /** Presente, o primeiro campo da faixa é o mês da Síntese. */
+  mesDaSintese?: MesDaSintese;
 }) {
   const config = FILTROS_DAS_LENTES[lente] ?? { rapidos: [], avancados: [] };
-  const comPeriodo = Boolean(periodo && periodo.meses.length >= 2);
+  const comMes = Boolean(mesDaSintese && mesDaSintese.meses.length > 0);
 
   const comValores = (lista: DimensaoDaLente[]) =>
     lista
@@ -143,14 +110,9 @@ export function BarraDeFiltroDaLente({
     //: acompanhar a rolagem. Sem caixa própria, o pai passa a ser a coluna da
     //: aba inteira, e a faixa desce junto até o fim da lente.
     <div className="sem-impressao" style={{ display: 'contents' }}>
-      {rapidos.length || comPeriodo ? (
+      {rapidos.length || comMes ? (
         <FaixaDeFiltros colada={false} compacta>
-          {periodo && comPeriodo ? (
-            <CampoSuspenso
-              campo={campoDoPeriodo(periodo)}
-              aoLimpar={periodo.padrao ? undefined : () => periodo.aoMudar(null)}
-            />
-          ) : null}
+          {mesDaSintese && comMes ? <CampoSuspenso campo={campoDoMes(mesDaSintese)} /> : null}
           {rapidos.map(({ dimensao, valores }) => (
             <CampoSuspenso
               key={dimensao.chave}

@@ -12,9 +12,11 @@
  *     Aqui o bond tem pregão e o índice tem mês: desenhá-los por índice poria
  *     o 12º pregão em cima do 12º mês. A posição sai da DATA.
  *
- *  2. SÃO DUAS RÉGUAS. A da esquerda nasce dos valores (`dominioDosBonds`); a
- *     da direita é FIXA em 0–100 (`faixaDoIndice`), e isso é o que impede o
- *     gráfico de mentir — ver o docstring daquela função.
+ *  2. SÃO DUAS RÉGUAS, E AS DUAS SE AJUSTAM. Desde 21/10/2026, por pedido: a
+ *     da esquerda nasce dos bonds visíveis no período, a da direita do score
+ *     (múltiplos de 10, dentro de 0 a 100), e cada uma aceita zoom à mão,
+ *     "estilo think-cell" — botões +/−/Auto, roda do mouse e arraste sobre a
+ *     régua. As contas estão em `dominio/cotacoesDosBonds`.
  *
  *  3. A LINHA DO ÍNDICE É EM DEGRAUS e tracejada. Um valor por mês desenhado
  *     como reta inclinada afirmaria que o índice subiu um pouquinho a cada dia,
@@ -36,12 +38,26 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 
-import type { FaixaDoEixo } from '@/dominio/eixoDaSerie';
-import { dominioDosBonds, faixaDoIndice } from '@/dominio/eixoDaSerie';
+import type { Escala, Faixa } from '@/dominio/cotacoesDosBonds';
+import {
+  aproximar,
+  dataPorExtensoCurto,
+  deslocar,
+  escalaAutomatica,
+  escalaDaFaixa,
+  escalaDoScore,
+  espalharEtiquetas,
+  prender,
+  rotuloDaMarca,
+  rotulosDoTempo,
+} from '@/dominio/cotacoesDosBonds';
 
-const MARGEM_ESQUERDA = 44;
-const MARGEM_DIREITA = 44;
+const MARGEM_ESQUERDA = 52;
+//: LARGA DE PROPÓSITO: cabem a etiqueta do último valor e, depois dela, a régua
+//: do score.
+const MARGEM_DIREITA = 84;
 const MARGEM_SUPERIOR = 12;
 const ALTURA_DO_EIXO_X = 22;
 
@@ -290,17 +306,127 @@ function caminhoEmDegraus(
   return d.trim();
 }
 
-function mesLegivel(iso: string): string {
-  const [ano, mes] = iso.split('-');
-  return `${mes}/${ano.slice(2)}`;
+/** O valor vigente de uma curva mensal num instante: o do degrau que o cobre. */
+function valorNoInstante(
+  degraus: { comeca: number; termina: number; valor: number }[],
+  ms: number,
+): number | null {
+  for (const degrau of degraus) {
+    if (ms >= degrau.comeca && ms < degrau.termina) return degrau.valor;
+  }
+  return null;
 }
+
+/** O ponto do trecho mais perto de `ms`, se estiver a até `tolerancia` dias. */
+function pontoMaisPerto(
+  pontos: { ms: number; valor: number }[],
+  ms: number,
+  tolerancia = 5,
+): { ms: number; valor: number } | null {
+  let melhor: { ms: number; valor: number } | null = null;
+  for (const ponto of pontos) {
+    if (!melhor || Math.abs(ponto.ms - ms) < Math.abs(melhor.ms - ms)) melhor = ponto;
+  }
+  return melhor && Math.abs(melhor.ms - ms) <= tolerancia * UM_DIA ? melhor : null;
+}
+
+/** Os três controles de um eixo: aproximar, afastar e voltar ao automático. */
+function ControlesDoEixo({
+  rotulo,
+  manual,
+  aoAproximar,
+  aoAfastar,
+  aoAutomatico,
+  alinhar,
+}: {
+  rotulo: string;
+  manual: boolean;
+  aoAproximar: () => void;
+  aoAfastar: () => void;
+  aoAutomatico: () => void;
+  alinhar: 'esquerda' | 'direita';
+}) {
+  const estilo = {
+    width: 26,
+    height: 24,
+    border: '1px solid var(--borda-input)',
+    background: 'var(--branco)',
+    color: 'var(--azul-mar)',
+    fontSize: 14,
+    fontWeight: 700,
+    lineHeight: 1,
+    cursor: 'pointer',
+    padding: 0,
+  } as const;
+  return (
+    <div
+      role="group"
+      aria-label={`Escala do eixo ${rotulo}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexDirection: alinhar === 'direita' ? 'row-reverse' : 'row',
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-3)' }}>{rotulo}</span>
+      <span style={{ display: 'inline-flex' }}>
+        <button
+          type="button"
+          aria-label={`Afastar o eixo ${rotulo}`}
+          title="Afastar (mostra uma faixa maior)"
+          onClick={aoAfastar}
+          style={{ ...estilo, borderRadius: '4px 0 0 4px' }}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          aria-label={`Aproximar o eixo ${rotulo}`}
+          title="Aproximar (mostra uma faixa menor)"
+          onClick={aoAproximar}
+          style={{ ...estilo, marginLeft: -1, borderRadius: '0 4px 4px 0' }}
+        >
+          +
+        </button>
+      </span>
+      <button
+        type="button"
+        aria-pressed={!manual}
+        title="Escala automática, ajustada ao período"
+        onClick={aoAutomatico}
+        style={{
+          height: 24,
+          padding: '0 8px',
+          border: `1px solid ${manual ? 'var(--borda-input)' : 'var(--azul-mar)'}`,
+          borderRadius: 4,
+          background: manual ? 'var(--branco)' : 'var(--azul-mar)',
+          color: manual ? 'var(--azul-mar)' : 'var(--branco)',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: 'pointer',
+        }}
+      >
+        Auto
+      </button>
+    </div>
+  );
+}
+
+/** Quanto um clique em +/− aproxima ou afasta. */
+const PASSO_DO_ZOOM = 0.8;
 
 export function GraficoDeDoisEixos({
   bonds,
   indice,
   rotuloDaEsquerda,
-  faixaFixa,
-  altura = 320,
+  rotuloDaDireita = 'Score',
+  inicioDoPeriodo = null,
+  fimDoPeriodo = null,
+  formatarValor = (valor) => valor.toFixed(1).replace('.', ','),
+  apoio = 'Preço em % do valor de face, fechamento diário. Score de 0 a 100. Coincidência no tempo não indica causa.',
+  chaveDaEscala = '',
+  altura = 340,
   vazio = 'Sem cotação no período.',
   aoEscolherData,
   dataEscolhida = null,
@@ -312,13 +438,21 @@ export function GraficoDeDoisEixos({
   indice: SerieMensal[];
   /** "Preço (% do par)" ou "Yield (%)" — o que o eixo esquerdo mede. */
   rotuloDaEsquerda: string;
-  /** A FAIXA FIXA DA MÉTRICA (`FAIXA_FIXA_DO_PRECO` / `FAIXA_FIXA_DO_YIELD`).
-   *
-   *  Ela é o que faz o eixo ESQUERDO não se reformar quando o período muda —
-   *  sem isto, só o eixo direito estava estável, e a coincidência visual entre
-   *  as duas curvas continuava sendo artefato do recorte. Omiti-la volta à
-   *  régua puramente automática. */
-  faixaFixa?: FaixaDoEixo;
+  rotuloDaDireita?: string;
+  /** O primeiro dia do período escolhido (`YYYY-MM-DD`), ou `null` = desde o
+   *  começo dos dados. O FIM é sempre o último pregão: o eixo X vai do começo
+   *  do período ao último dado, sem sobra em branco nas pontas. */
+  inicioDoPeriodo?: string | null;
+  /** O último dia do período (`YYYY-MM-DD`), quando a janela do navegador não
+   *  vai até o último pregão. `null` = o último dado. */
+  fimDoPeriodo?: string | null;
+  /** O valor de um bond no tooltip e na etiqueta da borda. */
+  formatarValor?: (valor: number) => string;
+  /** O texto de apoio embaixo do gráfico. */
+  apoio?: string;
+  /** Quando muda (período, métrica), o zoom à mão volta ao automático: uma
+   *  faixa escolhida para o yield não serve para o preço. */
+  chaveDaEscala?: string;
   altura?: number;
   vazio?: string;
   /** Escolher um dia clicando no gráfico ou num rótulo do eixo.
@@ -327,16 +461,29 @@ export function GraficoDeDoisEixos({
    *  telas montam este componente e não devem ganhar uma área de clique
    *  invisível, nem um cursor de mãozinha prometendo interação que não existe. */
   aoEscolherData?: (iso: string) => void;
-  /** O dia escolhido, para o gráfico marcá-lo. Sem a marca, o clique muda o que
-   *  está embaixo e o gráfico fica igual — e aí não há como saber qual janela
-   *  está na tela. */
+  /** O dia escolhido, para o gráfico marcá-lo. */
   dataEscolhida?: string | null;
   /** Quantos dias a janela cobre, só para sombreá-la. A conta de verdade é do
    *  servidor (ver `impacto_por_n2_na_janela`); aqui é desenho. */
   diasDaJanela?: number;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const svg = useRef<SVGSVGElement>(null);
   const [largura, definirLargura] = useState(0);
+  //: O ZOOM À MÃO DE CADA EIXO, "estilo think-cell": `null` é automático.
+  //: Independentes de propósito — aproximar o preço não mexe no score.
+  const [manualEsquerda, definirManualEsquerda] = useState<Faixa | null>(null);
+  const [manualDireita, definirManualDireita] = useState<Faixa | null>(null);
+  //: TROCAR PERÍODO OU MÉTRICA VOLTA AO AUTOMÁTICO, ajustado na renderização
+  //: (e não num efeito, que pintaria um quadro com a faixa velha).
+  const [chaveAnterior, definirChaveAnterior] = useState(chaveDaEscala);
+  if (chaveAnterior !== chaveDaEscala) {
+    definirChaveAnterior(chaveDaEscala);
+    definirManualEsquerda(null);
+    definirManualDireita(null);
+  }
+  const [hover, definirHover] = useState<number | null>(null);
+  const arrasto = useRef<{ eixo: 'esquerda' | 'direita'; y: number; faixa: Faixa } | null>(null);
 
   //: MEDE A LARGURA REAL, mesma técnica de `GraficoDeLinha` e
   //: `GraficoDeArvore`: sem isto o SVG nasce com uma largura adivinhada e o
@@ -347,8 +494,7 @@ export function GraficoDeDoisEixos({
     const observador = new ResizeObserver((entradas) => {
       //: A LISTA PODE VIR VAZIA, e `entradas[0].contentRect` então lança DENTRO
       //: do callback do observador — fora da renderização, onde o
-      //: `LimiteDeErro` não alcança: o erro sobe sem nada na tela explicando, e
-      //: a largura nunca mais chega. Achado de revisão, defensivo e barato.
+      //: `LimiteDeErro` não alcança. Achado de revisão, defensivo e barato.
       const entrada = entradas[0];
       if (!entrada) return;
       definirLargura(entrada.contentRect.width);
@@ -357,67 +503,118 @@ export function GraficoDeDoisEixos({
     return () => observador.disconnect();
   }, []);
 
-  //: CADA SÉRIE VIRA SEUS TRECHOS, uma vez: o desenho precisa deles e a conta
-  //: do eixo também, e refazê-los duas vezes deixaria as duas discordarem no
-  //: dia em que a regra de quebra mudasse.
   //: UMA TRANSFORMAÇÃO SÓ, e duas vistas dela: `series` é o que se DESENHA e
-  //: `comTrechos` é o que se DESCREVE (inclui quem não tem ponto). Calcular
-  //: `datados`/`trechos` duas vezes — uma para cada — era convite para as duas
-  //: discordarem no dia em que a regra de quebra mudasse; achado de revisão.
+  //: `comTrechos` é o que se DESCREVE (inclui quem não tem ponto).
   const comTrechos = bonds.map((s) => ({ ...s, trechos: trechos(datados(s.pontos)) }));
   const series = comTrechos.filter((s) => s.trechos.length > 0);
-  const todosOsValores = series.flatMap((s) =>
-    s.trechos.flatMap((t) => t.map((p) => p.valor)),
-  );
-  const faixaEsquerda = dominioDosBonds(todosOsValores, faixaFixa);
-  const faixaDireita = faixaDoIndice();
 
   const mensais = indice.map((serie) => ({
     ...serie,
     degraus: mesesDoIndice(serie.pontos),
   }));
-  //: O EIXO X PRECISA COBRIR TODAS as curvas mensais, e não a primeira: duas
-  //: lentes podem ter meses diferentes (uma sem dado num mês que a outra tem),
-  //: e recortar por uma esconderia o degrau da outra.
-  //:
-  //: UM MÊS SÓ APARECE UMA VEZ, e isto é conserto de achado ALTO de revisão.
-  //: Juntar os degraus de quatro curvas repete cada mês quatro vezes, e o eixo
-  //: é desenhado a partir desta lista: ele ganhava rótulos duplicados (com
-  //: chave repetida, que o React acusa) e a amostragem "um a cada N" passava a
-  //: mostrar `01/26, 09/26, 05/26, 01/26`, pulando meses no caminho. A
-  //: geometria nunca esteve errada — o mínimo e o máximo não mudam com
-  //: repetição —, mas o eixo que a pessoa LÊ, sim.
+  //: UM MÊS SÓ APARECE UMA VEZ (achado ALTO de revisão): juntar os degraus de
+  //: quatro curvas repetia cada mês quatro vezes na lista.
   const meses = [...new Map(mensais.flatMap((s) => s.degraus).map((m) => [m.comeca, m])).values()].sort(
     (a, b) => a.comeca - b.comeca,
   );
 
-  const datas = series.flatMap((s) => s.trechos.flatMap((t) => t.map((p) => p.ms)));
-  //: O EIXO X COBRE AS DUAS SÉRIES, E O FIM DO ÚLTIMO DEGRAU. Recortá-lo só
-  //: pelos bonds deixaria o degrau de um mês sem cotação fora da tela — e é
-  //: justamente o mês em que o papel não negociou que a pessoa quer ver ao lado
-  //: do índice. Incluir o `termina` é o que dá largura ao degrau de um mês só.
-  const todasAsDatas = [
-    ...datas,
-    ...meses.map((m) => m.comeca),
-    ...meses.map((m) => m.termina),
-  ];
-  const inicio = todasAsDatas.length ? Math.min(...todasAsDatas) : 0;
-  const fim = todasAsDatas.length ? Math.max(...todasAsDatas) : 1;
+  //: O EIXO X VAI DO COMEÇO DO PERÍODO AO ÚLTIMO PREGÃO, e é o pedido: "as
+  //: séries começam e terminam em datas diferentes e o gráfico sobra em branco
+  //: nas pontas". O degrau do score de um mês que passa do último pregão é
+  //: CORTADO na borda (clipPath), em vez de esticar o eixo para caber nele.
+  //: Sem bond nenhum, o eixo é o dos meses do score, como antes.
+  const datasDosBonds = series.flatMap((s) => s.trechos.flatMap((t) => t.map((p) => p.ms)));
+  const corte = inicioDoPeriodo ? emMilissegundos(inicioDoPeriodo) : null;
+  const primeiroDado = datasDosBonds.length
+    ? Math.min(...datasDosBonds)
+    : meses.length
+      ? meses[0].comeca
+      : 0;
+  const ultimoDado = datasDosBonds.length
+    ? Math.max(...datasDosBonds)
+    : meses.length
+      ? meses[meses.length - 1].termina
+      : 1;
+  //: O CORTE NUNCA ANTES DO PRIMEIRO DADO: "12M" num papel emitido há seis
+  //: meses começa no primeiro pregão dele, sem meio gráfico em branco.
+  const inicio = corte !== null ? Math.max(corte, primeiroDado) : primeiroDado;
+  const corteFinal = fimDoPeriodo ? emMilissegundos(fimDoPeriodo) : null;
+  const fim = Math.max(corteFinal !== null ? Math.min(ultimoDado, corteFinal) : ultimoDado, inicio + UM_DIA);
   const intervalo = Math.max(1, fim - inicio);
+  const visivel = (ms: number) => ms >= inicio && ms <= fim;
+
+  //: OS EIXOS Y NASCEM DO QUE ESTÁ VISÍVEL: só os pontos dentro do período, e
+  //: só os bonds e scores ligados. É o zoom que o pedido descreve.
+  const valoresVisiveis = series.flatMap((s) =>
+    s.trechos.flatMap((t) => t.filter((p) => visivel(p.ms)).map((p) => p.valor)),
+  );
+  const valoresDoScore = mensais.flatMap((s) =>
+    s.degraus.filter((d) => d.termina > inicio && d.comeca <= fim).map((d) => d.valor),
+  );
+  const automaticaEsquerda: Escala = escalaAutomatica(valoresVisiveis) ?? {
+    minimo: 0,
+    maximo: 100,
+    passo: 20,
+    marcas: [0, 20, 40, 60, 80, 100],
+  };
+  const automaticaDireita = escalaDoScore(valoresDoScore);
+  const escalaEsquerda = manualEsquerda ? escalaDaFaixa(manualEsquerda) : automaticaEsquerda;
+  const escalaDireita = manualDireita ? escalaDaFaixa(manualDireita) : automaticaDireita;
 
   const alturaDoPlot = altura - MARGEM_SUPERIOR - ALTURA_DO_EIXO_X;
   const larguraDoPlot = Math.max(1, largura - MARGEM_ESQUERDA - MARGEM_DIREITA);
+  const direitaDoPlot = MARGEM_ESQUERDA + larguraDoPlot;
 
-  const x = (ms: number) =>
-    MARGEM_ESQUERDA + ((ms - inicio) / intervalo) * larguraDoPlot;
+  const x = (ms: number) => MARGEM_ESQUERDA + ((ms - inicio) / intervalo) * larguraDoPlot;
   const yEsquerda = (valor: number) =>
     MARGEM_SUPERIOR +
     alturaDoPlot *
-      (1 - (valor - faixaEsquerda.minimo) / (faixaEsquerda.maximo - faixaEsquerda.minimo));
+      (1 - (valor - escalaEsquerda.minimo) / (escalaEsquerda.maximo - escalaEsquerda.minimo));
   const yDireita = (valor: number) =>
     MARGEM_SUPERIOR +
     alturaDoPlot *
-      (1 - (valor - faixaDireita.minimo) / (faixaDireita.maximo - faixaDireita.minimo));
+      (1 - (valor - escalaDireita.minimo) / (escalaDireita.maximo - escalaDireita.minimo));
+
+  /** O zoom de um eixo: aproximar (`fator < 1`) ou afastar, em volta de um valor. */
+  const zoom = (eixo: 'esquerda' | 'direita', fator: number, centro?: number) => {
+    if (eixo === 'esquerda') {
+      definirManualEsquerda(aproximar(escalaEsquerda, fator, centro));
+    } else {
+      //: O SCORE NÃO SAI DE 0 A 100, nem afastando.
+      definirManualDireita(prender(aproximar(escalaDireita, fator, centro), 0, 100));
+    }
+  };
+
+  //: A RODA DO MOUSE SOBRE A RÉGUA APROXIMA E AFASTA, em volta do valor sob o
+  //: cursor — o gesto do think-cell. Ouvinte NATIVO e não `onWheel`: o React
+  //: registra a roda como passiva, e aí não dá para impedir a página de rolar.
+  //: A REF GUARDA A VERSÃO ATUAL do tratador, para o ouvinte, registrado uma
+  //: vez só, não ler escalas de uma renderização antiga.
+  const aoRolar = useRef<(evento: WheelEvento) => void>(() => {});
+  const tratarRoda = (evento: WheelEvento) => {
+    const caixa = svg.current?.getBoundingClientRect();
+    if (!caixa) return;
+    const px = evento.clientX - caixa.left;
+    const py = evento.clientY - caixa.top;
+    const eixo = px < MARGEM_ESQUERDA ? 'esquerda' : px > direitaDoPlot ? 'direita' : null;
+    if (!eixo || py < MARGEM_SUPERIOR || py > MARGEM_SUPERIOR + alturaDoPlot) return;
+    evento.preventDefault();
+    const escala = eixo === 'esquerda' ? escalaEsquerda : escalaDireita;
+    const fracao = 1 - (py - MARGEM_SUPERIOR) / alturaDoPlot;
+    const centro = escala.minimo + fracao * (escala.maximo - escala.minimo);
+    zoom(eixo, evento.deltaY < 0 ? PASSO_DO_ZOOM : 1 / PASSO_DO_ZOOM, centro);
+  };
+  //: A REF É ESCRITA NUM EFEITO, e não na renderização (regra do React).
+  useEffect(() => {
+    aoRolar.current = tratarRoda;
+  });
+  useEffect(() => {
+    const alvo = svg.current;
+    if (!alvo) return;
+    const ouvir = (evento: WheelEvent) => aoRolar.current(evento);
+    alvo.addEventListener('wheel', ouvir, { passive: false });
+    return () => alvo.removeEventListener('wheel', ouvir);
+  }, [largura]);
 
   if (series.length === 0 && meses.length === 0) {
     return (
@@ -427,18 +624,8 @@ export function GraficoDeDoisEixos({
     );
   }
 
-  /** O que um leitor de tela ouve.
-   *
-   *  OS VALORES ENTRAM, como `GraficoDeLinha` faz — era divergência minha dar
-   *  só uma frase genérica ("preço dos bonds e índice reputacional"), que não
-   *  diz quais papéis, nem quanto, nem quando. Para uma série longa vão as
-   *  pontas: ler 1.100 pregões em voz alta não é acesso, é ruído.
-   */
   /** Onde desenhar a faixa da janela, em pixels — `null` sem data escolhida.
-   *
-   *  PRESO AO EIXO nas duas pontas: a janela de quinze dias pode começar antes
-   *  do primeiro ponto do gráfico, e uma faixa que vaza para a esquerda da
-   *  régua sugere dado que o gráfico não mostra. */
+   *  PRESO AO EIXO nas duas pontas. */
   const janela = (() => {
     if (!dataEscolhida) return null;
     const ms = emMilissegundos(dataEscolhida);
@@ -450,20 +637,11 @@ export function GraficoDeDoisEixos({
     };
   })();
 
+  /** O que um leitor de tela ouve: quais séries, com as pontas e o período. */
   const descricao = [
-    `${rotuloDaEsquerda} e índice reputacional de 0 a 100.`,
-    //: DE `bonds`, E NÃO DE `series`: `series` já descartou (linha 263) quem não
-    //: tem ponto nenhum, e descrever só os que sobraram faz a série escolhida
-    //: desaparecer de TUDO — do desenho, da descrição e de qualquer aviso. Quem
-    //: ligou o papel clica, nada muda, e a conclusão é que a tela travou.
-    //:
-    //: É O CASO DO PAPEL SEM COTAÇÃO NO PERÍODO — um papel emitido depois do
-    //: início da janela, ou que só tem preço e não tem yield na métrica
-    //: escolhida. Relatado em 19/10/2026 como "mudo a fonte de dados e a tela
-    //: trava": o servidor respondia 200 em 60ms com a série vazia, de propósito,
-    //: e era a tela que engolia a resposta em silêncio.
+    `${rotuloDaEsquerda} e ${rotuloDaDireita.toLowerCase()} de 0 a 100.`,
     ...comTrechos.map((s) => {
-      const pontos = s.trechos.flat();
+      const pontos = s.trechos.flat().filter((p) => visivel(p.ms));
       const primeiro = pontos[0];
       const ultimo = pontos[pontos.length - 1];
       const comoData = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -478,47 +656,141 @@ export function GraficoDeDoisEixos({
       : 'Índice sem valor no período.',
   ].join(' ');
 
-  //: O CLIQUE MORA NO `<svg>`, e não numa área transparente por cima.
-  //:
-  //: ERA UM `<rect>` COBRINDO O PLOT, e isso foi achado de revisão: em SVG a
-  //: ordem do documento é a ordem de pintura E a de alvo do ponteiro, então a
-  //: área virava o alvo sobre as curvas e impedia o `<title>` de cada série de
-  //: aparecer no hover nativo — o único jeito de identificar uma curva com o
-  //: mouse.
-  //:
-  //: O `<svg>` É ANCESTRAL DE TUDO: recebe o clique das curvas por propagação e
-  //: não cobre nada. Os rótulos do eixo param a propagação, senão o clique neles
-  //: seria resolvido duas vezes — pelo rótulo e pelo pixel embaixo dele.
+  //: AS ETIQUETAS DO ÚLTIMO VALOR, na borda direita do plot, sem sobreposição.
+  const ultimos = [
+    ...series.map((s) => {
+      const pontos = s.trechos.flat().filter((p) => visivel(p.ms));
+      const ultimo = pontos[pontos.length - 1];
+      return ultimo
+        ? { chave: s.chave, cor: s.cor, y: yEsquerda(ultimo.valor), texto: formatarValor(ultimo.valor) }
+        : null;
+    }),
+    ...mensais.map((s) => {
+      const valor = valorNoInstante(s.degraus, fim);
+      const ultimoDegrau = s.degraus.filter((d) => d.comeca <= fim).at(-1);
+      const v = valor ?? ultimoDegrau?.valor ?? null;
+      return v === null ? null : { chave: s.chave, cor: s.cor, y: yDireita(v), texto: String(Math.round(v)) };
+    }),
+  ].filter((e): e is { chave: string; cor: string; y: number; texto: string } => e !== null);
+  const baseDoPlot = MARGEM_SUPERIOR + alturaDoPlot;
+  const ysDasEtiquetas = espalharEtiquetas(
+    ultimos.map((e) => Math.min(baseDoPlot, Math.max(MARGEM_SUPERIOR, e.y))),
+    16,
+    MARGEM_SUPERIOR + 6,
+    baseDoPlot - 6,
+  );
+
+  //: O HOVER: a linha na data, um ponto em cada série visível e o tooltip.
+  const instante = hover;
+  const linhasDoTooltip =
+    instante === null
+      ? []
+      : [
+          ...series.map((s) => {
+            const ponto = pontoMaisPerto(s.trechos.flat(), instante);
+            return ponto
+              ? { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: formatarValor(ponto.valor), y: yEsquerda(ponto.valor), ms: ponto.ms }
+              : null;
+          }),
+          ...mensais.map((s) => {
+            const valor = valorNoInstante(s.degraus, instante);
+            return valor === null
+              ? null
+              : { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: String(Math.round(valor)), y: yDireita(valor), ms: instante };
+          }),
+        ].filter(
+          (l): l is { chave: string; cor: string; nome: string; texto: string; y: number; ms: number } =>
+            l !== null,
+        );
+
+  const rotulos = rotulosDoTempo(inicio, fim);
+  const pxDoHover = instante === null ? 0 : x(instante);
+
+  /** O pixel horizontal do evento, relativo ao começo do plot. */
+  const pxNoPlot = (evento: { clientX: number; currentTarget: Element }) =>
+    evento.clientX - evento.currentTarget.getBoundingClientRect().left - MARGEM_ESQUERDA;
+
+  const comecarArrasto = (eixo: 'esquerda' | 'direita') => (evento: ReactPointerEvent<SVGRectElement>) => {
+    evento.currentTarget.setPointerCapture?.(evento.pointerId);
+    arrasto.current = { eixo, y: evento.clientY, faixa: eixo === 'esquerda' ? escalaEsquerda : escalaDireita };
+  };
+  const arrastar = (evento: ReactPointerEvent<SVGRectElement>) => {
+    const atual = arrasto.current;
+    if (!atual) return;
+    //: ARRASTAR PARA BAIXO DESCE AS CURVAS: a faixa sobe na mesma medida.
+    const delta = ((evento.clientY - atual.y) / alturaDoPlot) * (atual.faixa.maximo - atual.faixa.minimo);
+    const nova = deslocar(atual.faixa, delta);
+    if (atual.eixo === 'esquerda') definirManualEsquerda(nova);
+    else definirManualDireita(prender(nova, 0, 100));
+  };
+  const soltar = () => {
+    arrasto.current = null;
+  };
+
   return (
-    <div ref={container} style={{ width: '100%' }}>
+    <div ref={container} style={{ width: '100%', position: 'relative' }}>
+      {/* OS CONTROLES DE CADA EIXO, em cima da régua dele. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 6,
+        }}
+      >
+        <ControlesDoEixo
+          rotulo={rotuloDaEsquerda}
+          manual={manualEsquerda !== null}
+          aoAproximar={() => zoom('esquerda', PASSO_DO_ZOOM)}
+          aoAfastar={() => zoom('esquerda', 1 / PASSO_DO_ZOOM)}
+          aoAutomatico={() => definirManualEsquerda(null)}
+          alinhar="esquerda"
+        />
+        <ControlesDoEixo
+          rotulo={rotuloDaDireita}
+          manual={manualDireita !== null}
+          aoAproximar={() => zoom('direita', PASSO_DO_ZOOM)}
+          aoAfastar={() => zoom('direita', 1 / PASSO_DO_ZOOM)}
+          aoAutomatico={() => definirManualDireita(null)}
+          alinhar="direita"
+        />
+      </div>
+
       {largura > 0 ? (
         <svg
+          ref={svg}
           width={largura}
           height={altura}
           role="img"
           aria-label={descricao}
-          style={aoEscolherData ? { cursor: 'crosshair' } : undefined}
+          style={aoEscolherData ? { cursor: 'crosshair', display: 'block' } : { display: 'block' }}
+          onMouseMove={(evento) => {
+            const px = pxNoPlot(evento);
+            if (px < 0 || px > larguraDoPlot) {
+              definirHover(null);
+              return;
+            }
+            definirHover(inicio + (px / larguraDoPlot) * intervalo);
+          }}
+          onMouseLeave={() => definirHover(null)}
           onClick={
             aoEscolherData
               ? (evento) => {
-                  //: O PIXEL É RELATIVO AO SVG, e não à janela: o gráfico pode
-                  //: estar rolado ou deslocado na página.
-                  const caixa = evento.currentTarget.getBoundingClientRect();
-                  const px = evento.clientX - caixa.left - MARGEM_ESQUERDA;
-                  //: FORA DO PLOT NÃO ESCOLHE NADA. A régua da esquerda ocupa 44
-                  //: pixels, e clicar nela pedia a data presa na ponta — um
-                  //: recorte que ninguém pediu, de um clique que não era no
-                  //: gráfico.
+                  const px = pxNoPlot(evento);
+                  //: FORA DO PLOT NÃO ESCOLHE NADA: as réguas são de zoom.
                   if (px < 0 || px > larguraDoPlot) return;
                   aoEscolherData(dataNoPixel(px, inicio, fim, larguraDoPlot));
                 }
               : undefined
           }
         >
-          {/* A JANELA ESCOLHIDA, ATRÁS DE TUDO. Primeiro no documento é primeiro
-              a ser pintado, então a faixa fica por baixo das curvas — ela é
-              contexto, e cobrir o dado com o recorte do dado seria inverter o
-              que importa. */}
+          <defs>
+            <clipPath id="recorte-do-plot">
+              <rect x={MARGEM_ESQUERDA} y={MARGEM_SUPERIOR} width={larguraDoPlot} height={alturaDoPlot} />
+            </clipPath>
+          </defs>
+
           {janela ? (
             <>
               <rect
@@ -535,169 +807,255 @@ export function GraficoDeDoisEixos({
                 x1={janela.ate}
                 x2={janela.ate}
                 y1={MARGEM_SUPERIOR}
-                y2={MARGEM_SUPERIOR + alturaDoPlot}
+                y2={baseDoPlot}
                 stroke="var(--azul-mar)"
                 strokeWidth={2}
               />
             </>
           ) : null}
 
-          {/* a régua da esquerda: três marcas, que é o que cabe sem poluir */}
-          {[0, 0.5, 1].map((fracao) => {
-            const valor =
-              faixaEsquerda.minimo + fracao * (faixaEsquerda.maximo - faixaEsquerda.minimo);
-            const alturaDaMarca = yEsquerda(valor);
+          {/* A RÉGUA DA ESQUERDA: marcas redondas, com a grade. */}
+          {escalaEsquerda.marcas.map((valor) => {
+            const y = yEsquerda(valor);
             return (
-              <g key={`e-${fracao}`}>
+              <g key={`e-${valor}`} data-marca-esquerda={valor}>
                 <line
                   x1={MARGEM_ESQUERDA}
-                  x2={largura - MARGEM_DIREITA}
-                  y1={alturaDaMarca}
-                  y2={alturaDaMarca}
-                  stroke="var(--borda)"
+                  x2={direitaDoPlot}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--bg-trilho)"
                   strokeWidth={1}
                 />
-                <text
-                  x={MARGEM_ESQUERDA - 6}
-                  y={alturaDaMarca + 4}
-                  textAnchor="end"
-                  fontSize={11}
-                  fill="var(--cinza-2)"
-                >
-                  {valor.toFixed(1)}
+                <text x={MARGEM_ESQUERDA - 8} y={y + 4} textAnchor="end" fontSize={12} fill="var(--cinza-2)">
+                  {rotuloDaMarca(valor, escalaEsquerda.passo)}
                 </text>
               </g>
             );
           })}
 
-          {/* a régua da direita: FIXA, e por isso os rótulos são sempre os
-              mesmos — é o que torna dois recortes comparáveis */}
-          {[0, 50, 100].map((valor) => (
+          {/* A RÉGUA DA DIREITA: o score, em múltiplos de 10. */}
+          {escalaDireita.marcas.map((valor) => (
             <text
               key={`d-${valor}`}
-              x={largura - MARGEM_DIREITA + 6}
+              data-marca-direita={valor}
+              x={direitaDoPlot + 46}
               y={yDireita(valor) + 4}
               textAnchor="start"
-              fontSize={11}
+              fontSize={12}
               fill="var(--ok-fg)"
             >
-              {valor}
+              {rotuloDaMarca(valor, escalaDireita.passo)}
             </text>
           ))}
 
-          {/* o índice, em degraus e tracejado */}
-          {/* AS CURVAS MENSAIS, uma por score ligado. Tracejadas e em degraus:
-              é o que as distingue, na própria forma, da linha diária de um
-              bond — e o que impede alguém de ler "a nota subiu um pouquinho a
-              cada dia". */}
-          {mensais.map((serie) =>
-            serie.degraus.length ? (
-              //: `data-mensal` NÃO É ENFEITE: as curvas mensais passaram a
-              //: morar num `<g>`, como as dos bonds, e sem uma marca no DOM
-              //: "os traçados dos bonds" e "os traçados mensais" viram o mesmo
-              //: seletor. Um teste que conte curvas de bond passaria a contar
-              //: o índice junto, e ninguém veria.
-              <g key={serie.chave} data-mensal={serie.chave}>
-                <title>{serie.rotulo}</title>
-                <path
-                  d={caminhoEmDegraus(serie.degraus, x, yDireita)}
-                  fill="none"
-                  stroke={serie.cor}
-                  strokeWidth={2}
-                  strokeDasharray={serie.traco ?? '6 4'}
-                />
-              </g>
-            ) : null,
-          )}
-
-          {/* os bonds: um traçado por trecho contínuo, e um MARCADOR para o
-              trecho de um ponto só — `M x,y` sem segmento não desenha nada, e a
-              série de um pregão único ficava invisível. */}
-          {series.map((serie) => (
-            <g key={serie.chave}>
-              <title>{serie.rotulo}</title>
-              {serie.trechos.map((trecho, i) =>
-                trecho.length === 1 ? (
-                  <circle
-                    key={i}
-                    cx={x(trecho[0].ms)}
-                    cy={yEsquerda(trecho[0].valor)}
-                    r={3}
-                    fill={serie.cor}
-                  />
-                ) : (
+          <g clipPath="url(#recorte-do-plot)">
+            {/* AS CURVAS MENSAIS, tracejadas e em degraus. */}
+            {mensais.map((serie) =>
+              serie.degraus.length ? (
+                <g key={serie.chave} data-mensal={serie.chave}>
+                  <title>{serie.rotulo}</title>
                   <path
-                    key={i}
-                    d={caminhoDoTrecho(trecho, x, yEsquerda)}
+                    d={caminhoEmDegraus(serie.degraus, x, yDireita)}
                     fill="none"
                     stroke={serie.cor}
                     strokeWidth={2}
-                    strokeLinejoin="round"
+                    strokeDasharray={serie.traco ?? '6 4'}
                   />
-                ),
-              )}
+                </g>
+              ) : null,
+            )}
+
+            {/* os bonds: um traçado por trecho contínuo, e um MARCADOR para o
+                trecho de um ponto só. */}
+            {series.map((serie) => (
+              <g key={serie.chave}>
+                <title>{serie.rotulo}</title>
+                {serie.trechos.map((trecho, i) =>
+                  trecho.length === 1 ? (
+                    <circle key={i} cx={x(trecho[0].ms)} cy={yEsquerda(trecho[0].valor)} r={3} fill={serie.cor} />
+                  ) : (
+                    <path
+                      key={i}
+                      d={caminhoDoTrecho(trecho, x, yEsquerda)}
+                      fill="none"
+                      stroke={serie.cor}
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                    />
+                  ),
+                )}
+              </g>
+            ))}
+          </g>
+
+          {/* O HOVER: linha vertical e um ponto por série. */}
+          {instante !== null ? (
+            <g data-testid="hover" pointerEvents="none">
+              <line x1={pxDoHover} x2={pxDoHover} y1={MARGEM_SUPERIOR} y2={baseDoPlot} stroke="#191B23" strokeOpacity={0.3} />
+              {linhasDoTooltip
+                .filter((l) => l.y >= MARGEM_SUPERIOR && l.y <= baseDoPlot)
+                .map((l) => (
+                  <rect
+                    key={l.chave}
+                    x={x(l.ms) - 4.5}
+                    y={l.y - 4.5}
+                    width={9}
+                    height={9}
+                    rx={4.5}
+                    fill={l.cor}
+                    stroke="var(--branco)"
+                    strokeWidth={2}
+                  />
+                ))}
+            </g>
+          ) : null}
+
+          {/* AS ETIQUETAS DO ÚLTIMO VALOR, na borda direita, sem sobreposição. */}
+          {ultimos.map((etiqueta, i) => (
+            <g key={`u-${etiqueta.chave}`} data-ultimo={etiqueta.chave} pointerEvents="none">
+              <rect
+                x={direitaDoPlot + 4}
+                y={ysDasEtiquetas[i] - 8}
+                width={38}
+                height={16}
+                rx={3}
+                fill={etiqueta.cor}
+              />
+              <text
+                x={direitaDoPlot + 23}
+                y={ysDasEtiquetas[i] + 4}
+                textAnchor="middle"
+                fontSize={11}
+                fontWeight={800}
+                fill="#FFFFFF"
+              >
+                {etiqueta.texto}
+              </text>
             </g>
           ))}
 
-          {/* o eixo x: um rótulo por mês, no máximo seis */}
-          {meses
-            .filter((_, i) => i % Math.ceil(Math.max(1, meses.length) / 6) === 0)
-            .map((mes) => {
-              const iso = new Date(mes.comeca).toISOString().slice(0, 10);
-              //: PARA A PROPAGAÇÃO: sem isto o clique no rótulo seria resolvido
-              //: DUAS vezes — pelo rótulo (último dia do mês) e pelo `<svg>`
-              //: embaixo (o pixel sob o cursor), e o segundo venceria. O mês
-              //: clicado deixaria de ser o mês escolhido.
-              const escolher = aoEscolherData
-                ? (evento?: { stopPropagation: () => void }) => {
-                    evento?.stopPropagation();
-                    aoEscolherData(ultimoDiaDoMes(iso, fim));
-                  }
-                : undefined;
-              return (
-                <text
-                  key={mes.comeca}
-                  data-mes={iso}
-                  x={x(mes.comeca)}
-                  y={altura - 6}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={aoEscolherData ? 'var(--azul-mar)' : 'var(--cinza-2)'}
-                  //: O RÓTULO É BOTÃO DE VERDADE quando dá para clicar: papel,
-                  //: foco e tecla. Um `onClick` sozinho num `<text>` seria
-                  //: inalcançável por teclado — e o eixo é justamente a porta
-                  //: que ele pediu ("seja no gráfico ou seja no eixo").
-                  role={aoEscolherData ? 'button' : undefined}
-                  tabIndex={aoEscolherData ? 0 : undefined}
-                  style={aoEscolherData ? { cursor: 'pointer' } : undefined}
-                  onClick={escolher}
-                  onKeyDown={
-                    escolher
-                      ? (evento) => {
-                          if (evento.key === 'Enter' || evento.key === ' ') {
-                            evento.preventDefault();
-                            escolher(evento);
-                          }
-                        }
-                      : undefined
-                  }
-                >
-                  {mesLegivel(iso)}
-                </text>
-              );
-            })}
+          {/* AS RÉGUAS SÃO DE ZOOM: arrastar move a faixa. A roda aproxima e
+              afasta, pelo ouvinte nativo lá em cima. */}
+          <rect
+            data-testid="regua-esquerda"
+            x={0}
+            y={MARGEM_SUPERIOR}
+            width={MARGEM_ESQUERDA}
+            height={alturaDoPlot}
+            fill="transparent"
+            style={{ cursor: 'ns-resize' }}
+            onPointerDown={comecarArrasto('esquerda')}
+            onPointerMove={arrastar}
+            onPointerUp={soltar}
+            onPointerCancel={soltar}
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <title>Role para aproximar ou afastar; arraste para mover</title>
+          </rect>
+          <rect
+            data-testid="regua-direita"
+            x={direitaDoPlot}
+            y={MARGEM_SUPERIOR}
+            width={MARGEM_DIREITA}
+            height={alturaDoPlot}
+            fill="transparent"
+            style={{ cursor: 'ns-resize' }}
+            onPointerDown={comecarArrasto('direita')}
+            onPointerMove={arrastar}
+            onPointerUp={soltar}
+            onPointerCancel={soltar}
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <title>Role para aproximar ou afastar; arraste para mover</title>
+          </rect>
 
+          {/* O EIXO X: dia até dois meses, mês acima disso. */}
+          {rotulos.map((rotulo) => {
+            const escolher = aoEscolherData
+              ? (evento?: { stopPropagation: () => void }) => {
+                  evento?.stopPropagation();
+                  aoEscolherData(rotulo.mensal ? ultimoDiaDoMes(rotulo.iso, fim) : rotulo.iso);
+                }
+              : undefined;
+            return (
+              <text
+                key={rotulo.ms}
+                data-mes={rotulo.iso}
+                x={x(rotulo.ms)}
+                y={altura - 6}
+                //: NAS PONTAS, O RÓTULO CRESCE PARA DENTRO: centrado, o "21/08"
+                //: da borda esquerda encostava no número da régua.
+                textAnchor={
+                  x(rotulo.ms) - MARGEM_ESQUERDA < 20
+                    ? 'start'
+                    : direitaDoPlot - x(rotulo.ms) < 20
+                      ? 'end'
+                      : 'middle'
+                }
+                fontSize={12}
+                fill={aoEscolherData ? 'var(--azul-mar)' : 'var(--cinza-2)'}
+                role={aoEscolherData ? 'button' : undefined}
+                tabIndex={aoEscolherData ? 0 : undefined}
+                style={aoEscolherData ? { cursor: 'pointer' } : undefined}
+                onClick={escolher}
+                onKeyDown={
+                  escolher
+                    ? (evento) => {
+                        if (evento.key === 'Enter' || evento.key === ' ') {
+                          evento.preventDefault();
+                          escolher(evento);
+                        }
+                      }
+                    : undefined
+                }
+              >
+                {rotulo.texto}
+              </text>
+            );
+          })}
         </svg>
       ) : null}
 
-      {/* A LEITURA É DE COINCIDÊNCIA NO TEMPO, não de causalidade — é o que a
-          própria especificação afirma na seção 1, e dizê-lo na tela é o que
-          impede o gráfico de dois eixos de ser lido como prova de relação. */}
-      <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}>
-        {rotuloDaEsquerda} à esquerda; índice reputacional (0–100) à direita, em
-        degraus porque é mensal. As curvas coincidem no tempo — o gráfico não
-        afirma que uma explica a outra.
-      </p>
+      {/* O TOOLTIP: data por extenso curto e o valor de cada série visível.
+          Troca de lado perto da borda direita, e some ao sair do gráfico. */}
+      {instante !== null && linhasDoTooltip.length ? (
+        <div
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 40,
+            left: pxDoHover,
+            transform:
+              pxDoHover > largura * 0.6 ? 'translateX(calc(-100% - 14px))' : 'translateX(14px)',
+            width: 230,
+            background: 'var(--branco)',
+            border: '1px solid var(--borda)',
+            borderRadius: 4,
+            boxShadow: '0 4px 14px rgba(25,27,35,.16)',
+            padding: '10px 12px',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
+            {dataPorExtensoCurto(new Date(instante).toISOString())}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+            {linhasDoTooltip.map((linha) => (
+              <div key={linha.chave} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: linha.cor, flex: '0 0 auto' }} />
+                <span style={{ flex: 1, color: 'var(--cinza-3)' }}>{linha.nome}</span>
+                <b className="tabular">{linha.texto}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '8px 0 0' }}>{apoio}</p>
     </div>
   );
 }
+
+type WheelEvento = Pick<WheelEvent, 'clientX' | 'clientY' | 'deltaY' | 'preventDefault'>;

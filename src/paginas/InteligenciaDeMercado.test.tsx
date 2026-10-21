@@ -9,8 +9,8 @@
  *     seletor nasce vazio e ninguém sabe o que escolher;
  *  2. que o seletor mande os tickers escolhidos, e que DESLIGAR O ÚLTIMO volte
  *     ao padrão em vez de pedir um gráfico sem série;
- *  3. que trocar métrica troque a FAIXA FIXA do eixo, não só o rótulo — é a
- *     faixa que faz o eixo não se reformar entre recortes;
+ *  3. que trocar métrica ou período devolva os eixos ao automático (a régua
+ *     fixa saiu em 21/10/2026: os eixos se ajustam e aceitam zoom à mão);
  *  4. que o índice venha DESTA rota, e não de `/api/score/serie`.
  */
 
@@ -40,22 +40,28 @@ vi.mock('@/api/cliente', () => ({
 const recebido: {
   bonds?: unknown;
   indice?: unknown;
-  faixaFixa?: unknown;
+  chaveDaEscala?: string;
+  inicioDoPeriodo?: string | null;
   rotulo?: string;
   dataEscolhida?: string | null;
   aoEscolherData?: (iso: string) => void;
+  aoMudarJanela?: (janela: { de: string; ate: string }) => void;
+  janela?: { de: string; ate: string };
 } = {};
 
 /** Escolhe uma data como o gráfico faria.
  *
  *  PELA FUNÇÃO QUE A TELA PASSOU, e não por um clique simulado no SVG: o
- *  componente real é dublado aqui (ele tem os próprios 26 testes, incluindo os
- *  do clique e da conversão pixel→data). O que este arquivo testa é o que a TELA
- *  faz quando uma data é escolhida — e misturar a aritmética do SVG nisso faria
- *  o teste da tela falhar por motivo do gráfico.
+ *  componente real é dublado aqui (ele tem os próprios testes, incluindo os do
+ *  clique e da conversão pixel→data).
  */
 function escolherData(iso: string) {
   act(() => recebido.aoEscolherData?.(iso));
+}
+
+/** Arrasta a janela do navegador para `de`–`ate`, como a pessoa faria. */
+function arrastarJanela(de: string, ate: string) {
+  act(() => recebido.aoMudarJanela?.({ de, ate }));
 }
 
 function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
@@ -89,19 +95,35 @@ function impacto(parcial: Partial<ImpactoNaJanela> = {}): ImpactoNaJanela {
 //: inventada aqui em vez da que roda no navegador — e foi justamente a
 //: divergência entre duas regras (`pontos.length` aqui, data válida lá) que a
 //: revisão pegou.
+//: O NAVEGADOR TAMBÉM VIRA MARCADOR: ele tem os próprios testes. Aqui interessa
+//: a janela que a tela passa e a função que ela recebe de volta.
+vi.mock('@/graficos/NavegadorDoPeriodo', async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import('@/graficos/NavegadorDoPeriodo')>()),
+  NavegadorDoPeriodo: (props: {
+    janela: { de: string; ate: string };
+    aoMudar: (janela: { de: string; ate: string }) => void;
+  }) => {
+    recebido.aoMudarJanela = props.aoMudar;
+    recebido.janela = props.janela;
+    return <p>NAVEGADOR</p>;
+  },
+}));
+
 vi.mock('@/graficos/GraficoDeDoisEixos', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('@/graficos/GraficoDeDoisEixos')>()),
   GraficoDeDoisEixos: (props: {
     bonds: unknown;
     indice: unknown;
-    faixaFixa: unknown;
+    chaveDaEscala?: string;
+    inicioDoPeriodo?: string | null;
     rotuloDaEsquerda: string;
     dataEscolhida?: string | null;
     aoEscolherData?: (iso: string) => void;
   }) => {
     recebido.bonds = props.bonds;
     recebido.indice = props.indice;
-    recebido.faixaFixa = props.faixaFixa;
+    recebido.chaveDaEscala = props.chaveDaEscala;
+    recebido.inicioDoPeriodo = props.inicioDoPeriodo;
     recebido.rotulo = props.rotuloDaEsquerda;
     recebido.dataEscolhida = props.dataEscolhida;
     recebido.aoEscolherData = props.aoEscolherData;
@@ -109,7 +131,6 @@ vi.mock('@/graficos/GraficoDeDoisEixos', async (importarOriginal) => ({
   },
 }));
 
-import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
 import { mercadoMudou } from '@/dominio/sincronizacao';
 import { InteligenciaDeMercado, TETO_DA_BUSCA } from './InteligenciaDeMercado';
 
@@ -123,8 +144,21 @@ const CATALOGO: SerieDeMercado['papeis'] = [
 function resposta(parcial: Partial<SerieDeMercado> = {}): SerieDeMercado {
   return {
     papeis: CATALOGO,
-    bonds: [{ ticker: 'AEGEBZ31', pontos: [{ data: '2026-01-05', valor: 95.5 }] }],
-    indice: [{ mes: '2026-01-01', isr: 52 }],
+    bonds: [
+      {
+        ticker: 'AEGEBZ31',
+        pontos: [
+          { data: '2026-01-05', valor: 95.5 },
+          { data: '2026-05-29', valor: 96 },
+        ],
+      },
+    ],
+    //: COM NOTA DA IMPRENSA EM MAIO, para os temas poderem terminar em maio
+    //: (eles param no último mês com nota da imprensa).
+    indice: [
+      { mes: '2026-01-01', isr: 52 },
+      { mes: '2026-05-01', isr: 54, lentes: { imprensa: 60 } },
+    ],
     metrica: 'preco',
     ...parcial,
   };
@@ -153,7 +187,7 @@ describe('ao abrir', () => {
     /** Mandar os tickers da Aegea explicitamente duplicaria na tela uma
      *  decisão que já está no servidor, e as duas divergiriam no dia em que a
      *  companhia emitisse um papel novo. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(obterSerieDeMercado).toHaveBeenCalledWith(
@@ -169,7 +203,7 @@ describe('ao abrir', () => {
       Promise.resolve(resposta({ bonds: [], indice: [] })),
     );
 
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
 
     await waitFor(() => expect(screen.getByText('AEGEBZ31')).toBeTruthy());
     expect(screen.getByText('Petrobras · PETBRA30')).toBeTruthy();
@@ -179,7 +213,7 @@ describe('ao abrir', () => {
     /** `/api/score/serie` exige o portal do Score: quem tem só o de mercado
      *  receberia 403 e a linha do eixo direito sairia vazia POR PERMISSÃO —
      *  indistinguível de falta de dado. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     //: UMA CURVA, A DO ÍNDICE — é a única ligada ao abrir. As lentes entram
@@ -190,40 +224,43 @@ describe('ao abrir', () => {
         rotulo: 'Índice geral',
         cor: expect.any(String),
         traco: expect.any(String),
-        pontos: [{ mes: '2026-01-01', valor: 52 }],
+        pontos: [
+          { mes: '2026-01-01', valor: 52 },
+          { mes: '2026-05-01', valor: 54 },
+        ],
       },
     ]);
   });
 
-  it('o rótulo da série sai da DESCRIÇÃO quando ela existe', async () => {
-    /** A descrição vem da planilha e só existe depois da primeira subida.
-     *  Usar sempre o ticker faria a legenda falar Bloomberg com quem lê
-     *  português. */
-    render(<InteligenciaDeMercado />);
+  it('a série se chama pelo TICKER, e o card traduz a descrição Bloomberg', async () => {
+    /** "AEGEBZ 9 01/20/31" era o nome da curva no tooltip, e é Bloomberg. O
+     *  card mostra o ticker e, embaixo, cupom e vencimento em português. */
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(recebido.bonds).toEqual([
-      expect.objectContaining({ chave: 'AEGEBZ31', rotulo: 'AEGEBZ 9 01/20/31' }),
+      expect.objectContaining({ chave: 'AEGEBZ31', rotulo: 'AEGEBZ31' }),
     ]);
+    expect(screen.getByText('Cupom 9% · vence em 20/01/2031')).toBeTruthy();
   });
 });
 
 describe('a métrica', () => {
-  it('trocar para yield troca a FAIXA FIXA do eixo, e não só o rótulo', async () => {
-    /** É a faixa que faz o eixo esquerdo não se reformar entre recortes.
-     *  Trocar só o rótulo deixaria o yield desenhado na régua do preço. */
-    render(<InteligenciaDeMercado />);
+  it('trocar para yield troca o rótulo e devolve os eixos ao automático', async () => {
+    /** Um zoom escolhido à mão para o preço não serve para o yield: a chave
+     *  da escala muda junto com a métrica, e o gráfico volta ao automático. */
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
-    expect(recebido.faixaFixa).toEqual(FAIXA_FIXA_DO_PRECO);
+    expect(recebido.chaveDaEscala).toContain('preco');
 
     screen.getByRole('button', { name: 'Yield' }).click();
 
-    await waitFor(() => expect(recebido.faixaFixa).toEqual(FAIXA_FIXA_DO_YIELD));
+    await waitFor(() => expect(recebido.chaveDaEscala).toContain('yield'));
     expect(recebido.rotulo).toContain('Yield');
   });
 
   it('o botão da métrica ativa diz que está pressionado', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(screen.getByRole('button', { name: 'Preço' }).getAttribute('aria-pressed')).toBe(
@@ -237,7 +274,7 @@ describe('a métrica', () => {
 
 describe('o seletor de papéis', () => {
   it('ligar um par pede a série com os tickers escolhidos', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     screen.getByRole('button', { name: /PETBRA30/ }).click();
@@ -253,7 +290,7 @@ describe('o seletor de papéis', () => {
 
   it('desligar o ÚLTIMO papel volta ao padrão, e não a um gráfico vazio', async () => {
     /** Desligar tudo deixaria a tela em branco sem nada explicando por quê. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     for (const ticker of ['AEGEBZ29', 'AEGEBZ31', 'AEGEBZ36']) {
@@ -267,7 +304,7 @@ describe('o seletor de papéis', () => {
   });
 
   it('o chip desligado continua VISÍVEL, para poder ser ligado', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     const par = screen.getByRole('button', { name: /PETBRA30/ });
@@ -284,7 +321,7 @@ describe('o erro', () => {
       Promise.reject(new Error('O Painel de Inteligência de Mercado ainda não foi lançado.')),
     );
 
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
 
     await waitFor(() =>
       expect(screen.getByText(/ainda não foi lançado/)).toBeTruthy(),
@@ -320,10 +357,11 @@ describe('a cor das séries', () => {
       ),
     );
 
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(cores()).toHaveLength(3));
 
-    expect(cores().map((s) => s.cor)).toEqual(['#FE952B', '#0027BD', '#A11FFF']);
+    //: O 2029 PASSOU DE LARANJA A VERDE-ÁGUA por pedido (21/10/2026).
+    expect(cores().map((s) => s.cor)).toEqual(['#0FA392', '#0027BD', '#A11FFF']);
   });
 
   it('DESLIGAR uma série não repinta as que ficaram', async () => {
@@ -341,25 +379,25 @@ describe('a cor das séries', () => {
         }),
       ),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(cores()).toHaveLength(3));
     const azulAntes = cores().find((s) => s.chave === 'AEGEBZ31')?.cor;
 
     //: desliga o PRIMEIRO, que numa alocação por posição faria o 2031 andar
-    //: para o slot 0 e trocar de cor
+    //: para o slot 0 e trocar de cor. O CARD é o botão desde 21/10/2026.
     screen.getByRole('button', { name: /AEGEBZ29/ }).click();
 
-    await waitFor(() => {
-      const ultima = obterSerieDeMercado.mock.calls.at(-1)?.[0];
-      expect(ultima?.tickers).not.toContain('AEGEBZ29');
-    });
+    //: SAI DO GRÁFICO, mas continua sendo PEDIDO: o card dele mostra o último
+    //: fechamento com a curva desligada.
+    await waitFor(() => expect(cores().map((s) => s.chave)).not.toContain('AEGEBZ29'));
+    expect(obterSerieDeMercado.mock.calls.at(-1)?.[0]?.tickers).toContain('AEGEBZ29');
     expect(cores().find((s) => s.chave === 'AEGEBZ31')?.cor).toBe(azulAntes);
   });
 
   it('o par ligado recebe uma cor PRÓPRIA, e o chip mostra ela', async () => {
     /** O chip usava cinza fixo, então a legenda não dizia qual curva era a do
      *  par. Agora o quadradinho do chip tem a cor da linha. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     const chip = screen.getByRole('button', { name: /PETBRA30/ });
@@ -389,7 +427,7 @@ describe('a cor das séries', () => {
       Promise.resolve(resposta({ papeis: [...CATALOGO, ...muitos], bonds: [] })),
     );
 
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('AEGEBZ31')).toBeTruthy());
 
     //: os três da Aegea já ocupam 3 slots; ligar cinco pares fecha os oito
@@ -397,32 +435,88 @@ describe('a cor das séries', () => {
       screen.getByRole('button', { name: new RegExp(`PAR${i}\\b`) }).click();
     }
 
-    //: O LIMITE É DITO NO CONTADOR, E AO LADO DOS CHIPS. Era uma frase solta
-    //: DEPOIS das duas listas, em 12px: longe de onde a pessoa clica e fácil de
-    //: não ver — achado da passada de UX. Agora a mesma informação vive no
-    //: contador que fica ACIMA dos chips e está sempre na tela, então o limite
-    //: deixa de ser surpresa no nono clique.
-    await waitFor(() => expect(screen.getByTestId('contador-de-series')).toBeTruthy());
-    const contador = screen.getByTestId('contador-de-series');
-    expect(contador.textContent).toContain('8 de 8');
-    expect(contador.textContent).toContain('desligue uma para ligar outra');
+    //: O LIMITE É DITO AO LADO DOS CHIPS, quando chega. O contador "N de 8"
+    //: saiu por pedido (21/10/2026); a frase aparece no oitavo.
+    await waitFor(() => expect(screen.getByTestId('limite-de-series')).toBeTruthy());
+    const limite = screen.getByTestId('limite-de-series');
+    expect(limite.textContent).toContain('8 séries');
+    expect(limite.textContent).toContain('Desligue uma para ligar outra');
     //: e o nono chip fica DESABILITADO, dizendo o que fazer
     const nono = screen.getByRole('button', { name: /PAR5\b/ });
     expect(nono.hasAttribute('disabled')).toBe(true);
     expect(nono.getAttribute('title')).toContain('Desligue uma série');
   });
 
-  it('o contador diz quantas séries estão no gráfico ANTES de o limite chegar', async () => {
-    /** "nenhum contador do tipo '3 papéis selecionados'" — achado da passada de
-     *  UX. Sem ele, quantas séries estão ligadas só se descobre contando os
-     *  chips acesos, e o limite de oito aparece como recusa no clique. */
-    render(<InteligenciaDeMercado />);
+  it('longe do limite, a frase do limite NÃO aparece', async () => {
+    /** O contador "3 de 8" saiu por pedido. O aviso só faz sentido quando
+     *  acabaram as cores. */
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
-    const contador = screen.getByTestId('contador-de-series');
-    expect(contador.textContent).toContain('3 de 8');
-    //: SEM O PEDIDO DE DESLIGAR, que só faz sentido quando acabaram as cores.
-    expect(contador.textContent).not.toContain('desligue uma');
+    expect(screen.queryByTestId('limite-de-series')).toBeNull();
+  });
+});
+
+describe('o período e os cards de cotação (21/10/2026)', () => {
+  const serieLonga = () =>
+    resposta({
+      bonds: [
+        {
+          ticker: 'AEGEBZ31',
+          pontos: [
+            //: UM PREGÃO ANTIGO, para o 6M não ficar preso no primeiro dado.
+            { data: '2026-01-02', valor: 88 },
+            { data: '2026-08-31', valor: 90 },
+            { data: '2026-09-18', valor: 91 },
+            { data: '2026-09-21', valor: 91.6 },
+          ],
+        },
+      ],
+    });
+
+  it('trocar o período NÃO busca de novo: o corte vai ao gráfico, contado do último dado', async () => {
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(serieLonga()));
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(recebido.inicioDoPeriodo).toBe('2026-03-21'));
+    const chamadas = obterSerieDeMercado.mock.calls.length;
+
+    screen.getByRole('button', { name: '1M' }).click();
+
+    await waitFor(() => expect(recebido.inicioDoPeriodo).toBe('2026-08-21'));
+    expect(obterSerieDeMercado.mock.calls.length).toBe(chamadas);
+    expect(obterSerieDeMercado.mock.calls.at(-1)?.[0]?.de).toBeUndefined();
+  });
+
+  it('os atalhos são 1M, 3M, 6M, 12M, Ano atual e Tudo', async () => {
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    for (const rotulo of ['1M', '3M', '6M', '12M', 'Ano atual', 'Tudo']) {
+      expect(screen.getByRole('button', { name: rotulo })).toBeTruthy();
+    }
+  });
+
+  it('o card mostra o último fechamento e as variações da semana e do mês', async () => {
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(serieLonga()));
+    render(<InteligenciaDeMercado comPares />);
+    const card = await screen.findByRole('button', { name: /AEGEBZ31: tirar do gráfico/ });
+
+    expect(card.textContent).toContain('91,6');
+    expect(card.textContent).toContain('21/09/2026');
+    //: semana: 91,6 − 91 (sexta, 18/09); mês: 91,6 − 90 (31/08)
+    expect(card.textContent).toContain('+0,6 pts');
+    expect(card.textContent).toContain('+1,6 pts');
+  });
+
+  it('o card desligado continua mostrando a cotação', async () => {
+    obterSerieDeMercado.mockImplementation(() => Promise.resolve(serieLonga()));
+    render(<InteligenciaDeMercado comPares />);
+    const card = await screen.findByRole('button', { name: /AEGEBZ31: tirar do gráfico/ });
+
+    card.click();
+
+    const desligado = await screen.findByRole('button', { name: /AEGEBZ31: mostrar no gráfico/ });
+    expect(desligado.getAttribute('aria-pressed')).toBe('false');
+    expect(desligado.textContent).toContain('91,6');
   });
 });
 
@@ -434,7 +528,7 @@ describe('enquanto a resposta nova não chega', () => {
    */
 
   it('o rótulo do eixo NÃO muda antes dos pontos', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     expect(recebido.rotulo).toContain('Preço');
 
@@ -443,15 +537,15 @@ describe('enquanto a resposta nova não chega', () => {
     screen.getByRole('button', { name: 'Yield' }).click();
 
     await waitFor(() => expect(screen.getByText('Atualizando…')).toBeTruthy());
-    //: o rótulo e a faixa continuam os do dado DESENHADO
+    //: o rótulo e a escala continuam os do dado DESENHADO
     expect(recebido.rotulo).toContain('Preço');
-    expect(recebido.faixaFixa).toEqual(FAIXA_FIXA_DO_PRECO);
+    expect(recebido.chaveDaEscala).toContain('preco');
   });
 
   it('o botão JÁ mostra a escolha, para o clique não parecer perdido', async () => {
     /** As duas coisas convivem: o botão diz o que a pessoa pediu, o gráfico diz
      *  o que está desenhado, e o "Atualizando…" liga os dois. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
@@ -472,11 +566,11 @@ describe('enquanto a resposta nova não chega', () => {
      *
      *  A CURVA ANTIGA CONTINUA LEGÍVEL, que é o ponto: ela é o melhor dado
      *  disponível até a resposta nova chegar, e some só se estiver errada. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
-    screen.getByRole('button', { name: '1M' }).click();
+    screen.getByRole('button', { name: 'Yield' }).click();
 
     await waitFor(() => expect(screen.getByText('Atualizando…')).toBeTruthy());
     const moldura = screen.getByText('GRAFICO').closest('[aria-busy]') as HTMLElement;
@@ -485,11 +579,11 @@ describe('enquanto a resposta nova não chega', () => {
   });
 
   it('o gráfico fica com `aria-busy`, para o leitor de tela saber', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
-    screen.getByRole('button', { name: '1M' }).click();
+    screen.getByRole('button', { name: 'Yield' }).click();
 
     await waitFor(() => {
       const moldura = screen.getByText('GRAFICO').closest('[aria-busy]');
@@ -514,7 +608,7 @@ describe('depois de subir a planilha, sem F5', () => {
    */
 
   it('o aviso do barramento faz a tela buscar de novo', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     const antes = obterSerieDeMercado.mock.calls.length;
 
@@ -528,9 +622,10 @@ describe('depois de subir a planilha, sem F5', () => {
   });
 
   it('a série nova aparece no gráfico', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
-    expect((recebido.bonds as { pontos: unknown[] }[])[0].pontos).toHaveLength(1);
+    //: OS DOIS PREGÕES DA RESPOSTA PADRÃO (janeiro e maio).
+    expect((recebido.bonds as { pontos: unknown[] }[])[0].pontos).toHaveLength(2);
 
     obterSerieDeMercado.mockImplementation(() =>
       Promise.resolve(
@@ -574,7 +669,7 @@ describe('depois de subir a planilha, sem F5', () => {
      *  O DUBLÊ JÁ ERA ASSIM desde o primeiro teste deste arquivo: o catálogo tem
      *  três papéis da Aegea (todos ligados por padrão) e a resposta traz série de
      *  UM. Os outros dois já estavam acesos e mudos aqui, e ninguém viu. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     const aviso = screen.getByTestId('sem-cotacao');
@@ -601,7 +696,7 @@ describe('depois de subir a planilha, sem F5', () => {
         }),
       ),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(screen.queryByTestId('sem-cotacao')).toBeNull();
@@ -617,7 +712,7 @@ describe('depois de subir a planilha, sem F5', () => {
      *  A FORMA CERTA É A QUE O `buscando` JÁ USAVA: a curva anterior continua na
      *  tela, os controles continuam de pé, e a falha aparece como faixa ao lado
      *  — com um botão que repete a busca. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     obterSerieDeMercado.mockImplementation(() =>
@@ -662,7 +757,7 @@ describe('depois de subir a planilha, sem F5', () => {
     vi.useFakeTimers();
     try {
       obterSerieDeMercado.mockImplementation(() => new Promise(() => {}));
-      render(<InteligenciaDeMercado />);
+      render(<InteligenciaDeMercado comPares />);
 
       //: DENTRO DE `act`: o relógio muda estado FORA de um evento do React, e
       //: sem isto a renderização não é aplicada antes da asserção — o teste
@@ -682,7 +777,7 @@ describe('depois de subir a planilha, sem F5', () => {
   it('SEM aviso nenhum a tela não fica rebuscando sozinha', async () => {
     /** O controle negativo que impede o conserto de virar um laço — o mesmo
      *  que o da tela do Score tem. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     const assentado = obterSerieDeMercado.mock.calls.length;
 
@@ -703,24 +798,34 @@ describe('os temas da janela, ao clicar numa data', () => {
    */
 
   it('ANTES do clique não há quadro nenhum, e a tela convida', async () => {
-    /** Dois quadros vazios na abertura seriam ruído, e pior: pareceriam dado que
-     *  não carregou. O convite é o que liga o gráfico aos quadros. */
-    render(<InteligenciaDeMercado />);
+    /** O CLIQUE VOLTOU (21/10/2026): o navegador escolhe o que se VÊ, o clique
+     *  escolhe o recorte dos temas. Dois quadros vazios na abertura seriam
+     *  ruído, e pareceriam dado que não carregou. */
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(screen.queryByTestId('quadro-positivos')).toBeNull();
-    expect(screen.queryByTestId('quadro-negativos')).toBeNull();
     expect(obterImpactoNaJanela).not.toHaveBeenCalled();
     expect(screen.getByText(/clique numa data/i)).toBeTruthy();
   });
 
+  it('ARRASTAR O NAVEGADOR não busca temas: ele só muda o que se vê', async () => {
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('NAVEGADOR')).toBeTruthy());
+
+    arrastarJanela('2026-05-06', '2026-05-20');
+
+    await waitFor(() => expect(recebido.inicioDoPeriodo).toBe('2026-05-06'));
+    expect(obterImpactoNaJanela).not.toHaveBeenCalled();
+  });
+
   it('o clique busca a janela e desenha os DOIS quadros', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
 
-    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n2', 15));
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15));
     await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
 
     const positivos = screen.getByTestId('quadro-positivos');
@@ -737,7 +842,7 @@ describe('os temas da janela, ao clicar numa data', () => {
     /** Não as que a tela pediu: os dois divergem enquanto a resposta não chega,
      *  e foi assim que o rótulo do eixo mentiu sobre a métrica — achado da
      *  revisão daquele bloco. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -758,7 +863,7 @@ describe('os temas da janela, ao clicar numa data', () => {
         }),
       ),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -771,7 +876,7 @@ describe('os temas da janela, ao clicar numa data', () => {
     obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(impacto({ negativos: [], total_negativos: 0 })),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -788,7 +893,7 @@ describe('os temas da janela, ao clicar numa data', () => {
         impacto({ positivos: [], negativos: [], total_positivos: 0, total_negativos: 0, mes_sem_base: true }),
       ),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -803,7 +908,7 @@ describe('os temas da janela, ao clicar numa data', () => {
     obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(impacto({ sem_grupo: 7, sem_data: 12 })),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -814,8 +919,8 @@ describe('os temas da janela, ao clicar numa data', () => {
     expect(fora.textContent).toContain('12');
   });
 
-  it('dá para FECHAR a janela e voltar ao gráfico sozinho', async () => {
-    render(<InteligenciaDeMercado />);
+  it('dá para FECHAR a janela e voltar ao convite', async () => {
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     escolherData('2026-05-20');
     await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
@@ -826,13 +931,31 @@ describe('os temas da janela, ao clicar numa data', () => {
     expect(screen.getByText(/clique numa data/i)).toBeTruthy();
   });
 
+  it('arrastar a janela apaga o atalho aceso', async () => {
+    /** O atalho e a janela ficam sincronizados: com a janela arrastada, nenhum
+     *  atalho afirma o período; clicar num atalho volta a ele. */
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('NAVEGADOR')).toBeTruthy());
+    expect(screen.getByRole('button', { name: '6M' }).getAttribute('aria-pressed')).toBe('true');
+
+    arrastarJanela('2026-05-06', '2026-05-20');
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '6M' }).getAttribute('aria-pressed')).toBe('false'),
+    );
+    expect(recebido.janela).toEqual({ de: '2026-05-06', ate: '2026-05-20' });
+
+    screen.getByRole('button', { name: '1M' }).click();
+    await waitFor(() => expect(recebido.janela).toEqual({ de: '2026-04-29', ate: '2026-05-29' }));
+  });
+
   it('a falha da janela NÃO engole o gráfico', async () => {
     /** A mesma lição do beco sem saída de hoje: a janela é um pedaço da tela, e
      *  a falha dela não pode levar o resto. */
     obterImpactoNaJanela.mockImplementation(() =>
       Promise.reject(new Error('Não foi possível ler a janela.')),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -851,7 +974,7 @@ describe('os temas da janela, ao clicar numa data', () => {
      *  afirmava outra.
      *
      *  O teste de antes cobria UM clique só, e por isso não via nada. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     escolherData('2026-05-20');
     await waitFor(() =>
@@ -864,7 +987,7 @@ describe('os temas da janela, ao clicar numa data', () => {
 
     //: OS QUADROS ANTIGOS SAEM, e a tela diz que está lendo a data nova.
     await waitFor(() => expect(screen.queryByTestId('quadro-positivos')).toBeNull());
-    expect(screen.getByText(/lendo os temas de 10\/04\/2026/i)).toBeTruthy();
+    expect(screen.getByText(/lendo os subtemas de 10\/04\/2026/i)).toBeTruthy();
   });
 
   it('a tela diz DE QUAL MÊS são os pontos, e com que régua', async () => {
@@ -876,7 +999,7 @@ describe('os temas da janela, ao clicar numa data', () => {
      *  menções de dois meses e o denominador é de um, então o número pode passar
      *  do que aquele mês inteiro movimentou. A ordem dos pilares continua exata;
      *  a escala, não — e quem lê precisa saber disso. */
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -914,7 +1037,7 @@ describe('os temas da janela, ao clicar numa data', () => {
       tamanho: 50,
     }),
   );
-  render(<InteligenciaDeMercado />);
+  render(<InteligenciaDeMercado comPares />);
   await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
   escolherData('2026-05-20');
   await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
@@ -925,8 +1048,8 @@ describe('os temas da janela, ao clicar numa data', () => {
   await userEvent.click(linha);
 
   expect(await screen.findByText('A matéria que empurrou')).toBeTruthy();
-  //: O ID DO GRUPO, O DIA CLICADO E O NÍVEL DO QUADRO.
-  expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1);
+  //: O ID DO GRUPO, O DIA CLICADO, O NÍVEL DO QUADRO E OS DIAS DA JANELA.
+  expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1, 15);
   //: E AS CINCO COLUNAS, com o título servindo de link para a matéria.
   expect(screen.getByText('Valor Econômico')).toBeTruthy();
   expect(screen.getByText('Propositiva')).toBeTruthy();
@@ -936,21 +1059,13 @@ describe('os temas da janela, ao clicar numa data', () => {
   ).toBe('https://exemplo/materia');
 });
 
-it('FECHAR a janela leva o modal dos registros com ela', async () => {
-  //: O modal é uma camada acima da janela, e viver mais que ela seria o mesmo
-  //: defeito do "segundo clique" que deixava a janela antiga na tela.
-  //:
-  //: ESTE TESTE É ESTRUTURAL, e a revisão tem razão ao dizer que o GESTO não é
-  //: o de quem usa: o modal é `aria-modal` com overlay, então com ele aberto o
-  //: botão "Fechar a janela" está coberto — no navegador ninguém o alcança, e no
-  //: jsdom o clique chega. O que ele protege é a POSSE do estado: `aberto` mora
-  //: dentro da janela, e subi-lo para a página faria o modal sobreviver a ela.
-  //: O caminho que a pessoa tem de verdade é o teste seguinte: Esc fecha o
-  //: modal, a janela fica, e só então ela é fechada.
+it('CLICAR OUTRA DATA leva o modal dos registros com ela', async () => {
+  //: O modal é uma camada acima da janela, e viver mais que ela mostraria
+  //: registros de um dia que já não é o da tela.
   obterRegistrosDaJanela.mockImplementation(() =>
     Promise.resolve({ itens: [], total: 0, pagina: 1, tamanho: 50 }),
   );
-  render(<InteligenciaDeMercado />);
+  render(<InteligenciaDeMercado comPares />);
   await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
   escolherData('2026-05-20');
   await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
@@ -961,9 +1076,9 @@ it('FECHAR a janela leva o modal dos registros com ela', async () => {
   );
   expect(await screen.findByText(/Nenhuma menção neste recorte/)).toBeTruthy();
 
-  await userEvent.click(screen.getByRole('button', { name: /fechar a janela/i }));
+  escolherData('2026-05-25');
 
-  expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull();
+  await waitFor(() => expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull());
 });
 
 it('ESC fecha o modal dos registros e deixa a janela no lugar', async () => {
@@ -976,7 +1091,7 @@ it('ESC fecha o modal dos registros e deixa a janela no lugar', async () => {
   obterRegistrosDaJanela.mockImplementation(() =>
     Promise.resolve({ itens: [], total: 0, pagina: 1, tamanho: 50 }),
   );
-  render(<InteligenciaDeMercado />);
+  render(<InteligenciaDeMercado comPares />);
   await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
   escolherData('2026-05-20');
   await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
@@ -989,13 +1104,11 @@ it('ESC fecha o modal dos registros e deixa a janela no lugar', async () => {
 
   await userEvent.keyboard('{Escape}');
 
-  //: O MODAL FOI, O QUADRO FICOU — e com ele o botão de fechar a janela, que
-  //: agora está alcançável de novo.
+  //: O MODAL FOI, O QUADRO FICOU.
   await waitFor(() =>
     expect(screen.queryByText(/Nenhuma menção neste recorte/)).toBeNull(),
   );
   expect(screen.getByTestId('quadro-positivos')).toBeTruthy();
-  expect(screen.getByRole('button', { name: /fechar a janela/i })).toBeTruthy();
 
   //: E O SEGUNDO TEMA ABRE, sem passar pelo gráfico outra vez.
   await userEvent.click(
@@ -1022,7 +1135,7 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
     obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(impacto({ lente: 'mercado' })),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -1041,13 +1154,13 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
      *  quarto que está classificado (a migration 0098 mede 72.590 menções com
      *  pilar e sem tema). Nenhum dos dois responde sozinho.
      *
-     *  ABRE NO TEMA, que é o que ele pediu primeiro. */
-    render(<InteligenciaDeMercado />);
+     *  ABRE NO SUBTEMA (N3) desde 21/10/2026, por pedido. */
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     escolherData('2026-05-20');
-    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n2', 15));
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15));
 
-    screen.getByRole('button', { name: 'Pilar' }).click();
+    screen.getByRole('button', { name: 'N1 · Atributo' }).click();
 
     //: O MESMO DIA, O NÍVEL NOVO.
     await waitFor(() =>
@@ -1062,14 +1175,14 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
     obterImpactoNaJanela.mockImplementation(() =>
       Promise.resolve(impacto({ sem_grupo: 9, nivel: 'n1' })),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
 
     await waitFor(() => expect(screen.getByTestId('fora-da-conta')).toBeTruthy());
     const fora = screen.getByTestId('fora-da-conta');
-    expect(fora.textContent).toContain('sem pilar atribuído');
+    expect(fora.textContent).toContain('sem atributo (N1) atribuído');
     expect(fora.textContent).not.toContain('tema estratégico');
   });
 
@@ -1083,7 +1196,7 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
         }),
       ),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -1100,7 +1213,7 @@ it('a tela diz DE QUAL NOTA são os pontos: a da lente, e não o índice', async
   });
 
   it('a data escolhida chega ao GRÁFICO, para ele marcá-la', async () => {
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     escolherData('2026-05-20');
@@ -1128,7 +1241,7 @@ describe('os scores no eixo direito', () => {
     //: É como a tela sempre abriu. Com os quatro acesos, a primeira coisa
     //: visível seriam quatro tracejados por cima das curvas dos bonds.
     obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     expect(recebido.indice).toHaveLength(1);
@@ -1138,7 +1251,7 @@ describe('os scores no eixo direito', () => {
 
   it('LIGAR UMA LENTE acrescenta a curva dela, sem tirar o índice', async () => {
     obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     await userEvent.click(screen.getByRole('button', { name: /^Imprensa/ }));
@@ -1157,7 +1270,7 @@ describe('os scores no eixo direito', () => {
     //: veículo classificado não foi MEDIDA — ela nem entra no índice daquele
     //: mês. O nulo atravessa até o gráfico, que quebra o degrau.
     obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     await userEvent.click(screen.getByRole('button', { name: /^Institucional/ }));
@@ -1169,7 +1282,7 @@ describe('os scores no eixo direito', () => {
 
   it('DESLIGAR O ÍNDICE tira só ele', async () => {
     obterSerieDeMercado.mockImplementation(() => Promise.resolve(resposta(COM_LENTES)));
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     await userEvent.click(screen.getByRole('button', { name: /^Mercado/ }));
@@ -1187,7 +1300,7 @@ describe('os scores no eixo direito', () => {
     obterSerieDeMercado.mockImplementation(() =>
       Promise.resolve(resposta({ indice: [{ mes: '2026-01-01', isr: 52 }] })),
     );
-    render(<InteligenciaDeMercado />);
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
 
     await userEvent.click(screen.getByRole('button', { name: /^Imprensa/ }));
@@ -1199,13 +1312,30 @@ describe('os scores no eixo direito', () => {
 });
 
 describe('o laço que não existe', () => {
-  it('SEM clique nenhum a janela não é buscada sozinha', async () => {
-    render(<InteligenciaDeMercado />);
+  it('a série não é buscada de novo sozinha', async () => {
+    render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     const assentado = obterSerieDeMercado.mock.calls.length;
 
     await new Promise((resolver) => setTimeout(resolver, 60));
 
     expect(obterSerieDeMercado.mock.calls.length).toBe(assentado);
+  });
+
+  it('SEM clique nenhum os temas não são buscados sozinhos', async () => {
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+
+    await new Promise((resolver) => setTimeout(resolver, 100));
+
+    expect(obterImpactoNaJanela).not.toHaveBeenCalled();
+  });
+});
+describe('os pares saem neste momento', () => {
+  it('sem `comPares`, a tela não mostra "Comparar com pares"', async () => {
+    render(<InteligenciaDeMercado />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    expect(screen.queryByText('Comparar com pares')).toBeNull();
+    expect(screen.queryByRole('button', { name: /PETBRA30/ })).toBeNull();
   });
 });

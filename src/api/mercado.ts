@@ -86,7 +86,25 @@ export function obterSerieDeMercado(opcoes: {
   const consulta = parametros.toString();
   return requisitar<SerieDeMercado>(
     `/api/mercado/bonds/serie${consulta ? `?${consulta}` : ''}`,
-  );
+  ).then(comValoresNumericos);
+}
+
+/** O preço chega como TEXTO ("89.9220"): o back serializa `Decimal` como string.
+ *
+ *  O gráfico antigo sobrevivia por coerção implícita (`Math.min` aceita
+ *  string), e quebrou no primeiro `toFixed`. A conversão mora AQUI, num lugar
+ *  só, para nenhuma tela ter de lembrar dela. Valor que não vira número sai da
+ *  série, em vez de virar `NaN` no eixo. */
+function comValoresNumericos(serie: SerieDeMercado): SerieDeMercado {
+  return {
+    ...serie,
+    bonds: serie.bonds.map((bond) => ({
+      ...bond,
+      pontos: bond.pontos
+        .map((ponto) => ({ ...ponto, valor: Number(ponto.valor) }))
+        .filter((ponto) => Number.isFinite(ponto.valor)),
+    })),
+  };
 }
 
 
@@ -97,7 +115,7 @@ export function obterSerieDeMercado(opcoes: {
  * anteriores — só na lente de imprensa, por ora.
  */
 
-export type NivelDaJanela = 'n1' | 'n2';
+export type NivelDaJanela = 'n1' | 'n2' | 'n3';
 
 export interface GrupoNaJanela {
   /** A CHAVE do cadastro. A lista se desenha por ela, e não pelo nome: dois

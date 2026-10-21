@@ -436,11 +436,15 @@ export function Layout({
           só empurra o `<main>` para baixo, como qualquer bloco de conteúdo. */}
       {/* FORA da Administração e do Cadastro compartilhado também: são
           cadastro, não agenda — o Recorte não tem nada ali para filtrar. */}
+      {/* E FORA DO MERCADO, pelo mesmo motivo da `BarraDeRecorte` lá em cima:
+          o filtro é de AGENDA do CRM, e no Mercado ele aparecia com "· 1" (o
+          período padrão de 30 dias) sem filtrar nada da tela. */}
       {!naCapa &&
       view !== 'cadastro' &&
       view !== 'admin' &&
       view !== 'score' &&
-      view !== 'compartilhado' ? (
+      view !== 'compartilhado' &&
+      view !== 'mercado' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco

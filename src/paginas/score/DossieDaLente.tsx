@@ -20,13 +20,13 @@
  *  a explicação não se separe dele. Ver `componentes/Procedencia.tsx`.
  */
 
+import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
 import { useEffect, useState } from 'react';
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
 import { Abas } from '@/componentes/Abas';
 import { BarraDeFiltroDaLente } from '@/paginas/score/BarraDeFiltroDaLente';
-import { OndeEstaACausa } from '@/paginas/score/OndeEstaACausa';
 import { RecorteDaLente } from '@/paginas/score/RecorteDaLente';
 import { ConsultaEmProfundidade } from '@/paginas/score/consulta/ConsultaEmProfundidade';
 import { LENTES_COM_DRILL } from '@/paginas/score/consulta/dados/useConsultaDaLente';
@@ -58,7 +58,7 @@ import {
 import type { Bloco, Dossie, SinalDoDossie } from '@/dominio/dossie';
 import { avisoDeExemplo } from '@/dominio/dossie';
 import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
-import { ajustar, janelaDoAtalho, mesesMedidos, serieDaLente } from '@/dominio/janelaDaJornada';
+import { mesesMedidos, serieDaLente } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
 import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
@@ -158,10 +158,9 @@ export function DossieDaLente({
     definirDossie(null);
   }, [lente, mes]);
 
-  //: A JANELA DA JORNADA MORA AQUI, e não dentro dela: o filtro rápido
-  //: "Período" da barra e o gráfico mexem no MESMO estado (por pedido). Com a
-  //: lente junto: trocar de lente volta ao padrão, como a Jornada fazia ao
-  //: remontar (`key={lente}`).
+  //: A JANELA DA JORNADA MORA AQUI, com a lente junto: trocar de lente volta ao
+  //: padrão, como a Jornada fazia ao remontar (`key={lente}`). O filtro rápido
+  //: deixou de mexer nela (21/10/2026): ele escolhe o MÊS da Síntese.
   const [janelaDaLente, definirJanelaDaLente] = useState<{ lente: string; janela: Janela | null }>({
     lente,
     janela: null,
@@ -170,9 +169,6 @@ export function DossieDaLente({
   const definirJanela = (janela: Janela | null) => definirJanelaDaLente({ lente, janela });
   const serieDestaLente = serieDaLente(serie, lente);
   const mesesDaJornada = mesesMedidos(serieDestaLente);
-  const janelaAtual = janelaEscolhida
-    ? ajustar(janelaEscolhida, mesesDaJornada.length)
-    : janelaDoAtalho('6m', mesesDaJornada);
 
   useEffect(() => {
     // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
@@ -268,24 +264,6 @@ export function DossieDaLente({
         corDaAba={corForteDaLente}
       />
 
-      {/* OS FILTROS NO TOPO, CONGELADOS, como no CRM: logo abaixo das abas, e
-          grudados sob o cabeçalho ao rolar. */}
-      {/* OS FILTROS DE CADA LENTE: Imprensa, Mercado, Sociedade digital e
-          Clientes, cada uma com os seus (`FILTROS_DAS_LENTES`). A Institucional
-          não tem recorte, e a barra não aparece para ela. */}
-      <BarraDeFiltroDaLente
-        lente={lente}
-        filtro={filtro}
-        definirFiltro={definirFiltro}
-        opcoes={opcoes}
-        periodo={{
-          meses: mesesDaJornada,
-          janela: janelaAtual,
-          aoMudar: definirJanela,
-          padrao: janelaEscolhida === null,
-        }}
-      />
-
       {/* A JORNADA DA LENTE ABRE A ABA, por pedido: o mesmo bloco da Visão
           geral (cartões, janela, pico e vale, frase de cabeçalho), sobre a
           nota DESTA lente — e sem "Comparar com": dentro da lente só se vê a
@@ -301,6 +279,9 @@ export function DossieDaLente({
         aoMudarJanela={definirJanela}
         comIndiceGeral
         dica="Clique num mês para ver a lente naquele mês."
+        //: A PREMISSA DO SCORE DA LENTE, quando ela tem uma a dizer (pedido de
+        //: 21/10/2026, para o Mercado): o que entra na conta e o que fica fora.
+        subtitulo={DESCRICAO_DAS_LENTES[lente]?.premissa}
       />
 
 
@@ -324,6 +305,27 @@ export function DossieDaLente({
       >
         Síntese Executiva
       </h2>
+
+      {/* OS FILTROS RÁPIDOS SÓ A PARTIR DAQUI, por pedido (21/10/2026): eles
+          valem para a Síntese executiva, e não para a Jornada acima. Logo
+          embaixo do título, e congelados sob o cabeçalho ao rolar: a faixa é
+          `sticky` e o pai dela é a coluna da aba inteira (`display: contents`
+          na barra), então ela acompanha a rolagem até o fim da lente.
+
+          O PRIMEIRO CAMPO É O MÊS, e não mais "Últimos 3 meses": a Síntese é de
+          um mês, e escolher outro aqui é o mesmo gesto de clicar no mês da
+          Jornada. A Institucional não tem recorte, e mostra só o mês. */}
+      <BarraDeFiltroDaLente
+        lente={lente}
+        filtro={filtro}
+        definirFiltro={definirFiltro}
+        opcoes={opcoes}
+        mesDaSintese={{
+          meses: mesesDaJornada.map((ponto) => ponto.mes),
+          mes,
+          aoEscolher: aoTrocarMes,
+        }}
+      />
       {!dossie && !erro ? <Carregando /> : null}
       {dossie ? (
         <Conteudo
@@ -523,26 +525,8 @@ function Conteudo({
         />
       ) : null}
 
-      {/* ANTES DOS DOIS PAINÉIS, e a ordem é a da leitura: este cartão
-          responde "onde está a causa" por seis cortes, e os painéis abaixo são
-          os dois que a especificação fixou para a lente — eles aprofundam dois
-          desses cortes. Ver o cartão primeiro e os painéis depois é descer; o
-          contrário é ler a conclusão antes da pergunta. */}
-      <OndeEstaACausa
-        //: REMONTA AO TROCAR DE MÊS OU DE LENTE, e isto é achado de revisão: a
-        //: aba escolhida é estado da tela, e o conjunto de abas muda com o mês
-        //: (uma dimensão deixa de explicar e volta a explicar). Sem a chave, o
-        //: estado antigo ressuscita: o cartão pulava de volta para "Autor" ao
-        //: remover um recorte, mesmo que o último visível fosse "Tema".
-        key={`${dossie.codigo}-${dossie.mes}`}
-        abas={dossie.onde_esta_a_causa}
-        filtro={filtro}
-        //: PARTE DO RECORTE QUE JÁ ESTÁ NA TELA: aprofundar de dentro de um mês
-        //: já filtrado por UF tem de significar "este tema, no Rio" — senão o
-        //: número do painel e o número do modal discordam, e quem clicou não
-        //: tem como saber por quê.
-        aoAprofundar={aoAprofundar}
-      />
+      {/* "ONDE ESTÁ A CAUSA" SAIU por pedido (21/10/2026): não vamos mais
+          utilizá-lo. O componente continua no código (`OndeEstaACausa`). */}
 
       {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
           declarar): os dois painéis crescem para a mesma altura, a do mais
@@ -944,8 +928,14 @@ function ClimaPorVeiculos({
 
   return (
     <ComFaixaDoTopo>
-    <Secao titulo="Termômetro por Veículos" ajuda={GUIA_DO_BLOCO[bloco.titulo]}>
-      <Cartao>
+    <Secao
+      titulo="Termômetro por Veículos"
+      subtitulo="Os 10 veículos com mais matérias e o placar de cada um, de −100 a +100"
+      ajuda={GUIA_DO_BLOCO[bloco.titulo]}
+      //: DO TAMANHO DO CARD AO LADO (% Matérias por tier e Top veículos), por
+      //: pedido: altura cheia, sem o cartão aninhado que o deixava menor.
+      estilo={{ height: '100%' }}
+    >
         <BarraDivergentePorItem
           itens={bloco.dados.map((linha) => ({
             chave: comoTexto(linha.chave),
@@ -964,7 +954,6 @@ function ClimaPorVeiculos({
           variante="termometro"
         />
         <NotaDeFonte ficha={bloco.ficha} />
-      </Cartao>
     </Secao>
     </ComFaixaDoTopo>
   );
