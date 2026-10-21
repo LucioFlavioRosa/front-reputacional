@@ -210,7 +210,7 @@ export function MateriaisOficiais() {
                 </td>
               )}
               {!visiveis.includes('Tipo') ? null : (
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                <td style={{ ...celula, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {ROTULO_DO_TIPO[referencia.tipo] ?? referencia.tipo}
                 </td>
               )}
@@ -241,7 +241,7 @@ export function MateriaisOficiais() {
                 </td>
               )}
               {!visiveis.includes('Arquivo') ? null : (
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                <td style={{ ...celula, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {referencia.versao?.arquivo_tipo
                     ? formatoLegivel(referencia.versao.arquivo_tipo)
                     : '—'}

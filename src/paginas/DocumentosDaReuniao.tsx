@@ -275,7 +275,7 @@ export function DocumentosDaReuniao({
                 </td>
               )}
               {!visiveis.includes('Momento') ? null : (
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                <td style={{ ...celula, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {ROTULO_DO_MOMENTO[documento.momento] ?? documento.momento}
                 </td>
               )}
@@ -290,7 +290,7 @@ export function DocumentosDaReuniao({
                 </td>
               )}
               {!visiveis.includes('Formato') ? null : (
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                <td style={{ ...celula, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {formatoLegivel(documento.arquivo_tipo)}
                 </td>
               )}
@@ -300,7 +300,7 @@ export function DocumentosDaReuniao({
                 </td>
               )}
               {!visiveis.includes('Anexado por') ? null : (
-                <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+                <td style={{ ...celula, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {documento.criado_por ?? '—'}
                   <span
                     className="tabular"
