@@ -58,6 +58,7 @@ export function RegistrosDaJanela({
   ate,
   nivel,
   de,
+  dias,
   aoFechar,
 }: {
   grupo: GrupoNaJanela;
@@ -67,6 +68,9 @@ export function RegistrosDaJanela({
   nivel: NivelDaJanela;
   /** Só para o cabeçalho dizer o período que a pessoa está olhando. */
   de: string;
+  /** Os dias da janela que produziu o número (o período do gráfico, até 90).
+   *  Sem ele o servidor usaria o padrão de 15, e a lista não seria a do quadro. */
+  dias?: number;
   aoFechar: () => void;
 }) {
   const [pagina, definirPagina] = useState(1);
@@ -101,7 +105,12 @@ export function RegistrosDaJanela({
     //: 2 chega em milissegundos, e o pisca-pisca de uma tabela sumindo e
     //: voltando é pior que ela ficar parada por um instante.
     const minha = ++versao.current;
-    obterRegistrosDaJanela(ate, grupo.id, nivel, pagina)
+    //: OS DIAS SÓ VÃO QUANDO EXISTEM, para a chamada sem eles continuar a de
+    //: sempre (o padrão do servidor).
+    (dias === undefined
+      ? obterRegistrosDaJanela(ate, grupo.id, nivel, pagina)
+      : obterRegistrosDaJanela(ate, grupo.id, nivel, pagina, dias)
+    )
       .then((lida) => {
         if (!vivo.current || minha !== versao.current) return;
         definirDados(lida);
@@ -111,7 +120,7 @@ export function RegistrosDaJanela({
         if (!vivo.current || minha !== versao.current) return;
         definirErro(falha.message);
       });
-  }, [ate, grupo.id, nivel, pagina]);
+  }, [ate, grupo.id, nivel, pagina, dias]);
 
   useEffect(carregar, [carregar]);
 
@@ -188,7 +197,7 @@ export function RegistrosDaJanela({
       {dados && dados.total > dados.tamanho ? (
         <>
           <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--cinza-2)' }}>
-            {`Página ${dados.pagina} de ${paginas} — ${numero(dados.total)} menções.`}
+            {`Página ${dados.pagina} de ${paginas} · ${numero(dados.total)} menções.`}
           </p>
           <Paginacao
             pagina={dados.pagina}

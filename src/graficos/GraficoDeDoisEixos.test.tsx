@@ -18,7 +18,7 @@
  *     os limites.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { GraficoDeDoisEixos, dataNoPixel, temCurva } from './GraficoDeDoisEixos';
@@ -331,38 +331,119 @@ describe('o degrau do índice', () => {
   });
 });
 
-describe('a régua da direita', () => {
-  it('mostra 0, 50 e 100 seja qual for o período', () => {
-    /** A DECISÃO QUE IMPEDE O GRÁFICO DE MENTIR.
-     *
-     *  Com régua automática, trocar de 3M para 6M mudaria a forma da curva do
-     *  índice sem o dado ter mudado, e a coincidência com a curva do bond
-     *  passaria a ser artefato do recorte. */
-    const curto = render(
+describe('as réguas se ajustam, e cada uma aceita zoom à mão', () => {
+  /** A DECISÃO MUDOU EM 21/10/2026, por pedido do dono do produto: as duas
+   *  réguas eram fixas (90 a 110 no preço, 0 a 100 no score) e passaram a se
+   *  ajustar ao que está visível, com zoom à mão "estilo think-cell". O que
+   *  impedia a coincidência de virar artefato do recorte agora é o botão Auto
+   *  e o texto de apoio, e não a régua presa. */
+  const marcasDireitas = (container: HTMLElement) =>
+    [...container.querySelectorAll('text[data-marca-direita]')].map((t) =>
+      Number(t.getAttribute('data-marca-direita')),
+    );
+  const marcasEsquerdas = (container: HTMLElement) =>
+    [...container.querySelectorAll('[data-marca-esquerda]')].map((g) =>
+      Number(g.getAttribute('data-marca-esquerda')),
+    );
+
+  it('o score anda de 10 em 10, ajustado ao que está no gráfico e dentro de 0 a 100', () => {
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={umIndice([
+          { mes: '2026-01-01', valor: 56 },
+          { mes: '2026-02-01', valor: 71 },
+        ])}
+      />,
+    );
+    const marcas = marcasDireitas(container);
+    expect(marcas.every((m) => m % 10 === 0)).toBe(true);
+    expect(Math.min(...marcas)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...marcas)).toBeLessThanOrEqual(100);
+    expect(Math.min(...marcas)).toBeGreaterThan(0);
+  });
+
+  it('o preço tem marcas redondas, só com os valores do período', () => {
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={umIndice([])}
+        inicioDoPeriodo="2026-02-01"
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              //: FORA DO PERÍODO: um preço de 60 em janeiro não pode abrir a régua.
+              { data: '2026-01-05', valor: 60 },
+              { data: '2026-02-05', valor: 91.3 },
+              { data: '2026-02-20', valor: 94.7 },
+            ],
+          },
+        ]}
+      />,
+    );
+    const marcas = marcasEsquerdas(container);
+    expect(Math.min(...marcas)).toBeGreaterThan(80);
+    //: Nenhum 71,0 / 90,5 / 110,0: todas no mesmo passo redondo.
+    const passo = marcas[1] - marcas[0];
+    expect([0.5, 1, 2, 2.5, 5]).toContain(Math.round(passo * 10) / 10);
+  });
+
+  it('o + aproxima só o eixo dele, e o Auto volta ao automático', () => {
+    const { container, getByRole } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={umIndice([
+          { mes: '2026-01-01', valor: 56 },
+          { mes: '2026-02-01', valor: 71 },
+        ])}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 90 },
+              { data: '2026-02-20', valor: 98 },
+            ],
+          },
+        ]}
+      />,
+    );
+    const direitaAntes = marcasDireitas(container);
+    const esquerdaAntes = marcasEsquerdas(container);
+
+    fireEvent.click(getByRole('button', { name: /Aproximar o eixo Preço/ }));
+    const esquerdaDepois = marcasEsquerdas(container);
+    expect(Math.max(...esquerdaDepois) - Math.min(...esquerdaDepois)).toBeLessThan(
+      Math.max(...esquerdaAntes) - Math.min(...esquerdaAntes),
+    );
+    //: O OUTRO EIXO NÃO MEXE.
+    expect(marcasDireitas(container)).toEqual(direitaAntes);
+
+    const auto = getByRole('group', { name: /Escala do eixo Preço/ }).querySelector(
+      'button[aria-pressed]',
+    ) as HTMLButtonElement;
+    expect(auto.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(auto);
+    expect(marcasEsquerdas(container)).toEqual(esquerdaAntes);
+  });
+
+  it('afastar o score não passa de 0 a 100', () => {
+    const { container, getByRole } = render(
       <GraficoDeDoisEixos
         rotuloDaEsquerda="Preço (% do par)"
         bonds={[]}
         indice={umIndice([{ mes: '2026-01-01', valor: 50 }])}
       />,
     );
-    const longo = render(
-      <GraficoDeDoisEixos
-        rotuloDaEsquerda="Preço (% do par)"
-        bonds={[]}
-        indice={umIndice([
-          { mes: '2026-01-01', valor: 10 },
-          { mes: '2026-02-01', valor: 90 },
-        ])}
-      />,
-    );
-
-    const rotulos = (r: ReturnType<typeof render>) =>
-      [...r.container.querySelectorAll('text')]
-        .map((t) => t.textContent)
-        .filter((t) => t === '0' || t === '50' || t === '100');
-
-    expect(rotulos(curto)).toEqual(['0', '50', '100']);
-    expect(rotulos(longo)).toEqual(['0', '50', '100']);
+    for (let i = 0; i < 12; i++) fireEvent.click(getByRole('button', { name: /Afastar o eixo Score/ }));
+    const marcas = marcasDireitas(container);
+    expect(Math.min(...marcas)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...marcas)).toBeLessThanOrEqual(100);
   });
 });
 
@@ -387,9 +468,7 @@ describe('o estado vazio e o aviso', () => {
       />,
     );
 
-    expect(
-      getByText(/não afirma que uma explica a outra/),
-    ).toBeTruthy();
+    expect(getByText(/Coincidência no tempo não indica causa/)).toBeTruthy();
   });
 });
 
@@ -522,28 +601,56 @@ describe('escolher uma data no gráfico', () => {
 
   it('clicar no RÓTULO DO MÊS escolhe o último dia dele dentro do gráfico', () => {
     /** "ou seja no eixo". O rótulo é um mês, e a janela precisa de um DIA: o
-     *  último do mês é o que faz os quinze dias caírem DENTRO do mês clicado —
-     *  pegar o dia 1º jogaria a janela quase toda para o mês anterior, que não é
-     *  o que alguém clicando em "jan" quer ver. */
+     *  último do mês é o que faz os quinze dias caírem DENTRO do mês clicado.
+     *  O MÊS SÓ É RÓTULO ACIMA DE DOIS MESES de período (abaixo disso é o dia),
+     *  por isso este gráfico vai de janeiro a abril. */
     const escolhida: string[] = [];
-    const { container } = comClique((iso) => escolhida.push(iso));
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        indice={umIndice([])}
+        bonds={[
+          {
+            chave: 'A',
+            rotulo: 'Aegea 2031',
+            cor: AZUL,
+            pontos: [
+              { data: '2026-01-05', valor: 95 },
+              { data: '2026-04-20', valor: 97 },
+            ],
+          },
+        ]}
+        aoEscolherData={(iso) => escolhida.push(iso)}
+      />,
+    );
 
-    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    const rotulo = container.querySelector('[data-mes="2026-02-01"]') as Element;
     rotulo.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(escolhida).toEqual(['2026-01-31']);
+    expect(escolhida).toEqual(['2026-02-28']);
   });
 
-  it('o rótulo do mês responde ao TECLADO', () => {
+  it('até dois meses o rótulo é o DIA, e clicar nele escolhe aquele dia', () => {
     const escolhida: string[] = [];
     const { container } = comClique((iso) => escolhida.push(iso));
 
-    const rotulo = container.querySelector('[data-mes="2026-01-01"]') as Element;
+    const rotulo = container.querySelector('[data-mes="2026-01-05"]') as Element;
+    expect(rotulo.textContent).toBe('05/01');
+    rotulo.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(escolhida).toEqual(['2026-01-05']);
+  });
+
+  it('o rótulo do eixo responde ao TECLADO', () => {
+    const escolhida: string[] = [];
+    const { container } = comClique((iso) => escolhida.push(iso));
+
+    const rotulo = container.querySelector('[data-mes="2026-01-05"]') as Element;
     expect(rotulo.getAttribute('role')).toBe('button');
     expect(rotulo.getAttribute('tabindex')).toBe('0');
     rotulo.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
 
-    expect(escolhida).toEqual(['2026-01-31']);
+    expect(escolhida).toEqual(['2026-01-05']);
   });
 
   it('SEM o `aoEscolherData`, o gráfico não fica clicável', () => {
@@ -752,7 +859,9 @@ describe('a acessibilidade', () => {
       />,
     );
 
-    expect([...container.querySelectorAll('title')].map((t) => t.textContent)).toEqual([
+    //: `g > title`: as RÉGUAS de zoom também têm `title` (a dica do gesto), e
+    //: elas não são série.
+    expect([...container.querySelectorAll('g > title')].map((t) => t.textContent)).toEqual([
       'Aegea 2031',
     ]);
   });

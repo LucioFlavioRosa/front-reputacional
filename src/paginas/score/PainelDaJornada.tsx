@@ -56,6 +56,7 @@ export function PainelDaJornada({
   lentesParaComparar,
   comIndiceGeral = false,
   dica,
+  subtitulo,
   janela: janelaDeFora,
   aoMudarJanela,
 }: {
@@ -74,6 +75,8 @@ export function PainelDaJornada({
   comIndiceGeral?: boolean;
   /** A linha que ensina o gesto, no fim da legenda. */
   dica: string;
+  /** Uma linha embaixo do título: a premissa do score da lente, quando há. */
+  subtitulo?: string;
   /** A JANELA VINDA DE FORA, quando outro controle a divide com a Jornada — o
    *  filtro rápido "Período" da lente. Ausente, a Jornada guarda a sua. `null`
    *  é o padrão (últimos 6 meses). */
@@ -117,7 +120,7 @@ export function PainelDaJornada({
 
   return (
     <ComFaixaDoTopo>
-      <Secao titulo={titulo}>
+      <Secao titulo={titulo} subtitulo={subtitulo}>
         <Cartao>
           {/* A LEITURA, EM FONTE DE TEXTO, por pedido: é a frase que se lê
               antes dos números — em que pé o índice está —, e não um subtítulo

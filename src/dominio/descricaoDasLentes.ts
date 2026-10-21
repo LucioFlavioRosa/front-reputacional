@@ -17,6 +17,8 @@ export interface DescricaoDaLente {
   /** A fonte em uso hoje ("Utilizada:" da lâmina). */
   fonteUtilizada: string;
   proximasOndas: string;
+  /** A premissa do score, dita embaixo do título da Jornada da lente. */
+  premissa?: string;
 }
 
 export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
@@ -29,6 +31,12 @@ export const DESCRICAO_DAS_LENTES: Record<string, DescricaoDaLente> = {
   mercado: {
     objetivo: 'Mostra como investidores e agências de rating leem a companhia.',
     fonteUtilizada: 'Clipei, imprensa econômica de todos os tiers (proxy)',
+    //: A REGRA DE VERDADE, conferida no back (21/10/2026): a fonte
+    //: `clipei_investidores` recorta pela lista `imprensa_economica`, que é a
+    //: subcategoria "Econômica e de negócios" da categoria Imprensa no Cadastro
+    //: de Instituições. Sem filtro de tier nem de canal.
+    premissa:
+      'Premissa do score: matérias da Clipei de veículos classificados no Cadastro de Instituições como Imprensa › Econômica e de negócios, de todos os tiers e canais.',
     proximasOndas:
       'Próximas ondas: somar as interações com essas instituições registradas no CRM dos Stakeholders.',
   },

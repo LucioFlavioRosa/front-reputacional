@@ -32,8 +32,19 @@ import type {
 } from '@/api/cliente';
 import { Carregando, FaixaDeErro } from '@/componentes/basicos';
 import { numero } from '@/dominio/formato';
-import { FAIXA_FIXA_DO_PRECO, FAIXA_FIXA_DO_YIELD } from '@/dominio/eixoDaSerie';
+import {
+  ATALHOS_DO_PERIODO,
+  corDaVariacao,
+  descricaoLegivelDoBond,
+  inicioDoPeriodo,
+  prenderJanela,
+  resumoDoBond,
+  variacaoEmPontos,
+} from '@/dominio/cotacoesDosBonds';
+import type { AtalhoDoPeriodo } from '@/dominio/cotacoesDosBonds';
 import { GraficoDeDoisEixos, temCurva } from '@/graficos/GraficoDeDoisEixos';
+import { NavegadorDoPeriodo } from '@/graficos/NavegadorDoPeriodo';
+import type { JanelaDoPeriodo } from '@/dominio/cotacoesDosBonds';
 import { RegistrosDaJanela } from '@/paginas/RegistrosDaJanela';
 import { mercadoMudou } from '@/dominio/sincronizacao';
 import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
@@ -66,7 +77,10 @@ import type { SerieDatada } from '@/graficos/GraficoDeDoisEixos';
  *  um gráfico comporta, e o limite dito em voz alta é melhor que duas curvas
  *  indistinguíveis. */
 const CORES = [
-  '#FE952B',
+  //: VERDE-ÁGUA NO LUGAR DO LARANJA, por pedido (21/10/2026). Mais escuro que
+  //: a Turquesa Rio (#17E3CB) da marca: numa linha de 2px e com texto branco
+  //: na etiqueta da borda, o tom claro some.
+  '#0FA392',
   '#0027BD',
   '#A11FFF',
   '#B32328',
@@ -122,12 +136,6 @@ const SCORES_DO_GRAFICO = [
 
 const SCORES_AO_ABRIR = ['isr'];
 
-const PERIODOS = [
-  { codigo: '1M', rotulo: '1 mês', dias: 30 },
-  { codigo: '3M', rotulo: '3 meses', dias: 90 },
-  { codigo: '6M', rotulo: '6 meses', dias: 180 },
-  { codigo: 'tudo', rotulo: 'Tudo', dias: null },
-] as const;
 
 /** Quanto a tela espera antes de desistir de uma busca, em milissegundos.
  *
@@ -139,9 +147,9 @@ export const TETO_DA_BUSCA = 20_000;
 
 /** Quantos dias a janela dos temas cobre, contados para trás do dia clicado.
  *
- *  QUINZE, por pedido ("pega a data e subtrai 15 dias"). O servidor tem o mesmo
- *  número como padrão; a tela o manda explícito porque é ela que o diz na
- *  legenda, e dois lugares com o mesmo valor calado divergiriam em silêncio. */
+ *  QUINZE, por pedido ("pega a data e subtrai 15 dias"). O CLIQUE VOLTOU em
+ *  21/10/2026: o navegador e os atalhos escolhem o que se VÊ no gráfico, e o
+ *  clique escolhe o recorte dos temas. */
 export const DIAS_DA_JANELA = 15;
 
 const METRICAS: { codigo: MetricaDoBond; rotulo: string; eixo: string }[] = [
@@ -149,18 +157,19 @@ const METRICAS: { codigo: MetricaDoBond; rotulo: string; eixo: string }[] = [
   { codigo: 'yield', rotulo: 'Yield', eixo: 'Yield (%)' },
 ];
 
-/** `YYYY-MM-DD` de hoje menos `dias`, no fuso UTC.
- *
- *  UTC DE PROPÓSITO: a rota recorta por data, e usar o fuso local faria o
- *  período mudar de tamanho conforme quem abre a tela — um dia a mais ou a
- *  menos de pregão, dependendo do horário. */
-function diasAtras(dias: number): string {
-  const agora = Date.now();
-  return new Date(agora - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
-
-export function InteligenciaDeMercado() {
-  const [periodo, definirPeriodo] = useState<string>('6M');
+export function InteligenciaDeMercado({
+  comPares = false,
+}: {
+  /** OS PARES SAÍRAM "NESTE MOMENTO", por pedido (21/10/2026): a tela vai ao
+   *  CFO com os bonds da Aegea só. O código fica, e volta ligando esta prop. */
+  comPares?: boolean;
+} = {}) {
+  //: O PERÍODO É RECORTADO NA TELA, e não no servidor (21/10/2026): os cards de
+  //: cotação mostram SEMPRE o último fechamento e as variações da semana e do
+  //: mês, e para isso precisam da série inteira, seja qual for o período do
+  //: gráfico. E o período passa a contar do ÚLTIMO DADO (`inicioDoPeriodo`),
+  //: porque a base chega com atraso: contado de hoje, "1M" eram dois pregões.
+  const [periodo, definirPeriodo] = useState<AtalhoDoPeriodo>('6M');
   const [metrica, definirMetrica] = useState<MetricaDoBond>('preco');
   //: UM ESTADO SÓ PARA A SELEÇÃO: quais papéis estão ligados E com qual cor.
   //:
@@ -204,6 +213,10 @@ export function InteligenciaDeMercado() {
   //: comparar — ver o índice e uma lente ao mesmo tempo é o gesto inteiro.
   const [scoresLigados, definirScoresLigados] = useState<string[]>(SCORES_AO_ABRIR);
 
+  //: A JANELA ARRASTADA NO NAVEGADOR. `null` = a do atalho (1M, 3M...).
+  //: Clicar num atalho a apaga; arrastar a cria, e aí nenhum atalho fica aceso.
+  const [janelaManual, definirJanelaManual] = useState<JanelaDoPeriodo | null>(null);
+  //: O DIA CLICADO NO GRÁFICO: é ele que define o recorte dos temas.
   const [diaEscolhido, definirDiaEscolhido] = useState<string | null>(null);
   //: A CHAVE ENTRE OS DOIS NÍVEIS, por pedido dele depois de ver os dois no ar.
   //:
@@ -215,52 +228,29 @@ export function InteligenciaDeMercado() {
   //: ABRE NO TEMA, que é o que ele pediu primeiro; o pilar fica a um clique. E a
   //: cobertura do tema MELHORA com o tempo: depende de o fornecedor mandar o N3
   //: que o cadastro reconhece, trabalho em curso com eles.
-  const [nivel, definirNivel] = useState<NivelDaJanela>('n2');
+  //: ABRE NO SUBTEMA (N3) desde 21/10/2026, por pedido: "vamos utilizar aqui o
+  //: N3". O tema estratégico e o atributo ficam a um clique.
+  const [nivel, definirNivel] = useState<NivelDaJanela>('n3');
   const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
   const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (diaEscolhido === null) {
-      definirJanela(null);
-      definirErroDaJanela(null);
-      return;
-    }
-    let ativo = true;
-    definirErroDaJanela(null);
-    //: A JANELA ANTIGA SAI JÁ, e não quando a nova chega — achado de revisão, do
-    //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica. Ao clicar
-    //: numa data nova, os quadros antigos continuavam na tela com o cabeçalho do
-    //: período anterior, enquanto a marca do gráfico já apontava para a data
-    //: nova: os números afirmavam uma janela e o gráfico afirmava outra.
-    definirJanela(null);
-    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA)
-      .then((lida) => {
-        if (ativo) definirJanela(lida);
-      })
-      .catch((falha: unknown) => {
-        if (!ativo) return;
-        //: A JANELA ANTIGA SAI junto com a falha: ela descrevia OUTRO dia, e
-        //: deixá-la na tela ao lado de um erro faria os quadros afirmarem a
-        //: janela errada — o mesmo defeito do rótulo do eixo que mentia sobre a
-        //: métrica enquanto a resposta nova não chegava.
-        definirJanela(null);
-        definirErroDaJanela(
-          falha instanceof Error ? falha.message : 'Não foi possível ler a janela.',
-        );
-      });
-    return () => {
-      ativo = false;
-    };
-    //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês, e
-    //: os quadros abertos passariam a descrever o dado de antes.
-    //: O NÍVEL ENTRA NAS DEPENDÊNCIAS: trocar a chave é uma pergunta nova sobre
-    //: o MESMO dia, e sem isto a tela mostraria a resposta do nível anterior.
-  }, [diaEscolhido, nivel, versao]);
 
-  const dias = PERIODOS.find((p) => p.codigo === periodo)?.dias ?? null;
   //: A LISTA QUE VAI AO SERVIDOR sai das CHAVES do mapa, e a ordem é fixada
   //: para o efeito não redisparar por um array reordenado com os mesmos itens.
-  const pedidos = slots === null ? null : Object.keys(slots).sort().join(',');
+  //:
+  //: OS PAPÉIS DA AEGEA VÃO SEMPRE, mesmo desligados: o card de cada um mostra
+  //: o último fechamento com a curva fora do gráfico, e sem a série não haveria
+  //: o que mostrar. Quem decide o que se DESENHA é `emVigor`, mais abaixo.
+  const daAegeaNoCatalogo = (dados?.papeis ?? [])
+    .filter((p) => p.e_aegea)
+    .map((p) => p.ticker)
+    .join(',');
+  const pedidos =
+    slots === null
+      ? null
+      : [...new Set([...Object.keys(slots), ...daAegeaNoCatalogo.split(',').filter(Boolean)])]
+          .sort()
+          .join(',');
 
   useEffect(() => {
     let ativo = true;
@@ -286,7 +276,6 @@ export function InteligenciaDeMercado() {
     }, TETO_DA_BUSCA);
     obterSerieDeMercado({
       tickers: pedidos ? pedidos.split(',') : undefined,
-      de: dias === null ? undefined : diasAtras(dias),
       metrica,
     })
       .then((lida) => {
@@ -310,7 +299,7 @@ export function InteligenciaDeMercado() {
     };
     //: pedidos É STRING, e não o array: um array novo a cada renderização
     //: faria este efeito rodar em todas elas, e a tela buscaria sem parar.
-  }, [dias, metrica, pedidos, versao]);
+  }, [metrica, pedidos, versao]);
 
   /** Os slots EM VIGOR: os escolhidos, ou os do padrão deduzidos na hora.
    *
@@ -343,18 +332,17 @@ export function InteligenciaDeMercado() {
   const naMetrica =
     METRICAS.find((m) => m.codigo === (dados?.metrica ?? metrica)) ?? METRICAS[0];
 
-  /** As séries no formato do gráfico, com cor e rótulo.
-   *
-   *  O RÓTULO SAI DA DESCRIÇÃO DO CATÁLOGO quando ela existe ("AEGEBZ 9
-   *  01/20/31"), e do ticker quando não — a descrição vem da planilha e só
-   *  existe depois da primeira subida. Usar sempre o ticker faria a legenda
-   *  falar Bloomberg com quem lê português. */
+  /** As séries no formato do gráfico, com cor e rótulo (o ticker). */
   const series: SerieDatada[] = useMemo(() => {
     if (!dados) return [];
-    const porTicker = new Map(dados.papeis.map((p) => [p.ticker, p]));
-    return dados.bonds.map((serie) => ({
+    //: SÓ OS LIGADOS SE DESENHAM. Os da Aegea desligados continuam vindo do
+    //: servidor (para os cards), e não podem virar curva por isso.
+    return dados.bonds.filter((serie) => serie.ticker in emVigor).map((serie) => ({
       chave: serie.ticker,
-      rotulo: porTicker.get(serie.ticker)?.descricao ?? serie.ticker,
+      //: O TICKER, e não a descrição Bloomberg ("AEGEBZ 6 3/4 05/20/29"): é o
+      //: nome que o card mostra, e o tooltip tem de falar a mesma língua. O
+      //: cupom e o vencimento ficam no card, em português.
+      rotulo: serie.ticker,
       //: A COR VEM DO SLOT EM VIGOR. O `?? 0` cobre o papel que o servidor
       //: devolveu e a seleção não contém — não deveria acontecer, e cair numa
       //: cor válida é melhor que `undefined` virar `stroke="undefined"`.
@@ -397,6 +385,60 @@ export function InteligenciaDeMercado() {
   //: SEM CATÁLOGO NÃO HÁ CONTROLE PARA MANTER, e aí a faixa é a tela toda
   //: mesmo: é a primeira busca que falhou, não existe seletor nem gráfico
   //: anteriores. O que faltava era a saída, e é o botão.
+  //: O PERÍODO EM VIGOR, calculado ANTES do retorno antecipado de "sem dados"
+  //: porque os efeitos abaixo dependem dele (a ordem dos hooks não muda).
+  const datasDesenhadas = series.flatMap((s) => s.pontos.map((ponto) => ponto.data.slice(0, 10)));
+  const primeiraData = datasDesenhadas.reduce<string | null>(
+    (menor, data) => (menor === null || data < menor ? data : menor),
+    null,
+  );
+  //: O ÚLTIMO DADO DO QUE ESTÁ NO GRÁFICO, de onde o período é contado.
+  const ultimaData = datasDesenhadas.reduce<string | null>(
+    (maior, data) => (maior === null || data > maior ? data : maior),
+    null,
+  );
+  const janelaEmVigor: JanelaDoPeriodo | null =
+    primeiraData && ultimaData
+      ? janelaManual
+        ? prenderJanela(janelaManual, primeiraData, ultimaData)
+        : {
+            de: (() => {
+              const corte = inicioDoPeriodo(periodo, ultimaData);
+              return corte && corte > primeiraData ? corte : primeiraData;
+            })(),
+            ate: ultimaData,
+          }
+      : null;
+  useEffect(() => {
+    if (diaEscolhido === null) {
+      definirJanela(null);
+      definirErroDaJanela(null);
+      return;
+    }
+    let ativo = true;
+    definirErroDaJanela(null);
+    //: A JANELA ANTIGA SAI JÁ, e não quando a nova chega — achado de revisão, do
+    //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica: os quadros
+    //: antigos ficavam na tela com o cabeçalho do dia anterior.
+    definirJanela(null);
+    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA)
+      .then((lida) => {
+        if (ativo) definirJanela(lida);
+      })
+      .catch((falha: unknown) => {
+        if (!ativo) return;
+        definirJanela(null);
+        definirErroDaJanela(
+          falha instanceof Error ? falha.message : 'Não foi possível ler a janela.',
+        );
+      });
+    return () => {
+      ativo = false;
+    };
+    //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês.
+    //: O NÍVEL também: trocar a chave é uma pergunta nova sobre o MESMO dia.
+  }, [diaEscolhido, nivel, versao]);
+
   if (!dados) {
     return erro ? (
       <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
@@ -465,29 +507,71 @@ export function InteligenciaDeMercado() {
   const comPonto = new Set(dados.bonds.filter((s) => temCurva(s.pontos)).map((s) => s.ticker));
   const mudos = Object.keys(emVigor).filter((t) => !comPonto.has(t));
 
+  const eYield = naMetrica.codigo === 'yield';
+  //: A SÉRIE DO MINI GRÁFICO DO NAVEGADOR: a desenhada com mais pregões.
+  const doNavegador = [...series].sort((a, b) => b.pontos.length - a.pontos.length)[0];
+
   return (
     <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
       <h1 style={{ color: 'var(--azul-mar)', fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>
         Bonds da Aegea e índice reputacional
       </h1>
-      <p style={{ color: 'var(--cinza-3)', fontSize: 15, margin: '0 0 16px' }}>
-        Como as cotações se moveram e como o índice da companhia se moveu no
-        mesmo período.
+      <p style={{ color: 'var(--cinza-4)', fontSize: 15, margin: '0 0 16px' }}>
+        Cotação diária dos bonds da Aegea e o score reputacional no mesmo período.
       </p>
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+      {/* OS CARDS DE COTAÇÃO, um por bond da Aegea, acima do gráfico. Sempre o
+          ÚLTIMO fechamento, seja qual for o período. Clicar liga e desliga a
+          curva: o card É a legenda dos bonds da Aegea. */}
+      <div
+        role="group"
+        aria-label="Bonds da Aegea no gráfico"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {daAegea.map((papel, i) => (
+          <CardDoBond
+            key={papel.ticker}
+            ticker={papel.ticker}
+            descricao={papel.descricao}
+            cor={CORES[emVigor[papel.ticker] ?? i] ?? CORES[0]}
+            ligado={selecionados.has(papel.ticker)}
+            semCorLivre={semCorLivre}
+            pontos={dados.bonds.find((b) => b.ticker === papel.ticker)?.pontos ?? []}
+            eYield={eYield}
+            aoClicar={() => alternar(papel.ticker)}
+          />
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 24,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          marginBottom: 12,
+        }}
+      >
         <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
           <legend style={{ fontSize: 12, color: 'var(--cinza-2)' }}>Período</legend>
           <div style={{ display: 'flex', gap: 4 }}>
-            {PERIODOS.map((p) => (
+            {ATALHOS_DO_PERIODO.map((p) => (
               <button
                 key={p.codigo}
                 type="button"
-                aria-pressed={periodo === p.codigo}
-                onClick={() => definirPeriodo(p.codigo)}
-                style={botao(periodo === p.codigo)}
+                aria-pressed={!janelaManual && periodo === p.codigo}
+                onClick={() => {
+                  definirPeriodo(p.codigo);
+                  definirJanelaManual(null);
+                }}
+                style={botao(!janelaManual && periodo === p.codigo)}
               >
-                {p.codigo}
+                {p.rotulo}
               </button>
             ))}
           </div>
@@ -585,23 +669,59 @@ export function InteligenciaDeMercado() {
           legível de propósito: ela é o melhor dado disponível até a resposta
           nova chegar, e o selo é o que a impede de se apresentar como a resposta
           da pergunta nova. `aria-busy` diz o mesmo a quem usa leitor de tela. */}
-      <div aria-busy={buscando} style={{ position: 'relative', opacity: buscando ? 0.92 : 1 }}>
+      <div
+        aria-busy={buscando}
+        style={{
+          position: 'relative',
+          opacity: buscando ? 0.92 : 1,
+          background: 'var(--branco)',
+          border: '1px solid var(--borda)',
+          borderRadius: 4,
+          padding: '16px 20px',
+        }}
+      >
         <GraficoDeDoisEixos
+          altura={440}
           bonds={series}
           indice={indice}
           rotuloDaEsquerda={naMetrica.eixo}
-          faixaFixa={naMetrica.codigo === 'preco' ? FAIXA_FIXA_DO_PRECO : FAIXA_FIXA_DO_YIELD}
+          rotuloDaDireita="Score"
+          inicioDoPeriodo={janelaEmVigor?.de ?? null}
+          fimDoPeriodo={janelaEmVigor?.ate ?? null}
+          chaveDaEscala={`${janelaEmVigor?.de}|${janelaEmVigor?.ate}|${naMetrica.codigo}`}
           aoEscolherData={definirDiaEscolhido}
           dataEscolhida={diaEscolhido}
           diasDaJanela={DIAS_DA_JANELA}
+          formatarValor={(valor) =>
+            eYield ? `${valor.toFixed(2).replace('.', ',')}%` : valor.toFixed(1).replace('.', ',')
+          }
+          apoio={
+            eYield
+              ? 'Yield em % ao ano, fechamento diário. Score de 0 a 100. Coincidência no tempo não indica causa.'
+              : 'Preço em % do valor de face, fechamento diário. Score de 0 a 100. Coincidência no tempo não indica causa.'
+          }
         />
+        {/* O NAVEGADOR DO PERÍODO, colado no gráfico: arrastar a janela muda o
+            período do gráfico e dos eixos, e apaga o atalho aceso. Os temas
+            seguem o CLIQUE no gráfico, e não o navegador. */}
+        {janelaEmVigor && primeiraData && ultimaData && doNavegador ? (
+          <NavegadorDoPeriodo
+            pontos={doNavegador.pontos}
+            cor={doNavegador.cor}
+            inicio={primeiraData}
+            fim={ultimaData}
+            janela={janelaEmVigor}
+            aoMudar={definirJanelaManual}
+          />
+        ) : null}
         {buscando ? (
           <p
             role="status"
             style={{
               position: 'absolute',
-              top: 0,
-              right: 0,
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
               margin: 0,
               padding: '3px 10px',
               fontSize: 12,
@@ -639,8 +759,8 @@ export function InteligenciaDeMercado() {
           }}
         >
           {mudos.length === 1
-            ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva dele no gráfico.`
-            : `${mudos.join(', ')} não têm cotação de ${naMetrica.rotulo.toLowerCase()} neste período — por isso não há curva delas no gráfico.`}{' '}
+            ? `${mudos[0]} não tem cotação de ${naMetrica.rotulo.toLowerCase()} neste período, por isso não há curva dele no gráfico.`
+            : `${mudos.join(', ')} não têm cotação de ${naMetrica.rotulo.toLowerCase()} neste período, por isso não há curva delas no gráfico.`}{' '}
           Experimente um período maior ou a outra métrica.
         </p>
       ) : null}
@@ -651,54 +771,19 @@ export function InteligenciaDeMercado() {
           aqui e não leva o gráfico nem os controles junto. */}
       <JanelaDosTemas
         dia={diaEscolhido}
+        aoFechar={() => definirDiaEscolhido(null)}
         janela={janela}
         erro={erroDaJanela}
         nivel={nivel}
         aoTrocarNivel={definirNivel}
-        aoFechar={() => definirDiaEscolhido(null)}
       />
 
-      {/* A LEGENDA É TAMBÉM O SELETOR, como no mockup: clicar liga e desliga a
-          série. Duas listas separadas — a companhia e os pares — porque são
-          decisões diferentes: ver o próprio papel é o padrão, comparar com par
-          é uma escolha. */}
+      {/* OS PARES, para comparar. Os bonds da Aegea ligam e desligam nos cards,
+          acima do gráfico; o contador "N de 8 séries" saiu por pedido, e o
+          limite só aparece quando chega. */}
+      {comPares ? (
       <div style={{ marginTop: 16 }}>
-        {/* O CONTADOR, E O LIMITE JUNTO COM ELE. Duas coisas da passada de UX
-            viviam mal aqui: não havia como saber quantas séries estão no gráfico
-            sem contar os chips acesos, e o limite de oito só aparecia DEPOIS das
-            duas listas, em 12px, como recusa no nono clique.
-
-            UMA LINHA RESOLVE AS DUAS, e ela fica ACIMA dos chips — onde a pessoa
-            olha antes de clicar, e não depois. O limite deixa de ser surpresa:
-            está escrito "6 de 8" muito antes de alguém chegar ao oitavo. */}
-        <p
-          data-testid="contador-de-series"
-          style={{
-            fontSize: 13,
-            color: semCorLivre ? 'var(--atencao-fg)' : 'var(--cinza-3)',
-            margin: '0 0 8px',
-            fontWeight: semCorLivre ? 500 : 400,
-          }}
-        >
-          {Object.keys(emVigor).length} de {CORES.length} séries no gráfico
-          {semCorLivre ? ' — desligue uma para ligar outra' : null}
-        </p>
-
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 4px' }}>Aegea</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {daAegea.map((papel) => (
-            <ChipDeSerie
-              key={papel.ticker}
-              papel={papel}
-              slot={emVigor[papel.ticker]}
-              ligado={selecionados.has(papel.ticker)}
-              semCorLivre={semCorLivre}
-              aoClicar={() => alternar(papel.ticker)}
-            />
-          ))}
-        </div>
-
-        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '12px 0 4px' }}>
+        <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 4px' }}>
           Comparar com pares
         </p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -713,9 +798,146 @@ export function InteligenciaDeMercado() {
             />
           ))}
         </div>
-
+        {semCorLivre ? (
+          <p
+            data-testid="limite-de-series"
+            style={{ fontSize: 13, color: 'var(--atencao-fg)', fontWeight: 500, margin: '8px 0 0' }}
+          >
+            O gráfico já tem {CORES.length} séries. Desligue uma para ligar outra.
+          </p>
+        ) : null}
       </div>
+      ) : null}
     </section>
+  );
+}
+
+/** O card de cotação de um bond da Aegea: último fechamento, variação na
+ *  semana e no mês. É também o botão que liga e desliga a curva dele.
+ *
+ *  O RESUMO VEM DA SÉRIE INTEIRA, e não do período do gráfico: o card responde
+ *  "como está o papel agora", que não muda porque alguém olhou só 1M. */
+function CardDoBond({
+  ticker,
+  descricao,
+  cor,
+  ligado,
+  semCorLivre,
+  pontos,
+  eYield,
+  aoClicar,
+}: {
+  ticker: string;
+  descricao: string | null;
+  cor: string;
+  ligado: boolean;
+  semCorLivre: boolean;
+  pontos: { data: string; valor: number }[];
+  eYield: boolean;
+  aoClicar: () => void;
+}) {
+  const resumo = resumoDoBond(pontos);
+  const unidade = eYield ? 'p.p.' : 'pts';
+  const recusado = !ligado && semCorLivre;
+  const data = resumo
+    ? `${resumo.ultimo.data.slice(8, 10)}/${resumo.ultimo.data.slice(5, 7)}/${resumo.ultimo.data.slice(0, 4)}`
+    : null;
+  return (
+    <button
+      type="button"
+      aria-pressed={ligado}
+      aria-label={`${ticker}: ${ligado ? 'tirar do gráfico' : 'mostrar no gráfico'}`}
+      disabled={recusado}
+      title={recusado ? 'O gráfico já tem o máximo de séries. Desligue uma para ligar esta.' : undefined}
+      onClick={aoClicar}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        padding: '14px 16px',
+        textAlign: 'left',
+        background: ligado ? 'var(--branco)' : 'var(--bg-rodape-card)',
+        //: BORDA NEUTRA, SEM FAIXA COLORIDA NA LATERAL (pedido de 21/10/2026):
+        //: a cor da série fica só no ponto ao lado do nome, como na legenda.
+        border: `1px solid ${ligado ? 'var(--borda-input)' : 'var(--borda)'}`,
+        borderRadius: 4,
+        cursor: recusado ? 'not-allowed' : 'pointer',
+        font: 'inherit',
+        color: 'var(--cinza-4)',
+        opacity: ligado ? 1 : 0.72,
+      }}
+    >
+      <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>
+          <span
+            aria-hidden
+            style={{ width: 10, height: 10, borderRadius: '50%', background: cor, opacity: ligado ? 1 : 0.4 }}
+          />
+          {ticker}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--cinza-2)' }}>
+          {ligado ? 'no gráfico' : 'fora do gráfico'}
+        </span>
+      </span>
+      {resumo ? (
+        <>
+          <span style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+            <span>
+              <span className="tabular" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1 }}>
+                {eYield
+                  ? `${resumo.ultimo.valor.toFixed(2).replace('.', ',')}%`
+                  : resumo.ultimo.valor.toFixed(1).replace('.', ',')}
+              </span>
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)', marginTop: 4 }}>
+                {eYield ? 'yield' : '% do par'} · fechamento de {data}
+              </span>
+            </span>
+            <span style={{ display: 'flex', gap: 14, textAlign: 'right' }}>
+              <Variacao rotulo="Semana" valor={resumo.semanal} unidade={unidade} subirEBom={!eYield} />
+              <Variacao rotulo="Mês" valor={resumo.mensal} unidade={unidade} subirEBom={!eYield} />
+            </span>
+          </span>
+          {descricaoLegivelDoBond(descricao) ? (
+            <span style={{ fontSize: 12, color: 'var(--cinza-3)' }}>
+              {descricaoLegivelDoBond(descricao)}
+            </span>
+          ) : null}
+        </>
+      ) : (
+        <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>Sem cotação nesta métrica.</span>
+      )}
+    </button>
+  );
+}
+
+function Variacao({
+  rotulo,
+  valor,
+  unidade,
+  subirEBom,
+}: {
+  rotulo: string;
+  valor: number | null;
+  unidade: string;
+  /** No preço, subir é bom; no yield (custo da dívida), subir é ruim. */
+  subirEBom: boolean;
+}) {
+  return (
+    <span>
+      <span style={{ display: 'block', fontSize: 11, color: 'var(--cinza-2)' }}>{rotulo}</span>
+      <span
+        className="tabular"
+        title={valor === null ? 'Sem pregão anterior para comparar' : undefined}
+        style={{
+          display: 'block',
+          fontSize: 15,
+          fontWeight: 800,
+          color: valor === null ? 'var(--cinza-2)' : corDaVariacao(valor, subirEBom),
+        }}
+      >
+        {valor === null ? 'sem base' : `${variacaoEmPontos(valor)} ${unidade}`}
+      </span>
+    </span>
   );
 }
 
@@ -731,29 +953,36 @@ export function InteligenciaDeMercado() {
  */
 function JanelaDosTemas({
   dia,
+  aoFechar,
   janela,
   erro,
   nivel,
   aoTrocarNivel,
-  aoFechar,
 }: {
+  /** O dia clicado no gráfico; os temas são os quinze dias até ele. */
   dia: string | null;
+  aoFechar: () => void;
   janela: ImpactoNaJanela | null;
   erro: string | null;
   nivel: NivelDaJanela;
   aoTrocarNivel: (nivel: NivelDaJanela) => void;
-  aoFechar: () => void;
 }) {
   //: O GRUPO ABERTO NO MODAL. Mora aqui, e não na página: ele só existe
   //: enquanto esta janela existe, e fechar a janela tem de levar o modal com
   //: ela — foi o defeito do "segundo clique" que deixava a janela antiga na
   //: tela, uma camada acima.
-  const [aberto, definirAberto] = useState<GrupoNaJanela | null>(null);
+  //: O MODAL PERTENCE AO DIA CLICADO: clicar outro dia o fecha, senão ele
+  //: mostraria registros de uma janela que já não é a da tela.
+  const chave = dia ?? '';
+  const [abertoEm, definirAbertoEm] = useState<{ chave: string; grupo: GrupoNaJanela } | null>(null);
+  const aberto = abertoEm && abertoEm.chave === chave ? abertoEm.grupo : null;
+  const definirAberto = (grupo: GrupoNaJanela | null) =>
+    definirAbertoEm(grupo ? { chave, grupo } : null);
 
   if (dia === null) {
     return (
       <p style={{ fontSize: 13, color: 'var(--cinza-3)', margin: '12px 0 0' }}>
-        Clique numa data do gráfico — ou num mês do eixo — para ver o que mais
+        Clique numa data do gráfico ou num rótulo do eixo para ver o que mais
         empurrou a nota da imprensa nos {DIAS_DA_JANELA} dias anteriores.
       </p>
     );
@@ -773,7 +1002,8 @@ function JanelaDosTemas({
   if (!janela) {
     return (
       <p role="status" style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '12px 0 0' }}>
-        Lendo {nivel === 'n2' ? 'os temas' : 'os pilares'} de {porExtenso(dia)}…
+        Lendo {NIVEIS_DOS_QUADROS.find((n) => n.codigo === nivel)?.plural ?? 'os grupos'} de{' '}
+        {porExtenso(dia)}…
       </p>
     );
   }
@@ -802,10 +1032,7 @@ function JanelaDosTemas({
             está classificado. Sem isso, "N1" e "N2" não dizem nada a quem não
             conhece a taxonomia por dentro. */}
         <div role="group" aria-label="Nível do agrupamento" style={{ display: 'flex', gap: 4 }}>
-          {([
-            ['n2', 'Tema', 'mais fino, só o que está classificado'],
-            ['n1', 'Pilar', 'mais grosso, cobre quase tudo'],
-          ] as const).map(([codigo, rotulo, ajuda]) => (
+          {NIVEIS_DOS_QUADROS.map(({ codigo, rotulo, ajuda }) => (
             <button
               key={codigo}
               type="button"
@@ -851,7 +1078,7 @@ function JanelaDosTemas({
         Pontos da nota da lente {janela.lente} em {porExtenso(janela.mes).slice(3)},
         medida pela régua de {janela.regua}
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
-          ? ' — a janela atravessa a virada do mês, então a ordem é exata e a escala é a daquele mês'
+          ? '. A janela atravessa a virada do mês: a ordem é exata e a escala é a daquele mês'
           : null}
         . Não são pontos do índice da linha acima: a lente é uma parte dele.
       </p>
@@ -865,7 +1092,7 @@ function JanelaDosTemas({
         <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
           O mês de {porExtenso(janela.mes).slice(3)} não tem base medida na lente{' '}
           {janela.lente}, então não há como calcular quanto cada grupo empurrou a
-          nota. Não é que nada impactou — é que a régua do mês ainda não existe.
+          nota. Não é que nada impactou: a régua do mês ainda não existe.
         </p>
       ) : (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -897,6 +1124,7 @@ function JanelaDosTemas({
           ate={janela.ate}
           de={janela.de}
           nivel={janela.nivel}
+          dias={janela.dias}
           aoFechar={() => definirAberto(null)}
         />
       ) : null}
@@ -916,8 +1144,8 @@ function JanelaDosTemas({
               seria o mesmo defeito do eixo que mentia sobre a métrica. */}
           {janela.sem_grupo
             ? `${numero(janela.sem_grupo)} menções da janela sem ${
-                janela.nivel === 'n2' ? 'tema estratégico' : 'pilar'
-              } atribuído`
+                NIVEIS_DOS_QUADROS.find((n) => n.codigo === janela.nivel)?.sem ?? 'grupo'
+              }`
             : null}
           {janela.sem_grupo && janela.sem_data ? '; ' : null}
           {janela.sem_data
@@ -932,6 +1160,21 @@ function JanelaDosTemas({
     </div>
   );
 }
+
+/** OS TRÊS NÍVEIS DOS QUADROS, com os nomes da taxonomia que o CRM já usa
+ *  (N1 · Atributo, N2 · Tema estratégico, N3 · Subtema). O SUBTEMA PRIMEIRO,
+ *  porque é com ele que a tela abre. */
+const NIVEIS_DOS_QUADROS: {
+  codigo: NivelDaJanela;
+  rotulo: string;
+  ajuda: string;
+  plural: string;
+  sem: string;
+}[] = [
+  { codigo: 'n3', rotulo: 'N3 · Subtema', ajuda: 'o mais fino: só o que tem subtema classificado', plural: 'os subtemas', sem: 'subtema (N3) atribuído' },
+  { codigo: 'n2', rotulo: 'N2 · Tema estratégico', ajuda: 'intermediário', plural: 'os temas', sem: 'tema estratégico (N2) atribuído' },
+  { codigo: 'n1', rotulo: 'N1 · Atributo', ajuda: 'o mais grosso: cobre quase tudo', plural: 'os atributos', sem: 'atributo (N1) atribuído' },
+];
 
 /** Um quadro: até cinco grupos, do que mais empurrou para o que menos. */
 function QuadroDeTemas({

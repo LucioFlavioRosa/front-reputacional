@@ -178,40 +178,40 @@ describe('BarraDeFiltroDaLente', () => {
   });
 });
 
-describe('o filtro rápido de Período, ligado à janela da Jornada', () => {
-  const MESES = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'].map(
-    (mes) => ({ mes }),
-  );
+describe('o filtro rápido de MÊS da Síntese (21/10/2026)', () => {
+  /** NO LUGAR DE "Últimos 3 meses": a Síntese é de um mês, e o primeiro campo
+   *  da faixa escolhe qual. */
+  const MESES = ['2026-06-01', '2026-07-01', '2026-08-01'];
 
-  it('é o primeiro campo, diz o período escolhido e escolher outro muda a janela', async () => {
-    const aoMudar = vi.fn();
+  it('é o primeiro campo, diz o mês da tela e escolher outro troca o mês', async () => {
+    const aoEscolher = vi.fn();
     render(
       <BarraDeFiltroDaLente
         lente="imprensa"
         filtro={{}}
         definirFiltro={vi.fn()}
         opcoes={DA_IMPRENSA}
-        periodo={{ meses: MESES, janela: { inicio: 2, fim: 7 }, aoMudar, padrao: true }}
+        mesDaSintese={{ meses: MESES, mes: '2026-08-01', aoEscolher }}
       />,
     );
     const gatilhos = screen.getAllByRole('button');
-    expect(gatilhos[0].textContent).toContain('Período · Últimos 6 meses');
+    expect(gatilhos[0].textContent).toContain('Mês · ago/26');
+    expect(gatilhos[0].textContent).not.toContain('Últimos');
     await userEvent.click(gatilhos[0]);
-    await userEvent.click(screen.getByRole('button', { name: 'Últimos 3 meses' }));
-    expect(aoMudar).toHaveBeenCalledWith({ inicio: 5, fim: 7 });
+    await userEvent.click(screen.getByRole('button', { name: 'jun/26' }));
+    expect(aoEscolher).toHaveBeenCalledWith('2026-06-01');
   });
 
-  it('a janela arrastada à mão aparece pelos meses dela', () => {
+  it('a Institucional, sem recorte nenhum, ganha a faixa só pelo mês', () => {
     render(
       <BarraDeFiltroDaLente
         lente="institucional"
         filtro={{}}
         definirFiltro={vi.fn()}
         opcoes={null}
-        periodo={{ meses: MESES, janela: { inicio: 1, fim: 4 }, aoMudar: vi.fn(), padrao: false }}
+        mesDaSintese={{ meses: MESES, mes: '2026-07-01', aoEscolher: vi.fn() }}
       />,
     );
-    // A INSTITUCIONAL, sem filtro nenhum, ganha a faixa só pelo Período.
-    expect(screen.getAllByRole('button')[0].textContent).toContain('fev/26 – mai/26');
+    expect(screen.getAllByRole('button')[0].textContent).toContain('jul/26');
   });
 });
