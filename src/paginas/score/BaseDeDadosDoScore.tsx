@@ -23,7 +23,7 @@ import { editarJornalistaDaMencao, listarInterlocutores, listarMencoesDaBase } f
 import type { ConsultaDaBase, PaginaDaBase } from '@/api/cliente';
 import type { Interlocutor } from '@/dominio/tipos';
 import { Abas } from '@/componentes/Abas';
-import { Botao, Cartao, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
+import { Botao, FaixaDeErro, Secao, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
 import { SeletorDeColunas, useColunasVisiveis } from '@/componentes/SeletorDeColunas';
 import { celula } from '@/componentes/estilos';
@@ -151,10 +151,8 @@ export function BaseDeDadosDoScore() {
     ordenacao,
   };
   const chaveDaConsulta = `${lente}|${JSON.stringify(consulta)}`;
-  const ehMencoes = lente !== 'institucional';
 
   useEffect(() => {
-    if (!ehMencoes) return;
     let ativo = true;
     listarMencoesDaBase(lente, consulta)
       .then((dados) => {
@@ -168,7 +166,7 @@ export function BaseDeDadosDoScore() {
     };
     // A consulta inteira está em `chaveDaConsulta`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chaveDaConsulta, ehMencoes]);
+  }, [chaveDaConsulta]);
 
 
   const dados = resposta?.chave.startsWith(`${lente}|`) ? resposta.dados : null;
@@ -253,17 +251,20 @@ export function BaseDeDadosDoScore() {
         />
       </Secao>
 
-      {!ehMencoes ? (
-        <Cartao>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--cinza-3)' }}>
-            A lente Institucional não vem de menções: ela lê as interações do{' '}
-            <strong>CRM dos Stakeholders</strong> (reuniões, audiências e eventos, com o termômetro
-            registrado). A consulta dessas interações, com todos os filtros, está na{' '}
-            <strong>Base do CRM</strong> — menu CRM dos Stakeholders › Base.
-          </p>
-        </Cartao>
-      ) : (
-        <>
+      {/* TODA LENTE DA ABA TEM BASE DE MENÇÕES, e quem decide isso é o
+          servidor. Aqui existia `lente !== 'institucional'`, que mostrava no
+          lugar da base um cartão dizendo que a Institucional lia o CRM dos
+          Stakeholders. Deixou de ser verdade quando a Institucional passou a
+          recortar a Imprensa pela lista de veículos (`0107`/`0108`): a lente
+          virou clipping, o back a pôs em `LENTES_DA_BASE`, e esta tela
+          continuou recusando a consulta — a pessoa clicava na aba e lia um
+          texto sobre reuniões e audiências.
+          A REGRA ESTAVA DUPLICADA: o back decide por `lente_e_interna` (pelo
+          cadastro das fontes), e esta cópia decidia pelo CÓDIGO da lente. Duas
+          fontes da mesma regra divergem na primeira mudança, e foi o que
+          aconteceu. Se alguma lente não tiver base, a rota responde "Esta
+          lente não tem base de menções" e o erro aparece pelo caminho normal. */}
+      <>
           {/* A BUSCA INTELIGENTE, no desenho da do CRM: campo, chips dos filtros
               ativos com ×, a contagem e "Limpar". */}
           <div
@@ -582,8 +583,7 @@ export function BaseDeDadosDoScore() {
               Próxima ›
             </Botao>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

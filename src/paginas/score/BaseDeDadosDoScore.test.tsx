@@ -142,12 +142,28 @@ describe('BaseDeDadosDoScore', () => {
     );
   });
 
-  it('Institucional explica que a consulta está na Base do CRM', async () => {
+  it('Institucional CONSULTA a base, como qualquer outra lente', async () => {
+    /** DEFEITO VISTO NO AMBIENTE, e este teste fixava o avesso dele.
+     *
+     *  A tela tinha `lente !== 'institucional'` e, nessa aba, mostrava no lugar
+     *  da base um texto dizendo que a Institucional lia o CRM dos Stakeholders.
+     *  Isso era verdade até a `0107`/`0108`, quando a lente passou a recortar a
+     *  Imprensa pela lista de veículos: ela virou clipping e o back a pôs em
+     *  `LENTES_DA_BASE` — e esta tela continuou recusando a consulta.
+     *
+     *  A REGRA ERA DUPLICADA: o back decide por `lente_e_interna`, pelo cadastro
+     *  das fontes; a cópia aqui decidia pelo código da lente. O teste antigo
+     *  passava porque media a cópia, e não o que a pessoa vê. */
     const { BaseDeDadosDoScore } = await import('@/paginas/score/BaseDeDadosDoScore');
     render(<BaseDeDadosDoScore />);
     await userEvent.click(screen.getByRole('tab', { name: 'Institucional' }));
-    expect(screen.getByText(/está na/)).toBeTruthy();
-    expect(screen.queryByRole('table')).toBeNull();
+
+    await waitFor(() =>
+      expect(listar).toHaveBeenLastCalledWith('institucional', expect.anything()),
+    );
+    expect(await screen.findByRole('table')).toBeTruthy();
+    //: E O TEXTO DO CRM NÃO APARECE MAIS EM LUGAR NENHUM.
+    expect(screen.queryByText(/CRM dos Stakeholders/)).toBeNull();
   });
 });
 
