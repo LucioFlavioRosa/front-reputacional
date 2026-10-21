@@ -188,7 +188,8 @@ describe('ao abrir', () => {
       {
         chave: 'isr',
         rotulo: 'Índice geral',
-        cor: 'var(--ok-fg)',
+        cor: expect.any(String),
+        traco: expect.any(String),
         pontos: [{ mes: '2026-01-01', valor: 52 }],
       },
     ]);

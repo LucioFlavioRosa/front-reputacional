@@ -95,19 +95,29 @@ function slotLivre(usados: Record<string, number>): number | null {
  *  acesos, a primeira coisa que ela mostraria seriam quatro tracejados por
  *  cima das curvas dos bonds — e o assunto da tela é o bond.
  *
- *  AS CORES NÃO SE REPETEM COM AS DOS BONDS, e isso é medido e não estimado: a
- *  paleta de `CORES` (acima) tem `#0027BD` e `#A11FFF`, que são justamente o
- *  azul do Mercado e o roxo da Institucional nas outras telas. Mesma cor no
- *  mesmo gráfico confunde mesmo com o tracejado e o eixo separando — então
- *  aqui os scores usam tons que aquela lista não tem.
+ *  AS CORES NÃO SE REPETEM COM AS DOS BONDS, e agora isso está MEDIDO — antes
+ *  estava afirmado e errado, achado de revisão. A paleta `CORES` (acima) tem
+ *  `#0A6B60`, que é exatamente o `--ok-fg` com que o índice sempre foi
+ *  desenhado: com seis ou mais papéis ligados, a linha do ISR ficava
+ *  indistinguível da de um bond. Nenhum dos quatro tons abaixo está naquela
+ *  lista.
+ *
+ *  E ELAS SÃO ESCURAS DE PROPÓSITO. As duas primeiras que escolhi (#17E3CB e
+ *  #F2B705) tinham contraste de 1,6:1 e 1,8:1 sobre o fundo claro — numa linha
+ *  TRACEJADA e fina, isso é uma curva que some. Estas ficam acima de 4,5:1.
+ *
+ *  E A COR NÃO É A ÚNICA PISTA: cada score tem o seu tracejado. Quatro linhas
+ *  no mesmo eixo, para quem não separa matiz (ou para quem imprime em preto e
+ *  branco), seriam quatro curvas iguais — e o gráfico é o lugar onde isso mais
+ *  custa.
  *
  *  O CÓDIGO DA LENTE É A CHAVE, e ele vem do servidor dentro de `lentes`:
  *  `isr` é o único que não é lente, e é o índice inteiro. */
 const SCORES_DO_GRAFICO = [
-  { chave: 'isr', rotulo: 'Índice geral', cor: 'var(--ok-fg)' },
-  { chave: 'imprensa', rotulo: 'Imprensa', cor: '#17E3CB' },
-  { chave: 'mercado', rotulo: 'Mercado', cor: '#F2B705' },
-  { chave: 'institucional', rotulo: 'Institucional', cor: '#D64BA0' },
+  { chave: 'isr', rotulo: 'Índice geral', cor: '#0B3C49', traco: '6 4' },
+  { chave: 'imprensa', rotulo: 'Imprensa', cor: '#0E6E8C', traco: '2 3' },
+  { chave: 'mercado', rotulo: 'Mercado', cor: '#9A6700', traco: '10 4' },
+  { chave: 'institucional', rotulo: 'Institucional', cor: '#B5157C', traco: '6 3 2 3' },
 ] as const;
 
 const SCORES_AO_ABRIR = ['isr'];
@@ -360,6 +370,7 @@ export function InteligenciaDeMercado() {
         chave: score.chave,
         rotulo: score.rotulo,
         cor: score.cor,
+        traco: score.traco,
         //: O NULO ATRAVESSA, e é o que faz o mês sem medição virar VÃO no
         //: degrau em vez de um ponto no chão. Zero ali diria que a reputação
         //: daquele mês foi péssima; a lente sem dado simplesmente não foi

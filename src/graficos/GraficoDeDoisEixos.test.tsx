@@ -85,6 +85,13 @@ function mensais(container: HTMLElement): { chave: string; cor: string }[] {
   }));
 }
 
+/** Os rótulos do eixo x, como a pessoa os lê. */
+function rotulosDoEixo(container: HTMLElement): string[] {
+  return [...container.querySelectorAll('text[data-mes]')].map(
+    (t) => t.getAttribute('data-mes') ?? '',
+  );
+}
+
 function circulos(container: HTMLElement): Element[] {
   return [...container.querySelectorAll('circle')];
 }
@@ -822,6 +829,67 @@ describe('várias curvas mensais', () => {
     //: janeiro, que é o que aconteceria se o eixo só conhecesse a primeira.
     const xDe = (d: string) => Number(d.match(/M ([\d.]+)/)?.[1] ?? 0);
     expect(xDe(traçados[1])).toBeGreaterThan(xDe(traçados[0]));
+  });
+
+  it('o EIXO X não repete o mês quando duas curvas o têm', () => {
+    /** ACHADO ALTO DE REVISÃO. O eixo é desenhado a partir dos degraus, e
+     *  juntar os de quatro curvas repetia cada mês quatro vezes: rótulos
+     *  duplicados (com chave repetida, que o React acusa) e a amostragem "um a
+     *  cada N" passando a mostrar `01/26, 09/26, 05/26, 01/26` — pulando meses
+     *  no caminho. A geometria nunca esteve errada; o eixo que se LÊ, sim.
+     */
+    const meses = ['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01'];
+    const curva = (chave: string, base: number) => ({
+      chave,
+      rotulo: chave,
+      cor: '#111111',
+      pontos: meses.map((mes, i) => ({ mes, valor: base + i })),
+    });
+
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={[curva('isr', 50), curva('imprensa', 60), curva('mercado', 40)]}
+      />,
+    );
+
+    const rotulos = rotulosDoEixo(container);
+    expect(rotulos).toEqual([...new Set(rotulos)]);
+    //: E OS QUATRO MESES APARECEM — com a repetição, a amostragem pulava.
+    expect(rotulos).toEqual(meses);
+  });
+
+  it('cada curva tem o SEU tracejado, e não só a sua cor', () => {
+    //: Quatro linhas no mesmo eixo: para quem não separa matiz — ou para quem
+    //: imprime em preto e branco — a cor sozinha faz quatro curvas iguais.
+    const { container } = render(
+      <GraficoDeDoisEixos
+        rotuloDaEsquerda="Preço (% do par)"
+        bonds={[]}
+        indice={[
+          {
+            chave: 'isr',
+            rotulo: 'Índice',
+            cor: '#111111',
+            traco: '6 4',
+            pontos: [{ mes: '2026-01-01', valor: 50 }],
+          },
+          {
+            chave: 'imprensa',
+            rotulo: 'Imprensa',
+            cor: '#222222',
+            traco: '2 3',
+            pontos: [{ mes: '2026-01-01', valor: 70 }],
+          },
+        ]}
+      />,
+    );
+
+    const tracos = [...container.querySelectorAll('g[data-mensal] path')].map((p) =>
+      p.getAttribute('stroke-dasharray'),
+    );
+    expect(tracos).toEqual(['6 4', '2 3']);
   });
 
   it('a lista VAZIA não desenha curva mensal nenhuma', () => {

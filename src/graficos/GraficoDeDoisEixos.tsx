@@ -87,6 +87,12 @@ export interface SerieMensal {
   chave: string;
   rotulo: string;
   cor: string;
+  /** O tracejado desta curva (`stroke-dasharray`).
+   *
+   *  A COR NÃO PODE SER A ÚNICA PISTA quando há quatro linhas no mesmo eixo:
+   *  quem não separa matiz — ou quem imprime em preto e branco — veria quatro
+   *  curvas iguais. O padrão mantém o tracejado que o índice sempre teve. */
+  traco?: string;
   pontos: PontoMensal[];
 }
 
@@ -373,7 +379,17 @@ export function GraficoDeDoisEixos({
   //: O EIXO X PRECISA COBRIR TODAS as curvas mensais, e não a primeira: duas
   //: lentes podem ter meses diferentes (uma sem dado num mês que a outra tem),
   //: e recortar por uma esconderia o degrau da outra.
-  const meses = mensais.flatMap((serie) => serie.degraus);
+  //:
+  //: UM MÊS SÓ APARECE UMA VEZ, e isto é conserto de achado ALTO de revisão.
+  //: Juntar os degraus de quatro curvas repete cada mês quatro vezes, e o eixo
+  //: é desenhado a partir desta lista: ele ganhava rótulos duplicados (com
+  //: chave repetida, que o React acusa) e a amostragem "um a cada N" passava a
+  //: mostrar `01/26, 09/26, 05/26, 01/26`, pulando meses no caminho. A
+  //: geometria nunca esteve errada — o mínimo e o máximo não mudam com
+  //: repetição —, mas o eixo que a pessoa LÊ, sim.
+  const meses = [...new Map(mensais.flatMap((s) => s.degraus).map((m) => [m.comeca, m])).values()].sort(
+    (a, b) => a.comeca - b.comeca,
+  );
 
   const datas = series.flatMap((s) => s.trechos.flatMap((t) => t.map((p) => p.ms)));
   //: O EIXO X COBRE AS DUAS SÉRIES, E O FIM DO ÚLTIMO DEGRAU. Recortá-lo só
@@ -588,7 +604,7 @@ export function GraficoDeDoisEixos({
                   fill="none"
                   stroke={serie.cor}
                   strokeWidth={2}
-                  strokeDasharray="6 4"
+                  strokeDasharray={serie.traco ?? '6 4'}
                 />
               </g>
             ) : null,
