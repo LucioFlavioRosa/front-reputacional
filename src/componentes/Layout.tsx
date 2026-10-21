@@ -139,11 +139,15 @@ export function Layout({
   //: O rótulo não é decorativo: "Configurações" sozinho, repetido em duas
   //: divisões, deixa quem usa leitor de tela sem saber o que está ajustando.
   const configuracao = configuracaoDe(view);
-  //: "NOVA INTERAÇÃO" É DO CRM, e não da divisão do Score: o KPI Reputacional
-  //: não tem cadastro de interação nenhum ali dentro — é outro painel, outra
-  //: pergunta. Mostrar o botão nessas duas telas abriria uma porta para um
-  //: formulário que não tem relação com o que a pessoa está vendo.
-  const estaNoScore = view === 'score' || view === 'config-score';
+  //: "NOVA INTERAÇÃO" É DO CRM, e só dele: nenhuma outra divisão ou tela
+  //: solta tem cadastro de interação ali dentro — é outro painel, outra
+  //: pergunta. Por isso a lista é positiva (o que É CRM), e não negativa
+  //: (o que não é Score): uma lista negativa esquece de excluir toda tela
+  //: nova que não seja CRM nem Score — foi o que aconteceu com Cadastro
+  //: Compartilhado e Árvore da Taxonomia, que ganharam o botão por engano
+  //: (achado de revisão, 21/10/2026).
+  const VIEWS_DO_CRM: readonly Destino[] = ['painel', 'base', 'preparar', 'relatorios', 'sinais', 'cadastro'];
+  const estaNoCRM = VIEWS_DO_CRM.includes(view);
   const nomeDaArea =
     view === 'score' || view === 'config-score'
       ? 'KPIs Reputacionais'
@@ -357,7 +361,7 @@ export function Layout({
                 navegação leva 403 do mesmo jeito, e a própria tela de cadastro
                 também recusa. São duas camadas porque esconder o botão nunca
                 foi proteção. */}
-            {podeCriar && !estaNoScore ? (
+            {podeCriar && estaNoCRM ? (
               <Botao
                 variante="primario"
                 aoClicar={() => irPara('cadastro')}
