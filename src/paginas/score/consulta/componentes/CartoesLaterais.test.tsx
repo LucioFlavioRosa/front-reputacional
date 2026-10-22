@@ -128,7 +128,7 @@ describe('CartoesLaterais · Imprensa', () => {
     const cartao = cartaoComKicker('A história do mês');
     expect(within(cartao).getByRole('heading', { name: 'Rompimento de adutora na Zona Norte do Rio' })).toBeInTheDocument();
     expect(within(cartao).getByText('O Globo · 12/08/2026')).toBeInTheDocument();
-    expect(within(cartao).getByText('Reativo')).toBeInTheDocument();
+    expect(within(cartao).getByText('Negativo')).toBeInTheDocument();
     expect(within(cartao).getByText('Tier 1')).toBeInTheDocument();
     const negativa = within(cartao).getByText('pontos na nota').closest('li');
     expect(negativa?.getAttribute('style')).toContain('var(--erro-bg)');
@@ -189,7 +189,7 @@ describe('CartoesLaterais · Mercado e demais', () => {
     render(<CartoesLaterais lente={MERCADO} aoIr={vi.fn()} aoAbrirItem={vi.fn()} />);
     const cartao = cartaoComKicker('Sinais do mercado no mês');
     expect(within(cartao).getByText('Sem nova leitura')).toBeInTheDocument();
-    expect(within(cartao).getByText('Propositivo')).toBeInTheDocument();
+    expect(within(cartao).getByText('Positivo')).toBeInTheDocument();
     expect(within(cartao).getByText('18/08/2026 · evento de rating').style.fontSize).toBe('12px');
     expect(within(cartao).getByText('Rating nacional reafirmado em AA, perspectiva estável').style.fontSize).toBe('14px');
     expect(within(cartao).getByText(/Evento ilustrativo/).style.fontSize).toBe('12px');
@@ -225,7 +225,7 @@ describe('CartaoDeRecortes', () => {
 
     const quadros = screen.getAllByRole('heading', { level: 4 });
     expect(quadros).toHaveLength(4);
-    for (const kicker of ['Por tier', 'Concessionária e UF', 'Veículos que mais puxaram o reativo', 'Jornalistas']) {
+    for (const kicker of ['Por tier', 'Concessionária e UF', 'Veículos que mais puxaram o negativo', 'Jornalistas']) {
       expect(screen.getByText(kicker)).toHaveClass('kicker');
     }
     expect(screen.getByText('34 matérias · 35%')).toBeInTheDocument();

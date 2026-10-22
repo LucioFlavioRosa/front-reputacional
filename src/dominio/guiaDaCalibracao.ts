@@ -41,7 +41,7 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     comoAfeta:
       'Quanto mais forte a régua, mais o índice responde ao que sai nos grandes veículos e menos ao volume de publicações pequenas. Vale para Imprensa e Mercado; as outras três lentes não usam tier e não mudam. E só move o número quando a fonte MISTURA tiers: se as matérias do mês são todas do mesmo tier, o multiplicador aparece em cima e embaixo da razão e se cancela.',
     exemplo:
-      'Com 10 · 5 · 1, uma reativa no Valor pesa dez vezes uma de blog local. Com 1 · 1 · 1, as duas valem igual — e um mês de muitas notas pequenas passa a mover o índice tanto quanto uma capa.',
+      'Com 10 · 5 · 1, uma negativa no Valor pesa dez vezes uma de blog local. Com 1 · 1 · 1, as duas valem igual — e um mês de muitas notas pequenas passa a mover o índice tanto quanto uma capa.',
     aviso:
       'Trocar a régua recalcula TODOS os meses, inclusive os que já foram citados. É de propósito: é o que mantém a curva comparável.',
   },
@@ -118,7 +118,7 @@ export const GUIA_DOS_LIMITES: Record<string, VerbeteDoParametro> = {
   deslocamento_pp: {
     titulo: 'Deslocamento · pontos percentuais',
     oQueE:
-      'Quanto a fatia reativa precisa recuar — ou subir — para virar sinal. O mesmo número serve à alta do reativo, ao recuo desde o pico, ao teor e à recuperação da taxa de resposta.',
+      'Quanto a fatia negativa precisa recuar — ou subir — para virar sinal. O mesmo número serve à alta do negativo, ao recuo desde o pico, ao teor e à recuperação da taxa de resposta.',
     comoAfeta:
       'É o limite de maior alcance: ele rege quatro detectores de uma vez. Baixar enche a lista de movimentos pequenos; subir pode deixar a lente sem nenhum sinal de melhora, mesmo quando ela melhorou.',
   },
@@ -127,7 +127,7 @@ export const GUIA_DOS_LIMITES: Record<string, VerbeteDoParametro> = {
     oQueE:
       'Quantos meses na mesma direção formam uma tendência. A sequência conta meses COM LEITURA: um mês sem base não interrompe nem preenche.',
     comoAfeta:
-      'Em 3, três meses de queda já viram "o reativo cai há 3 meses seguidos". Em 4 ou 5, a frase fica rara e mais forte quando aparece — ao custo de demorar a reconhecer uma virada de rumo.',
+      'Em 3, três meses de queda já viram "o negativo cai há 3 meses seguidos". Em 4 ou 5, a frase fica rara e mais forte quando aparece — ao custo de demorar a reconhecer uma virada de rumo.',
   },
   concentracao_razao: {
     titulo: 'Concentração · razão',

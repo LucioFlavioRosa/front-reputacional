@@ -125,8 +125,8 @@ describe('colunasDaTabela', () => {
       }),
     );
 
-    expect(coluna.destaque?.({ sentimento: 'Reativo' })).toBe('alerta');
-    expect(coluna.destaque?.({ sentimento: 'Propositivo' })).toBe('bom');
+    expect(coluna.destaque?.({ sentimento: 'Negativo' })).toBe('alerta');
+    expect(coluna.destaque?.({ sentimento: 'Positivo' })).toBe('bom');
     expect(coluna.destaque?.({ sentimento: 'Neutro' })).toBeNull();
   });
 

@@ -93,10 +93,10 @@ describe('selos', () => {
         <SeloDeSentimento sentimento="positivo" />
       </>,
     );
-    const negativo = screen.getByText('Reativo');
+    const negativo = screen.getByText('Negativo');
     expect(negativo.getAttribute('style')).toContain('var(--erro-bg)');
     expect(negativo.getAttribute('style')).toContain('var(--erro-fg)');
-    expect(screen.getByText('Propositivo').getAttribute('style')).toContain('var(--ok-bg)');
+    expect(screen.getByText('Positivo').getAttribute('style')).toContain('var(--ok-bg)');
     expect(screen.getByText('Neutro').getAttribute('style')).toContain('var(--bg-trilho)');
     const bolinhas = [...container.querySelectorAll('[data-bolinha]')];
     expect(bolinhas).toHaveLength(3);

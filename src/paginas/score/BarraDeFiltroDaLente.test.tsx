@@ -103,12 +103,12 @@ describe('BarraDeFiltroDaLente', () => {
       <BarraDeFiltroDaLente lente="imprensa" filtro={{}} definirFiltro={definirFiltro} opcoes={DA_IMPRENSA} />,
     );
     await userEvent.click(screen.getByText('Sentimento'));
-    expect(screen.getAllByText(/^(Propositivo|Neutro|Reativo)$/).map((item) => item.textContent)).toEqual([
-      'Propositivo',
+    expect(screen.getAllByText(/^(Positivo|Neutro|Negativo)$/).map((item) => item.textContent)).toEqual([
+      'Positivo',
       'Neutro',
-      'Reativo',
+      'Negativo',
     ]);
-    await userEvent.click(screen.getByText('Reativo'));
+    await userEvent.click(screen.getByText('Negativo'));
     expect(definirFiltro).toHaveBeenCalledWith({ sentimento: 'neg' });
 
     rerender(
@@ -116,7 +116,7 @@ describe('BarraDeFiltroDaLente', () => {
     );
     const gatilho = screen.getByRole('button', { name: /Sentimento/ });
     expect(gatilho.style.background).toBe('rgb(255, 92, 96)');
-    expect(gatilho.textContent).toContain('Reativo');
+    expect(gatilho.textContent).toContain('Negativo');
   });
 
   it('Mercado: os mesmos filtros da Imprensa — Concessionária, Tier e Sentimento', () => {

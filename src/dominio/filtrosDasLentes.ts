@@ -39,9 +39,9 @@ export const ROTULO_DO_TIER: Record<string, string> = {
 };
 
 export const ROTULO_DO_SENTIMENTO: Record<string, string> = {
-  pos: 'Propositivo',
+  pos: 'Positivo',
   neu: 'Neutro',
-  neg: 'Reativo',
+  neg: 'Negativo',
 };
 
 const tier: DimensaoDaLente = {

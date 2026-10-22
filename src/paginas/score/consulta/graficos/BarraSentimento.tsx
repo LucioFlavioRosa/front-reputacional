@@ -22,7 +22,7 @@ export function BarraSentimento({ sentimento }: { sentimento: DistSentimento }) 
     <div>
       <div
         role="img"
-        aria-label={`${fmtPct(pos)} propositivas, ${fmtPct(neu)} neutras, ${fmtPct(neg)} reativas`}
+        aria-label={`${fmtPct(pos)} positivas, ${fmtPct(neu)} neutras, ${fmtPct(neg)} negativas`}
         style={{
           display: 'flex',
           height: 10,

@@ -175,7 +175,7 @@ export function RastreioDeRisco() {
             Risk Tracking
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--cinza-3)' }}>
-            Notícias reativas e reuniões de clima reativo que tocam riscos da matriz de risco
+            Notícias negativas e reuniões de clima reativo que tocam riscos da matriz de risco
             corporativo
           </p>
         </div>

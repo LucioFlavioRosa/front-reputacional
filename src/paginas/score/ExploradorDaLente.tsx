@@ -234,9 +234,9 @@ function Legenda() {
       style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11.5, color: 'var(--cinza-3)', marginBottom: 12 }}
     >
       {[
-        ['Propositivo', CORES_DO_SENTIMENTO[0]],
+        ['Positivo', CORES_DO_SENTIMENTO[0]],
         ['Neutro', CORES_DO_SENTIMENTO[1]],
-        ['Reativo', CORES_DO_SENTIMENTO[2]],
+        ['Negativo', CORES_DO_SENTIMENTO[2]],
       ].map(([rotulo, cor]) => (
         <span key={rotulo} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: 2, background: cor }} />
@@ -357,7 +357,7 @@ function MapaDoTermometro({
                 </span>
                 <span
                   className="tabular"
-                  title="Termômetro (NSS): (propositivas − reativas) ÷ total"
+                  title="Termômetro (NSS): (positivas − negativas) ÷ total"
                   style={{
                     justifySelf: 'center',
                     padding: '3px 12px',

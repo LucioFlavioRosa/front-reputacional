@@ -394,9 +394,9 @@ function destaqueDe(bloco: Bloco, chave: string) {
     // é a mesma régua de pos/neg/neu do resto do dossiê, só traduzida para a
     // coluna da tabela em vez de virar faixa de gráfico.
     return (linha: Record<string, unknown>) =>
-      linha.sentimento === 'Reativo'
+      linha.sentimento === 'Negativo'
         ? ('alerta' as const)
-        : linha.sentimento === 'Propositivo'
+        : linha.sentimento === 'Positivo'
           ? ('bom' as const)
           : null;
   }
