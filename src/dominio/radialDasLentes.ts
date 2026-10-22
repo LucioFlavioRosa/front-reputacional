@@ -187,16 +187,56 @@ export function fracoesDe(
  */
 export function radialDasLentes(lentes: LenteDoScore[], porPeso = true): Radial {
   const fracoes = fracoesDe(lentes, porPeso);
-  let angulo = -Math.PI / 2;
 
-  const setores = lentes.map((lente): SetorDaLente => {
+  // UMA PASSADA SÓ DE ÂNGULOS, antes da que monta os setores: o rótulo de
+  // uma fatia fina pode precisar saber da VIZINHA para não colidir com ela,
+  // e a fatia ainda não existe na primeira passada do loop principal.
+  let angulo = -Math.PI / 2;
+  const meios = lentes.map((lente) => {
+    const largura = (fracoes.get(lente.codigo) ?? 0) * Math.PI * 2;
+    const meio = angulo + largura / 2;
+    angulo += largura;
+    return meio;
+  });
+  const ancoras = meios.map(ancoraDe);
+
+  // DUAS FATIAS FINAS LADO A LADO perto de 12h ou 6h desenham os rótulos
+  // quase no mesmo ponto — mesmo quando as âncoras não são as duas 'centro':
+  // uma 'fim' bem perto de uma 'centro' já cola na tela, porque o que importa
+  // é a DISTÂNCIA entre os pontos, não o lado para onde o texto cresce.
+  // Achado ao vivo: Clientes fora do cálculo (fatia fixa e fina) ao lado de
+  // Institucional com peso baixo no mês, as duas perto do topo (21/10/2026).
+  //
+  // A CORREÇÃO AFASTA O ÂNGULO DO RÓTULO, não o raio: empurrar o raio
+  // escaparia do `viewBox`, que já reserva só a folga de `RMAX + 30` (ver o
+  // comentário de `VIEW_BOX`). Afastar o ângulo separa os dois
+  // horizontalmente sem arriscar cortar texto na borda — e só mexe no PAR que
+  // está perto, nunca nas fatias largas de sempre (Imprensa, Mercado,
+  // Sociedade), cujos vizinhos já ficam bem mais que isto de distância.
+  const SEPARACAO_MINIMA = 0.4; // ~23°, abaixo disso dois rótulos vizinhos colam
+  const angulosDoRotulo = [...meios];
+  for (let indice = 0; indice < meios.length; indice += 1) {
+    const seguinte = (indice + 1) % meios.length;
+    if (seguinte === indice) break; // uma lente só: não há vizinho
+    // NORMALIZADO PARA (0, 2π]: o vizinho "seguinte" do último é o primeiro,
+    // cujo ângulo cru é bem menor por já ter dado a volta — sem isto o vão
+    // calculado daria negativo e pareceria enorme, não pequeno.
+    let vao = angulosDoRotulo[seguinte] - angulosDoRotulo[indice];
+    while (vao <= 0) vao += Math.PI * 2;
+    if (vao >= SEPARACAO_MINIMA) continue;
+    const falta = (SEPARACAO_MINIMA - vao) / 2;
+    angulosDoRotulo[indice] -= falta;
+    angulosDoRotulo[seguinte] += falta;
+  }
+
+  angulo = -Math.PI / 2;
+  const setores = lentes.map((lente, indice): SetorDaLente => {
     const largura = (fracoes.get(lente.codigo) ?? 0) * Math.PI * 2;
     const de = angulo + VAO;
     const ate = angulo + largura - VAO;
-    const meio = angulo + largura / 2;
     angulo += largura;
 
-    const [x, y] = ponto(RMAX + 30, meio);
+    const [x, y] = ponto(RMAX + 30, angulosDoRotulo[indice]);
     const ativa = lente.score !== null;
     return {
       codigo: lente.codigo,
@@ -209,7 +249,7 @@ export function radialDasLentes(lentes: LenteDoScore[], porPeso = true): Radial 
       cor: corDaLente(lente.codigo),
       corDoTexto: corDaFaixa(lente.score),
       rotulo: naTela(x, y),
-      ancora: ancoraDe(meio),
+      ancora: ancoras[indice],
       notaEscrita: ativa ? String(lente.score) : 'fora',
       ativa,
       descricao: ativa
