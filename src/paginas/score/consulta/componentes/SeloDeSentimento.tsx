@@ -10,9 +10,9 @@ import { COR_DE_SENTIMENTO_NO_GRAFICO, SELO_DE_SENTIMENTO } from '../cores';
 import type { Sentimento } from '../dados/tipos';
 
 const ROTULO: Record<Sentimento, string> = {
-  positivo: 'Propositivo',
+  positivo: 'Positivo',
   neutro: 'Neutro',
-  negativo: 'Reativo',
+  negativo: 'Negativo',
 };
 
 export function SeloDeSentimento({ sentimento }: { sentimento: Sentimento }) {

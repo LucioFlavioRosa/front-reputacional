@@ -97,9 +97,9 @@ describe('F.7 · gráfico diário', () => {
   });
 
   it('dica do dia: "14/08 · 12 matérias, 10 negativas"', () => {
-    expect(rotuloDoDia(14, '08', porDia.total[13], porDia.negativas[13])).toBe('14/08 · 12 matérias, 10 reativas');
-    expect(rotuloDoDia(2, '08', 1, 1)).toBe('02/08 · 1 matéria, 1 reativa');
-    expect(rotuloDoDia(1, '08', 0, 0)).toBe('01/08 · 0 matérias, 0 reativas');
+    expect(rotuloDoDia(14, '08', porDia.total[13], porDia.negativas[13])).toBe('14/08 · 12 matérias, 10 negativas');
+    expect(rotuloDoDia(2, '08', 1, 1)).toBe('02/08 · 1 matéria, 1 negativa');
+    expect(rotuloDoDia(1, '08', 0, 0)).toBe('01/08 · 0 matérias, 0 negativas');
   });
 
   it('pico é o dia de maior total; sem matérias, não há pico', () => {

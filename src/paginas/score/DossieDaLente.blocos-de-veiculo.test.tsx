@@ -20,7 +20,7 @@
  *  inverte (46,2% Tier 1 contra 10,7%).
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -113,7 +113,7 @@ function dossieCom(codigo: string): Dossie {
         { mes: '2026-08', positivo: 144, neutro: 61, negativo: 11, sem_base: false },
         { mes: '2026-09', positivo: 63, neutro: 35, negativo: 13, sem_base: false },
       ],
-      legenda: ['Propositivo', 'Neutro', 'Reativo'],
+      legenda: ['Positivo', 'Neutro', 'Negativo'],
     }),
     sinais_da_evolucao: [],
     volume_por_tier: bloco({
@@ -137,7 +137,7 @@ function dossieCom(codigo: string): Dossie {
     materias_recentes: bloco({
       titulo: 'Últimas matérias',
       subtipo: 'materias',
-      dados: [{ quando: '12/09', veiculo: 'Valor Econômico', sentimento: 'Propositivo' }],
+      dados: [{ quando: '12/09', veiculo: 'Valor Econômico', sentimento: 'Positivo' }],
     }),
     fatos: [],
     paineis: [],
@@ -286,5 +286,79 @@ describe('os blocos de veículo do dossiê', () => {
     //: esconde demais, estes dois cairiam junto e o teste acima não veria.
     expect(OS_BLOCOS).not.toContain('Drivers e riscos');
     expect(OS_BLOCOS).not.toContain('Temas mais falados');
+  });
+
+  it('o Top veículos e o Termômetro abrem em 5 e o contador sobe e desce de um em um', async () => {
+    //: PEDIDO (21/10/2026, revisto no mesmo dia): as duas listas abriam
+    //: sempre com os 10 veículos que o servidor manda, e a tela ficava
+    //: comprida demais para quem só quer o resumo. Agora abrem em 5, e um
+    //: contador com setinhas sobe até o teto que o servidor mandou e desce
+    //: de volta — sem nunca passar de 5 para menos, nem existir "recolher
+    //: tudo de uma vez" (a primeira versão tinha um reset direto; o pedido
+    //: real era subir E descer de um em um).
+    const dossie = dossieCom('imprensa');
+    const rotulos = Array.from({ length: 7 }, (_, indice) => `Veículo ${indice + 1}`);
+    dossie.top_veiculos = {
+      ...dossie.top_veiculos,
+      dados: rotulos.map((rotulo) => ({ rotulo, positivo: 1, neutro: 0, negativo: 0 })),
+    };
+    dossie.clima_por_veiculos = {
+      ...dossie.clima_por_veiculos,
+      dados: rotulos.map((rotulo, indice) => ({
+        chave: rotulo,
+        rotulo,
+        total: 1,
+        score: 50 - indice,
+      })),
+    };
+    obterDossieDaLente.mockResolvedValue(dossie);
+    await montarEAbrir('imprensa');
+
+    //: OS DOIS CARTÕES, scoped pela classe `cartao` — "Veículo 5" aparece nos
+    //: dois ao mesmo tempo (Top e Termômetro), então uma busca sem escopo
+    //: acharia dois e reprovaria por ambiguidade em vez de pela contagem.
+    await waitFor(() => expect(screen.getByText('Top 5 veículos')).toBeInTheDocument());
+    const topo = screen.getByText('% Matérias por tier e Top veículos').closest('.cartao') as HTMLElement;
+    const termometro = screen.getByText('Termômetro por Veículos').closest('.cartao') as HTMLElement;
+
+    //: NO PONTO DE PARTIDA, a seta de baixo já nasce desabilitada — não existe
+    //: "menos que 5".
+    expect(within(topo).getByText('Veículo 5')).toBeInTheDocument();
+    expect(within(topo).queryByText('Veículo 6')).toBeNull();
+    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeDisabled();
+    expect(within(termometro).getByText('Veículo 5')).toBeInTheDocument();
+    expect(within(termometro).queryByText('Veículo 6')).toBeNull();
+
+    //: OS DOIS CONTADORES, um por painel — cada um controla a própria
+    //: contagem, sem travar os dois juntos.
+    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' }));
+    expect(within(topo).getByText('Top 6 veículos')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 6')).toBeInTheDocument();
+    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeEnabled();
+
+    //: O TERMÔMETRO AINDA NÃO EXPANDIU: confirma que os dois painéis não
+    //: compartilham a mesma contagem.
+    expect(within(termometro).queryByText('Veículo 6')).toBeNull();
+
+    await userEvent.click(within(termometro).getByRole('button', { name: 'Mostrar mais um veículo' }));
+    expect(within(termometro).getByText('Veículo 6')).toBeInTheDocument();
+
+    //: CHEGOU NO TOTAL QUE O SERVIDOR MANDOU (7, abaixo do teto de 10): a
+    //: seta de subir desabilita, e não trava pedindo um 8º que não existe.
+    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' }));
+    expect(within(topo).getByText('Veículo 7')).toBeInTheDocument();
+    expect(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' })).toBeDisabled();
+
+    //: E A SETA DE DESCER TIRA UM DE CADA VEZ, não um reset direto para 5 —
+    //: dois cliques tiram dois, não os sete inteiros de uma vez.
+    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' }));
+    expect(within(topo).getByText('Top 6 veículos')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 6')).toBeInTheDocument();
+    expect(within(topo).queryByText('Veículo 7')).toBeNull();
+
+    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' }));
+    expect(within(topo).getByText('Top 5 veículos')).toBeInTheDocument();
+    expect(within(topo).queryByText('Veículo 6')).toBeNull();
+    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeDisabled();
   });
 });

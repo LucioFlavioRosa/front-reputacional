@@ -25,7 +25,7 @@ const ALTURA_MAXIMA = 440;
 
 export function ColunasEmpilhadas({
   itens,
-  legenda = ['Propositivo', 'Neutro', 'Reativo'],
+  legenda = ['Positivo', 'Neutro', 'Negativo'],
   cores = CORES_PADRAO,
   vazio = 'Sem dado no mês.',
   aoClicar,

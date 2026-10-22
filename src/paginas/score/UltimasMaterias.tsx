@@ -55,11 +55,13 @@ const LARGURAS_PADRAO: Record<string, number> = {
 };
 const EXTRATORES = Object.fromEntries(COLUNAS.map((coluna) => [coluna.rotulo, coluna.ordena]));
 
-//: A COR DA CLASSIFICAÇÃO, a mesma que a tabela antiga usava: o reativo em
-//: alerta, o propositivo em verde, o neutro sem destaque.
+//: A COR DA CLASSIFICAÇÃO, a mesma que a tabela antiga usava: o negativo em
+//: alerta, o positivo em verde, o neutro sem destaque. Sentimento de NOTÍCIA,
+//: e não o termômetro de reunião (`clima`) — por isso "Positivo"/"Negativo",
+//: pedido do cliente de 21/10/2026, e não "Propositivo"/"Reativo".
 function estiloDaClassificacao(valor: string | null): CSSProperties {
-  if (valor === 'Reativo') return { color: 'var(--erro-fg)', fontWeight: 700 };
-  if (valor === 'Propositivo') return { color: 'var(--ok-fg)', fontWeight: 700 };
+  if (valor === 'Negativo') return { color: 'var(--erro-fg)', fontWeight: 700 };
+  if (valor === 'Positivo') return { color: 'var(--ok-fg)', fontWeight: 700 };
   return {};
 }
 

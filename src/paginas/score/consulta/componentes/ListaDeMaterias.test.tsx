@@ -98,7 +98,7 @@ describe('ListaDeMaterias (F.9)', () => {
     expect(data).toBe('12/08');
     expect(veiculo).toBe('O GloboRenata Moura');
     expect(materia).toContain('Rompimento de adutora deixa 14 bairros da Zona Norte sem água por três dias');
-    expect(materia).toContain('Reativo');
+    expect(materia).toContain('Negativo');
     expect(materia).toContain('Tier 1');
     expect(conc).toBe('Águas do RioRJ');
     expect(impacto).toBe('−0,12');

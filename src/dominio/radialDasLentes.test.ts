@@ -264,4 +264,43 @@ describe('radialDasLentes', () => {
     expect(radial.setores).toEqual([]);
     expect(radial.aneis).toHaveLength(4);
   });
+
+  it('duas fatias finas perto do topo não desenham o rótulo uma em cima da outra', () => {
+    // ACHADO AO VIVO (21/10/2026): Clientes fora do cálculo (fatia fixa e
+    // fina) ao lado de Institucional com peso baixo no mês — as duas
+    // terminam perto de 12h, e sem a correção os rótulos caem a menos de 20°
+    // um do outro, perto o bastante para colar na tela.
+    const lentes = [
+      lente({ peso: 35, peso_efetivo: 35, score: 66 }),
+      lente({ codigo: 'mercado', nome: 'Mercado', peso: 30, peso_efetivo: 30, score: 61 }),
+      lente({
+        codigo: 'sociedade',
+        nome: 'Sociedade digital',
+        peso: 25,
+        peso_efetivo: 25,
+        score: 46,
+      }),
+      lente({ codigo: 'clientes', nome: 'Clientes', peso: 0, peso_efetivo: 0, score: null }),
+      lente({
+        codigo: 'institucional',
+        nome: 'Institucional',
+        peso: 5,
+        peso_efetivo: 5,
+        score: 60,
+      }),
+    ];
+
+    const radial = radialDasLentes(lentes);
+    const clientes = radial.setores.find((setor) => setor.codigo === 'clientes')!;
+    const institucional = radial.setores.find((setor) => setor.codigo === 'institucional')!;
+
+    const distancia = Math.hypot(
+      clientes.rotulo.esquerda - institucional.rotulo.esquerda,
+      clientes.rotulo.topo - institucional.rotulo.topo,
+    );
+    // EM PORCENTAGEM DO CONTAINER: dois rótulos a menos de 3% de distância
+    // um do outro se leem colados na tela — era exatamente isso que
+    // acontecia antes da correção (a distância ficava bem menor que isto).
+    expect(distancia).toBeGreaterThan(3);
+  });
 });

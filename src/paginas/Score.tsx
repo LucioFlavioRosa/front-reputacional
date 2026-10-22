@@ -901,7 +901,7 @@ function DriversERiscos({ mes, versao }: { mes: string; versao: number }) {
       <ComFaixaDoTopo>
       <Secao
         titulo="O que se repete"
-        subtitulo={`Temas reativos presentes em ${drivers.regra_da_perpetuacao.meses_para_perpetuar} meses ou mais da janela de ${drivers.regra_da_perpetuacao.meses_da_janela}, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
+        subtitulo={`Temas negativos presentes em ${drivers.regra_da_perpetuacao.meses_para_perpetuar} meses ou mais da janela de ${drivers.regra_da_perpetuacao.meses_da_janela}, e ainda vivos em ${mes}. Um assunto que explode e some é ruído; o que volta todo mês é posição consolidada.`}
       >
         <Cartao>
           {drivers.perpetuacao.length ? (
@@ -933,7 +933,7 @@ function DriversERiscos({ mes, versao }: { mes: string; versao: number }) {
             </ul>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
-              Nenhum tema reativo atravessou{' '}
+              Nenhum tema negativo atravessou{' '}
               {drivers.regra_da_perpetuacao.meses_para_perpetuar} meses até aqui. É uma boa
               notícia — e some da tela quando deixar de ser verdade.
             </p>
@@ -973,7 +973,7 @@ function DriversERiscos({ mes, versao }: { mes: string; versao: number }) {
       <ComFaixaDoTopo>
       <Secao
         titulo="Onde a pressão se concentra"
-        subtitulo="Menções reativas por concessionária. Ordenado pelo reativo, e não pelo volume: a pergunta é onde está o problema."
+        subtitulo="Menções negativas por concessionária. Ordenado pelo negativo, e não pelo volume: a pergunta é onde está o problema."
       >
         <Cartao>
           <Ranking
@@ -989,9 +989,9 @@ function DriversERiscos({ mes, versao }: { mes: string; versao: number }) {
               const unidade = drivers.unidades.find((u) => u.nome === chave);
               if (!unidade) return [];
               return [
-                { rotulo: 'Reativas', valor: numero(unidade.negativas) },
+                { rotulo: 'Negativas', valor: numero(unidade.negativas) },
                 { rotulo: 'Menções no mês', valor: numero(unidade.mencoes) },
-                { rotulo: 'Do reativo total', valor: `${unidade.participacao}%` },
+                { rotulo: 'Do negativo total', valor: `${unidade.participacao}%` },
               ];
             }}
           />
@@ -1087,11 +1087,11 @@ function MetodologiaDoIndice() {
         <Cartao>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
             <li>
-              Para cada lente e cada mês, somam-se as menções propositivas, neutras e reativas —
+              Para cada lente e cada mês, somam-se as menções positivas, neutras e negativas —
               já ponderadas pela régua em vigor.
             </li>
             <li>
-              <strong>NS = (propositivas − reativas) ÷ total.</strong> Total zero é{' '}
+              <strong>NS = (positivas − negativas) ÷ total.</strong> Total zero é{' '}
               <em>sem dado</em>, e não zero: uma lente que ninguém mediu não é uma lente
               neutra.
             </li>

@@ -37,14 +37,14 @@ export function guiaDoRecorte(formula: string, temRecorte: boolean): TrechoDoGui
     {
       termo: 'A nota, de 0 a 100',
       texto:
-        `${formula} 50 é o neutro: tanto propositivo quanto reativo. ` +
-        'Abaixo de 50, o reativo pesou mais; acima, o propositivo.',
+        `${formula} 50 é o neutro: tanto positivo quanto negativo. ` +
+        'Abaixo de 50, o negativo pesou mais; acima, o positivo.',
     },
     {
       termo: 'O impacto, em pontos (o número grande deste painel)',
       texto:
         'Quanto este recorte tira (−) ou põe (+) na nota da lente no mês: ' +
-        '50 × (propositivas − reativas deste recorte) ÷ peso de TODOS os itens do mês ' +
+        '50 × (positivas − negativas deste recorte) ÷ peso de TODOS os itens do mês ' +
         'na lente. O denominador é o do mês inteiro, e não o do recorte — é por isso ' +
         'que os pedaços são comparáveis entre si: cada um é medido contra o mesmo ' +
         'mundo. Somando os pedaços de uma dimensão chega-se à distância entre a nota ' +

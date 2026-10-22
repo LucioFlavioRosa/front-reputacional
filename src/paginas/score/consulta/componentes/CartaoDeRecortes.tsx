@@ -249,7 +249,7 @@ export function CartaoDeRecortes({
         <Quadro kicker="Concessionária e UF" titulo={destaque.concessionarias.titulo}>
           <PorConcessionaria linhas={destaque.concessionarias.linhas} total={subtema.volume} />
         </Quadro>
-        <Quadro kicker="Veículos que mais puxaram o reativo" titulo={destaque.veiculos.titulo}>
+        <Quadro kicker="Veículos que mais puxaram o negativo" titulo={destaque.veiculos.titulo}>
           <TabelaDeRecorte
             primeiraColuna="Veículo"
             linhas={destaque.veiculos.linhas}
