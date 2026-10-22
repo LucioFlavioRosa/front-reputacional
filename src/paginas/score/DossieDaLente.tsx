@@ -388,6 +388,17 @@ function Conteudo({
   } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
     definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
+  //: MESMO CONTADOR DE 5 A 10 do Top veículos e do Termômetro (ver o
+  //: comentário de `useQuantidadeDeVeiculos`) — chamado aqui, no topo do
+  //: componente, porque o quadro que o usa vive dentro de um `.map()` mais
+  //: abaixo, e hook não pode nascer dentro de laço nem de condicional.
+  const veiculosDoTier1 = useQuantidadeDeVeiculos(dossie.veiculos_tier1?.dados.length ?? 0);
+  //: "TIER DO VEÍCULO × SENTIMENTO" GANHOU LUGAR PRÓPRIO (21/10/2026), fora
+  //: da grade genérica de `dossie.paineis` — ver o comentário mais abaixo,
+  //: onde ele é desenhado. O que sobra na grade segue genérico, por pedido do
+  //: cabeçalho deste arquivo: "o servidor diz que gráfico desenhar".
+  const painelDeTier1 = dossie.paineis.find((p) => p.titulo === 'Tier do veículo × sentimento');
+  const outrosPaineis = dossie.paineis.filter((p) => p !== painelDeTier1);
   //: O RECORTE DO MÊS, SEM DIMENSÃO NENHUMA: o endpoint já responde isso (trilha
   //: vazia, impacto do mês inteiro), e é o que a barra da Evolução pergunta.
   //:
@@ -415,6 +426,22 @@ function Conteudo({
           <VolumeETopVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
           <ClimaPorVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
         </div>
+      ) : null}
+
+      {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, por pedido (21/10/2026):
+          "Tier do veículo × sentimento" saiu da grade de baixo (onde dividia
+          a largura com "Matriz de relacionamento com jornalistas") e ganhou
+          lugar fixo aqui, na largura inteira — a mesma de "Últimas
+          matérias", que vem logo depois dele. */}
+      {painelDeTier1 ? (
+        <CartaoDoPainel
+          painel={painelDeTier1}
+          filtro={filtro}
+          definirFiltro={definirFiltro}
+          aoAprofundar={aoAprofundar}
+          dossie={dossie}
+          veiculosDoTier1={veiculosDoTier1}
+        />
       ) : null}
 
       {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, e não lá embaixo depois de
@@ -528,70 +555,133 @@ function Conteudo({
       {/* "ONDE ESTÁ A CAUSA" SAIU por pedido (21/10/2026): não vamos mais
           utilizá-lo. O componente continua no código (`OndeEstaACausa`). */}
 
-      {/* `alignItems: 'stretch'` (o padrão do grid, por isso nem precisa
-          declarar): os dois painéis crescem para a mesma altura, a do mais
-          alto — sem isto, o cartão mais curto para no fim do próprio
-          conteúdo e desalinha com o vizinho sempre que os dois tipos de
-          gráfico não renderizam com a mesma altura por item. */}
-      <div className="grade grade--2" style={{ gap: 16 }}>
-        {dossie.paineis.map((painel, posicao) => (
-          // A CHAVE INCLUI A POSIÇÃO: dois painéis com o mesmo título são
-          // improváveis, mas `key` duplicada faz o React reaproveitar o estado
-          // do componente errado — e o erro aparece como gráfico que não
-          // atualiza, não como aviso.
-          <ComFaixaDoTopo key={`${posicao}-${painel.titulo}`}>
-            <Cartao estilo={{ height: '100%' }}>
-              <CabecalhoDoBloco
-                titulo={painel.titulo}
-                conclusao={painel.conclusao}
-                ficha={painel.ficha}
-                ajuda={GUIA_DO_BLOCO[painel.titulo]}
-              />
-              {/* CLICÁVEL PELO QUE O SERVIDOR DIZ QUE ELE RECORTA, e não
-                  por um palpite a partir do título: um clique em "Saneamento
-                  básico" no painel de temas recorta a tela inteira por aquele
-                  tema, igual à aba do cartão acima. Era isto que faltava para o
-                  painel ser um degrau e não um quadro de leitura. */}
-              <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
-              {/* EMBAIXO DO TIER × SENTIMENTO, por pedido: quais veículos do
-                  Tier 1 formaram aquela barra — os 10 com mais matérias, em
-                  QUANTIDADE (não 100%), como os outros gráficos por volume. */}
-              {painel.titulo === 'Tier do veículo × sentimento' && dossie.veiculos_tier1 ? (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
-                  <div className="kicker" style={{ marginBottom: 10 }}>
-                    Top 10 veículos Tier 1
-                  </div>
-                  <ColunasEmpilhadas
-                    cores={CORES_DO_SENTIMENTO}
-                    rotuloEmCima
-                    espessura={8}
-                    alturaMaxima={600}
-                    dica="Clique para filtrar a tela"
-                    vazio="Nenhuma matéria de veículo Tier 1 no recorte."
-                    ativo={filtro.veiculo}
-                    itens={dossie.veiculos_tier1.dados.map((linha) => ({
-                      rotulo: comoTexto(linha.rotulo),
-                      positivo: comoNumero(linha.positivo ?? 0),
-                      neutro: comoNumero(linha.neutro ?? 0),
-                      negativo: comoNumero(linha.negativo ?? 0),
-                    }))}
-                    aoClicar={(veiculo) =>
-                      definirFiltro({
-                        ...filtro,
-                        veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
-                      })
-                    }
-                  />
-                </div>
-              ) : null}
-              <NotaDeFonte ficha={painel.ficha} />
-            </Cartao>
-          </ComFaixaDoTopo>
-        ))}
-      </div>
+      {/* O QUE SOBRA DE `dossie.paineis` DEPOIS DO TIER × SENTIMENTO (que já
+          saiu daqui, ver acima): hoje é só "Matriz de relacionamento com
+          jornalistas" na Imprensa, sozinho — por isso a largura inteira, e
+          não mais a `grade--2` que ele dividia com o Tier × Sentimento.
+          `alignItems: 'stretch'` NA GRADE (quando há 2+ painéis, caso de
+          outra lente que venha a ter mais de um aqui): os painéis crescem
+          para a mesma altura, a do mais alto — sem isto, o cartão mais curto
+          para no fim do próprio conteúdo e desalinha com o vizinho sempre
+          que os dois tipos de gráfico não renderizam com a mesma altura por
+          item. */}
+      {outrosPaineis.length > 1 ? (
+        <div className="grade grade--2" style={{ gap: 16 }}>
+          {outrosPaineis.map((painel, posicao) => (
+            <CartaoDoPainel
+              key={`${posicao}-${painel.titulo}`}
+              painel={painel}
+              filtro={filtro}
+              definirFiltro={definirFiltro}
+              aoAprofundar={aoAprofundar}
+              dossie={dossie}
+              veiculosDoTier1={veiculosDoTier1}
+            />
+          ))}
+        </div>
+      ) : (
+        outrosPaineis.map((painel, posicao) => (
+          <CartaoDoPainel
+            key={`${posicao}-${painel.titulo}`}
+            painel={painel}
+            filtro={filtro}
+            definirFiltro={definirFiltro}
+            aoAprofundar={aoAprofundar}
+            dossie={dossie}
+            veiculosDoTier1={veiculosDoTier1}
+          />
+        ))
+      )}
 
       <SinaisDoPeriodo dossie={dossie} />
     </>
+  );
+}
+
+/** Um cartão de `dossie.paineis` — extraído de `Conteudo` (21/10/2026) para
+ *  servir aos DOIS lugares que agora desenham um painel: o Tier × Sentimento,
+ *  que ganhou posição fixa logo após os gráficos de veículo, e o que sobra da
+ *  grade genérica (hoje só "Matriz de relacionamento com jornalistas" na
+ *  Imprensa). A MOLDURA É A MESMA NOS DOIS: duplicá-la deixaria os dois
+ *  lugares divergirem no dia em que alguém mudasse um sem lembrar do outro. */
+function CartaoDoPainel({
+  painel,
+  filtro,
+  definirFiltro,
+  aoAprofundar,
+  dossie,
+  veiculosDoTier1,
+}: {
+  painel: Bloco;
+  filtro: FiltroDaLente;
+  definirFiltro: (filtro: FiltroDaLente) => void;
+  aoAprofundar: (chave: string, valor: string) => void;
+  dossie: Dossie;
+  veiculosDoTier1: ReturnType<typeof useQuantidadeDeVeiculos>;
+}) {
+  //: A CHAVE (com a posição, não só o título) fica em quem chama — dois
+  //: painéis com o mesmo título são improváveis, mas `key` duplicada faz o
+  //: React reaproveitar o estado do componente errado, e o erro aparece como
+  //: gráfico que não atualiza, não como aviso.
+  return (
+    <ComFaixaDoTopo>
+      <Cartao estilo={{ height: '100%' }}>
+        <CabecalhoDoBloco
+          titulo={painel.titulo}
+          conclusao={painel.conclusao}
+          ficha={painel.ficha}
+          ajuda={GUIA_DO_BLOCO[painel.titulo]}
+        />
+        {/* CLICÁVEL PELO QUE O SERVIDOR DIZ QUE ELE RECORTA, e não
+            por um palpite a partir do título: um clique em "Saneamento
+            básico" no painel de temas recorta a tela inteira por aquele
+            tema, igual à aba do cartão acima. Era isto que faltava para o
+            painel ser um degrau e não um quadro de leitura. */}
+        <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
+        {/* EMBAIXO DO TIER × SENTIMENTO, por pedido: quais veículos do
+            Tier 1 formaram aquela barra — do mesmo jeito que o Top
+            veículos e o Termômetro ao lado: abre em 5, sobe e desce de um
+            em um até o teto que o servidor mandou. */}
+        {painel.titulo === 'Tier do veículo × sentimento' && dossie.veiculos_tier1 ? (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
+            <div className="kicker" style={{ marginBottom: 10 }}>
+              Top {veiculosDoTier1.quantidade} veículos Tier 1
+            </div>
+            <ColunasEmpilhadas
+              cores={CORES_DO_SENTIMENTO}
+              rotuloEmCima
+              espessura={8}
+              alturaMaxima={600}
+              dica="Clique para filtrar a tela"
+              vazio="Nenhuma matéria de veículo Tier 1 no recorte."
+              ativo={filtro.veiculo}
+              itens={dossie.veiculos_tier1.dados.slice(0, veiculosDoTier1.quantidade).map((linha) => ({
+                rotulo: comoTexto(linha.rotulo),
+                positivo: comoNumero(linha.positivo ?? 0),
+                neutro: comoNumero(linha.neutro ?? 0),
+                negativo: comoNumero(linha.negativo ?? 0),
+              }))}
+              aoClicar={(veiculo) =>
+                definirFiltro({
+                  ...filtro,
+                  veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
+                })
+              }
+            />
+            <ControlesDeVeiculos
+              quantidade={veiculosDoTier1.quantidade}
+              teto={veiculosDoTier1.teto}
+              inicial={veiculosDoTier1.inicial}
+              podeExpandir={veiculosDoTier1.podeExpandir}
+              podeRecolher={veiculosDoTier1.podeRecolher}
+              aoExpandir={veiculosDoTier1.expandir}
+              aoRecolher={veiculosDoTier1.recolher}
+            />
+          </div>
+        ) : null}
+        <NotaDeFonte ficha={painel.ficha} />
+      </Cartao>
+    </ComFaixaDoTopo>
   );
 }
 
@@ -856,6 +946,121 @@ function Evolucao({
  *  um segundo mecanismo de recorte: a tela inteira (nota, KPIs, evolução, o
  *  Top 5 ao lado) já reage a `filtro.tier` porque o servidor filtra tudo por
  *  ele — clicar na rosca só economiza abrir o campo lá em cima. */
+/** O número de veículos mostrados nos dois rankings (Top veículos e
+ *  Termômetro por Veículos) — PEDIDO (21/10/2026, revisto no mesmo dia: a
+ *  primeira versão só tinha "expandir" e um reset direto para 5; o pedido
+ *  real é subir E descer de um em um, como um contador). A tela abre em 5;
+ *  a seta para cima soma um até o teto que o servidor mandou (até 10), a
+ *  seta para baixo tira um sem nunca passar de 5 — esse é o piso, não existe
+ *  "menos que o ponto de partida". */
+const QUANTIDADE_INICIAL_DE_VEICULOS = 5;
+const QUANTIDADE_MAXIMA_DE_VEICULOS = 10;
+
+function useQuantidadeDeVeiculos(total: number) {
+  const teto = Math.min(QUANTIDADE_MAXIMA_DE_VEICULOS, total);
+  const inicial = Math.min(QUANTIDADE_INICIAL_DE_VEICULOS, teto);
+  const [quantidade, definirQuantidade] = useState(inicial);
+  const atual = Math.min(quantidade, teto);
+  return {
+    quantidade: atual,
+    teto,
+    inicial,
+    podeExpandir: atual < teto,
+    podeRecolher: atual > inicial,
+    expandir: () => definirQuantidade((valor) => Math.min(teto, valor + 1)),
+    recolher: () => definirQuantidade((valor) => Math.max(inicial, valor - 1)),
+  };
+}
+
+/** A setinha do contador — mesmo desenho dos dois lados, só vira de ponta-
+ *  cabeça e troca o rótulo. Desabilitada (sem `onClick`) no limite, em vez de
+ *  sumir: sumir faria o contador pular de largura cada vez que alguém chega
+ *  numa ponta, e o clique seguinte cairia no lugar errado. */
+function SetaDoContador({
+  sentido,
+  ativa,
+  aoClicar,
+}: {
+  sentido: 'cima' | 'baixo';
+  ativa: boolean;
+  aoClicar: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={ativa ? aoClicar : undefined}
+      disabled={!ativa}
+      aria-label={sentido === 'cima' ? 'Mostrar mais um veículo' : 'Mostrar um veículo a menos'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 16,
+        padding: 0,
+        border: '1px solid var(--borda)',
+        borderRadius: 3,
+        background: 'var(--branco)',
+        color: ativa ? 'var(--azul-mar)' : 'var(--cinza-1)',
+        cursor: ativa ? 'pointer' : 'default',
+        lineHeight: 1,
+        fontSize: 10,
+      }}
+    >
+      {sentido === 'cima' ? '▲' : '▼'}
+    </button>
+  );
+}
+
+function ControlesDeVeiculos({
+  quantidade,
+  teto,
+  inicial,
+  podeExpandir,
+  podeRecolher,
+  aoExpandir,
+  aoRecolher,
+  centralizado = false,
+}: {
+  quantidade: number;
+  teto: number;
+  inicial: number;
+  podeExpandir: boolean;
+  podeRecolher: boolean;
+  aoExpandir: () => void;
+  aoRecolher: () => void;
+  /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
+   *  de cada veículo vai de ponta a ponta — e um contador encostado à
+   *  esquerda ficava perdido no canto, sem relação visual com a lista
+   *  acima. O Top veículos, ao lado, já nasce numa coluna estreita: ali
+   *  encostado à esquerda já lê como "embaixo da lista". */
+  centralizado?: boolean;
+}) {
+  //: SÓ APARECE QUANDO HÁ O QUE CONTAR — com `teto === inicial` (5 ou menos
+  //: veículos no mês) não existe segunda tela para revelar, e o contador
+  //: ficaria parado nos dois extremos ao mesmo tempo, sem fazer nada.
+  if (teto <= inicial) return null;
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: centralizado ? 'center' : 'flex-start',
+        gap: 8,
+      }}
+    >
+      <span className="tabular" style={{ fontSize: 12.5, color: 'var(--cinza-2)' }}>
+        Mostrando {quantidade} de {teto}
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <SetaDoContador sentido="cima" ativa={podeExpandir} aoClicar={aoExpandir} />
+        <SetaDoContador sentido="baixo" ativa={podeRecolher} aoClicar={aoRecolher} />
+      </div>
+    </div>
+  );
+}
+
 function VolumeETopVeiculos({
   dossie,
   filtro,
@@ -872,12 +1077,14 @@ function VolumeETopVeiculos({
     total: comoNumero(linha.total ?? 0),
     cor: linha.cor ? comoTexto(linha.cor) : undefined,
   }));
+  const { quantidade, teto, inicial, podeExpandir, podeRecolher, expandir, recolher } =
+    useQuantidadeDeVeiculos(ranking.dados.length);
 
   return (
     <ComFaixaDoTopo>
     <Secao
       titulo="% Matérias por tier e Top veículos"
-      subtitulo="Volume de matérias pela relevância (tier) do veículo, e os 10 veículos que mais publicaram, com o sentimento dentro de cada barra"
+      subtitulo={`Volume de matérias pela relevância (tier) do veículo, e os ${teto} veículos que mais publicaram, com o sentimento dentro de cada barra`}
       ajuda={GUIA_DO_BLOCO[rosca.titulo]}
       estilo={{ height: '100%' }}
     >
@@ -894,7 +1101,7 @@ function VolumeETopVeiculos({
         </div>
         <div style={{ flex: '1 1 220px', minWidth: 200 }}>
           <div className="kicker" style={{ marginBottom: 10 }}>
-            Top 10 veículos
+            Top {quantidade} veículos
           </div>
           {/* TOP 10, EMPILHADO PELO SENTIMENTO E EM QUANTIDADE, por pedido — a
               rosca ao lado continua. CLICÁVEL PELO MESMO MOTIVO DA ROSCA:
@@ -908,7 +1115,7 @@ function VolumeETopVeiculos({
             dica="Clique para filtrar a tela"
             vazio="Nada registrado no período."
             ativo={filtro.veiculo}
-            itens={ranking.dados.map((linha) => ({
+            itens={ranking.dados.slice(0, quantidade).map((linha) => ({
               rotulo: comoTexto(linha.rotulo),
               positivo: comoNumero(linha.positivo ?? 0),
               neutro: comoNumero(linha.neutro ?? 0),
@@ -920,6 +1127,15 @@ function VolumeETopVeiculos({
                 veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
               })
             }
+          />
+          <ControlesDeVeiculos
+            quantidade={quantidade}
+            teto={teto}
+            inicial={inicial}
+            podeExpandir={podeExpandir}
+            podeRecolher={podeRecolher}
+            aoExpandir={expandir}
+            aoRecolher={recolher}
           />
         </div>
       </div>
@@ -944,19 +1160,21 @@ function ClimaPorVeiculos({
   definirFiltro: (filtro: FiltroDaLente) => void;
 }) {
   const bloco = dossie.clima_por_veiculos;
+  const { quantidade, teto, inicial, podeExpandir, podeRecolher, expandir, recolher } =
+    useQuantidadeDeVeiculos(bloco.dados.length);
 
   return (
     <ComFaixaDoTopo>
     <Secao
       titulo="Termômetro por Veículos"
-      subtitulo="Os 10 veículos com mais matérias e o placar de cada um, de −100 a +100"
+      subtitulo={`Os ${teto} veículos com mais matérias e o placar de cada um, de −100 a +100`}
       ajuda={GUIA_DO_BLOCO[bloco.titulo]}
       //: DO TAMANHO DO CARD AO LADO (% Matérias por tier e Top veículos), por
       //: pedido: altura cheia, sem o cartão aninhado que o deixava menor.
       estilo={{ height: '100%' }}
     >
         <BarraDivergentePorItem
-          itens={bloco.dados.map((linha) => ({
+          itens={bloco.dados.slice(0, quantidade).map((linha) => ({
             chave: comoTexto(linha.chave),
             rotulo: comoTexto(linha.rotulo),
             total: comoNumero(linha.total ?? 0),
@@ -971,6 +1189,16 @@ function ClimaPorVeiculos({
           }
           unidade={{ singular: 'matéria', plural: 'matérias' }}
           variante="termometro"
+        />
+        <ControlesDeVeiculos
+          quantidade={quantidade}
+          teto={teto}
+          inicial={inicial}
+          podeExpandir={podeExpandir}
+          podeRecolher={podeRecolher}
+          aoExpandir={expandir}
+          aoRecolher={recolher}
+          centralizado
         />
         <NotaDeFonte ficha={bloco.ficha} />
     </Secao>
@@ -1068,7 +1296,7 @@ function Painel({
             comoNumero(linha.positivo ?? 0) + comoNumero(linha.neutro ?? 0) + comoNumero(linha.negativo ?? 0);
           const [pos, neu, neg] = bloco.legenda.length
             ? bloco.legenda
-            : ['Propositivo', 'Neutro', 'Reativo'];
+            : ['Positivo', 'Neutro', 'Negativo'];
           // A COR, QUANDO O SERVIDOR MANDA (hoje só a institucional, com o
           // mesmo cor_hex do dicionário de clima que pinta o Painel), VENCE o
           // tom genérico — ver `BlocoSaida.cores` em `app/api/lentes.py`. Sem
