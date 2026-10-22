@@ -320,7 +320,22 @@ function MapaDoTermometro({
               Score
             </span>
           </div>
-          <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {/* ROLAGEM PRÓPRIA, por pedido (22/10/2026): com todas as UFs do
+              recorte, a lista passava do mapa em altura — o cartão ficava
+              com uma coluna bem mais alta que a outra, e o layout parecia
+              quebrado. A ALTURA É A DO MAPA, aproximadamente, para as duas
+              colunas da `grade--2` acabarem juntas; o cabeçalho (UF ·
+              matérias / Termômetro / Score) fica FORA da rolagem, sempre
+              visível enquanto a lista passa por baixo dele. */}
+          <ol
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              maxHeight: 480,
+              overflowY: 'auto',
+            }}
+          >
             {ufsPorVolume.map((uf) => (
               <li
                 key={uf.uf}
