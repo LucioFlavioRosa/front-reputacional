@@ -48,6 +48,15 @@ function conferencia(parcial: Partial<ConferenciaDeBonds> = {}): ConferenciaDeBo
   };
 }
 
+/** A resposta da conferência COMO A TELA A RECEBE desde 22/10/2026.
+ *
+ *  O IDENTIFICADOR VIAJA JUNTO: é ele que permite à importação ler o arquivo
+ *  que já subiu em partes, em vez de mandar os bytes outra vez. Nulo é o
+ *  caminho de uma vez só — arquivo pequeno ou ambiente sem armazenamento. */
+function feita(parcial: Partial<ConferenciaDeBonds> = {}, subidaId: string | null = null) {
+  return { conferencia: conferencia(parcial), subidaId };
+}
+
 function planilha(nome = 'bonds.xlsx'): File {
   return new File([new Uint8Array([0x50, 0x4b, 3, 4])], nome, {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -61,7 +70,7 @@ function escolher(arquivo: File) {
 }
 
 beforeEach(() => {
-  conferirPlanilhaDeBonds.mockImplementation(() => Promise.resolve(conferencia()));
+  conferirPlanilhaDeBonds.mockImplementation(() => Promise.resolve(feita()));
   importarPlanilhaDeBonds.mockImplementation(() =>
     Promise.resolve({ inseridas: 120, atualizadas: 33174, papeis_completados: 2 }),
   );
@@ -121,6 +130,77 @@ describe('a forma: conferir, depois gravar', () => {
     expect(importarPlanilhaDeBonds).toHaveBeenCalledTimes(1);
   });
 
+  it('o export que subiu EM PARTES é importado pelo identificador, sem reenviar', async () => {
+    /** A mudança de 22/10/2026, e a razão de tudo isto.
+     *
+     *  Até aqui a tela mandava o arquivo INTEIRO duas vezes — uma para conferir
+     *  e outra para importar — e cada uma tinha de caber nos 240 s em que o
+     *  ingress do Container Apps encerra a requisição. O export de bonds é
+     *  cumulativo e cresce toda semana.
+     *
+     *  SEM ESTA ASSERÇÃO o identificador poderia parar de ser repassado e nada
+     *  quebraria na aparência: a importação voltaria a mandar os bytes e só
+     *  falharia na semana em que o arquivo ficasse grande demais — longe da
+     *  causa. */
+    conferirPlanilhaDeBonds.mockImplementation(() =>
+      Promise.resolve(feita({}, 'e8b1c2d3-0000-4000-8000-000000000001')),
+    );
+    render(<ImportacaoDeBonds />);
+    const arquivo = planilha();
+    escolher(arquivo);
+    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
+    await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
+
+    screen.getByRole('button', { name: /^Subir 120 novas/ }).click();
+
+    await waitFor(() => expect(importarPlanilhaDeBonds).toHaveBeenCalledTimes(1));
+    expect(importarPlanilhaDeBonds).toHaveBeenCalledWith(
+      arquivo,
+      'e8b1c2d3-0000-4000-8000-000000000001',
+    );
+  });
+
+  it('o export pequeno continua sendo reenviado, com identificador NULO', async () => {
+    /** O controle do teste acima. Arquivo pequeno e ambiente sem armazenamento
+     *  caem no caminho de sempre, e ali não há o que referenciar — a tela tem
+     *  de mandar os bytes. Sem esta asserção, um identificador vazando como
+     *  string vazia faria a importação pedir um arquivo que não existe. */
+    render(<ImportacaoDeBonds />);
+    const arquivo = planilha();
+    escolher(arquivo);
+    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
+    await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
+
+    screen.getByRole('button', { name: /^Subir 120 novas/ }).click();
+
+    await waitFor(() => expect(importarPlanilhaDeBonds).toHaveBeenCalledTimes(1));
+    expect(importarPlanilhaDeBonds).toHaveBeenCalledWith(arquivo, null);
+  });
+
+  it('trocar de arquivo descarta o IDENTIFICADOR da subida anterior', async () => {
+    /** O defeito plausível desta tela, e o mais caro: conferir um export
+     *  grande (que sobe em partes e deixa identificador), trocar o arquivo e
+     *  clicar em subir gravaria o export ANTERIOR com o nome do novo na tela.
+     *  Impossível de notar. */
+    conferirPlanilhaDeBonds.mockImplementation(() =>
+      Promise.resolve(feita({}, 'e8b1c2d3-0000-4000-8000-000000000001')),
+    );
+    render(<ImportacaoDeBonds />);
+    escolher(planilha('setembro.xlsx'));
+    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
+    await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
+
+    const outubro = planilha('outubro.xlsx');
+    escolher(outubro);
+    conferirPlanilhaDeBonds.mockImplementation(() => Promise.resolve(feita()));
+    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
+    await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
+    screen.getByRole('button', { name: /^Subir 120 novas/ }).click();
+
+    await waitFor(() => expect(importarPlanilhaDeBonds).toHaveBeenCalledTimes(1));
+    expect(importarPlanilhaDeBonds).toHaveBeenCalledWith(outubro, null);
+  });
+
   it('cancelar descarta a conferência', async () => {
     render(<ImportacaoDeBonds />);
     escolher(planilha());
@@ -154,7 +234,7 @@ describe('a conta descreve o arquivo que o botão vai subir', () => {
 describe('o que NÃO vai entrar', () => {
   it('o ticker fora do cadastro aparece, com o que fazer', async () => {
     conferirPlanilhaDeBonds.mockImplementation(() =>
-      Promise.resolve(conferencia({ tickers_desconhecidos: ['NOVOBZ30'] })),
+      Promise.resolve(feita({ tickers_desconhecidos: ['NOVOBZ30'] })),
     );
     render(<ImportacaoDeBonds />);
     escolher(planilha());
@@ -169,7 +249,7 @@ describe('o que NÃO vai entrar', () => {
      *  coluna desapareceria e a conferência diria um número menor sem dizer
      *  por quê. */
     conferirPlanilhaDeBonds.mockImplementation(() =>
-      Promise.resolve(conferencia({ rotulos_ignorados: [['AEGEBZ31', 'observacao']] })),
+      Promise.resolve(feita({ rotulos_ignorados: [['AEGEBZ31', 'observacao']] })),
     );
     render(<ImportacaoDeBonds />);
     escolher(planilha());
@@ -194,7 +274,7 @@ describe('o que NÃO vai entrar', () => {
 
   it('a linha que encerrou a leitura é dita, com o número', async () => {
     conferirPlanilhaDeBonds.mockImplementation(() =>
-      Promise.resolve(conferencia({ linha_que_encerrou: 1203 })),
+      Promise.resolve(feita({ linha_que_encerrou: 1203 })),
     );
     render(<ImportacaoDeBonds />);
     escolher(planilha());

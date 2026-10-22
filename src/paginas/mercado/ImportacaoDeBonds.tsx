@@ -82,6 +82,13 @@ export function ImportacaoDeBonds() {
   const [resultado, definirResultado] = useState<Resultado | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [ocupado, definirOcupado] = useState(false);
+  //: O IDENTIFICADOR DA SUBIDA EM PARTES, quando houve uma. Nulo para arquivo
+  //: pequeno e para ambiente sem armazenamento — nos dois casos a importação
+  //: reenvia os bytes, como sempre fez.
+  const [subidaId, definirSubidaId] = useState<string | null>(null);
+  const [progresso, definirProgresso] = useState<{ enviadas: number; total: number } | null>(
+    null,
+  );
   const entrada = useRef<HTMLInputElement | null>(null);
 
   const limpar = () => {
@@ -89,6 +96,11 @@ export function ImportacaoDeBonds() {
     definirResultado(null);
     definirErro(null);
     definirArquivo(null);
+    //: O IDENTIFICADOR SAI JUNTO. Sem isto, trocar de arquivo e importar
+    //: gravaria o export ANTERIOR — o que subiu em partes — com a tela
+    //: mostrando o nome do novo.
+    definirSubidaId(null);
+    definirProgresso(null);
     //: O `<input type="file">` É NÃO CONTROLADO: sem isto o navegador continua
     //: mostrando o nome do arquivo anterior ao reabrir o seletor. Mesmo motivo
     //: pelo qual `CampoDeArquivo` aceita um `ref`.
@@ -100,25 +112,44 @@ export function ImportacaoDeBonds() {
     definirOcupado(true);
     definirErro(null);
     definirResultado(null);
-    conferirPlanilhaDeBonds(arquivo)
-      .then(definirConferencia)
+    definirProgresso(null);
+    conferirPlanilhaDeBonds(arquivo, (enviadas, total) =>
+      //: O PROGRESSO NÃO É ENFEITE: um export grande sobe em várias
+      //: requisições, e uma tela parada por minutos se lê como travada. Foi
+      //: assim que o defeito do Score apareceu para quem usava — "está
+      //: demorando", sem erro nenhum.
+      definirProgresso({ enviadas, total }),
+    )
+      .then((feita) => {
+        definirConferencia(feita.conferencia);
+        //: GUARDA O IDENTIFICADOR para a importação ler o arquivo que já subiu
+        //: em vez de mandá-lo de novo. Nulo quando foi de uma vez só.
+        definirSubidaId(feita.subidaId);
+      })
       .catch((falha: unknown) =>
         definirErro(falha instanceof Error ? falha.message : 'Não foi possível ler a planilha.'),
       )
-      .finally(() => definirOcupado(false));
+      .finally(() => {
+        definirOcupado(false);
+        definirProgresso(null);
+      });
   };
 
   const importar = () => {
     if (!arquivo) return;
     definirOcupado(true);
     definirErro(null);
-    importarPlanilhaDeBonds(arquivo)
+    importarPlanilhaDeBonds(arquivo, subidaId)
       .then((feito) => {
         definirResultado(feito);
         definirConferencia(null);
         //: O ARQUIVO SAI DA TELA depois de gravar, para o botão de subir não
         //: ficar oferecendo a mesma planilha de novo como se faltasse algo.
         definirArquivo(null);
+        //: E O IDENTIFICADOR TAMBÉM: o servidor já descartou a linha e o byte
+        //: depois de gravar. Mantê-lo faria o próximo "Subir" apontar para um
+        //: arquivo que não existe mais.
+        definirSubidaId(null);
         if (entrada.current) entrada.current.value = '';
       })
       .catch((falha: unknown) =>
@@ -154,6 +185,10 @@ export function ImportacaoDeBonds() {
                 definirConferencia(null);
                 definirResultado(null);
                 definirErro(null);
+                //: E O IDENTIFICADOR DA SUBIDA ANTERIOR, pelo mesmo motivo —
+                //: senão "Subir" gravaria o export antigo com o nome do novo
+                //: na tela.
+                definirSubidaId(null);
               }}
             />
           </div>
@@ -164,7 +199,15 @@ export function ImportacaoDeBonds() {
               aoClicar={conferir}
               desabilitado={ocupado || !arquivo}
             >
-              {ocupado && !conferencia ? 'Lendo…' : '2. Conferir antes de subir'}
+              {ocupado && !conferencia
+                ? progresso
+                  ? //: O NÚMERO DA PARTE, e não um "Lendo…" parado. Um export
+                    //: grande sobe em várias requisições e pode levar minutos;
+                    //: sem isto a tela parece travada, que foi exatamente como
+                    //: o defeito do Score apareceu para quem usava.
+                    `Subindo ${progresso.enviadas} de ${progresso.total}…`
+                  : 'Lendo…'
+                : '2. Conferir antes de subir'}
             </Botao>
             {conferencia ? (
               <Botao variante="fantasma" aoClicar={limpar} desabilitado={ocupado}>

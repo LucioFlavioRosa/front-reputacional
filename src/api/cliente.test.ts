@@ -276,7 +276,18 @@ describe('o código-fonte do cliente não tem escrita de catálogo fora desta li
     // função de um arquivo adota o que o arquivo seguinte menciona. Deu três
     // problemas fantasmas — `historicoDeAcesso`, `listarDocumentosDaReuniao` e
     // `obterOpcoesDoRisco` acusadas pelo que vinha depois delas, noutro arquivo.
+    // O ARQUIVO QUE NÃO CHAMA `requisitar` SAI DA VARREDURA, e isto é regra e
+    // não lista: `subirEmPartes.ts` é o mecanismo da subida em pedaços (o laço,
+    // a repetição da parte que falhou, o progresso) e recebe de quem o chama as
+    // funções que falam com o servidor — ele nunca menciona `requisitar`.
+    //
+    // POR QUE POR REGRA: a primeira versão desta varredura usava uma LISTA
+    // ESCRITA À MÃO e a revisão apontou o buraco — um arquivo esquecido ficaria
+    // fora e a garantia viraria falsa em silêncio. Pular por "não menciona"
+    // mantém a garantia: quem não menciona não chama, e quem chamar volta a ser
+    // varrido no mesmo instante.
     for (const [nome, texto] of ARQUIVOS) {
+      if (!texto.includes('requisitar')) continue;
       const { problemas } = varrerChamadas(texto);
       expect(problemas, `em ${nome}`).toEqual([]);
     }
