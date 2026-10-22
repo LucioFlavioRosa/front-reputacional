@@ -12,6 +12,7 @@ import type { FiltroDoRisco, OpcoesDoRisco, PaginaDeIncidentes, PainelDeRisco } 
 import type { Calibracao, CalibracaoEntrada, DriversDoScore, FatoDoMes, FonteDoScore, ImportacaoDoScore, IndiceDoScore, ListaDeVeiculos, OpcoesDoScore, PontoDaSerie } from '@/dominio/score';
 import { LISTA_DO_MERCADO } from '@/dominio/score';
 import { requisitar } from './nucleo';
+import { subirEmPartes, TAMANHO_PARA_SUBIR_EM_PARTES } from './subirEmPartes';
 
 /** O índice do mês, com as lentes que o formaram.
  *
@@ -193,179 +194,72 @@ export function conferirPlanilhaDoScore(
   );
 }
 
-/** ACIMA DISTO A PLANILHA SOBE EM PARTES, e o número sai de medição.
+/** ACIMA DISTO A PLANILHA SOBE EM PARTES.
  *
- *  MEDIDO NO AMBIENTE em 16/10/2026, pela telemetria do navegador — o mesmo
- *  arquivo, a mesma máquina, a mesma hora:
+ *  A MEDIÇÃO QUE DEFINE O NÚMERO mudou de casa em 22/10/2026, para
+ *  `subirEmPartes`, junto com o laço que o usa: nada disso depende de ser a
+ *  planilha do Score que sobe, e a Importação de bonds precisava do mesmo.
  *
- *      1,42 MB  ->    4,1 s  -> 200
- *      1,33 MB  ->   73,2 s  -> 200
- *      3,27 MB  ->   ~240 s  -> 403   (a planilha da Approach, em produção)
- *     10,53 MB  ->  212,4 s  -> 403
- *     10,53 MB  ->  227,4 s  -> 403
- *
- *  Os 403 param em ~212–240 s porque o ingress do Container Apps encerra a
- *  requisição por volta de 240 s, e isso não é configurável. A banda de subida
- *  variou de ~18 KB/s a ~350 KB/s na MESMA hora.
- *
- *  ESTE NÚMERO JÁ ESTEVE ERRADO, e a linha de 3,27 MB é o preço. Ele era 4 MB,
- *  e o comentário que o justificava dizia, com estes mesmos dados, que "a
- *  18 KB/s 4 MB levam ~230 s e NÃO caberiam" — e escolhia 4 MB de todo jeito,
- *  apostando que a banda ruim não voltaria. Voltou: a planilha da Approach tem
- *  3,27 MB, passou por baixo do limiar, foi numa requisição só e morreu no
- *  ingress. Quem usava leu um 403 em HTML.
- *
- *  O LIMIAR AGORA FICA ABAIXO DO ÚNICO ARQUIVO GRANDE QUE SE VIU COMPLETAR no
- *  pior momento de banda: 1,33 MB em 73,2 s. A 1,2 MB o caminho de uma vez só
- *  guarda mais de 3x de margem contra os 240 s, contando a leitura por cima —
- *  que, medida, é da ordem de 11 s para a Approach e 7 s para a Clipei. O teto
- *  não adivinha banda: ele garante que o caso ruim ainda caiba.
- *
- *  POR QUE NÃO SEMPRE EM PARTES: o caminho de uma vez é uma requisição em vez
- *  de três, e não depende de armazenamento. Arquivo pequeno não paga por uma
- *  máquina de estados que não precisa.
- *
- *  O QUE ISSO CUSTA: o mês da Clipei (1,3 a 2,1 MB) passa a subir em partes —
- *  abertura, duas ou três partes, conferência. Medido no ambiente, cada parte
- *  custa ~0,5 s, então são ~2 s a mais no caso bom para não ter 4 minutos e um
- *  403 no caso ruim.
- *
- *  `Math.round` PORQUE 1,2 MiB NÃO É INTEIRO: 1,2 × 1024 × 1024 = 1.258.291,2,
- *  e um limiar fracionário compara certo mas não serve de tamanho de arquivo —
- *  o teste da borda exata criaria um `File` de 1.258.291,2 bytes. */
-export const TAMANHO_PARA_SUBIR_EM_PARTES = Math.round(1.2 * 1024 * 1024);
-
-interface SubidaAberta {
-  /** NULO SIGNIFICA "AQUI NÃO DÁ, MANDE DE UMA VEZ" — ambiente sem
-   *  armazenamento não tem onde montar as partes. É a mesma convenção que a
-   *  conferência de uma vez só usa para dizer que não guardou o arquivo. */
-  planilha_id: string | null;
-  tamanho_da_parte: number;
-}
+ *  REEXPORTADO DAQUI porque a Base e a Calibração importam este nome de
+ *  `api/score`; trocar o import das duas seria ruído num diff que não é sobre
+ *  elas. */
+export { TAMANHO_PARA_SUBIR_EM_PARTES } from './subirEmPartes';
 
 /** Confere uma planilha GRANDE, subindo-a em pedaços.
  *
- *  POR QUE ESTE CAMINHO EXISTE: ver `TAMANHO_PARA_SUBIR_EM_PARTES`. O problema
- *  não é o processamento — a conferência leva ~7 s para 10,53 MB — é a
- *  requisição longa, que o ingress encerra.
- *
- *  `aoProgresso` NÃO É ENFEITE. Onze requisições levam minutos, e uma tela
- *  parada por minutos se lê como travada: foi exatamente assim que este defeito
- *  apareceu para quem usava ("está demorando", sem erro nenhum). Quem chama
- *  precisa poder dizer em que parte está.
+ *  O QUE SOBROU AQUI são as três rotas e o nome do campo (`planilha_id`). O
+ *  laço, a repetição da parte que falhou, o progresso e a regra do "aqui não
+ *  dá, mande de uma vez" estão em `subirEmPartes`.
  *
  *  NÃO SUBSTITUI `conferirPlanilhaDoScore`: devolve a MESMA resposta, porque é
  *  a mesma montagem no servidor. A tela não distingue os dois depois daqui. */
-export async function conferirPlanilhaDoScoreEmPartes(
+export function conferirPlanilhaDoScoreEmPartes(
   codigo: string,
   arquivo: File,
   aoProgresso?: (enviadas: number, total: number) => void,
 ): Promise<ConferenciaDaPlanilhaDoScore> {
-  const abertura = new FormData();
-  abertura.append('tamanho', String(arquivo.size));
-  // O NOME VEM AGORA, e não no fim: a linha da subida nasce na abertura (ver a
-  // migration 0094), e `nome` é coluna obrigatória dela. Mandá-lo nos dois
-  // lugares convidaria os dois a divergirem.
-  abertura.append('nome', arquivo.name);
-  const { planilha_id, tamanho_da_parte } = await requisitar<SubidaAberta>(
-    `/api/score/fontes/${codigo}/planilha/upload`,
-    { method: 'POST', body: abertura },
+  return subirEmPartes<ConferenciaDaPlanilhaDoScore>(
+    arquivo,
+    {
+      abrir: async (arq) => {
+        const corpo = new FormData();
+        corpo.append('tamanho', String(arq.size));
+        // O NOME VEM AGORA, e não no fim: a linha da subida nasce na abertura
+        // (migration 0094), e `nome` é coluna obrigatória dela. Mandá-lo nos
+        // dois lugares convidaria os dois a divergirem.
+        corpo.append('nome', arq.name);
+        const aberta = await requisitar<{
+          planilha_id: string | null;
+          tamanho_da_parte: number;
+        }>(`/api/score/fontes/${codigo}/planilha/upload`, {
+          method: 'POST',
+          body: corpo,
+        });
+        return { id: aberta.planilha_id, tamanho_da_parte: aberta.tamanho_da_parte };
+      },
+      parte: (id, indice, pedaco) => {
+        const corpo = new FormData();
+        // O NOME DO ARQUIVO NÃO IMPORTA AQUI: o servidor lê os bytes da parte,
+        // e o nome de verdade foi na abertura. Um fixo evita que um nome com
+        // caractere estranho quebre a parte.
+        corpo.append('parte', pedaco, `parte-${indice}`);
+        return requisitar<void>(
+          `/api/score/fontes/${codigo}/planilha/${id}/parte/${indice}`,
+          { method: 'PUT', body: corpo },
+        );
+      },
+      fechar: (id, partes) => {
+        const corpo = new FormData();
+        corpo.append('partes', String(partes));
+        return requisitar<ConferenciaDaPlanilhaDoScore>(
+          `/api/score/fontes/${codigo}/planilha/${id}/conferencia`,
+          { method: 'POST', body: corpo },
+        );
+      },
+      deUmaVez: (arq) => conferirPlanilhaDoScore(codigo, arq),
+    },
+    aoProgresso,
   );
-
-  // SEM ARMAZENAMENTO, O CAMINHO DE SEMPRE. O servidor diz isso com
-  // `planilha_id` nulo, e aqui é o único lugar que precisa saber: a tela chama
-  // `conferirPlanilhaDoScoreComoCouber` e recebe a mesma resposta nos dois
-  // casos.
-  //
-  // ESTE RETORNO É O QUE FAZ O LIMIAR MENOR SER SEGURO. Antes o servidor
-  // recusava com 422 e esta função repassava a recusa — a pessoa lia "este
-  // ambiente não guarda arquivos" sem ter pedido nada sobre armazenamento. Com
-  // o limiar em 4 MB isso era raro; com 1,2 MB seria quase toda planilha em
-  // ambiente sem blob.
-  //
-  // E NÃO SE DETECTA POR ERRO: o envelope do back é `{detalhe, referencia}` e
-  // não traz código, então capturar o 422 confundiria esta causa com "fonte
-  // inativa" e "passa de 80 MB" — e cairia no caminho de uma vez só justamente
-  // nos dois casos em que ele também vai falhar, depois de subir o arquivo
-  // inteiro.
-  if (planilha_id === null) return conferirPlanilhaDoScore(codigo, arquivo);
-
-  // O TAMANHO DA PARTE VEM DO SERVIDOR, e não daqui: é ele que conhece o teto
-  // do ingress e a margem que escolheu. Um número nosso divergiria do dele na
-  // primeira mudança, e a divergência só apareceria como parte recusada.
-  const total = Math.ceil(arquivo.size / tamanho_da_parte);
-  aoProgresso?.(0, total);
-
-  // UMA POR VEZ, e não em paralelo. O servidor aceita qualquer ordem — o teste
-  // dele cobra isso —, mas em paralelo as partes disputam a MESMA banda que
-  // acabou de se mostrar o gargalo, e o progresso deixaria de significar
-  // "quanto subiu". Sequencial é mais lento em rede boa e mais legível em rede
-  // ruim, que é onde este caminho é usado.
-  for (let indice = 0; indice < total; indice += 1) {
-    const inicio = indice * tamanho_da_parte;
-    const pedaco = arquivo.slice(inicio, inicio + tamanho_da_parte);
-    const corpo = new FormData();
-    // O NOME DO ARQUIVO NÃO IMPORTA AQUI: o servidor lê os bytes da parte, e o
-    // nome de verdade foi na abertura. Mandar um fixo evita que um nome com
-    // caractere estranho quebre a parte.
-    corpo.append('parte', pedaco, `parte-${indice}`);
-    await comTentativas(() =>
-      requisitar<void>(
-        `/api/score/fontes/${codigo}/planilha/${planilha_id}/parte/${indice}`,
-        { method: 'PUT', body: corpo },
-      ),
-    );
-    aoProgresso?.(indice + 1, total);
-  }
-
-  const fechamento = new FormData();
-  fechamento.append('partes', String(total));
-  return requisitar<ConferenciaDaPlanilhaDoScore>(
-    `/api/score/fontes/${codigo}/planilha/${planilha_id}/conferencia`,
-    { method: 'POST', body: fechamento },
-  );
-}
-
-/** Quantas vezes uma parte é tentada antes de desistir. */
-const TENTATIVAS_POR_PARTE = 3;
-
-/** Repete a parte que falhou por motivo TRANSITÓRIO.
- *
- *  POR QUE EXISTE: o servidor fez o `PUT` idempotente por índice justamente
- *  para permitir repetir — e a primeira versão deste cliente abortava na
- *  primeira falha, desperdiçando a garantia. Numa rede ruim, que é o caso de
- *  uso inteiro, uma parte falha e a pessoa recomeçava o arquivo de dez
- *  megabytes. Achado da revisão do Codex em 16/10/2026.
- *
- *  SÓ O QUE PODE DAR CERTO NA SEGUNDA: falha de rede, 408, 429 e 5xx. Um 4xx
- *  determinístico — parte fora de faixa, tamanho errado, subida que não é sua —
- *  dá o mesmo resultado três vezes, e repetir só atrasa a mensagem que a pessoa
- *  precisa ler.
- *
- *  ESPERA CRESCENTE COM RUÍDO: 400 ms, 800 ms, e o ruído evita que dez partes
- *  que falharam juntas voltem todas no mesmo instante. Sem o teto de três, uma
- *  rede caída viraria laço infinito com a tela dizendo que está subindo.
- */
-async function comTentativas<T>(fazer: () => Promise<T>): Promise<T> {
-  for (let tentativa = 1; ; tentativa += 1) {
-    try {
-      return await fazer();
-    } catch (falha) {
-      if (tentativa >= TENTATIVAS_POR_PARTE || !valeTentarDeNovo(falha)) throw falha;
-      const espera = 400 * 2 ** (tentativa - 1) * (1 + Math.random() * 0.3);
-      await new Promise((pronto) => setTimeout(pronto, espera));
-    }
-  }
-}
-
-/** A falha é do tipo que pode dar certo na próxima? */
-function valeTentarDeNovo(falha: unknown): boolean {
-  // SEM `status` É FALHA DE REDE: o `fetch` rejeita antes de haver resposta, e
-  // é o caso mais comum numa conexão instável — o que este caminho existe para
-  // atender.
-  const status = (falha as { status?: number } | null)?.status;
-  if (status === undefined) return true;
-  return status === 408 || status === 429 || status >= 500;
 }
 
 /** Confere a planilha pelo caminho que o tamanho dela pede.

@@ -12,6 +12,7 @@
  */
 
 import { requisitar } from './nucleo';
+import { subirEmPartes, TAMANHO_PARA_SUBIR_EM_PARTES } from './subirEmPartes';
 
 /** Uma métrica do papel. `yield` SUBINDO É PIORA, ao contrário do preço — é a
  *  tela que pinta a variação, mas quem escolhe a métrica precisa saber disso. */
@@ -288,7 +289,7 @@ export interface ImportacaoDeBonds {
 }
 
 /** Lê o export e diz o que a subida faria. NÃO grava. */
-export function conferirPlanilhaDeBonds(arquivo: File): Promise<ConferenciaDeBonds> {
+function conferirDeUmaVez(arquivo: File): Promise<ConferenciaDeBonds> {
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
   return requisitar<ConferenciaDeBonds>('/api/mercado/bonds/conferencia', {
@@ -297,13 +298,97 @@ export function conferirPlanilhaDeBonds(arquivo: File): Promise<ConferenciaDeBon
   });
 }
 
+/** A conferência, mais o identificador da subida que ela montou.
+ *
+ *  O IDENTIFICADOR VIAJA PARA A IMPORTAÇÃO, e é por isso que ele sai daqui: é
+ *  ele que permite à importação ler o arquivo que já está no armazenamento em
+ *  vez de pedir os bytes outra vez. NULO quando o export foi de uma vez só —
+ *  arquivo pequeno ou ambiente sem armazenamento. */
+export interface ConferenciaDeBondsFeita {
+  conferencia: ConferenciaDeBonds;
+  subidaId: string | null;
+}
+
+/** Confere o export pelo caminho que o tamanho dele pede.
+ *
+ *  É ESTA QUE A TELA CHAMA, e é a única que ela precisa conhecer: a escolha
+ *  entre uma requisição e onze é de transporte, não de produto.
+ *
+ *  POR QUE O CAMINHO EM PARTES EXISTE: o ingress do Container Apps encerra a
+ *  requisição por volta de 240 s e não é configurável; o export de bonds é
+ *  CUMULATIVO e cresce toda semana. Ver `subirEmPartes`. */
+export async function conferirPlanilhaDeBonds(
+  arquivo: File,
+  aoProgresso?: (enviadas: number, total: number) => void,
+): Promise<ConferenciaDeBondsFeita> {
+  if (arquivo.size <= TAMANHO_PARA_SUBIR_EM_PARTES) {
+    return { conferencia: await conferirDeUmaVez(arquivo), subidaId: null };
+  }
+
+  //: O IDENTIFICADOR É CAPTURADO NA ABERTURA porque `subirEmPartes` devolve o
+  //: que o FECHAMENTO devolve — a conferência —, e a tela precisa dos dois.
+  //: Fazer o fechamento devolver os dois juntos obrigaria o módulo genérico a
+  //: conhecer o formato de cada domínio.
+  let subidaId: string | null = null;
+  const conferencia = await subirEmPartes<ConferenciaDeBonds>(
+    arquivo,
+    {
+      abrir: async (arq) => {
+        const corpo = new FormData();
+        corpo.append('tamanho', String(arq.size));
+        //: O NOME VEM AGORA, e não no fim: a linha da subida nasce na abertura
+        //: (migration 0113), e `nome` é coluna obrigatória dela.
+        corpo.append('nome', arq.name);
+        const aberta = await requisitar<{
+          subida_id: string | null;
+          tamanho_da_parte: number;
+        }>('/api/mercado/bonds/upload', { method: 'POST', body: corpo });
+        subidaId = aberta.subida_id;
+        return { id: aberta.subida_id, tamanho_da_parte: aberta.tamanho_da_parte };
+      },
+      parte: (id, indice, pedaco) => {
+        const corpo = new FormData();
+        corpo.append('parte', pedaco, `parte-${indice}`);
+        return requisitar<void>(`/api/mercado/bonds/upload/${id}/parte/${indice}`, {
+          method: 'PUT',
+          body: corpo,
+        });
+      },
+      fechar: (id, partes) => {
+        const corpo = new FormData();
+        corpo.append('partes', String(partes));
+        return requisitar<ConferenciaDeBonds>(
+          `/api/mercado/bonds/upload/${id}/conferencia`,
+          { method: 'POST', body: corpo },
+        );
+      },
+      deUmaVez: conferirDeUmaVez,
+    },
+    aoProgresso,
+  );
+  return { conferencia, subidaId };
+}
+
 /** Grava as cotações, por `upsert` na chave `(ticker, data)`.
  *
- *  REENVIA O ARQUIVO, e não um identificador do que a conferência leu: a
- *  conferência não guarda bytes (ela não escreve nada). Subir o mesmo arquivo
- *  duas vezes é inofensivo — é propriedade da chave composta, não gentileza
- *  desta função. */
-export function importarPlanilhaDeBonds(arquivo: File): Promise<ImportacaoDeBonds> {
+ *  COM `subidaId`, NÃO REENVIA OS BYTES: o arquivo já está no armazenamento e o
+ *  servidor o lê de lá. Até 22/10/2026 a tela mandava o export INTEIRO duas
+ *  vezes — uma para conferir, outra para importar —, e cada uma delas tinha de
+ *  caber nos 240 s do ingress.
+ *
+ *  SEM ELE, REENVIA, e é o caminho do arquivo pequeno e do ambiente sem
+ *  armazenamento. Subir o mesmo arquivo duas vezes é inofensivo — é propriedade
+ *  da chave composta, não gentileza desta função. */
+export function importarPlanilhaDeBonds(
+  arquivo: File,
+  subidaId: string | null = null,
+): Promise<ImportacaoDeBonds> {
+  if (subidaId !== null) {
+    return requisitar<ImportacaoDeBonds>(
+      `/api/mercado/bonds/upload/${subidaId}/importar`,
+      { method: 'POST' },
+    );
+  }
   const corpo = new FormData();
   corpo.append('arquivo', arquivo);
   return requisitar<ImportacaoDeBonds>('/api/mercado/bonds/importar', {
