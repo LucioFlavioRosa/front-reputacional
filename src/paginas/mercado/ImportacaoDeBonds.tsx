@@ -216,6 +216,26 @@ export function ImportacaoDeBonds() {
             ) : null}
           </div>
 
+          {/* O PROGRESSO TAMBÉM FORA DO BOTÃO, e isto é achado de revisão de
+              acessibilidade: o texto do botão muda a cada parte, mas o botão
+              fica DESABILITADO enquanto sobe — e leitor de tela não anuncia
+              mudança em elemento desabilitado de forma confiável. Numa subida
+              de minutos, quem não vê a tela ficaria sem nenhum sinal de que
+              algo acontece.
+
+              `aria-live="polite"`: avisa entre uma frase e outra, sem
+              interromper o que está sendo lido. Onze anúncios atropelando a
+              leitura seriam piores que nenhum. */}
+          {progresso ? (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{ fontSize: 12, color: 'var(--cinza-3)', margin: '10px 0 0' }}
+            >
+              Subindo a planilha: parte {progresso.enviadas} de {progresso.total}.
+            </p>
+          ) : null}
+
           {erro ? (
             <div style={{ marginTop: 14 }}>
               <FaixaDeErro mensagem={erro} />

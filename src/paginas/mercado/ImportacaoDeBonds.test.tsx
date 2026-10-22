@@ -17,7 +17,7 @@
  *     diferença que diz se a subida da semana trouxe dado novo.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConferenciaDeBonds } from '@/api/cliente';
@@ -177,11 +177,22 @@ describe('a forma: conferir, depois gravar', () => {
     expect(importarPlanilhaDeBonds).toHaveBeenCalledWith(arquivo, null);
   });
 
-  it('trocar de arquivo descarta o IDENTIFICADOR da subida anterior', async () => {
-    /** O defeito plausível desta tela, e o mais caro: conferir um export
-     *  grande (que sobe em partes e deixa identificador), trocar o arquivo e
-     *  clicar em subir gravaria o export ANTERIOR com o nome do novo na tela.
-     *  Impossível de notar. */
+  it('depois de trocar o arquivo NÃO HÁ como importar a subida anterior', async () => {
+    /** O defeito plausível desta tela: conferir um export grande (que sobe em
+     *  partes e deixa um identificador), trocar o arquivo e subir gravaria o
+     *  export ANTERIOR com o nome do novo na tela. Impossível de notar.
+     *
+     *  O QUE DE FATO O IMPEDE é o botão sumir, e não o identificador ser
+     *  zerado: `aoEscolher` descarta a conferência, e sem conferência na tela
+     *  não existe "Subir". `definirSubidaId(null)` ali é cinto de segurança —
+     *  correto, mas não é a guarda.
+     *
+     *  ESTA VERSÃO VEIO DE REVISÃO, e a anterior passava por motivo errado:
+     *  ela conferia de novo o arquivo novo (que devolve identificador nulo) e
+     *  afirmava que a importação recebeu nulo — o que continuaria verdade com
+     *  o `definirSubidaId(null)` removido, porque o `.then` da segunda
+     *  conferência zera o estado de qualquer forma. Afirmar o que o teste
+     *  realmente protege vale mais do que afirmar a linha que eu escrevi. */
     conferirPlanilhaDeBonds.mockImplementation(() =>
       Promise.resolve(feita({}, 'e8b1c2d3-0000-4000-8000-000000000001')),
     );
@@ -190,15 +201,38 @@ describe('a forma: conferir, depois gravar', () => {
     screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
     await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
 
-    const outubro = planilha('outubro.xlsx');
-    escolher(outubro);
-    conferirPlanilhaDeBonds.mockImplementation(() => Promise.resolve(feita()));
-    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
-    await waitFor(() => expect(screen.getByText('O que esta subida faria')).toBeTruthy());
-    screen.getByRole('button', { name: /^Subir 120 novas/ }).click();
+    escolher(planilha('outubro.xlsx'));
 
-    await waitFor(() => expect(importarPlanilhaDeBonds).toHaveBeenCalledTimes(1));
-    expect(importarPlanilhaDeBonds).toHaveBeenCalledWith(outubro, null);
+    expect(screen.queryByRole('button', { name: /^Subir/ })).toBeNull();
+    expect(screen.queryByText('O que esta subida faria')).toBeNull();
+    expect(importarPlanilhaDeBonds).not.toHaveBeenCalled();
+  });
+
+  it('o progresso da subida é ANUNCIÁVEL, e não só visível no botão', async () => {
+    /** ACHADO DE REVISÃO DE ACESSIBILIDADE. O texto do botão muda a cada parte
+     *  ("Subindo 3 de 11…"), mas o botão fica DESABILITADO enquanto sobe — e
+     *  leitor de tela não anuncia mudança em elemento desabilitado de forma
+     *  confiável. Numa subida de minutos, quem não vê a tela ficaria sem
+     *  nenhum sinal de que algo acontece.
+     *
+     *  O `role="status"` É O QUE SE AFIRMA AQUI, e não o texto do botão: é ele
+     *  que carrega a informação para quem não enxerga. */
+    let avisar: ((enviadas: number, total: number) => void) | undefined;
+    conferirPlanilhaDeBonds.mockImplementation(
+      (_arquivo: File, aoProgresso?: (enviadas: number, total: number) => void) => {
+        avisar = aoProgresso;
+        return new Promise(() => {});
+      },
+    );
+    render(<ImportacaoDeBonds />);
+    escolher(planilha());
+    screen.getByRole('button', { name: /Conferir antes de subir/ }).click();
+
+    await waitFor(() => expect(avisar).toBeDefined());
+    act(() => avisar?.(3, 11));
+
+    const aviso = await screen.findByRole('status');
+    expect(aviso.textContent).toMatch(/parte 3 de 11/);
   });
 
   it('cancelar descarta a conferência', async () => {
