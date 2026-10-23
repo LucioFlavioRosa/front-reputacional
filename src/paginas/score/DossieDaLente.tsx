@@ -21,7 +21,7 @@
  */
 
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
@@ -647,6 +647,8 @@ function CartaoDoPainel({
             <div className="kicker" style={{ marginBottom: 10 }}>
               Top {veiculosDoTier1.quantidade} veículos Tier 1
             </div>
+            {/* O `id` ENVOLVE SÓ AS LINHAS — ver o Top veículos. */}
+            <div id={veiculosDoTier1.idDaLista}>
             <ColunasEmpilhadas
               cores={CORES_DO_SENTIMENTO}
               rotuloEmCima
@@ -668,11 +670,13 @@ function CartaoDoPainel({
                 })
               }
             />
+            </div>
             <RevelarVeiculos
               teto={veiculosDoTier1.teto}
               podeAbrir={veiculosDoTier1.podeAbrir}
               aberta={veiculosDoTier1.aberta}
               aoAlternar={veiculosDoTier1.alternar}
+              controla={veiculosDoTier1.idDaLista}
             />
           </div>
         ) : null}
@@ -961,6 +965,11 @@ function useListaDeVeiculos(total: number) {
   const teto = Math.min(QUANTIDADE_MAXIMA_DE_VEICULOS, total);
   const inicial = Math.min(QUANTIDADE_INICIAL_DE_VEICULOS, teto);
   const [aberta, definirAberta] = useState(false);
+  //: O ID DA LISTA QUE O BOTÃO CONTROLA, para o `aria-controls` — nasce aqui,
+  //: e não no botão, porque quem desenha a lista é quem tem de pôr o id nela:
+  //: `aria-expanded` sozinho anuncia "expandido" sem dizer o que foi
+  //: expandido (achado da revisão do Codex, 23/10/2026).
+  const idDaLista = useId();
   //: COM 5 OU MENOS VEÍCULOS NO MÊS não existe segunda tela para revelar:
   //: `podeAbrir` é falso e o botão não nasce. `aberta` segue ignorada nesse
   //: caso em vez de ser zerada, porque trocar o mês não deve fazer quem
@@ -977,6 +986,7 @@ function useListaDeVeiculos(total: number) {
     podeAbrir,
     aberta: abertaDeFato,
     alternar: () => definirAberta((valor) => !valor),
+    idDaLista,
   };
 }
 
@@ -988,6 +998,14 @@ function useListaDeVeiculos(total: number) {
  *  `ColunasEmpilhadas` — nunca a barra nem o número. Esconder dado para
  *  sugerir que há mais seria pagar o recado com o que a pessoa veio ler.
  *
+ *  O ESPAÇO ACIMA DO BOTÃO É `paddingTop` DAQUI, e não `marginTop` do filho:
+ *  `position: relative` NÃO cria um contexto de formatação de bloco, então a
+ *  margem do primeiro filho em fluxo COLAPSAVA através deste wrapper e
+ *  empurrava o wrapper inteiro 12px para baixo. O degradê, que se posiciona
+ *  pela caixa deste elemento, começava 2px DEPOIS do fim da lista em vez de
+ *  10px antes — não invadia nada, e o `pointerEvents: 'none'` guardava uma
+ *  sobreposição que não existia. Achado da revisão do Codex (23/10/2026).
+ *
  *  `pointerEvents: 'none'` NO DEGRADÊ, porque a linha que ele desbota é
  *  CLICÁVEL (clicar num veículo filtra a tela inteira). Sem isso, a faixa
  *  roubaria o clique da linha que ela só deveria desbotar.
@@ -995,20 +1013,25 @@ function useListaDeVeiculos(total: number) {
  *  ABERTA, NÃO EXISTE DEGRADÊ: não há nada para sugerir, e desbotar o fim de
  *  uma lista completa diria que ainda falta algo.
  *
- *  `sem-png` NO CONJUNTO, pela regra do `BaixarPng`: botão e degradê são da
- *  tela, não do dado. O contador antigo não tinha a classe, e a imagem
- *  exportada saía com "Mostrando 5 de 10" escrito dentro dela. */
+ *  `sem-png sem-impressao` NO CONJUNTO, que são DUAS regras diferentes: o
+ *  `BaixarPng` filtra por `sem-png`, e o `@media print` do `index.css` (:379)
+ *  esconde por `sem-impressao`. Botão e degradê são da tela, não do dado — o
+ *  contador antigo não tinha nenhuma das duas, e saía escrito "Mostrando 5 de
+ *  10" dentro da imagem exportada E no papel. */
 function RevelarVeiculos({
   teto,
   podeAbrir,
   aberta,
   aoAlternar,
+  controla,
   centralizado = false,
 }: {
   teto: number;
   podeAbrir: boolean;
   aberta: boolean;
   aoAlternar: () => void;
+  /** O `id` do container das linhas que este botão abre e fecha. */
+  controla: string;
   /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
    *  de cada veículo vai de ponta a ponta — e um botão encostado à esquerda
    *  ficava perdido no canto, sem relação visual com a lista acima. O Top
@@ -1018,7 +1041,7 @@ function RevelarVeiculos({
 }) {
   if (!podeAbrir) return null;
   return (
-    <div className="sem-png" style={{ position: 'relative' }}>
+    <div className="sem-png sem-impressao" style={{ position: 'relative', paddingTop: 12 }}>
       {aberta ? null : (
         <div
           aria-hidden
@@ -1040,7 +1063,6 @@ function RevelarVeiculos({
           //: lista — e o convite ficaria mais apagado que o que ele convida
           //: a abrir.
           position: 'relative',
-          marginTop: 12,
           display: 'flex',
           justifyContent: centralizado ? 'center' : 'flex-start',
         }}
@@ -1049,6 +1071,7 @@ function RevelarVeiculos({
           type="button"
           onClick={aoAlternar}
           aria-expanded={aberta}
+          aria-controls={controla}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -1093,7 +1116,9 @@ function VolumeETopVeiculos({
     total: comoNumero(linha.total ?? 0),
     cor: linha.cor ? comoTexto(linha.cor) : undefined,
   }));
-  const { quantidade, teto, podeAbrir, aberta, alternar } = useListaDeVeiculos(ranking.dados.length);
+  const { quantidade, teto, podeAbrir, aberta, alternar, idDaLista } = useListaDeVeiculos(
+    ranking.dados.length,
+  );
 
   return (
     <ComFaixaDoTopo>
@@ -1121,7 +1146,12 @@ function VolumeETopVeiculos({
           {/* TOP 10, EMPILHADO PELO SENTIMENTO E EM QUANTIDADE, por pedido — a
               rosca ao lado continua. CLICÁVEL PELO MESMO MOTIVO DA ROSCA:
               clicar num veículo filtra a tela inteira por ele — inclusive
-              "Últimas matérias" mais abaixo. */}
+              "Últimas matérias" mais abaixo.
+
+              O `id` ENVOLVE SÓ AS LINHAS, e não o cartão: é o alvo do
+              `aria-controls` do botão lá embaixo, e um alvo que contivesse o
+              próprio botão se referenciaria a si mesmo. */}
+          <div id={idDaLista}>
           <ColunasEmpilhadas
             cores={CORES_DO_SENTIMENTO}
             rotuloEmCima
@@ -1143,7 +1173,14 @@ function VolumeETopVeiculos({
               })
             }
           />
-          <RevelarVeiculos teto={teto} podeAbrir={podeAbrir} aberta={aberta} aoAlternar={alternar} />
+          </div>
+          <RevelarVeiculos
+            teto={teto}
+            podeAbrir={podeAbrir}
+            aberta={aberta}
+            aoAlternar={alternar}
+            controla={idDaLista}
+          />
         </div>
       </div>
       <NotaDeFonte ficha={rosca.ficha} />
@@ -1167,7 +1204,9 @@ function ClimaPorVeiculos({
   definirFiltro: (filtro: FiltroDaLente) => void;
 }) {
   const bloco = dossie.clima_por_veiculos;
-  const { quantidade, teto, podeAbrir, aberta, alternar } = useListaDeVeiculos(bloco.dados.length);
+  const { quantidade, teto, podeAbrir, aberta, alternar, idDaLista } = useListaDeVeiculos(
+    bloco.dados.length,
+  );
 
   return (
     <ComFaixaDoTopo>
@@ -1179,6 +1218,8 @@ function ClimaPorVeiculos({
       //: pedido: altura cheia, sem o cartão aninhado que o deixava menor.
       estilo={{ height: '100%' }}
     >
+        {/* O `id` ENVOLVE SÓ AS LINHAS — ver o mesmo trecho no Top veículos. */}
+        <div id={idDaLista}>
         <BarraDivergentePorItem
           itens={bloco.dados.slice(0, quantidade).map((linha) => ({
             chave: comoTexto(linha.chave),
@@ -1196,11 +1237,13 @@ function ClimaPorVeiculos({
           unidade={{ singular: 'matéria', plural: 'matérias' }}
           variante="termometro"
         />
+        </div>
         <RevelarVeiculos
           teto={teto}
           podeAbrir={podeAbrir}
           aberta={aberta}
           aoAlternar={alternar}
+          controla={idDaLista}
           centralizado
         />
         <NotaDeFonte ficha={bloco.ficha} />

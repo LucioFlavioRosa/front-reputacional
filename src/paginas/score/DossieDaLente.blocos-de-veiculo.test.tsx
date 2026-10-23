@@ -331,6 +331,24 @@ describe('os blocos de veículo do dossiê', () => {
     expect(within(termometro).getByText('Veículo 5')).toBeInTheDocument();
     expect(within(termometro).queryByText('Veículo 6')).toBeNull();
 
+    //: O BOTÃO APONTA PARA A LISTA QUE ELE ABRE (`aria-controls`), e o alvo
+    //: tem de ser o container das LINHAS — não o cartão inteiro. Sem isto o
+    //: leitor de tela anuncia "expandido" sem dizer o que foi expandido.
+    const botaoDoTopo = within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' });
+    const alvo = botaoDoTopo.getAttribute('aria-controls');
+    expect(alvo).toBeTruthy();
+    const listaDoTopo = document.getElementById(alvo as string);
+    expect(listaDoTopo).not.toBeNull();
+    expect(within(listaDoTopo as HTMLElement).getByText('Veículo 5')).toBeInTheDocument();
+
+    //: FORA DO PNG **E** DA IMPRESSÃO, que são duas regras diferentes: o
+    //: `BaixarPng` filtra por `sem-png`, e o `@media print` do `index.css`
+    //: esconde por `sem-impressao`. Ter só a primeira deixava o botão sair no
+    //: papel — achado da revisão do Codex (23/10/2026).
+    const blocoDoBotao = botaoDoTopo.closest('.sem-png');
+    expect(blocoDoBotao).not.toBeNull();
+    expect(blocoDoBotao).toHaveClass('sem-impressao');
+
     //: UM CLIQUE SÓ TRAZ O RESTO TODO — o 7º inclusive, que antes custava
     //: dois cliques depois do 6º.
     await userEvent.click(within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' }));
@@ -378,5 +396,40 @@ describe('os blocos de veículo do dossiê', () => {
     const termometro = screen.getByText('Termômetro por Veículos').closest('.cartao') as HTMLElement;
     expect(within(topo).queryByRole('button', { name: /Ver todos/ })).toBeNull();
     expect(within(termometro).queryByRole('button', { name: /Ver todos/ })).toBeNull();
+  });
+
+  it('e o ranking de Tier 1 abre pelo mesmo botão', async () => {
+    //: O BLOCO DO TIER 1 NÃO TINHA TESTE NENHUM — achado da revisão do Codex
+    //: (23/10/2026). Ele é o único dos três onde o controle é ligado por um
+    //: OBJETO inteiro (`veiculosDoTier1`, erguido no topo do componente porque
+    //: o quadro vive dentro de um `.map()`), e não por props soltas: era a
+    //: ligação mais fácil de errar em silêncio, porque nenhum teste passava
+    //: por este caminho.
+    const dossie = dossieCom('imprensa');
+    const rotulos = Array.from({ length: 7 }, (_, indice) => `Tier1 ${indice + 1}`);
+    //: O TÍTULO É A CHAVE: a tela acha este painel por igualdade exata com
+    //: 'Tier do veículo × sentimento' (com o × de multiplicação, não um "x"),
+    //: e é essa string que liga o ranking ao quadro.
+    dossie.paineis = [bloco({ tipo: 'barras_100', titulo: 'Tier do veículo × sentimento' })];
+    dossie.veiculos_tier1 = bloco({
+      tipo: 'barras_horizontais',
+      titulo: 'Veículos Tier 1',
+      dados: rotulos.map((rotulo) => ({ rotulo, positivo: 1, neutro: 0, negativo: 0 })),
+    });
+    obterDossieDaLente.mockResolvedValue(dossie);
+    await montarEAbrir('imprensa');
+
+    await waitFor(() => expect(screen.getByText(/Top 5 veículos Tier 1/)).toBeInTheDocument());
+    const cartao = screen.getByText(/Top 5 veículos Tier 1/).closest('.cartao') as HTMLElement;
+    expect(within(cartao).getByText('Tier1 5')).toBeInTheDocument();
+    expect(within(cartao).queryByText('Tier1 6')).toBeNull();
+
+    await userEvent.click(within(cartao).getByRole('button', { name: 'Ver todos os 7 veículos' }));
+    expect(within(cartao).getByText(/Top 7 veículos Tier 1/)).toBeInTheDocument();
+    expect(within(cartao).getByText('Tier1 7')).toBeInTheDocument();
+
+    await userEvent.click(within(cartao).getByRole('button', { name: 'Recolher' }));
+    expect(within(cartao).getByText(/Top 5 veículos Tier 1/)).toBeInTheDocument();
+    expect(within(cartao).queryByText('Tier1 6')).toBeNull();
   });
 });
