@@ -50,8 +50,14 @@ function montar(mes = '2026-09') {
   return render(<ExploradorDeVeiculos codigo="imprensa" mes={mes} filtro={{}} />);
 }
 
-function cartaoDe(titulo: string): HTMLElement {
-  return screen.getByText(titulo).closest('.cartao') as HTMLElement;
+/** A COLUNA, e não o cartão: as três vivem num cartão só, e "Veículo 5"
+ *  aparece nas DUAS colunas de veículo ao mesmo tempo (Top e Termômetro) —
+ *  escopar pelo cartão reprovaria por ambiguidade em vez de pela contagem.
+ *
+ *  O `role="group"` com o nome do cabeçalho existe para o leitor de tela
+ *  distinguir as colunas; aqui ele serve de endereço. */
+function colunaDe(titulo: string): HTMLElement {
+  return screen.getByRole('group', { name: titulo });
 }
 
 describe('o Explorador de veículos', () => {
@@ -91,12 +97,12 @@ describe('o Explorador de veículos', () => {
 
     //: O CHIP MOSTRA "Tier 1", e não `muito_relevante`: a seleção guarda a
     //: chave, e quem lê a tela viu o rótulo.
-    expect(screen.getAllByText('Filtrando por').length).toBeGreaterThan(0);
+    expect(screen.getByText('Filtrando por')).toBeInTheDocument();
     expect(
-      screen.getAllByRole('button', { name: 'Tirar o filtro Tier: Tier 1' }).length,
-    ).toBeGreaterThan(0);
+      screen.getByRole('button', { name: 'Tirar o filtro Tier: Tier 1' }),
+    ).toBeInTheDocument();
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Limpar' })[0]);
+    await userEvent.click(screen.getByRole('button', { name: 'Limpar' }));
     expect(screen.queryByText('Filtrando por')).toBeNull();
   });
 
@@ -107,7 +113,7 @@ describe('o Explorador de veículos', () => {
     montar();
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
 
-    const topo = cartaoDe('Top veículos');
+    const topo = colunaDe('Top veículos');
     expect(within(topo).getByText('Veículo 5')).toBeInTheDocument();
     expect(within(topo).queryByText('Veículo 6')).toBeNull();
 
@@ -117,7 +123,7 @@ describe('o Explorador de veículos', () => {
     expect(within(topo).getByText('Veículo 13')).toBeInTheDocument();
 
     //: E O TERMÔMETRO NÃO ABRIU JUNTO: cada painel tem a lista dele.
-    const termometro = cartaoDe('Termômetro por Veículos');
+    const termometro = colunaDe('Termômetro por Veículos');
     expect(within(termometro).queryByText('Veículo 6')).toBeNull();
   });
 
@@ -126,7 +132,7 @@ describe('o Explorador de veículos', () => {
     montar();
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
 
-    const topo = cartaoDe('Top veículos');
+    const topo = colunaDe('Top veículos');
     expect(within(topo).queryByRole('button', { name: /Ver todos/ })).toBeNull();
   });
 
@@ -134,7 +140,7 @@ describe('o Explorador de veículos', () => {
     obterExploradorDeVeiculos.mockRejectedValue(new Error('Não foi possível ler os veículos.'));
     montar();
     await waitFor(() =>
-      expect(screen.getAllByText('Não foi possível ler os veículos.').length).toBeGreaterThan(0),
+      expect(screen.getByText('Não foi possível ler os veículos.')).toBeInTheDocument(),
     );
   });
 
@@ -152,7 +158,7 @@ describe('o Explorador de veículos', () => {
     //: veículo ao mesmo tempo — uma busca sem escopo reprova por ambiguidade
     //: em vez de pela contagem.
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
-    const topo = cartaoDe('Top veículos');
+    const topo = colunaDe('Top veículos');
     await waitFor(() => expect(within(topo).getByText('Veículo 2')).toBeInTheDocument());
 
     //: A resposta do mês velho chega DEPOIS, com sete veículos.

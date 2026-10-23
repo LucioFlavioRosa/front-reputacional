@@ -186,16 +186,17 @@ function montar(lente: string) {
  *  motivo nenhum.
  *
  *  A LISTA MUDOU EM 23/10/2026 com o Explorador de veículos: antes eram dois
- *  cartões ("% Matérias por tier e Top veículos" e o termômetro), agora são os
- *  três painéis do bloco novo. O que o teste prende não mudou — que a moldura
- *  é desenhada para Imprensa e Mercado, e só para elas.
+ *  cartões ("% Matérias por tier e Top veículos" e o termômetro), agora é UM
+ *  cartão de três colunas. O que o teste prende não mudou — que a moldura é
+ *  desenhada para Imprensa e Mercado, e só para elas.
+ *
+ *  E É O TÍTULO DO CARTÃO QUE ENTRA AQUI, não o das três colunas: o cartão
+ *  desenha o título antes da resposta chegar (é moldura), e os nomes das
+ *  colunas só existem COM dado. Como a rota fica pendente neste arquivo — o
+ *  bloco tem teste próprio —, afirmar o nome das colunas aqui seria afirmar
+ *  texto que esta montagem nunca produz.
  */
-const OS_BLOCOS = [
-  'Tier do veículo × sentimento',
-  'Top veículos',
-  'Termômetro por Veículos',
-  'Últimas matérias',
-];
+const OS_BLOCOS = ['Tier do veículo, top veículos e termômetro', 'Últimas matérias'];
 
 beforeEach(() => {
   window.history.replaceState(null, '', '/score/lentes');
