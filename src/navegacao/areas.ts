@@ -44,7 +44,8 @@ const DO_CRM: ItemDoMenu[] = [
  *  AS OUTRAS ABAS DA ESPECIFICAÇÃO (Indicadores por unidade, Papers e cases,
  *  Busca por tema) entram aqui quando chegarem. */
 const DO_MERCADO: ItemDoMenu[] = [
-  { view: 'mercado', rotulo: 'Bonds e reputação', aba: 'bonds' },
+  //: O NOME NOVO, por pedido (22/10/2026).
+  { view: 'mercado', rotulo: 'Bonds X Score Reputacional Mercado', aba: 'bonds' },
   { view: 'mercado', rotulo: 'Importação', aba: 'importacao' },
 ];
 

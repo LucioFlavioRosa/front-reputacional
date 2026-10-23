@@ -170,13 +170,31 @@ export interface ImpactoNaJanela {
   dias: number;
 }
 
+/** O FILTRO RÁPIDO DOS QUADROS (pedido de 22/10/2026): de quais lentes são as
+ *  notícias e de qual tier. Vazio, o servidor soma as três lentes, todos os
+ *  tiers — o quadro de sempre. */
+export interface FiltrosDosQuadros {
+  /** `imprensa`, `mercado`, `institucional`. */
+  lentes?: string[];
+  /** `muito_relevante` (Tier 1), `relevante` (Tier 2), `menos_relevante` (Tier 3). */
+  tier?: string;
+}
+
+function comFiltros(parametros: URLSearchParams, filtros?: FiltrosDosQuadros): URLSearchParams {
+  if (filtros?.lentes?.length) parametros.set('lentes', filtros.lentes.join(','));
+  if (filtros?.tier) parametros.set('tier', filtros.tier);
+  return parametros;
+}
+
 export function obterImpactoNaJanela(
   ate: string,
   nivel: NivelDaJanela,
   dias?: number,
+  filtros?: FiltrosDosQuadros,
 ): Promise<ImpactoNaJanela> {
   const parametros = new URLSearchParams({ ate, nivel });
   if (dias !== undefined) parametros.set('dias', String(dias));
+  comFiltros(parametros, filtros);
   return requisitar<ImpactoNaJanela>(`/api/mercado/impacto-na-janela?${parametros}`);
 }
 
@@ -225,6 +243,7 @@ export function obterRegistrosDaJanela(
   nivel: NivelDaJanela,
   pagina = 1,
   dias?: number,
+  filtros?: FiltrosDosQuadros,
 ): Promise<RegistrosDaJanela> {
   const parametros = new URLSearchParams({
     ate,
@@ -233,6 +252,7 @@ export function obterRegistrosDaJanela(
     pagina: String(pagina),
   });
   if (dias !== undefined) parametros.set('dias', String(dias));
+  comFiltros(parametros, filtros);
   return requisitar<RegistrosDaJanela>(
     `/api/mercado/impacto-na-janela/registros?${parametros}`,
   );

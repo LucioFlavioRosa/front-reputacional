@@ -26,6 +26,7 @@ import { obterImpactoNaJanela, obterSerieDeMercado } from '@/api/cliente';
 import type {
   ImpactoNaJanela,
   MetricaDoBond,
+  FiltrosDosQuadros,
   GrupoNaJanela,
   NivelDaJanela,
   SerieDeMercado,
@@ -251,6 +252,14 @@ export function InteligenciaDeMercado({
   //: ABRE NO SUBTEMA (N3) desde 21/10/2026, por pedido: "vamos utilizar aqui o
   //: N3". O tema estratégico e o atributo ficam a um clique.
   const [nivel, definirNivel] = useState<NivelDaJanela>('n3');
+  //: O FILTRO RÁPIDO DOS QUADROS (pedido de 22/10/2026): de quais lentes são as
+  //: notícias e de qual tier. Abre em "Imprensa e Mercado", todos os tiers.
+  const [lentesDosQuadros, definirLentesDosQuadros] = useState<string>(LENTES_DOS_QUADROS[0].codigo);
+  const [tierDosQuadros, definirTierDosQuadros] = useState<string>('');
+  const filtrosDosQuadros: FiltrosDosQuadros = {
+    lentes: lentesDosQuadros.split(','),
+    tier: tierDosQuadros || undefined,
+  };
   const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
   const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
 
@@ -441,7 +450,10 @@ export function InteligenciaDeMercado({
     //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica: os quadros
     //: antigos ficavam na tela com o cabeçalho do dia anterior.
     definirJanela(null);
-    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA)
+    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA, {
+      lentes: lentesDosQuadros.split(','),
+      tier: tierDosQuadros || undefined,
+    })
       .then((lida) => {
         if (ativo) definirJanela(lida);
       })
@@ -457,7 +469,7 @@ export function InteligenciaDeMercado({
     };
     //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês.
     //: O NÍVEL também: trocar a chave é uma pergunta nova sobre o MESMO dia.
-  }, [diaEscolhido, nivel, versao]);
+  }, [diaEscolhido, nivel, versao, lentesDosQuadros, tierDosQuadros]);
 
   if (!dados) {
     return erro ? (
@@ -534,7 +546,7 @@ export function InteligenciaDeMercado({
   return (
     <section style={{ maxWidth: 1440, margin: '0 auto', padding: '0 16px' }}>
       <h1 style={{ color: 'var(--azul-mar)', fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>
-        Bonds da Aegea e índice reputacional
+        Bonds X Score Reputacional Mercado
       </h1>
       <p style={{ color: 'var(--cinza-4)', fontSize: 15, margin: '0 0 16px' }}>
         Cotação diária dos bonds da Aegea e o score reputacional no mesmo período.
@@ -796,6 +808,11 @@ export function InteligenciaDeMercado({
         erro={erroDaJanela}
         nivel={nivel}
         aoTrocarNivel={definirNivel}
+        lentes={lentesDosQuadros}
+        aoTrocarLentes={definirLentesDosQuadros}
+        tier={tierDosQuadros}
+        aoTrocarTier={definirTierDosQuadros}
+        filtros={filtrosDosQuadros}
       />
 
       {/* OS PARES, para comparar. Os bonds da Aegea ligam e desligam nos cards,
@@ -978,6 +995,11 @@ function JanelaDosTemas({
   erro,
   nivel,
   aoTrocarNivel,
+  lentes,
+  aoTrocarLentes,
+  tier,
+  aoTrocarTier,
+  filtros,
 }: {
   /** O dia clicado no gráfico; os temas são os quinze dias até ele. */
   dia: string | null;
@@ -986,6 +1008,11 @@ function JanelaDosTemas({
   erro: string | null;
   nivel: NivelDaJanela;
   aoTrocarNivel: (nivel: NivelDaJanela) => void;
+  lentes: string;
+  aoTrocarLentes: (lentes: string) => void;
+  tier: string;
+  aoTrocarTier: (tier: string) => void;
+  filtros: FiltrosDosQuadros;
 }) {
   //: O GRUPO ABERTO NO MODAL. Mora aqui, e não na página: ele só existe
   //: enquanto esta janela existe, e fechar a janela tem de levar o modal com
@@ -993,7 +1020,8 @@ function JanelaDosTemas({
   //: tela, uma camada acima.
   //: O MODAL PERTENCE AO DIA CLICADO: clicar outro dia o fecha, senão ele
   //: mostraria registros de uma janela que já não é a da tela.
-  const chave = dia ?? '';
+  //: E AOS FILTROS: trocar a lente ou o tier também o fecha.
+  const chave = `${dia ?? ''}|${lentes}|${tier}`;
   const [abertoEm, definirAbertoEm] = useState<{ chave: string; grupo: GrupoNaJanela } | null>(null);
   const aberto = abertoEm && abertoEm.chave === chave ? abertoEm.grupo : null;
   const definirAberto = (grupo: GrupoNaJanela | null) =>
@@ -1029,19 +1057,37 @@ function JanelaDosTemas({
   }
 
   return (
-    <div style={{ margin: '14px 0 0' }}>
+    //: UM CARTÃO BRANCO ATRÁS DE TUDO, por pedido (22/10/2026): a seção do
+    //: impacto se lia solta no fundo da página, como rodapé do gráfico.
+    <section
+      aria-label="Impacto das notícias no score"
+      style={{
+        margin: '16px 0 0',
+        background: 'var(--branco)',
+        border: '1px solid var(--borda)',
+        borderRadius: 4,
+        padding: '18px 20px 20px',
+      }}
+    >
       <div
         style={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 12,
           flexWrap: 'wrap',
-          marginBottom: 8,
+          marginBottom: 6,
         }}
       >
-        <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
-          Impacto no índice: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
-        </p>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--azul-mar)' }}>
+            O que mexeu no score
+          </h2>
+          <p data-testid="cabecalho-da-janela" style={{ fontSize: 14, color: 'var(--cinza-4)', margin: '4px 0 0' }}>
+            Impacto no índice: {porExtenso(janela.de)} a {porExtenso(janela.ate)}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
 
         {/* A CHAVE ENTRE OS DOIS NÍVEIS, dentro da janela e não na barra de cima:
             ela só faz sentido com uma data escolhida, e um controle que fica
@@ -1069,6 +1115,7 @@ function JanelaDosTemas({
         <button type="button" onClick={aoFechar} style={botao(false)}>
           Fechar a janela
         </button>
+        </div>
       </div>
 
       {/* DE QUAL MÊS SÃO OS PONTOS, E COM QUE RÉGUA. Achado de revisão: a
@@ -1124,24 +1171,51 @@ function JanelaDosTemas({
           índice. Não é que nada impactou: a régua do mês ainda não existe.
         </p>
       ) : (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <>
+        {/* O FILTRO RÁPIDO, LOGO EM CIMA DOS QUADROS (pedido de 22/10/2026):
+            "olhar apenas notícias de Imprensa e Mercado, ou apenas Imprensa,
+            ou apenas Mercado, e um filtro de Tier". Vale para os dois quadros e
+            para o modal que cada linha abre. */}
+        <div
+          data-testid="filtros-dos-quadros"
+          style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', margin: '4px 0 12px' }}
+        >
+          <GrupoDeFiltro
+            rotulo="Notícias de"
+            opcoes={LENTES_DOS_QUADROS}
+            valor={lentes}
+            aoEscolher={aoTrocarLentes}
+          />
+          <GrupoDeFiltro
+            rotulo="Tier"
+            opcoes={TIERS_DOS_QUADROS}
+            valor={tier}
+            aoEscolher={aoTrocarTier}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <QuadroDeTemas
             testId="quadro-positivos"
-            titulo="Mais empurraram para CIMA"
+            titulo="▲ Pressionaram o score para cima"
             grupos={janela.positivos}
             total={janela.total_positivos}
-            cor="var(--sucesso-fg)"
+            cor="#0A6B60"
+            fundo="#DFFAF6"
+            rotuloDoGrupo={NIVEIS_DOS_QUADROS.find((n) => n.codigo === janela.nivel)?.rotulo ?? 'Grupo'}
             aoAbrir={definirAberto}
           />
           <QuadroDeTemas
             testId="quadro-negativos"
-            titulo="Mais empurraram para BAIXO"
+            titulo="▼ Pressionaram o score para baixo"
             grupos={janela.negativos}
             total={janela.total_negativos}
-            cor="var(--erro-fg)"
+            cor="#B32328"
+            fundo="#FFE7E8"
+            rotuloDoGrupo={NIVEIS_DOS_QUADROS.find((n) => n.codigo === janela.nivel)?.rotulo ?? 'Grupo'}
             aoAbrir={definirAberto}
           />
         </div>
+        </>
       )}
 
       {/* OS REGISTROS DO GRUPO CLICADO. O modal lê do servidor com o MESMO
@@ -1154,6 +1228,7 @@ function JanelaDosTemas({
           de={janela.de}
           nivel={janela.nivel}
           dias={janela.dias}
+          filtros={filtros}
           aoFechar={() => definirAberto(null)}
         />
       ) : null}
@@ -1186,6 +1261,54 @@ function JanelaDosTemas({
           .
         </p>
       ) : null}
+    </section>
+  );
+}
+
+/** AS OPÇÕES DO FILTRO DE LENTE DOS QUADROS, na ordem pedida. O código é a
+ *  lista que vai ao servidor. */
+const LENTES_DOS_QUADROS = [
+  { codigo: 'imprensa,mercado', rotulo: 'Imprensa e Mercado' },
+  { codigo: 'imprensa', rotulo: 'Imprensa' },
+  { codigo: 'mercado', rotulo: 'Mercado' },
+];
+
+/** O TIER DOS QUADROS: vazio = todos. */
+const TIERS_DOS_QUADROS = [
+  { codigo: '', rotulo: 'Todos' },
+  { codigo: 'muito_relevante', rotulo: 'Tier 1' },
+  { codigo: 'relevante', rotulo: 'Tier 2' },
+  { codigo: 'menos_relevante', rotulo: 'Tier 3' },
+];
+
+/** Um grupo de botões de escolha única, com o rótulo ao lado. */
+function GrupoDeFiltro({
+  rotulo,
+  opcoes,
+  valor,
+  aoEscolher,
+}: {
+  rotulo: string;
+  opcoes: { codigo: string; rotulo: string }[];
+  valor: string;
+  aoEscolher: (codigo: string) => void;
+}) {
+  return (
+    <div role="group" aria-label={rotulo} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cinza-3)' }}>{rotulo}</span>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {opcoes.map((opcao) => (
+          <button
+            key={opcao.codigo || 'todos'}
+            type="button"
+            aria-pressed={valor === opcao.codigo}
+            onClick={() => aoEscolher(opcao.codigo)}
+            style={botao(valor === opcao.codigo)}
+          >
+            {opcao.rotulo}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1205,6 +1328,9 @@ const NIVEIS_DOS_QUADROS: {
   { codigo: 'n1', rotulo: 'N1 · Atributo', ajuda: 'o mais grosso: cobre quase tudo', plural: 'os atributos', sem: 'atributo (N1) atribuído' },
 ];
 
+/** As três colunas do quadro: o grupo, o impacto e as notícias. */
+const COLUNAS_DO_QUADRO = 'minmax(0, 1fr) 128px 84px';
+
 /** Um quadro: até cinco grupos, do que mais empurrou para o que menos. */
 function QuadroDeTemas({
   testId,
@@ -1212,13 +1338,20 @@ function QuadroDeTemas({
   grupos,
   total,
   cor,
+  fundo,
+  rotuloDoGrupo,
   aoAbrir,
 }: {
   testId: string;
   titulo: string;
   grupos: GrupoNaJanela[];
   total: number;
+  /** A cor do lado: verde para quem empurrou para cima, vermelho para baixo. */
   cor: string;
+  /** O fundo claro do cabeçalho, na mesma cor. */
+  fundo: string;
+  /** O título da primeira coluna: o nível ("N3 · Subtema"). */
+  rotuloDoGrupo: string;
   /** O que fazer quando a pessoa clica numa linha: abrir os registros dela. */
   aoAbrir: (grupo: GrupoNaJanela) => void;
 }) {
@@ -1226,13 +1359,24 @@ function QuadroDeTemas({
     <div
       data-testid={testId}
       style={{
-        flex: '1 1 300px',
-        border: '1px solid var(--borda)',
-        borderRadius: 'var(--r-card-int)',
-        padding: '10px 12px',
+        flex: '1 1 340px',
+        minWidth: 0,
+        border: `1px solid ${cor}`,
+        borderRadius: 4,
+        overflow: 'hidden',
       }}
     >
-      <p style={{ fontSize: 12, color: 'var(--cinza-2)', margin: '0 0 8px' }}>
+      {/* O TÍTULO CHAMATIVO, na cor do lado (pedido de 22/10/2026). */}
+      <p
+        style={{
+          fontSize: 15,
+          fontWeight: 800,
+          color: cor,
+          background: fundo,
+          margin: 0,
+          padding: '10px 14px',
+        }}
+      >
         {titulo}
         {/* O TAMANHO REAL, por decisão dele: "mostra os que houver e diz o
             total". Com três grupos aparecem três, e a tela diz "3 de 3" em vez
@@ -1241,10 +1385,30 @@ function QuadroDeTemas({
         {total ? ` · ${numero(grupos.length)} de ${numero(total)}` : null}
       </p>
       {grupos.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0, padding: '12px 14px' }}>
           Nada empurrou a nota para este lado nesta janela.
         </p>
       ) : (
+        <div style={{ padding: '4px 14px 8px' }}>
+        {/* OS TÍTULOS DAS COLUNAS (pedido de 22/10/2026). */}
+        <div
+          aria-hidden
+          style={{
+            display: 'grid',
+            gridTemplateColumns: COLUNAS_DO_QUADRO,
+            gap: 10,
+            padding: '8px 0 6px',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: 'var(--cinza-2)',
+          }}
+        >
+          <span>{rotuloDoGrupo}</span>
+          <span style={{ textAlign: 'right' }}>Impacto no Score</span>
+          <span style={{ textAlign: 'right' }}># Notícias</span>
+        </div>
         <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {grupos.map((grupo) => (
             <li
@@ -1268,11 +1432,11 @@ function QuadroDeTemas({
                 onClick={() => aoAbrir(grupo)}
                 title={`Ver as ${numero(grupo.mencoes)} menções de ${grupo.rotulo} nesta janela`}
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
+                  display: 'grid',
+                  gridTemplateColumns: COLUNAS_DO_QUADRO,
                   alignItems: 'baseline',
                   gap: 10,
-                  padding: '4px 0',
+                  padding: '6px 0',
                   fontSize: 13,
                   width: '100%',
                   background: 'none',
@@ -1295,14 +1459,17 @@ function QuadroDeTemas({
                   <span style={{ color: 'var(--cinza-2)' }}> · {grupo.contexto}</span>
                 ) : null}
               </span>
-              <span style={{ whiteSpace: 'nowrap' }}>
-                <strong style={{ color: cor }}>{comSinal(grupo.impacto)}</strong>{' '}
-                <span style={{ color: 'var(--cinza-2)' }}>pt · {numero(grupo.mencoes)}</span>
+              <strong className="tabular" style={{ color: cor, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                {comSinal(grupo.impacto)} pt
+              </strong>
+              <span className="tabular" style={{ color: 'var(--cinza-3)', textAlign: 'right' }}>
+                {numero(grupo.mencoes)}
               </span>
               </button>
             </li>
           ))}
         </ol>
+        </div>
       )}
     </div>
   );

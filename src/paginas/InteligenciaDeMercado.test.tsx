@@ -826,7 +826,7 @@ describe('os temas da janela, ao clicar numa data', () => {
 
     escolherData('2026-05-20');
 
-    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15));
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15, { lentes: ['imprensa', 'mercado'], tier: undefined }));
     await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
 
     const positivos = screen.getByTestId('quadro-positivos');
@@ -1058,11 +1058,11 @@ describe('os temas da janela, ao clicar numa data', () => {
 
   expect(await screen.findByText('A matéria que empurrou')).toBeTruthy();
   //: O ID DO GRUPO, O DIA CLICADO, O NÍVEL DO QUADRO E OS DIAS DA JANELA.
-  expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1, 15);
+  expect(obterRegistrosDaJanela).toHaveBeenCalledWith('2026-05-20', 11, 'n2', 1, 15, { lentes: ['imprensa', 'mercado'], tier: undefined });
   //: E AS CINCO COLUNAS, com o título servindo de link para a matéria.
   expect(screen.getByText('Valor Econômico')).toBeTruthy();
   expect(screen.getByText('Propositiva')).toBeTruthy();
-  expect(screen.getByText('Tier 1')).toBeTruthy();
+  expect(within(screen.getByRole('dialog')).getByText('Tier 1')).toBeTruthy();
   expect(
     screen.getByRole('link', { name: 'A matéria que empurrou' }).getAttribute('href'),
   ).toBe('https://exemplo/materia');
@@ -1172,13 +1172,13 @@ it('a tela diz DE QUAL NOTA são os pontos: do ÍNDICE, e quais lentes somam', a
     render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     escolherData('2026-05-20');
-    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15));
+    await waitFor(() => expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15, { lentes: ['imprensa', 'mercado'], tier: undefined }));
 
     screen.getByRole('button', { name: 'N1 · Atributo' }).click();
 
     //: O MESMO DIA, O NÍVEL NOVO.
     await waitFor(() =>
-      expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n1', 15),
+      expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n1', 15, { lentes: ['imprensa', 'mercado'], tier: undefined }),
     );
   });
 
@@ -1223,7 +1223,8 @@ it('a tela diz DE QUAL NOTA são os pontos: do ÍNDICE, e quais lentes somam', a
     //:
     //: O RÓTULO COLADO NO SINAL é o que prova a ausência: no tema a linha lê
     //: "Tarifa · Eficiência operacional−0,9 pt", e no pilar "Governança+1,2 pt".
-    expect(linha?.textContent).toBe('Governança+1,2 pt · 8');
+    //: EM COLUNAS desde 22/10/2026: nome, impacto e notícias.
+    expect(linha?.textContent).toBe('Governança+1,2 pt8');
   });
 
   it('a data escolhida chega ao GRÁFICO, para ele marcá-la', async () => {
@@ -1351,5 +1352,47 @@ describe('os pares saem neste momento', () => {
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
     expect(screen.queryByText('Comparar com pares')).toBeNull();
     expect(screen.queryByRole('button', { name: /PETBRA30/ })).toBeNull();
+  });
+});
+
+describe('o filtro rápido dos quadros: lente e tier (22/10/2026)', () => {
+  it('abre em Imprensa e Mercado, todos os tiers, e trocar busca de novo o MESMO dia', async () => {
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy());
+
+    expect(within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Imprensa e Mercado' }).getAttribute('aria-pressed')).toBe('true');
+    expect(within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Todos' }).getAttribute('aria-pressed')).toBe('true');
+
+    within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Mercado' }).click();
+    await waitFor(() =>
+      expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15, {
+        lentes: ['mercado'],
+        tier: undefined,
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy());
+    within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Tier 1' }).click();
+    await waitFor(() =>
+      expect(obterImpactoNaJanela).toHaveBeenCalledWith('2026-05-20', 'n3', 15, {
+        lentes: ['mercado'],
+        tier: 'muito_relevante',
+      }),
+    );
+  });
+
+  it('os quadros têm títulos de coluna e o título de cada lado', async () => {
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+
+    const positivos = screen.getByTestId('quadro-positivos');
+    expect(positivos.textContent).toContain('Pressionaram o score para cima');
+    expect(positivos.textContent).toContain('Impacto no Score');
+    expect(positivos.textContent).toContain('# Notícias');
+    expect(screen.getByTestId('quadro-negativos').textContent).toContain('Pressionaram o score para baixo');
   });
 });
