@@ -192,10 +192,32 @@ describe('o Explorador de veículos', () => {
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
 
     for (const nome of ['Top veículos', 'Termômetro por Veículos']) {
-      const rolante = colunaDe(nome).querySelector('.rolagem-interna') as HTMLElement | null;
+      const coluna = colunaDe(nome);
+      const rolante = coluna.querySelector('.rolagem-interna') as HTMLElement | null;
       expect(rolante, `${nome} está sem rolagem própria`).not.toBeNull();
+      //: `overflowY` É O COMPORTAMENTO, e `maxHeight` é o que o torna possível
+      //: — sem teto não há o que rolar. O Codex apontou que afirmar só a
+      //: CLASSE deixaria alguém mantê-la e tirar a rolagem sem o teste ver.
+      expect(rolante?.style.overflowY, `${nome} não rola na vertical`).toBe('auto');
       expect(rolante?.style.maxHeight, `${nome} está sem teto de altura`).toBe('360px');
     }
+
+    //: O SCROLLER DO TERMÔMETRO É O ALVO DO `aria-controls`, e não um
+    //: descendente qualquer que por acaso tem a classe — era a outra lacuna
+    //: que o Codex apontou no `querySelector`.
+    const botao = within(colunaDe('Termômetro por Veículos')).getByRole('button', {
+      name: 'Ver todos os 13 veículos',
+    });
+    const alvo = document.getElementById(botao.getAttribute('aria-controls') as string);
+    expect(alvo?.classList.contains('rolagem-interna')).toBe(true);
+
+    //: E NÃO ROLA NA HORIZONTAL: as linhas da `BarraDivergentePorItem` têm
+    //: `margin: 0 -6px` para o realce sangrar além do texto, e isso transborda
+    //: ~2px do padding deste container — com `overflow: auto` aparecia uma
+    //: barra HORIZONTAL, inclusive com a lista fechada, que come altura e
+    //: desalinha esta coluna das outras duas. Achado da revisão do Codex
+    //: (23/10/2026).
+    expect(alvo?.style.overflowX, 'o termômetro ganhou barra horizontal').toBe('hidden');
   });
 
   it('com 5 veículos ou menos não existe botão de revelar', async () => {
