@@ -69,6 +69,18 @@ export function BarraDivergentePorItem({
         const positivo = item.score >= 0;
         const largura = Math.min(50, Math.abs(item.score) / 2);
         const selecionado = ativo === item.chave;
+        //: O ESCOLHIDO EM DESTAQUE E OS OUTROS ESMAECIDOS — o mesmo tratamento
+        //: que a `ColunasEmpilhadas` já dava (ver `esmaecida` lá).
+        //:
+        //: PEDIDO (23/10/2026), e o relato foi "o filtro não está
+        //: funcionando": num cartão onde este gráfico vive ao lado de duas
+        //: `ColunasEmpilhadas`, escolher um item esmaecia e contornava nas
+        //: outras duas colunas e aqui mudava só o fundo, pálido. A seleção
+        //: chegava; o que não chegava era o RECADO de que havia chegado.
+        //:
+        //: `ativo === undefined` NÃO ESMAECE NADA: os usos sem seleção
+        //: (os drivers do Score, o painel genérico do dossiê) seguem iguais.
+        const esmaecida = ativo !== undefined && !selecionado;
 
         return (
           <div
@@ -102,6 +114,12 @@ export function BarraDivergentePorItem({
               borderRadius: 'var(--r-btn)',
               cursor: aoClicar ? 'pointer' : undefined,
               background: selecionado ? 'var(--bg-hover)' : undefined,
+              opacity: esmaecida ? 0.4 : 1,
+              //: `outlineOffset` NEGATIVO para o contorno cair DENTRO da
+              //: linha: as linhas têm `margin: 0 -6px` e se tocam, e um
+              //: contorno por fora invadiria a vizinha.
+              outline: selecionado ? '2px solid var(--cor-da-lente, var(--azul-mar))' : 'none',
+              outlineOffset: -2,
             }}
           >
             <div style={{ minWidth: 0 }}>
