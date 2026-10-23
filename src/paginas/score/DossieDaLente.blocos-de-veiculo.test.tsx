@@ -126,22 +126,6 @@ function dossieCom(codigo: string): Dossie {
       legenda: ['Positivo', 'Neutro', 'Negativo'],
     }),
     sinais_da_evolucao: [],
-    volume_por_tier: bloco({
-      tipo: 'rosca',
-      titulo: 'Volume por tier',
-      dados: [{ chave: 'muito_relevante', rotulo: 'Tier 1', total: 57 }],
-    }),
-    top_veiculos: bloco({
-      tipo: 'barras_horizontais',
-      titulo: 'Top veículos',
-      //: O veículo nº 1 do Mercado na base real, e o 95º da Imprensa.
-      dados: [{ rotulo: 'Valor Econômico', valor: 12 }],
-    }),
-    clima_por_veiculos: bloco({
-      tipo: 'divergente_por_item',
-      titulo: 'Termômetro por veículos',
-      dados: [{ chave: 'Valor Econômico', rotulo: 'Valor Econômico', total: 12, score: 72 }],
-    }),
     drivers_e_riscos: bloco({ tipo: 'barras_100', titulo: 'Drivers e riscos' }),
     temas_mais_falados: bloco({ tipo: 'barras_100', titulo: 'Temas mais falados' }),
     materias_recentes: bloco({
