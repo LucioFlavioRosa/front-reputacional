@@ -306,6 +306,47 @@ describe('o Explorador de veículos', () => {
     ).toBeInTheDocument();
   });
 
+  it('o Termômetro mostra o SALDO de −100 a +100, e não a nota de 0 a 100', async () => {
+    //: ACHADO PELO DONO NO AMBIENTE (23/10/2026): a "Rádio Spaço 100.9 FM"
+    //: tinha mais menções NEGATIVAS que positivas no Top veículos, e o
+    //: Termômetro mostrava +18 — um número positivo para um veículo que estava
+    //: puxando a nota para baixo.
+    //:
+    //: A CAUSA: `ItemDivergente.score`, do gráfico, é o SALDO de −100 a +100
+    //: ((positivas − negativas) ÷ total). O domínio daqui chama esse valor de
+    //: `nss` e chama de `score` a NOTA de 0 a 100 ((NS ponderado + 1) ÷ 2).
+    //: Eu passei o `score`, que nunca é negativo: um veículo com NS −0,64 virava
+    //: nota 18, e o gráfico a desenhava como "+18".
+    //:
+    //: ESTE CASO: 1 positiva e 3 negativas.
+    //:   saldo (o certo)  = (1 − 3) ÷ 4 × 100 = −50
+    //:   nota  (o errado) = (−0,5 + 1) ÷ 2 × 100 = 25  →  saía "+25"
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 100,
+      grupos: [
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Rádio Spaço 100.9 FM',
+          positivo: 1,
+          neutro: 0,
+          negativo: 3,
+          peso_positivo: 1,
+          peso_neutro: 0,
+          peso_negativo: 3,
+        },
+      ],
+    } as never);
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(within(termometro).getByRole('img', { name: /saldo -50 de/ })).toBeInTheDocument();
+    //: E NÃO a nota: "+25" seria o sinal invertido sobre o mesmo veículo.
+    expect(within(termometro).queryByRole('img', { name: /saldo \+25 de/ })).toBeNull();
+  });
+
   it('com 5 veículos ou menos não existe botão de revelar', async () => {
     obterExploradorDeVeiculos.mockResolvedValue(dados(4));
     montar();
