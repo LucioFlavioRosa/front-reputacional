@@ -135,20 +135,16 @@ export interface Dossie {
   evolucao: Bloco;
   /** O quadro ao lado da evolução: até três sinais da série, mais as lacunas. */
   sinais_da_evolucao: string[];
-  /** Volume de matérias por tier, para a rosca ao lado do Top 5 veículos —
-   *  mesmo desenho de "% Interações por tier" do Painel (CRM), por veículo
-   *  em vez de instituição. Vazio na Institucional. */
-  volume_por_tier: Bloco;
-  /** Os veículos com mais matérias no mês — o Top 5 ao lado da rosca acima.
-   *  Vazio na Institucional. */
-  top_veiculos: Bloco;
-  /** O placar de clima por veículo: (positivas − negativas) ÷ total × 100,
-   *  de −100 a 100 — mesmo cálculo de "Clima por Instituições" do Painel
-   *  (CRM), por veículo. Vazio na Institucional. */
-  clima_por_veiculos: Bloco;
-  /** Os 10 veículos Tier 1 com mais matérias, com o sentimento — embaixo do
-   *  painel "Tier do veículo × sentimento". Nulo onde não há tier. */
-  veiculos_tier1?: Bloco | null;
+  /* A DIMENSÃO DE VEÍCULO SAIU DO DOSSIÊ em 23/10/2026. Eram quatro blocos —
+   * `volume_por_tier` (a rosca), `top_veiculos`, `clima_por_veiculos` e
+   * `veiculos_tier1` — que esta tela deixou de ler quando os três cartões
+   * independentes deram lugar ao `ExploradorDeVeiculos`, que soma no navegador
+   * a partir de `GET /{codigo}/explorador-de-veiculos`.
+   *
+   * O SERVIDOR TAMBÉM PAROU DE MANDÁ-LOS (o mesmo PR, no back): bloco que se
+   * monta em todo dossiê e ninguém desenha é custo por volume e promessa falsa
+   * no contrato da rota. Os campos saem daqui junto, senão o tipo prometeria
+   * algo que a resposta não traz. */
   /** O que está puxando a lente pra cima ou pra baixo, por atributo
    *  reputacional. Vazio na Institucional — ela lê o CRM, não vem de clipping. */
   drivers_e_riscos: Bloco;

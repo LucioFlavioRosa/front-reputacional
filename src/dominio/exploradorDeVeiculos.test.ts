@@ -118,11 +118,16 @@ describe('o explorador de veículos soma por dois eixos', () => {
 
   it('o termômetro e a nota saem pela conta do produto', () => {
     //: 3 positivas e 1 negativa: nss = (3 − 1) ÷ 4 × 100 = 50.
-    //: NS ponderado = (30 − 5) ÷ 35; score = (NS + 1) ÷ 2 × 100 = 86.
+    //: NS ponderado = (30 − 5) ÷ 35; nota = (NS + 1) ÷ 2 × 100 = 86.
     const folha = termometroDosVeiculos(GRUPOS, {}).find((v) => v.veiculo === 'Folha');
     expect(folha?.total).toBe(4);
+    //: AS DUAS MEDIDAS, com unidades diferentes — `nss` é o saldo de −100 a
+    //: +100 (por contagem) e `nota` é de 0 a 100 (ponderada por tier). O campo
+    //: se chamava `score` e foi renomeado em 23/10/2026: o gráfico também tem
+    //: um `score`, que é o SALDO, e os dois nomes iguais com unidades
+    //: diferentes inverteram o sinal da tela inteira.
     expect(folha?.nss).toBe(50);
-    expect(folha?.score).toBe(86);
+    expect(folha?.nota).toBe(86);
   });
 
   it('o tier sem matéria no recorte continua desenhado, em zero', () => {

@@ -40,14 +40,28 @@ export type SelecaoDeVeiculos = Partial<Record<Eixo, string>>;
 //: cima num mês ruim — a mesma ordem fixa que o filtro da tela usa.
 const ORDEM_DO_TIER = ['muito_relevante', 'relevante', 'menos_relevante'];
 
+/** As duas medidas de um veículo, e elas NÃO TÊM A MESMA UNIDADE.
+ *
+ *  O CAMPO SE CHAMA `nota` E NÃO `score` (renomeado em 23/10/2026) porque
+ *  `score` é também o nome do campo do gráfico `ItemDivergente`, onde o valor
+ *  esperado é o SALDO de −100 a +100. Com os dois chamados `score`, passar um
+ *  no lugar do outro compila, desenha, e inverte o sinal da tela inteira — foi
+ *  o que aconteceu: a "Rádio Spaço 100.9 FM", com mais negativas que
+ *  positivas, aparecia como "+18" porque recebia a NOTA (18 de 100) onde se
+ *  esperava o saldo (−64). O nome é a única defesa que resta depois de o
+ *  `tsc` aceitar os dois. */
 export interface VeiculoNoTermometro {
   veiculo: string;
   /** Matérias do veículo no recorte. */
   total: number;
-  /** O termômetro do CRM: (positivas − negativas) ÷ total × 100, de −100 a 100. */
+  /** O termômetro do CRM: (positivas − negativas) ÷ total × 100, de −100 a 100.
+   *  É ESTE que vai para o gráfico. */
   nss: number;
-  /** A nota do veículo na régua da lente, de 0 a 100: (NS ponderado + 1) ÷ 2 × 100. */
-  score: number;
+  /** A nota do veículo na régua da lente, de 0 a 100: (NS ponderado + 1) ÷ 2 ×
+   *  100 — PONDERADA por tier, ao contrário do `nss`. Nenhuma coluna do bloco
+   *  a desenha hoje; existe pela simetria com `ufsDoExplorador`, onde a nota
+   *  dimensiona a bolha do mapa e o saldo a colore. */
+  nota: number;
 }
 
 /** Os grupos que passam pelas escolhas — menos a do eixo `exceto`. */
@@ -173,7 +187,7 @@ export function termometroDosVeiculos(
         veiculo,
         total,
         nss: total ? Math.round(((s.pos - s.neg) / total) * 100) : 0,
-        score: Math.round(((ns + 1) / 2) * 100),
+        nota: Math.round(((ns + 1) / 2) * 100),
       };
     })
     .sort((a, b) => b.total - a.total || a.veiculo.localeCompare(b.veiculo, 'pt-BR'));
