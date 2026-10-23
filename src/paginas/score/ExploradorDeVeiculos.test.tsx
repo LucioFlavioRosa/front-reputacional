@@ -236,18 +236,28 @@ describe('o Explorador de veículos', () => {
     montar();
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
 
-    await userEvent.click(within(colunaDe('Top veículos')).getByText('Veículo 1'));
+    //: CLICA NO SEGUNDO, e não no primeiro: um componente que destacasse
+    //: sempre a primeira linha passaria no teste se o clique fosse no
+    //: "Veículo 1". Achado da revisão do Codex (23/10/2026).
+    await userEvent.click(within(colunaDe('Top veículos')).getByText('Veículo 2'));
 
     //: COM 3 VEÍCULOS não nasce o botão "Ver todos", então os `button` desta
     //: coluna são só as linhas do termômetro.
     const linhas = within(colunaDe('Termômetro por Veículos')).getAllByRole('button');
     expect(linhas).toHaveLength(3);
-    const escolhida = linhas.find((l) => l.textContent?.startsWith('Veículo 1'));
-    const outra = linhas.find((l) => l.textContent?.startsWith('Veículo 2'));
+    const escolhida = linhas.find((l) => l.textContent?.startsWith('Veículo 2'));
+    const primeira = linhas.find((l) => l.textContent?.startsWith('Veículo 1'));
 
     expect(escolhida?.style.opacity, 'o escolhido deveria ficar inteiro').toBe('1');
-    expect(outra?.style.opacity, 'os outros deveriam esmaecer').toBe('0.4');
+    expect(primeira?.style.opacity, 'os outros deveriam esmaecer').toBe('0.4');
     expect(escolhida?.style.outline, 'o escolhido deveria ganhar contorno').toContain('2px solid');
+
+    //: E A LINHA NÃO ESCOLHIDA NÃO PODE TER `outline` INLINE NENHUM —
+    //: nem `'none'`. O `:focus-visible` do `index.css` desenha o anel de foco
+    //: do teclado com `outline`, e estilo inline vence folha de estilo: um
+    //: `outline: 'none'` aqui apagaria o foco de quem navega por teclado nas
+    //: linhas não selecionadas. Achado P1 da revisão do Codex (23/10/2026).
+    expect(primeira?.style.outline, 'o foco do teclado foi apagado').toBe('');
   });
 
   it('com 5 veículos ou menos não existe botão de revelar', async () => {

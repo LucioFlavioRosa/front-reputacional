@@ -118,8 +118,16 @@ export function BarraDivergentePorItem({
               //: `outlineOffset` NEGATIVO para o contorno cair DENTRO da
               //: linha: as linhas têm `margin: 0 -6px` e se tocam, e um
               //: contorno por fora invadiria a vizinha.
-              outline: selecionado ? '2px solid var(--cor-da-lente, var(--azul-mar))' : 'none',
-              outlineOffset: -2,
+              //:
+              //: E `undefined` NO NÃO-SELECIONADO, NUNCA `'none'`: o anel de
+              //: foco do teclado vem do `:focus-visible` do `index.css`, que
+              //: também usa `outline` — e estilo inline VENCE folha de estilo.
+              //: Com `'none'` aqui, quem navega por teclado perdia o foco em
+              //: toda linha não selecionada. Achado P1 da revisão do Codex
+              //: (23/10/2026); o mesmo defeito existe na `ColunasEmpilhadas` e
+              //: na `TermometroDeClima`, e não foi tocado aqui.
+              outline: selecionado ? '2px solid var(--cor-da-lente, var(--azul-mar))' : undefined,
+              outlineOffset: selecionado ? -2 : undefined,
             }}
           >
             <div style={{ minWidth: 0 }}>
