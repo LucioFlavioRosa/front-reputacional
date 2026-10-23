@@ -4,17 +4,27 @@
  *  sentimento (`/explorador-de-veiculos`), e tudo o mais é soma aqui — é o que
  *  deixa o clique ser instantâneo sem mover o dossiê.
  *
- *  SÃO DOIS EIXOS, E TRÊS PAINÉIS. No Explorador de taxonomia (`explorador.ts`)
+ *  SÃO DOIS EIXOS, E TRÊS COLUNAS. No Explorador de taxonomia (`explorador.ts`)
  *  N1 › N2 › N3 é uma hierarquia: cada coluna é um campo distinto. Aqui, tier é
- *  um eixo e veículo é o outro, e os painéis "Top veículos" e "Termômetro" são
- *  o MESMO eixo com medidas diferentes. Por isso o `exceto` é o EIXO do painel
- *  que se desenha, e não o painel: escolher um veículo deixa os DOIS painéis de
- *  veículo inteiros. Estreitar o termômetro pelo veículo escolhido no Top o
- *  deixaria com uma barra só — o modo de falha que o molde existe para evitar.
+ *  um eixo e veículo é o outro, e as colunas "Top veículos" e "Termômetro" são
+ *  o MESMO eixo com medidas diferentes.
  *
- *  O FILTRO É CRUZADO, como lá: escolher um tier refaz os dois painéis de
- *  veículo; o painel de tier continua com os três (o escolhido em destaque),
- *  senão a pessoa não teria como trocar de tier sem desfazer o clique antes.
+ *  CADA COLUNA DIZ DE QUAL FILTRO ELA SE EXIME, e não há uma regra única:
+ *
+ *      Tier × sentimento   exime-se do tier    (continua com os três degraus)
+ *      Top veículos        exime-se do veículo (continua com todos)
+ *      Termômetro          NÃO SE EXIME DE NADA
+ *
+ *  O TERMÔMETRO MOSTRA SÓ O VEÍCULO ESCOLHIDO — decisão do dono do produto em
+ *  23/10/2026, depois de ver as duas formas na tela. A primeira versão o
+ *  deixava inteiro e apenas esmaecia os outros, pelo argumento de que uma barra
+ *  só não se compara com nada; ele quis o recorte, e o argumento contra caiu
+ *  por terra na parte que importava: como o TOP continua inteiro, é por ele que
+ *  se troca de veículo, e trocar segue sendo UM clique.
+ *
+ *  E AS DUAS COLUNAS QUE SE EXIMEM precisam se eximir, pelo mesmo motivo
+ *  invertido: se a coluna de tier estreitasse pelo tier escolhido, ela ficaria
+ *  com um degrau só e ninguém trocaria de tier sem desfazer o clique antes.
  */
 
 import type { GrupoDeVeiculo } from '@/api/cliente';
@@ -86,9 +96,10 @@ function somasDoEixo(
   grupos: GrupoDeVeiculo[],
   eixo: Eixo,
   selecao: SelecaoDeVeiculos,
+  exceto?: Eixo,
 ): Map<string, Soma> {
   const somas = new Map<string, Soma>();
-  for (const grupo of gruposNaSelecao(grupos, selecao, eixo)) {
+  for (const grupo of gruposNaSelecao(grupos, selecao, exceto)) {
     const chave = grupo[eixo];
     if (!chave) continue;
     const atual = somas.get(chave) ?? vazia();
@@ -108,7 +119,7 @@ export function barrasDoTier(
   selecao: SelecaoDeVeiculos,
   denominador: number,
 ): BarraDoExplorador[] {
-  const somas = somasDoEixo(grupos, 'tier', selecao);
+  const somas = somasDoEixo(grupos, 'tier', selecao, 'tier');
   return ORDEM_DO_TIER.map((tier) => {
     const s = somas.get(tier) ?? vazia();
     return {
@@ -127,7 +138,7 @@ export function barrasDoVeiculo(
   selecao: SelecaoDeVeiculos,
   denominador: number,
 ): BarraDoExplorador[] {
-  const somas = somasDoEixo(grupos, 'veiculo', selecao);
+  const somas = somasDoEixo(grupos, 'veiculo', selecao, 'veiculo');
   return [...somas.entries()]
     .map(([rotulo, s]) => ({
       rotulo,
@@ -143,7 +154,11 @@ export function barrasDoVeiculo(
     );
 }
 
-/** Cada veículo com o termômetro (NSS) e a nota, dentro das escolhas. */
+/** Cada veículo com o termômetro (NSS) e a nota, dentro das escolhas.
+ *
+ *  A ÚNICA DAS TRÊS COLUNAS QUE NÃO SE EXIME DE NADA (ver o cabeçalho): com um
+ *  veículo escolhido, sobra só ele. Quem troca a escolha é a coluna "Top
+ *  veículos", que continua inteira. */
 export function termometroDosVeiculos(
   grupos: GrupoDeVeiculo[],
   selecao: SelecaoDeVeiculos,
