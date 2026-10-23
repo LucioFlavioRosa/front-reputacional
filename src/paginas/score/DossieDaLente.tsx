@@ -21,7 +21,7 @@
  */
 
 import { DESCRICAO_DAS_LENTES } from '@/dominio/descricaoDasLentes';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
 import { obterDossieDaLente, obterOpcoesDeFiltroDaLente } from '@/api/cliente';
@@ -61,6 +61,7 @@ import { GUIA_DO_BLOCO, GUIA_DO_DESTAQUE } from '@/dominio/guiaDoDossie';
 import { mesesMedidos, serieDaLente } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
 import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
+import { ExploradorDeVeiculos } from '@/paginas/score/ExploradorDeVeiculos';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { UltimasMaterias } from '@/paginas/score/UltimasMaterias';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
@@ -79,8 +80,6 @@ import {
 } from '@/graficos/PecasDoDossie';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
-import { ColunasEmpilhadas } from '@/graficos/ColunasEmpilhadas';
-import { CORES_DO_SENTIMENTO } from '@/dominio/explorador';
 
 //: `de` É A CONTRAÇÃO DO TÍTULO DA JORNADA, que concorda com o nome da lente:
 //: "Jornada da Imprensa", "do Mercado", "dos Clientes". Sem ela, um "da" fixo
@@ -327,14 +326,12 @@ export function DossieDaLente({
         }}
       />
       {!dossie && !erro ? <Carregando /> : null}
+      {/* O CORPO NÃO RECEBE MAIS `definirFiltro` (23/10/2026): os três cartões
+          de veículo eram os únicos blocos dele que mexiam no filtro da TELA, e
+          deram lugar ao Explorador de veículos, cuja seleção é local. Quem
+          muda o recorte agora é só a barra de filtros acima. */}
       {dossie ? (
-        <Conteudo
-          dossie={dossie}
-          filtro={filtro}
-          definirFiltro={definirFiltro}
-          serie={serie}
-          opcoes={opcoes}
-        />
+        <Conteudo dossie={dossie} filtro={filtro} serie={serie} opcoes={opcoes} />
       ) : null}
 
       {DRILL_LIGADO && LENTES_COM_DRILL.includes(lente) ? (
@@ -354,13 +351,11 @@ export function DossieDaLente({
 function Conteudo({
   dossie,
   filtro,
-  definirFiltro,
   serie,
   opcoes,
 }: {
   dossie: Dossie;
   filtro: FiltroDaLente;
-  definirFiltro: (filtro: FiltroDaLente) => void;
   serie: PontoDaSerie[];
   /** Os valores dos filtros no mês — para o painel de aprofundamento oferecer
    *  o refino (Concessionária, Tier, Sentimento). */
@@ -388,11 +383,6 @@ function Conteudo({
   } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
     definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
-  //: MESMA LISTA DE 5 A 10 do Top veículos e do Termômetro (ver o comentário
-  //: de `useListaDeVeiculos`) — chamada aqui, no topo do componente, porque o
-  //: quadro que a usa vive dentro de um `.map()` mais abaixo, e hook não pode
-  //: nascer dentro de laço nem de condicional.
-  const veiculosDoTier1 = useListaDeVeiculos(dossie.veiculos_tier1?.dados.length ?? 0);
   //: "TIER DO VEÍCULO × SENTIMENTO" GANHOU LUGAR PRÓPRIO (21/10/2026), fora
   //: da grade genérica de `dossie.paineis` — ver o comentário mais abaixo,
   //: onde ele é desenhado. O que sobra na grade segue genérico, por pedido do
@@ -417,15 +407,23 @@ function Conteudo({
       {LENTES_SEM_CARTAO_DA_NOTA.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
 
-      {/* IMPRENSA E MERCADO — ver `LENTES_COM_BLOCOS_DE_VEICULO`, onde está a
-          medida que trouxe o Mercado. O backend devolve esses blocos vazios
-          para quem não tem o campo, mas um card vazio ainda É um card: a tela
-          também precisa não desenhar a moldura, e não só o conteúdo. */}
+      {/* A DIMENSÃO DE VEÍCULO EM UM BLOCO SÓ (23/10/2026, por pedido), no
+          molde do Explorador de taxonomia: três painéis que se filtram entre
+          si somando no navegador.
+
+          ANTES ERAM TRÊS CARTÕES INDEPENDENTES que respondiam ao filtro da
+          TELA — cada clique ia ao servidor e movia o dossiê inteiro (nota,
+          KPIs, evolução, últimas matérias), e o painel clicado ficava com uma
+          barra só, então era preciso desfazer o clique antes de trocar de
+          seleção. Ver `LENTES_COM_BLOCOS_DE_VEICULO` para a medida que trouxe
+          o Mercado. */}
       {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
-        <div className="grade grade--2" style={{ gap: 16 }}>
-          <VolumeETopVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
-          <ClimaPorVeiculos dossie={dossie} filtro={filtro} definirFiltro={definirFiltro} />
-        </div>
+        <ExploradorDeVeiculos
+          key={`veiculos-${dossie.codigo}-${dossie.mes}`}
+          codigo={dossie.codigo}
+          mes={dossie.mes}
+          filtro={filtro}
+        />
       ) : null}
 
       {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, por pedido (21/10/2026):
@@ -434,14 +432,7 @@ function Conteudo({
           lugar fixo aqui, na largura inteira — a mesma de "Últimas
           matérias", que vem logo depois dele. */}
       {painelDeTier1 ? (
-        <CartaoDoPainel
-          painel={painelDeTier1}
-          filtro={filtro}
-          definirFiltro={definirFiltro}
-          aoAprofundar={aoAprofundar}
-          dossie={dossie}
-          veiculosDoTier1={veiculosDoTier1}
-        />
+        <CartaoDoPainel painel={painelDeTier1} filtro={filtro} aoAprofundar={aoAprofundar} />
       ) : null}
 
       {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, e não lá embaixo depois de
@@ -572,10 +563,7 @@ function Conteudo({
               key={`${posicao}-${painel.titulo}`}
               painel={painel}
               filtro={filtro}
-              definirFiltro={definirFiltro}
               aoAprofundar={aoAprofundar}
-              dossie={dossie}
-              veiculosDoTier1={veiculosDoTier1}
             />
           ))}
         </div>
@@ -585,10 +573,7 @@ function Conteudo({
             key={`${posicao}-${painel.titulo}`}
             painel={painel}
             filtro={filtro}
-            definirFiltro={definirFiltro}
             aoAprofundar={aoAprofundar}
-            dossie={dossie}
-            veiculosDoTier1={veiculosDoTier1}
           />
         ))
       )}
@@ -607,17 +592,11 @@ function Conteudo({
 function CartaoDoPainel({
   painel,
   filtro,
-  definirFiltro,
   aoAprofundar,
-  dossie,
-  veiculosDoTier1,
 }: {
   painel: Bloco;
   filtro: FiltroDaLente;
-  definirFiltro: (filtro: FiltroDaLente) => void;
   aoAprofundar: (chave: string, valor: string) => void;
-  dossie: Dossie;
-  veiculosDoTier1: ReturnType<typeof useListaDeVeiculos>;
 }) {
   //: A CHAVE (com a posição, não só o título) fica em quem chama — dois
   //: painéis com o mesmo título são improváveis, mas `key` duplicada faz o
@@ -638,48 +617,6 @@ function CartaoDoPainel({
             tema, igual à aba do cartão acima. Era isto que faltava para o
             painel ser um degrau e não um quadro de leitura. */}
         <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
-        {/* EMBAIXO DO TIER × SENTIMENTO, por pedido: quais veículos do
-            Tier 1 formaram aquela barra — do mesmo jeito que o Top
-            veículos e o Termômetro ao lado: abre em 5, e um botão só revela
-            todos os que o servidor mandou. */}
-        {painel.titulo === 'Tier do veículo × sentimento' && dossie.veiculos_tier1 ? (
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
-            <div className="kicker" style={{ marginBottom: 10 }}>
-              Top {veiculosDoTier1.quantidade} veículos Tier 1
-            </div>
-            {/* O `id` ENVOLVE SÓ AS LINHAS — ver o Top veículos. */}
-            <div id={veiculosDoTier1.idDaLista}>
-            <ColunasEmpilhadas
-              cores={CORES_DO_SENTIMENTO}
-              rotuloEmCima
-              espessura={8}
-              alturaMaxima={600}
-              dica="Clique para filtrar a tela"
-              vazio="Nenhuma matéria de veículo Tier 1 no recorte."
-              ativo={filtro.veiculo}
-              itens={dossie.veiculos_tier1.dados.slice(0, veiculosDoTier1.quantidade).map((linha) => ({
-                rotulo: comoTexto(linha.rotulo),
-                positivo: comoNumero(linha.positivo ?? 0),
-                neutro: comoNumero(linha.neutro ?? 0),
-                negativo: comoNumero(linha.negativo ?? 0),
-              }))}
-              aoClicar={(veiculo) =>
-                definirFiltro({
-                  ...filtro,
-                  veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
-                })
-              }
-            />
-            </div>
-            <RevelarVeiculos
-              teto={veiculosDoTier1.teto}
-              podeAbrir={veiculosDoTier1.podeAbrir}
-              aberta={veiculosDoTier1.aberta}
-              aoAlternar={veiculosDoTier1.alternar}
-              controla={veiculosDoTier1.idDaLista}
-            />
-          </div>
-        ) : null}
         <NotaDeFonte ficha={painel.ficha} />
       </Cartao>
     </ComFaixaDoTopo>
@@ -931,327 +868,6 @@ function Evolucao({
     </ComFaixaDoTopo>
   );
 }
-
-/* -- 1.5. quem é a cobertura, e como está o clima dela -------------------------- */
-
-/** Mesmo desenho de "% Interações por tier e Top instituições" do Painel
- *  (CRM) — rosca de volume por tier ao lado do Top 5 — só que por VEÍCULO em
- *  vez de instituição: o cadastro do CRM é da Aegea, mas um veículo de
- *  imprensa é terceiro, sem `id`, só o nome que a Clipei manda. Por isso os
- *  dois blocos (`volume_por_tier`, `top_veiculos`) vêm prontos do servidor,
- *  em vez de calculados no navegador como no Painel.
- *
- *  A ROSCA É CLICÁVEL, E O CLIQUE É O MESMO FILTRO DA BARRA DE CIMA: clicar
- *  numa fatia de tier chama `definirFiltro` com aquele tier — a mesma
- *  chamada que o campo "Tier" da `BarraDeFiltroDaLente` já faz. Não existe
- *  um segundo mecanismo de recorte: a tela inteira (nota, KPIs, evolução, o
- *  Top 5 ao lado) já reage a `filtro.tier` porque o servidor filtra tudo por
- *  ele — clicar na rosca só economiza abrir o campo lá em cima. */
-/** O número de veículos mostrados nos três rankings (Top veículos,
- *  Termômetro por Veículos e o Top Tier 1) — PEDIDO (21/10/2026, revisto em
- *  23/10/2026). A tela abre em 5, e UM botão revela de uma vez todos os que
- *  o servidor mandou (até 10); o mesmo botão recolhe de volta.
- *
- *  A VERSÃO ANTERIOR ERA UM CONTADOR DE SETINHAS (▲▼), de um em um, e caiu
- *  por dois motivos: revelar o 10º custava cinco cliques — e recolher,
- *  outros cinco —, e o rótulo "Mostrando 5 de 10" só RELATAVA a primeira
- *  tela, sem convidar para a segunda. Agora o número vive no rótulo do botão
- *  ("Ver todos os 10 veículos"), que é o convite, e o degradê no rodapé da
- *  lista é o que diz "isto está cortado, não terminado". */
-const QUANTIDADE_INICIAL_DE_VEICULOS = 5;
-const QUANTIDADE_MAXIMA_DE_VEICULOS = 10;
-
-function useListaDeVeiculos(total: number) {
-  const teto = Math.min(QUANTIDADE_MAXIMA_DE_VEICULOS, total);
-  const inicial = Math.min(QUANTIDADE_INICIAL_DE_VEICULOS, teto);
-  const [aberta, definirAberta] = useState(false);
-  //: O ID DA LISTA QUE O BOTÃO CONTROLA, para o `aria-controls` — nasce aqui,
-  //: e não no botão, porque quem desenha a lista é quem tem de pôr o id nela:
-  //: `aria-expanded` sozinho anuncia "expandido" sem dizer o que foi
-  //: expandido (achado da revisão do Codex, 23/10/2026).
-  const idDaLista = useId();
-  //: COM 5 OU MENOS VEÍCULOS NO MÊS não existe segunda tela para revelar:
-  //: `podeAbrir` é falso e o botão não nasce. `aberta` segue ignorada nesse
-  //: caso em vez de ser zerada, porque trocar o mês não deve fazer quem
-  //: abriu a lista perder o que abriu.
-  //
-  //: E A QUANTIDADE É DERIVADA DE `teto`, nunca guardada — era isto que o
-  //: contador antigo tinha de corrigir com um `Math.min` a cada render: um
-  //: mês com 6 veículos depois de um com 10 deixava o número velho no estado.
-  const podeAbrir = teto > inicial;
-  const abertaDeFato = aberta && podeAbrir;
-  return {
-    quantidade: abertaDeFato ? teto : inicial,
-    teto,
-    podeAbrir,
-    aberta: abertaDeFato,
-    alternar: () => definirAberta((valor) => !valor),
-    idDaLista,
-  };
-}
-
-/** O botão que abre o resto do ranking, e o degradê que diz que há resto.
- *
- *  O DEGRADÊ INVADE O RODAPÉ DA LISTA (`top` negativo) e dissolve no fundo
- *  do cartão: é ele que faz a lista parecer CORTADA em vez de terminada.
- *  Invade 10px, que é o `padding` de baixo da última linha da
- *  `ColunasEmpilhadas` — nunca a barra nem o número. Esconder dado para
- *  sugerir que há mais seria pagar o recado com o que a pessoa veio ler.
- *
- *  O ESPAÇO ACIMA DO BOTÃO É `paddingTop` DAQUI, e não `marginTop` do filho:
- *  `position: relative` NÃO cria um contexto de formatação de bloco, então a
- *  margem do primeiro filho em fluxo COLAPSAVA através deste wrapper e
- *  empurrava o wrapper inteiro 12px para baixo. O degradê, que se posiciona
- *  pela caixa deste elemento, começava 2px DEPOIS do fim da lista em vez de
- *  10px antes — não invadia nada, e o `pointerEvents: 'none'` guardava uma
- *  sobreposição que não existia. Achado da revisão do Codex (23/10/2026).
- *
- *  `pointerEvents: 'none'` NO DEGRADÊ, porque a linha que ele desbota é
- *  CLICÁVEL (clicar num veículo filtra a tela inteira). Sem isso, a faixa
- *  roubaria o clique da linha que ela só deveria desbotar.
- *
- *  ABERTA, NÃO EXISTE DEGRADÊ: não há nada para sugerir, e desbotar o fim de
- *  uma lista completa diria que ainda falta algo.
- *
- *  `sem-png sem-impressao` NO CONJUNTO, que são DUAS regras diferentes: o
- *  `BaixarPng` filtra por `sem-png`, e o `@media print` do `index.css` (:379)
- *  esconde por `sem-impressao`. Botão e degradê são da tela, não do dado — o
- *  contador antigo não tinha nenhuma das duas, e saía escrito "Mostrando 5 de
- *  10" dentro da imagem exportada E no papel. */
-function RevelarVeiculos({
-  teto,
-  podeAbrir,
-  aberta,
-  aoAlternar,
-  controla,
-  centralizado = false,
-}: {
-  teto: number;
-  podeAbrir: boolean;
-  aberta: boolean;
-  aoAlternar: () => void;
-  /** O `id` do container das linhas que este botão abre e fecha. */
-  controla: string;
-  /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
-   *  de cada veículo vai de ponta a ponta — e um botão encostado à esquerda
-   *  ficava perdido no canto, sem relação visual com a lista acima. O Top
-   *  veículos, ao lado, já nasce numa coluna estreita: ali encostado à
-   *  esquerda já lê como "embaixo da lista". */
-  centralizado?: boolean;
-}) {
-  if (!podeAbrir) return null;
-  return (
-    <div className="sem-png sem-impressao" style={{ position: 'relative', paddingTop: 12 }}>
-      {aberta ? null : (
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: -10,
-            height: 30,
-            background: 'linear-gradient(to bottom, transparent, var(--branco) 80%)',
-            pointerEvents: 'none',
-          }}
-        />
-      )}
-      <div
-        style={{
-          //: ACIMA DO DEGRADÊ, não atrás: o botão vem depois dele no DOM e
-          //: ganha contexto próprio, senão o degradê o lavaria junto com a
-          //: lista — e o convite ficaria mais apagado que o que ele convida
-          //: a abrir.
-          position: 'relative',
-          display: 'flex',
-          justifyContent: centralizado ? 'center' : 'flex-start',
-        }}
-      >
-        <button
-          type="button"
-          onClick={aoAlternar}
-          aria-expanded={aberta}
-          aria-controls={controla}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 14px',
-            border: '1px solid var(--borda)',
-            borderRadius: 999,
-            //: TRANSLÚCIDO, por pedido: o botão deixa ver a lista dissolvendo
-            //: atrás dele, em vez de tapá-la com uma barra opaca.
-            background: 'rgba(255, 255, 255, 0.72)',
-            backdropFilter: 'blur(4px)',
-            color: 'var(--azul-mar)',
-            fontSize: 12.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            lineHeight: 1.2,
-          }}
-        >
-          {aberta ? 'Recolher' : `Ver todos os ${teto} veículos`}
-          <span aria-hidden style={{ fontSize: 9, lineHeight: 1 }}>
-            {aberta ? '▲' : '▼'}
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function VolumeETopVeiculos({
-  dossie,
-  filtro,
-  definirFiltro,
-}: {
-  dossie: Dossie;
-  filtro: FiltroDaLente;
-  definirFiltro: (filtro: FiltroDaLente) => void;
-}) {
-  const { volume_por_tier: rosca, top_veiculos: ranking } = dossie;
-  const itensDaRosca = rosca.dados.map((linha) => ({
-    chave: comoTexto(linha.chave),
-    rotulo: comoTexto(linha.rotulo),
-    total: comoNumero(linha.total ?? 0),
-    cor: linha.cor ? comoTexto(linha.cor) : undefined,
-  }));
-  const { quantidade, teto, podeAbrir, aberta, alternar, idDaLista } = useListaDeVeiculos(
-    ranking.dados.length,
-  );
-
-  return (
-    <ComFaixaDoTopo>
-    <Secao
-      titulo="% Matérias por tier e Top veículos"
-      subtitulo={`Volume de matérias pela relevância (tier) do veículo, e os ${teto} veículos que mais publicaram, com o sentimento dentro de cada barra`}
-      ajuda={GUIA_DO_BLOCO[rosca.titulo]}
-      estilo={{ height: '100%' }}
-    >
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 auto' }}>
-          <Rosca
-            itens={itensDaRosca}
-            ativo={filtro.tier}
-            aoClicar={(tier) =>
-              definirFiltro({ ...filtro, tier: filtro.tier === tier ? undefined : tier })
-            }
-            rotuloCentral="matérias"
-          />
-        </div>
-        <div style={{ flex: '1 1 220px', minWidth: 200 }}>
-          <div className="kicker" style={{ marginBottom: 10 }}>
-            Top {quantidade} veículos
-          </div>
-          {/* TOP 10, EMPILHADO PELO SENTIMENTO E EM QUANTIDADE, por pedido — a
-              rosca ao lado continua. CLICÁVEL PELO MESMO MOTIVO DA ROSCA:
-              clicar num veículo filtra a tela inteira por ele — inclusive
-              "Últimas matérias" mais abaixo.
-
-              O `id` ENVOLVE SÓ AS LINHAS, e não o cartão: é o alvo do
-              `aria-controls` do botão lá embaixo, e um alvo que contivesse o
-              próprio botão se referenciaria a si mesmo. */}
-          <div id={idDaLista}>
-          <ColunasEmpilhadas
-            cores={CORES_DO_SENTIMENTO}
-            rotuloEmCima
-            espessura={8}
-            alturaMaxima={600}
-            dica="Clique para filtrar a tela"
-            vazio="Nada registrado no período."
-            ativo={filtro.veiculo}
-            itens={ranking.dados.slice(0, quantidade).map((linha) => ({
-              rotulo: comoTexto(linha.rotulo),
-              positivo: comoNumero(linha.positivo ?? 0),
-              neutro: comoNumero(linha.neutro ?? 0),
-              negativo: comoNumero(linha.negativo ?? 0),
-            }))}
-            aoClicar={(veiculo) =>
-              definirFiltro({
-                ...filtro,
-                veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
-              })
-            }
-          />
-          </div>
-          <RevelarVeiculos
-            teto={teto}
-            podeAbrir={podeAbrir}
-            aberta={aberta}
-            aoAlternar={alternar}
-            controla={idDaLista}
-          />
-        </div>
-      </div>
-      <NotaDeFonte ficha={rosca.ficha} />
-    </Secao>
-    </ComFaixaDoTopo>
-  );
-}
-
-/** O placar de clima por veículo — mesmo desenho de "Clima por Instituições"
- *  do Painel (CRM), incluindo a interação: clicar num veículo (ex.:
- *  InfoMoney) filtra a tela inteira por ele, igual à rosca e ao Top 5 ao
- *  lado. "Ver as matérias daquele veículo" é abrir "Últimas matérias" logo
- *  abaixo já filtrada — não um modal à parte. */
-function ClimaPorVeiculos({
-  dossie,
-  filtro,
-  definirFiltro,
-}: {
-  dossie: Dossie;
-  filtro: FiltroDaLente;
-  definirFiltro: (filtro: FiltroDaLente) => void;
-}) {
-  const bloco = dossie.clima_por_veiculos;
-  const { quantidade, teto, podeAbrir, aberta, alternar, idDaLista } = useListaDeVeiculos(
-    bloco.dados.length,
-  );
-
-  return (
-    <ComFaixaDoTopo>
-    <Secao
-      titulo="Termômetro por Veículos"
-      subtitulo={`Os ${teto} veículos com mais matérias e o placar de cada um, de −100 a +100`}
-      ajuda={GUIA_DO_BLOCO[bloco.titulo]}
-      //: DO TAMANHO DO CARD AO LADO (% Matérias por tier e Top veículos), por
-      //: pedido: altura cheia, sem o cartão aninhado que o deixava menor.
-      estilo={{ height: '100%' }}
-    >
-        {/* O `id` ENVOLVE SÓ AS LINHAS — ver o mesmo trecho no Top veículos. */}
-        <div id={idDaLista}>
-        <BarraDivergentePorItem
-          itens={bloco.dados.slice(0, quantidade).map((linha) => ({
-            chave: comoTexto(linha.chave),
-            rotulo: comoTexto(linha.rotulo),
-            total: comoNumero(linha.total ?? 0),
-            score: comoNumero(linha.score ?? 0),
-          }))}
-          ativo={filtro.veiculo}
-          aoClicar={(veiculo) =>
-            definirFiltro({
-              ...filtro,
-              veiculo: filtro.veiculo === veiculo ? undefined : veiculo,
-            })
-          }
-          unidade={{ singular: 'matéria', plural: 'matérias' }}
-          variante="termometro"
-        />
-        </div>
-        <RevelarVeiculos
-          teto={teto}
-          podeAbrir={podeAbrir}
-          aberta={aberta}
-          aoAlternar={alternar}
-          controla={idDaLista}
-          centralizado
-        />
-        <NotaDeFonte ficha={bloco.ficha} />
-    </Secao>
-    </ComFaixaDoTopo>
-  );
-}
-
 /* -- 1.6. do amplo ao específico: drivers, temas e matérias --------------------- */
 
 /** Um bloco autônomo abaixo da Evolução, no mesmo molde dela (faixa, seção,

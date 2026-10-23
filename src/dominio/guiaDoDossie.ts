@@ -46,6 +46,10 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Compara quantas mensagens de clientes chegaram e quantas foram respondidas, mês a mês. Essa visão mostra a capacidade de resposta da Aegea ao longo do tempo.',
   'Tier do veículo × sentimento':
     'Recorte com o sentimento das matérias do mês, agrupado pela relevância (tier) do veículo. Essa visão mostra se a cobertura mais influente está favorável ou desfavorável.',
+  'Top veículos':
+    'Os veículos com mais matérias no recorte, com o volume positivo, neutro e negativo de cada um e o impacto na nota da lente em pontos. Clique num veículo para filtrar os outros painéis. Essa visão mostra quem está pautando a cobertura do mês.',
+  'Termômetro por Veículos':
+    'Para cada veículo do recorte, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — o mesmo cálculo do termômetro por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
   'Matriz de relacionamento com jornalistas':
     'Lista os jornalistas mais relevantes, com a prioridade de relacionamento calculada a partir de relevância, exposição e proximidade. Essa visão ajuda a decidir com quem a assessoria deve falar primeiro.',
   'Percepção do mercado financeiro':
