@@ -128,11 +128,6 @@ function dossieCom(codigo: string): Dossie {
     sinais_da_evolucao: [],
     drivers_e_riscos: bloco({ tipo: 'barras_100', titulo: 'Drivers e riscos' }),
     temas_mais_falados: bloco({ tipo: 'barras_100', titulo: 'Temas mais falados' }),
-    materias_recentes: bloco({
-      titulo: 'Últimas matérias',
-      subtipo: 'materias',
-      dados: [{ quando: '12/09', veiculo: 'Valor Econômico', sentimento: 'Positivo' }],
-    }),
     fatos: [],
     paineis: [],
     onde_esta_a_causa: [],

@@ -380,8 +380,22 @@ function Conteudo({
     //: o mês, e não o recorte que veio junto da tela.
     peloMes?: boolean;
   } | null>(null);
-  const aoAprofundar = (chave: string, valor: string) =>
-    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
+  //: `extras` É O RECORTE QUE SÓ O BLOCO CONHECE, e existe por um bloco só: o
+  //: Explorador de veículos filtra por tier DENTRO dele, sem mexer na barra de
+  //: filtros da tela. A barra que a pessoa clica no Termômetro conta a fatia
+  //: `tier ∩ veículo`, e mandar só o veículo abriria o modal com o veículo
+  //: inteiro — outro número que o da barra clicada. Achado da revisão do Codex
+  //: (23/10/2026).
+  //:
+  //: É A MESMA REGRA DE `aoAprofundarNoMes`, logo abaixo: o modal conta o que a
+  //: barra contou. Opcional porque os outros blocos não têm recorte próprio —
+  //: o deles JÁ é o filtro da tela.
+  const aoAprofundar = (chave: string, valor: string, extras?: Partial<FiltroDaLente>) =>
+    definirAprofundando({
+      mes: dossie.mes,
+      filtro: { ...filtro, ...extras, [chave]: valor },
+      ultimo: chave,
+    });
   //: "TIER DO VEÍCULO × SENTIMENTO" GANHOU LUGAR PRÓPRIO (21/10/2026), fora
   //: da grade genérica de `dossie.paineis` — ver o comentário mais abaixo,
   //: onde ele é desenhado. O que sobra na grade segue genérico, por pedido do
@@ -865,11 +879,13 @@ function Evolucao({
 /** Um bloco autônomo abaixo da Evolução, no mesmo molde dela (faixa, seção,
  *  cabeçalho, ficha) — mas sem o extra de fatos/sinais, que é só da Evolução.
  *
- *  OS TRÊS (Drivers e riscos, Temas mais falados, Últimas matérias) REAGEM
- *  AO MESMO RECORTE da barra de filtro lá em cima: o servidor já aplica
- *  tier/veículo/atributo/tema em cada consulta, então os três estreitam
- *  juntos quando alguém filtra — é a mesma régua "do amplo ao específico"
- *  levada até a linha, não três drill-downs independentes. */
+ *  OS DOIS (Drivers e riscos, Temas mais falados) REAGEM AO MESMO RECORTE da
+ *  barra de filtro lá em cima: o servidor já aplica tier/veículo/atributo/tema
+ *  em cada consulta, então os dois estreitam juntos quando alguém filtra — é a
+ *  mesma régua "do amplo ao específico", não dois drill-downs independentes.
+ *
+ *  ERAM TRÊS até 23/10/2026: "Últimas matérias" fechava a régua levando-a até
+ *  a linha. Ela saiu do corpo do dossiê e virou o modal de aprofundamento. */
 function BlocoAmplo({
   titulo,
   bloco,

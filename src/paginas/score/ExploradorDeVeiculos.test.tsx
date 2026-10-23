@@ -91,9 +91,63 @@ describe('o Explorador de veículos', () => {
 
     await userEvent.click(within(colunaDe('Termômetro por Veículos')).getByText('Veículo 2'));
 
-    expect(aoAprofundar).toHaveBeenCalledWith('veiculo', 'Veículo 2');
+    expect(aoAprofundar).toHaveBeenCalledWith('veiculo', 'Veículo 2', {});
     //: E NÃO MEXEU NA SELEÇÃO: nenhum chip nasceu.
     expect(screen.queryByText('Filtrando por')).toBeNull();
+  });
+
+  it('e o modal abre no recorte da BARRA: o tier escolhido aqui viaja junto', async () => {
+    //: ACHADO DA REVISÃO DO CODEX (23/10/2026). O Termômetro não se exime de
+    //: filtro nenhum: com "Tier 1" escolhido nesta caixa, a barra de um veículo
+    //: conta só a fatia Tier 1 dele. Mandar apenas o veículo abria o modal com
+    //: o veículo INTEIRO — outro número que o da barra clicada.
+    //:
+    //: É A MESMA REGRA QUE `aoAprofundarNoMes` JÁ REGISTRA: "abrir o mês
+    //: inteiro a partir de uma barra que mostra o Rio contaria outro número do
+    //: que a barra que foi clicada". A seleção é local, mas o que ela recorta
+    //: tem de chegar ao aprofundamento, senão o modal desmente o clique.
+    //:
+    //: O MESMO VEÍCULO NOS DOIS TIERS é o caso que separa as duas leituras:
+    //: na fatia Tier 1 ele é +3 positivas, e inteiro ele é 3 positivas contra
+    //: 5 negativas. Sem o tier, o modal mostraria as oito.
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 8,
+      grupos: [
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Veículo A',
+          positivo: 3,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 3,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+        {
+          tier: 'relevante',
+          veiculo: 'Veículo A',
+          positivo: 0,
+          neutro: 0,
+          negativo: 5,
+          peso_positivo: 0,
+          peso_neutro: 0,
+          peso_negativo: 5,
+        },
+      ],
+    } satisfies Dados);
+    montar();
+    await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
+
+    await userEvent.click(within(colunaDe('Tier do veículo × sentimento')).getByText('Tier 1'));
+    await userEvent.click(within(colunaDe('Termômetro por Veículos')).getByText('Veículo A'));
+
+    //: A CHAVE DO TIER, e não o rótulo: é o que a rota do recorte recebe, e é
+    //: como a seleção já o guarda.
+    expect(aoAprofundar).toHaveBeenCalledWith('veiculo', 'Veículo A', {
+      tier: 'muito_relevante',
+    });
   });
 
   it('e o clique no Top continua ESCOLHENDO, sem abrir modal', async () => {

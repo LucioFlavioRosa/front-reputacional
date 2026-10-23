@@ -74,8 +74,12 @@ export function ExploradorDeVeiculos({
   mes: string;
   filtro: FiltroDaLente;
   /** Abre o modal de aprofundamento no recorte `(chave, valor)` — o mesmo que
-   *  a Evolução abre ao clicar num mês. */
-  aoAprofundar: (chave: string, valor: string) => void;
+   *  a Evolução abre ao clicar num mês.
+   *
+   *  `extras` LEVA A SELEÇÃO LOCAL JUNTO: ela não está na barra de filtros da
+   *  tela, e sem ela o modal mostraria um recorte mais largo que o da barra
+   *  clicada. Ver o comentário em `DossieDaLente`. */
+  aoAprofundar: (chave: string, valor: string, extras?: Partial<FiltroDaLente>) => void;
 }) {
   //: OS DADOS COM A CHAVE DO PEDIDO de que são: a tela usa só os que batem
   //: com o mês e o filtro atuais, sem zerar nada dentro do efeito. Sem isto, a
@@ -339,7 +343,18 @@ export function ExploradorDeVeiculos({
                     //: recorta nele), esta ABRE o modal daquele veículo. Se as
                     //: duas abrissem, nada selecionaria veículo e o recorte
                     //: desta coluna ficaria sem gatilho.
-                    aoClicar={(veiculo) => aoAprofundar('veiculo', veiculo)}
+                    //: O TIER LOCAL VIAJA JUNTO (achado do Codex): esta coluna
+                    //: não se exime de filtro nenhum, então a barra conta a
+                    //: fatia `tier ∩ veículo` — e o modal tem de contar a
+                    //: mesma. O veículo da seleção não precisa ir: quando há
+                    //: um, é ele próprio a única linha que resta aqui.
+                    aoClicar={(veiculo) =>
+                      aoAprofundar(
+                        'veiculo',
+                        veiculo,
+                        selecao.tier ? { tier: selecao.tier } : {},
+                      )
+                    }
                     vazio="Nenhuma matéria com veículo neste recorte."
                     unidade={{ singular: 'matéria', plural: 'matérias' }}
                     variante="termometro"
