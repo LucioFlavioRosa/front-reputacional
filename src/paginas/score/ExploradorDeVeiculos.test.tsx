@@ -128,11 +128,11 @@ describe('o Explorador de veículos', () => {
     await waitFor(() => expect(screen.queryByText('Filtrando por')).toBeNull());
   });
 
-  it('a seleção dos DOIS eixos ao mesmo tempo mantém as duas colunas inteiras', async () => {
+  it('a seleção dos DOIS eixos ao mesmo tempo: Top inteiro, Termômetro na interseção', async () => {
     //: O CODEX APONTOU QUE FALTAVA este caso: tier e veículo escolhidos
-    //: juntos. A coluna de tier mostra os tiers DAQUELE veículo, e as de
-    //: veículo mostram os veículos DAQUELE tier — cada eixo imune ao próprio
-    //: filtro, que é a razão de ser do molde.
+    //: juntos. Cada coluna se exime de um filtro diferente — a de tier do
+    //: tier, o Top do veículo, e o Termômetro de NADA, então ele mostra a
+    //: interseção dos dois.
     obterExploradorDeVeiculos.mockResolvedValue(dados(3));
     montar();
     await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
@@ -146,10 +146,16 @@ describe('o Explorador de veículos', () => {
     expect(
       screen.getByRole('button', { name: 'Tirar o filtro Veículo: Veículo 1' }),
     ).toBeInTheDocument();
-    //: A COLUNA DE VEÍCULO CONTINUA INTEIRA: os três seguem clicáveis, senão
-    //: trocar de veículo exigiria desfazer o clique antes.
+    //: O TOP CONTINUA INTEIRO: os três seguem clicáveis, senão trocar de
+    //: veículo exigiria desfazer o clique antes.
     expect(within(topo).getByText('Veículo 2')).toBeInTheDocument();
     expect(within(topo).getByText('Veículo 3')).toBeInTheDocument();
+
+    //: E O TERMÔMETRO MOSTRA A INTERSEÇÃO — só o Veículo 1, que é do Tier 1.
+    //: Lacuna que o Codex apontou: o teste antigo não olhava esta coluna.
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(within(termometro).getByText('Veículo 1')).toBeInTheDocument();
+    expect(within(termometro).queryByText('Veículo 2')).toBeNull();
     //: E A DE TIER TAMBÉM: as três barras de tier seguem desenhadas.
     const tier = colunaDe('Tier do veículo × sentimento');
     expect(within(tier).getByText('Tier 1')).toBeInTheDocument();
@@ -220,44 +226,125 @@ describe('o Explorador de veículos', () => {
     expect(alvo?.style.overflowX, 'o termômetro ganhou barra horizontal').toBe('hidden');
   });
 
-  it('escolher um veículo no Top DESTACA esse veículo no Termômetro', async () => {
-    //: PEDIDO (23/10/2026), e o relato foi "o filtro do Top para o Termômetro
-    //: não está funcionando". O filtro ESTAVA chegando (`ativo` ia para a
-    //: `BarraDivergentePorItem`), mas o retorno visual dela era só um fundo
-    //: pálido numa linha, enquanto a `ColunasEmpilhadas` das outras duas
-    //: colunas esmaece os não-escolhidos para 40% e contorna o escolhido.
-    //: Mesma seleção, dois retornos — e o do Termômetro não se via.
-    //:
-    //: E AS DUAS COLUNAS DE VEÍCULO CONTINUAM INTEIRAS: por decisão, elas são
-    //: o mesmo eixo, e reduzir o Termômetro ao veículo escolhido o deixaria
-    //: com uma barra só — sem comparação, e exigindo desfazer o clique para
-    //: trocar de veículo.
+  it('escolher um veículo no Top deixa SÓ ele no Termômetro', async () => {
+    //: PEDIDO (23/10/2026), depois de ver na tela: o Termômetro passa a
+    //: mostrar apenas o veículo escolhido, em vez de manter todos e só
+    //: esmaecer os outros. O TOP CONTINUA INTEIRO, e é por ele que se troca de
+    //: veículo — sem isso, trocar exigiria desfazer o clique antes.
     obterExploradorDeVeiculos.mockResolvedValue(dados(3));
     montar();
     await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
 
-    //: CLICA NO SEGUNDO, e não no primeiro: um componente que destacasse
-    //: sempre a primeira linha passaria no teste se o clique fosse no
-    //: "Veículo 1". Achado da revisão do Codex (23/10/2026).
     await userEvent.click(within(colunaDe('Top veículos')).getByText('Veículo 2'));
 
-    //: COM 3 VEÍCULOS não nasce o botão "Ver todos", então os `button` desta
-    //: coluna são só as linhas do termômetro.
-    const linhas = within(colunaDe('Termômetro por Veículos')).getAllByRole('button');
-    expect(linhas).toHaveLength(3);
-    const escolhida = linhas.find((l) => l.textContent?.startsWith('Veículo 2'));
-    const primeira = linhas.find((l) => l.textContent?.startsWith('Veículo 1'));
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(within(termometro).getByText('Veículo 2')).toBeInTheDocument();
+    expect(within(termometro).queryByText('Veículo 1')).toBeNull();
+    expect(within(termometro).queryByText('Veículo 3')).toBeNull();
+    //: UM ITEM, e o cabeçalho da coluna diz isso.
+    expect(within(termometro).getByText('1 item')).toBeInTheDocument();
 
-    expect(escolhida?.style.opacity, 'o escolhido deveria ficar inteiro').toBe('1');
-    expect(primeira?.style.opacity, 'os outros deveriam esmaecer').toBe('0.4');
-    expect(escolhida?.style.outline, 'o escolhido deveria ganhar contorno').toContain('2px solid');
+    //: E O TOP SEGUE COM OS TRÊS, para a troca continuar sendo um clique.
+    const topo = colunaDe('Top veículos');
+    expect(within(topo).getByText('Veículo 1')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 3')).toBeInTheDocument();
+  });
 
-    //: E A LINHA NÃO ESCOLHIDA NÃO PODE TER `outline` INLINE NENHUM —
-    //: nem `'none'`. O `:focus-visible` do `index.css` desenha o anel de foco
-    //: do teclado com `outline`, e estilo inline vence folha de estilo: um
-    //: `outline: 'none'` aqui apagaria o foco de quem navega por teclado nas
-    //: linhas não selecionadas. Achado P1 da revisão do Codex (23/10/2026).
-    expect(primeira?.style.outline, 'o foco do teclado foi apagado').toBe('');
+  it('e a interseção vazia diz o motivo, em vez de um quadro vazio', async () => {
+    //: LACUNA QUE O CODEX APONTOU: escolher um veículo e depois um tier em que
+    //: ele não publicou deixa o Termômetro sem nada — e o que a pessoa precisa
+    //: ver ali é o recado, não um retângulo vazio.
+    //:
+    //: A ORDEM DOS CLIQUES É O QUE TORNA ISSO ALCANÇÁVEL: o veículo primeiro
+    //: (com o Top ainda mostrando todos) e o tier depois. Na ordem inversa, o
+    //: Top já estaria estreitado pelo tier e o veículo não estaria lá para
+    //: clicar.
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 100,
+      grupos: [
+        //: A Folha publica SÓ em Tier 2; o Valor, só em Tier 1.
+        {
+          tier: 'relevante',
+          veiculo: 'Folha',
+          positivo: 3,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 3,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Valor',
+          positivo: 2,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 2,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+      ],
+    } as never);
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    await userEvent.click(within(colunaDe('Top veículos')).getByText('Folha'));
+    await userEvent.click(within(colunaDe('Tier do veículo × sentimento')).getByText('Tier 1'));
+
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(
+      within(termometro).getByText('Nenhuma matéria com veículo neste recorte.'),
+    ).toBeInTheDocument();
+    //: E O CABEÇALHO CONCORDA com o que a coluna desenha: zero itens.
+    expect(within(termometro).getByText('0 itens')).toBeInTheDocument();
+    //: OS DOIS CHIPS SEGUEM ATIVOS, então a saída é visível: tirar um deles.
+    expect(screen.getByRole('button', { name: 'Tirar o filtro Tier: Tier 1' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Tirar o filtro Veículo: Folha' }),
+    ).toBeInTheDocument();
+  });
+
+  it('o Termômetro mostra o SALDO de −100 a +100, e não a nota de 0 a 100', async () => {
+    //: ACHADO PELO DONO NO AMBIENTE (23/10/2026): a "Rádio Spaço 100.9 FM"
+    //: tinha mais menções NEGATIVAS que positivas no Top veículos, e o
+    //: Termômetro mostrava +18 — um número positivo para um veículo que estava
+    //: puxando a nota para baixo.
+    //:
+    //: A CAUSA: `ItemDivergente.score`, do gráfico, é o SALDO de −100 a +100
+    //: ((positivas − negativas) ÷ total). O domínio daqui chama esse valor de
+    //: `nss` e chama de `score` a NOTA de 0 a 100 ((NS ponderado + 1) ÷ 2).
+    //: Eu passei o `score`, que nunca é negativo: um veículo com NS −0,64 virava
+    //: nota 18, e o gráfico a desenhava como "+18".
+    //:
+    //: ESTE CASO: 1 positiva e 3 negativas.
+    //:   saldo (o certo)  = (1 − 3) ÷ 4 × 100 = −50
+    //:   nota  (o errado) = (−0,5 + 1) ÷ 2 × 100 = 25  →  saía "+25"
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 100,
+      grupos: [
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Rádio Spaço 100.9 FM',
+          positivo: 1,
+          neutro: 0,
+          negativo: 3,
+          peso_positivo: 1,
+          peso_neutro: 0,
+          peso_negativo: 3,
+        },
+      ],
+    } as never);
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(within(termometro).getByRole('img', { name: /saldo -50 de/ })).toBeInTheDocument();
+    //: E NÃO a nota: "+25" seria o sinal invertido sobre o mesmo veículo.
+    expect(within(termometro).queryByRole('img', { name: /saldo \+25 de/ })).toBeNull();
   });
 
   it('com 5 veículos ou menos não existe botão de revelar', async () => {

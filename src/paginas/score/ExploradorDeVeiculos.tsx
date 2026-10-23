@@ -308,7 +308,21 @@ export function ExploradorDeVeiculos({
                       chave: item.veiculo,
                       rotulo: item.veiculo,
                       total: item.total,
-                      score: item.score,
+                      //: O `score` DO GRÁFICO É O SALDO DE −100 A +100 — leia a
+                      //: doc de `ItemDivergente`. No domínio daqui esse valor
+                      //: se chama `nss`; `score` é a NOTA de 0 a 100.
+                      //:
+                      //: PASSAR O `score` AQUI É O DEFEITO QUE O DONO ACHOU no
+                      //: ambiente (23/10/2026): a "Rádio Spaço 100.9 FM" tinha
+                      //: mais negativas que positivas e o Termômetro mostrava
+                      //: "+18". A nota NUNCA é negativa, então todo veículo
+                      //: aparecia positivo, com a magnitude errada: NS −0,64
+                      //: virava nota 18 e o gráfico desenhava "+18".
+                      //:
+                      //: OS DOIS NOMES SÃO PARECIDOS E AS UNIDADES NÃO SÃO, e
+                      //: é só isso que separa um termômetro certo de um que
+                      //: inverte o sinal de toda a tela.
+                      score: item.nss,
                     }))}
                     ativo={selecao.veiculo}
                     aoClicar={(veiculo) => alternar('veiculo', veiculo)}
