@@ -128,11 +128,11 @@ describe('o Explorador de veículos', () => {
     await waitFor(() => expect(screen.queryByText('Filtrando por')).toBeNull());
   });
 
-  it('a seleção dos DOIS eixos ao mesmo tempo mantém as duas colunas inteiras', async () => {
+  it('a seleção dos DOIS eixos ao mesmo tempo: Top inteiro, Termômetro na interseção', async () => {
     //: O CODEX APONTOU QUE FALTAVA este caso: tier e veículo escolhidos
-    //: juntos. A coluna de tier mostra os tiers DAQUELE veículo, e as de
-    //: veículo mostram os veículos DAQUELE tier — cada eixo imune ao próprio
-    //: filtro, que é a razão de ser do molde.
+    //: juntos. Cada coluna se exime de um filtro diferente — a de tier do
+    //: tier, o Top do veículo, e o Termômetro de NADA, então ele mostra a
+    //: interseção dos dois.
     obterExploradorDeVeiculos.mockResolvedValue(dados(3));
     montar();
     await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
@@ -146,10 +146,16 @@ describe('o Explorador de veículos', () => {
     expect(
       screen.getByRole('button', { name: 'Tirar o filtro Veículo: Veículo 1' }),
     ).toBeInTheDocument();
-    //: A COLUNA DE VEÍCULO CONTINUA INTEIRA: os três seguem clicáveis, senão
-    //: trocar de veículo exigiria desfazer o clique antes.
+    //: O TOP CONTINUA INTEIRO: os três seguem clicáveis, senão trocar de
+    //: veículo exigiria desfazer o clique antes.
     expect(within(topo).getByText('Veículo 2')).toBeInTheDocument();
     expect(within(topo).getByText('Veículo 3')).toBeInTheDocument();
+
+    //: E O TERMÔMETRO MOSTRA A INTERSEÇÃO — só o Veículo 1, que é do Tier 1.
+    //: Lacuna que o Codex apontou: o teste antigo não olhava esta coluna.
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(within(termometro).getByText('Veículo 1')).toBeInTheDocument();
+    expect(within(termometro).queryByText('Veículo 2')).toBeNull();
     //: E A DE TIER TAMBÉM: as três barras de tier seguem desenhadas.
     const tier = colunaDe('Tier do veículo × sentimento');
     expect(within(tier).getByText('Tier 1')).toBeInTheDocument();
@@ -242,6 +248,62 @@ describe('o Explorador de veículos', () => {
     const topo = colunaDe('Top veículos');
     expect(within(topo).getByText('Veículo 1')).toBeInTheDocument();
     expect(within(topo).getByText('Veículo 3')).toBeInTheDocument();
+  });
+
+  it('e a interseção vazia diz o motivo, em vez de um quadro vazio', async () => {
+    //: LACUNA QUE O CODEX APONTOU: escolher um veículo e depois um tier em que
+    //: ele não publicou deixa o Termômetro sem nada — e o que a pessoa precisa
+    //: ver ali é o recado, não um retângulo vazio.
+    //:
+    //: A ORDEM DOS CLIQUES É O QUE TORNA ISSO ALCANÇÁVEL: o veículo primeiro
+    //: (com o Top ainda mostrando todos) e o tier depois. Na ordem inversa, o
+    //: Top já estaria estreitado pelo tier e o veículo não estaria lá para
+    //: clicar.
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 100,
+      grupos: [
+        //: A Folha publica SÓ em Tier 2; o Valor, só em Tier 1.
+        {
+          tier: 'relevante',
+          veiculo: 'Folha',
+          positivo: 3,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 3,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Valor',
+          positivo: 2,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 2,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+      ],
+    } as never);
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    await userEvent.click(within(colunaDe('Top veículos')).getByText('Folha'));
+    await userEvent.click(within(colunaDe('Tier do veículo × sentimento')).getByText('Tier 1'));
+
+    const termometro = colunaDe('Termômetro por Veículos');
+    expect(
+      within(termometro).getByText('Nenhuma matéria com veículo neste recorte.'),
+    ).toBeInTheDocument();
+    //: E O CABEÇALHO CONCORDA com o que a coluna desenha: zero itens.
+    expect(within(termometro).getByText('0 itens')).toBeInTheDocument();
+    //: OS DOIS CHIPS SEGUEM ATIVOS, então a saída é visível: tirar um deles.
+    expect(screen.getByRole('button', { name: 'Tirar o filtro Tier: Tier 1' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Tirar o filtro Veículo: Folha' }),
+    ).toBeInTheDocument();
   });
 
   it('com 5 veículos ou menos não existe botão de revelar', async () => {
