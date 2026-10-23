@@ -1,0 +1,77 @@
+{
+  "lente": "imprensa",
+  "mes": "2026-08",
+  "denominador": 123.0,
+  "grupos": [
+    {
+      "tier": "muito_relevante",
+      "veiculo": "Valor Econômico",
+      "positivo": 4,
+      "neutro": 2,
+      "negativo": 1,
+      "peso_positivo": 40.0,
+      "peso_neutro": 20.0,
+      "peso_negativo": 10.0
+    },
+    {
+      "tier": "relevante",
+      "veiculo": "Valor Econômico",
+      "positivo": 1,
+      "neutro": 0,
+      "negativo": 0,
+      "peso_positivo": 5.0,
+      "peso_neutro": 0.0,
+      "peso_negativo": 0.0
+    },
+    {
+      "tier": "muito_relevante",
+      "veiculo": "Folha de S.Paulo",
+      "positivo": 1,
+      "neutro": 1,
+      "negativo": 5,
+      "peso_positivo": 10.0,
+      "peso_neutro": 10.0,
+      "peso_negativo": 50.0
+    },
+    {
+      "tier": "menos_relevante",
+      "veiculo": "Rádio Spaço 100.9 FM",
+      "positivo": 1,
+      "neutro": 0,
+      "negativo": 3,
+      "peso_positivo": 1.0,
+      "peso_neutro": 0.0,
+      "peso_negativo": 3.0
+    },
+    {
+      "tier": "relevante",
+      "veiculo": "Estadão",
+      "positivo": 2,
+      "neutro": 3,
+      "negativo": 2,
+      "peso_positivo": 10.0,
+      "peso_neutro": 15.0,
+      "peso_negativo": 10.0
+    },
+    {
+      "tier": "relevante",
+      "veiculo": "G1",
+      "positivo": 3,
+      "neutro": 1,
+      "negativo": 0,
+      "peso_positivo": 15.0,
+      "peso_neutro": 5.0,
+      "peso_negativo": 0.0
+    },
+    {
+      "tier": "menos_relevante",
+      "veiculo": "Metrópoles",
+      "positivo": 0,
+      "neutro": 2,
+      "negativo": 1,
+      "peso_positivo": 0.0,
+      "peso_neutro": 2.0,
+      "peso_negativo": 1.0
+    }
+  ]
+}

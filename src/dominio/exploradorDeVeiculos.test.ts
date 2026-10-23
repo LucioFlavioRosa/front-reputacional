@@ -59,10 +59,10 @@ describe('o explorador de veículos soma por dois eixos', () => {
     ]);
   });
 
-  it('escolher um VEÍCULO deixa os DOIS painéis de veículo inteiros', () => {
+  it('escolher um VEÍCULO deixa o Top inteiro e reduz o Termômetro a ele', () => {
     const selecao = { veiculo: 'Folha' };
-    //: OS DOIS SÃO O MESMO EIXO: estreitar o termômetro pelo veículo escolhido
-    //: no Top o deixaria com uma barra só, que é o que o molde evita.
+    //: O TOP CONTINUA INTEIRO, e é ele quem troca a escolha: sem isso, trocar
+    //: de veículo exigiria desfazer o clique antes.
     //
     //: A ORDEM É VOLUME DECRESCENTE e, no empate, o nome em pt-BR: Estadão e
     //: Folha têm 4 matérias cada, e "Estadão" vem antes.
@@ -71,16 +71,25 @@ describe('o explorador de veículos soma por dois eixos', () => {
       'Folha',
       'Valor',
     ]);
-    expect(termometroDosVeiculos(GRUPOS, selecao).map((v) => v.veiculo).sort()).toEqual([
-      'Estadão',
-      'Folha',
-      'Valor',
-    ]);
+
+    //: O TERMÔMETRO MOSTRA SÓ O ESCOLHIDO — mudança de 23/10/2026, por pedido,
+    //: depois de o dono ver na tela as duas formas. A versão anterior o deixava
+    //: inteiro e só esmaecia os outros; ele quis o recorte.
+    expect(termometroDosVeiculos(GRUPOS, selecao).map((v) => v.veiculo)).toEqual(['Folha']);
+
     //: E O PAINEL DE TIER ESTREITA para os tiers em que a Folha publicou.
     const tiers = barrasDoTier(GRUPOS, selecao, 100).filter(
       (barra) => barra.positivo + barra.neutro + barra.negativo > 0,
     );
     expect(tiers.map((barra) => barra.rotulo)).toEqual(['Tier 1', 'Tier 2']);
+  });
+
+  it('e o Termômetro segue o tier escolhido, como antes', () => {
+    //: A CONTRAPROVA de que só o eixo do VEÍCULO mudou: escolher um tier
+    //: continua estreitando o termômetro para os veículos daquele tier.
+    expect(
+      termometroDosVeiculos(GRUPOS, { tier: 'muito_relevante' }).map((v) => v.veiculo),
+    ).toEqual(['Folha', 'Valor']);
   });
 
   it('deixa de fora a menção sem o campo do próprio eixo, e a mantém no outro', () => {
@@ -109,11 +118,16 @@ describe('o explorador de veículos soma por dois eixos', () => {
 
   it('o termômetro e a nota saem pela conta do produto', () => {
     //: 3 positivas e 1 negativa: nss = (3 − 1) ÷ 4 × 100 = 50.
-    //: NS ponderado = (30 − 5) ÷ 35; score = (NS + 1) ÷ 2 × 100 = 86.
+    //: NS ponderado = (30 − 5) ÷ 35; nota = (NS + 1) ÷ 2 × 100 = 86.
     const folha = termometroDosVeiculos(GRUPOS, {}).find((v) => v.veiculo === 'Folha');
     expect(folha?.total).toBe(4);
+    //: AS DUAS MEDIDAS, com unidades diferentes — `nss` é o saldo de −100 a
+    //: +100 (por contagem) e `nota` é de 0 a 100 (ponderada por tier). O campo
+    //: se chamava `score` e foi renomeado em 23/10/2026: o gráfico também tem
+    //: um `score`, que é o SALDO, e os dois nomes iguais com unidades
+    //: diferentes inverteram o sinal da tela inteira.
     expect(folha?.nss).toBe(50);
-    expect(folha?.score).toBe(86);
+    expect(folha?.nota).toBe(86);
   });
 
   it('o tier sem matéria no recorte continua desenhado, em zero', () => {

@@ -66,10 +66,11 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Ranking dos órgãos e entidades com mais agendas registradas no período. Essa visão mostra com quem a Aegea mais interagiu.',
   'Concessionárias com maior repercussão':
     'Ranking das concessionárias/unidades com mais menções no período, somando positivas, neutras e negativas. Essa visão mostra onde a repercussão se concentra.',
-  'Volume por tier':
-    'Rosca com o volume de matérias do mês por tier do veículo (Tier 1, Tier 2, Tier 3). Ao lado, o Top 5 veículos com mais matérias no período. Essa visão mostra quem é a cobertura de imprensa do mês e em que faixa de relevância ela se concentra.',
-  'Termômetro por veículos':
-    'Para os veículos com mais matérias no mês, o saldo (positivas − negativas) ÷ total × 100, de −100 a 100 — mesmo cálculo do placar do termômetro por instituição do Painel. Essa visão mostra quais veículos estão favoráveis ou desfavoráveis à companhia, sem o peso de tier que a nota oficial usa.',
+  /* 'Volume por tier' e 'Termômetro por veículos' (com v minúsculo, os títulos
+     que o SERVIDOR mandava) saíram em 23/10/2026 com os blocos que eles
+     explicavam. Não confundir com 'Termômetro por Veículos', com V maiúsculo,
+     que é a coluna do Explorador de veículos e tem a entrada dela mais abaixo:
+     as duas chaves são parecidas e só uma existe na tela. */
   'Drivers e riscos':
     'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume positivo, neutro e negativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
   'Temas mais falados':

@@ -264,13 +264,65 @@ export function ExploradorDeVeiculos({
               </Coluna>
 
               <Coluna titulo="Termômetro por Veículos" quantos={termometro.length}>
-                <div id={listaDoTermometro.idDaLista}>
+                {/* A ROLAGEM É DAQUI, por pedido (23/10/2026): a
+                    `ColunasEmpilhadas` da coluna ao lado tem rolagem interna
+                    própria, e a `BarraDivergentePorItem` não tem nenhuma —
+                    expandir esta coluna crescia o cartão e fazia a PÁGINA
+                    rolar, enquanto a vizinha rolava por dentro. Dois
+                    comportamentos para o mesmo gesto, lado a lado.
+
+                    A CLASSE É A MESMA (`rolagem-interna`), e não um
+                    `overflow` solto: ela traz a barra fina de 10px com o
+                    polegar em `--cinza-1`, que é o que faz as duas colunas
+                    rolarem IGUAL e não só rolarem.
+
+                    `paddingRight` PARA A BARRA NÃO SENTAR NO DADO — o mesmo
+                    que a `ColunasEmpilhadas` faz no scroller dela.
+
+                    E OS DOIS EIXOS EXPLÍCITOS, não só a classe. Dois motivos,
+                    os dois achados da revisão do Codex (23/10/2026):
+
+                    `overflowX: 'hidden'` porque as linhas da
+                    `BarraDivergentePorItem` têm `margin: 0 -6px` — o realce
+                    sangra 6px além do texto de propósito —, e isso transborda
+                    ~2px do `padding` deste container. Com o `overflow: auto`
+                    da classe, aparecia uma barra HORIZONTAL inclusive com a
+                    lista fechada; ela come altura e desalinha esta coluna das
+                    outras duas.
+
+                    `overflowY: 'auto'` porque herdar a rolagem da classe
+                    deixava alguém mantê-la e tirar o comportamento sem nenhum
+                    teste ver — o estilo aqui é o que o teste pode afirmar. */}
+                <div
+                  id={listaDoTermometro.idDaLista}
+                  className="rolagem-interna"
+                  style={{
+                    maxHeight: ALTURA_DA_LISTA,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    paddingRight: 4,
+                  }}
+                >
                   <BarraDivergentePorItem
                     itens={termometro.slice(0, listaDoTermometro.quantidade).map((item) => ({
                       chave: item.veiculo,
                       rotulo: item.veiculo,
                       total: item.total,
-                      score: item.score,
+                      //: O `score` DO GRÁFICO É O SALDO DE −100 A +100 — leia a
+                      //: doc de `ItemDivergente`. No domínio daqui esse valor
+                      //: se chama `nss`; `score` é a NOTA de 0 a 100.
+                      //:
+                      //: PASSAR O `score` AQUI É O DEFEITO QUE O DONO ACHOU no
+                      //: ambiente (23/10/2026): a "Rádio Spaço 100.9 FM" tinha
+                      //: mais negativas que positivas e o Termômetro mostrava
+                      //: "+18". A nota NUNCA é negativa, então todo veículo
+                      //: aparecia positivo, com a magnitude errada: NS −0,64
+                      //: virava nota 18 e o gráfico desenhava "+18".
+                      //:
+                      //: OS DOIS NOMES SÃO PARECIDOS E AS UNIDADES NÃO SÃO, e
+                      //: é só isso que separa um termômetro certo de um que
+                      //: inverte o sinal de toda a tela.
+                      score: item.nss,
                     }))}
                     ativo={selecao.veiculo}
                     aoClicar={(veiculo) => alternar('veiculo', veiculo)}

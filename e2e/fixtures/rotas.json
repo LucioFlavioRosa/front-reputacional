@@ -68,5 +68,15 @@
     "metodo": "GET",
     "caminho": "/api/score/lentes/imprensa/explorador",
     "arquivo": "explorador-imprensa.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/imprensa/explorador-de-veiculos",
+    "arquivo": "explorador-de-veiculos-imprensa.json"
+  },
+  {
+    "metodo": "GET",
+    "caminho": "/api/score/lentes/mercado/explorador-de-veiculos",
+    "arquivo": "explorador-de-veiculos-imprensa.json"
   }
 ]

@@ -96,8 +96,14 @@ export function TermometroDeClima({
                   border: 'none',
                   background: CORES_DE_CLIMA[fatia.chave] ?? 'var(--cinza-1)',
                   borderRadius: `${primeira ? 4 : 0}px ${ultima ? 4 : 0}px ${ultima ? 4 : 0}px ${primeira ? 4 : 0}px`,
-                  outline: marcada ? '2px solid var(--cinza-4)' : 'none',
-                  outlineOffset: 1,
+                  //: `undefined` E NÃO `'none'`: estilo inline vence folha de
+                  //: estilo, e o anel de foco do teclado vem do
+                  //: `:focus-visible` do `index.css` (:171), que desenha com
+                  //: `outline`. Com `'none'`, esta fatia — que é um `button` —
+                  //: ficava alcançável por tabulação e sem mostrar o foco.
+                  //: Achado da revisão do Codex (23/10/2026).
+                  outline: marcada ? '2px solid var(--cinza-4)' : undefined,
+                  outlineOffset: marcada ? 1 : undefined,
                   opacity: ativo && !marcada ? 0.45 : 1,
                   cursor: aoClicar ? 'pointer' : 'default',
                 }}
