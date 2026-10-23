@@ -118,7 +118,7 @@ describe('o explorador de veículos soma por dois eixos', () => {
 
   it('o termômetro e a nota saem pela conta do produto', () => {
     //: 3 positivas e 1 negativa: nss = (3 − 1) ÷ 4 × 100 = 50.
-    //: NS ponderado = (30 − 5) ÷ 35; score = (NS + 1) ÷ 2 × 100 = 86.
+    //: NS ponderado = (30 − 5) ÷ 35; nota = (NS + 1) ÷ 2 × 100 = 86.
     const folha = termometroDosVeiculos(GRUPOS, {}).find((v) => v.veiculo === 'Folha');
     expect(folha?.total).toBe(4);
     //: AS DUAS MEDIDAS, com unidades diferentes — `nss` é o saldo de −100 a
