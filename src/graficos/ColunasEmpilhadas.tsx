@@ -173,8 +173,19 @@ export function ColunasEmpilhadas({
               gridTemplateColumns: rotuloEmCima ? 'minmax(0, 1fr)' : `${larguraDoRotulo} 1fr`,
               rowGap: rotuloEmCima ? 4 : undefined,
               opacity: esmaecida ? 0.4 : 1,
-              outline: ativo === barra.rotulo ? '2px solid var(--cor-da-lente, var(--azul-mar))' : 'none',
-              outlineOffset: -2,
+              //: `undefined` NO NÃO-ESCOLHIDO, NUNCA `'none'`: o anel de foco
+              //: do teclado vem do `:focus-visible` do `index.css` (:171), que
+              //: também desenha com `outline` — e estilo inline VENCE folha de
+              //: estilo. Com `'none'` aqui, quem navega por tabulação perdia o
+              //: foco em toda barra não escolhida, e estas barras são `button`.
+              //: Achado da revisão do Codex (23/10/2026).
+              outline:
+                ativo === barra.rotulo
+                  ? '2px solid var(--cor-da-lente, var(--azul-mar))'
+                  : undefined,
+              //: CONDICIONAL TAMBÉM: o `-2` sobrescreveria o `+2` que o
+              //: `:focus-visible` usa, puxando o anel de foco para dentro.
+              outlineOffset: ativo === barra.rotulo ? -2 : undefined,
               alignItems: 'center',
               columnGap: 12,
               width: '100%',
