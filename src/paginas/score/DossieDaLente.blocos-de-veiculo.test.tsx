@@ -288,14 +288,15 @@ describe('os blocos de veículo do dossiê', () => {
     expect(OS_BLOCOS).not.toContain('Temas mais falados');
   });
 
-  it('o Top veículos e o Termômetro abrem em 5 e o contador sobe e desce de um em um', async () => {
-    //: PEDIDO (21/10/2026, revisto no mesmo dia): as duas listas abriam
+  it('o Top veículos e o Termômetro abrem em 5 e um botão só revela todos', async () => {
+    //: PEDIDO (21/10/2026, revisto em 23/10/2026): as duas listas abriam
     //: sempre com os 10 veículos que o servidor manda, e a tela ficava
-    //: comprida demais para quem só quer o resumo. Agora abrem em 5, e um
-    //: contador com setinhas sobe até o teto que o servidor mandou e desce
-    //: de volta — sem nunca passar de 5 para menos, nem existir "recolher
-    //: tudo de uma vez" (a primeira versão tinha um reset direto; o pedido
-    //: real era subir E descer de um em um).
+    //: comprida demais para quem só quer o resumo. A primeira resposta foi um
+    //: contador de setinhas (▲▼) que subia e descia de UM EM UM, e é essa
+    //: que cai aqui: revelar o 10º custava cinco cliques, e o rótulo
+    //: "Mostrando 5 de 10" não dizia que havia um segundo clique adiante.
+    //: Agora é UM botão que alterna tudo de uma vez, com o número no próprio
+    //: rótulo, e o degradê no rodapé da lista é quem diz "tem mais embaixo".
     const dossie = dossieCom('imprensa');
     const rotulos = Array.from({ length: 7 }, (_, indice) => `Veículo ${indice + 1}`);
     dossie.top_veiculos = {
@@ -321,44 +322,114 @@ describe('os blocos de veículo do dossiê', () => {
     const topo = screen.getByText('% Matérias por tier e Top veículos').closest('.cartao') as HTMLElement;
     const termometro = screen.getByText('Termômetro por Veículos').closest('.cartao') as HTMLElement;
 
-    //: NO PONTO DE PARTIDA, a seta de baixo já nasce desabilitada — não existe
-    //: "menos que 5".
+    //: NO PONTO DE PARTIDA: cinco veículos, e o botão DIZ QUANTOS HÁ — o
+    //: número no rótulo é o que faltava no "Mostrando 5 de 10", que não
+    //: avisava que existia uma segunda tela.
     expect(within(topo).getByText('Veículo 5')).toBeInTheDocument();
     expect(within(topo).queryByText('Veículo 6')).toBeNull();
-    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeDisabled();
+    expect(within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' })).toBeInTheDocument();
     expect(within(termometro).getByText('Veículo 5')).toBeInTheDocument();
     expect(within(termometro).queryByText('Veículo 6')).toBeNull();
 
-    //: OS DOIS CONTADORES, um por painel — cada um controla a própria
-    //: contagem, sem travar os dois juntos.
-    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' }));
-    expect(within(topo).getByText('Top 6 veículos')).toBeInTheDocument();
-    expect(within(topo).getByText('Veículo 6')).toBeInTheDocument();
-    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeEnabled();
+    //: O BOTÃO APONTA PARA A LISTA QUE ELE ABRE (`aria-controls`), e o alvo
+    //: tem de ser o container das LINHAS — não o cartão inteiro. Sem isto o
+    //: leitor de tela anuncia "expandido" sem dizer o que foi expandido.
+    const botaoDoTopo = within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' });
+    const alvo = botaoDoTopo.getAttribute('aria-controls');
+    expect(alvo).toBeTruthy();
+    const listaDoTopo = document.getElementById(alvo as string);
+    expect(listaDoTopo).not.toBeNull();
+    expect(within(listaDoTopo as HTMLElement).getByText('Veículo 5')).toBeInTheDocument();
 
-    //: O TERMÔMETRO AINDA NÃO EXPANDIU: confirma que os dois painéis não
-    //: compartilham a mesma contagem.
+    //: FORA DO PNG **E** DA IMPRESSÃO, que são duas regras diferentes: o
+    //: `BaixarPng` filtra por `sem-png`, e o `@media print` do `index.css`
+    //: esconde por `sem-impressao`. Ter só a primeira deixava o botão sair no
+    //: papel — achado da revisão do Codex (23/10/2026).
+    const blocoDoBotao = botaoDoTopo.closest('.sem-png');
+    expect(blocoDoBotao).not.toBeNull();
+    expect(blocoDoBotao).toHaveClass('sem-impressao');
+
+    //: UM CLIQUE SÓ TRAZ O RESTO TODO — o 7º inclusive, que antes custava
+    //: dois cliques depois do 6º.
+    await userEvent.click(within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' }));
+    expect(within(topo).getByText('Top 7 veículos')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 6')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 7')).toBeInTheDocument();
+
+    //: O TERMÔMETRO AINDA NÃO ABRIU: confirma que os dois painéis não
+    //: compartilham o mesmo estado.
     expect(within(termometro).queryByText('Veículo 6')).toBeNull();
 
-    await userEvent.click(within(termometro).getByRole('button', { name: 'Mostrar mais um veículo' }));
-    expect(within(termometro).getByText('Veículo 6')).toBeInTheDocument();
+    await userEvent.click(within(termometro).getByRole('button', { name: 'Ver todos os 7 veículos' }));
+    expect(within(termometro).getByText('Veículo 7')).toBeInTheDocument();
 
-    //: CHEGOU NO TOTAL QUE O SERVIDOR MANDOU (7, abaixo do teto de 10): a
-    //: seta de subir desabilita, e não trava pedindo um 8º que não existe.
-    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' }));
-    expect(within(topo).getByText('Veículo 7')).toBeInTheDocument();
-    expect(within(topo).getByRole('button', { name: 'Mostrar mais um veículo' })).toBeDisabled();
-
-    //: E A SETA DE DESCER TIRA UM DE CADA VEZ, não um reset direto para 5 —
-    //: dois cliques tiram dois, não os sete inteiros de uma vez.
-    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' }));
-    expect(within(topo).getByText('Top 6 veículos')).toBeInTheDocument();
-    expect(within(topo).getByText('Veículo 6')).toBeInTheDocument();
-    expect(within(topo).queryByText('Veículo 7')).toBeNull();
-
-    await userEvent.click(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' }));
+    //: E O MESMO BOTÃO FECHA, voltando ao ponto de partida de uma vez — não
+    //: existe mais um caminho de volta de dois cliques por veículo.
+    await userEvent.click(within(topo).getByRole('button', { name: 'Recolher' }));
     expect(within(topo).getByText('Top 5 veículos')).toBeInTheDocument();
     expect(within(topo).queryByText('Veículo 6')).toBeNull();
-    expect(within(topo).getByRole('button', { name: 'Mostrar um veículo a menos' })).toBeDisabled();
+    expect(within(topo).getByRole('button', { name: 'Ver todos os 7 veículos' })).toBeInTheDocument();
+
+    //: O TERMÔMETRO SEGUE ABERTO depois de o vizinho fechar.
+    expect(within(termometro).getByText('Veículo 7')).toBeInTheDocument();
+  });
+
+  it('e sem segunda tela para revelar não existe botão nenhum', async () => {
+    //: COM 5 OU MENOS VEÍCULOS NO MÊS não há o que abrir, e um botão "Ver
+    //: todos os 4" que não muda nada é pior que nenhum botão. Era a mesma
+    //: guarda do contador antigo (`teto <= inicial`), e ela continua.
+    const dossie = dossieCom('imprensa');
+    const rotulos = Array.from({ length: 4 }, (_, indice) => `Veículo ${indice + 1}`);
+    dossie.top_veiculos = {
+      ...dossie.top_veiculos,
+      dados: rotulos.map((rotulo) => ({ rotulo, positivo: 1, neutro: 0, negativo: 0 })),
+    };
+    dossie.clima_por_veiculos = {
+      ...dossie.clima_por_veiculos,
+      dados: rotulos.map((rotulo, indice) => ({ chave: rotulo, rotulo, total: 1, score: 50 - indice })),
+    };
+    obterDossieDaLente.mockResolvedValue(dossie);
+    await montarEAbrir('imprensa');
+
+    await waitFor(() => expect(screen.getByText('Top 4 veículos')).toBeInTheDocument());
+    const topo = screen.getByText('% Matérias por tier e Top veículos').closest('.cartao') as HTMLElement;
+    const termometro = screen.getByText('Termômetro por Veículos').closest('.cartao') as HTMLElement;
+    expect(within(topo).queryByRole('button', { name: /Ver todos/ })).toBeNull();
+    expect(within(termometro).queryByRole('button', { name: /Ver todos/ })).toBeNull();
+  });
+
+  it('e o ranking de Tier 1 abre pelo mesmo botão', async () => {
+    //: O BLOCO DO TIER 1 NÃO TINHA TESTE NENHUM — achado da revisão do Codex
+    //: (23/10/2026). Ele é o único dos três onde o controle é ligado por um
+    //: OBJETO inteiro (`veiculosDoTier1`, erguido no topo do componente porque
+    //: o quadro vive dentro de um `.map()`), e não por props soltas: era a
+    //: ligação mais fácil de errar em silêncio, porque nenhum teste passava
+    //: por este caminho.
+    const dossie = dossieCom('imprensa');
+    const rotulos = Array.from({ length: 7 }, (_, indice) => `Tier1 ${indice + 1}`);
+    //: O TÍTULO É A CHAVE: a tela acha este painel por igualdade exata com
+    //: 'Tier do veículo × sentimento' (com o × de multiplicação, não um "x"),
+    //: e é essa string que liga o ranking ao quadro.
+    dossie.paineis = [bloco({ tipo: 'barras_100', titulo: 'Tier do veículo × sentimento' })];
+    dossie.veiculos_tier1 = bloco({
+      tipo: 'barras_horizontais',
+      titulo: 'Veículos Tier 1',
+      dados: rotulos.map((rotulo) => ({ rotulo, positivo: 1, neutro: 0, negativo: 0 })),
+    });
+    obterDossieDaLente.mockResolvedValue(dossie);
+    await montarEAbrir('imprensa');
+
+    await waitFor(() => expect(screen.getByText(/Top 5 veículos Tier 1/)).toBeInTheDocument());
+    const cartao = screen.getByText(/Top 5 veículos Tier 1/).closest('.cartao') as HTMLElement;
+    expect(within(cartao).getByText('Tier1 5')).toBeInTheDocument();
+    expect(within(cartao).queryByText('Tier1 6')).toBeNull();
+
+    await userEvent.click(within(cartao).getByRole('button', { name: 'Ver todos os 7 veículos' }));
+    expect(within(cartao).getByText(/Top 7 veículos Tier 1/)).toBeInTheDocument();
+    expect(within(cartao).getByText('Tier1 7')).toBeInTheDocument();
+
+    await userEvent.click(within(cartao).getByRole('button', { name: 'Recolher' }));
+    expect(within(cartao).getByText(/Top 5 veículos Tier 1/)).toBeInTheDocument();
+    expect(within(cartao).queryByText('Tier1 6')).toBeNull();
   });
 });
