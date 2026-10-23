@@ -34,6 +34,10 @@ const obterDossieDaLente = vi.fn();
 //: tuple type or be passed to a rest parameter") — e os testes passariam com o
 //: tipo quebrado.
 const obterRecorteDaLente = vi.fn((..._argumentos: unknown[]) => new Promise(() => {}));
+//: PENDENTE POR PADRÃO (o bloco tem teste próprio), mas IÇADA para fora da
+//: fábrica do `vi.mock` para um teste poder resolvê-la: é com o bloco
+//: desenhado que se vê se o painel de tier aparece duas vezes.
+const obterExploradorDeVeiculos = vi.fn((..._argumentos: unknown[]) => new Promise(() => {}));
 
 vi.mock('@/api/cliente', () => ({
   obterDossieDaLente: (...argumentos: unknown[]) => obterDossieDaLente(...argumentos),
@@ -42,10 +46,11 @@ vi.mock('@/api/cliente', () => ({
   //: O CARD N1 › N2 › N3 E O MAPA têm teste próprio; aqui ficam carregando.
   obterExploradorDaLente: vi.fn(() => new Promise(() => {})),
   //: O EXPLORADOR DE VEÍCULOS também tem teste próprio
-  //: (`ExploradorDeVeiculos.test.tsx`), e aqui fica carregando. O TÍTULO DOS
-  //: PAINÉIS APARECE MESMO ASSIM — ele é desenhado fora da espera —, e é por
-  //: isso que `OS_BLOCOS` abaixo continua podendo afirmar a moldura.
-  obterExploradorDeVeiculos: vi.fn(() => new Promise(() => {})),
+  //: (`ExploradorDeVeiculos.test.tsx`). O TÍTULO DO CARTÃO aparece mesmo
+  //: pendente — ele é moldura —, e é por isso que `OS_BLOCOS` abaixo pode
+  //: afirmá-lo.
+  obterExploradorDeVeiculos: (...argumentos: unknown[]) =>
+    obterExploradorDeVeiculos(...argumentos),
 }));
 
 //: A Jornada e o drill saem do caminho: não são o assunto, e a Jornada busca
@@ -316,5 +321,45 @@ describe('os blocos de veículo do dossiê', () => {
     await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
     expect(screen.queryByText('% Matérias por tier e Top veículos')).toBeNull();
     expect(screen.queryAllByText(/veículos Tier 1/)).toEqual([]);
+  });
+
+  it('e a leitura de tier não aparece DUAS vezes', async () => {
+    //: ACHADO DA REVISÃO DO CODEX (23/10/2026), que nenhum teste pegava: o
+    //: servidor manda o painel "Tier do veículo × sentimento" em
+    //: `dossie.paineis`, e a tela o desenhava num cartão próprio. Com o
+    //: Explorador de veículos, cuja PRIMEIRA COLUNA é essa mesma leitura, a
+    //: pessoa passou a ver tier duas vezes na mesma tela.
+    //:
+    //: O FIXTURE ESCONDIA ISSO com `paineis: []` — em produção aquela lista
+    //: traz o painel. Por isso este teste o põe lá E resolve a rota do bloco:
+    //: com o bloco pendente, a coluna não desenha e o defeito não aparece.
+    const dossie = dossieCom('imprensa');
+    dossie.paineis = [bloco({ tipo: 'barras_100', titulo: 'Tier do veículo × sentimento' })];
+    obterDossieDaLente.mockResolvedValue(dossie);
+    obterExploradorDeVeiculos.mockResolvedValue({
+      lente: 'imprensa',
+      mes: '2026-09',
+      denominador: 10,
+      grupos: [
+        {
+          tier: 'muito_relevante',
+          veiculo: 'Folha',
+          positivo: 1,
+          neutro: 0,
+          negativo: 0,
+          peso_positivo: 1,
+          peso_neutro: 0,
+          peso_negativo: 0,
+        },
+      ],
+    } as never);
+    await montarEAbrir('imprensa');
+
+    //: ESPERA A COLUNA DO BLOCO PINTAR, e não um prazo: afirmar a contagem
+    //: antes de o bloco desenhar passaria sempre.
+    await waitFor(() =>
+      expect(screen.getAllByText('Tier do veículo × sentimento').length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText('Tier do veículo × sentimento')).toHaveLength(1);
   });
 });

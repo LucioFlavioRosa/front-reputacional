@@ -426,12 +426,20 @@ function Conteudo({
         />
       ) : null}
 
-      {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, por pedido (21/10/2026):
-          "Tier do veículo × sentimento" saiu da grade de baixo (onde dividia
-          a largura com "Matriz de relacionamento com jornalistas") e ganhou
-          lugar fixo aqui, na largura inteira — a mesma de "Últimas
-          matérias", que vem logo depois dele. */}
-      {painelDeTier1 ? (
+      {/* "Tier do veículo × sentimento" saiu da grade de baixo em 21/10/2026
+          (onde dividia a largura com "Matriz de relacionamento com
+          jornalistas") e ganhou lugar fixo aqui, na largura inteira.
+
+          E SÓ APARECE ONDE NÃO HÁ O EXPLORADOR DE VEÍCULOS (23/10/2026):
+          a PRIMEIRA COLUNA dele é esta mesma leitura, e desenhar os dois punha
+          tier duas vezes na tela. Achado da revisão do Codex — nenhum teste
+          pegava, porque o fixture manda `paineis: []` e em produção aquela
+          lista traz o painel.
+
+          A LENTE QUE NÃO TEM O BLOCO continua com o cartão: o servidor manda
+          o painel para quem tem tier, e não é só Imprensa e Mercado que o
+          recebem. */}
+      {painelDeTier1 && !LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <CartaoDoPainel painel={painelDeTier1} filtro={filtro} aoAprofundar={aoAprofundar} />
       ) : null}
 

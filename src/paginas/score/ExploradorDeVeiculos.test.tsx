@@ -106,6 +106,56 @@ describe('o Explorador de veículos', () => {
     expect(screen.queryByText('Filtrando por')).toBeNull();
   });
 
+  it('a seleção não sobrevive à troca do filtro da TELA', async () => {
+    //: ACHADO DA REVISÃO DO CODEX (23/10/2026): a seleção é local, mas o
+    //: recorte vem de fora. Escolher "Tier 1" e trocar o filtro da tela
+    //: deixava o chip dizendo "Tier 1" sobre um recorte que podia não ter
+    //: Tier 1 nenhum — e as colunas de veículo vazias por filtrar por algo
+    //: que não existe mais, com um chip mentindo em cima.
+    obterExploradorDeVeiculos.mockResolvedValue(dados(3));
+    const { rerender } = render(
+      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{}} />,
+    );
+    await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Tier 1'));
+    expect(screen.getByText('Filtrando por')).toBeInTheDocument();
+
+    //: O FILTRO DA TELA MUDA (outro recorte, outro pedido).
+    rerender(
+      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{ sentimento: 'neg' }} />,
+    );
+
+    await waitFor(() => expect(screen.queryByText('Filtrando por')).toBeNull());
+  });
+
+  it('a seleção dos DOIS eixos ao mesmo tempo mantém as duas colunas inteiras', async () => {
+    //: O CODEX APONTOU QUE FALTAVA este caso: tier e veículo escolhidos
+    //: juntos. A coluna de tier mostra os tiers DAQUELE veículo, e as de
+    //: veículo mostram os veículos DAQUELE tier — cada eixo imune ao próprio
+    //: filtro, que é a razão de ser do molde.
+    obterExploradorDeVeiculos.mockResolvedValue(dados(3));
+    montar();
+    await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByText('Tier 1'));
+    const topo = colunaDe('Top veículos');
+    await userEvent.click(within(topo).getByText('Veículo 1'));
+
+    //: OS DOIS CHIPS, e os dois eixos continuam navegáveis.
+    expect(screen.getByRole('button', { name: 'Tirar o filtro Tier: Tier 1' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Tirar o filtro Veículo: Veículo 1' }),
+    ).toBeInTheDocument();
+    //: A COLUNA DE VEÍCULO CONTINUA INTEIRA: os três seguem clicáveis, senão
+    //: trocar de veículo exigiria desfazer o clique antes.
+    expect(within(topo).getByText('Veículo 2')).toBeInTheDocument();
+    expect(within(topo).getByText('Veículo 3')).toBeInTheDocument();
+    //: E A DE TIER TAMBÉM: as três barras de tier seguem desenhadas.
+    const tier = colunaDe('Tier do veículo × sentimento');
+    expect(within(tier).getByText('Tier 1')).toBeInTheDocument();
+    expect(within(tier).getByText('Tier 2')).toBeInTheDocument();
+  });
+
   it('abre em 5 veículos, e o botão diz quantos há de verdade', async () => {
     //: O N É O TOTAL DO RECORTE, e não o teto de 10 dos blocos antigos: o
     //: servidor passou a mandar o mês agrupado inteiro.

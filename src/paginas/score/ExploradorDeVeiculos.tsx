@@ -82,7 +82,21 @@ export function ExploradorDeVeiculos({
     dados: Dados | null;
     erro?: string;
   } | null>(null);
-  const [selecao, definirSelecao] = useState<SelecaoDeVeiculos>({});
+  //: A SELEÇÃO TAMBÉM LEVA A CHAVE DO RECORTE, pelo mesmo motivo dos dados —
+  //: achado da revisão do Codex (23/10/2026). Sem isto: escolher "Tier 1"
+  //: aqui, trocar o filtro da TELA para Tier 2, e o chip continuava dizendo
+  //: "Tier 1" sobre um recorte que não tem Tier 1 nenhum — as duas colunas de
+  //: veículo ficavam vazias por filtrar por algo que o recorte novo não
+  //: contém, com um chip mentindo em cima.
+  //:
+  //: GUARDADA COM A CHAVE em vez de zerada num efeito: `definirSelecao({})`
+  //: dentro de `useEffect` dispararia outra renderização (e o lint cobra isso,
+  //: `set-state-in-effect`); comparar a chave na leitura não dispara nada.
+  const [escolha, definirEscolha] = useState<{ chave: string; selecao: SelecaoDeVeiculos }>({
+    chave,
+    selecao: {},
+  });
+  const selecao = escolha.chave === chave ? escolha.selecao : {};
 
   useEffect(() => {
     let ativo = true;
@@ -106,7 +120,11 @@ export function ExploradorDeVeiculos({
   const denominador = atuais?.dados?.denominador ?? 0;
 
   const alternar = (eixo: Eixo, valor: string) =>
-    definirSelecao((atual) => ({ ...atual, [eixo]: atual[eixo] === valor ? undefined : valor }));
+    definirEscolha(() => ({
+      chave,
+      selecao: { ...selecao, [eixo]: selecao[eixo] === valor ? undefined : valor },
+    }));
+  const limpar = () => definirEscolha({ chave, selecao: {} });
 
   const tiers = barrasDoTier(grupos, selecao, denominador);
   const veiculos = barrasDoVeiculo(grupos, selecao, denominador);
@@ -175,7 +193,7 @@ export function ExploradorDeVeiculos({
                 ))}
                 <button
                   type="button"
-                  onClick={() => definirSelecao({})}
+                  onClick={limpar}
                   style={{
                     border: 'none',
                     background: 'transparent',
