@@ -34,6 +34,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   obterRegistrosDaJanela,
+  type FiltrosDosQuadros,
   type GrupoNaJanela,
   type NivelDaJanela,
   type RegistrosDaJanela as Pagina,
@@ -101,6 +102,7 @@ export function RegistrosDaJanela({
   nivel,
   de,
   dias,
+  filtros,
   aoFechar,
 }: {
   grupo: GrupoNaJanela;
@@ -113,6 +115,8 @@ export function RegistrosDaJanela({
   /** Os dias da janela que produziu o número (o período do gráfico, até 90).
    *  Sem ele o servidor usaria o padrão de 15, e a lista não seria a do quadro. */
   dias?: number;
+  /** O mesmo filtro de lente e tier do quadro: a lista é a da linha clicada. */
+  filtros?: FiltrosDosQuadros;
   aoFechar: () => void;
 }) {
   const [pagina, definirPagina] = useState(1);
@@ -149,9 +153,9 @@ export function RegistrosDaJanela({
     const minha = ++versao.current;
     //: OS DIAS SÓ VÃO QUANDO EXISTEM, para a chamada sem eles continuar a de
     //: sempre (o padrão do servidor).
-    (dias === undefined
+    (dias === undefined && !filtros
       ? obterRegistrosDaJanela(ate, grupo.id, nivel, pagina)
-      : obterRegistrosDaJanela(ate, grupo.id, nivel, pagina, dias)
+      : obterRegistrosDaJanela(ate, grupo.id, nivel, pagina, dias, filtros)
     )
       .then((lida) => {
         if (!vivo.current || minha !== versao.current) return;
@@ -162,7 +166,9 @@ export function RegistrosDaJanela({
         if (!vivo.current || minha !== versao.current) return;
         definirErro(falha.message);
       });
-  }, [ate, grupo.id, nivel, pagina, dias]);
+    //: O FILTRO VAI POR TEXTO, para um objeto novo a cada render não rebuscar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ate, grupo.id, nivel, pagina, dias, JSON.stringify(filtros ?? {})]);
 
   useEffect(carregar, [carregar]);
 

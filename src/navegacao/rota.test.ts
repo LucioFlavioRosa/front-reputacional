@@ -24,7 +24,7 @@ describe('ler e escrever o caminho', () => {
   ['/score', { destino: 'score', aba: 'geral' }],
     //: O MERCADO ENTRA NA TABELA, e faltar aqui foi o que deixou passar o
     //: defeito: `/mercado` lia `aba: undefined`, a barra de cima compara
-    //: `item.aba === abaAtiva` e a aba "Bonds e reputação" nunca acendia.
+    //: `item.aba === abaAtiva` e a aba "Bonds X Score Reputacional Mercado" nunca acendia.
     //: Mesmo par que `/score` ↔ `geral` já protege.
     ['/mercado', { destino: 'mercado', aba: 'bonds' }],
     ['/mercado/importacao', { destino: 'mercado', aba: 'importacao' }],
