@@ -177,6 +177,27 @@ describe('o Explorador de veículos', () => {
     expect(within(termometro).queryByText('Veículo 6')).toBeNull();
   });
 
+  it('as duas colunas de veículo rolam por DENTRO, não pela página', async () => {
+    //: PEDIDO (23/10/2026), e era uma assimetria de verdade: a
+    //: `ColunasEmpilhadas` do Top veículos tem rolagem interna própria
+    //: (`.rolagem-interna`, com teto de altura), e a `BarraDivergentePorItem`
+    //: do Termômetro NÃO TEM NENHUMA. Expandir o Termômetro crescia o cartão e
+    //: fazia a PÁGINA rolar, enquanto o vizinho rolava por dentro — dois
+    //: comportamentos para o mesmo gesto, lado a lado.
+    //:
+    //: O TETO DE ALTURA É O QUE MANTÉM AS TRÊS COLUNAS ALINHADAS: sem ele, a
+    //: coluna aberta empurra o rodapé do cartão e desalinha as outras duas.
+    obterExploradorDeVeiculos.mockResolvedValue(dados(13));
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    for (const nome of ['Top veículos', 'Termômetro por Veículos']) {
+      const rolante = colunaDe(nome).querySelector('.rolagem-interna') as HTMLElement | null;
+      expect(rolante, `${nome} está sem rolagem própria`).not.toBeNull();
+      expect(rolante?.style.maxHeight, `${nome} está sem teto de altura`).toBe('360px');
+    }
+  });
+
   it('com 5 veículos ou menos não existe botão de revelar', async () => {
     obterExploradorDeVeiculos.mockResolvedValue(dados(4));
     montar();

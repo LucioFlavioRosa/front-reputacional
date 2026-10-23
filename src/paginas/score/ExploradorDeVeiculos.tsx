@@ -264,7 +264,25 @@ export function ExploradorDeVeiculos({
               </Coluna>
 
               <Coluna titulo="Termômetro por Veículos" quantos={termometro.length}>
-                <div id={listaDoTermometro.idDaLista}>
+                {/* A ROLAGEM É DAQUI, por pedido (23/10/2026): a
+                    `ColunasEmpilhadas` da coluna ao lado tem rolagem interna
+                    própria, e a `BarraDivergentePorItem` não tem nenhuma —
+                    expandir esta coluna crescia o cartão e fazia a PÁGINA
+                    rolar, enquanto a vizinha rolava por dentro. Dois
+                    comportamentos para o mesmo gesto, lado a lado.
+
+                    A CLASSE É A MESMA (`rolagem-interna`), e não um
+                    `overflow` solto: ela traz a barra fina de 10px com o
+                    polegar em `--cinza-1`, que é o que faz as duas colunas
+                    rolarem IGUAL e não só rolarem.
+
+                    `paddingRight` PARA A BARRA NÃO SENTAR NO DADO — o mesmo
+                    que a `ColunasEmpilhadas` faz no scroller dela. */}
+                <div
+                  id={listaDoTermometro.idDaLista}
+                  className="rolagem-interna"
+                  style={{ maxHeight: ALTURA_DA_LISTA, paddingRight: 4 }}
+                >
                   <BarraDivergentePorItem
                     itens={termometro.slice(0, listaDoTermometro.quantidade).map((item) => ({
                       chave: item.veiculo,
