@@ -220,6 +220,46 @@ describe('o Explorador de veículos', () => {
     expect(alvo?.style.overflowX, 'o termômetro ganhou barra horizontal').toBe('hidden');
   });
 
+  it('escolher um veículo no Top DESTACA esse veículo no Termômetro', async () => {
+    //: PEDIDO (23/10/2026), e o relato foi "o filtro do Top para o Termômetro
+    //: não está funcionando". O filtro ESTAVA chegando (`ativo` ia para a
+    //: `BarraDivergentePorItem`), mas o retorno visual dela era só um fundo
+    //: pálido numa linha, enquanto a `ColunasEmpilhadas` das outras duas
+    //: colunas esmaece os não-escolhidos para 40% e contorna o escolhido.
+    //: Mesma seleção, dois retornos — e o do Termômetro não se via.
+    //:
+    //: E AS DUAS COLUNAS DE VEÍCULO CONTINUAM INTEIRAS: por decisão, elas são
+    //: o mesmo eixo, e reduzir o Termômetro ao veículo escolhido o deixaria
+    //: com uma barra só — sem comparação, e exigindo desfazer o clique para
+    //: trocar de veículo.
+    obterExploradorDeVeiculos.mockResolvedValue(dados(3));
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    //: CLICA NO SEGUNDO, e não no primeiro: um componente que destacasse
+    //: sempre a primeira linha passaria no teste se o clique fosse no
+    //: "Veículo 1". Achado da revisão do Codex (23/10/2026).
+    await userEvent.click(within(colunaDe('Top veículos')).getByText('Veículo 2'));
+
+    //: COM 3 VEÍCULOS não nasce o botão "Ver todos", então os `button` desta
+    //: coluna são só as linhas do termômetro.
+    const linhas = within(colunaDe('Termômetro por Veículos')).getAllByRole('button');
+    expect(linhas).toHaveLength(3);
+    const escolhida = linhas.find((l) => l.textContent?.startsWith('Veículo 2'));
+    const primeira = linhas.find((l) => l.textContent?.startsWith('Veículo 1'));
+
+    expect(escolhida?.style.opacity, 'o escolhido deveria ficar inteiro').toBe('1');
+    expect(primeira?.style.opacity, 'os outros deveriam esmaecer').toBe('0.4');
+    expect(escolhida?.style.outline, 'o escolhido deveria ganhar contorno').toContain('2px solid');
+
+    //: E A LINHA NÃO ESCOLHIDA NÃO PODE TER `outline` INLINE NENHUM —
+    //: nem `'none'`. O `:focus-visible` do `index.css` desenha o anel de foco
+    //: do teclado com `outline`, e estilo inline vence folha de estilo: um
+    //: `outline: 'none'` aqui apagaria o foco de quem navega por teclado nas
+    //: linhas não selecionadas. Achado P1 da revisão do Codex (23/10/2026).
+    expect(primeira?.style.outline, 'o foco do teclado foi apagado').toBe('');
+  });
+
   it('com 5 veículos ou menos não existe botão de revelar', async () => {
     obterExploradorDeVeiculos.mockResolvedValue(dados(4));
     montar();
