@@ -46,8 +46,17 @@ function dados(quantos: number): Dados {
   };
 }
 
+const aoAprofundar = vi.fn();
+
 function montar(mes = '2026-09') {
-  return render(<ExploradorDeVeiculos codigo="imprensa" mes={mes} filtro={{}} />);
+  return render(
+    <ExploradorDeVeiculos
+      codigo="imprensa"
+      mes={mes}
+      filtro={{}}
+      aoAprofundar={aoAprofundar}
+    />,
+  );
 }
 
 /** A COLUNA, e não o cartão: as três vivem num cartão só, e "Veículo 5"
@@ -63,6 +72,41 @@ function colunaDe(titulo: string): HTMLElement {
 describe('o Explorador de veículos', () => {
   beforeEach(() => {
     obterExploradorDeVeiculos.mockReset();
+    aoAprofundar.mockReset();
+  });
+
+  it('clicar no Termômetro ABRE O APROFUNDAMENTO daquele veículo', async () => {
+    //: PEDIDO (23/10/2026). Antes, clicar ali alternava a seleção — e como o
+    //: Termômetro passou a mostrar SÓ o veículo escolhido, a única linha
+    //: visível era sempre a selecionada: o clique só sabia LIMPAR o filtro.
+    //:
+    //: O GESTO DE CADA COLUNA É OUTRO AGORA: o Top ESCOLHE (e o Termômetro
+    //: recorta nele), o Termômetro ABRE o modal daquele veículo — o mesmo da
+    //: Evolução, no recorte do veículo. É o princípio que o `RecorteDaLente`
+    //: já registra do dono: "ao clicar em um dado temos que abrir um modal com
+    //: o deep diving, e não como é feito hoje".
+    obterExploradorDeVeiculos.mockResolvedValue(dados(3));
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    await userEvent.click(within(colunaDe('Termômetro por Veículos')).getByText('Veículo 2'));
+
+    expect(aoAprofundar).toHaveBeenCalledWith('veiculo', 'Veículo 2');
+    //: E NÃO MEXEU NA SELEÇÃO: nenhum chip nasceu.
+    expect(screen.queryByText('Filtrando por')).toBeNull();
+  });
+
+  it('e o clique no Top continua ESCOLHENDO, sem abrir modal', async () => {
+    //: A CONTRAPROVA do gesto de cada coluna: se o Top também abrisse, nada
+    //: selecionaria veículo e o recorte do Termômetro ficaria sem gatilho.
+    obterExploradorDeVeiculos.mockResolvedValue(dados(3));
+    montar();
+    await waitFor(() => expect(screen.getByText('Top veículos')).toBeInTheDocument());
+
+    await userEvent.click(within(colunaDe('Top veículos')).getByText('Veículo 2'));
+
+    expect(aoAprofundar).not.toHaveBeenCalled();
+    expect(screen.getByText('Filtrando por')).toBeInTheDocument();
   });
 
   it('desenha os três painéis', async () => {
@@ -114,7 +158,7 @@ describe('o Explorador de veículos', () => {
     //: que não existe mais, com um chip mentindo em cima.
     obterExploradorDeVeiculos.mockResolvedValue(dados(3));
     const { rerender } = render(
-      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{}} />,
+      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{}} aoAprofundar={aoAprofundar} />,
     );
     await waitFor(() => expect(screen.getByText('Tier 1')).toBeInTheDocument());
     await userEvent.click(screen.getByText('Tier 1'));
@@ -122,7 +166,7 @@ describe('o Explorador de veículos', () => {
 
     //: O FILTRO DA TELA MUDA (outro recorte, outro pedido).
     rerender(
-      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{ sentimento: 'neg' }} />,
+      <ExploradorDeVeiculos codigo="imprensa" mes="2026-09" filtro={{ sentimento: 'neg' }} aoAprofundar={aoAprofundar} />,
     );
 
     await waitFor(() => expect(screen.queryByText('Filtrando por')).toBeNull());
@@ -373,7 +417,7 @@ describe('o Explorador de veículos', () => {
     );
     const { rerender } = montar('2026-09');
     obterExploradorDeVeiculos.mockResolvedValue(dados(2));
-    rerender(<ExploradorDeVeiculos codigo="imprensa" mes="2026-10" filtro={{}} />);
+    rerender(<ExploradorDeVeiculos codigo="imprensa" mes="2026-10" filtro={{}} aoAprofundar={aoAprofundar} />);
     //: O ESCOPO É O CARTÃO, porque "Veículo 2" aparece nos DOIS painéis de
     //: veículo ao mesmo tempo — uma busca sem escopo reprova por ambiguidade
     //: em vez de pela contagem.

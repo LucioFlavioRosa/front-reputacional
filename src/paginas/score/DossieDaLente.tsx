@@ -63,7 +63,6 @@ import type { Janela } from '@/dominio/janelaDaJornada';
 import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
 import { ExploradorDeVeiculos } from '@/paginas/score/ExploradorDeVeiculos';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
-import { UltimasMaterias } from '@/paginas/score/UltimasMaterias';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { FILTROS_DAS_LENTES, LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa, corForteDaLente } from '@/dominio/score';
@@ -423,6 +422,10 @@ function Conteudo({
           codigo={dossie.codigo}
           mes={dossie.mes}
           filtro={filtro}
+          //: O MESMO MODAL DA EVOLUÇÃO, noutro recorte: clicar num veículo do
+          //: Termômetro abre o aprofundamento daquele veículo. Foi o que
+          //: substituiu o bloco "Últimas matérias", que saiu logo abaixo.
+          aoAprofundar={aoAprofundar}
         />
       ) : null}
 
@@ -441,25 +444,6 @@ function Conteudo({
           recebem. */}
       {painelDeTier1 && !LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <CartaoDoPainel painel={painelDeTier1} filtro={filtro} aoAprofundar={aoAprofundar} />
-      ) : null}
-
-      {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, e não lá embaixo depois de
-          Drivers/Temas: quem acabou de ver "InfoMoney tem 9 matérias e saldo
-          +56" quer a lista dessas matérias na sequência da leitura, não
-          depois de outros dois blocos no meio do caminho.
-
-          IMPRENSA E MERCADO — mesma lista de cima: "matéria" com veículo e
-          tier é um conceito de clipagem, e o Mercado é clipagem recortada por
-          público-alvo Investidores (migration 0048).
-
-          A SOCIEDADE NÃO DESENHA ESTA LISTA, e nunca desenhou — a condição
-          anterior também era só `=== 'imprensa'`. O servidor até lhe devolve
-          `materias_recentes` preenchido, com as colunas dela (texto, link,
-          autor, engajamento), mas aqui esse bloco não é pintado. Quem mostra as
-          menções dela é a aba Base de dados, por outro caminho e outra rota —
-          não este bloco. */}
-      {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
-        <UltimasMaterias bloco={dossie.materias_recentes} />
       ) : null}
 
       {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução

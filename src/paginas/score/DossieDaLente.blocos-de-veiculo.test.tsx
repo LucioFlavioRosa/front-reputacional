@@ -185,7 +185,9 @@ function montar(lente: string) {
  *  bloco tem teste próprio —, afirmar o nome das colunas aqui seria afirmar
  *  texto que esta montagem nunca produz.
  */
-const OS_BLOCOS = ['Tier do veículo, top veículos e termômetro', 'Últimas matérias'];
+//: 'Últimas matérias' SAIU EM 23/10/2026: o bloco deu lugar ao modal de
+//: aprofundamento, que o clique no Termômetro abre no recorte do veículo.
+const OS_BLOCOS = ['Tier do veículo, top veículos e termômetro'];
 
 beforeEach(() => {
   window.history.replaceState(null, '', '/score/lentes');
@@ -202,7 +204,7 @@ describe('os blocos de veículo do dossiê', () => {
     obterDossieDaLente.mockResolvedValue(dossieCom(lente));
     await montarEAbrir(lente);
     for (const titulo of OS_BLOCOS) {
-      //: `getAllByText`, e não `getByText`: "Últimas matérias" aparece duas
+      //: `getAllByText`, e não `getByText`: um título pode aparecer duas
       //: vezes — o título do bloco amplo e o do bloco dentro dele —, e o
       //: singular reprovaria por ambiguidade em vez de por ausência.
       await waitFor(() => expect(screen.getAllByText(titulo).length).toBeGreaterThan(0));
@@ -274,7 +276,9 @@ describe('os blocos de veículo do dossiê', () => {
       //: `LENTES_COM_EXPLORADOR` em `DossieDaLente.tsx`).
       obterDossieDaLente.mockResolvedValue(dossieCom(lente));
       await montarEAbrir(lente);
-      await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
+      await waitFor(() =>
+      expect(screen.getByText('Tier do veículo, top veículos e termômetro')).toBeInTheDocument(),
+    );
       expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
       expect(screen.queryAllByText('Temas mais falados')).toEqual([]);
       expect(screen.getByText('Atributos, temas estratégicos e subtemas')).toBeTruthy();
@@ -302,7 +306,9 @@ describe('os blocos de veículo do dossiê', () => {
     obterDossieDaLente.mockResolvedValue(dossieCom('imprensa'));
     await montarEAbrir('imprensa');
 
-    await waitFor(() => expect(screen.getAllByText('Últimas matérias').length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getByText('Tier do veículo, top veículos e termômetro')).toBeInTheDocument(),
+    );
     expect(screen.queryByText('% Matérias por tier e Top veículos')).toBeNull();
     expect(screen.queryAllByText(/veículos Tier 1/)).toEqual([]);
   });

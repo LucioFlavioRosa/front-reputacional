@@ -68,10 +68,14 @@ export function ExploradorDeVeiculos({
   codigo,
   mes,
   filtro,
+  aoAprofundar,
 }: {
   codigo: string;
   mes: string;
   filtro: FiltroDaLente;
+  /** Abre o modal de aprofundamento no recorte `(chave, valor)` — o mesmo que
+   *  a Evolução abre ao clicar num mês. */
+  aoAprofundar: (chave: string, valor: string) => void;
 }) {
   //: OS DADOS COM A CHAVE DO PEDIDO de que são: a tela usa só os que batem
   //: com o mês e o filtro atuais, sem zerar nada dentro do efeito. Sem isto, a
@@ -325,7 +329,17 @@ export function ExploradorDeVeiculos({
                       score: item.nss,
                     }))}
                     ativo={selecao.veiculo}
-                    aoClicar={(veiculo) => alternar('veiculo', veiculo)}
+                    //: O CLIQUE AQUI ABRE O APROFUNDAMENTO, não alterna a
+                    //: seleção — pedido de 23/10/2026, e vem de um defeito
+                    //: real: com o Termômetro mostrando SÓ o veículo
+                    //: escolhido, a única linha visível era sempre a
+                    //: selecionada, e clicar nela só sabia LIMPAR o filtro.
+                    //:
+                    //: CADA COLUNA TEM UM GESTO: o Top ESCOLHE (e esta coluna
+                    //: recorta nele), esta ABRE o modal daquele veículo. Se as
+                    //: duas abrissem, nada selecionaria veículo e o recorte
+                    //: desta coluna ficaria sem gatilho.
+                    aoClicar={(veiculo) => aoAprofundar('veiculo', veiculo)}
                     vazio="Nenhuma matéria com veículo neste recorte."
                     unidade={{ singular: 'matéria', plural: 'matérias' }}
                     variante="termometro"

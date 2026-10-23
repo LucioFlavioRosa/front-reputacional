@@ -84,26 +84,6 @@
       "conceitos": []
     }
   },
-  "materias_recentes": {
-    "tipo": "tabela",
-    "subtipo": null,
-    "titulo": "Matérias recentes",
-    "conclusao": null,
-    "dados": [],
-    "legenda": [],
-    "cores": [],
-    "colunas": [],
-    "coluna_do_link": null,
-    "recorta": null,
-    "ficha": {
-      "origem": "planilha",
-      "fonte": "Sintética (teste ponta a ponta)",
-      "colunas": [],
-      "lacunas": [],
-      "exemplo": false,
-      "conceitos": []
-    }
-  },
   "fatos": [],
   "paineis": [],
   "onde_esta_a_causa": [],
