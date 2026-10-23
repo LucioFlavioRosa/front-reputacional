@@ -388,11 +388,11 @@ function Conteudo({
   } | null>(null);
   const aoAprofundar = (chave: string, valor: string) =>
     definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
-  //: MESMO CONTADOR DE 5 A 10 do Top veículos e do Termômetro (ver o
-  //: comentário de `useQuantidadeDeVeiculos`) — chamado aqui, no topo do
-  //: componente, porque o quadro que o usa vive dentro de um `.map()` mais
-  //: abaixo, e hook não pode nascer dentro de laço nem de condicional.
-  const veiculosDoTier1 = useQuantidadeDeVeiculos(dossie.veiculos_tier1?.dados.length ?? 0);
+  //: MESMA LISTA DE 5 A 10 do Top veículos e do Termômetro (ver o comentário
+  //: de `useListaDeVeiculos`) — chamada aqui, no topo do componente, porque o
+  //: quadro que a usa vive dentro de um `.map()` mais abaixo, e hook não pode
+  //: nascer dentro de laço nem de condicional.
+  const veiculosDoTier1 = useListaDeVeiculos(dossie.veiculos_tier1?.dados.length ?? 0);
   //: "TIER DO VEÍCULO × SENTIMENTO" GANHOU LUGAR PRÓPRIO (21/10/2026), fora
   //: da grade genérica de `dossie.paineis` — ver o comentário mais abaixo,
   //: onde ele é desenhado. O que sobra na grade segue genérico, por pedido do
@@ -617,7 +617,7 @@ function CartaoDoPainel({
   definirFiltro: (filtro: FiltroDaLente) => void;
   aoAprofundar: (chave: string, valor: string) => void;
   dossie: Dossie;
-  veiculosDoTier1: ReturnType<typeof useQuantidadeDeVeiculos>;
+  veiculosDoTier1: ReturnType<typeof useListaDeVeiculos>;
 }) {
   //: A CHAVE (com a posição, não só o título) fica em quem chama — dois
   //: painéis com o mesmo título são improváveis, mas `key` duplicada faz o
@@ -640,8 +640,8 @@ function CartaoDoPainel({
         <Painel bloco={painel} filtro={filtro} aoAprofundar={aoAprofundar} />
         {/* EMBAIXO DO TIER × SENTIMENTO, por pedido: quais veículos do
             Tier 1 formaram aquela barra — do mesmo jeito que o Top
-            veículos e o Termômetro ao lado: abre em 5, sobe e desce de um
-            em um até o teto que o servidor mandou. */}
+            veículos e o Termômetro ao lado: abre em 5, e um botão só revela
+            todos os que o servidor mandou. */}
         {painel.titulo === 'Tier do veículo × sentimento' && dossie.veiculos_tier1 ? (
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--borda)' }}>
             <div className="kicker" style={{ marginBottom: 10 }}>
@@ -668,14 +668,11 @@ function CartaoDoPainel({
                 })
               }
             />
-            <ControlesDeVeiculos
-              quantidade={veiculosDoTier1.quantidade}
+            <RevelarVeiculos
               teto={veiculosDoTier1.teto}
-              inicial={veiculosDoTier1.inicial}
-              podeExpandir={veiculosDoTier1.podeExpandir}
-              podeRecolher={veiculosDoTier1.podeRecolher}
-              aoExpandir={veiculosDoTier1.expandir}
-              aoRecolher={veiculosDoTier1.recolher}
+              podeAbrir={veiculosDoTier1.podeAbrir}
+              aberta={veiculosDoTier1.aberta}
+              aoAlternar={veiculosDoTier1.alternar}
             />
           </div>
         ) : null}
@@ -946,116 +943,135 @@ function Evolucao({
  *  um segundo mecanismo de recorte: a tela inteira (nota, KPIs, evolução, o
  *  Top 5 ao lado) já reage a `filtro.tier` porque o servidor filtra tudo por
  *  ele — clicar na rosca só economiza abrir o campo lá em cima. */
-/** O número de veículos mostrados nos dois rankings (Top veículos e
- *  Termômetro por Veículos) — PEDIDO (21/10/2026, revisto no mesmo dia: a
- *  primeira versão só tinha "expandir" e um reset direto para 5; o pedido
- *  real é subir E descer de um em um, como um contador). A tela abre em 5;
- *  a seta para cima soma um até o teto que o servidor mandou (até 10), a
- *  seta para baixo tira um sem nunca passar de 5 — esse é o piso, não existe
- *  "menos que o ponto de partida". */
+/** O número de veículos mostrados nos três rankings (Top veículos,
+ *  Termômetro por Veículos e o Top Tier 1) — PEDIDO (21/10/2026, revisto em
+ *  23/10/2026). A tela abre em 5, e UM botão revela de uma vez todos os que
+ *  o servidor mandou (até 10); o mesmo botão recolhe de volta.
+ *
+ *  A VERSÃO ANTERIOR ERA UM CONTADOR DE SETINHAS (▲▼), de um em um, e caiu
+ *  por dois motivos: revelar o 10º custava cinco cliques — e recolher,
+ *  outros cinco —, e o rótulo "Mostrando 5 de 10" só RELATAVA a primeira
+ *  tela, sem convidar para a segunda. Agora o número vive no rótulo do botão
+ *  ("Ver todos os 10 veículos"), que é o convite, e o degradê no rodapé da
+ *  lista é o que diz "isto está cortado, não terminado". */
 const QUANTIDADE_INICIAL_DE_VEICULOS = 5;
 const QUANTIDADE_MAXIMA_DE_VEICULOS = 10;
 
-function useQuantidadeDeVeiculos(total: number) {
+function useListaDeVeiculos(total: number) {
   const teto = Math.min(QUANTIDADE_MAXIMA_DE_VEICULOS, total);
   const inicial = Math.min(QUANTIDADE_INICIAL_DE_VEICULOS, teto);
-  const [quantidade, definirQuantidade] = useState(inicial);
-  const atual = Math.min(quantidade, teto);
+  const [aberta, definirAberta] = useState(false);
+  //: COM 5 OU MENOS VEÍCULOS NO MÊS não existe segunda tela para revelar:
+  //: `podeAbrir` é falso e o botão não nasce. `aberta` segue ignorada nesse
+  //: caso em vez de ser zerada, porque trocar o mês não deve fazer quem
+  //: abriu a lista perder o que abriu.
+  //
+  //: E A QUANTIDADE É DERIVADA DE `teto`, nunca guardada — era isto que o
+  //: contador antigo tinha de corrigir com um `Math.min` a cada render: um
+  //: mês com 6 veículos depois de um com 10 deixava o número velho no estado.
+  const podeAbrir = teto > inicial;
+  const abertaDeFato = aberta && podeAbrir;
   return {
-    quantidade: atual,
+    quantidade: abertaDeFato ? teto : inicial,
     teto,
-    inicial,
-    podeExpandir: atual < teto,
-    podeRecolher: atual > inicial,
-    expandir: () => definirQuantidade((valor) => Math.min(teto, valor + 1)),
-    recolher: () => definirQuantidade((valor) => Math.max(inicial, valor - 1)),
+    podeAbrir,
+    aberta: abertaDeFato,
+    alternar: () => definirAberta((valor) => !valor),
   };
 }
 
-/** A setinha do contador — mesmo desenho dos dois lados, só vira de ponta-
- *  cabeça e troca o rótulo. Desabilitada (sem `onClick`) no limite, em vez de
- *  sumir: sumir faria o contador pular de largura cada vez que alguém chega
- *  numa ponta, e o clique seguinte cairia no lugar errado. */
-function SetaDoContador({
-  sentido,
-  ativa,
-  aoClicar,
-}: {
-  sentido: 'cima' | 'baixo';
-  ativa: boolean;
-  aoClicar: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={ativa ? aoClicar : undefined}
-      disabled={!ativa}
-      aria-label={sentido === 'cima' ? 'Mostrar mais um veículo' : 'Mostrar um veículo a menos'}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 22,
-        height: 16,
-        padding: 0,
-        border: '1px solid var(--borda)',
-        borderRadius: 3,
-        background: 'var(--branco)',
-        color: ativa ? 'var(--azul-mar)' : 'var(--cinza-1)',
-        cursor: ativa ? 'pointer' : 'default',
-        lineHeight: 1,
-        fontSize: 10,
-      }}
-    >
-      {sentido === 'cima' ? '▲' : '▼'}
-    </button>
-  );
-}
-
-function ControlesDeVeiculos({
-  quantidade,
+/** O botão que abre o resto do ranking, e o degradê que diz que há resto.
+ *
+ *  O DEGRADÊ INVADE O RODAPÉ DA LISTA (`top` negativo) e dissolve no fundo
+ *  do cartão: é ele que faz a lista parecer CORTADA em vez de terminada.
+ *  Invade 10px, que é o `padding` de baixo da última linha da
+ *  `ColunasEmpilhadas` — nunca a barra nem o número. Esconder dado para
+ *  sugerir que há mais seria pagar o recado com o que a pessoa veio ler.
+ *
+ *  `pointerEvents: 'none'` NO DEGRADÊ, porque a linha que ele desbota é
+ *  CLICÁVEL (clicar num veículo filtra a tela inteira). Sem isso, a faixa
+ *  roubaria o clique da linha que ela só deveria desbotar.
+ *
+ *  ABERTA, NÃO EXISTE DEGRADÊ: não há nada para sugerir, e desbotar o fim de
+ *  uma lista completa diria que ainda falta algo.
+ *
+ *  `sem-png` NO CONJUNTO, pela regra do `BaixarPng`: botão e degradê são da
+ *  tela, não do dado. O contador antigo não tinha a classe, e a imagem
+ *  exportada saía com "Mostrando 5 de 10" escrito dentro dela. */
+function RevelarVeiculos({
   teto,
-  inicial,
-  podeExpandir,
-  podeRecolher,
-  aoExpandir,
-  aoRecolher,
+  podeAbrir,
+  aberta,
+  aoAlternar,
   centralizado = false,
 }: {
-  quantidade: number;
   teto: number;
-  inicial: number;
-  podeExpandir: boolean;
-  podeRecolher: boolean;
-  aoExpandir: () => void;
-  aoRecolher: () => void;
+  podeAbrir: boolean;
+  aberta: boolean;
+  aoAlternar: () => void;
   /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
-   *  de cada veículo vai de ponta a ponta — e um contador encostado à
-   *  esquerda ficava perdido no canto, sem relação visual com a lista
-   *  acima. O Top veículos, ao lado, já nasce numa coluna estreita: ali
-   *  encostado à esquerda já lê como "embaixo da lista". */
+   *  de cada veículo vai de ponta a ponta — e um botão encostado à esquerda
+   *  ficava perdido no canto, sem relação visual com a lista acima. O Top
+   *  veículos, ao lado, já nasce numa coluna estreita: ali encostado à
+   *  esquerda já lê como "embaixo da lista". */
   centralizado?: boolean;
 }) {
-  //: SÓ APARECE QUANDO HÁ O QUE CONTAR — com `teto === inicial` (5 ou menos
-  //: veículos no mês) não existe segunda tela para revelar, e o contador
-  //: ficaria parado nos dois extremos ao mesmo tempo, sem fazer nada.
-  if (teto <= inicial) return null;
+  if (!podeAbrir) return null;
   return (
-    <div
-      style={{
-        marginTop: 10,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: centralizado ? 'center' : 'flex-start',
-        gap: 8,
-      }}
-    >
-      <span className="tabular" style={{ fontSize: 12.5, color: 'var(--cinza-2)' }}>
-        Mostrando {quantidade} de {teto}
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <SetaDoContador sentido="cima" ativa={podeExpandir} aoClicar={aoExpandir} />
-        <SetaDoContador sentido="baixo" ativa={podeRecolher} aoClicar={aoRecolher} />
+    <div className="sem-png" style={{ position: 'relative' }}>
+      {aberta ? null : (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: -10,
+            height: 30,
+            background: 'linear-gradient(to bottom, transparent, var(--branco) 80%)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+      <div
+        style={{
+          //: ACIMA DO DEGRADÊ, não atrás: o botão vem depois dele no DOM e
+          //: ganha contexto próprio, senão o degradê o lavaria junto com a
+          //: lista — e o convite ficaria mais apagado que o que ele convida
+          //: a abrir.
+          position: 'relative',
+          marginTop: 12,
+          display: 'flex',
+          justifyContent: centralizado ? 'center' : 'flex-start',
+        }}
+      >
+        <button
+          type="button"
+          onClick={aoAlternar}
+          aria-expanded={aberta}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 14px',
+            border: '1px solid var(--borda)',
+            borderRadius: 999,
+            //: TRANSLÚCIDO, por pedido: o botão deixa ver a lista dissolvendo
+            //: atrás dele, em vez de tapá-la com uma barra opaca.
+            background: 'rgba(255, 255, 255, 0.72)',
+            backdropFilter: 'blur(4px)',
+            color: 'var(--azul-mar)',
+            fontSize: 12.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            lineHeight: 1.2,
+          }}
+        >
+          {aberta ? 'Recolher' : `Ver todos os ${teto} veículos`}
+          <span aria-hidden style={{ fontSize: 9, lineHeight: 1 }}>
+            {aberta ? '▲' : '▼'}
+          </span>
+        </button>
       </div>
     </div>
   );
@@ -1077,8 +1093,7 @@ function VolumeETopVeiculos({
     total: comoNumero(linha.total ?? 0),
     cor: linha.cor ? comoTexto(linha.cor) : undefined,
   }));
-  const { quantidade, teto, inicial, podeExpandir, podeRecolher, expandir, recolher } =
-    useQuantidadeDeVeiculos(ranking.dados.length);
+  const { quantidade, teto, podeAbrir, aberta, alternar } = useListaDeVeiculos(ranking.dados.length);
 
   return (
     <ComFaixaDoTopo>
@@ -1128,15 +1143,7 @@ function VolumeETopVeiculos({
               })
             }
           />
-          <ControlesDeVeiculos
-            quantidade={quantidade}
-            teto={teto}
-            inicial={inicial}
-            podeExpandir={podeExpandir}
-            podeRecolher={podeRecolher}
-            aoExpandir={expandir}
-            aoRecolher={recolher}
-          />
+          <RevelarVeiculos teto={teto} podeAbrir={podeAbrir} aberta={aberta} aoAlternar={alternar} />
         </div>
       </div>
       <NotaDeFonte ficha={rosca.ficha} />
@@ -1160,8 +1167,7 @@ function ClimaPorVeiculos({
   definirFiltro: (filtro: FiltroDaLente) => void;
 }) {
   const bloco = dossie.clima_por_veiculos;
-  const { quantidade, teto, inicial, podeExpandir, podeRecolher, expandir, recolher } =
-    useQuantidadeDeVeiculos(bloco.dados.length);
+  const { quantidade, teto, podeAbrir, aberta, alternar } = useListaDeVeiculos(bloco.dados.length);
 
   return (
     <ComFaixaDoTopo>
@@ -1190,14 +1196,11 @@ function ClimaPorVeiculos({
           unidade={{ singular: 'matéria', plural: 'matérias' }}
           variante="termometro"
         />
-        <ControlesDeVeiculos
-          quantidade={quantidade}
+        <RevelarVeiculos
           teto={teto}
-          inicial={inicial}
-          podeExpandir={podeExpandir}
-          podeRecolher={podeRecolher}
-          aoExpandir={expandir}
-          aoRecolher={recolher}
+          podeAbrir={podeAbrir}
+          aberta={aberta}
+          aoAlternar={alternar}
           centralizado
         />
         <NotaDeFonte ficha={bloco.ficha} />
