@@ -256,10 +256,15 @@ export function InteligenciaDeMercado({
   //: notícias e de qual tier. Abre em "Imprensa e Mercado", todos os tiers.
   const [lentesDosQuadros, definirLentesDosQuadros] = useState<string>(LENTES_DOS_QUADROS[0].codigo);
   const [tierDosQuadros, definirTierDosQuadros] = useState<string>('');
-  const filtrosDosQuadros: FiltrosDosQuadros = {
-    lentes: lentesDosQuadros.split(','),
-    tier: tierDosQuadros || undefined,
-  };
+  //: UM OBJETO SÓ, E MEMOIZADO — achado de revisão. Ele era montado aqui e
+  //: MONTADO DE NOVO, inline, dentro do efeito que busca: duas definições do
+  //: mesmo filtro, livres para divergir no dia em que entrar um terceiro
+  //: campo. `useMemo` nas duas strings deixa a referência estável, então ele
+  //: pode ser a dependência do efeito sem rebuscar a cada render.
+  const filtrosDosQuadros: FiltrosDosQuadros = useMemo(
+    () => ({ lentes: lentesDosQuadros.split(','), tier: tierDosQuadros || undefined }),
+    [lentesDosQuadros, tierDosQuadros],
+  );
   const [janela, definirJanela] = useState<ImpactoNaJanela | null>(null);
   const [erroDaJanela, definirErroDaJanela] = useState<string | null>(null);
 
@@ -450,10 +455,7 @@ export function InteligenciaDeMercado({
     //: mesmo tipo que o rótulo do eixo que mentia sobre a métrica: os quadros
     //: antigos ficavam na tela com o cabeçalho do dia anterior.
     definirJanela(null);
-    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA, {
-      lentes: lentesDosQuadros.split(','),
-      tier: tierDosQuadros || undefined,
-    })
+    obterImpactoNaJanela(diaEscolhido, nivel, DIAS_DA_JANELA, filtrosDosQuadros)
       .then((lida) => {
         if (ativo) definirJanela(lida);
       })
@@ -469,7 +471,7 @@ export function InteligenciaDeMercado({
     };
     //: `versao` ENTRA AQUI TAMBÉM: subir planilha nova muda as menções do mês.
     //: O NÍVEL também: trocar a chave é uma pergunta nova sobre o MESMO dia.
-  }, [diaEscolhido, nivel, versao, lentesDosQuadros, tierDosQuadros]);
+  }, [diaEscolhido, nivel, versao, filtrosDosQuadros]);
 
   if (!dados) {
     return erro ? (
@@ -1153,8 +1155,32 @@ function JanelaDosTemas({
         {janela.de.slice(0, 7) !== janela.ate.slice(0, 7)
           ? '. A janela atravessa a virada do mês: a ordem é exata e a escala é a daquele mês'
           : null}
-        . Somam {nomesDasLentes(janela.lentes)}, que pesaram{' '}
-        {porcento(janela.fatia_das_lentes)} do índice neste mês.
+        {/* SÓ QUANDO HÁ CONTA A CONFERIR. No mês sem base a resposta não traz
+            lente nem fatia, e a frase saía "Somam , que pesaram 0% do índice" —
+            um resto de oração sobre um número que não existe. O parágrafo
+            abaixo é quem explica esse caso. */}
+        {janela.mes_sem_base ? (
+          '.'
+        ) : (
+          <>
+            . Somam {nomesDasLentes(janela.lentes)}, que pesaram{' '}
+            {porcento(janela.fatia_das_lentes)} do índice neste mês
+            {/* O TIER ENTRA NA FRASE — achado de revisão. Esta linha existe para
+                a conta ser refeita à mão: "−0,7 pt do índice" vem de "−2,3 pt na
+                lente que pesa 30%". Com um tier escolhido o numerador é só a
+                fatia dele e o denominador continua o do mês inteiro (de
+                propósito, no servidor), então sem dizer o tier a conta que a
+                frase convida a refazer não fecha. */}
+            {tier ? (
+              <>
+                , contando só as matérias{' '}
+                {TIERS_DOS_QUADROS.find((t) => t.codigo === tier)?.rotulo ?? tier} sobre o
+                denominador do mês inteiro
+              </>
+            ) : null}
+            .
+          </>
+        )}
       </p>
 
       {/* "NÃO HÁ COMO MEDIR" NÃO É "NADA IMPACTOU", e os dois quadros vazios
@@ -1162,37 +1188,50 @@ function JanelaDosTemas({
           pergunta a responder, e mostrar quadros vazios afirmaria que os grupos
           daquela janela não impactaram nada — o que é falso, porque as menções
           estão lá. */}
+      {/* O FILTRO RÁPIDO, LOGO EM CIMA DOS QUADROS (pedido de 22/10/2026):
+          "olhar apenas notícias de Imprensa e Mercado, ou apenas Imprensa,
+          ou apenas Mercado, e um filtro de Tier". Vale para os dois quadros e
+          para o modal que cada linha abre.
+
+          E FICA FORA DO `mes_sem_base` — achado de revisão, e era beco sem
+          saída. Com UMA lente escolhida, "mês sem base" passou a depender
+          DAQUELA lente em vez das três, o que torna o estado comum; e os
+          botões moravam dentro do outro braço deste ternário, então sumiam
+          junto com os quadros. A escolha vive na PÁGINA, então fechar e
+          reabrir a janela refazia a mesma pergunta e caía no mesmo lugar: a
+          pessoa só saía recarregando. O controle que levou alguém a um estado
+          é o controle que tem de tirá-lo de lá. */}
+      <div
+        data-testid="filtros-dos-quadros"
+        style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', margin: '4px 0 12px' }}
+      >
+        <GrupoDeFiltro
+          rotulo="Notícias de"
+          opcoes={LENTES_DOS_QUADROS}
+          valor={lentes}
+          aoEscolher={aoTrocarLentes}
+        />
+        <GrupoDeFiltro rotulo="Tier" opcoes={TIERS_DOS_QUADROS} valor={tier} aoEscolher={aoTrocarTier} />
+      </div>
+
       {janela.mes_sem_base ? (
         <p style={{ fontSize: 13, color: 'var(--atencao-fg)', background: 'var(--atencao-bg)', borderRadius: 'var(--r-card-int)', padding: '8px 12px', margin: 0 }}>
-          {/* NENHUMA DAS TRÊS, e não "a lente X": a conta soma as lentes de
-              clipping, e só chega aqui quando nenhuma delas tem base no mês. */}
-          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida em nenhuma das
-          lentes de clipping, então não há como calcular quanto cada grupo empurrou o
-          índice. Não é que nada impactou: a régua do mês ainda não existe.
+          {/* A LENTE ESCOLHIDA, PELO NOME — achado de revisão. Esta frase dizia
+              "nenhuma das lentes de clipping", e o comentário aqui garantia que
+              ela "só chega aqui quando nenhuma delas tem base no mês". Deixou
+              de ser verdade com o filtro: pedindo só Mercado, a Imprensa pode
+              ter base perfeita e a tela afirmava que nenhuma tinha.
+              O parágrafo existe para separar "não há como medir" de "nada
+              impactou" — nomear a lente é o que o mantém honesto.
+
+              DO ESTADO DO FILTRO, e não da resposta: o retorno antecipado do
+              mês sem base não preenche `lentes`, então não há de onde tirar o
+              nome por lá. */}
+          O mês de {porExtenso(janela.mes).slice(3)} não tem base medida em{' '}
+          {nomesDasLentes(lentes.split(','))}, então não há como calcular quanto cada grupo
+          empurrou o índice. Não é que nada impactou: a régua do mês ainda não existe.
         </p>
       ) : (
-        <>
-        {/* O FILTRO RÁPIDO, LOGO EM CIMA DOS QUADROS (pedido de 22/10/2026):
-            "olhar apenas notícias de Imprensa e Mercado, ou apenas Imprensa,
-            ou apenas Mercado, e um filtro de Tier". Vale para os dois quadros e
-            para o modal que cada linha abre. */}
-        <div
-          data-testid="filtros-dos-quadros"
-          style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', margin: '4px 0 12px' }}
-        >
-          <GrupoDeFiltro
-            rotulo="Notícias de"
-            opcoes={LENTES_DOS_QUADROS}
-            valor={lentes}
-            aoEscolher={aoTrocarLentes}
-          />
-          <GrupoDeFiltro
-            rotulo="Tier"
-            opcoes={TIERS_DOS_QUADROS}
-            valor={tier}
-            aoEscolher={aoTrocarTier}
-          />
-        </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <QuadroDeTemas
             testId="quadro-positivos"
@@ -1215,7 +1254,6 @@ function JanelaDosTemas({
             aoAbrir={definirAberto}
           />
         </div>
-        </>
       )}
 
       {/* OS REGISTROS DO GRUPO CLICADO. O modal lê do servidor com o MESMO
@@ -1390,9 +1428,13 @@ function QuadroDeTemas({
         </p>
       ) : (
         <div style={{ padding: '4px 14px 8px' }}>
-        {/* OS TÍTULOS DAS COLUNAS (pedido de 22/10/2026). */}
+        {/* OS TÍTULOS DAS COLUNAS (pedido de 22/10/2026).
+            SEM `aria-hidden` — achado de revisão. Esta linha era escondida do
+            leitor de tela, e é ela que dá nome às duas últimas colunas: a de
+            notícias é um número puro ("Governança +1,2 pt 8"), e o `title` do
+            botão não é anunciado, porque o nome acessível vem do conteúdo.
+            Quem ouve a tela perdia o único rótulo que existia. */}
         <div
-          aria-hidden
           style={{
             display: 'grid',
             gridTemplateColumns: COLUNAS_DO_QUADRO,
