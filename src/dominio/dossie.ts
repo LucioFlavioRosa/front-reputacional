@@ -151,9 +151,15 @@ export interface Dossie {
   /** Os temas (Subcategoria da Clipei) mais falados do mês. Vazio na
    *  Institucional, que tem seu próprio bloco de temas lido do CRM. */
   temas_mais_falados: Bloco;
-  /** O drill-down até a linha: as matérias mais recentes por trás da nota.
-   *  Vazio na Institucional — ela lê o CRM, não vem de clipping. */
-  materias_recentes: Bloco;
+  /* "ÚLTIMAS MATÉRIAS" SAIU DO DOSSIÊ em 23/10/2026, e o campo sai junto: o
+   * servidor parou de mandá-lo (`DossieSaida`, no mesmo PR). Deixá-lo aqui
+   * prometeria no tipo uma propriedade que a resposta não traz — a promessa
+   * falsa que a remoção dos blocos de veículo, logo acima, veio desfazer.
+   *
+   * O DRILL-DOWN ATÉ A LINHA CONTINUA, noutro lugar: é o MODAL de
+   * aprofundamento que o clique num veículo do Termômetro abre, e ele desenha
+   * `itens_do_recorte` — montado pela MESMA função `materias_recentes` do
+   * back. Saiu o campo do dossiê, não a leitura. */
   fatos: FatoDoDossie[];
   paineis: Bloco[];
   /** As abas de "onde está a causa": o mesmo mês cortado por cada dimensão que

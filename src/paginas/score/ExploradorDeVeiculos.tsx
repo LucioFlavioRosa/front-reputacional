@@ -68,10 +68,18 @@ export function ExploradorDeVeiculos({
   codigo,
   mes,
   filtro,
+  aoAprofundar,
 }: {
   codigo: string;
   mes: string;
   filtro: FiltroDaLente;
+  /** Abre o modal de aprofundamento no recorte `(chave, valor)` — o mesmo que
+   *  a Evolução abre ao clicar num mês.
+   *
+   *  `extras` LEVA A SELEÇÃO LOCAL JUNTO: ela não está na barra de filtros da
+   *  tela, e sem ela o modal mostraria um recorte mais largo que o da barra
+   *  clicada. Ver o comentário em `DossieDaLente`. */
+  aoAprofundar: (chave: string, valor: string, extras?: Partial<FiltroDaLente>) => void;
 }) {
   //: OS DADOS COM A CHAVE DO PEDIDO de que são: a tela usa só os que batem
   //: com o mês e o filtro atuais, sem zerar nada dentro do efeito. Sem isto, a
@@ -325,7 +333,28 @@ export function ExploradorDeVeiculos({
                       score: item.nss,
                     }))}
                     ativo={selecao.veiculo}
-                    aoClicar={(veiculo) => alternar('veiculo', veiculo)}
+                    //: O CLIQUE AQUI ABRE O APROFUNDAMENTO, não alterna a
+                    //: seleção — pedido de 23/10/2026, e vem de um defeito
+                    //: real: com o Termômetro mostrando SÓ o veículo
+                    //: escolhido, a única linha visível era sempre a
+                    //: selecionada, e clicar nela só sabia LIMPAR o filtro.
+                    //:
+                    //: CADA COLUNA TEM UM GESTO: o Top ESCOLHE (e esta coluna
+                    //: recorta nele), esta ABRE o modal daquele veículo. Se as
+                    //: duas abrissem, nada selecionaria veículo e o recorte
+                    //: desta coluna ficaria sem gatilho.
+                    //: O TIER LOCAL VIAJA JUNTO (achado do Codex): esta coluna
+                    //: não se exime de filtro nenhum, então a barra conta a
+                    //: fatia `tier ∩ veículo` — e o modal tem de contar a
+                    //: mesma. O veículo da seleção não precisa ir: quando há
+                    //: um, é ele próprio a única linha que resta aqui.
+                    aoClicar={(veiculo) =>
+                      aoAprofundar(
+                        'veiculo',
+                        veiculo,
+                        selecao.tier ? { tier: selecao.tier } : {},
+                      )
+                    }
                     vazio="Nenhuma matéria com veículo neste recorte."
                     unidade={{ singular: 'matéria', plural: 'matérias' }}
                     variante="termometro"

@@ -75,6 +75,8 @@ export const GUIA_DO_BLOCO: Record<string, string> = {
     'Ranking dos atributos reputacionais (qualidade do serviço, governança, solidez financeira...) classificados pela Clipei no mês, com o volume positivo, neutro e negativo de cada um. Essa visão mostra qual atributo está puxando a reputação para cima ou para baixo — não só o saldo final que a nota resume.',
   'Temas mais falados':
     'Ranking dos temas mais frequentes nas matérias do mês, no vocabulário da própria Clipei, com o volume positivo, neutro e negativo de cada um. Essa visão mostra sobre o que a imprensa mais falou e se o tom predominante foi favorável ou desfavorável.',
-  'Últimas matérias':
-    'As matérias mais recentes do mês, com veículo, data, classificação, tier, atributo e tema de cada uma. Essa visão é o drill-down até a linha: o detalhe concreto por trás dos números de cima.',
+  /* 'Últimas matérias' saiu em 23/10/2026 com o bloco que ela explicava. A
+     lista continua viva no MODAL de aprofundamento, mas lá o título vem do
+     servidor e o cabeçalho não tem "?" — `RecorteDaLente` desenha
+     `itens_do_recorte` direto, sem consultar este guia. */
 };

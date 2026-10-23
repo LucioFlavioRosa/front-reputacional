@@ -63,7 +63,6 @@ import type { Janela } from '@/dominio/janelaDaJornada';
 import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
 import { ExploradorDeVeiculos } from '@/paginas/score/ExploradorDeVeiculos';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
-import { UltimasMaterias } from '@/paginas/score/UltimasMaterias';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { FILTROS_DAS_LENTES, LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
 import { corDaFaixa, corForteDaLente } from '@/dominio/score';
@@ -381,8 +380,22 @@ function Conteudo({
     //: o mês, e não o recorte que veio junto da tela.
     peloMes?: boolean;
   } | null>(null);
-  const aoAprofundar = (chave: string, valor: string) =>
-    definirAprofundando({ mes: dossie.mes, filtro: { ...filtro, [chave]: valor }, ultimo: chave });
+  //: `extras` É O RECORTE QUE SÓ O BLOCO CONHECE, e existe por um bloco só: o
+  //: Explorador de veículos filtra por tier DENTRO dele, sem mexer na barra de
+  //: filtros da tela. A barra que a pessoa clica no Termômetro conta a fatia
+  //: `tier ∩ veículo`, e mandar só o veículo abriria o modal com o veículo
+  //: inteiro — outro número que o da barra clicada. Achado da revisão do Codex
+  //: (23/10/2026).
+  //:
+  //: É A MESMA REGRA DE `aoAprofundarNoMes`, logo abaixo: o modal conta o que a
+  //: barra contou. Opcional porque os outros blocos não têm recorte próprio —
+  //: o deles JÁ é o filtro da tela.
+  const aoAprofundar = (chave: string, valor: string, extras?: Partial<FiltroDaLente>) =>
+    definirAprofundando({
+      mes: dossie.mes,
+      filtro: { ...filtro, ...extras, [chave]: valor },
+      ultimo: chave,
+    });
   //: "TIER DO VEÍCULO × SENTIMENTO" GANHOU LUGAR PRÓPRIO (21/10/2026), fora
   //: da grade genérica de `dossie.paineis` — ver o comentário mais abaixo,
   //: onde ele é desenhado. O que sobra na grade segue genérico, por pedido do
@@ -423,6 +436,10 @@ function Conteudo({
           codigo={dossie.codigo}
           mes={dossie.mes}
           filtro={filtro}
+          //: O MESMO MODAL DA EVOLUÇÃO, noutro recorte: clicar num veículo do
+          //: Termômetro abre o aprofundamento daquele veículo. Foi o que
+          //: substituiu o bloco "Últimas matérias", que saiu logo abaixo.
+          aoAprofundar={aoAprofundar}
         />
       ) : null}
 
@@ -441,25 +458,6 @@ function Conteudo({
           recebem. */}
       {painelDeTier1 && !LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
         <CartaoDoPainel painel={painelDeTier1} filtro={filtro} aoAprofundar={aoAprofundar} />
-      ) : null}
-
-      {/* LOGO ABAIXO DOS DOIS GRÁFICOS DE VEÍCULO, e não lá embaixo depois de
-          Drivers/Temas: quem acabou de ver "InfoMoney tem 9 matérias e saldo
-          +56" quer a lista dessas matérias na sequência da leitura, não
-          depois de outros dois blocos no meio do caminho.
-
-          IMPRENSA E MERCADO — mesma lista de cima: "matéria" com veículo e
-          tier é um conceito de clipagem, e o Mercado é clipagem recortada por
-          público-alvo Investidores (migration 0048).
-
-          A SOCIEDADE NÃO DESENHA ESTA LISTA, e nunca desenhou — a condição
-          anterior também era só `=== 'imprensa'`. O servidor até lhe devolve
-          `materias_recentes` preenchido, com as colunas dela (texto, link,
-          autor, engajamento), mas aqui esse bloco não é pintado. Quem mostra as
-          menções dela é a aba Base de dados, por outro caminho e outra rota —
-          não este bloco. */}
-      {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
-        <UltimasMaterias bloco={dossie.materias_recentes} />
       ) : null}
 
       {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução
@@ -881,11 +879,13 @@ function Evolucao({
 /** Um bloco autônomo abaixo da Evolução, no mesmo molde dela (faixa, seção,
  *  cabeçalho, ficha) — mas sem o extra de fatos/sinais, que é só da Evolução.
  *
- *  OS TRÊS (Drivers e riscos, Temas mais falados, Últimas matérias) REAGEM
- *  AO MESMO RECORTE da barra de filtro lá em cima: o servidor já aplica
- *  tier/veículo/atributo/tema em cada consulta, então os três estreitam
- *  juntos quando alguém filtra — é a mesma régua "do amplo ao específico"
- *  levada até a linha, não três drill-downs independentes. */
+ *  OS DOIS (Drivers e riscos, Temas mais falados) REAGEM AO MESMO RECORTE da
+ *  barra de filtro lá em cima: o servidor já aplica tier/veículo/atributo/tema
+ *  em cada consulta, então os dois estreitam juntos quando alguém filtra — é a
+ *  mesma régua "do amplo ao específico", não dois drill-downs independentes.
+ *
+ *  ERAM TRÊS até 23/10/2026: "Últimas matérias" fechava a régua levando-a até
+ *  a linha. Ela saiu do corpo do dossiê e virou o modal de aprofundamento. */
 function BlocoAmplo({
   titulo,
   bloco,
