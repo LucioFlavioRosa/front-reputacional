@@ -559,6 +559,39 @@ export function obterExploradorDaLente(
   );
 }
 
+export interface GrupoDeVeiculo {
+  tier: string | null;
+  veiculo: string | null;
+  positivo: number;
+  neutro: number;
+  negativo: number;
+  peso_positivo: number;
+  peso_neutro: number;
+  peso_negativo: number;
+}
+
+export interface ExploradorDeVeiculos {
+  lente: string;
+  mes: string;
+  /** O denominador da nota do mês: impacto = 50 × (P − N) ÷ denominador. */
+  denominador: number;
+  grupos: GrupoDeVeiculo[];
+}
+
+/** Os grupos que os três painéis do Explorador de veículos somam na tela. UM
+ *  PEDIDO POR MÊS E FILTRO DA TELA: o filtro cruzado (clicar num tier estreita
+ *  os dois painéis de veículo) é soma no navegador, sem nova ida ao servidor —
+ *  e sem mover o resto do dossiê. */
+export function obterExploradorDeVeiculos(
+  codigo: string,
+  mes: string,
+  filtro?: FiltroDaLente,
+): Promise<ExploradorDeVeiculos> {
+  return requisitar<ExploradorDeVeiculos>(
+    `/api/score/lentes/${codigo}/explorador-de-veiculos?${paraConsultaDoFiltro(mes, filtro)}`,
+  );
+}
+
 /** As opções que o filtro desta lente pode oferecer neste mês. */
 export function obterOpcoesDeFiltroDaLente(
   codigo: string,
