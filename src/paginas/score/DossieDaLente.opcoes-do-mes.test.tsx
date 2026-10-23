@@ -39,6 +39,11 @@ vi.mock('@/api/cliente', () => ({
   obterOpcoesDeFiltroDaLente: vi.fn(() => Promise.resolve(OPCOES)),
   //: O CARD N1 › N2 › N3 E O MAPA têm teste próprio; aqui ficam carregando.
   obterExploradorDaLente: vi.fn(() => new Promise(() => {})),
+  //: O EXPLORADOR DE VEÍCULOS entrou no dossiê em 23/10/2026, no lugar dos
+  //: três cartões de veículo, e também tem teste próprio. Sem ele aqui o
+  //: `vi.mock` recusa a chamada e os dois testes deste arquivo caem por um
+  //: motivo que não é o assunto deles.
+  obterExploradorDeVeiculos: vi.fn(() => new Promise(() => {})),
 }));
 
 vi.mock('@/paginas/score/PainelDaJornada', () => ({
