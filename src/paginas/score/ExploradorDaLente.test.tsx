@@ -269,3 +269,74 @@ describe('o revelador e o modal, iguais aos do bloco de veículos', () => {
     expect(document.body.textContent).not.toContain('N1, N2 e N3');
   });
 });
+
+/* -- o estado abre o modal (24/10/2026) -------------------------------------- */
+
+describe('clicar num estado', () => {
+  function oMapa() {
+    return screen.getByLabelText('Termômetro e score das matérias por unidade da federação');
+  }
+
+  it('a LINHA da lista abre o modal no recorte daquela UF', async () => {
+    const aoAprofundar = vi.fn();
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={aoAprofundar} />);
+    await screen.findByText('UF · matérias');
+
+    const linha = screen.getByRole('button', {
+      name: /^Abrir as 8 matérias de São Paulo \(SP\)/,
+    });
+    //: O RÓTULO NOMEIA O GESTO *E* CARREGA OS DADOS DA LINHA — achado da
+    //: revisão do Codex (24/10/2026): `aria-label` em botão substitui o
+    //: conteúdo dele, e a primeira versão deste rótulo apagava a sigla, o
+    //: termômetro e o score de quem não vê a tela.
+    expect(linha.getAttribute('aria-label')).toBe(
+      'Abrir as 8 matérias de São Paulo (SP): termômetro -37, score 31',
+    );
+    await userEvent.click(linha);
+
+    //: A SIGLA, que é o que a lista mostra — e o que o recorte do back casa nas
+    //: duas formas (a coluna guarda "São Paulo").
+    expect(aoAprofundar).toHaveBeenCalledWith('uf', 'SP', {});
+  });
+
+  it('a BOLHA do mapa abre o mesmo modal da linha', async () => {
+    const aoAprofundar = vi.fn();
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={aoAprofundar} />);
+    await screen.findByText('UF · matérias');
+
+    //: A BOLHA DO RJ é a que tem score 100 (tudo propositivo); o rótulo dentro
+    //: dela é o score, e o grupo é o alvo do clique. Procurado DENTRO do
+    //: `<svg>`: "100" também aparece na legenda da escala e no ranking.
+    const rotulo = [...oMapa().querySelectorAll('text')].find((no) => no.textContent === '100');
+    expect(rotulo, 'a bolha do RJ não foi desenhada').toBeTruthy();
+    await userEvent.click(rotulo!.closest('g')!);
+
+    expect(aoAprofundar).toHaveBeenCalledWith('uf', 'RJ', {});
+  });
+
+  it('e o recorte LOCAL de N1/N2 viaja junto, porque a lista é somada dentro dele', async () => {
+    //: A MESMA REGRA DO N3: a linha "Rio de Janeiro" dentro de "Governança"
+    //: conta a interseção das duas, e o modal tem de contar essa fatia. Sem
+    //: isto ele abriria o estado INTEIRO — outro número que o da linha clicada.
+    const aoAprofundar = vi.fn();
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={aoAprofundar} />);
+    await screen.findByRole('heading', { name: 'Atributo (N1)' });
+
+    await userEvent.click(screen.getByRole('button', { name: /^Governança:/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Ética:/ }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /^Abrir as 2 matérias de Rio de Janeiro \(RJ\)/ }),
+    );
+
+    expect(aoAprofundar).toHaveBeenCalledWith('uf', 'RJ', {
+      atributo: 'Governança',
+      tema_n2: 'Ética',
+    });
+  });
+
+  it('e o cartão do mapa DIZ que o estado abre o detalhe', async () => {
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
+    await screen.findByText('UF · matérias');
+    expect(screen.getByText(/clicar num estado .* abre o detalhe das matérias/)).toBeTruthy();
+  });
+});

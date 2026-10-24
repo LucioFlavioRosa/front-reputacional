@@ -6,10 +6,13 @@
  *  - "Termômetro por UF": o mapa do Brasil do CRM, com a cor da bolha no
  *    termômetro (NSS) da UF e o tamanho no score dela.
  *
- *  CLICAR NUM ITEM FILTRA OS OUTROS GRÁFICOS E O MAPA (por pedido), e clicar de
- *  novo desfaz. O gráfico do próprio item continua inteiro, com ele em
- *  destaque. A conta mora em `dominio/explorador`; o servidor manda o mês em
- *  grupos uma vez só, e o clique é soma no navegador.
+ *  DOIS GESTOS, E CADA COLUNA TEM O SEU. Clicar num N1 ou num N2 FILTRA as
+ *  outras colunas e o mapa (por pedido), e clicar de novo desfaz — o gráfico do
+ *  próprio item continua inteiro, com ele em destaque. Clicar num N3 ou num
+ *  ESTADO (a linha da lista, ou a bolha dele no mapa) ABRE o modal daquele
+ *  recorte: são as duas folhas, e não teriam o que filtrar. A conta mora em
+ *  `dominio/explorador`; o servidor manda o mês em grupos uma vez só, e o
+ *  clique é soma no navegador.
  *
  *  O FILTRO DA TELA (Concessionária, Tier, Sentimento) VALE AQUI: ele vai no
  *  pedido, como em todo o dossiê.
@@ -265,10 +268,32 @@ export function ExploradorDaLente({
           titulo="Termômetro por UF"
           //: "N1 E N2", E NÃO MAIS "N1, N2 E N3" — o N3 deixou de filtrar
           //: quando passou a abrir o modal, e o mapa não o recebe mais.
-          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1 e N2 acima."
+          //: A LISTA VEM PRIMEIRO NA FRASE, e isto é da revisão do Codex: a
+          //: bolha é atalho de mouse (um `<g>` de SVG não entra na navegação
+          //: por teclado) e nem todo valor desta lista tem bolha — estado
+          //: estrangeiro não tem sigla e fica fora do mapa. A linha é o
+          //: caminho que existe sempre e para todo mundo.
+          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1 e N2 acima; clicar num estado na lista — ou na bolha dele no mapa — abre o detalhe das matérias."
         >
           {!atuais ? <Carregando /> : null}
-          {atuais?.dados ? <MapaDoTermometro dados={atuais.dados} selecao={selecao} filtrando={filtrando} /> : null}
+          {atuais?.dados ? (
+            <MapaDoTermometro
+              dados={atuais.dados}
+              selecao={selecao}
+              filtrando={filtrando}
+              //: `uf` É A CHAVE DO SERVIDOR, e o valor é a SIGLA que a lista
+              //: mostra. A coluna `mencao.uf` guarda o NOME ("Santa Catarina",
+              //: desde 09/10/2026) e é `grupos_do_explorador` que deriva a
+              //: sigla — então o recorte do back casa as DUAS formas, e é por
+              //: isso que mandar daqui o que a tela mostra conta o mesmo que a
+              //: linha clicada (ver `condicoes_do_filtro`).
+              //:
+              //: E O RECORTE LOCAL VIAJA JUNTO, como no N3: a lista ao lado do
+              //: mapa é somada DENTRO das escolhas de N1/N2, então o modal tem
+              //: de contar a mesma fatia.
+              aoAprofundarNaUf={(uf) => aoAprofundar('uf', uf, recorteLocal())}
+            />
+          ) : null}
         </Secao>
       </ComFaixaDoTopo>
     </>
@@ -371,10 +396,14 @@ function MapaDoTermometro({
   dados,
   selecao,
   filtrando,
+  aoAprofundarNaUf,
 }: {
   dados: Dados;
   selecao: Selecao;
   filtrando: ReactNode;
+  /** Abre o modal das matérias daquele estado — a bolha do mapa e a linha da
+   *  lista chamam o MESMO gesto, porque são o mesmo dado visto de dois jeitos. */
+  aoAprofundarNaUf: (uf: string) => void;
 }) {
   const ufs = ufsDoExplorador(dados.grupos, selecao);
   const daUf = new Map(ufs.map((uf) => [uf.uf, uf]));
@@ -403,6 +432,10 @@ function MapaDoTermometro({
           //: "sem agenda"), e aqui zero é uma nota — a pior. Meio ponto dá a
           //: menor bolha, e o rótulo mostra o score de verdade.
           pontos={ufs.map((uf) => ({ uf: uf.uf, total: Math.max(uf.score, 0.5) }))}
+          //: A BOLHA ABRE O MESMO MODAL DA LINHA, por pedido. O `MapaUf` já
+          //: tinha o gesto (é assim que o CRM recorta por UF) e aqui ele estava
+          //: ocioso: quem clicava na bolha não recebia nada.
+          aoClicarUf={aoAprofundarNaUf}
           rotuloDaUf={(ponto) => String(daUf.get(ponto.uf)?.score ?? '')}
           corDaUf={(uf) => corDoNss(daUf.get(uf)?.nss ?? 0)}
           detalheDaUf={(ponto) => {
@@ -454,15 +487,48 @@ function MapaDoTermometro({
             }}
           >
             {ufsPorVolume.map((uf) => (
-              <li
-                key={uf.uf}
+              <li key={uf.uf} style={{ borderBottom: '1px solid var(--borda)' }}>
+                {/* A LINHA INTEIRA É O BOTÃO, e não um link no nome do estado:
+                    o alvo é a linha que a pessoa está lendo, com 44px de
+                    altura, e o número ao lado dela entra no mesmo clique.
+
+                    O `aria-label` NOMEIA O GESTO *E* CARREGA OS QUATRO DADOS,
+                    e é achado da revisão do Codex (24/10/2026): rótulo em
+                    botão SUBSTITUI o conteúdo dele para o leitor de tela, e a
+                    minha primeira versão dizia só "Abrir as 8 matérias de São
+                    Paulo" — a sigla, o termômetro e o score desapareciam de
+                    quem não vê a linha, e esta lista é o único lugar do painel
+                    onde esses dois números aparecem escritos.
+
+                    SEM O RÓTULO seria pior ao contrário: o nome viria dos
+                    quatro dados soltos ("São Paulo SP · 8 matérias +18 71"),
+                    sem dizer o que o clique faz. */}
+              <button
+                type="button"
+                onClick={() => aoAprofundarNaUf(uf.uf)}
+                aria-label={
+                  `Abrir as ${numero(uf.total)} ${uf.total === 1 ? 'matéria' : 'matérias'} ` +
+                  //: A SIGLA ENTRE PARÊNTESES SÓ QUANDO ELA EXISTE: estado
+                  //: estrangeiro não tem sigla e chega com o nome do
+                  //: fornecedor, e "de Comunidade de Madrid (Comunidade de
+                  //: Madrid)" seria o nome dito duas vezes.
+                  `de ${NOME_DA_UF[uf.uf] ?? rotuloDeAbrangencia(uf.uf)}` +
+                  `${NOME_DA_UF[uf.uf] ? ` (${uf.uf})` : ''}: ` +
+                  `termômetro ${uf.nss > 0 ? '+' : ''}${uf.nss}, score ${uf.score}`
+                }
                 style={{
                   display: 'grid',
                   gridTemplateColumns: COLUNAS_DO_RANKING,
                   alignItems: 'center',
                   gap: 14,
                   padding: '11px 0',
-                  borderBottom: '1px solid var(--borda)',
+                  width: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  color: 'inherit',
+                  cursor: 'pointer',
                 }}
               >
                 <span style={{ display: 'grid', gap: 6, minWidth: 0 }}>
@@ -509,6 +575,7 @@ function MapaDoTermometro({
                 >
                   {uf.score}
                 </span>
+                </button>
               </li>
             ))}
           </ol>
