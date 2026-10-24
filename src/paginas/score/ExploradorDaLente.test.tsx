@@ -56,7 +56,7 @@ function coluna(titulo: string) {
 
 describe('N1 › N2 › N3 e o mapa por UF', () => {
   it('pede com o filtro da tela e ordena do maior para o menor, com o impacto', async () => {
-    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{ tier: 'relevante' }} />);
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{ tier: 'relevante' }} aoAprofundar={() => {}} />);
     await screen.findByRole('heading', { name: 'Atributo (N1)' });
     expect(obterExploradorDaLente).toHaveBeenCalledWith('imprensa', '2026-08', { tier: 'relevante' });
     const n1 = within(coluna('Atributo (N1)')).getAllByRole('button');
@@ -66,7 +66,7 @@ describe('N1 › N2 › N3 e o mapa por UF', () => {
   });
 
   it('o ranking por UF vai da que tem MAIS matérias para a que tem menos', async () => {
-    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} />);
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
     await screen.findByText('UF · matérias');
     const ranking = screen.getByText('UF · matérias').parentElement!.parentElement!;
     const texto = ranking.textContent ?? '';
@@ -75,7 +75,7 @@ describe('N1 › N2 › N3 e o mapa por UF', () => {
   });
 
   it('clicar num N1 filtra o N3 e o mapa, e clicar de novo desfaz', async () => {
-    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} />);
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
     await screen.findByRole('heading', { name: 'Subtema (N3)' });
     expect(within(coluna('Subtema (N3)')).getAllByRole('button')).toHaveLength(3);
 
@@ -94,5 +94,178 @@ describe('N1 › N2 › N3 e o mapa por UF', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Governança:/ }));
     expect(within(coluna('Subtema (N3)')).getAllByRole('button')).toHaveLength(3);
+  });
+});
+
+/* -- o comportamento padrão, vindo do bloco de veículos (24/10/2026) --------- */
+
+/** Um mês com SETE subtemas e um atributo só, para a lista ter o que revelar.
+ *
+ *  SETE, E NÃO SEIS: com seis, revelar acrescenta uma linha e um teste que
+ *  conte "antes 5, depois 6" passa igual se o botão revelasse só mais uma. */
+function mesComSeteSubtemas() {
+  return {
+    lente: 'imprensa',
+    mes: '2026-08',
+    denominador: 10,
+    grupos: Array.from({ length: 7 }, (_, i) =>
+      grupo({
+        n1: 'Governança',
+        n2: 'Ética',
+        n3: `Subtema ${i + 1}`,
+        uf: 'RJ',
+        negativo: 7 - i,
+        peso_negativo: 7 - i,
+      }),
+    ),
+  };
+}
+
+describe('o revelador e o modal, iguais aos do bloco de veículos', () => {
+  it('a coluna abre em 5 e o botão revela o resto, com a unidade do nível', async () => {
+    //: PEDIDO (24/10/2026): "quero que os mesmos elementos sejam aplicados no
+    //: bloco Atributos, temas estratégicos e subtemas — quero deixar um
+    //: comportamento padrão". Antes, as três colunas despejavam a lista
+    //: inteira no rolador; o N2 tem 41 temas no mês real.
+    obterExploradorDaLente.mockImplementationOnce(() => Promise.resolve(mesComSeteSubtemas()));
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
+    await screen.findByRole('heading', { name: 'Subtema (N3)' });
+
+    const n3 = () => within(coluna('Subtema (N3)'));
+    //: CINCO LINHAS MAIS O BOTÃO.
+    expect(n3().getAllByRole('button')).toHaveLength(6);
+    expect(n3().queryByRole('button', { name: /^Subtema 6:/ })).toBeNull();
+
+    //: O RÓTULO DIZ A UNIDADE DO NÍVEL, e o total de verdade.
+    const revelar = n3().getByRole('button', { name: 'Ver todos os 7 subtemas' });
+    await userEvent.click(revelar);
+
+    expect(n3().getByRole('button', { name: /^Subtema 7:/ })).toBeTruthy();
+    expect(n3().getByRole('button', { name: 'Recolher' })).toBeTruthy();
+  });
+
+  it('e cada coluna abre a SUA: revelar o N3 deixa o N2 fechado', async () => {
+    //: A PROVA PRECISA DE DUAS COLUNAS COM BOTÃO — achado da revisão do Codex:
+    //: a primeira versão deste teste comparava o N3 com o N1, que tinha um
+    //: item só e portanto botão nenhum. Provava que o N1 não tinha o que
+    //: abrir, não que ele ficou fechado.
+    obterExploradorDaLente.mockImplementationOnce(() =>
+      Promise.resolve({
+        lente: 'imprensa',
+        mes: '2026-08',
+        denominador: 10,
+        grupos: Array.from({ length: 7 }, (_, i) =>
+          grupo({
+            n1: 'Governança',
+            n2: `Tema ${i + 1}`,
+            n3: `Subtema ${i + 1}`,
+            uf: 'RJ',
+            negativo: 7 - i,
+            peso_negativo: 7 - i,
+          }),
+        ),
+      }),
+    );
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
+    await screen.findByRole('heading', { name: 'Subtema (N3)' });
+
+    const n2 = () => within(coluna('Tema estratégico (N2)'));
+    const n3 = () => within(coluna('Subtema (N3)'));
+    //: AS DUAS COMEÇAM CORTADAS, cada uma com o seu botão.
+    expect(n2().getByRole('button', { name: 'Ver todos os 7 temas' })).toBeTruthy();
+    expect(n3().getByRole('button', { name: 'Ver todos os 7 subtemas' })).toBeTruthy();
+
+    await userEvent.click(n3().getByRole('button', { name: 'Ver todos os 7 subtemas' }));
+
+    //: O N3 ABRIU...
+    expect(n3().getByRole('button', { name: /^Subtema 7:/ })).toBeTruthy();
+    //: ...E O N2 CONTINUA FECHADO, com o botão dele intacto.
+    expect(n2().queryByRole('button', { name: /^Tema 6:/ })).toBeNull();
+    expect(n2().getByRole('button', { name: 'Ver todos os 7 temas' })).toBeTruthy();
+  });
+
+  it('o N3 ABRE O MODAL no recorte da barra, levando o N1 e o N2 escolhidos', async () => {
+    //: A TRADUÇÃO DO BLOCO DE VEÍCULOS: a última coluna abre, as de cima
+    //: escolhem. E o recorte vai inteiro — a barra do N3 conta a INTERSEÇÃO
+    //: com o que está escolhido acima, e mandar só o subtema abriria o modal
+    //: num recorte mais largo que a barra clicada. Mesmo defeito que o tier
+    //: teve no bloco de veículos.
+    //:
+    //: AS CHAVES SÃO AS DO SERVIDOR, e não as do nome do nível: o N2 e o N3
+    //: saem do CADASTRO (`MacroTema.nome` e `Tema.nome`), então casam por
+    //: `tema_n2`/`tema_n3`. `subtema` é outra coluna — a da Sociedade.
+    const aoAprofundar = vi.fn();
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{ tier: 'relevante' }} aoAprofundar={aoAprofundar} />);
+    await screen.findByRole('heading', { name: 'Subtema (N3)' });
+
+    await userEvent.click(screen.getByRole('button', { name: /^Clientes:/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Atendimento:/ }));
+    await userEvent.click(within(coluna('Subtema (N3)')).getByRole('button', { name: /^Tarifa:/ }));
+
+    expect(aoAprofundar).toHaveBeenCalledWith('tema_n3', 'Tarifa', {
+      atributo: 'Clientes',
+      tema_n2: 'Atendimento',
+    });
+  });
+
+  it('e o N1 e o N2 continuam ESCOLHENDO, sem abrir modal', async () => {
+    //: A CONTRAPROVA: se as três abrissem, nada recortaria o N3.
+    const aoAprofundar = vi.fn();
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={aoAprofundar} />);
+    await screen.findByRole('heading', { name: 'Atributo (N1)' });
+
+    await userEvent.click(screen.getByRole('button', { name: /^Governança:/ }));
+
+    expect(aoAprofundar).not.toHaveBeenCalled();
+    //: `getAllByText` PORQUE O CHIP APARECE DUAS VEZES: a mesma linha de
+    //: filtro é desenhada na seção das colunas e de novo no mapa por UF.
+    expect(screen.getAllByText('Filtrando por').length).toBeGreaterThan(0);
+  });
+
+  it('a seleção não sobrevive à troca do filtro da TELA', async () => {
+    //: O MESMO DEFEITO QUE O CODEX ACHOU no bloco de veículos, e que o molde
+    //: ainda tinha. Sem isto o chip mente — e com o modal é pior: a seleção
+    //: velha viaja em `extras` e o modal abre num recorte que a tela não
+    //: mostra mais.
+    const { rerender } = render(
+      <ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />,
+    );
+    await screen.findByRole('heading', { name: 'Atributo (N1)' });
+    await userEvent.click(screen.getByRole('button', { name: /^Governança:/ }));
+    expect(screen.getAllByText('Filtrando por').length).toBeGreaterThan(0);
+
+    rerender(
+      <ExploradorDaLente
+        codigo="imprensa"
+        mes="2026-08"
+        filtro={{ tier: 'relevante' }}
+        aoAprofundar={() => {}}
+      />,
+    );
+    await screen.findByRole('heading', { name: 'Atributo (N1)' });
+
+    expect(screen.queryAllByText('Filtrando por')).toHaveLength(0);
+  });
+
+  it('e os textos da tela dizem o que cada coluna FAZ, agora que o N3 abre', async () => {
+    //: ACHADO DA REVISÃO DO CODEX (24/10/2026), e era meu: o subtítulo prometia
+    //: "clique num item para filtrar os outros gráficos e o mapa", e o do mapa
+    //: dizia "segue o filtro de N1, N2 e N3 acima". As duas frases deixaram de
+    //: ser verdade no mesmo commit em que o N3 virou gatilho de modal — e são
+    //: a única explicação que a pessoa tem do que o clique faz.
+    render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={() => {}} />);
+    await screen.findByRole('heading', { name: 'Subtema (N3)' });
+
+    //: O SUBTÍTULO DAS COLUNAS nomeia o gesto de cada uma.
+    expect(screen.getByText(/Clique num atributo ou tema para filtrar/)).toBeTruthy();
+    expect(screen.getByText(/o subtema abre o detalhe das matérias/)).toBeTruthy();
+
+    //: E O DO MAPA não promete mais o N3.
+    expect(screen.getByText(/Segue o filtro de N1 e N2 acima/)).toBeTruthy();
+    //: A AUSÊNCIA SE AFIRMA NO TEXTO INTEIRO DA PÁGINA, e não com
+    //: `queryByText` — achado da segunda revisão do Codex. O `queryByText`
+    //: casa dentro de UM nó: se alguém quebrasse a frase antiga em dois spans,
+    //: ele devolveria `null` e o teste passaria sem a frase ter saído.
+    expect(document.body.textContent).not.toContain('N1, N2 e N3');
   });
 });

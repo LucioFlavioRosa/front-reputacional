@@ -49,8 +49,8 @@ import { ROTULO_DO_TIER } from '@/dominio/filtrosDasLentes';
 import { GUIA_DO_BLOCO } from '@/dominio/guiaDoDossie';
 import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { ColunasEmpilhadas } from '@/graficos/ColunasEmpilhadas';
-import { useListaDeVeiculos } from '@/paginas/score/listaDeVeiculos';
-import { RevelarVeiculos } from '@/paginas/score/revelarVeiculos';
+import { useListaRevelavel } from '@/paginas/score/listaRevelavel';
+import { RevelarItens } from '@/paginas/score/revelarItens';
 
 //: OS NOMES DOS EIXOS COMO O PRODUTO OS CHAMA — os mesmos da barra de filtros.
 const NOMES: Record<Eixo, string> = { tier: 'Tier', veiculo: 'Veículo' };
@@ -58,6 +58,11 @@ const NOMES: Record<Eixo, string> = { tier: 'Tier', veiculo: 'Veículo' };
 //: O TÍTULO DO CARTÃO: a lista das três colunas, como "Atributos, temas
 //: estratégicos e subtemas" faz no bloco que é o molde deste.
 const TITULO = 'Tier do veículo, top veículos e termômetro';
+
+//: O QUE AS DUAS LISTAS LISTAM, para o rótulo do revelador. O componente deixou
+//: de saber a dimensão em 24/10/2026, quando o mesmo botão passou a servir o
+//: bloco de atributos/temas/subtemas — o texto na tela não mudou.
+const UNIDADE_DO_VEICULO = { singular: 'veículo', plural: 'veículos' };
 
 //: A ALTURA DAS LISTAS, a mesma das colunas do Explorador de taxonomia: a
 //: rolagem interna segura o excesso, e o botão "Ver todos" é quem decide
@@ -141,8 +146,8 @@ export function ExploradorDeVeiculos({
   //: UMA LISTA POR COLUNA DE VEÍCULO, independentes: cada uma abre e fecha
   //: sozinha. Os hooks ficam aqui no topo, fora de condicional, e recebem 0
   //: enquanto não há resposta.
-  const listaDoTopo = useListaDeVeiculos(veiculos.length);
-  const listaDoTermometro = useListaDeVeiculos(termometro.length);
+  const listaDoTopo = useListaRevelavel(veiculos.length);
+  const listaDoTermometro = useListaRevelavel(termometro.length);
 
   const escolhidos = EIXOS.filter((eixo) => selecao[eixo]);
   //: O CHIP MOSTRA O RÓTULO, não a chave: a seleção guarda `muito_relevante`,
@@ -262,12 +267,13 @@ export function ExploradorDeVeiculos({
                     }))}
                   />
                 </div>
-                <RevelarVeiculos
+                <RevelarItens
                   teto={listaDoTopo.teto}
                   podeAbrir={listaDoTopo.podeAbrir}
                   aberta={listaDoTopo.aberta}
                   aoAlternar={listaDoTopo.alternar}
                   controla={listaDoTopo.idDaLista}
+                  unidade={UNIDADE_DO_VEICULO}
                 />
               </Coluna>
 
@@ -360,12 +366,13 @@ export function ExploradorDeVeiculos({
                     variante="termometro"
                   />
                 </div>
-                <RevelarVeiculos
+                <RevelarItens
                   teto={listaDoTermometro.teto}
                   podeAbrir={listaDoTermometro.podeAbrir}
                   aberta={listaDoTermometro.aberta}
                   aoAlternar={listaDoTermometro.alternar}
                   controla={listaDoTermometro.idDaLista}
+                  unidade={UNIDADE_DO_VEICULO}
                 />
               </Coluna>
             </div>

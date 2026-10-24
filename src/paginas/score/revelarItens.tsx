@@ -1,9 +1,14 @@
-/** O botão que revela o resto do ranking de veículos.
+/** O botão que revela o resto de uma lista cortada.
  *
  *  SAIU DE DENTRO DE `DossieDaLente.tsx` (23/10/2026) porque dois arquivos
  *  passaram a usá-lo. O estado de quantos aparecem mora em
- *  `listaDeVeiculos.ts` — separado porque hook não é componente, e o lint
+ *  `listaRevelavel.ts` — separado porque hook não é componente, e o lint
  *  (`only-export-components`) cobra o arquivo que mistura os dois.
+ *
+ *  DEIXOU DE SER "DE VEÍCULOS" EM 24/10/2026, por pedido: *"quero que os
+ *  mesmos elementos sejam aplicados no bloco Atributos, temas estratégicos e
+ *  subtemas — quero deixar um comportamento padrão"*. O único trecho preso à
+ *  dimensão era o rótulo, que agora vem em `unidade`.
  */
 /** O botão que abre o resto do ranking, e o degradê que diz que há resto.
  *
@@ -22,8 +27,8 @@
  *  sobreposição que não existia. Achado da revisão do Codex (23/10/2026).
  *
  *  `pointerEvents: 'none'` NO DEGRADÊ, porque a linha que ele desbota é
- *  CLICÁVEL (clicar num veículo filtra os outros painéis). Sem isso, a faixa
- *  roubaria o clique da linha que ela só deveria desbotar.
+ *  CLICÁVEL (clicar numa linha filtra as outras colunas, ou abre o modal).
+ *  Sem isso, a faixa roubaria o clique da linha que ela só deveria desbotar.
  *
  *  ABERTA, NÃO EXISTE DEGRADÊ: não há nada para sugerir, e desbotar o fim de
  *  uma lista completa diria que ainda falta algo.
@@ -33,12 +38,13 @@
  *  esconde por `sem-impressao`. Botão e degradê são da tela, não do dado — o
  *  contador antigo não tinha nenhuma das duas, e saía escrito "Mostrando 5 de
  *  10" dentro da imagem exportada E no papel. */
-export function RevelarVeiculos({
+export function RevelarItens({
   teto,
   podeAbrir,
   aberta,
   aoAlternar,
   controla,
+  unidade,
   centralizado = false,
 }: {
   teto: number;
@@ -47,11 +53,18 @@ export function RevelarVeiculos({
   aoAlternar: () => void;
   /** O `id` do container das linhas que este botão abre e fecha. */
   controla: string;
-  /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
-   *  de cada veículo vai de ponta a ponta — e um botão encostado à esquerda
-   *  ficava perdido no canto, sem relação visual com a lista acima. O Top
-   *  veículos, ao lado, já nasce numa coluna estreita: ali encostado à
-   *  esquerda já lê como "embaixo da lista". */
+  /** O que a lista lista, para o rótulo dizer "Ver todos os 41 temas" em vez
+   *  de um "itens" genérico. O plural é o que aparece; o singular existe para
+   *  o dia em que o teto for 1, e para quem lê o chamador saber o par. */
+  unidade: { singular: string; plural: string };
+  /** CENTRALIZADO SÓ EM LISTA LARGA, e é por isso que a escolha existe: o
+   *  Termômetro por Veículos ocupa a largura inteira do cartão — a barra de
+   *  cada item vai de ponta a ponta — e um botão encostado à esquerda ficava
+   *  perdido no canto, sem relação visual com a lista acima.
+   *
+   *  AS COLUNAS ESTREITAS NÃO CENTRALIZAM: o Top veículos e as três colunas do
+   *  bloco de atributos/temas/subtemas já nascem num terço do cartão, e ali
+   *  encostado à esquerda já lê como "embaixo da lista". */
   centralizado?: boolean;
 }) {
   if (!podeAbrir) return null;
@@ -105,7 +118,9 @@ export function RevelarVeiculos({
             lineHeight: 1.2,
           }}
         >
-          {aberta ? 'Recolher' : `Ver todos os ${teto} veículos`}
+          {aberta
+            ? 'Recolher'
+            : `Ver todos os ${teto} ${teto === 1 ? unidade.singular : unidade.plural}`}
           <span aria-hidden style={{ fontSize: 9, lineHeight: 1 }}>
             {aberta ? '▲' : '▼'}
           </span>
