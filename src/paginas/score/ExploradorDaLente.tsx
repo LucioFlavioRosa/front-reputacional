@@ -217,7 +217,12 @@ export function ExploradorDaLente({
       <ComFaixaDoTopo>
         <Secao
           titulo="Atributos, temas estratégicos e subtemas"
-          subtitulo="Matérias por sentimento, da maior para a menor, com o impacto na nota da lente (pontos). Clique num item para filtrar os outros gráficos e o mapa."
+          //: O SUBTÍTULO DIZ O GESTO DE CADA COLUNA, e não um "clique num item"
+          //: só — achado da revisão do Codex (24/10/2026). Desde que o N3
+          //: passou a abrir o aprofundamento, a frase antiga prometia que
+          //: qualquer item filtrava o mapa, e esta é a única explicação que a
+          //: pessoa tem do que o clique faz antes de clicar.
+          subtitulo="Matérias por sentimento, da maior para a menor, com o impacto na nota da lente (pontos). Clique num atributo ou tema para filtrar as outras colunas e o mapa; o subtema abre o detalhe das matérias."
         >
           {!atuais ? <Carregando /> : null}
           {atuais?.erro ? (
@@ -258,7 +263,9 @@ export function ExploradorDaLente({
       <ComFaixaDoTopo>
         <Secao
           titulo="Termômetro por UF"
-          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1, N2 e N3 acima."
+          //: "N1 E N2", E NÃO MAIS "N1, N2 E N3" — o N3 deixou de filtrar
+          //: quando passou a abrir o modal, e o mapa não o recebe mais.
+          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1 e N2 acima."
         >
           {!atuais ? <Carregando /> : null}
           {atuais?.dados ? <MapaDoTermometro dados={atuais.dados} selecao={selecao} filtrando={filtrando} /> : null}
