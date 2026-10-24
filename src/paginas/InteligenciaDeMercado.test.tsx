@@ -1383,6 +1383,103 @@ describe('o filtro rápido dos quadros: lente e tier (22/10/2026)', () => {
     );
   });
 
+  it('a lente sem base NÃO tranca a pessoa: o filtro continua na tela', async () => {
+    //: ACHADO DE REVISÃO, e era beco sem saída. Com uma lente só escolhida,
+    //: "mês sem base" passa a depender DAQUELA lente — estado comum, não raro —
+    //: e os botões moravam dentro do outro braço do mesmo ternário. A escolha
+    //: vive na página, então fechar e reabrir a janela caía no mesmo lugar: só
+    //: recarregando a pessoa voltava.
+    obterImpactoNaJanela.mockImplementation((_ate, _nivel, _dias, filtros) =>
+      Promise.resolve(
+        impacto(
+          filtros?.lentes?.length === 1
+            ? { positivos: [], negativos: [], total_positivos: 0, total_negativos: 0, mes_sem_base: true }
+            : {},
+        ),
+      ),
+    );
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy());
+
+    const filtros = () => within(screen.getByTestId('filtros-dos-quadros'));
+    filtros().getByRole('button', { name: 'Mercado' }).click();
+
+    await waitFor(() => expect(screen.getByText(/não tem base/i)).toBeTruthy());
+    //: O CAMINHO DE VOLTA CONTINUA À VISTA.
+    expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy();
+
+    filtros().getByRole('button', { name: 'Imprensa e Mercado' }).click();
+    await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+    expect(screen.queryByText(/não tem base/i)).toBeNull();
+  });
+
+  it('e o recado nomeia a lente escolhida, em vez de culpar "nenhuma das três"', async () => {
+    //: ACHADO DE REVISÃO. A frase dizia "não tem base medida em nenhuma das
+    //: lentes de clipping" — e com só Mercado pedido, a Imprensa pode ter base
+    //: perfeita. O parágrafo existe para separar "não há como medir" de "nada
+    //: impactou"; afirmar o universo errado cria uma confusão nova.
+    obterImpactoNaJanela.mockImplementation((_ate, _nivel, _dias, filtros) =>
+      Promise.resolve(
+        impacto(
+          filtros?.lentes?.length === 1
+            ? { positivos: [], negativos: [], total_positivos: 0, total_negativos: 0, mes_sem_base: true }
+            : {},
+        ),
+      ),
+    );
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy());
+
+    within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Mercado' }).click();
+
+    const recado = await screen.findByText(/não tem base medida em/i);
+    expect(recado.textContent).toContain('não tem base medida em Mercado');
+    expect(recado.textContent).not.toContain('nenhuma das');
+    //: E A RÉGUA NÃO FICA COM O RESTO DE ORAÇÃO: sem base não há lente nem
+    //: fatia na resposta, e a frase saía "Somam , que pesaram 0% do índice".
+    expect(screen.getByTestId('regua-da-janela').textContent).not.toContain('Somam');
+  });
+
+  it('a régua diz o TIER quando há um, senão a conta dela não fecha', async () => {
+    //: ACHADO DE REVISÃO. Esta linha existe para a conta ser refeita à mão:
+    //: "−0,7 pt do índice" vem de "−2,3 pt na lente que pesa 30%". Com um tier
+    //: escolhido o numerador é só a fatia dele e o denominador segue o do mês
+    //: inteiro — sem dizer isso, a conta que a frase convida a refazer não bate.
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('filtros-dos-quadros')).toBeTruthy());
+
+    //: SEM TIER, a frase é a de sempre.
+    expect(screen.getByTestId('regua-da-janela').textContent).not.toContain('Tier');
+
+    within(screen.getByTestId('filtros-dos-quadros')).getByRole('button', { name: 'Tier 1' }).click();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('regua-da-janela').textContent).toContain(
+        'contando só as matérias Tier 1 sobre o denominador do mês inteiro',
+      ),
+    );
+  });
+
+  it('os títulos das colunas chegam ao leitor de tela', async () => {
+    //: ACHADO DE REVISÃO: a linha de títulos era `aria-hidden`, e é ela que dá
+    //: nome às duas últimas colunas — a de notícias é um número puro, e o
+    //: `title` do botão não é anunciado (o nome acessível vem do conteúdo).
+    render(<InteligenciaDeMercado comPares />);
+    await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
+    escolherData('2026-05-20');
+    await waitFor(() => expect(screen.getByTestId('quadro-positivos')).toBeTruthy());
+
+    const positivos = screen.getByTestId('quadro-positivos');
+    expect(within(positivos).getByText('# Notícias')).toBeVisible();
+    expect(within(positivos).getByText('Impacto no Score')).toBeVisible();
+  });
+
   it('os quadros têm títulos de coluna e o título de cada lado', async () => {
     render(<InteligenciaDeMercado comPares />);
     await waitFor(() => expect(screen.getByText('GRAFICO')).toBeTruthy());
