@@ -262,6 +262,10 @@ describe('o revelador e o modal, iguais aos do bloco de veículos', () => {
 
     //: E O DO MAPA não promete mais o N3.
     expect(screen.getByText(/Segue o filtro de N1 e N2 acima/)).toBeTruthy();
-    expect(screen.queryByText(/N1, N2 e N3/)).toBeNull();
+    //: A AUSÊNCIA SE AFIRMA NO TEXTO INTEIRO DA PÁGINA, e não com
+    //: `queryByText` — achado da segunda revisão do Codex. O `queryByText`
+    //: casa dentro de UM nó: se alguém quebrasse a frase antiga em dois spans,
+    //: ele devolveria `null` e o teste passaria sem a frase ter saído.
+    expect(document.body.textContent).not.toContain('N1, N2 e N3');
   });
 });

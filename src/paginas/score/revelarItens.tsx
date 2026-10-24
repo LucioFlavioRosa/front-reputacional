@@ -57,11 +57,14 @@ export function RevelarItens({
    *  de um "itens" genérico. O plural é o que aparece; o singular existe para
    *  o dia em que o teto for 1, e para quem lê o chamador saber o par. */
   unidade: { singular: string; plural: string };
-  /** O Termômetro por Veículos ocupa a largura inteira do cartão — a barra
-   *  de cada veículo vai de ponta a ponta — e um botão encostado à esquerda
-   *  ficava perdido no canto, sem relação visual com a lista acima. O Top
-   *  veículos, ao lado, já nasce numa coluna estreita: ali encostado à
-   *  esquerda já lê como "embaixo da lista". */
+  /** CENTRALIZADO SÓ EM LISTA LARGA, e é por isso que a escolha existe: o
+   *  Termômetro por Veículos ocupa a largura inteira do cartão — a barra de
+   *  cada item vai de ponta a ponta — e um botão encostado à esquerda ficava
+   *  perdido no canto, sem relação visual com a lista acima.
+   *
+   *  AS COLUNAS ESTREITAS NÃO CENTRALIZAM: o Top veículos e as três colunas do
+   *  bloco de atributos/temas/subtemas já nascem num terço do cartão, e ali
+   *  encostado à esquerda já lê como "embaixo da lista". */
   centralizado?: boolean;
 }) {
   if (!podeAbrir) return null;

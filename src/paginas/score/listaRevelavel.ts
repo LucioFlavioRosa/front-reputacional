@@ -21,13 +21,14 @@ import { useId, useState } from 'react';
  *  dois motivos: revelar o último custava cinco cliques — e recolher, outros
  *  cinco —, e o rótulo "Mostrando 5 de 10" só RELATAVA a primeira tela, sem
  *  convidar para a segunda. Agora o número vive no rótulo do botão ("Ver todos
- *  os 10 veículos"), que é o convite, e o degradê no rodapé da lista é o que
- *  diz "isto está cortado, não terminado".
+ *  os 41 temas"), que é o convite, e o degradê no rodapé da lista é o que diz
+ *  "isto está cortado, não terminado".
  *
- *  E NÃO EXISTE MAIS TETO DE 10 (23/10/2026): o 10 era o corte que o SERVIDOR
- *  fazia nos blocos antigos do dossiê. A rota do Explorador de veículos manda
- *  o mês agrupado inteiro, então o teto é o que o recorte tem — e o botão diz o
- *  número de verdade em vez de um 10 que não era o total de nada. */
+ *  E NÃO EXISTE TETO ALÉM DO RECORTE (23/10/2026): havia um 10 aqui, que era o
+ *  corte que o SERVIDOR fazia nos blocos antigos do dossiê. As rotas que
+ *  alimentam estas listas mandam o mês agrupado inteiro, então o teto é o que o
+ *  recorte tem — e o botão diz o número de verdade em vez de um 10 que não era
+ *  o total de nada. */
 const QUANTIDADE_INICIAL = 5;
 
 export function useListaRevelavel(total: number) {
@@ -46,7 +47,7 @@ export function useListaRevelavel(total: number) {
   //
   //: E A QUANTIDADE É DERIVADA DE `teto`, nunca guardada — era isto que o
   //: contador antigo tinha de corrigir com um `Math.min` a cada render: um
-  //: recorte com 6 veículos depois de um com 10 deixava o número velho no
+  //: recorte com 6 itens depois de um com 10 deixava o número velho no
   //: estado.
   const podeAbrir = teto > inicial;
   const abertaDeFato = aberta && podeAbrir;
