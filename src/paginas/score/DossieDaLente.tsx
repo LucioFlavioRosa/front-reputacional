@@ -474,6 +474,7 @@ function Conteudo({
           codigo={dossie.codigo}
           mes={dossie.mes}
           filtro={filtro}
+          aoAprofundar={aoAprofundar}
         />
       ) : null}
       {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do

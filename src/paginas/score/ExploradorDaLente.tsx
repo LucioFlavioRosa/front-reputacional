@@ -28,10 +28,12 @@ import {
   textoDoImpacto,
   ufsDoExplorador,
 } from '@/dominio/explorador';
-import type { Nivel, Selecao } from '@/dominio/explorador';
+import type { BarraDoExplorador, Nivel, Selecao } from '@/dominio/explorador';
 import { numero } from '@/dominio/formato';
 import { CORES_DE_CLIMA, rotuloDeAbrangencia } from '@/dominio/frentes';
 import { ColunasEmpilhadas } from '@/graficos/ColunasEmpilhadas';
+import { useListaRevelavel } from '@/paginas/score/listaRevelavel';
+import { RevelarItens } from '@/paginas/score/revelarItens';
 import { MapaUf } from '@/graficos/MapaUf';
 
 
@@ -41,6 +43,29 @@ const NOMES: Record<Nivel, string> = {
   n1: 'Atributo (N1)',
   n2: 'Tema estratégico (N2)',
   n3: 'Subtema (N3)',
+};
+
+//: A CHAVE QUE CADA NÍVEL RECORTA NO SERVIDOR, e não o nome do nível — o
+//: aprofundamento do N3 manda isto no filtro.
+//:
+//: O N2 E O N3 SAEM DO CADASTRO, não da coluna da menção: `grupos_do_explorador`
+//: agrupa por `MacroTema.nome` e `Tema.nome`, e é por `tema_n2`/`tema_n3` que
+//: `condicoes_do_filtro` casa esses dois (por `macro_tema_id`/`tema_id`).
+//: `tema` e `subtema` SERIAM AS COLUNAS ERRADAS: `tema` é o texto cru do
+//: fornecedor e `subtema` é a dimensão da Sociedade digital. O N1 é o único que
+//: vem da menção, e lá a chave é `atributo` mesmo.
+const CHAVE_DO_NIVEL: Record<Nivel, keyof FiltroDaLente> = {
+  n1: 'atributo',
+  n2: 'tema_n2',
+  n3: 'tema_n3',
+};
+
+//: O QUE CADA COLUNA LISTA, para o rótulo do revelador dizer "Ver todos os 41
+//: temas" em vez de um "itens" que não diz nada.
+const UNIDADE_DO_NIVEL: Record<Nivel, { singular: string; plural: string }> = {
+  n1: { singular: 'atributo', plural: 'atributos' },
+  n2: { singular: 'tema', plural: 'temas' },
+  n3: { singular: 'subtema', plural: 'subtemas' },
 };
 
 const COLUNAS_DO_RANKING = 'minmax(0, 1fr) 96px 56px';
@@ -66,10 +91,17 @@ export function ExploradorDaLente({
   codigo,
   mes,
   filtro,
+  aoAprofundar,
 }: {
   codigo: string;
   mes: string;
   filtro: FiltroDaLente;
+  /** Abre o modal de aprofundamento no recorte `(chave, valor)` mais o que a
+   *  seleção LOCAL acrescenta — o mesmo contrato do Explorador de veículos.
+   *
+   *  SÓ O N3 O CHAMA. As duas colunas de cima escolhem, como sempre: se as três
+   *  abrissem, nada recortaria o N3 e a última coluna perderia o gatilho. */
+  aoAprofundar: (chave: string, valor: string, extras?: Partial<FiltroDaLente>) => void;
 }) {
   //: OS DADOS COM A CHAVE DO PEDIDO de que são: a tela usa só os que batem
   //: com o mês e o filtro atuais, sem zerar nada dentro do efeito.
@@ -79,7 +111,23 @@ export function ExploradorDaLente({
     dados: Dados | null;
     erro?: string;
   } | null>(null);
-  const [selecao, definirSelecao] = useState<Selecao>({});
+  //: A SELEÇÃO LEVA A CHAVE DO RECORTE, pelo mesmo motivo dos dados — achado
+  //: da revisão do Codex no bloco de veículos (23/10/2026), e o molde tinha o
+  //: mesmo defeito. Sem isto: escolher "Governança" aqui, trocar o filtro da
+  //: TELA, e o chip continuava dizendo "Governança" sobre um recorte que pode
+  //: não ter esse atributo — com as colunas filtradas por algo que sumiu.
+  //:
+  //: E COM O APROFUNDAMENTO É PIOR: a seleção velha viajaria em `extras` e o
+  //: modal abriria num recorte que a tela não mostra mais.
+  //:
+  //: GUARDADA COM A CHAVE em vez de zerada num efeito: `definirSelecao({})`
+  //: dentro de `useEffect` dispararia outra renderização (e o lint cobra isso,
+  //: `set-state-in-effect`); comparar a chave na leitura não dispara nada.
+  const [escolha, definirEscolha] = useState<{ chave: string; selecao: Selecao }>({
+    chave,
+    selecao: {},
+  });
+  const selecao = escolha.chave === chave ? escolha.selecao : {};
 
   useEffect(() => {
     let ativo = true;
@@ -100,8 +148,23 @@ export function ExploradorDaLente({
 
   const atuais = carregados?.chave === chave ? carregados : null;
   const alternar = (nivel: Nivel, valor: string) =>
-    definirSelecao((atual) => ({ ...atual, [nivel]: atual[nivel] === valor ? undefined : valor }));
+    definirEscolha(() => ({
+      chave,
+      selecao: { ...selecao, [nivel]: selecao[nivel] === valor ? undefined : valor },
+    }));
+  const limpar = () => definirEscolha({ chave, selecao: {} });
   const escolhidos = (Object.keys(NOMES) as Nivel[]).filter((nivel) => selecao[nivel]);
+
+  //: O QUE A SELEÇÃO LOCAL ACRESCENTA AO RECORTE DO MODAL. A barra do N3 conta
+  //: a INTERSEÇÃO com o que está escolhido nas colunas de cima — mandar só o
+  //: subtema abriria o modal num recorte mais largo que a barra clicada. É o
+  //: mesmo defeito que o tier teve no bloco de veículos, e a mesma correção.
+  const recorteLocal = (): Partial<FiltroDaLente> => {
+    const extras: Partial<FiltroDaLente> = {};
+    if (selecao.n1) extras.atributo = selecao.n1;
+    if (selecao.n2) extras.tema_n2 = selecao.n2;
+    return extras;
+  };
 
   const filtrando = escolhidos.length ? (
     <div
@@ -134,7 +197,7 @@ export function ExploradorDaLente({
       ))}
       <button
         type="button"
-        onClick={() => definirSelecao({})}
+        onClick={limpar}
         style={{
           border: 'none',
           background: 'transparent',
@@ -165,50 +228,27 @@ export function ExploradorDaLente({
               <Legenda />
               {filtrando}
               <div className="grade grade--3" style={{ gap: 20 }}>
-                {(Object.keys(NOMES) as Nivel[]).map((nivel) => {
-                  const barras = barrasDoNivel(
-                    atuais.dados!.grupos,
-                    nivel,
-                    selecao,
-                    atuais.dados!.denominador,
-                  );
-                  return (
-                    <div key={nivel} style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'baseline',
-                          gap: 8,
-                          paddingBottom: 8,
-                          marginBottom: 8,
-                          borderBottom: '1px solid var(--borda)',
-                        }}
-                      >
-                        <h3 style={{ margin: 0, fontSize: 14, color: 'var(--cor-dos-titulos, var(--azul-mar))' }}>
-                          {NOMES[nivel]}
-                        </h3>
-                        <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
-                          {barras.length} {barras.length === 1 ? 'item' : 'itens'}
-                        </span>
-                      </div>
-                      <ColunasEmpilhadas
-                        semLegenda
-                        rotuloEmCima
-                        espessura={8}
-                        alturaMaxima={360}
-                        cores={CORES_DO_SENTIMENTO}
-                        vazio="Nada classificado neste nível no recorte."
-                        ativo={selecao[nivel]}
-                        aoClicar={(valor) => alternar(nivel, valor)}
-                        itens={barras.map((barra) => ({
-                          ...barra,
-                          detalhe: `${textoDoImpacto(barra.impacto)} pts`,
-                        }))}
-                      />
-                    </div>
-                  );
-                })}
+                {(Object.keys(NOMES) as Nivel[]).map((nivel) => (
+                  <ColunaDoNivel
+                    key={nivel}
+                    nivel={nivel}
+                    barras={barrasDoNivel(
+                      atuais.dados!.grupos,
+                      nivel,
+                      selecao,
+                      atuais.dados!.denominador,
+                    )}
+                    ativo={selecao[nivel]}
+                    //: CADA COLUNA TEM UM GESTO, como no bloco de veículos: as
+                    //: duas de cima ESCOLHEM, a última ABRE o modal daquele
+                    //: subtema — com o recorte local junto.
+                    aoClicar={
+                      nivel === 'n3'
+                        ? (valor) => aoAprofundar(CHAVE_DO_NIVEL.n3, valor, recorteLocal())
+                        : (valor) => alternar(nivel, valor)
+                    }
+                  />
+                ))}
               </div>
             </>
           ) : null}
@@ -225,6 +265,76 @@ export function ExploradorDaLente({
         </Secao>
       </ComFaixaDoTopo>
     </>
+  );
+}
+
+/** Uma coluna do explorador: o cabeçalho, as barras e o revelador.
+ *
+ *  COMPONENTE, E NÃO UM TRECHO DENTRO DO `.map` — cada coluna tem o SEU estado
+ *  de aberta/fechada, e hook não pode nascer dentro de um laço. É o mesmo
+ *  desenho do `Coluna` do Explorador de veículos, pelo mesmo motivo: revelar o
+ *  N2 não pode abrir o N1 junto.
+ */
+function ColunaDoNivel({
+  nivel,
+  barras,
+  ativo,
+  aoClicar,
+}: {
+  nivel: Nivel;
+  barras: BarraDoExplorador[];
+  ativo?: string;
+  aoClicar: (valor: string) => void;
+}) {
+  const lista = useListaRevelavel(barras.length);
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 8,
+          paddingBottom: 8,
+          marginBottom: 8,
+          borderBottom: '1px solid var(--borda)',
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: 14, color: 'var(--cor-dos-titulos, var(--azul-mar))' }}>
+          {NOMES[nivel]}
+        </h3>
+        {/* O TOTAL DO RECORTE, e não quantos estão à vista: é o mesmo número
+            que o botão promete abrir, e dizer "5 itens" com sete no recorte
+            faria o cabeçalho desmentir o botão logo abaixo. */}
+        <span style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+          {barras.length} {barras.length === 1 ? 'item' : 'itens'}
+        </span>
+      </div>
+      <div id={lista.idDaLista}>
+        <ColunasEmpilhadas
+          semLegenda
+          rotuloEmCima
+          espessura={8}
+          alturaMaxima={360}
+          cores={CORES_DO_SENTIMENTO}
+          vazio="Nada classificado neste nível no recorte."
+          ativo={ativo}
+          aoClicar={aoClicar}
+          itens={barras.slice(0, lista.quantidade).map((barra) => ({
+            ...barra,
+            detalhe: `${textoDoImpacto(barra.impacto)} pts`,
+          }))}
+        />
+      </div>
+      <RevelarItens
+        teto={lista.teto}
+        podeAbrir={lista.podeAbrir}
+        aberta={lista.aberta}
+        aoAlternar={lista.alternar}
+        controla={lista.idDaLista}
+        unidade={UNIDADE_DO_NIVEL[nivel]}
+      />
+    </div>
   );
 }
 

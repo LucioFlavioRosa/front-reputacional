@@ -1,14 +1,19 @@
-/** A lista de veículos que abre em 5: quantos aparecem, e se há o que abrir.
+/** Uma lista que abre em 5: quantos itens aparecem, e se há o que abrir.
  *
  *  SAIU DE DENTRO DE `DossieDaLente.tsx` (23/10/2026) porque dois arquivos
- *  passaram a usá-la: o Explorador de veículos, que é quem a desenha agora, e
- *  o dossiê, enquanto ainda tiver um ranking próprio. O corpo não mudou na
- *  mudança de lugar — só o teto, ver abaixo.
+ *  passaram a usá-la. O corpo não mudou na mudança de lugar — só o teto, ver
+ *  abaixo.
+ *
+ *  DEIXOU DE SER "DE VEÍCULOS" EM 24/10/2026, por pedido: *"quero que os
+ *  mesmos elementos sejam aplicados no bloco Atributos, temas estratégicos e
+ *  subtemas — quero deixar um comportamento padrão"*. Nada no corpo era de
+ *  veículo; o único trecho preso à dimensão era o RÓTULO do botão, que mora no
+ *  componente ao lado e agora recebe a unidade de quem o usa.
  */
 
 import { useId, useState } from 'react';
 
-/** O número de veículos que a lista mostra antes de alguém abrir — PEDIDO
+/** O número de itens que a lista mostra antes de alguém abrir — PEDIDO
  *  (21/10/2026, revisto em 23/10/2026). A tela abre em 5, e UM botão revela de
  *  uma vez todos os do recorte; o mesmo botão recolhe de volta.
  *
@@ -23,18 +28,18 @@ import { useId, useState } from 'react';
  *  fazia nos blocos antigos do dossiê. A rota do Explorador de veículos manda
  *  o mês agrupado inteiro, então o teto é o que o recorte tem — e o botão diz o
  *  número de verdade em vez de um 10 que não era o total de nada. */
-const QUANTIDADE_INICIAL_DE_VEICULOS = 5;
+const QUANTIDADE_INICIAL = 5;
 
-export function useListaDeVeiculos(total: number) {
+export function useListaRevelavel(total: number) {
   const teto = total;
-  const inicial = Math.min(QUANTIDADE_INICIAL_DE_VEICULOS, teto);
+  const inicial = Math.min(QUANTIDADE_INICIAL, teto);
   const [aberta, definirAberta] = useState(false);
   //: O ID DA LISTA QUE O BOTÃO CONTROLA, para o `aria-controls` — nasce aqui,
   //: e não no botão, porque quem desenha a lista é quem tem de pôr o id nela:
   //: `aria-expanded` sozinho anuncia "expandido" sem dizer o que foi
   //: expandido (achado da revisão do Codex, 23/10/2026).
   const idDaLista = useId();
-  //: COM 5 OU MENOS VEÍCULOS NO RECORTE não existe segunda tela para revelar:
+  //: COM 5 OU MENOS ITENS NO RECORTE não existe segunda tela para revelar:
   //: `podeAbrir` é falso e o botão não nasce. `aberta` segue ignorada nesse
   //: caso em vez de ser zerada, porque estreitar o recorte não deve fazer quem
   //: abriu a lista perder o que abriu.
