@@ -282,9 +282,17 @@ describe('clicar num estado', () => {
     render(<ExploradorDaLente codigo="imprensa" mes="2026-08" filtro={{}} aoAprofundar={aoAprofundar} />);
     await screen.findByText('UF · matérias');
 
-    //: O NOME DO GESTO, e não o conteúdo da linha: são quatro dados soltos, e o
-    //: `aria-label` é o que um leitor de tela anuncia.
-    await userEvent.click(screen.getByRole('button', { name: 'Abrir as 8 matérias de São Paulo' }));
+    const linha = screen.getByRole('button', {
+      name: /^Abrir as 8 matérias de São Paulo \(SP\)/,
+    });
+    //: O RÓTULO NOMEIA O GESTO *E* CARREGA OS DADOS DA LINHA — achado da
+    //: revisão do Codex (24/10/2026): `aria-label` em botão substitui o
+    //: conteúdo dele, e a primeira versão deste rótulo apagava a sigla, o
+    //: termômetro e o score de quem não vê a tela.
+    expect(linha.getAttribute('aria-label')).toBe(
+      'Abrir as 8 matérias de São Paulo (SP): termômetro -37, score 31',
+    );
+    await userEvent.click(linha);
 
     //: A SIGLA, que é o que a lista mostra — e o que o recorte do back casa nas
     //: duas formas (a coluna guarda "São Paulo").
@@ -317,7 +325,7 @@ describe('clicar num estado', () => {
     await userEvent.click(screen.getByRole('button', { name: /^Governança:/ }));
     await userEvent.click(screen.getByRole('button', { name: /^Ética:/ }));
     await userEvent.click(
-      screen.getByRole('button', { name: 'Abrir as 2 matérias de Rio de Janeiro' }),
+      screen.getByRole('button', { name: /^Abrir as 2 matérias de Rio de Janeiro \(RJ\)/ }),
     );
 
     expect(aoAprofundar).toHaveBeenCalledWith('uf', 'RJ', {

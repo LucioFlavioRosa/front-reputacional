@@ -9,7 +9,7 @@
  *  DOIS GESTOS, E CADA COLUNA TEM O SEU. Clicar num N1 ou num N2 FILTRA as
  *  outras colunas e o mapa (por pedido), e clicar de novo desfaz — o gráfico do
  *  próprio item continua inteiro, com ele em destaque. Clicar num N3 ou num
- *  ESTADO (a bolha ou a linha da lista) ABRE o modal das matérias daquele
+ *  ESTADO (a linha da lista, ou a bolha dele no mapa) ABRE o modal daquele
  *  recorte: são as duas folhas, e não teriam o que filtrar. A conta mora em
  *  `dominio/explorador`; o servidor manda o mês em grupos uma vez só, e o
  *  clique é soma no navegador.
@@ -268,7 +268,12 @@ export function ExploradorDaLente({
           titulo="Termômetro por UF"
           //: "N1 E N2", E NÃO MAIS "N1, N2 E N3" — o N3 deixou de filtrar
           //: quando passou a abrir o modal, e o mapa não o recebe mais.
-          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1 e N2 acima; clicar num estado — na bolha ou na lista — abre o detalhe das matérias."
+          //: A LISTA VEM PRIMEIRO NA FRASE, e isto é da revisão do Codex: a
+          //: bolha é atalho de mouse (um `<g>` de SVG não entra na navegação
+          //: por teclado) e nem todo valor desta lista tem bolha — estado
+          //: estrangeiro não tem sigla e fica fora do mapa. A linha é o
+          //: caminho que existe sempre e para todo mundo.
+          subtitulo="A cor da bola é o termômetro (NSS) das matérias de cada estado; o tamanho é o score da UF, de 0 a 100. Segue o filtro de N1 e N2 acima; clicar num estado na lista — ou na bolha dele no mapa — abre o detalhe das matérias."
         >
           {!atuais ? <Carregando /> : null}
           {atuais?.dados ? (
@@ -486,14 +491,31 @@ function MapaDoTermometro({
                 {/* A LINHA INTEIRA É O BOTÃO, e não um link no nome do estado:
                     o alvo é a linha que a pessoa está lendo, com 44px de
                     altura, e o número ao lado dela entra no mesmo clique.
-                    `aria-label` NOMEIA O GESTO, porque o conteúdo da linha são
-                    quatro dados soltos — um leitor de tela anunciaria "Santa
-                    Catarina SC 123 matérias +18 71" sem dizer o que o clique
-                    faz. */}
+
+                    O `aria-label` NOMEIA O GESTO *E* CARREGA OS QUATRO DADOS,
+                    e é achado da revisão do Codex (24/10/2026): rótulo em
+                    botão SUBSTITUI o conteúdo dele para o leitor de tela, e a
+                    minha primeira versão dizia só "Abrir as 8 matérias de São
+                    Paulo" — a sigla, o termômetro e o score desapareciam de
+                    quem não vê a linha, e esta lista é o único lugar do painel
+                    onde esses dois números aparecem escritos.
+
+                    SEM O RÓTULO seria pior ao contrário: o nome viria dos
+                    quatro dados soltos ("São Paulo SP · 8 matérias +18 71"),
+                    sem dizer o que o clique faz. */}
               <button
                 type="button"
                 onClick={() => aoAprofundarNaUf(uf.uf)}
-                aria-label={`Abrir as ${numero(uf.total)} ${uf.total === 1 ? 'matéria' : 'matérias'} de ${NOME_DA_UF[uf.uf] ?? rotuloDeAbrangencia(uf.uf)}`}
+                aria-label={
+                  `Abrir as ${numero(uf.total)} ${uf.total === 1 ? 'matéria' : 'matérias'} ` +
+                  //: A SIGLA ENTRE PARÊNTESES SÓ QUANDO ELA EXISTE: estado
+                  //: estrangeiro não tem sigla e chega com o nome do
+                  //: fornecedor, e "de Comunidade de Madrid (Comunidade de
+                  //: Madrid)" seria o nome dito duas vezes.
+                  `de ${NOME_DA_UF[uf.uf] ?? rotuloDeAbrangencia(uf.uf)}` +
+                  `${NOME_DA_UF[uf.uf] ? ` (${uf.uf})` : ''}: ` +
+                  `termômetro ${uf.nss > 0 ? '+' : ''}${uf.nss}, score ${uf.score}`
+                }
                 style={{
                   display: 'grid',
                   gridTemplateColumns: COLUNAS_DO_RANKING,
