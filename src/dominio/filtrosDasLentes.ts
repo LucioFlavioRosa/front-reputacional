@@ -114,8 +114,8 @@ export const FILTROS_DAS_LENTES: Record<
       temaEstrategico,
       subtemaN3,
       uf,
-      //: O campo `autor` está vazio nas três lentes hoje, então este filtro não
-      //: acha nada. O que importa no servidor é a declaração com
+      //: O filtro acompanha a dimensão `autor`, mesmo quando a carga não traz
+      //: valores. O que importa no servidor é a declaração com
       //: `nomeia_o_diretorio=True`, que protege o nome do autor na Base.
       { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
       subtemaDoFornecedor,

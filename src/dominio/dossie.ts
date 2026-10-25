@@ -167,7 +167,7 @@ export interface Dossie {
    *  o explica, na ordem em que a lente se explica. Ver `OndeEstaACausa`.
    *
    *  Vazio na lente que não vem de menção, e no mês em que nenhuma
-   *  dimensão explica nada. Quais dimensões cada lente tem está em
+   *  dimensão explica nada. As dimensões de cada lente estão em
    *  `DIMENSOES_POR_LENTE`, no back.
    *
    *  O MERCADO ESTAVA NESTA FRASE, e era premissa errada: ele é o clipping da

@@ -666,19 +666,20 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
 /** As três lentes de clipping, numa lista só.
  *
  *  O critério: lente de clipping ganha os dois Exploradores (o de veículos e
- *  o de N1 › N2 › N3) e dispensa o cartão da nota, Drivers e riscos e Temas
- *  mais falados — os Exploradores respondem o que aqueles três respondiam.
+ *  o de N1 › N2 › N3) e dispensa os blocos "Drivers e riscos" e "Temas mais
+ *  falados", além do cartão da nota — os Exploradores respondem o que aqueles
+ *  três respondiam.
  *
- *  Sociedade e Clientes não entram: Clientes não tem menção na carga, e o que
- *  a Sociedade guarda em `veiculo` é perfil e rede, não veículo de imprensa.
- *  Ranquear isso como "Top veículos", ao lado de tier, diria algo errado
- *  sobre o dado.
+ *  Sociedade e Clientes não entram. A lente Clientes não tem menções na
+ *  carga; a Sociedade tem `veiculo`, mas o que ela guarda ali é perfil e
+ *  rede, não veículo de imprensa — ranquear isso como "Top veículos", ao lado
+ *  de tier, diria algo errado sobre o dado.
  *
- *  A decisão é da TELA. A rota do Explorador de veículos não tem guarda de
- *  lente (responde para qualquer lente não interna), e
- *  `LENTES_COM_VEICULO_E_TIER`, no back, governa só a lista de últimas
- *  matérias. Quem decide onde o bloco aparece é esta lista — e um card vazio
- *  ainda é um card.
+ *  A decisão é desta tela, e não do servidor: a rota do Explorador de
+ *  veículos responde para qualquer lente que não seja interna, e não consulta
+ *  esta lista; `LENTES_COM_VEICULO_E_TIER`, no back, governa só a lista de
+ *  últimas matérias. Quem decide onde o bloco aparece é esta lista — e um
+ *  card vazio ainda é um card.
  */
 const LENTES_DE_CLIPPING = ['imprensa', 'mercado', 'institucional'];
 

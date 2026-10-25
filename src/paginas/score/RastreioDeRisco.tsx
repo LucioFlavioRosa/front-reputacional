@@ -6,14 +6,14 @@
  *  recortes), a Bites e a Approach quando ela subir — sem uma linha de código por
  *  fornecedor. Fonte nova que mapeie tema aparece aqui sozinha.
  *
- *  O QUE É UM INCIDENTE: menção negativa. A agenda de clima tenso contava
- *  até 24/10/2026 e saiu — o Risk Tracking conta Clipei, Bites e Approach, e
- *  as agendas ficam no CRM. A fórmula não mudou; mudou a fonte do dado.
+ *  O QUE É UM INCIDENTE: menção negativa. A agenda de clima tenso não entra
+ *  enquanto a política do servidor mantiver a fonte interna fora dos KPIs
+ *  (`app/dominio/fontes_do_score.py`): o Risk Tracking conta Clipei, Bites e
+ *  Approach, e as agendas ficam no CRM.
  *
- *  O mecanismo da agenda continua no servidor, coberto por teste, e a política
- *  que o desliga mora em `app/dominio/fontes_do_score.py`. Quando ela voltar,
- *  as duas famílias vão separadas na tabela: uma notícia e uma reunião não se
- *  leem do mesmo jeito.
+ *  O mecanismo da agenda continua no servidor, coberto por teste. Quando a
+ *  política voltar a admiti-la, as duas famílias vão separadas na tabela:
+ *  uma notícia e uma reunião não se leem do mesmo jeito.
  *
  *  A TELA DESCE DO MACRO AO MICRO, que é o pedido do dono do produto:
  *
