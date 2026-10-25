@@ -2,16 +2,23 @@
  *
  *  O CAMINHO É UM SÓ, e é o que torna esta aba possível: tema (N3) do cadastro →
  *  `tema_risco` → risco → severidade. Tudo o que entra na plataforma por assunto
- *  chega a risco pelo mesmo vínculo, e por isso a aba cruza CRM, Clipei (nas duas
- *  lentes), Bites e Approach quando ela subir — sem uma linha de código por
+ *  chega a risco pelo mesmo vínculo, e por isso a aba cruza a Clipei (nos dois
+ *  recortes), a Bites e a Approach quando ela subir — sem uma linha de código por
  *  fornecedor. Fonte nova que mapeie tema aparece aqui sozinha.
  *
- *  O QUE É UM INCIDENTE, nas duas famílias que não se somam por acidente: menção
- *  NEGATIVA (imprensa, redes) e agenda de clima TENSO (CRM). A `interacao` não
- *  tem sentimento — tem clima, que é o Termômetro da tela do CRM —, e clima
- *  negativo é a única leitura de "incidente" que o CRM oferece sem inventar
- *  campo. As duas vão separadas na tabela, porque uma notícia e uma reunião não
- *  se leem do mesmo jeito.
+ *  O QUE É UM INCIDENTE, hoje: menção NEGATIVA. Só isso.
+ *
+ *  A AGENDA DE CLIMA TENSO SAIU, por decisão do dono do produto (24/10/2026):
+ *  "o Risk Tracking deve contar apenas dados de Clipei, Bites e Approach (com
+ *  a opção de filtro por fonte), e não deve contar as agendas". A fórmula não
+ *  mudou — mudou a fonte do dado, e por isso os meses que tinham reunião de
+ *  clima tenso passam a contar menos incidentes.
+ *
+ *  O MECANISMO DA AGENDA CONTINUA NO SERVIDOR, inteiro e coberto por teste,
+ *  para o dia em que o produto quiser as interações de volta: a política mora
+ *  num lugar só (`app/dominio/fontes_do_score.py`, no back). Quando ela voltar,
+ *  as duas famílias vão separadas na tabela — uma notícia e uma reunião não se
+ *  leem do mesmo jeito.
  *
  *  A TELA DESCE DO MACRO AO MICRO, que é o pedido do dono do produto:
  *

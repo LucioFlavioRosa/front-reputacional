@@ -9,11 +9,15 @@
  *  variação de risco, que meses a janela de análise marca, e o que escrever numa
  *  coluna que a fonte daquela linha não tem.
  *
- *  A ABA CRUZA CINCO FONTES — CRM, Clipei, Clipei investidores, Bites e
+ *  A ABA CRUZA AS FONTES EXTERNAS — Clipei, Clipei investidores, Bites e
  *  Approach quando subir — porque todas falam a mesma língua: tema (N3) do
  *  cadastro → `tema_risco` → risco → severidade. SÓ CRUZA O QUE É PADRONIZADO,
  *  e é por isso que o que uma fonte só tem (tier, engajamento, veículo, link)
  *  aparece dizendo de quem é, em vez de aparecer vazio.
+ *
+ *  O CRM NÃO ESTÁ MAIS AQUI, e esta nota dizia que estava (achado da revisão
+ *  do Codex). As agendas do CRM ficam no CRM — decisão do dono do produto em
+ *  24/10/2026 —, e os KPIs Reputacionais se medem de Clipei, Bites e Approach.
  */
 
 import type { Janela } from '@/dominio/janelaDaJornada';

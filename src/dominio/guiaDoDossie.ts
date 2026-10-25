@@ -38,6 +38,13 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
 export const GUIA_DO_BLOCO: Record<string, string> = {
   'Evolução mensal':
     'Recorte com o volume de menções classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como o sentimento medido nesta lente muda ao longo do tempo.',
+  //: OS TRÊS VERBETES DE AGENDA FICAM, de propósito. Hoje os painéis que eles
+  //: explicam só nascem da fonte interna, que saiu dos KPIs — então ninguém os
+  //: alcança. Apagá-los seria exatamente o retrabalho que o dono do produto
+  //: pediu para evitar: eles voltam a ser alcançados no dia em que a política
+  //: do back voltar a admitir a fonte interna, e verbete é texto, não código
+  //: morto que pesa no bundle de quem não abre o painel. (Sugestão da revisão
+  //: do Codex de remover; recusada por esta razão.)
   'Termômetro das agendas, mês a mês':
     'Recorte com os resultados das interações classificadas como propositivo, neutro e reativo, mês a mês. Essa visão permite acompanhar como o termômetro das nossas interações evolui ao longo do tempo.',
   'Eventograma · mercado e rating':
