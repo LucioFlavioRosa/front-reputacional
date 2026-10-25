@@ -50,11 +50,6 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     oQueE:
       'O que se soma de cada menção de rede social: uma unidade, o engajamento bruto, o logaritmo dele, ou o peso do cargo de quem postou.',
     comoAfeta:
-      //: O "interação de CRM" SAIU DESTA FRASE em 24/10/2026: os KPIs
-      //: Reputacionais se medem de Clipei, Bites e Approach, e as agendas do
-      //: CRM ficam no CRM. A frase afirmava que elas contam no índice, e isso
-      //: deixou de ser verdade na `0112`/`0114` — era texto de tela mentindo
-      //: sobre o dado, na tela de quem calibra o índice.
       'Decide se um post que viralizou conta como um ou como dez mil. No bruto, um único post grande pode definir o mês sozinho; no logaritmo, ele pesa mais que os outros sem apagá-los; em "cada menção vale 1", só o número de vozes conta. Vale para Sociedade digital e Clientes: onde a fonte não tem engajamento — o clipping de imprensa — cada menção vale 1, e a lente continua no índice como estava.',
     exemplo:
       'Um post com 50 mil interações vale 1 na régua simples, cerca de 5,7 no logaritmo, e 50 mil no bruto — onde ele passa a valer mais que todo o resto do mês somado.',

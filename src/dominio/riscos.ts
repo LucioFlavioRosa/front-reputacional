@@ -14,10 +14,6 @@
  *  cadastro → `tema_risco` → risco → severidade. SÓ CRUZA O QUE É PADRONIZADO,
  *  e é por isso que o que uma fonte só tem (tier, engajamento, veículo, link)
  *  aparece dizendo de quem é, em vez de aparecer vazio.
- *
- *  O CRM NÃO ESTÁ MAIS AQUI, e esta nota dizia que estava (achado da revisão
- *  do Codex). As agendas do CRM ficam no CRM — decisão do dono do produto em
- *  24/10/2026 —, e os KPIs Reputacionais se medem de Clipei, Bites e Approach.
  */
 
 import type { Janela } from '@/dominio/janelaDaJornada';

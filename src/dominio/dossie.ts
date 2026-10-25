@@ -146,9 +146,8 @@ export interface Dossie {
    * no contrato da rota. Os campos saem daqui junto, senão o tipo prometeria
    * algo que a resposta não traz. */
   /** O que está puxando a lente pra cima ou pra baixo, por atributo
-   *  reputacional. Vazio na LENTE INTERNA, que não vem de clipping — e hoje
-   *  não há nenhuma: a Institucional deixou de ler o CRM na `0111`/`0112`, e
-   *  estas duas linhas a nomeavam. */
+   *  reputacional. Vazio na lente interna, que não vem de clipping; hoje não
+   *  há nenhuma ativa. */
   drivers_e_riscos: Bloco;
   /** Os temas (Subcategoria da Clipei) mais falados do mês. Vazio na lente
    *  interna, que teria o bloco de temas dela lido do CRM. */
@@ -167,10 +166,9 @@ export interface Dossie {
   /** As abas de "onde está a causa": o mesmo mês cortado por cada dimensão que
    *  o explica, na ordem em que a lente se explica. Ver `OndeEstaACausa`.
    *
-   *  VAZIO na lente que não vem de menção, e no mês em que nenhuma dimensão
-   *  explica nada. ERA "vazio na Institucional, que tem zero menção": ela
-   *  passou a ser clipping na `0111`/`0112` e tem as cinco abas desde
-   *  21/10/2026 — ver `DIMENSOES_POR_LENTE` no back.
+   *  Vazio na lente que não vem de menção, e no mês em que nenhuma
+   *  dimensão explica nada. Quais dimensões cada lente tem está em
+   *  `DIMENSOES_POR_LENTE`, no back.
    *
    *  O MERCADO ESTAVA NESTA FRASE, e era premissa errada: ele é o clipping da
    *  Clipei recortado por público-alvo Investidores, com menção ingerida como a

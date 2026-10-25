@@ -8,12 +8,9 @@
  *  SEM FILTROS RÁPIDOS POR ENQUANTO, por pedido — a primeira versão é a busca e
  *  o período; os filtros por campo entram depois (o servidor já os aceita).
  *
- *  UMA SUBABA POR LENTE, as cinco com menções. A Institucional TEM base: ela
- *  recorta a imprensa pela lista de veículos institucionais, como o Mercado
- *  faz pela dele. Esta nota dizia "Institucional não tem menções — ela lê o
- *  CRM", e a subaba chegou a mostrar um cartão com essa frase no lugar da
- *  tabela; o cartão saiu quando a lente trocou de fonte, e o comentário ficou
- *  (achado da revisão do Codex). As agendas do CRM ficam no CRM.
+ *  UMA SUBABA POR LENTE, as cinco com menções. A Institucional recorta a
+ *  imprensa pela lista de veículos institucionais, como o Mercado faz pela
+ *  dele.
  *
  *  TODA CONTA É DO SERVIDOR: filtro, busca, ordem e página. A tela só pede e
  *  desenha — com milhares de menções por mês, filtrar no navegador seria

@@ -169,13 +169,10 @@ export function DossieDaLente({
   const mesesDaJornada = mesesMedidos(serieDestaLente);
 
   useEffect(() => {
-    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): buscar opções que a
-    // tela nem desenha seria uma chamada de rede sem efeito nenhum.
-    //
-    // ESTA LINHA DIZIA "a Institucional não tem recorte", e era falso desde
-    // 21/10/2026, quando ela entrou naquele mapa — hoje as cinco lentes estão
-    // lá, e a condição não exclui ninguém. Fica porque a lista é que manda:
-    // uma lente nova entra sem filtro até alguém declarar os dele.
+    // Só as lentes que têm filtro (`FILTROS_DAS_LENTES`): buscar opções que a
+    // tela nem desenha seria uma chamada de rede sem efeito. Hoje a condição
+    // não exclui ninguém, e fica porque é a lista que manda: lente nova entra
+    // sem filtro até alguém declarar os dela.
     if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
     const chave = `${lente}|${mes}`;
@@ -316,11 +313,7 @@ export function DossieDaLente({
 
           O PRIMEIRO CAMPO É O MÊS, e não mais "Últimos 3 meses": a Síntese é de
           um mês, e escolher outro aqui é o mesmo gesto de clicar no mês da
-          Jornada.
-
-          ESTA FRASE DIZIA que a Institucional não tem recorte e mostra só o
-          mês. Falso: ela entrou em `FILTROS_DAS_LENTES` em 21/10/2026, e desde
-          24/10 tem as mesmas dimensões da Imprensa. */}
+          Jornada. */}
       <BarraDeFiltroDaLente
         lente={lente}
         filtro={filtro}
@@ -436,8 +429,7 @@ function Conteudo({
           TELA — cada clique ia ao servidor e movia o dossiê inteiro (nota,
           KPIs, evolução, últimas matérias), e o painel clicado ficava com uma
           barra só, então era preciso desfazer o clique antes de trocar de
-          seleção. Ver `LENTES_DE_CLIPPING` para as medidas que trouxeram o
-          Mercado e a Institucional. */}
+          seleção. */}
       {LENTES_DE_CLIPPING.includes(dossie.codigo) ? (
         <ExploradorDeVeiculos
           key={`veiculos-${dossie.codigo}-${dossie.mes}`}
@@ -671,54 +663,22 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
   );
 }
 
-/** AS TRÊS LENTES DE CLIPPING — e é UMA lista, de propósito.
+/** As três lentes de clipping, numa lista só.
  *
- *  ERAM CINCO, nomeadas pelo que escondiam: `LENTES_COM_BLOCOS_DE_VEICULO`,
- *  `LENTES_SEM_DRIVERS`, `LENTES_SEM_TEMAS_MAIS_FALADOS`,
- *  `LENTES_SEM_CARTAO_DA_NOTA` e `LENTES_COM_EXPLORADOR`. Quatro diziam
- *  `['imprensa', 'mercado']` e a quinta `['imprensa', 'mercado',
- *  'institucional']` — e essa divergência de UM item não era desenho de
- *  ninguém: era o rastro de três decisões em dias diferentes. O que a tela
- *  mostrava para a Institucional, por causa dela, era um híbrido: o Explorador
- *  novo E os três blocos que o Explorador tinha substituído.
+ *  O critério: lente de clipping ganha os dois Exploradores (o de veículos e
+ *  o de N1 › N2 › N3) e dispensa o cartão da nota, Drivers e riscos e Temas
+ *  mais falados — os Exploradores respondem o que aqueles três respondiam.
  *
- *  O CRITÉRIO É UM SÓ, e agora está escrito uma vez: lente de clipping ganha os
- *  dois Exploradores (o de veículos e o de N1 › N2 › N3) e dispensa o cartão da
- *  nota, Drivers e riscos e Temas mais falados — porque os Exploradores
- *  respondem o que aqueles três respondiam, e melhor.
+ *  Sociedade e Clientes não entram: Clientes não tem menção na carga, e o que
+ *  a Sociedade guarda em `veiculo` é perfil e rede, não veículo de imprensa.
+ *  Ranquear isso como "Top veículos", ao lado de tier, diria algo errado
+ *  sobre o dado.
  *
- *  SOCIEDADE E CLIENTES NÃO ENTRAM, e não é esquecimento. Clientes não tem
- *  menção na carga; a Sociedade tem `veiculo`, mas o que ela guarda ali é
- *  perfil e rede ("deolhoemesteio"), não veículo de imprensa — ranquear isso
- *  como "Top veículos", ao lado de tier, diria algo errado sobre o dado. As
- *  duas seguem com o cartão da nota, Drivers e Temas, como sempre tiveram.
- *
- *  POR QUE A TELA DECIDE SOZINHA, e esta é a parte que eu já escrevi errado
- *  aqui: a rota do Explorador de veículos (`GET /{codigo}/explorador-de-
- *  veiculos`) NÃO tem guarda de lente — ela responde para qualquer lente que
- *  não seja interna. Os três cartões de veículo que o servidor governava por
- *  `LENTES_COM_VEICULO_E_TIER` saíram do dossiê em 23/10/2026, e hoje aquela
- *  constante governa UM lugar só, a lista de últimas matérias. Quem decide onde
- *  o bloco novo aparece é esta lista, e só ela — um card vazio ainda É um card.
- *
- *  POR QUE AS DUAS ÚLTIMAS ENTRARAM, que é o que faz esta lista ser esta:
- *
- *  O MERCADO (20/10/2026) tinha contra si o pedido do Jones (2026-10-02) de não
- *  ver "os mesmos veículos e tiers repetidos nas duas lentes". A medida desfez a
- *  premissa: ZERO dos 10 maiores veículos do Mercado estão no top 10 da Imprensa
- *  (o Valor Econômico é 1º no Mercado e 95º na Imprensa), o top da Imprensa é
- *  rádio local e o do Mercado é imprensa econômica inteiro, e o tier quase se
- *  inverte — 46,2% Tier 1 no Mercado contra 10,7% na Imprensa.
- *
- *  A INSTITUCIONAL tinha contra si "lê o CRM e volta vazia dali", e isso morreu
- *  na `0111`/`0112`: ela espelha a Clipei recortada pela subcategoria
- *  Institucional, o CRM dela foi aposentado com `ativo = false`, e
- *  `lente_e_interna` responde `false`. Ela entrou no Explorador em 21/10 e
- *  ficou de fora das outras quatro listas até aqui.
- *
- *  O VOLUME DE MATÉRIA AINDA É BAIXO nas duas, e isso é cadastro de veículo por
- *  fazer (dono do produto, 24/10/2026) — não lente sem dado, e não razão para a
- *  tela ser diferente.
+ *  A decisão é da TELA. A rota do Explorador de veículos não tem guarda de
+ *  lente (responde para qualquer lente não interna), e
+ *  `LENTES_COM_VEICULO_E_TIER`, no back, governa só a lista de últimas
+ *  matérias. Quem decide onde o bloco aparece é esta lista — e um card vazio
+ *  ainda é um card.
  */
 const LENTES_DE_CLIPPING = ['imprensa', 'mercado', 'institucional'];
 
@@ -984,12 +944,9 @@ function Painel({
           // `BlocoSaida.cores` em `app/api/lentes.py`. Sem ela, cai nos tons de
           // positivo/neutro/negativo do design system.
           //
-          // HOJE NENHUMA LENTE MANDA, e esta linha dizia "hoje só a
-          // institucional": o servidor só manda o cor_hex do dicionário de
-          // clima para lente INTERNA (`lente_e_interna`), e a Institucional
-          // deixou de ser uma na `0111`/`0112`. O ramo fica porque a decisão é
-          // do servidor, não da tela — e volta sozinho se alguma lente voltar
-          // a ler o CRM.
+          // Hoje nenhuma lente manda: o servidor só manda `cor_hex` para lente
+          // INTERNA, e não há nenhuma ativa. O ramo fica porque a decisão é do
+          // servidor, não da tela.
           const [corPos, corNeu, corNeg] = bloco.cores.length
             ? bloco.cores
             : ['var(--ok-fg)', 'var(--cinza-1)', 'var(--erro-fg)'];

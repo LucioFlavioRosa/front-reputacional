@@ -29,14 +29,12 @@ export function rotuloDoVeiculo(lente: string): string {
   return 'Veículo';
 }
 
-/** AS TRÊS LENTES DE CLIPPING CHAMAM O AUTOR DE "Jornalista", e as outras de
- *  "Autor" — porque nas outras ele não é jornalista: na Sociedade é o perfil que
- *  a Approach manda dentro da linha da planilha.
+/** As três lentes de clipping chamam o autor de "Jornalista"; as outras, de
+ *  "Autor" — nelas ele não é jornalista: na Sociedade é o perfil que a
+ *  Approach manda dentro da linha da planilha.
  *
- *  A INSTITUCIONAL FALTAVA AQUI (achado da revisão do Codex, 24/10/2026): ela
- *  ganhou a dimensão `autor` rotulada "Jornalista" no dossiê e no cartão "Onde
- *  está a causa", e a Base dela continuava escrevendo "Autor" na mesma coluna.
- *  O mesmo dado com dois nomes em duas telas da mesma lente. */
+ *  Tem de bater com a dimensão `autor` do dossiê e do cartão "Onde está a
+ *  causa", senão o mesmo dado ganha dois nomes em duas telas da mesma lente. */
 export function rotuloDoAutor(lente: string): string {
   return lente === 'imprensa' || lente === 'mercado' || lente === 'institucional'
     ? 'Jornalista'
