@@ -195,7 +195,7 @@ afterEach(() => {
 });
 
 describe('os blocos de veículo do dossiê', () => {
-  it.each(['imprensa', 'mercado'])('são desenhados na lente %s', async (lente) => {
+  it.each(['imprensa', 'mercado', 'institucional'])('são desenhados na lente %s', async (lente) => {
     obterDossieDaLente.mockResolvedValue(dossieCom(lente));
     await montarEAbrir(lente);
     for (const titulo of OS_BLOCOS) {
@@ -206,7 +206,11 @@ describe('os blocos de veículo do dossiê', () => {
     }
   });
 
-  it.each(['sociedade', 'clientes', 'institucional'])(
+  //: A INSTITUCIONAL SAIU DESTA LISTA em 24/10/2026 e entrou na de cima: ela é
+  //: lente de clipping desde a `0107`/`0108`. SOCIEDADE E CLIENTES FICAM, e por
+  //: razões diferentes — Clientes não tem menção na carga, e o que a Sociedade
+  //: guarda em `veiculo` é perfil e rede, não veículo de imprensa.
+  it.each(['sociedade', 'clientes'])(
     'NÃO são desenhados na lente %s, nem a moldura',
     async (lente) => {
       //: O servidor manda vazio para estas, mas aqui o dossiê vem PREENCHIDO de
@@ -263,12 +267,17 @@ describe('os blocos de veículo do dossiê', () => {
     expect(obterRecorteDaLente.mock.calls[0]).toContain('2026-09');
   });
 
-  it.each(['imprensa', 'mercado'])(
+  it.each(['imprensa', 'mercado', 'institucional'])(
     'a %s não desenha Drivers e riscos nem Temas mais falados — o Explorador tomou o lugar',
     async (lente) => {
       //: O MERCADO ENTROU AQUI em 20/10/2026, por pedido de paridade visual com
-      //: a Imprensa — mesmo motivo, mesma regra (ver `LENTES_SEM_DRIVERS` e
-      //: `LENTES_COM_EXPLORADOR` em `DossieDaLente.tsx`).
+      //: a Imprensa — mesmo motivo, mesma regra (ver `LENTES_DE_CLIPPING` em
+      //: `DossieDaLente.tsx`).
+      //:
+      //: E A INSTITUCIONAL EM 24/10/2026, fechando o híbrido que ela era: ela
+      //: tinha entrado na lista do Explorador em 21/10 e FICADO nas outras
+      //: quatro, então a tela desenhava o Explorador novo E os três blocos que
+      //: ele substituiu. Este caso é o que trava as duas pontas juntas.
       obterDossieDaLente.mockResolvedValue(dossieCom(lente));
       await montarEAbrir(lente);
       await waitFor(() =>

@@ -10,10 +10,14 @@
  *  "veículo" é a rede social, e o "autor" da Imprensa é o jornalista. O campo
  *  do servidor é o mesmo (`FiltroDaLente`); só o rótulo é da lente.
  *
- *  MERCADO TEM OS MESMOS FILTROS DA IMPRENSA, por pedido: a nota dele vem das
- *  matérias da imprensa econômica (Clipei), que trazem concessionária, tier e
- *  sentimento como as outras. INSTITUCIONAL NÃO TEM FILTRO AQUI: lê o CRM, que
- *  tem os filtros dele, e o servidor não aceita recorte para ela.
+ *  AS TRÊS LENTES DE CLIPPING TÊM OS MESMOS FILTROS, por pedido: as notas delas
+ *  vêm da mesma Clipei, recortada por subcategorias diferentes do Cadastro de
+ *  Instituições, e as colunas que chegam são as mesmas.
+ *
+ *  ESTE PARÁGRAFO DIZIA "INSTITUCIONAL NÃO TEM FILTRO AQUI: lê o CRM, que tem
+ *  os filtros dele, e o servidor não aceita recorte para ela" — e dizia isso
+ *  duas linhas acima de uma tabela que já dava filtros a ela, desde que a
+ *  `0107`/`0108` a transformaram em lente de clipping.
  */
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
@@ -104,19 +108,44 @@ export const FILTROS_DAS_LENTES: Record<
       subtemaDoFornecedor,
     ],
   },
+  //: AS TRÊS DE CLIPPING TÊM AS MESMAS DIMENSÕES, por pedido (24/10/2026): é a
+  //: mesma Clipei, recortada por subcategorias diferentes do Cadastro de
+  //: Instituições — mesma ingestão, mesmas colunas preenchidas.
+  //:
+  //: AS DUAS TINHAM UM SUBCONJUNTO até aqui (sem Subtema N3, UF, Jornalista e
+  //: Subtema do fornecedor), e isso não vinha de desenho: a Institucional
+  //: ficava FORA do mapa inteiro de quando lia o CRM (lá não havia menção para
+  //: filtrar), e o Mercado entrou com o mínimo. Como os avançados não têm mais
+  //: barra, a diferença se via só na busca inteligente: a mesma pergunta achava
+  //: na Imprensa e não achava nas outras duas.
   mercado: {
     rapidos: [concessionaria, tier, sentimento],
-    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
+    avancados: [
+      { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
+      pilar,
+      temaEstrategico,
+      subtemaN3,
+      uf,
+      //: O JORNALISTA VEM, E HOJE NÃO ACHA NADA: o campo `autor` está vazio nas
+      //: TRÊS lentes (a Imprensa tem 25.457 menções e zero autores). A paridade
+      //: literal foi decisão do dono do produto, e o lado do servidor que
+      //: importa é a declaração com `nomeia_o_diretorio=True`, que protege o
+      //: nome do autor na Base das Lentes.
+      { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
+      subtemaDoFornecedor,
+    ],
   },
-  //: A INSTITUCIONAL TEM AS MESMAS DIMENSÕES DO MERCADO, porque é a mesma
-  //: Clipei recortada por outra subcategoria — mesma ingestão, mesmas colunas
-  //: preenchidas. Ela ficava FORA deste mapa de quando lia o CRM: lá não havia
-  //: menção para filtrar. Com a `0111`/`0112` ela virou lente de clipping, o
-  //: back passou a oferecer as opções (`LENTES_DA_BASE`, `LENTES_DA_CONSULTA`,
-  //: `DIMENSOES_DO_APROFUNDAMENTO`) e a tela seguiu sem barra nenhuma.
   institucional: {
     rapidos: [concessionaria, tier, sentimento],
-    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
+    avancados: [
+      { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
+      pilar,
+      temaEstrategico,
+      subtemaN3,
+      uf,
+      { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
+      subtemaDoFornecedor,
+    ],
   },
   sociedade: {
     rapidos: [
