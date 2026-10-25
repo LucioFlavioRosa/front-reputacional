@@ -17,7 +17,7 @@
  *  ESTE PARÁGRAFO DIZIA "INSTITUCIONAL NÃO TEM FILTRO AQUI: lê o CRM, que tem
  *  os filtros dele, e o servidor não aceita recorte para ela" — e dizia isso
  *  duas linhas acima de uma tabela que já dava filtros a ela, desde que a
- *  `0107`/`0108` a transformaram em lente de clipping.
+ *  `0111`/`0112` a transformaram em lente de clipping.
  */
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';

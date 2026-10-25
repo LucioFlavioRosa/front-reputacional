@@ -207,7 +207,7 @@ describe('os blocos de veículo do dossiê', () => {
   });
 
   //: A INSTITUCIONAL SAIU DESTA LISTA em 24/10/2026 e entrou na de cima: ela é
-  //: lente de clipping desde a `0107`/`0108`. SOCIEDADE E CLIENTES FICAM, e por
+  //: lente de clipping desde a `0111`/`0112`. SOCIEDADE E CLIENTES FICAM, e por
   //: razões diferentes — Clientes não tem menção na carga, e o que a Sociedade
   //: guarda em `veiculo` é perfil e rede, não veículo de imprensa.
   it.each(['sociedade', 'clientes'])(

@@ -169,9 +169,13 @@ export function DossieDaLente({
   const mesesDaJornada = mesesMedidos(serieDestaLente);
 
   useEffect(() => {
-    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
-    // tem recorte, e buscar opções que a tela nem desenha
-    // seria uma chamada de rede sem efeito nenhum.
+    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): buscar opções que a
+    // tela nem desenha seria uma chamada de rede sem efeito nenhum.
+    //
+    // ESTA LINHA DIZIA "a Institucional não tem recorte", e era falso desde
+    // 21/10/2026, quando ela entrou naquele mapa — hoje as cinco lentes estão
+    // lá, e a condição não exclui ninguém. Fica porque a lista é que manda:
+    // uma lente nova entra sem filtro até alguém declarar os dele.
     if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
     const chave = `${lente}|${mes}`;
@@ -312,7 +316,11 @@ export function DossieDaLente({
 
           O PRIMEIRO CAMPO É O MÊS, e não mais "Últimos 3 meses": a Síntese é de
           um mês, e escolher outro aqui é o mesmo gesto de clicar no mês da
-          Jornada. A Institucional não tem recorte, e mostra só o mês. */}
+          Jornada.
+
+          ESTA FRASE DIZIA que a Institucional não tem recorte e mostra só o
+          mês. Falso: ela entrou em `FILTROS_DAS_LENTES` em 21/10/2026, e desde
+          24/10 tem as mesmas dimensões da Imprensa. */}
       <BarraDeFiltroDaLente
         lente={lente}
         filtro={filtro}
@@ -685,12 +693,13 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  *  como "Top veículos", ao lado de tier, diria algo errado sobre o dado. As
  *  duas seguem com o cartão da nota, Drivers e Temas, como sempre tiveram.
  *
- *  POR QUE A TELA TEM CONDIÇÃO PRÓPRIA, e não só o servidor: um card vazio
- *  ainda É um card. O back já devolve esses blocos vazios para quem não tem o
- *  campo (`LENTES_COM_VEICULO_E_TIER`, em `casos_de_uso/leitura_das_lentes`),
- *  mas a tela também precisa não desenhar a MOLDURA, e não só o conteúdo. OS
- *  DOIS LADOS ANDAM JUNTOS: só aqui esconde a moldura e deixa o servidor
- *  calculando de graça; só lá deixa a moldura na tela com o bloco vazio dentro.
+ *  POR QUE A TELA DECIDE SOZINHA, e esta é a parte que eu já escrevi errado
+ *  aqui: a rota do Explorador de veículos (`GET /{codigo}/explorador-de-
+ *  veiculos`) NÃO tem guarda de lente — ela responde para qualquer lente que
+ *  não seja interna. Os três cartões de veículo que o servidor governava por
+ *  `LENTES_COM_VEICULO_E_TIER` saíram do dossiê em 23/10/2026, e hoje aquela
+ *  constante governa UM lugar só, a lista de últimas matérias. Quem decide onde
+ *  o bloco novo aparece é esta lista, e só ela — um card vazio ainda É um card.
  *
  *  POR QUE AS DUAS ÚLTIMAS ENTRARAM, que é o que faz esta lista ser esta:
  *
@@ -702,7 +711,7 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
  *  inverte — 46,2% Tier 1 no Mercado contra 10,7% na Imprensa.
  *
  *  A INSTITUCIONAL tinha contra si "lê o CRM e volta vazia dali", e isso morreu
- *  na `0107`/`0108`: ela espelha a Clipei recortada pela subcategoria
+ *  na `0111`/`0112`: ela espelha a Clipei recortada pela subcategoria
  *  Institucional, o CRM dela foi aposentado com `ativo = false`, e
  *  `lente_e_interna` responde `false`. Ela entrou no Explorador em 21/10 e
  *  ficou de fora das outras quatro listas até aqui.
@@ -978,7 +987,7 @@ function Painel({
           // HOJE NENHUMA LENTE MANDA, e esta linha dizia "hoje só a
           // institucional": o servidor só manda o cor_hex do dicionário de
           // clima para lente INTERNA (`lente_e_interna`), e a Institucional
-          // deixou de ser uma na `0107`/`0108`. O ramo fica porque a decisão é
+          // deixou de ser uma na `0111`/`0112`. O ramo fica porque a decisão é
           // do servidor, não da tela — e volta sozinho se alguma lente voltar
           // a ler o CRM.
           const [corPos, corNeu, corNeg] = bloco.cores.length
