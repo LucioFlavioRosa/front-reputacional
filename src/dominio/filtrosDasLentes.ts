@@ -10,10 +10,9 @@
  *  "veículo" é a rede social, e o "autor" da Imprensa é o jornalista. O campo
  *  do servidor é o mesmo (`FiltroDaLente`); só o rótulo é da lente.
  *
- *  MERCADO TEM OS MESMOS FILTROS DA IMPRENSA, por pedido: a nota dele vem das
- *  matérias da imprensa econômica (Clipei), que trazem concessionária, tier e
- *  sentimento como as outras. INSTITUCIONAL NÃO TEM FILTRO AQUI: lê o CRM, que
- *  tem os filtros dele, e o servidor não aceita recorte para ela.
+ *  As três lentes de clipping têm os mesmos filtros: as notas delas vêm da
+ *  mesma Clipei, recortada por subcategorias diferentes do Cadastro de
+ *  Instituições, e as colunas que chegam são as mesmas.
  */
 
 import type { FiltroDaLente, OpcoesDeFiltroDaLente } from '@/api/cliente';
@@ -104,19 +103,35 @@ export const FILTROS_DAS_LENTES: Record<
       subtemaDoFornecedor,
     ],
   },
+  //: As três de clipping têm as mesmas dimensões: é a mesma Clipei, recortada
+  //: por subcategorias diferentes do Cadastro de Instituições — mesma
+  //: ingestão, mesmas colunas preenchidas.
   mercado: {
     rapidos: [concessionaria, tier, sentimento],
-    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
+    avancados: [
+      { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
+      pilar,
+      temaEstrategico,
+      subtemaN3,
+      uf,
+      //: O filtro acompanha a dimensão `autor`, mesmo quando a carga não traz
+      //: valores. O que importa no servidor é a declaração com
+      //: `nomeia_o_diretorio=True`, que protege o nome do autor na Base.
+      { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
+      subtemaDoFornecedor,
+    ],
   },
-  //: A INSTITUCIONAL TEM AS MESMAS DIMENSÕES DO MERCADO, porque é a mesma
-  //: Clipei recortada por outra subcategoria — mesma ingestão, mesmas colunas
-  //: preenchidas. Ela ficava FORA deste mapa de quando lia o CRM: lá não havia
-  //: menção para filtrar. Com a `0111`/`0112` ela virou lente de clipping, o
-  //: back passou a oferecer as opções (`LENTES_DA_BASE`, `LENTES_DA_CONSULTA`,
-  //: `DIMENSOES_DO_APROFUNDAMENTO`) e a tela seguiu sem barra nenhuma.
   institucional: {
     rapidos: [concessionaria, tier, sentimento],
-    avancados: [{ chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' }, pilar, temaEstrategico],
+    avancados: [
+      { chave: 'veiculo', rotulo: 'Veículo', de: 'veiculos' },
+      pilar,
+      temaEstrategico,
+      subtemaN3,
+      uf,
+      { chave: 'autor', rotulo: 'Jornalista', de: 'autores' },
+      subtemaDoFornecedor,
+    ],
   },
   sociedade: {
     rapidos: [

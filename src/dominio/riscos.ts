@@ -9,7 +9,7 @@
  *  variação de risco, que meses a janela de análise marca, e o que escrever numa
  *  coluna que a fonte daquela linha não tem.
  *
- *  A ABA CRUZA CINCO FONTES — CRM, Clipei, Clipei investidores, Bites e
+ *  A ABA CRUZA AS FONTES EXTERNAS — Clipei, Clipei investidores, Bites e
  *  Approach quando subir — porque todas falam a mesma língua: tema (N3) do
  *  cadastro → `tema_risco` → risco → severidade. SÓ CRUZA O QUE É PADRONIZADO,
  *  e é por isso que o que uma fonte só tem (tier, engajamento, veículo, link)

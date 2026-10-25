@@ -169,9 +169,10 @@ export function DossieDaLente({
   const mesesDaJornada = mesesMedidos(serieDestaLente);
 
   useEffect(() => {
-    // SÓ AS LENTES QUE TÊM FILTRO (`FILTROS_DAS_LENTES`): a Institucional não
-    // tem recorte, e buscar opções que a tela nem desenha
-    // seria uma chamada de rede sem efeito nenhum.
+    // Só as lentes que têm filtro (`FILTROS_DAS_LENTES`): buscar opções que a
+    // tela nem desenha seria uma chamada de rede sem efeito. Hoje a condição
+    // não exclui ninguém, e fica porque é a lista que manda: lente nova entra
+    // sem filtro até alguém declarar os dela.
     if (!LENTES_COM_FILTRO.includes(lente)) return;
     let ativo = true;
     const chave = `${lente}|${mes}`;
@@ -312,7 +313,7 @@ export function DossieDaLente({
 
           O PRIMEIRO CAMPO É O MÊS, e não mais "Últimos 3 meses": a Síntese é de
           um mês, e escolher outro aqui é o mesmo gesto de clicar no mês da
-          Jornada. A Institucional não tem recorte, e mostra só o mês. */}
+          Jornada. */}
       <BarraDeFiltroDaLente
         lente={lente}
         filtro={filtro}
@@ -415,9 +416,9 @@ function Conteudo({
 
   return (
     <>
-      {/* SEM O CARTÃO DA NOTA NA IMPRENSA E NO MERCADO, por pedido: a Jornada
+      {/* SEM O CARTÃO DA NOTA NAS LENTES DE CLIPPING, por pedido: a Jornada
           do índice, logo acima, já mostra a nota e a variação da lente. */}
-      {LENTES_SEM_CARTAO_DA_NOTA.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? null : <Destaque dossie={dossie} />}
       <Evolucao dossie={dossie} aoAprofundarNoMes={aoAprofundarNoMes} />
 
       {/* A DIMENSÃO DE VEÍCULO EM UM BLOCO SÓ (23/10/2026, por pedido), no
@@ -428,9 +429,8 @@ function Conteudo({
           TELA — cada clique ia ao servidor e movia o dossiê inteiro (nota,
           KPIs, evolução, últimas matérias), e o painel clicado ficava com uma
           barra só, então era preciso desfazer o clique antes de trocar de
-          seleção. Ver `LENTES_COM_BLOCOS_DE_VEICULO` para a medida que trouxe
-          o Mercado. */}
-      {LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
+          seleção. */}
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? (
         <ExploradorDeVeiculos
           key={`veiculos-${dossie.codigo}-${dossie.mes}`}
           codigo={dossie.codigo}
@@ -454,21 +454,21 @@ function Conteudo({
           lista traz o painel.
 
           A LENTE QUE NÃO TEM O BLOCO continua com o cartão: o servidor manda
-          o painel para quem tem tier, e não é só Imprensa e Mercado que o
+          o painel para quem tem tier, e não é só as de clipping que o
           recebem. */}
-      {painelDeTier1 && !LENTES_COM_BLOCOS_DE_VEICULO.includes(dossie.codigo) ? (
+      {painelDeTier1 && !LENTES_DE_CLIPPING.includes(dossie.codigo) ? (
         <CartaoDoPainel painel={painelDeTier1} filtro={filtro} aoAprofundar={aoAprofundar} />
       ) : null}
 
-      {/* SEM DRIVERS E RISCOS NA IMPRENSA, por pedido: o popup da Evolução
-          (N1 › N2 › N3) já responde de onde vem o sentimento do mês. */}
-      {LENTES_SEM_DRIVERS.includes(dossie.codigo) ? null : (
+      {/* SEM DRIVERS E RISCOS NAS LENTES DE CLIPPING, por pedido: o popup da
+          Evolução (N1 › N2 › N3) já responde de onde vem o sentimento do mês. */}
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? null : (
         <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
       )}
       {/* N1 › N2 › N3 E O MAPA POR UF, por pedido, no lugar de "Drivers e
           riscos" e "Temas mais falados": os três níveis da taxonomia lado a
           lado, que se filtram com um clique, e o termômetro por estado. */}
-      {LENTES_COM_EXPLORADOR.includes(dossie.codigo) ? (
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? (
         <ExploradorDaLente
           key={`explorador-${dossie.codigo}-${dossie.mes}`}
           codigo={dossie.codigo}
@@ -480,7 +480,7 @@ function Conteudo({
       {/* CLICÁVEL: a barra de um tema abre o aprofundamento dele, e DENTRO do
           painel a primeira aba é o Subtema — que é onde "Saneamento básico"
           deixa de ser um rótulo e passa a dizer o que aconteceu. */}
-      {LENTES_SEM_TEMAS_MAIS_FALADOS.includes(dossie.codigo) ? null : (
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? null : (
         <BlocoAmplo
           titulo="Temas mais falados"
           bloco={dossie.temas_mais_falados}
@@ -663,54 +663,27 @@ function AvisoDeIlustracao({ dossie }: { dossie: Dossie }) {
   );
 }
 
-/** AS LENTES QUE DESENHAM OS BLOCOS DE VEÍCULO: a rosca de volume por tier, o
- *  par top/termômetro por veículo, e a lista de últimas matérias.
+/** As três lentes de clipping, numa lista só.
  *
- *  POR QUE A TELA TEM CONDIÇÃO PRÓPRIA, e não só o servidor: um card vazio
- *  ainda É um card. O back já devolve esses blocos vazios para quem não tem o
- *  campo (`LENTES_COM_VEICULO_E_TIER` em `app/api/lentes.py`), mas a tela
- *  também precisa não desenhar a MOLDURA, e não só o conteúdo.
+ *  O critério: lente de clipping ganha os dois Exploradores (o de veículos e
+ *  o de N1 › N2 › N3) e dispensa os blocos "Drivers e riscos" e "Temas mais
+ *  falados", além do cartão da nota — os Exploradores respondem o que aqueles
+ *  três respondiam.
  *
- *  ERA SÓ A IMPRENSA, e a restrição era de tela — pedido do Jones (2026-10-02),
- *  que não quis ver os mesmos veículos e tiers repetidos nas duas lentes. A
- *  medida desfez a premissa: ZERO dos 10 maiores veículos do Mercado estão no
- *  top 10 da Imprensa (o Valor Econômico é 1º no Mercado e 95º na Imprensa), o
- *  top da Imprensa é rádio local e o do Mercado é imprensa econômica inteiro, e
- *  o tier quase se inverte — 46,2% Tier 1 no Mercado contra 10,7% na Imprensa.
- *  O motivo completo está na declaração do lado do servidor.
+ *  Sociedade e Clientes não entram. A lente Clientes não tem menções na
+ *  carga; a Sociedade tem `veiculo`, mas o que ela guarda ali é perfil e
+ *  rede, não veículo de imprensa — ranquear isso como "Top veículos", ao lado
+ *  de tier, diria algo errado sobre o dado.
  *
- *  PARA VOLTAR: tire `'mercado'` daqui E de `LENTES_COM_VEICULO_E_TIER` no
- *  back. Só aqui esconderia a moldura e deixaria o servidor calculando de
- *  graça; só lá deixaria a moldura na tela com o bloco vazio dentro.
+ *  A decisão é desta tela, e não do servidor: a rota do Explorador de
+ *  veículos responde para qualquer lente que não seja interna, e não consulta
+ *  esta lista; `LENTES_COM_VEICULO_E_TIER`, no back, governa só a lista de
+ *  últimas matérias. Quem decide onde o bloco aparece é esta lista — e um
+ *  card vazio ainda é um card.
  */
-const LENTES_COM_BLOCOS_DE_VEICULO = ['imprensa', 'mercado'];
-//: O MERCADO ENTROU AQUI (20/10/2026, por pedido): ele é clipping recortado
-//: por público-alvo Investidores, não CRM — o mesmo motivo que já valia para
-//: a Imprensa. O Explorador, logo abaixo, é quem toma o lugar de Drivers e
-//: Temas para as duas.
-const LENTES_SEM_DRIVERS = ['imprensa', 'mercado'];
-//: A IMPRENSA E O MERCADO TROCARAM "Temas mais falados" pelo card N1 › N2 ›
-//: N3, por pedido (Mercado em 20/10/2026, mesmo motivo da Imprensa).
-const LENTES_SEM_TEMAS_MAIS_FALADOS = ['imprensa', 'mercado'];
-//: O MERCADO ENTROU AQUI (20/10/2026, por pedido de paridade visual com a
-//: Imprensa): `GET /{codigo}/explorador` já respondia para ele sem mudança
-//: nenhuma no backend.
-//:
-//: E A INSTITUCIONAL ENTROU EM 21/10/2026, consertando uma exclusão que ficou
-//: velha. Ela estava fora porque "lê o CRM e volta vazia dali" — a rota
-//: devolve `grupos=[]` para lente interna (`lente_e_interna`). Isso deixou de
-//: ser verdade com a `0111`/`0112`: a Institucional passou a recortar a
-//: imprensa pela lista de veículos, o CRM foi aposentado, e `lente_e_interna`
-//: passou a responder `false` para ela — o explorador RESPONDE. O back já a
-//: tinha habilitado (`LENTES_DA_CONSULTA` e `DIMENSOES_DO_APROFUNDAMENTO`, com
-//: o comentário "não há razão para a Institucional ficar de fora de uma tela
-//: que as outras duas lentes de clipping já têm"); era a tela que não a
-//: desenhava, e o back calculava para ninguém. Achado de revisão.
-const LENTES_COM_EXPLORADOR = ['imprensa', 'mercado', 'institucional'];
+const LENTES_DE_CLIPPING = ['imprensa', 'mercado', 'institucional'];
 
 /* -- 1. o destaque ------------------------------------------------------------- */
-
-const LENTES_SEM_CARTAO_DA_NOTA = ['imprensa', 'mercado'];
 
 function Destaque({ dossie }: { dossie: Dossie }) {
   const delta =
@@ -968,10 +941,13 @@ function Painel({
           const [pos, neu, neg] = bloco.legenda.length
             ? bloco.legenda
             : ['Positivo', 'Neutro', 'Negativo'];
-          // A COR, QUANDO O SERVIDOR MANDA (hoje só a institucional, com o
-          // mesmo cor_hex do dicionário de clima que pinta o Painel), VENCE o
-          // tom genérico — ver `BlocoSaida.cores` em `app/api/lentes.py`. Sem
-          // ela, cai nos tons de positivo/neutro/negativo do design system.
+          // A COR, QUANDO O SERVIDOR MANDA, VENCE o tom genérico — ver
+          // `BlocoSaida.cores` em `app/api/lentes.py`. Sem ela, cai nos tons de
+          // positivo/neutro/negativo do design system.
+          //
+          // Hoje nenhuma lente manda: o servidor só manda `cor_hex` para lente
+          // INTERNA, e não há nenhuma ativa. O ramo fica porque a decisão é do
+          // servidor, não da tela.
           const [corPos, corNeu, corNeg] = bloco.cores.length
             ? bloco.cores
             : ['var(--ok-fg)', 'var(--cinza-1)', 'var(--erro-fg)'];

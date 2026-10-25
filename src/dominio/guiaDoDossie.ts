@@ -38,6 +38,9 @@ export const GUIA_DO_DESTAQUE: Record<string, string> = {
 export const GUIA_DO_BLOCO: Record<string, string> = {
   'Evolução mensal':
     'Recorte com o volume de menções classificadas como positivo, neutro e negativo, mês a mês. Essa visão mostra como o sentimento medido nesta lente muda ao longo do tempo.',
+  //: Os três verbetes de agenda ficam. Os painéis que eles explicam só nascem
+  //: da fonte interna, que hoje está fora dos KPIs, e voltam a ser alcançados
+  //: quando a política do back voltar a admiti-la.
   'Termômetro das agendas, mês a mês':
     'Recorte com os resultados das interações classificadas como propositivo, neutro e reativo, mês a mês. Essa visão permite acompanhar como o termômetro das nossas interações evolui ao longo do tempo.',
   'Eventograma · mercado e rating':

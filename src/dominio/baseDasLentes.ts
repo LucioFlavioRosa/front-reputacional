@@ -29,8 +29,16 @@ export function rotuloDoVeiculo(lente: string): string {
   return 'Veículo';
 }
 
+/** As três lentes de clipping chamam o autor de "Jornalista"; as outras, de
+ *  "Autor" — nelas ele não é jornalista: na Sociedade é o perfil que a
+ *  Approach manda dentro da linha da planilha.
+ *
+ *  Tem de bater com a dimensão `autor` do dossiê e do cartão "Onde está a
+ *  causa", senão o mesmo dado ganha dois nomes em duas telas da mesma lente. */
 export function rotuloDoAutor(lente: string): string {
-  return lente === 'imprensa' || lente === 'mercado' ? 'Jornalista' : 'Autor';
+  return lente === 'imprensa' || lente === 'mercado' || lente === 'institucional'
+    ? 'Jornalista'
+    : 'Autor';
 }
 
 export interface CampoDaBase {

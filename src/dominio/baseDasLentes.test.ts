@@ -26,7 +26,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { classeDasLinhasDaColuna, colunaQuebraLinha } from '@/dominio/baseDasLentes';
+import { classeDasLinhasDaColuna, colunaQuebraLinha, rotuloDoAutor } from '@/dominio/baseDasLentes';
 
 describe('o limite de linhas das colunas de texto longo', () => {
   it('a MATÉRIA para em três linhas, que é mais que a média dos títulos', () => {
@@ -63,5 +63,26 @@ describe('o limite de linhas das colunas de texto longo', () => {
     //: o certo para ele, e é o que ele já tinha.
     expect(classeDasLinhasDaColuna('Link')).toBeUndefined();
     expect(colunaQuebraLinha('Link')).toBe(false);
+  });
+});
+
+describe('como o autor se chama em cada lente', () => {
+  it.each(['imprensa', 'mercado', 'institucional'])(
+    'na %s ele e o JORNALISTA, porque e o autor do cadastro',
+    (lente) => {
+      //: AS TRES LENTES DE CLIPPING sao o mesmo export da Clipei, recortado por
+      //: subcategorias diferentes do Cadastro de Instituicoes: o utor ali e o
+      //: jornalista. A Institucional faltava aqui -- achado da revisao do Codex
+      //: em 24/10/2026 --, e a Base dela escrevia "Autor" na mesma coluna que o
+      //: dossie e o cartao "Onde esta a causa" chamavam de "Jornalista".
+      expect(rotuloDoAutor(lente)).toBe('Jornalista');
+    },
+  );
+
+  it.each(['sociedade', 'clientes'])('na %s ele e o AUTOR, e nao e jornalista', (lente) => {
+    //: A CONTRAPROVA: na Sociedade o valor e o perfil que a Approach manda
+    //: dentro da linha da planilha ("deolhoemesteio"), nao gente do cadastro --
+    //: e e por isso que ele tambem nao entra na protecao do diretorio.
+    expect(rotuloDoAutor(lente)).toBe('Autor');
   });
 });

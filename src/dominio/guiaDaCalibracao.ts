@@ -50,7 +50,7 @@ export const GUIA_DA_CALIBRACAO: Record<string, VerbeteDoParametro> = {
     oQueE:
       'O que se soma de cada menção de rede social: uma unidade, o engajamento bruto, o logaritmo dele, ou o peso do cargo de quem postou.',
     comoAfeta:
-      'Decide se um post que viralizou conta como um ou como dez mil. No bruto, um único post grande pode definir o mês sozinho; no logaritmo, ele pesa mais que os outros sem apagá-los; em "cada menção vale 1", só o número de vozes conta. Vale para Sociedade digital e Clientes: onde a fonte não tem engajamento — clipping de imprensa, interação de CRM — cada menção vale 1, e a lente continua no índice como estava.',
+      'Decide se um post que viralizou conta como um ou como dez mil. No bruto, um único post grande pode definir o mês sozinho; no logaritmo, ele pesa mais que os outros sem apagá-los; em "cada menção vale 1", só o número de vozes conta. Vale para Sociedade digital e Clientes: onde a fonte não tem engajamento — o clipping de imprensa — cada menção vale 1, e a lente continua no índice como estava.',
     exemplo:
       'Um post com 50 mil interações vale 1 na régua simples, cerca de 5,7 no logaritmo, e 50 mil no bruto — onde ele passa a valer mais que todo o resto do mês somado.',
     aviso:
