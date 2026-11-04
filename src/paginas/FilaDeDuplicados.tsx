@@ -318,17 +318,18 @@ export function FilaDeDuplicados() {
     definirPagina(1);
   }
 
-  //: A GUARDA DE ORDEM SAIU JUNTO COM A RELEITURA POR DECISÃO.
+  //: A GUARDA DE ORDEM, E AGORA ELA GUARDA ALGO.
   //:
-  //: Ela existia porque três decisões seguidas deixavam três cargas no ar, e a
-  //: primeira a voltar ressuscitaria o que as outras resolveram. Com a busca
-  //: rodando UMA VEZ, há um chamador só e não há corrida — e guarda que não
-  //: guarda nada é comentário fingindo ser código. Se um dia a tela ganhar um
-  //: "atualizar", a guarda volta com ele; o desenho está na `FilaDeRevisao`.
-  //: A GUARDA DE ORDEM, que o cabeçalho previu que voltaria "se um dia a tela
-  //: ganhar um atualizar". Ganhou: o estado se relê a cada mudança de catálogo, e
-  //: duas mudanças seguidas deixam duas leituras no ar — a primeira a voltar não
-  //: é a mais nova.
+  //: Ela saiu quando a releitura por decisão saiu: com um chamador só não havia
+  //: corrida, e guarda que não guarda nada é comentário fingindo ser código. O
+  //: comentário de então previu o que a traria de volta — "se um dia a tela
+  //: ganhar um atualizar" —, e é o que aconteceu: o estado se relê a cada mudança
+  //: de catálogo, duas mudanças seguidas deixam duas leituras no ar, e a primeira
+  //: a voltar não é a mais nova. Vale também para a leitura da ABERTURA, que é a
+  //: mais lenta e pode voltar depois de uma do barramento.
+  //:
+  //: PELA LISTA NÃO VALE: ela continua sendo lida UMA vez. O desenho é o da
+  //: `FilaDeRevisao`.
   const leituraMaisNova = useRef(0);
 
   //: A LEITURA DO ESTADO, de todos os caminhos. NUNCA REJEITA: quem a chama já

@@ -27,6 +27,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
+import type { EstadoDaFilaDeDuplicados } from '@/api/cliente';
 import { catalogoMudou } from '@/dominio/sincronizacao';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 
@@ -177,6 +178,40 @@ it('o cadastro que muda com a tela ABERTA atualiza o aviso, e SO o aviso', async
   expect(estadoDaFilaDeDuplicados).toHaveBeenCalledTimes(2);
   //: A LISTA NÃO FOI RELIDA, e o par decidido não voltaria se tivesse sido.
   expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
+});
+
+it('a leitura ANTIGA do estado que volta depois NAO sobrescreve a nova', async () => {
+  /** A GUARDA DE ORDEM, que esta tela já teve e perdeu quando a releitura por
+   *  decisão saiu. Ela voltou com a assinatura do catálogo, e sem teste era
+   *  código que eu afirmava funcionar sem prova.
+   *
+   *  O CENÁRIO É O REAL, e não hipótese: a leitura da ABERTURA é a que mais
+   *  demora (vai à rede junto com a lista), e uma mudança de catálogo logo depois
+   *  dispara a segunda. Se a primeira voltar por último, a tela volta a dizer "em
+   *  dia" sobre um cadastro que acabou de mudar — o aviso desaparece sozinho. */
+  let responderAPrimeira!: (estado: EstadoDaFilaDeDuplicados) => void;
+  vi.mocked(estadoDaFilaDeDuplicados).mockReturnValueOnce(
+    new Promise((resolver) => {
+      responderAPrimeira = resolver;
+    }),
+  );
+  //: A SEGUNDA (a do barramento) responde na hora, e diz que o cadastro mudou.
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue({
+    calculado_em: new Date().toISOString(),
+    desatualizado: true,
+  });
+
+  render(<FilaDeDuplicados />);
+  act(() => catalogoMudou.avisar());
+  await waitFor(() => expect(estadoDaFilaDeDuplicados).toHaveBeenCalledTimes(2));
+
+  //: E SÓ AGORA a da abertura volta, dizendo "em dia" — a resposta velha.
+  await act(async () => {
+    responderAPrimeira({ calculado_em: new Date().toISOString(), desatualizado: false });
+  });
+
+  expect(await screen.findByText(/O cadastro mudou depois do último pareamento/))
+    .toBeTruthy();
 });
 
 it('decidir o ULTIMO par com busca digitada nao deixa frase orfa', async () => {
@@ -355,9 +390,11 @@ it('depois de responder, a fila NAO e relida', async () => {
   //: e depois só atualizar a lista?".
   //:
   //: NÃO PRECISA. O efeito de cada decisão é local e determinado, então a lista
-  //: nova sai de `semOCadastro`/`semOPar` — o servidor devolveria a mesma coisa
-  //: depois de 7,4 s de recálculo (medido: ~3.962 cadastros comparados par a par
-  //: com `difflib`), e eram 7,4 s POR DECISÃO, com 209 pares a decidir.
+  //: nova sai de `semOCadastro`/`semOPar` e o servidor devolveria a mesma coisa.
+  //: O que fechou a questão na época foi o CUSTO — 7,4 s por decisão, com 209
+  //: pares a decidir, recalculando ~3.962 cadastros par a par com `difflib` —, e
+  //: a `0118` tirou esse custo da rota. O que dispensa a releitura hoje é o
+  //: RESULTADO, e é isto que este teste prende.
   //:
   //: A VERSÃO ANTERIOR DESTE TESTE exigia a segunda chamada. Ela estava certa
   //: para o desenho de ontem e virou o oposto do que se quer: cada chamada aqui é
