@@ -396,8 +396,11 @@ export function ExploradorDeVeiculos({
  *
  *  A CONTAGEM É DA LISTA INTEIRA, e não das cinco visíveis: ela é a resposta a
  *  "quanto existe aqui", que é outra pergunta que "quanto estou vendo" — essa o
- *  botão "Ver todos os N" responde. */
-function Coluna({
+ *  botão "Ver todos os N" responde.
+ *
+ *  EXPORTADA (03/11/2026) para o "Tracking dos cargos dos autores", que é o
+ *  mesmo molde de colunas lado a lado: uma cópia divergiria no primeiro ajuste. */
+export function Coluna({
   titulo,
   quantos,
   children,

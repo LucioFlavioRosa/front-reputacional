@@ -62,6 +62,7 @@ import { mesesMedidos, serieDaLente } from '@/dominio/janelaDaJornada';
 import type { Janela } from '@/dominio/janelaDaJornada';
 import { ExploradorDaLente } from '@/paginas/score/ExploradorDaLente';
 import { ExploradorDeVeiculos } from '@/paginas/score/ExploradorDeVeiculos';
+import { TrackingDosCargos } from '@/paginas/score/TrackingDosCargos';
 import { PainelDaJornada } from '@/paginas/score/PainelDaJornada';
 import { BlocoExpansivel } from '@/componentes/BlocoExpansivel';
 import { FILTROS_DAS_LENTES, LENTES_COM_FILTRO } from '@/dominio/filtrosDasLentes';
@@ -462,7 +463,17 @@ function Conteudo({
 
       {/* SEM DRIVERS E RISCOS NAS LENTES DE CLIPPING, por pedido: o popup da
           Evolução (N1 › N2 › N3) já responde de onde vem o sentimento do mês. */}
-      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? null : (
+      {/* NA SOCIEDADE DIGITAL, "TRACKING DOS CARGOS DOS AUTORES" NO LUGAR DE
+          "Drivers e riscos" (03/11/2026, por pedido): quem fala nas redes,
+          pelo cargo, com o termômetro de cada um e os @ por trás da barra. */}
+      {LENTES_DE_CLIPPING.includes(dossie.codigo) ? null : dossie.codigo === 'sociedade' ? (
+        <TrackingDosCargos
+          key={`cargos-${dossie.codigo}-${dossie.mes}`}
+          codigo={dossie.codigo}
+          mes={dossie.mes}
+          filtro={filtro}
+        />
+      ) : (
         <BlocoAmplo titulo="Drivers e riscos" bloco={dossie.drivers_e_riscos} />
       )}
       {/* N1 › N2 › N3 E O MAPA POR UF, por pedido, no lugar de "Drivers e

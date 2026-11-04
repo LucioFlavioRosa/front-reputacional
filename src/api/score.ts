@@ -592,6 +592,43 @@ export function obterExploradorDeVeiculos(
   );
 }
 
+export interface GrupoDeCargo {
+  /** Nulo: a menção veio sem cargo — fica fora do gráfico e conta no rodapé. */
+  cargo: string | null;
+  /** Nulo: a menção veio sem autor, ou quem lê não vê o diretório. */
+  autor: string | null;
+  positivo: number;
+  neutro: number;
+  negativo: number;
+  peso_positivo: number;
+  peso_neutro: number;
+  peso_negativo: number;
+}
+
+export interface CargosDosAutores {
+  lente: string;
+  mes: string;
+  /** O denominador da nota do mês: impacto = 50 × (P − N) ÷ denominador. */
+  denominador: number;
+  /** Falso para quem não vê o diretório: os grupos vêm sem autor, e a tela
+   *  não oferece a lista de @. */
+  ve_autores: boolean;
+  grupos: GrupoDeCargo[];
+}
+
+/** Os grupos `(cargo, autor)` que o "Tracking dos cargos dos autores" soma na
+ *  tela — o mesmo contrato do Explorador de veículos: um pedido por mês e
+ *  filtro, e a soma por cargo e a lista de autores no navegador. */
+export function obterCargosDosAutores(
+  codigo: string,
+  mes: string,
+  filtro?: FiltroDaLente,
+): Promise<CargosDosAutores> {
+  return requisitar<CargosDosAutores>(
+    `/api/score/lentes/${codigo}/cargos-dos-autores?${paraConsultaDoFiltro(mes, filtro)}`,
+  );
+}
+
 /** As opções que o filtro desta lente pode oferecer neste mês. */
 export function obterOpcoesDeFiltroDaLente(
   codigo: string,
