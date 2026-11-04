@@ -17,8 +17,8 @@
  *  que ninguém olha.
  *
  *  O NÚMERO DE MENÇÕES está em cada lado de propósito: é ele que diz qual é a
- *  linha com história (`Valor Econômico` tem 86 de clipping; o handle tem 2), e
- *  é sempre a linha com história que sobrevive.
+ *  linha com história — o veículo vem do clipping com anos de menções, o handle
+ *  recém-criado com poucas —, e é sempre a linha com história que sobrevive.
  *
  *  A DECISÃO APARECE NA HORA, e a lista NÃO é relida — nem em segundo plano. O
  *  que se relê é só o estado do pareamento, quando o catálogo muda.
@@ -379,10 +379,13 @@ export function FilaDeDuplicados() {
   //: aviso velho até a próxima montagem. É justamente o caso que `desatualizado`
   //: existe para pegar.
   //:
-  //: SÓ O ESTADO, E NUNCA A LISTA: reler a lista ressuscitaria o par que esta
-  //: pessoa acabou de decidir, que é o motivo de a releitura ter saído (ver o
-  //: cabeçalho). O barramento já esquece o cache antes dos ouvintes, então a
-  //: leitura daqui é a de depois da escrita.
+  //: SÓ O ESTADO, E NUNCA A LISTA. Não é que reler ressuscitaria o par decidido —
+  //: `listar` lê `ator_distinto` ao vivo e exclui na leitura. É que o barramento
+  //: avisa em TODA escrita de catálogo, inclusive nas desta tela: reler a lista
+  //: aqui devolveria uma requisição por decisão, que é o custo que saiu.
+  //:
+  //: O barramento esquece o cache antes dos ouvintes, então a leitura daqui é a de
+  //: depois da escrita.
   useEffect(() => catalogoMudou.assinar(() => void lerOEstado()), [lerOEstado]);
 
   async function responder(
@@ -436,9 +439,11 @@ export function FilaDeDuplicados() {
           antes ? semOPar(antes, perfil.id, candidato.id) : antes,
         );
       }
-      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira; o
-      //: servidor devolveria a mesma coisa. Era o custo dela que pesava (7,4 s
-      //: na base real, antes da `0118`); hoje o que a dispensa é o resultado.
+      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira — o
+      //: servidor devolveria o mesmo, menos o que outra pessoa tenha decidido ou
+      //: um recálculo tenha acrescentado nesse meio. Era o custo da releitura que
+      //: pesava (7,4 s na base real, antes da `0118`); hoje o que a dispensa é o
+      //: resultado, e a defasagem que sobra é a do estado, que o aviso cobre.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {

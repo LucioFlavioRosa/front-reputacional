@@ -157,9 +157,9 @@ it('o cadastro que muda com a tela ABERTA atualiza o aviso, e SO o aviso', async
    *  deixava o aviso velho até a próxima montagem — justamente o caso que
    *  `desatualizado` existe para pegar.
    *
-   *  SÓ O ESTADO, E NUNCA A LISTA: reler a lista ressuscitaria o par que esta
-   *  pessoa acabou de decidir, que é o motivo de a releitura por decisão ter
-   *  saído desta tela.
+   *  SÓ O ESTADO, E NUNCA A LISTA. Não porque reler ressuscitaria o par decidido
+   *  — o back exclui na leitura —, e sim porque o barramento avisa em toda escrita
+   *  de catálogo, inclusive nas desta tela: seria uma requisição por decisão.
    *
    *  PELO BARRAMENTO, e não por um `fundirCadastro` dublado: é o cliente da API
    *  que avisa `catalogoMudou` em toda escrita de catálogo, e com ele dublado
@@ -391,7 +391,8 @@ it('depois de responder, a fila NAO e relida', async () => {
   //: e depois só atualizar a lista?".
   //:
   //: NÃO PRECISA. O efeito de cada decisão é local e determinado, então a lista
-  //: nova sai de `semOCadastro`/`semOPar` e o servidor devolveria a mesma coisa.
+  //: nova sai de `semOCadastro`/`semOPar` — e o servidor devolveria o mesmo, menos
+  //: o que outra pessoa decida ou um recálculo acrescente nesse meio.
   //: O que fechou a questão na época foi o CUSTO — 7,4 s por decisão, com 209
   //: pares a decidir, recalculando ~3.962 cadastros par a par com `difflib` —, e
   //: a `0118` tirou esse custo da rota. O que dispensa a releitura hoje é o
