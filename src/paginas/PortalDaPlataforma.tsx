@@ -31,6 +31,8 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'cargas', rotulo: 'Atualização das bases' },
 ];
 
+const ID_DO_PAINEL = 'painel-da-plataforma';
+
 /** `Acessos` saiu daqui, e a tela nova a substitui inteira.
  *
  *  A antiga mostrava o acesso como ele é GUARDADO — um `select` com onze papéis
@@ -81,7 +83,14 @@ export function PortalDaPlataforma({
               role="tab"
               id={`aba-${opcao.id}`}
               aria-selected={ativa}
-              aria-controls={`painel-${opcao.id}`}
+              // UM ID SÓ DE PAINEL, e não um por aba: só o painel ATIVO é
+              // montado, então `aria-controls={`painel-${opcao.id}`}` na aba
+              // inativa aponta para elemento que não existe no DOM — e um
+              // `aria-controls` quebrado é pior que nenhum, porque o leitor de
+              // tela anuncia uma relação e não acha o alvo. Aqui o painel tem
+              // id fixo e todas as abas apontam para ele, que é o que a relação
+              // de fato é: um painel cujo conteúdo troca.
+              aria-controls={ID_DO_PAINEL}
               // Só a aba ATIVA é tabulável; as setas mudam de aba. É o padrão
               // que o leitor de tela anuncia como "aba 1 de 2", em vez de dois
               // botões sem relação entre si.
@@ -113,7 +122,7 @@ export function PortalDaPlataforma({
         })}
       </div>
 
-      <div role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`} tabIndex={-1}>
+      <div role="tabpanel" id={ID_DO_PAINEL} aria-labelledby={`aba-${aba}`} tabIndex={-1}>
         {/* MONTADA E DESMONTADA, e não escondida com `display: none`. Cada tela
             carrega a sua lista ao montar; mantida viva atrás da outra aba, a
             trilha mostraria as cargas de quando a aba foi aberta — e esta aba

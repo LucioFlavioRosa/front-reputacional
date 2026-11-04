@@ -4,7 +4,7 @@
  *  `acesso.ts`, porque as rotas dele são de acesso e não da plataforma.
  */
 
-import type { CargaDaBase } from '@/dominio/cargasDasBases';
+import type { CargaDaBase, ResumoDaBase } from '@/dominio/cargasDasBases';
 import { requisitar } from './nucleo';
 
 /**
@@ -21,4 +21,17 @@ import { requisitar } from './nucleo';
  */
 export async function obterCargasDasBases(): Promise<CargaDaBase[]> {
   return requisitar<CargaDaBase[]>('/api/plataforma/cargas');
+}
+
+/**
+ * Quantas cargas cada base já teve, e quando foi a última.
+ *
+ * SEPARADA DA LISTAGEM de propósito, e isto é conserto de um defeito: a
+ * listagem tem teto de 200, e inferir "esta base nunca carregou" de "não veio
+ * nos 200" é falso quando outra base tem 200 eventos mais recentes. Este
+ * endpoint é agregado e não tem teto — é ele que autoriza a tela a dizer
+ * "sem registro".
+ */
+export async function obterResumoDasBases(): Promise<ResumoDaBase[]> {
+  return requisitar<ResumoDaBase[]>('/api/plataforma/cargas/resumo');
 }

@@ -15,8 +15,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { obterCargasDasBases } from '@/api/cliente';
-import type { Base, CargaDaBase } from '@/dominio/cargasDasBases';
+import { obterCargasDasBases, obterResumoDasBases } from '@/api/cliente';
+import type { Base, CargaDaBase, ResumoDaBase } from '@/dominio/cargasDasBases';
 import {
   BASES,
   NOME_DA_BASE,
@@ -30,14 +30,19 @@ type Filtro = Base | 'todas';
 
 export function AtualizacaoDasBases() {
   const [cargas, definirCargas] = useState<CargaDaBase[] | null>(null);
+  const [resumo, definirResumo] = useState<ResumoDaBase[] | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [filtro, definirFiltro] = useState<Filtro>('todas');
 
   useEffect(() => {
     let vivo = true;
-    obterCargasDasBases()
-      .then((lista) => {
-        if (vivo) definirCargas(lista);
+    //: AS DUAS JUNTAS: a lista é o histórico e o resumo é o estado. O "sem
+    //: registro" sai do resumo porque a lista tem teto — ver `basesSemRegistro`.
+    Promise.all([obterCargasDasBases(), obterResumoDasBases()])
+      .then(([lista, estado]) => {
+        if (!vivo) return;
+        definirCargas(lista);
+        definirResumo(estado);
       })
       .catch((falha: unknown) => {
         if (vivo) definirErro(falha instanceof Error ? falha.message : String(falha));
@@ -53,7 +58,7 @@ export function AtualizacaoDasBases() {
     return agruparPorLote(recorte);
   }, [cargas, filtro]);
 
-  const semRegistro = useMemo(() => (cargas ? basesSemRegistro(cargas) : []), [cargas]);
+  const semRegistro = useMemo(() => (resumo ? basesSemRegistro(resumo) : []), [resumo]);
 
   if (erro) {
     return (
@@ -63,7 +68,7 @@ export function AtualizacaoDasBases() {
     );
   }
 
-  if (!cargas) {
+  if (!cargas || !resumo) {
     return <p style={{ fontSize: 14, color: 'var(--cinza-2)' }}>Carregando…</p>;
   }
 
@@ -91,9 +96,13 @@ export function AtualizacaoDasBases() {
           }}
         >
           Sem registro de carga:{' '}
-          <strong>{semRegistro.map((base) => NOME_DA_BASE[base]).join(', ')}</strong>. A
-          trilha começa na implantação desta funcionalidade — carga anterior a ela
-          não foi registrada, e isso não significa que a base esteja vazia.
+          <strong>
+            {semRegistro
+              .map((base) => NOME_DA_BASE[base as Base] ?? base)
+              .join(', ')}
+          </strong>
+          . A trilha começa na implantação desta funcionalidade — carga anterior a
+          ela não foi registrada, e isso não significa que a base esteja vazia.
         </p>
       ) : null}
 
@@ -131,8 +140,12 @@ export function AtualizacaoDasBases() {
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--cinza-2)' }}>
               <th style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda)' }}>Base</th>
+              {/* "QUANDO" E NÃO "ÚLTIMA CARGA": a tabela é histórico, e a
+                  primeira linha de cada base é a última carga — as de baixo
+                  não são. O rótulo "última" pertence à Calibração, onde há uma
+                  linha por fonte. */}
               <th style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda)' }}>
-                Última carga
+                Quando
               </th>
               <th style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda)' }}>Quem</th>
               <th style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda)' }}>
@@ -164,19 +177,37 @@ export function AtualizacaoDasBases() {
                   ) : null}
                 </td>
                 <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda-fraca, #eee)' }}>
-                  <span title={new Date(grupo.quando).toLocaleString('pt-BR')}>
-                    {quantoTempo(grupo.quando)}
-                  </span>
+                  {quantoTempo(grupo.quando)}
+                  {/* A DATA EXATA EM TEXTO e não só no `title`: `title` não
+                      abre em toque e nem sempre é anunciado por leitor de
+                      tela, e esta é a informação que alguém copia para um
+                      e-mail. */}
+                  <div style={{ color: 'var(--cinza-2)', fontSize: 12 }}>
+                    {new Date(grupo.quando).toLocaleString('pt-BR')}
+                  </div>
                   {grupo.meses.length > 0 ? (
                     <div style={{ color: 'var(--cinza-2)', fontSize: 12 }}>
-                      {grupo.meses.length === 1
-                        ? `mês de ${mesPorExtenso(grupo.meses[0])}`
-                        : `${grupo.meses.length} meses`}
+                      {/* OS MESES NOMEADOS, e não "3 meses": a pergunta
+                          seguinte de quem lê é sempre "quais?", e o número
+                          obrigaria a abrir outra tela para responder. */}
+                      {grupo.meses.map(mesPorExtenso).join(', ')}
                     </div>
                   ) : null}
                 </td>
                 <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--borda-fraca, #eee)' }}>
-                  {rotuloDeQuem(grupo)}
+                  {(() => {
+                    const quem = rotuloDeQuem(grupo);
+                    return (
+                      <>
+                        <span>{quem.rotulo}</span>
+                        {quem.detalhe ? (
+                          <div style={{ color: 'var(--cinza-2)', fontSize: 12 }}>
+                            {quem.detalhe}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </td>
                 <td
                   style={{

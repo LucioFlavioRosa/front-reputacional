@@ -22,15 +22,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
+import type { CargaDaBase, ResumoDaBase } from '@/dominio/cargasDasBases';
 import { AtualizacaoDasBases } from '@/paginas/AtualizacaoDasBases';
 
 vi.mock('@/api/cliente', () => ({
   obterCargasDasBases: vi.fn(),
+  obterResumoDasBases: vi.fn(),
 }));
 
-const { obterCargasDasBases } = await import('@/api/cliente');
+const { obterCargasDasBases, obterResumoDasBases } = await import('@/api/cliente');
 
-function carga(ajustes: Record<string, unknown> = {}) {
+/** TIPADO E NÃO `as never`: o `as never` desligava a checagem do contrato
+ *  justamente nos testes, que são o lugar onde um campo esquecido ou uma
+ *  nulabilidade errada apareceria antes de ir ao ar. */
+function carga(ajustes: Partial<CargaDaBase> = {}): CargaDaBase {
   return {
     base: 'score',
     fonte: 'Clipei Imprensa',
@@ -46,12 +51,27 @@ function carga(ajustes: Record<string, unknown> = {}) {
   };
 }
 
+/** O resumo das quatro bases, com as que carregaram declaradas. */
+function resumoCom(...carregadas: string[]): ResumoDaBase[] {
+  return ['score', 'bonds', 'subtemas', 'agendas'].map((base) => ({
+    base,
+    cargas: carregadas.includes(base) ? 1 : 0,
+    ultima_em: carregadas.includes(base) ? new Date().toISOString() : null,
+  }));
+}
+
+function responder(cargas: CargaDaBase[], resumo = resumoCom('score')) {
+  vi.mocked(obterCargasDasBases).mockResolvedValue(cargas);
+  vi.mocked(obterResumoDasBases).mockResolvedValue(resumo);
+}
+
 beforeEach(() => {
   vi.mocked(obterCargasDasBases).mockReset();
+  vi.mocked(obterResumoDasBases).mockReset();
 });
 
 it('avisa quais bases nunca receberam carga', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([carga()] as never);
+  responder([carga()]);
 
   render(<AtualizacaoDasBases />);
 
@@ -64,12 +84,15 @@ it('avisa quais bases nunca receberam carga', async () => {
 });
 
 it('não avisa nada quando as quatro bases já carregaram', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
-    carga({ base: 'score' }),
-    carga({ base: 'bonds', fonte: null, lote_id: 'l2' }),
-    carga({ base: 'subtemas', fonte: null, lote_id: 'l3' }),
-    carga({ base: 'agendas', fonte: null, lote_id: null }),
-  ] as never);
+  responder(
+    [
+      carga({ base: 'score' }),
+      carga({ base: 'bonds', fonte: null, lote_id: 'l2' }),
+      carga({ base: 'subtemas', fonte: null, lote_id: 'l3' }),
+      carga({ base: 'agendas', fonte: null, lote_id: null }),
+    ],
+    resumoCom('score', 'bonds', 'subtemas', 'agendas'),
+  );
 
   render(<AtualizacaoDasBases />);
 
@@ -79,11 +102,24 @@ it('não avisa nada quando as quatro bases já carregaram', async () => {
   expect(screen.queryByText(/Sem registro de carga/i)).toBeNull();
 });
 
+it('o aviso de "sem registro" vem do RESUMO, não da lista', async () => {
+  //: O DEFEITO QUE ISTO COBRE: a lista tem teto de 200. Uma base com cargas só
+  //: antigas sai dela, e inferir dali que nunca carregou era afirmação falsa.
+  //: Aqui a lista traz só `score`, mas o resumo diz que `bonds` já carregou.
+  responder([carga({ base: 'score' })], resumoCom('score', 'bonds'));
+
+  render(<AtualizacaoDasBases />);
+
+  const aviso = await screen.findByText(/Sem registro de carga/i);
+  expect(aviso.textContent).not.toContain('Cotações dos bonds');
+  expect(aviso.textContent).toContain('Taxonomia de subtemas');
+});
+
 it('mostra as fontes irmãs do mesmo arquivo como UMA carga', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
+  responder([
     carga({ fonte: 'Clipei Imprensa', linhas: 25000 }),
     carga({ fonte: 'Clipei Mercado', linhas: 320 }),
-  ] as never);
+  ]);
 
   render(<AtualizacaoDasBases />);
 
@@ -94,9 +130,9 @@ it('mostra as fontes irmãs do mesmo arquivo como UMA carga', async () => {
 });
 
 it('mostra a carga de ZERO linha em vez de esconder', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
+  responder([
     carga({ linhas: 0, arquivo: 'recorte-vazio.xlsx' }),
-  ] as never);
+  ]);
 
   render(<AtualizacaoDasBases />);
 
@@ -104,18 +140,19 @@ it('mostra a carga de ZERO linha em vez de esconder', async () => {
   expect(screen.getByText('0')).toBeTruthy();
 });
 
-it('diz "fora da tela" com a origem quando não há autor', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
-    carga({ quem: null, origem: 'carga_do_pacote' }),
-  ] as never);
+it('diz "rotina automática" quando não há autor, com a origem no detalhe', async () => {
+  //: O jargão (`carga_do_pacote`) sai da coluna e vai para o detalhe: nulo não
+  //: é dado faltando, é carga por rotina — mas o nome de código não é rótulo.
+  responder([carga({ quem: null, origem: 'carga_do_pacote' })]);
 
   render(<AtualizacaoDasBases />);
 
-  await screen.findByText('fora da tela (carga_do_pacote)');
+  await screen.findByText('rotina automática');
+  expect(screen.getByText('origem: carga_do_pacote')).toBeTruthy();
 });
 
 it('troca o verbo na agenda antiga, que só sabe quem enviou', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
+  responder([
     carga({
       base: 'agendas',
       fonte: null,
@@ -124,18 +161,21 @@ it('troca o verbo na agenda antiga, que só sabe quem enviou', async () => {
       quem_enviou_o_arquivo: true,
       meses: [],
     }),
-  ] as never);
+  ]);
 
   render(<AtualizacaoDasBases />);
 
-  await screen.findByText('João Lima (enviou o arquivo)');
+  await screen.findByText('João Lima');
+  //: O DETALHE DIZ O QUE A COLUNA NÃO PODE AFIRMAR: o nome é de quem enviou, e
+  //: a hora é de quem confirmou.
+  expect(screen.getByText(/enviou o arquivo/)).toBeTruthy();
 });
 
 it('filtra por base sem ir à rede de novo', async () => {
-  vi.mocked(obterCargasDasBases).mockResolvedValue([
+  responder([
     carga({ base: 'score', arquivo: 'clipping.xlsx' }),
     carga({ base: 'bonds', fonte: null, lote_id: 'l2', arquivo: 'bdh.xlsx', meses: [] }),
-  ] as never);
+  ]);
 
   render(<AtualizacaoDasBases />);
   await screen.findByText('clipping.xlsx');

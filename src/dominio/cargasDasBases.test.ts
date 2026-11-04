@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CargaDaBase } from './cargasDasBases';
+import type { CargaDaBase, ResumoDaBase } from './cargasDasBases';
 import {
   agruparPorLote,
   basesSemRegistro,
@@ -90,8 +90,16 @@ describe('agruparPorLote', () => {
 });
 
 describe('basesSemRegistro', () => {
-  it('nomeia as bases que nunca apareceram na trilha', () => {
-    expect(basesSemRegistro([carga({ base: 'score' })])).toEqual([
+  function resumo(cargas: Partial<Record<string, number>>): ResumoDaBase[] {
+    return ['score', 'bonds', 'subtemas', 'agendas'].map((base) => ({
+      base,
+      cargas: cargas[base] ?? 0,
+      ultima_em: cargas[base] ? '2026-08-10T12:00:00Z' : null,
+    }));
+  }
+
+  it('nomeia as bases com zero carga', () => {
+    expect(basesSemRegistro(resumo({ score: 4 }))).toEqual([
       'bonds',
       'subtemas',
       'agendas',
@@ -99,17 +107,22 @@ describe('basesSemRegistro', () => {
   });
 
   it('não acusa nada quando as quatro já carregaram', () => {
-    const cargas = (['score', 'bonds', 'subtemas', 'agendas'] as const).map((base) =>
-      carga({ base }),
-    );
-
-    expect(basesSemRegistro(cargas)).toEqual([]);
+    expect(
+      basesSemRegistro(resumo({ score: 1, bonds: 1, subtemas: 1, agendas: 1 })),
+    ).toEqual([]);
   });
 
-  it('com a lista vazia, as quatro estão sem registro', () => {
+  it('com tudo em zero, as quatro estão sem registro', () => {
     //: É o estado do dia da implantação, e a tela tem de dizê-lo em vez de
     //: parecer que não há nada a mostrar.
-    expect(basesSemRegistro([])).toHaveLength(4);
+    expect(basesSemRegistro(resumo({}))).toHaveLength(4);
+  });
+
+  it('CONTA DO RESUMO e não da lista: base antiga fora do teto não é "sem registro"', () => {
+    //: O defeito que isto cobre: a listagem tem teto de 200, e uma base com
+    //: cargas só antigas sai dela. Inferir dali que nunca carregou era uma
+    //: afirmação falsa na tela. O resumo é agregado e não tem teto.
+    expect(basesSemRegistro(resumo({ bonds: 1 }))).not.toContain('bonds');
   });
 });
 
@@ -127,10 +140,20 @@ describe('quantoTempo', () => {
     expect(quantoTempo(quando, agora)).toBe(esperado);
   });
 
-  it('data no futuro não vira "há -3 dias"', () => {
-    //: Relógio do servidor adiantado é possível, e um número negativo na tela
-    //: pareceria defeito do painel.
-    expect(quantoTempo('2026-08-25T12:00:00Z', agora)).toBe('há instantes');
+  it('data no futuro NÃO afirma passado', () => {
+    //: Relógio de servidor adiantado é possível. "Há instantes" afirmaria que já
+    //: aconteceu; quem vê isto tem problema de infraestrutura, não de carga.
+    expect(quantoTempo('2026-08-25T12:00:00Z', agora)).toBe('com data futura');
+  });
+
+  it('conta por DATA e não por blocos de 24 h', () => {
+    //: Uma carga de ontem às 23h está a duas horas de distância e diria "hoje"
+    //: se a conta fosse por bloco — a única coisa que não pode ser lida errado
+    //: nesta tela.
+    const umaHoraDaManha = new Date(2026, 7, 20, 1, 0, 0);
+    const ontemAsOnze = new Date(2026, 7, 19, 23, 0, 0);
+
+    expect(quantoTempo(ontemAsOnze.toISOString(), umaHoraDaManha)).toBe('ontem');
   });
 
   it('data ilegível devolve travessão em vez de "Invalid Date"', () => {
@@ -139,29 +162,40 @@ describe('quantoTempo', () => {
 });
 
 describe('rotuloDeQuem', () => {
-  it('diz o nome quando a trilha tem o nome', () => {
+  it('diz o nome, sem detalhe, quando a trilha tem o nome', () => {
     expect(
       rotuloDeQuem({ quem: 'Maria', quem_enviou_o_arquivo: false, origem: 'api:planilha' }),
-    ).toBe('Maria');
+    ).toEqual({ rotulo: 'Maria' });
   });
 
   it('marca quem apenas ENVIOU o arquivo, para não afirmar que confirmou', () => {
-    expect(
-      rotuloDeQuem({ quem: 'Maria', quem_enviou_o_arquivo: true, origem: 'api:agendas' }),
-    ).toBe('Maria (enviou o arquivo)');
+    const quem = rotuloDeQuem({
+      quem: 'Maria',
+      quem_enviou_o_arquivo: true,
+      origem: 'api:agendas',
+    });
+
+    expect(quem.rotulo).toBe('Maria');
+    expect(quem.detalhe).toContain('enviou o arquivo');
   });
 
-  it('sem nome, diz que foi fora da tela E qual origem — não "desconhecido"', () => {
-    //: Nulo com origem preenchida é informação: carga por comando de linha.
-    //: "Desconhecido" jogaria fora justamente o que se sabe.
-    expect(
-      rotuloDeQuem({ quem: null, quem_enviou_o_arquivo: false, origem: 'carga_do_pacote' }),
-    ).toBe('fora da tela (carga_do_pacote)');
+  it('sem nome, o RÓTULO não tem jargão e a origem fica no detalhe', () => {
+    //: `carga_do_pacote` é nome de código, não rótulo operacional: o jargão sai
+    //: da coluna e vai para o detalhe, onde serve a quem investiga.
+    const quem = rotuloDeQuem({
+      quem: null,
+      quem_enviou_o_arquivo: false,
+      origem: 'carga_do_pacote',
+    });
+
+    expect(quem.rotulo).toBe('rotina automática');
+    expect(quem.rotulo).not.toContain('carga_do_pacote');
+    expect(quem.detalhe).toBe('origem: carga_do_pacote');
   });
 
-  it('sem nome e sem origem, não inventa parênteses vazios', () => {
-    expect(rotuloDeQuem({ quem: null, quem_enviou_o_arquivo: false, origem: null })).toBe(
-      'fora da tela',
-    );
+  it('sem nome e sem origem, não inventa detalhe vazio', () => {
+    expect(
+      rotuloDeQuem({ quem: null, quem_enviou_o_arquivo: false, origem: null }),
+    ).toEqual({ rotulo: 'rotina automática', detalhe: undefined });
   });
 });

@@ -242,7 +242,10 @@ export interface FonteDoScore {
    *  `clipei_investidores` alimenta Mercado (peso 20), com o MESMO arquivo.
    *  Ninguém sobe pela segunda — ela é alimentada junto —, e oferecer as duas
    *  num seletor de upload seria oferecer uma escolha que não existe. */
-  arquivo?: string | null;
+  /** OBRIGATÓRIO E NULÁVEL, e não opcional: o back sempre declara o campo
+   *  (`arquivo: str | None`), então aceitar a ausência dele faria o tipo
+   *  tolerar uma resposta incompleta em silêncio. */
+  arquivo: string | null;
   interna: boolean;
   ativo: boolean;
   ligada: boolean;
