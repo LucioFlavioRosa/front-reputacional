@@ -507,8 +507,14 @@ export function FilaDeDuplicados() {
 
         {/* A BUSCA QUE NÃO ACHA NADA DIZ ISSO. Sem esta linha, o cartão fica com
             a barra de busca e um vazio embaixo — e quem digitou não sabe se
-            errou o nome ou se não há par nenhum com ele. */}
-        {termo && encontrados.length === 0 ? (
+            errou o nome ou se não há par nenhum com ele.
+
+            E SÓ ENQUANTO HÁ LISTA, pelo mesmo motivo do campo acima: `busca` é
+            estado da tela e sobrevive às decisões que esvaziam a fila. Sem esta
+            guarda, decidir o último par com algo digitado deixava um "Nenhum par
+            com «valor»" sob o aviso do pareamento — citando um termo cujo campo
+            já não está na tela. */}
+        {fila.length > 0 && termo && encontrados.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
             {`Nenhum par com «${busca.trim()}» — a fila tem ${fila.length} ${
               fila.length === 1 ? 'par' : 'pares'

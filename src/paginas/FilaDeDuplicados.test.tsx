@@ -148,6 +148,30 @@ it('a fila PAREADA E VELHA avisa, mesmo com par na tela', async () => {
   expect(screen.getByText('valoreconomico')).toBeTruthy();
 });
 
+it('decidir o ULTIMO par com busca digitada nao deixa frase orfa', async () => {
+  //: `busca` É ESTADO DA TELA e sobrevive às decisões que esvaziam a fila. Com a
+  //: seção passando a APARECER sem par nenhum (por causa do aviso), decidir o
+  //: último par com algo digitado deixava um "Nenhum par com «valor»" sob o
+  //: aviso — citando um termo cujo campo já não está na tela.
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue({
+    calculado_em: new Date().toISOString(),
+    desatualizado: true,
+  });
+
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+
+  await userEvent.type(screen.getByPlaceholderText('Parte do nome'), 'valor');
+  await userEvent.click(
+    screen.getByRole('button', { name: 'valoreconomico não é Valor Econômico' }),
+  );
+
+  await waitFor(() => expect(screen.queryByText('valoreconomico')).toBeNull());
+  expect(screen.queryByText(/Nenhum par com/)).toBeNull();
+  //: E O AVISO CONTINUA: é a única coisa que a seção ainda tem a dizer.
+  expect(screen.getByText(/O cadastro mudou depois do último pareamento/)).toBeTruthy();
+});
+
 it('o estado que FALHA nao derruba a fila, e nao passa por "em dia"', async () => {
   //: A FILA É O QUE IMPORTA: par para decidir vale mais que a ressalva sobre ele,
   //: então a falha do estado não pode levar a lista embora.
