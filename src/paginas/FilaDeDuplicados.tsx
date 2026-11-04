@@ -5,7 +5,7 @@
  *  e rede social, vamos consultar o mesmo perfil?" — e decidiu: "deveria ser um
  *  único cadastro que vem de Cadastro compartilhado".
  *
- *  O homônimo exato a migration `0076` fundiu sozinha, sem perguntar: nome igual
+ *  O homônimo exato a migration `0077` fundiu sozinha, sem perguntar: nome igual
  *  não pede julgamento. O que chega aqui são os pares que só casam depois de
  *  tirar pontuação e espaço — `valoreconomico` ↔ `Valor Econômico` —, e ali
  *  semelhança NÃO é identidade: `Diário SM` e `Diários M` casam assim, e
@@ -17,18 +17,27 @@
  *  que ninguém olha.
  *
  *  O NÚMERO DE MENÇÕES está em cada lado de propósito: é ele que diz qual é a
- *  linha com história (`Valor Econômico` tem 86 de clipping; o handle tem 2), e
- *  é sempre a linha com história que sobrevive.
+ *  linha com história — o veículo vem do clipping com anos de menções, o handle
+ *  recém-criado com poucas —, e é sempre a linha com história que sobrevive.
  *
- *  A DECISÃO APARECE NA HORA, e a releitura vai para segundo plano.
+ *  A DECISÃO APARECE NA HORA, e a lista NÃO é relida — nem em segundo plano. O
+ *  que se relê é só o estado do pareamento, quando o catálogo muda.
  *
  *  O DONO DO PRODUTO (12/10/2026): "ao clicar em fundir ou não é o mesmo, demora
  *  a atualizar, parece que nada foi feito". MEDIDO: `GET
- *  /api/instituicoes/duplicados` leva 7,4 s na base real — a fila é recalculada
- *  comparando ~3.962 cadastros par a par com `difflib`, e o próprio caso de uso
- *  escreve que "`ratio()` é caro". A tela pagava isso A CADA decisão, e o
- *  `carregar()` não era aguardado: o `finally` reativava os botões na hora, e
- *  durante sete segundos a linha ficava ali, idêntica ao que era antes do clique.
+ *  /api/instituicoes/duplicados` levava 7,4 s na base real — a fila era
+ *  recalculada comparando ~3.962 cadastros par a par com `difflib`, e o próprio
+ *  caso de uso escrevia que "`ratio()` é caro". A tela pagava isso A CADA
+ *  decisão, e o `carregar()` não era aguardado: o `finally` reativava os botões
+ *  na hora, e durante sete segundos a linha ficava ali, idêntica ao que era antes
+ *  do clique.
+ *
+ *  A ROTA FICOU BARATA DEPOIS (migration `0118`): o pareamento passou a ser
+ *  guardado, porque em 11.000 cadastros ele chegou a 102,7 s e virou 504. Mas o
+ *  que esta tela faz não mudou — ela segue lendo UMA vez —, e por outra razão:
+ *  o efeito de cada resposta é local e determinado, então a releitura chegaria
+ *  ao mesmo resultado. O que o pareamento guardado trouxe para cá foi a
+ *  obrigação de dizer QUANDO ele foi feito — ver `avisoDaFila`.
  *
  *  O EFEITO DE CADA RESPOSTA É LOCAL E DETERMINADO, então a tela o aplica sem
  *  perguntar ao servidor: "não é o mesmo" tira UM par; fundir tira um CADASTRO
@@ -48,25 +57,30 @@
  *  mensagem rara contra sete segundos em cada clique.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   declararCadastroDistinto,
   duplicadosDeCadastro,
+  estadoDaFilaDeDuplicados,
   fundirCadastro,
   type CadastroDuplicado,
   type CandidatoDeFusao,
+  type EstadoDaFilaDeDuplicados,
 } from '@/api/cliente';
 import {
   Botao,
   Campo,
   Carregando,
   Cartao,
+  FaixaDeAtencao,
   FaixaDeErro,
   Secao,
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { Paginacao } from '@/componentes/Paginacao';
+import { quantoTempo } from '@/dominio/cargasDasBases';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 import { ROTULO_DO_TIPO_DE_INSTITUICAO } from '@/paginas/cadastroCompartilhado/formularios';
 
 //: O RÓTULO DO TIPO VEM DO CADASTRO, com TRÊS EXCEÇÕES — e as três são
@@ -215,8 +229,69 @@ function semOPar(
     .filter((perfil) => perfil.candidatos.length > 0);
 }
 
+//: O ESTADO QUE NÃO CHEGOU, e ele NÃO é "calculado": é justamente o que impede a
+//: tela de afirmar zero. A fila é acessória e não pode cair com ele — mas o
+//: silêncio dele também não pode virar uma afirmação que ninguém conferiu.
+const DESCONHECIDO = 'desconhecido';
+
+type Estado = EstadoDaFilaDeDuplicados | typeof DESCONHECIDO;
+
+/** A RESSALVA QUE A LISTA NÃO CARREGA — e, quando não há nenhuma, nada.
+ *
+ *  O PAREAMENTO É GUARDADO desde a `0118` (ver `estadoDaFilaDeDuplicados`), e
+ *  isso parte o antigo "fila vazia = nenhum duplicado" em três verdades
+ *  diferentes que o mesmo `(0)` esconderia:
+ *
+ *  * NUNCA PAREADA — tabela recém-criada, ou migration aplicada sem o comando de
+ *    recálculo. Vazio aqui não diz nada sobre o cadastro;
+ *  * PAREADA E VELHA — o cadastro mudou depois. A subida de planilha refaz o
+ *    pareamento, cadastrar pela tela não, então este é o caso comum;
+ *  * NÃO DEU PARA CONFERIR — a rota do estado falhou sozinha.
+ *
+ *  O QUARTO CASO É O SILÊNCIO: pareada e em dia não rende aviso, porque aí a
+ *  lista fala por si.
+ */
+function avisoDaFila(estado: Estado): { texto: string; titulo?: string } | null {
+  if (estado === DESCONHECIDO) {
+    return {
+      texto:
+        'Não foi possível conferir quando esta fila foi pareada — o que ela ' +
+        'mostra pode estar incompleto.',
+    };
+  }
+  if (estado.calculado_em === null) {
+    return {
+      //: O ADMINISTRADOR, E NÃO "ESPERE A PRÓXIMA PLANILHA" — achado da revisão
+      //: do Codex, e procedente: quem trabalha só no CRM não sobe planilha
+      //: nenhuma, e mandar esperar uma deixaria a fila vazia para sempre. O back
+      //: documenta o comando de recálculo como backfill OBRIGATÓRIO depois da
+      //: `0118`, e este é o caso em que ele não rodou.
+      texto:
+        'Esta fila ainda não foi pareada: o vazio aqui é por isso, e não por não ' +
+        'haver duplicado. Peça ao administrador para rodar o pareamento.',
+    };
+  }
+  if (estado.desatualizado) {
+    return {
+      //: O QUANDO EM PALAVRA DE GENTE, com a data exata no `title`: a pergunta é
+      //: "está velho?", e não "que dia foi". Mesmo rótulo da aba das cargas.
+      texto:
+        `O cadastro mudou depois do último pareamento (${quantoTempo(
+          estado.calculado_em,
+        )}): pode haver duplicado que ainda não está nesta lista. O pareamento se ` +
+        'refaz na próxima subida de planilha que criar cadastro, ou pelo ' +
+        'administrador.',
+      titulo: `Pareado em ${new Date(estado.calculado_em).toLocaleString('pt-BR')}`,
+    };
+  }
+  return null;
+}
+
 export function FilaDeDuplicados() {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
+  //: NULO É "AINDA CARREGANDO", e não um estado: desenhar a fila antes de saber
+  //: se ela foi pareada é a mentira que esta tela existe para não contar.
+  const [estado, definirEstado] = useState<Estado | null>(null);
   const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
@@ -224,8 +299,8 @@ export function FilaDeDuplicados() {
   //: facilitar buscar de instituições chave".
   //:
   //: EM MEMÓRIA, E NÃO NO SERVIDOR: a fila inteira já está aqui — ela é lida UMA
-  //: vez na abertura, e o servidor leva 7,4 s para recalculá-la. Mandar a busca
-  //: para lá pagaria esse preço a cada tecla.
+  //: vez na abertura. Mandar a busca para o servidor pagaria uma ida à rede a
+  //: cada tecla para filtrar uma lista que já está nesta função.
   const [busca, definirBusca] = useState('');
   const termo = busca.trim().toLowerCase();
 
@@ -244,28 +319,74 @@ export function FilaDeDuplicados() {
     definirPagina(1);
   }
 
-  //: A GUARDA DE ORDEM SAIU JUNTO COM A RELEITURA POR DECISÃO.
+  //: A GUARDA DE ORDEM, E AGORA ELA GUARDA ALGO.
   //:
-  //: Ela existia porque três decisões seguidas deixavam três cargas no ar, e a
-  //: primeira a voltar ressuscitaria o que as outras resolveram. Com a busca
-  //: rodando UMA VEZ, há um chamador só e não há corrida — e guarda que não
-  //: guarda nada é comentário fingindo ser código. Se um dia a tela ganhar um
-  //: "atualizar", a guarda volta com ele; o desenho está na `FilaDeRevisao`.
+  //: Ela saiu quando a releitura por decisão saiu: com um chamador só não havia
+  //: corrida, e guarda que não guarda nada é comentário fingindo ser código. O
+  //: comentário de então previu o que a traria de volta — "se um dia a tela
+  //: ganhar um atualizar" —, e é o que aconteceu: o estado se relê a cada mudança
+  //: de catálogo, duas mudanças seguidas deixam duas leituras no ar, e a primeira
+  //: a voltar não é a mais nova. Vale também para a leitura da ABERTURA, que é a
+  //: mais lenta e pode voltar depois de uma do barramento.
+  //:
+  //: PELA LISTA NÃO VALE: ela continua sendo lida UMA vez. O desenho é o da
+  //: `FilaDeRevisao`.
+  const leituraMaisNova = useRef(0);
+
+  //: A LEITURA DO ESTADO, de todos os caminhos. NUNCA REJEITA: quem a chama já
+  //: tem o que fazer com "não deu para conferir", e é ele que impede a tela de
+  //: tratar silêncio como "em dia".
+  //:
+  //: O RETORNO DO `catch` É ANOTADO porque sem isso ele alarga a literal para
+  //: `string`, e aí o estado deixa de ser os três casos de `avisoDaFila`.
+  const lerOEstado = useCallback(async () => {
+    const minha = (leituraMaisNova.current += 1);
+    const agora = await estadoDaFilaDeDuplicados().catch(
+      (): Estado => DESCONHECIDO,
+    );
+    if (minha === leituraMaisNova.current) definirEstado(agora);
+  }, []);
+
   const carregar = useCallback(() => {
-    duplicadosDeCadastro()
-      .then((lista) => {
+    //: AS DUAS NA MESMA IDA. A listagem é a fila; o estado é o que autoriza a
+    //: tela a dizer "nenhum duplicado". Em série, a tela desenharia zero antes
+    //: de saber se zero é verdade — e é esse instante que o aviso existe para
+    //: não acontecer.
+    //:
+    //: O ESTADO FALHA SOZINHO SEM DERRUBAR A FILA: par para decidir vale mais
+    //: que a ressalva sobre ele, e por isso `lerOEstado` não rejeita.
+    Promise.all([duplicadosDeCadastro(), lerOEstado()])
+      .then(([lista]) => {
         definirFila(lista);
         definirErro('');
       })
       .catch((falha: Error) => {
         //: A FILA É ACESSÓRIA: ela não pode derrubar o cadastro inteiro. O erro
         //: aparece no lugar dela e o resto da tela segue funcionando.
+        //:
+        //: E O ESTADO NÃO É TOCADO AQUI: só a lista falhou, `lerOEstado` já
+        //: gravou o que achou, e sobrescrever seria disputar com ela.
         definirFila([]);
         definirErro(falha.message);
       });
-  }, []);
+  }, [lerOEstado]);
 
   useEffect(carregar, [carregar]);
+
+  //: O AVISO ACOMPANHA O CADASTRO MUDANDO COM A TELA ABERTA — achado da revisão
+  //: do Codex, e procedente: `CadastroDeInstituicoes` desenha o formulário de
+  //: cadastro e esta fila na MESMA página, então criar um veículo aqui deixava o
+  //: aviso velho até a próxima montagem. É justamente o caso que `desatualizado`
+  //: existe para pegar.
+  //:
+  //: SÓ O ESTADO, E NUNCA A LISTA. Não é que reler ressuscitaria o par decidido —
+  //: `listar` lê `ator_distinto` ao vivo e exclui na leitura. É que o barramento
+  //: avisa em TODA escrita de catálogo, inclusive nas desta tela: reler a lista
+  //: aqui devolveria uma requisição por decisão, que é o custo que saiu.
+  //:
+  //: O barramento esquece o cache antes dos ouvintes, então a leitura daqui é a de
+  //: depois da escrita.
+  useEffect(() => catalogoMudou.assinar(() => void lerOEstado()), [lerOEstado]);
 
   async function responder(
     perfil: CadastroDuplicado,
@@ -318,8 +439,11 @@ export function FilaDeDuplicados() {
           antes ? semOPar(antes, perfil.id, candidato.id) : antes,
         );
       }
-      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira; o
-      //: servidor devolveria a mesma coisa depois de 7,4 s de recálculo.
+      //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira — o
+      //: servidor devolveria o mesmo, menos o que outra pessoa tenha decidido ou
+      //: um recálculo tenha acrescentado nesse meio. Era o custo da releitura que
+      //: pesava (7,4 s na base real, antes da `0118`); hoje o que a dispensa é o
+      //: resultado, e a defasagem que sobra é a do estado, que o aviso cobre.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {
@@ -327,7 +451,7 @@ export function FilaDeDuplicados() {
     }
   }
 
-  if (fila === null) {
+  if (fila === null || estado === null) {
     return (
       <Secao titulo="Possíveis duplicados">
         <Cartao>
@@ -337,9 +461,18 @@ export function FilaDeDuplicados() {
     );
   }
 
+  //: O ERRO DA FILA JÁ EXPLICA O VAZIO, então a ressalva do estado cala: duas
+  //: faixas sobre a mesma falha é uma a mais para ler.
+  const aviso = erro ? null : avisoDaFila(estado);
+
   //: FILA VAZIA NÃO OCUPA TELA. Não há nada a fazer, e um cartão dizendo
   //: "nenhum duplicado" seria uma linha a mais para ler em toda abertura.
-  if (fila.length === 0 && !erro) return null;
+  //:
+  //: E SÓ QUANDO O VAZIO É VERDADE — foi isto que mudou com o pareamento
+  //: guardado. Sem a conferência do estado, a tela sumia calada nos dois casos em
+  //: que ela mais precisa falar: pareamento que nunca rodou, e cadastro que
+  //: mudou depois dele.
+  if (fila.length === 0 && !erro && !aviso) return null;
 
   //: A BUSCA OLHA OS DOIS LADOS do par, e não só quem pergunta: procurar "valor"
   //: tem de achar a pergunta ancorada em `valoreconomico` tanto quanto a ancorada
@@ -363,10 +496,19 @@ export function FilaDeDuplicados() {
     paginaAgora * POR_PAGINA,
   );
 
+  //: O NÚMERO SÓ APARECE SE HOUVER PAREAMENTO POR TRÁS DELE. "(0)" numa fila que
+  //: nunca foi pareada é a mentira inteira em dois caracteres: zero par guardado
+  //: não é zero duplicado no cadastro. Um par na tela já prova que pareou — é por
+  //: isso que a lista cheia mantém o número mesmo com o estado desconhecido.
+  const pareada =
+    (estado !== DESCONHECIDO && estado.calculado_em !== null) || fila.length > 0;
+
   return (
     <Secao
       recolhivel
-      titulo={`Possíveis duplicados (${fila.length})`}
+      titulo={
+        pareada ? `Possíveis duplicados (${fila.length})` : 'Possíveis duplicados'
+      }
       ajuda={
         'O mesmo ator cadastrado duas vezes: o fornecedor de redes manda o ' +
         'handle (valoreconomico) e o clipping manda o nome (Valor Econômico). ' +
@@ -376,24 +518,45 @@ export function FilaDeDuplicados() {
       <Cartao>
         {erro ? <FaixaDeErro mensagem={erro} /> : null}
 
+        {/* A RESSALVA SOBRE O PAREAMENTO, quando existe uma — ver `avisoDaFila`.
+            ACIMA DA BUSCA de propósito: ela muda o que a lista inteira significa,
+            e quem já está filtrando não vai subir para descobrir isso. */}
+        {aviso ? (
+          <FaixaDeAtencao
+            mensagem={<span title={aviso.titulo}>{aviso.texto}</span>}
+          />
+        ) : null}
+
         {/* A BUSCA, pedida pelo dono do produto: "deve uma barra de busca para
             facilitar buscar de instituições chave". Com 209 pares a decidir,
-            chegar ao Valor Econômico pela paginação é folhear vinte páginas. */}
-        <div style={{ maxWidth: 360, marginBottom: 4 }}>
-          <Campo rotulo="Buscar">
-            <input
-              style={estiloDeEntrada}
-              value={busca}
-              onChange={(e) => definirBusca(e.target.value)}
-              placeholder="Parte do nome"
-            />
-          </Campo>
-        </div>
+            chegar ao Valor Econômico pela paginação é folhear vinte páginas.
+
+            NADA PARA BUSCAR NUMA FILA VAZIA: com o aviso do pareamento a seção
+            passou a aparecer sem par nenhum, e um campo de busca ali é um
+            convite a digitar num lugar onde nada pode ser achado. */}
+        {fila.length > 0 ? (
+          <div style={{ maxWidth: 360, marginBottom: 4 }}>
+            <Campo rotulo="Buscar">
+              <input
+                style={estiloDeEntrada}
+                value={busca}
+                onChange={(e) => definirBusca(e.target.value)}
+                placeholder="Parte do nome"
+              />
+            </Campo>
+          </div>
+        ) : null}
 
         {/* A BUSCA QUE NÃO ACHA NADA DIZ ISSO. Sem esta linha, o cartão fica com
             a barra de busca e um vazio embaixo — e quem digitou não sabe se
-            errou o nome ou se não há par nenhum com ele. */}
-        {termo && encontrados.length === 0 ? (
+            errou o nome ou se não há par nenhum com ele.
+
+            E SÓ ENQUANTO HÁ LISTA, pelo mesmo motivo do campo acima: `busca` é
+            estado da tela e sobrevive às decisões que esvaziam a fila. Sem esta
+            guarda, decidir o último par com algo digitado deixava um "Nenhum par
+            com «valor»" sob o aviso do pareamento — citando um termo cujo campo
+            já não está na tela. */}
+        {fila.length > 0 && termo && encontrados.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: '10px 0 0' }}>
             {`Nenhum par com «${busca.trim()}» — a fila tem ${fila.length} ${
               fila.length === 1 ? 'par' : 'pares'

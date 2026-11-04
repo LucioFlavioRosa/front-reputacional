@@ -332,12 +332,50 @@ export interface CadastroDuplicado {
  *
  *  POR QUE EXISTE: o fornecedor de redes manda o handle (`valoreconomico`) e o
  *  clipping manda o nome (`Valor Econômico`). O homônimo exato a migration
- *  `0076` já fundiu sozinha; estes só casam depois de tirar pontuação, e ali
+ *  `0077` já fundiu sozinha; estes só casam depois de tirar pontuação, e ali
  *  semelhança não é identidade — `Diário SM` e `Diários M` casam assim. Quem
  *  conhece o ator decide, e o que decidir fica guardado.
+ *
+ *  A LISTA NÃO DIZ SOZINHA O QUE UM VAZIO SIGNIFICA — ver
+ *  `estadoDaFilaDeDuplicados`.
  */
 export function duplicadosDeCadastro(): Promise<CadastroDuplicado[]> {
   return requisitar<CadastroDuplicado[]>('/api/instituicoes/duplicados');
+}
+
+/** Quando a fila foi pareada — e se já foi alguma vez. */
+export interface EstadoDaFilaDeDuplicados {
+  /** NULO É "NUNCA PAREADA", e é a informação que o zero da lista não carrega. */
+  calculado_em: string | null;
+  /** O cadastro mudou depois do pareamento guardado. Verdadeiro também quando
+   *  nunca calculou. */
+  desatualizado: boolean;
+}
+
+/** Se a fila já foi pareada, e quando.
+ *
+ *  POR QUE EXISTE: desde a migration `0118` o pareamento é GUARDADO, e não
+ *  refeito a cada abertura — comparar o cadastro ativo par a par com `difflib`
+ *  custava 102,7 s medidos em 11.000 cadastros, contra os ~240 s em que o
+ *  ingress corta. Era o 504 da tela. O preço é que a tabela nasce vazia, e fila
+ *  vazia não se distingue de "nenhum duplicado": sem este estado a tela diria
+ *  "Possíveis duplicados (0)" num cadastro cheio de duplicatas.
+ *
+ *  `desatualizado` É REDE DE SEGURANÇA, e não o mecanismo: a subida de planilha
+ *  refaz o pareamento, cadastrar pela tela não. O back compara uma impressão do
+ *  cadastro ativo com a do último pareamento, então escritor novo entra na conta
+ *  sozinho — em vez de depender de um gancho que o próximo esquece.
+ *
+ *  GUARDADA COMO A LISTAGEM, e não `semGuardar`: as duas são PEDIDAS no mesmo
+ *  tique e toda escrita de catálogo as esquece juntas — inclusive a de outra aba,
+ *  pelo `BroadcastChannel`. Não é garantia de instante igual: cada uma entra no
+ *  cache quando a sua resposta chega, e se uma falhar a seguinte lê uma fresca e
+ *  uma guardada. Nesse caminho a divergência produz o aviso CERTO — estado novo
+ *  sobre lista velha é exatamente "o cadastro mudou depois do pareamento". */
+export function estadoDaFilaDeDuplicados(): Promise<EstadoDaFilaDeDuplicados> {
+  return requisitar<EstadoDaFilaDeDuplicados>(
+    '/api/instituicoes/duplicados/estado',
+  );
 }
 
 /** Funde um cadastro no outro: quem vem no primeiro argumento SAI, com as
