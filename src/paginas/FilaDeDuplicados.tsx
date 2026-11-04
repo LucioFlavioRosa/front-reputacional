@@ -20,7 +20,8 @@
  *  linha com história (`Valor Econômico` tem 86 de clipping; o handle tem 2), e
  *  é sempre a linha com história que sobrevive.
  *
- *  A DECISÃO APARECE NA HORA, e a releitura vai para segundo plano.
+ *  A DECISÃO APARECE NA HORA, e a lista NÃO é relida — nem em segundo plano. O
+ *  que se relê é só o estado do pareamento, quando o catálogo muda.
  *
  *  O DONO DO PRODUTO (12/10/2026): "ao clicar em fundir ou não é o mesmo, demora
  *  a atualizar, parece que nada foi feito". MEDIDO: `GET

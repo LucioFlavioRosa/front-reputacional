@@ -19,7 +19,8 @@
  *    de negócio inteira: trocada, apagaria o veículo curado);
  *  * "Não é o mesmo" grava a decisão — sem isso o par recusado voltaria
  *    idêntico para sempre, e a fila que não anda é a que ninguém olha;
- *  * depois de responder, a fila é relida: a linha respondida sai;
+ *  * depois de responder, a linha sai SEM releitura: o efeito de cada resposta é
+ *    local e determinado, e o servidor devolveria a mesma lista;
  *  * e a falha de carga NÃO derruba a tela do cadastro: a fila é acessória.
  */
 
