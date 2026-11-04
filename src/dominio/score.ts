@@ -242,13 +242,31 @@ export interface FonteDoScore {
    *  `clipei_investidores` alimenta Mercado (peso 20), com o MESMO arquivo.
    *  Ninguém sobe pela segunda — ela é alimentada junto —, e oferecer as duas
    *  num seletor de upload seria oferecer uma escolha que não existe. */
-  arquivo?: string | null;
+  /** OBRIGATÓRIO E NULÁVEL, e não opcional: o back sempre declara o campo
+   *  (`arquivo: str | None`), então aceitar a ausência dele faria o tipo
+   *  tolerar uma resposta incompleta em silêncio. */
+  arquivo: string | null;
   interna: boolean;
   ativo: boolean;
   ligada: boolean;
   observacao: string | null;
   meses_com_dado: number;
   mencoes_no_mes: number;
+  /** A última CARGA desta fonte, e quem a fez.
+   *
+   *  DIZ CARGA E NÃO ATUALIZAÇÃO, e a diferença é real: a reconciliação da lista
+   *  de veículos reescreve menções sem arquivo nenhum, e a edição de jornalista e
+   *  a fusão de atores alteram menção — nada disso passa pela trilha. Rotular de
+   *  "última atualização" faria a tela afirmar o que o back não sabe.
+   *
+   *  NULO antes da primeira carga registrada: a trilha começa na migration 0115
+   *  e não se reconstrói para trás, porque o autor histórico foi apagado junto
+   *  com a planilha recebida.
+   *
+   *  `ultima_carga_por` nulo COM data preenchida é carga feita fora da tela —
+   *  comando de linha. Não é dado faltando. */
+  ultima_carga_em: string | null;
+  ultima_carga_por: string | null;
 }
 
 export interface LenteDetalhada {

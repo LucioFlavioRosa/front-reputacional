@@ -28,6 +28,7 @@ import {
   estiloDeEntrada,
 } from '@/componentes/basicos';
 import { GuiaDoParametro } from '@/componentes/GuiaDoParametro';
+import { quantoTempo } from '@/dominio/cargasDasBases';
 import { numero } from '@/dominio/formato';
 import {
   ROTULO_DA_REGUA_DE_ENGAJAMENTO,
@@ -344,6 +345,26 @@ export function CalibracaoDoScore({
                       ? ` · ${numero(fonte.mencoes_no_mes)} no mês`
                       : ' · sem dado no mês'}
                   </div>
+                  {/* A ÚLTIMA CARGA, onde quem opera a fonte já está olhando.
+                      Só nas externas: a interna é este banco e não recebe carga
+                      de arquivo nenhuma, então "sem registro" ali seria um aviso
+                      sobre algo que nunca vai acontecer.
+
+                      DIZ CARGA E NÃO ATUALIZAÇÃO: reconciliar a lista de
+                      veículos reescreve menções sem arquivo, e isso não passa
+                      pela trilha. Ver `dominio/cargasDasBases`. */}
+                  {fonte.interna ? null : (
+                    <div style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
+                      {fonte.ultima_carga_em ? (
+                        <span title={new Date(fonte.ultima_carga_em).toLocaleString('pt-BR')}>
+                          última carga {quantoTempo(fonte.ultima_carga_em)}
+                          {fonte.ultima_carga_por ? `, por ${fonte.ultima_carga_por}` : ''}
+                        </span>
+                      ) : (
+                        'sem registro de carga'
+                      )}
+                    </div>
+                  )}
                   {fonte.observacao ? (
                     <div style={{ fontSize: 11.5, color: 'var(--cinza-2)' }}>
                       {fonte.observacao}
