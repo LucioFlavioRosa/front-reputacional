@@ -249,6 +249,21 @@ export interface FonteDoScore {
   observacao: string | null;
   meses_com_dado: number;
   mencoes_no_mes: number;
+  /** A última CARGA desta fonte, e quem a fez.
+   *
+   *  DIZ CARGA E NÃO ATUALIZAÇÃO, e a diferença é real: a reconciliação da lista
+   *  de veículos reescreve menções sem arquivo nenhum, e a edição de jornalista e
+   *  a fusão de atores alteram menção — nada disso passa pela trilha. Rotular de
+   *  "última atualização" faria a tela afirmar o que o back não sabe.
+   *
+   *  NULO antes da primeira carga registrada: a trilha começa na migration 0115
+   *  e não se reconstrói para trás, porque o autor histórico foi apagado junto
+   *  com a planilha recebida.
+   *
+   *  `ultima_carga_por` nulo COM data preenchida é carga feita fora da tela —
+   *  comando de linha. Não é dado faltando. */
+  ultima_carga_em: string | null;
+  ultima_carga_por: string | null;
 }
 
 export interface LenteDetalhada {
