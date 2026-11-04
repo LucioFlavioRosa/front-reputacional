@@ -23,10 +23,11 @@
  *  * e a falha de carga NÃO derruba a tela do cadastro: a fila é acessória.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
+import { catalogoMudou } from '@/dominio/sincronizacao';
 import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 
 vi.mock('@/api/cliente', () => ({
@@ -146,6 +147,36 @@ it('a fila PAREADA E VELHA avisa, mesmo com par na tela', async () => {
   expect(screen.getByText(/\(hoje\)/)).toBeTruthy();
   expect(screen.getByRole('button', { name: /Possíveis duplicados \(1\)/ })).toBeTruthy();
   expect(screen.getByText('valoreconomico')).toBeTruthy();
+});
+
+it('o cadastro que muda com a tela ABERTA atualiza o aviso, e SO o aviso', async () => {
+  /** ACHADO DA REVISÃO DO CODEX, e procedente. `CadastroDeInstituicoes` desenha o
+   *  formulário de cadastro e esta fila na MESMA página: criar um veículo ali
+   *  deixava o aviso velho até a próxima montagem — justamente o caso que
+   *  `desatualizado` existe para pegar.
+   *
+   *  SÓ O ESTADO, E NUNCA A LISTA: reler a lista ressuscitaria o par que esta
+   *  pessoa acabou de decidir, que é o motivo de a releitura por decisão ter
+   *  saído desta tela.
+   *
+   *  PELO BARRAMENTO, e não por um `fundirCadastro` dublado: é o cliente da API
+   *  que avisa `catalogoMudou` em toda escrita de catálogo, e com ele dublado
+   *  nenhum aviso sai. Avisar à mão é o que exercita o ouvinte. */
+  render(<FilaDeDuplicados />);
+  await screen.findByText('valoreconomico');
+  expect(estadoDaFilaDeDuplicados).toHaveBeenCalledTimes(1);
+
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue({
+    calculado_em: new Date().toISOString(),
+    desatualizado: true,
+  });
+  act(() => catalogoMudou.avisar());
+
+  expect(await screen.findByText(/O cadastro mudou depois do último pareamento/))
+    .toBeTruthy();
+  expect(estadoDaFilaDeDuplicados).toHaveBeenCalledTimes(2);
+  //: A LISTA NÃO FOI RELIDA, e o par decidido não voltaria se tivesse sido.
+  expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 });
 
 it('decidir o ULTIMO par com busca digitada nao deixa frase orfa', async () => {

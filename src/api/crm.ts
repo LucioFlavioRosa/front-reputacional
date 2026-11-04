@@ -366,10 +366,12 @@ export interface EstadoDaFilaDeDuplicados {
  *  cadastro ativo com a do último pareamento, então escritor novo entra na conta
  *  sozinho — em vez de depender de um gancho que o próximo esquece.
  *
- *  GUARDADA COMO A LISTAGEM, e não `semGuardar`: as duas descrevem o MESMO
- *  momento, e vencer em tempos diferentes faria o aviso falar de um pareamento
- *  que não é o da lista na tela. Toda escrita de catálogo esquece as duas
- *  juntas. */
+ *  GUARDADA COMO A LISTAGEM, e não `semGuardar`: as duas entram no cache no mesmo
+ *  tique e toda escrita de catálogo as esquece juntas — inclusive a de outra aba,
+ *  pelo `BroadcastChannel`. Não é garantia de mesmo instante: se uma falhar e a
+ *  outra não, a seguinte lê uma fresca e uma guardada. Nesse caminho a
+ *  divergência produz o aviso CERTO — estado novo sobre lista velha é exatamente
+ *  "o cadastro mudou depois do pareamento". */
 export function estadoDaFilaDeDuplicados(): Promise<EstadoDaFilaDeDuplicados> {
   return requisitar<EstadoDaFilaDeDuplicados>(
     '/api/instituicoes/duplicados/estado',

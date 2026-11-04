@@ -56,7 +56,7 @@
  *  mensagem rara contra sete segundos em cada clique.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   declararCadastroDistinto,
@@ -79,6 +79,7 @@ import {
 } from '@/componentes/basicos';
 import { Paginacao } from '@/componentes/Paginacao';
 import { quantoTempo } from '@/dominio/cargasDasBases';
+import { catalogoMudou } from '@/dominio/sincronizacao';
 import { ROTULO_DO_TIPO_DE_INSTITUICAO } from '@/paginas/cadastroCompartilhado/formularios';
 
 //: O RÓTULO DO TIPO VEM DO CADASTRO, com TRÊS EXCEÇÕES — e as três são
@@ -259,10 +260,14 @@ function avisoDaFila(estado: Estado): { texto: string; titulo?: string } | null 
   }
   if (estado.calculado_em === null) {
     return {
+      //: O ADMINISTRADOR, E NÃO "ESPERE A PRÓXIMA PLANILHA" — achado da revisão
+      //: do Codex, e procedente: quem trabalha só no CRM não sobe planilha
+      //: nenhuma, e mandar esperar uma deixaria a fila vazia para sempre. O back
+      //: documenta o comando de recálculo como backfill OBRIGATÓRIO depois da
+      //: `0118`, e este é o caso em que ele não rodou.
       texto:
-        'Esta fila ainda não foi pareada: o que ela mostra está vazio por isso, ' +
-        'e não por não haver duplicado. A próxima subida de planilha que criar ' +
-        'cadastro refaz o pareamento.',
+        'Esta fila ainda não foi pareada: o vazio aqui é por isso, e não por não ' +
+        'haver duplicado. Peça ao administrador para rodar o pareamento.',
     };
   }
   if (estado.desatualizado) {
@@ -272,8 +277,9 @@ function avisoDaFila(estado: Estado): { texto: string; titulo?: string } | null 
       texto:
         `O cadastro mudou depois do último pareamento (${quantoTempo(
           estado.calculado_em,
-        )}): pode haver duplicado que ainda não está nesta lista. A próxima ` +
-        'subida de planilha que criar cadastro refaz o pareamento.',
+        )}): pode haver duplicado que ainda não está nesta lista. O pareamento se ` +
+        'refaz na próxima subida de planilha que criar cadastro, ou pelo ' +
+        'administrador.',
       titulo: `Pareado em ${new Date(estado.calculado_em).toLocaleString('pt-BR')}`,
     };
   }
@@ -292,8 +298,8 @@ export function FilaDeDuplicados() {
   //: facilitar buscar de instituições chave".
   //:
   //: EM MEMÓRIA, E NÃO NO SERVIDOR: a fila inteira já está aqui — ela é lida UMA
-  //: vez na abertura, e o servidor leva 7,4 s para recalculá-la. Mandar a busca
-  //: para lá pagaria esse preço a cada tecla.
+  //: vez na abertura. Mandar a busca para o servidor pagaria uma ida à rede a
+  //: cada tecla para filtrar uma lista que já está nesta função.
   const [busca, definirBusca] = useState('');
   const termo = busca.trim().toLowerCase();
 
@@ -319,35 +325,63 @@ export function FilaDeDuplicados() {
   //: rodando UMA VEZ, há um chamador só e não há corrida — e guarda que não
   //: guarda nada é comentário fingindo ser código. Se um dia a tela ganhar um
   //: "atualizar", a guarda volta com ele; o desenho está na `FilaDeRevisao`.
+  //: A GUARDA DE ORDEM, que o cabeçalho previu que voltaria "se um dia a tela
+  //: ganhar um atualizar". Ganhou: o estado se relê a cada mudança de catálogo, e
+  //: duas mudanças seguidas deixam duas leituras no ar — a primeira a voltar não
+  //: é a mais nova.
+  const leituraMaisNova = useRef(0);
+
+  //: A LEITURA DO ESTADO, de todos os caminhos. NUNCA REJEITA: quem a chama já
+  //: tem o que fazer com "não deu para conferir", e é ele que impede a tela de
+  //: tratar silêncio como "em dia".
+  //:
+  //: O RETORNO DO `catch` É ANOTADO porque sem isso ele alarga a literal para
+  //: `string`, e aí o estado deixa de ser os três casos de `avisoDaFila`.
+  const lerOEstado = useCallback(async () => {
+    const minha = (leituraMaisNova.current += 1);
+    const agora = await estadoDaFilaDeDuplicados().catch(
+      (): Estado => DESCONHECIDO,
+    );
+    if (minha === leituraMaisNova.current) definirEstado(agora);
+  }, []);
+
   const carregar = useCallback(() => {
     //: AS DUAS NA MESMA IDA. A listagem é a fila; o estado é o que autoriza a
     //: tela a dizer "nenhum duplicado". Em série, a tela desenharia zero antes
     //: de saber se zero é verdade — e é esse instante que o aviso existe para
     //: não acontecer.
-    Promise.all([
-      duplicadosDeCadastro(),
-      //: O ESTADO FALHA SOZINHO SEM DERRUBAR A FILA: par para decidir vale mais
-      //: que a ressalva sobre ele. O `catch` guarda `DESCONHECIDO`, que é
-      //: diferente de "em dia" — ver `avisoDaFila`.
-      //: O RETORNO ANOTADO porque sem ele o `catch` alarga a literal para
-      //: `string`, e aí o estado deixa de ser os três casos de `avisoDaFila`.
-      estadoDaFilaDeDuplicados().catch((): Estado => DESCONHECIDO),
-    ])
-      .then(([lista, agora]) => {
+    //:
+    //: O ESTADO FALHA SOZINHO SEM DERRUBAR A FILA: par para decidir vale mais
+    //: que a ressalva sobre ele, e por isso `lerOEstado` não rejeita.
+    Promise.all([duplicadosDeCadastro(), lerOEstado()])
+      .then(([lista]) => {
         definirFila(lista);
-        definirEstado(agora);
         definirErro('');
       })
       .catch((falha: Error) => {
         //: A FILA É ACESSÓRIA: ela não pode derrubar o cadastro inteiro. O erro
         //: aparece no lugar dela e o resto da tela segue funcionando.
+        //:
+        //: E O ESTADO NÃO É TOCADO AQUI: só a lista falhou, `lerOEstado` já
+        //: gravou o que achou, e sobrescrever seria disputar com ela.
         definirFila([]);
-        definirEstado(DESCONHECIDO);
         definirErro(falha.message);
       });
-  }, []);
+  }, [lerOEstado]);
 
   useEffect(carregar, [carregar]);
+
+  //: O AVISO ACOMPANHA O CADASTRO MUDANDO COM A TELA ABERTA — achado da revisão
+  //: do Codex, e procedente: `CadastroDeInstituicoes` desenha o formulário de
+  //: cadastro e esta fila na MESMA página, então criar um veículo aqui deixava o
+  //: aviso velho até a próxima montagem. É justamente o caso que `desatualizado`
+  //: existe para pegar.
+  //:
+  //: SÓ O ESTADO, E NUNCA A LISTA: reler a lista ressuscitaria o par que esta
+  //: pessoa acabou de decidir, que é o motivo de a releitura ter saído (ver o
+  //: cabeçalho). O barramento já esquece o cache antes dos ouvintes, então a
+  //: leitura daqui é a de depois da escrita.
+  useEffect(() => catalogoMudou.assinar(() => void lerOEstado()), [lerOEstado]);
 
   async function responder(
     perfil: CadastroDuplicado,
@@ -401,7 +435,8 @@ export function FilaDeDuplicados() {
         );
       }
       //: SEM RELEITURA AQUI. As duas funções acima são a lista nova, inteira; o
-      //: servidor devolveria a mesma coisa depois de 7,4 s de recálculo.
+      //: servidor devolveria a mesma coisa. Era o custo dela que pesava (7,4 s
+      //: na base real, antes da `0118`); hoje o que a dispensa é o resultado.
     } catch (falha) {
       definirErro((falha as Error).message);
     } finally {
