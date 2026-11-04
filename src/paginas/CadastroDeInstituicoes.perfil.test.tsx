@@ -34,6 +34,13 @@ vi.mock('@/api/cliente', () => ({
   //: A tela mostra a fila de possiveis duplicados, que pede esta
   //: lista ao montar. Sem o duble, o componente chama undefined.
   duplicadosDeCadastro: vi.fn(async () => []),
+  //: E O ESTADO DO PAREAMENTO, pedido na mesma ida: e ele que diz se a fila
+  //: vazia e "nenhum duplicado" ou "nunca pareada". Pareada e em dia, para a
+  //: fila desaparecer como antes e nao somar faixa a estas telas.
+  estadoDaFilaDeDuplicados: vi.fn(async () => ({
+    calculado_em: '2026-11-04T10:00:00Z',
+    desatualizado: false,
+  })),
   fundirCadastro: vi.fn(),
   declararCadastroDistinto: vi.fn(),
   criarInstituicao: vi.fn(),

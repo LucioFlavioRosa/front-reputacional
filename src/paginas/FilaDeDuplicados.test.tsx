@@ -2,7 +2,7 @@
 
 /** A fila do mesmo ator cadastrado duas vezes.
  *
- *  O homônimo exato a migration `0076` fundiu sozinha. O que chega a esta tela
+ *  O homônimo exato a migration `0077` fundiu sozinha. O que chega a esta tela
  *  são os pares que só casam depois de tirar pontuação — `valoreconomico` ↔
  *  `Valor Econômico` —, e ali semelhança NÃO é identidade: `Diário SM` e
  *  `Diários M` casam assim, e `bmc.news` casa com dois veículos.
@@ -10,6 +10,9 @@
  *  O QUE ESTES TESTES PROTEGEM:
  *
  *  * a fila VAZIA não ocupa tela: nada a fazer, nada a ler;
+ *  * mas SÓ quando o vazio é verdade: desde a `0118` o pareamento é guardado, e
+ *    uma fila que nunca foi pareada também vem vazia — aí a tela diz isso em vez
+ *    de desaparecer afirmando "(0)";
  *  * cada lado mostra quantas menções carrega — é o número que diz qual é a
  *    linha com história, e é ela que sobrevive;
  *  * "Fundir" manda o perfil como quem SAI (a ordem dos argumentos é a regra
@@ -28,12 +31,26 @@ import { FilaDeDuplicados } from '@/paginas/FilaDeDuplicados';
 
 vi.mock('@/api/cliente', () => ({
   duplicadosDeCadastro: vi.fn(),
+  //: O ESTADO DO PAREAMENTO, que a tela pede junto com a lista: é ele que diz se
+  //: um vazio é "nenhum duplicado" ou "nunca pareada".
+  estadoDaFilaDeDuplicados: vi.fn(),
   fundirCadastro: vi.fn(async () => ({ id: 'v1', nome: 'Valor Econômico' })),
   declararCadastroDistinto: vi.fn(async () => ({ guardado: true })),
 }));
 
-const { duplicadosDeCadastro, fundirCadastro, declararCadastroDistinto } =
-  await import('@/api/cliente');
+const {
+  duplicadosDeCadastro,
+  estadoDaFilaDeDuplicados,
+  fundirCadastro,
+  declararCadastroDistinto,
+} = await import('@/api/cliente');
+
+//: PAREADA AGORA E EM DIA — o estado em que a tela não tem ressalva nenhuma a
+//: fazer, e portanto o padrão de todo teste que não é sobre o pareamento.
+const PAREADA_E_EM_DIA = {
+  calculado_em: new Date().toISOString(),
+  desatualizado: false,
+};
 
 const UM_PAR = [
   {
@@ -60,11 +77,15 @@ const UM_PAR = [
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(duplicadosDeCadastro).mockResolvedValue(UM_PAR);
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue(PAREADA_E_EM_DIA);
   vi.mocked(fundirCadastro).mockResolvedValue({ id: 'v1', nome: 'Valor Econômico' });
   vi.mocked(declararCadastroDistinto).mockResolvedValue({ guardado: true });
 });
 
-it('a fila VAZIA nao ocupa tela', async () => {
+it('a fila VAZIA E PAREADA nao ocupa tela', async () => {
+  //: PAREADA E EM DIA, que é a única combinação em que o vazio é uma resposta:
+  //: o pareamento rodou, o cadastro não mudou depois, e não há par nenhum. Aí
+  //: não há nada a fazer nem a ler, e a seção desaparece.
   vi.mocked(duplicadosDeCadastro).mockResolvedValue([]);
 
   const { container } = render(<FilaDeDuplicados />);
@@ -72,6 +93,79 @@ it('a fila VAZIA nao ocupa tela', async () => {
   await waitFor(() => expect(duplicadosDeCadastro).toHaveBeenCalled());
   await waitFor(() => expect(container.textContent).toBe(''));
 });
+
+it('a fila que NUNCA foi pareada nao desaparece calada, nem diz zero', async () => {
+  /** O DEFEITO QUE ISTO PRENDE, e é o preço do conserto do 504. Desde a `0118` o
+   *  pareamento é GUARDADO em vez de refeito a cada abertura — comparar o
+   *  cadastro par a par custava 102,7 s medidos em 11.000 cadastros, contra os
+   *  ~240 s em que o ingress corta.
+   *
+   *  A TABELA NASCE VAZIA. Aplicada a migration sem rodar o comando de recálculo,
+   *  a rota devolve `[]` com toda honestidade — e a tela, que sumia no vazio,
+   *  sumiria num cadastro cheio de duplicatas sem dizer nada. É a MESMA família
+   *  do defeito que a trilha das cargas existe para fechar: zero indistinguível
+   *  de "nunca mediu".
+   *
+   *  E O TÍTULO NÃO PODE DIZER "(0)": zero par guardado não é zero duplicado. */
+  vi.mocked(duplicadosDeCadastro).mockResolvedValue([]);
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue({
+    calculado_em: null,
+    desatualizado: true,
+  });
+
+  render(<FilaDeDuplicados />);
+
+  expect(await screen.findByText(/ainda não foi pareada/)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Possíveis duplicados \(0\)/ })).toBeNull();
+  expect(screen.getByRole('button', { name: /Possíveis duplicados/ })).toBeTruthy();
+  //: NADA PARA BUSCAR: o campo de busca num vazio é convite a digitar onde não
+  //: há o que achar.
+  expect(screen.queryByPlaceholderText('Parte do nome')).toBeNull();
+});
+
+it('a fila PAREADA E VELHA avisa, mesmo com par na tela', async () => {
+  /** A RESSALVA NÃO É SÓ DO VAZIO. O recálculo não está em todo escritor: a
+   *  subida de planilha que cria cadastro o dispara, cadastrar pela tela não.
+   *  Quem acabou de cadastrar o mesmo veículo duas vezes e abre a fila veria uma
+   *  lista que não tem o par dele — e concluiria que o painel não achou.
+   *
+   *  O BACK COMPARA UMA IMPRESSÃO do cadastro ativo com a do pareamento, então
+   *  escritor novo entra na conta sozinho, sem gancho que o próximo esqueça.
+   *
+   *  E O NÚMERO FICA: há um par real para decidir, e `(1)` é verdade sobre ele. */
+  vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue({
+    calculado_em: new Date().toISOString(),
+    desatualizado: true,
+  });
+
+  render(<FilaDeDuplicados />);
+
+  expect(await screen.findByText(/O cadastro mudou depois do último pareamento/))
+    .toBeTruthy();
+  //: "hoje", e não a data: a pergunta é "está velho?".
+  expect(screen.getByText(/\(hoje\)/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: /Possíveis duplicados \(1\)/ })).toBeTruthy();
+  expect(screen.getByText('valoreconomico')).toBeTruthy();
+});
+
+it('o estado que FALHA nao derruba a fila, e nao passa por "em dia"', async () => {
+  //: A FILA É O QUE IMPORTA: par para decidir vale mais que a ressalva sobre ele,
+  //: então a falha do estado não pode levar a lista embora.
+  //:
+  //: MAS O SILÊNCIO DELE NÃO VIRA AFIRMAÇÃO: tratar "não respondeu" como "em dia"
+  //: seria a tela afirmando o que ninguém conferiu.
+  vi.mocked(estadoDaFilaDeDuplicados).mockRejectedValue(new Error('500'));
+
+  render(<FilaDeDuplicados />);
+
+  expect(await screen.findByText('valoreconomico')).toBeTruthy();
+  expect(screen.getByText(/Não foi possível conferir quando esta fila foi pareada/))
+    .toBeTruthy();
+  //: E A FALHA DO ESTADO NÃO É UM ERRO DA TELA: ela não aparece como faixa de
+  //: erro, porque a tela continua servindo para o que a pessoa veio fazer.
+  expect(screen.queryByText(/500/)).toBeNull();
+});
+
 
 it('mostra os dois lados com as mencoes de cada um', async () => {
   render(<FilaDeDuplicados />);
@@ -226,13 +320,17 @@ it('depois de responder, a fila NAO e relida', async () => {
   expect(duplicadosDeCadastro).toHaveBeenCalledTimes(1);
 });
 
-it('a falha de carga NAO derruba a tela', async () => {
+it('a falha de carga NAO derruba a tela, e nao rende duas faixas', async () => {
   vi.mocked(duplicadosDeCadastro).mockRejectedValue(new Error('403 sem permissão'));
 
   render(<FilaDeDuplicados />);
 
   //: A fila é acessória: o cadastro inteiro não pode cair com ela.
   expect(await screen.findByText(/403 sem permissão/)).toBeTruthy();
+  //: E O ERRO DA LISTA JÁ EXPLICA O VAZIO: somar a ressalva do pareamento seria
+  //: uma segunda faixa sobre a mesma falha, que não acrescenta nada a quem
+  //: acabou de ler "403 sem permissão".
+  expect(screen.queryByText(/pareamento|pareada/)).toBeNull();
 });
 
 it('o tipo de quem vai sair vem do SERVIDOR, e nao fixo em perfil de rede', async () => {
@@ -331,10 +429,12 @@ it('a linha SAI NA HORA, sem esperar a releitura', async () => {
   //: clicar em fundir ou não é o mesmo, demora a atualizar, parece que nada foi
   //: feito".
   //:
-  //: MEDIDO: `GET /api/instituicoes/duplicados` leva 7,4 s na base real — a fila
-  //: é recalculada comparando ~3.962 cadastros par a par com `difflib`. A tela
-  //: pagava isso A CADA decisão, e durante os 7,4 s a linha ficava ali, com os
-  //: botões reativados, idêntica ao que era antes do clique.
+  //: MEDIDO: `GET /api/instituicoes/duplicados` levava 7,4 s na base real — a
+  //: fila era recalculada comparando ~3.962 cadastros par a par com `difflib`. A
+  //: tela pagava isso A CADA decisão, e durante os 7,4 s a linha ficava ali, com
+  //: os botões reativados, idêntica ao que era antes do clique. (A rota ficou
+  //: barata com a `0118`, e a tela segue não relendo — por outra razão: o efeito
+  //: de cada resposta é local e determinado.)
   //:
   //: POR QUE O TESTE ANTIGO NÃO PEGAVA: ele devolvia `[]` num mock que resolve no
   //: mesmo tick, então provava "a linha sai depois da releitura" — que é verdade
