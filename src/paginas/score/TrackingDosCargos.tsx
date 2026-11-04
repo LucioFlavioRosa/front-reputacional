@@ -174,6 +174,11 @@ export function TrackingDosCargos({
                   vazio="Nenhuma menção com cargo informado neste recorte."
                   ativo={cargoAberto ?? undefined}
                   aoClicar={definirCargoAberto}
+                  //: naTela JÁ VEM NA ORDEM CERTA (Top 5 por volume, depois os
+                  //: acrescentados na ordem em que foram pedidos) -- reordenar
+                  //: aqui faria esta coluna discordar do Termômetro ao lado,
+                  //: que não reordena.
+                  jaOrdenado
                   itens={naTela.map((item) => ({
                     rotulo: item.cargo,
                     positivo: item.positivo,

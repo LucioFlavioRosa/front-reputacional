@@ -36,6 +36,7 @@ export function ColunasEmpilhadas({
   rotuloEmCima = false,
   espessura = 16,
   dica = 'Clique numa barra para descer',
+  jaOrdenado = false,
 }: {
   itens: (ColunaDeSentimento & { detalhe?: string })[];
   legenda?: [string, string, string] | string[];
@@ -55,12 +56,18 @@ export function ColunasEmpilhadas({
   espessura?: number;
   /** O que o clique faz, na ponta da legenda. */
   dica?: string;
+  /** QUEM CHAMA JÁ DECIDIU A ORDEM — pula o `ordenarPeloTotal`. Existe para a
+   *  tela que combina este gráfico com outro que NÃO reordena (o Termômetro):
+   *  sem isto, os dois discordam da ordem de itens com o mesmo total. */
+  jaOrdenado?: boolean;
 }) {
   const idDaLegenda = useId();
   if (!itens.length) {
     return <p style={{ fontSize: 13, color: 'var(--cinza-2)', margin: 0 }}>{vazio}</p>;
   }
-  const barras = ordenarPeloTotal(itens) as (ColunaDeSentimento & { detalhe?: string })[];
+  const barras = (jaOrdenado ? itens : ordenarPeloTotal(itens)) as (ColunaDeSentimento & {
+    detalhe?: string;
+  })[];
   const topo = topoDaEscala(barras);
   const [rotuloPos, rotuloNeu, rotuloNeg] = legenda;
   const [corPos, corNeu, corNeg] = cores;

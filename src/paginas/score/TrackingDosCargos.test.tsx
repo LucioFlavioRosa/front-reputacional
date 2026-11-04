@@ -99,6 +99,27 @@ describe('o Tracking dos cargos dos autores', () => {
     expect(within(colunaDe('Volume por cargo × sentimento')).queryByText('Cargo 7')).toBeNull();
   });
 
+  it('os acrescentados aparecem na mesma ordem no Volume e no Termômetro', async () => {
+    obterCargosDosAutores.mockResolvedValue(dados());
+    montar();
+
+    //: Cargo 7 primeiro, Cargo 6 depois -- Cargo 6 tem MAIS volume que Cargo 7,
+    //: então reordenar por volume (como `ColunasEmpilhadas` faz sozinho)
+    //: inverteria a ordem de acréscimo e desalinharia as duas colunas.
+    const seletor = await screen.findByLabelText('Acompanhar outro cargo');
+    await userEvent.selectOptions(seletor, 'Cargo 7');
+    await userEvent.selectOptions(seletor, 'Cargo 6');
+
+    const ordemNaColuna = (titulo: string) => {
+      const html = colunaDe(titulo).innerHTML;
+      return html.indexOf('Cargo 7') < html.indexOf('Cargo 6') ? ['Cargo 7', 'Cargo 6'] : ['Cargo 6', 'Cargo 7'];
+    };
+
+    expect(ordemNaColuna('Volume por cargo × sentimento')).toEqual(
+      ordemNaColuna('Termômetro por cargo'),
+    );
+  });
+
   it('clicar num cargo abre os autores do maior para o menor impacto, com busca', async () => {
     obterCargosDosAutores.mockResolvedValue(dados());
     montar();
