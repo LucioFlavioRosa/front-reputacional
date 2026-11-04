@@ -51,6 +51,9 @@ vi.mock('@/api/cliente', () => ({
   //: afirmá-lo.
   obterExploradorDeVeiculos: (...argumentos: unknown[]) =>
     obterExploradorDeVeiculos(...argumentos),
+  //: O TRACKING DOS CARGOS da Sociedade tem teste próprio
+  //: (`TrackingDosCargos.test.tsx`); aqui fica carregando, com a moldura.
+  obterCargosDosAutores: vi.fn(() => new Promise(() => {})),
 }));
 
 //: A Jornada e o drill saem do caminho: não são o assunto, e a Jornada busca
@@ -224,15 +227,33 @@ describe('os blocos de veículo do dossiê', () => {
       //: ausência antes de a seção pintar passaria sempre.
       //:
       //: `getAllByText` porque "Drivers e riscos" aparece duas vezes — o título
-      //: do bloco e o do gráfico dentro dele.
-      await waitFor(() =>
-        expect(screen.getAllByText('Drivers e riscos').length).toBeGreaterThan(0),
-      );
+      //: do bloco e o do gráfico dentro dele. NA SOCIEDADE a âncora é o
+      //: Tracking dos cargos, que tomou o lugar dele (03/11/2026).
+      const ancora = lente === 'sociedade' ? 'Tracking dos cargos dos autores' : 'Drivers e riscos';
+      await waitFor(() => expect(screen.getAllByText(ancora).length).toBeGreaterThan(0));
       for (const titulo of OS_BLOCOS) {
         expect(screen.queryAllByText(titulo)).toEqual([]);
       }
     },
   );
+
+  it('na Sociedade, o Tracking dos cargos toma o lugar de Drivers e riscos — e só nela', async () => {
+    obterDossieDaLente.mockResolvedValue(dossieCom('sociedade'));
+    await montarEAbrir('sociedade');
+    await waitFor(() =>
+      expect(screen.getAllByText('Tracking dos cargos dos autores').length).toBeGreaterThan(0),
+    );
+    expect(screen.queryAllByText('Drivers e riscos')).toEqual([]);
+  });
+
+  it('a Clientes continua com Drivers e riscos, sem o Tracking dos cargos', async () => {
+    obterDossieDaLente.mockResolvedValue(dossieCom('clientes'));
+    await montarEAbrir('clientes');
+    await waitFor(() =>
+      expect(screen.getAllByText('Drivers e riscos').length).toBeGreaterThan(0),
+    );
+    expect(screen.queryAllByText('Tracking dos cargos dos autores')).toEqual([]);
+  });
 
   it('a Evolução do MERCADO é o mesmo gráfico de barras da Imprensa', async () => {
     //: ELA ERA O EVENTOGRAMA, por uma premissa falsa: acreditava-se que a lente
