@@ -163,7 +163,15 @@ export function CampoDeRedesSociais({
   );
 }
 
-export function CadastroDeInstituicoes() {
+/** `administraCadastros` só atravessa esta tela: ela é de quem administra, mas o
+ *  endereço é público e quem chega sem a permissão lê o catálogo e recebe 403 ao
+ *  escrever. Quem usa o booleano é a `FilaDeDuplicados`, para não oferecer um
+ *  botão que vai falhar. */
+export function CadastroDeInstituicoes({
+  administraCadastros = false,
+}: {
+  administraCadastros?: boolean;
+} = {}) {
   const { catalogo } = usePainel();
   const [erro, definirErro] = useState<string | null>(null);
   //: O que acabou de dar certo. Sem isto, salvar é SILENCIOSO: o formulário
@@ -657,7 +665,7 @@ export function CadastroDeInstituicoes() {
           ordem — a de revisão primeiro — porque ela é sobre UM registro e a de
           duplicados é sobre o PAR: decidir se o cadastro está certo vem antes de
           decidir se ele é o mesmo que outro. */}
-      <FilaDeDuplicados />
+      <FilaDeDuplicados administraCadastros={administraCadastros} />
 
       {/* RECOLHÍVEL, como os dois blocos acima — pedido do dono do produto.
           Este já paginava em 10, e é de onde a régua dos outros dois veio. */}

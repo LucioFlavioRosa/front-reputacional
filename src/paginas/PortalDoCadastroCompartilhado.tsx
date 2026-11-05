@@ -35,7 +35,18 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
 ];
 
-export function PortalDoCadastroCompartilhado() {
+/** `administraCadastros` ATRAVESSA ESTA TELA sem ela usar: quem o consome é a
+ *  fila de possíveis duplicados, lá dentro do cadastro de Instituições, para não
+ *  oferecer um botão que o servidor recusaria com 403.
+ *
+ *  OBRIGATÓRIO, E NÃO COM PADRÃO `false`: o padrão transformaria um elo rompido
+ *  na passagem em "o botão simplesmente não aparece", sem tipo nem teste
+ *  reclamando. Exigindo, o `tsc` cobra de quem monta esta tela. */
+export function PortalDoCadastroCompartilhado({
+  administraCadastros,
+}: {
+  administraCadastros: boolean;
+}) {
   const [aba, definirAba] = useState<Aba>('instituicoes');
 
   return (
@@ -110,7 +121,9 @@ export function PortalDoCadastroCompartilhado() {
         {/* MONTADA E DESMONTADA, e não escondida com `display: none`. Cada
             tela carrega a sua lista ao montar; mantida viva atrás da outra
             aba, ela mostraria dados de quando foi aberta. */}
-        {aba === 'instituicoes' ? <CadastroDeInstituicoes /> : null}
+        {aba === 'instituicoes' ? (
+          <CadastroDeInstituicoes administraCadastros={administraCadastros} />
+        ) : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
       </div>

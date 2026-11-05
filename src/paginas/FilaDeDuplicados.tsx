@@ -64,6 +64,7 @@ import {
   duplicadosDeCadastro,
   estadoDaFilaDeDuplicados,
   fundirCadastro,
+  pedirPareamento,
   type CadastroDuplicado,
   type CandidatoDeFusao,
   type EstadoDaFilaDeDuplicados,
@@ -250,10 +251,36 @@ type Estado = EstadoDaFilaDeDuplicados | typeof DESCONHECIDO;
  *
  *  O QUARTO CASO É O SILÊNCIO: pareada e em dia não rende aviso, porque aí a
  *  lista fala por si.
+ *
+ *  `acionavel` DIZ SE REFAZER O PAREAMENTO RESOLVE ESTE AVISO, e é o que decide
+ *  se o botão aparece. Os dois primeiros casos resolve; o terceiro NÃO — ali a
+ *  rota do estado falhou, e ninguém sabe se há pareamento a refazer. Oferecer 22
+ *  s de moagem contra "não deu para conferir" é oferecer trabalho no escuro.
+ *
+ *  E O TEXTO MUDA COM QUEM ESTÁ OLHANDO. "Peça ao administrador" ao lado de um
+ *  botão que a própria pessoa pode apertar é contradição na mesma faixa; e sem o
+ *  botão, mandar procurar quem administra é a única instrução verdadeira. Os dois
+ *  textos existem porque os dois leitores existem: esta tela não é barrada no
+ *  front (ver `PortalDoCadastroCompartilhado`), e ler a fila só pede
+ *  `ve_diretorio`.
  */
-function avisoDaFila(estado: Estado): { texto: string; titulo?: string } | null {
+function avisoDaFila(
+  estado: Estado,
+  podeAgir: boolean,
+): { texto: string; titulo?: string; acionavel: boolean } | null {
+  //: A INSTRUÇÃO, e ela é o que `podeAgir` troca. O resto do aviso descreve o
+  //: estado e não depende de quem lê.
+  //:
+  //: O ADMINISTRADOR, E NÃO "ESPERE A PRÓXIMA PLANILHA" — achado da revisão do
+  //: Codex, e procedente: quem trabalha só no CRM não sobe planilha nenhuma, e
+  //: mandar esperar uma deixaria a fila vazia para sempre.
+  const comoResolver = podeAgir
+    ? ''
+    : ' Peça a quem administra os cadastros para rodar o pareamento.';
+
   if (estado === DESCONHECIDO) {
     return {
+      acionavel: false,
       texto:
         'Não foi possível conferir quando esta fila foi pareada — o que ela ' +
         'mostra pode estar incompleto.',
@@ -261,33 +288,43 @@ function avisoDaFila(estado: Estado): { texto: string; titulo?: string } | null 
   }
   if (estado.calculado_em === null) {
     return {
-      //: O ADMINISTRADOR, E NÃO "ESPERE A PRÓXIMA PLANILHA" — achado da revisão
-      //: do Codex, e procedente: quem trabalha só no CRM não sobe planilha
-      //: nenhuma, e mandar esperar uma deixaria a fila vazia para sempre. O back
-      //: documenta o comando de recálculo como backfill OBRIGATÓRIO depois da
-      //: `0118`, e este é o caso em que ele não rodou.
+      acionavel: true,
       texto:
         'Esta fila ainda não foi pareada: o vazio aqui é por isso, e não por não ' +
-        'haver duplicado. Peça ao administrador para rodar o pareamento.',
+        'haver duplicado.' + comoResolver,
     };
   }
   if (estado.desatualizado) {
     return {
+      acionavel: true,
       //: O QUANDO EM PALAVRA DE GENTE, com a data exata no `title`: a pergunta é
       //: "está velho?", e não "que dia foi". Mesmo rótulo da aba das cargas.
       texto:
         `O cadastro mudou depois do último pareamento (${quantoTempo(
           estado.calculado_em,
         )}): pode haver duplicado que ainda não está nesta lista. O pareamento se ` +
-        'refaz na próxima subida de planilha que criar cadastro, ou pelo ' +
-        'administrador.',
+        'refaz na próxima subida de planilha que criar cadastro.' +
+        comoResolver,
       titulo: `Pareado em ${new Date(estado.calculado_em).toLocaleString('pt-BR')}`,
     };
   }
   return null;
 }
 
-export function FilaDeDuplicados() {
+/** `administraCadastros` É A MESMA PERMISSÃO QUE A ROTA EXIGE
+ *  (`administra_dicionarios`), e vem por prop como em `Base podeImportar` e
+ *  `Inicio administraCadastros` — não há contexto de usuário neste front, `eu`
+ *  mora no `App`.
+ *
+ *  ESCONDER NÃO É A BARREIRA, e esta tela não finge que é: quem chamar a rota sem
+ *  a permissão recebe 403 do servidor. O que a prop evita é oferecer um botão que
+ *  vai falhar — e, com ela, a frase "peça a quem administra" só aparece para quem
+ *  de fato precisa pedir. */
+export function FilaDeDuplicados({
+  administraCadastros = false,
+}: {
+  administraCadastros?: boolean;
+} = {}) {
   const [fila, definirFila] = useState<CadastroDuplicado[] | null>(null);
   //: NULO É "AINDA CARREGANDO", e não um estado: desenhar a fila antes de saber
   //: se ela foi pareada é a mentira que esta tela existe para não contar.
@@ -295,6 +332,18 @@ export function FilaDeDuplicados() {
   const [pagina, definirPagina] = useState(1);
   const [erro, definirErro] = useState('');
   const [emCurso, definirEmCurso] = useState('');
+  //: ESTADO PRÓPRIO, E NÃO `emCurso`: aquele guarda o id da pergunta que está
+  //: sendo respondida, e serve para travar os botões DAQUELA linha. O pareamento
+  //: não é de pergunta nenhuma, e reusar `emCurso` travaria uma linha ao acaso.
+  const [pareando, definirPareando] = useState(false);
+  //: ERRO SEPARADO DO DA LISTA — achado de revisão, e era defeito de verdade.
+  //:
+  //: `erro` apaga o aviso (ver `const aviso` lá embaixo), e isso é certo para a
+  //: falha da LISTA: ela já explica o vazio, e duas faixas sobre a mesma coisa é
+  //: uma a mais para ler. Mas a falha do PAREAMENTO apagava o aviso e, com ele, o
+  //: botão — e no 409 de "já está sendo refeito agora" a mensagem manda esperar
+  //: sem deixar onde tentar de novo. Recarregar a página era a única saída.
+  const [erroDoPareamento, definirErroDoPareamento] = useState('');
   //: A BUSCA, pedida pelo dono do produto: "deve uma barra de busca para
   //: facilitar buscar de instituições chave".
   //:
@@ -347,6 +396,10 @@ export function FilaDeDuplicados() {
     if (minha === leituraMaisNova.current) definirEstado(agora);
   }, []);
 
+  //: DEVOLVE A PROMESSA, para quem precisa esperar a lista chegar — hoje o botão
+  //: do pareamento, que sem isso se reabilitaria com a fila velha ainda na tela.
+  //: Por isso o `useEffect` abaixo a chama com `void` em vez de passá-la direto:
+  //: função de efeito que devolve promessa faz o React tratá-la como limpeza.
   const carregar = useCallback(() => {
     //: AS DUAS NA MESMA IDA. A listagem é a fila; o estado é o que autoriza a
     //: tela a dizer "nenhum duplicado". Em série, a tela desenharia zero antes
@@ -355,7 +408,7 @@ export function FilaDeDuplicados() {
     //:
     //: O ESTADO FALHA SOZINHO SEM DERRUBAR A FILA: par para decidir vale mais
     //: que a ressalva sobre ele, e por isso `lerOEstado` não rejeita.
-    Promise.all([duplicadosDeCadastro(), lerOEstado()])
+    return Promise.all([duplicadosDeCadastro(), lerOEstado()])
       .then(([lista]) => {
         definirFila(lista);
         definirErro('');
@@ -371,7 +424,7 @@ export function FilaDeDuplicados() {
       });
   }, [lerOEstado]);
 
-  useEffect(carregar, [carregar]);
+  useEffect(() => void carregar(), [carregar]);
 
   //: O AVISO ACOMPANHA O CADASTRO MUDANDO COM A TELA ABERTA — achado da revisão
   //: do Codex, e procedente: `CadastroDeInstituicoes` desenha o formulário de
@@ -387,6 +440,39 @@ export function FilaDeDuplicados() {
   //: O barramento esquece o cache antes dos ouvintes, então a leitura daqui é a de
   //: depois da escrita.
   useEffect(() => catalogoMudou.assinar(() => void lerOEstado()), [lerOEstado]);
+
+  /** O BOTÃO DO AVISO: refaz o pareamento e recarrega a fila.
+   *
+   *  DEMORA, E A TELA DIZ ISSO. Botão que fica igual por vinte segundos é botão
+   *  que a pessoa aperta de novo. A medição e a origem dela estão em
+   *  `pedirPareamento` — nenhuma delas se confere neste repositório.
+   *
+   *  RECARREGA AS DUAS, e não só o estado: o pareamento acabou de substituir a
+   *  lista inteira, e é a lista que quem apertou quer ver. Reler só o estado
+   *  tiraria o aviso e deixaria a fila vazia na tela — o pior dos dois mundos,
+   *  porque aí o vazio volta a não ter explicação.
+   *
+   *  ESPERA A LISTA antes de reabilitar: sem isso o botão volta ao normal com a
+   *  fila velha ainda desenhada, e parece que não fez nada.
+   */
+  async function refazerOPareamento() {
+    definirPareando(true);
+    definirErroDoPareamento('');
+    try {
+      await pedirPareamento();
+      await carregar();
+    } catch (falha) {
+      //: O 409 DO TETO E O DE "JÁ ESTÁ RODANDO" chegam aqui como texto do
+      //: servidor, que é o que a faixa mostra. São as duas recusas que explicam
+      //: o que fazer, e reescrevê-las aqui seria uma segunda versão a divergir.
+      //:
+      //: EM ESTADO PRÓPRIO, para o aviso e o botão continuarem na tela: as duas
+      //: mensagens dizem o que fazer, e as duas pedem tentar de novo.
+      definirErroDoPareamento((falha as Error).message);
+    } finally {
+      definirPareando(false);
+    }
+  }
 
   async function responder(
     perfil: CadastroDuplicado,
@@ -463,7 +549,7 @@ export function FilaDeDuplicados() {
 
   //: O ERRO DA FILA JÁ EXPLICA O VAZIO, então a ressalva do estado cala: duas
   //: faixas sobre a mesma falha é uma a mais para ler.
-  const aviso = erro ? null : avisoDaFila(estado);
+  const aviso = erro ? null : avisoDaFila(estado, administraCadastros);
 
   //: FILA VAZIA NÃO OCUPA TELA. Não há nada a fazer, e um cartão dizendo
   //: "nenhum duplicado" seria uma linha a mais para ler em toda abertura.
@@ -472,7 +558,11 @@ export function FilaDeDuplicados() {
   //: guardado. Sem a conferência do estado, a tela sumia calada nos dois casos em
   //: que ela mais precisa falar: pareamento que nunca rodou, e cadastro que
   //: mudou depois dele.
-  if (fila.length === 0 && !erro && !aviso) return null;
+  //: `erroDoPareamento` ENTRA NA GUARDA para a seção não desaparecer levando uma
+  //: mensagem que ninguém leu: hoje ele só existe quando há aviso, mas o aviso
+  //: pode sair sob os pés dele — uma releitura do barramento que devolva "pareada
+  //: e em dia" enquanto a faixa de erro está na tela.
+  if (fila.length === 0 && !erro && !aviso && !erroDoPareamento) return null;
 
   //: A BUSCA OLHA OS DOIS LADOS do par, e não só quem pergunta: procurar "valor"
   //: tem de achar a pergunta ancorada em `valoreconomico` tanto quanto a ancorada
@@ -526,6 +616,47 @@ export function FilaDeDuplicados() {
             mensagem={<span title={aviso.titulo}>{aviso.texto}</span>}
           />
         ) : null}
+
+        {/* O BOTÃO FICA FORA DA FAIXA — achado de revisão, e é acessibilidade,
+            não desenho: `FaixaDeAtencao` é `role="status"`, região viva com
+            `aria-atomic` implícito, então trocar o rótulo para "Pareando…"
+            dentro dela faria o leitor de tela reanunciar a mensagem INTEIRA a
+            cada mudança de estado do botão.
+
+            E SÓ QUANDO REFAZER RESOLVE o aviso — ver `acionavel`: contra "não
+            foi possível conferir" ele ofereceria vinte segundos de moagem sem
+            ninguém saber se há o que refazer.
+
+            O TEMPO É TEXTO VISÍVEL, e não `title` — segundo achado da mesma
+            revisão. `title` não chega a leitor de tela de forma confiável e não
+            existe em toque, e a razão de dizer o tempo era justamente evitar que
+            a pessoa ache que travou. Em `title` ela não leria. */}
+        {aviso && administraCadastros && aviso.acionavel ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginTop: 4,
+            }}
+          >
+            <Botao
+              aoClicar={() => void refazerOPareamento()}
+              desabilitado={pareando}
+            >
+              {pareando ? 'Pareando…' : 'Rodar o pareamento'}
+            </Botao>
+            <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
+              Compara os nomes do cadastro dois a dois; leva cerca de 20
+              segundos.
+            </span>
+          </div>
+        ) : null}
+
+        {/* A FALHA DO PAREAMENTO, em faixa própria e DEPOIS do botão: o aviso
+            continua de pé, e o botão continua ali para tentar de novo. */}
+        {erroDoPareamento ? <FaixaDeErro mensagem={erroDoPareamento} /> : null}
 
         {/* A BUSCA, pedida pelo dono do produto: "deve uma barra de busca para
             facilitar buscar de instituições chave". Com 209 pares a decidir,
