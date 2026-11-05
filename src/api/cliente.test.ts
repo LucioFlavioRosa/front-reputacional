@@ -194,6 +194,32 @@ describe('toda escrita de catálogo avisa quem depende do catálogo', () => {
     ).toBe(true);
   });
 
+  it('o pareamento dos duplicados ESCREVE e NÃO avisa — o endereço é o que garante', async () => {
+    /** O ENDEREÇO É CONTRATO, e este teste é o que o prende do lado do front.
+     *
+     *  Refazer o pareamento grava `par_semelhante` e `pareamento_da_fila`, e
+     *  NADA que o catálogo sirva. A rota nasceu sob `/api/instituicoes/` e saiu
+     *  de lá no back por isto: ali, cada clique no botão da fila de duplicados
+     *  recarregaria o catálogo INTEIRO do painel para não mudar nada nele.
+     *
+     *  A CHAMADA DE VERDADE, E NÃO A REGRA. Afirmar o caminho em
+     *  `sincronizacao.test` prova que a regra classifica certo; não prova que
+     *  ESTA função obedece. Mover o endereço de volta para dentro de
+     *  `pedirPareamento` passaria lá e falha aqui.
+     */
+    respostaPadrao = () => new Response(JSON.stringify({ pares: 7 }), { status: 200 });
+
+    await expect(cliente.pedirPareamento()).resolves.toEqual({ pares: 7 });
+
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0].metodo).toBe('POST');
+    expect(chamadas[0].url).toContain('/api/pareamento-de-duplicados');
+    //: O CONTRAFACTUAL, e é ele que carrega o teste: sob este prefixo o aviso
+    //: sairia, e a asserção de baixo é o que isso custaria.
+    expect(chamadas[0].url).not.toContain('/api/instituicoes');
+    expect(avisos).toBe(0);
+  });
+
   it('a recusa do servidor NÃO avisa — nada mudou', async () => {
     respostaPadrao = () =>
       new Response(JSON.stringify({ detalhe: 'Já existe um tema com esse nome.' }), {

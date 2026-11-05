@@ -35,11 +35,18 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
 ];
 
+/** `administraCadastros` ATRAVESSA ESTA TELA sem ela usar: quem o consome é a
+ *  fila de possíveis duplicados, lá dentro do cadastro de Instituições, para não
+ *  oferecer um botão que o servidor recusaria com 403.
+ *
+ *  OBRIGATÓRIO, E NÃO COM PADRÃO `false`: o padrão transformaria um elo rompido
+ *  na passagem em "o botão simplesmente não aparece", sem tipo nem teste
+ *  reclamando. Exigindo, o `tsc` cobra de quem monta esta tela. */
 export function PortalDoCadastroCompartilhado({
-  administraCadastros = false,
+  administraCadastros,
 }: {
-  administraCadastros?: boolean;
-} = {}) {
+  administraCadastros: boolean;
+}) {
   const [aba, definirAba] = useState<Aba>('instituicoes');
 
   return (

@@ -24,7 +24,7 @@
  *    sabe se há pareamento a refazer.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 
@@ -173,31 +173,50 @@ it('enquanto pareia o botao DIZ, e um segundo clique nao vira segunda moagem', a
   await userEvent.click(await screen.findByRole('button', BOTAO));
 
   const pareando = await screen.findByRole('button', { name: 'Pareando…' });
-  expect(pareando).toHaveProperty('disabled', true);
+  expect(pareando).toBeDisabled();
 
   await userEvent.click(pareando);
   expect(pedirPareamento).toHaveBeenCalledTimes(1);
 
-  terminar({ pares: 0 });
+  //: DENTRO DE `act`, para a atualização de estado que a resolução dispara não
+  //: escapar do teste e aparecer como aviso no seguinte.
+  await act(async () => {
+    terminar({ pares: 0 });
+  });
   await waitFor(() => expect(screen.getByRole('button', BOTAO)).toBeTruthy());
 });
 
-it('a RECUSA DO SERVIDOR aparece na tela, com o que fazer', async () => {
+it('a RECUSA DO SERVIDOR aparece, e o BOTAO FICA para tentar de novo', async () => {
   /** AS DUAS RECUSAS SÃO 409 e trazem a instrução no texto: o teto diz para
    *  rodar o comando fora da aplicação, e a concorrente diz para esperar. A tela
    *  mostra o texto do servidor em vez de reescrevê-lo — duas versões da mesma
-   *  frase divergiriam. */
+   *  frase divergiriam.
+   *
+   *  O BOTÃO CONTINUAR ALI É A SEGUNDA METADE, e era um defeito de verdade que a
+   *  revisão achou: a falha ia para `erro`, e `erro` apaga o aviso — e o botão
+   *  com ele. No 409 de "já está sendo refeito agora" a tela mandava esperar e
+   *  não deixava onde tentar de novo; recarregar a página era a única saída.
+   *  Agora a falha do pareamento tem estado próprio.
+   */
   vi.mocked(pedirPareamento).mockRejectedValue(
     new Error(
-      'O cadastro tem 19000 registros ativos, acima do teto de 12000 que esta ' +
-        'tela consegue parear dentro de uma requisição.',
+      'O pareamento já está sendo refeito agora. Espere ele terminar e ' +
+        'recarregue a fila.',
     ),
   );
 
   render(<FilaDeDuplicados administraCadastros />);
   await userEvent.click(await screen.findByRole('button', BOTAO));
 
-  expect(await screen.findByText(/acima do teto de 12000/)).toBeTruthy();
+  expect(await screen.findByText(/já está sendo refeito agora/)).toBeTruthy();
+  //: E DÁ PARA TENTAR DE NOVO: o aviso que explica o vazio continua, e o botão
+  //: está habilitado.
+  expect(await screen.findByText(/ainda não foi pareada/)).toBeTruthy();
+  const outraVez = screen.getByRole('button', BOTAO);
+  expect(outraVez).toBeEnabled();
+
+  await userEvent.click(outraVez);
+  expect(pedirPareamento).toHaveBeenCalledTimes(2);
 });
 
 it('o botao NAO aparece quando o estado NAO DEU PARA CONFERIR', async () => {

@@ -336,6 +336,14 @@ export function FilaDeDuplicados({
   //: sendo respondida, e serve para travar os botões DAQUELA linha. O pareamento
   //: não é de pergunta nenhuma, e reusar `emCurso` travaria uma linha ao acaso.
   const [pareando, definirPareando] = useState(false);
+  //: ERRO SEPARADO DO DA LISTA — achado de revisão, e era defeito de verdade.
+  //:
+  //: `erro` apaga o aviso (ver `const aviso` lá embaixo), e isso é certo para a
+  //: falha da LISTA: ela já explica o vazio, e duas faixas sobre a mesma coisa é
+  //: uma a mais para ler. Mas a falha do PAREAMENTO apagava o aviso e, com ele, o
+  //: botão — e no 409 de "já está sendo refeito agora" a mensagem manda esperar
+  //: sem deixar onde tentar de novo. Recarregar a página era a única saída.
+  const [erroDoPareamento, definirErroDoPareamento] = useState('');
   //: A BUSCA, pedida pelo dono do produto: "deve uma barra de busca para
   //: facilitar buscar de instituições chave".
   //:
@@ -435,9 +443,9 @@ export function FilaDeDuplicados({
 
   /** O BOTÃO DO AVISO: refaz o pareamento e recarrega a fila.
    *
-   *  DEMORA, E A TELA DIZ ISSO. 22,4 s medidos em ~5.800 cadastros ativos, e a
-   *  conta é n² — ver `pedirPareamento`. Botão que some por vinte segundos sem
-   *  avisar é botão que a pessoa aperta de novo.
+   *  DEMORA, E A TELA DIZ ISSO. Botão que fica igual por vinte segundos é botão
+   *  que a pessoa aperta de novo. A medição e a origem dela estão em
+   *  `pedirPareamento` — nenhuma delas se confere neste repositório.
    *
    *  RECARREGA AS DUAS, e não só o estado: o pareamento acabou de substituir a
    *  lista inteira, e é a lista que quem apertou quer ver. Reler só o estado
@@ -449,7 +457,7 @@ export function FilaDeDuplicados({
    */
   async function refazerOPareamento() {
     definirPareando(true);
-    definirErro('');
+    definirErroDoPareamento('');
     try {
       await pedirPareamento();
       await carregar();
@@ -457,7 +465,10 @@ export function FilaDeDuplicados({
       //: O 409 DO TETO E O DE "JÁ ESTÁ RODANDO" chegam aqui como texto do
       //: servidor, que é o que a faixa mostra. São as duas recusas que explicam
       //: o que fazer, e reescrevê-las aqui seria uma segunda versão a divergir.
-      definirErro((falha as Error).message);
+      //:
+      //: EM ESTADO PRÓPRIO, para o aviso e o botão continuarem na tela: as duas
+      //: mensagens dizem o que fazer, e as duas pedem tentar de novo.
+      definirErroDoPareamento((falha as Error).message);
     } finally {
       definirPareando(false);
     }
@@ -547,7 +558,11 @@ export function FilaDeDuplicados({
   //: guardado. Sem a conferência do estado, a tela sumia calada nos dois casos em
   //: que ela mais precisa falar: pareamento que nunca rodou, e cadastro que
   //: mudou depois dele.
-  if (fila.length === 0 && !erro && !aviso) return null;
+  //: `erroDoPareamento` ENTRA NA GUARDA para a seção não desaparecer levando uma
+  //: mensagem que ninguém leu: hoje ele só existe quando há aviso, mas o aviso
+  //: pode sair sob os pés dele — uma releitura do barramento que devolva "pareada
+  //: e em dia" enquanto a faixa de erro está na tela.
+  if (fila.length === 0 && !erro && !aviso && !erroDoPareamento) return null;
 
   //: A BUSCA OLHA OS DOIS LADOS do par, e não só quem pergunta: procurar "valor"
   //: tem de achar a pergunta ancorada em `valoreconomico` tanto quanto a ancorada
@@ -598,30 +613,50 @@ export function FilaDeDuplicados({
             e quem já está filtrando não vai subir para descobrir isso. */}
         {aviso ? (
           <FaixaDeAtencao
-            mensagem={
-              <>
-                <span title={aviso.titulo}>{aviso.texto}</span>
-                {/* O BOTÃO DENTRO DA FAIXA, e não ao lado dela: ele responde
-                    àquele aviso. A faixa já é uma linha flex, então ele cai à
-                    direita do texto sem desenho novo.
-
-                    E SÓ QUANDO REFAZER RESOLVE o aviso — ver `acionavel`: contra
-                    "não foi possível conferir" ele ofereceria vinte segundos de
-                    moagem sem ninguém saber se há o que refazer. */}
-                {administraCadastros && aviso.acionavel ? (
-                  <Botao
-                    aoClicar={() => void refazerOPareamento()}
-                    desabilitado={pareando}
-                    titulo="Compara os nomes do cadastro dois a dois. Leva cerca de 20 segundos."
-                    estilo={{ flexShrink: 0 }}
-                  >
-                    {pareando ? 'Pareando…' : 'Rodar o pareamento'}
-                  </Botao>
-                ) : null}
-              </>
-            }
+            mensagem={<span title={aviso.titulo}>{aviso.texto}</span>}
           />
         ) : null}
+
+        {/* O BOTÃO FICA FORA DA FAIXA — achado de revisão, e é acessibilidade,
+            não desenho: `FaixaDeAtencao` é `role="status"`, região viva com
+            `aria-atomic` implícito, então trocar o rótulo para "Pareando…"
+            dentro dela faria o leitor de tela reanunciar a mensagem INTEIRA a
+            cada mudança de estado do botão.
+
+            E SÓ QUANDO REFAZER RESOLVE o aviso — ver `acionavel`: contra "não
+            foi possível conferir" ele ofereceria vinte segundos de moagem sem
+            ninguém saber se há o que refazer.
+
+            O TEMPO É TEXTO VISÍVEL, e não `title` — segundo achado da mesma
+            revisão. `title` não chega a leitor de tela de forma confiável e não
+            existe em toque, e a razão de dizer o tempo era justamente evitar que
+            a pessoa ache que travou. Em `title` ela não leria. */}
+        {aviso && administraCadastros && aviso.acionavel ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginTop: 4,
+            }}
+          >
+            <Botao
+              aoClicar={() => void refazerOPareamento()}
+              desabilitado={pareando}
+            >
+              {pareando ? 'Pareando…' : 'Rodar o pareamento'}
+            </Botao>
+            <span style={{ fontSize: 13, color: 'var(--cinza-2)' }}>
+              Compara os nomes do cadastro dois a dois; leva cerca de 20
+              segundos.
+            </span>
+          </div>
+        ) : null}
+
+        {/* A FALHA DO PAREAMENTO, em faixa própria e DEPOIS do botão: o aviso
+            continua de pé, e o botão continua ali para tentar de novo. */}
+        {erroDoPareamento ? <FaixaDeErro mensagem={erroDoPareamento} /> : null}
 
         {/* A BUSCA, pedida pelo dono do produto: "deve uma barra de busca para
             facilitar buscar de instituições chave". Com 209 pares a decidir,

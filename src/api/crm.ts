@@ -384,10 +384,17 @@ export function estadoDaFilaDeDuplicados(): Promise<EstadoDaFilaDeDuplicados> {
  *  pareamento" e não havia caminho nenhum — nem para quem lia, nem para o
  *  administrador. O único jeito era um comando dentro da rede do banco.
  *
- *  DEMORA, E ISSO É O CONTRATO: 22,4 s medidos em ~5.800 cadastros ativos, com
- *  `proxy_read_timeout` de 240 s. A conta é n², então quem chama tem de dizer na
+ *  DEMORA, E ISSO É O CONTRATO. A conta é n², então quem chama tem de dizer na
  *  tela que vai esperar. Acima do teto do servidor ela recusa com 409 e explica,
  *  em vez de gastar minutos para morrer em 504.
+ *
+ *  DE ONDE SAEM OS NÚMEROS, porque nenhum deles se mede aqui: os 240 s são o
+ *  `proxy_read_timeout` do `nginx.conf` deste repositório, com teste próprio
+ *  (`api/nginx.limites-do-proxy.test.ts`). Os 22,4 s saíram da execução do
+ *  comando `recalcular_duplicados` no ambiente de dev em 04/11/2026 — "pareamento
+ *  refeito: 387 pares em 22.4 s" —, e a curva n² vem das medições registradas no
+ *  cabeçalho da migration `0118` do back. Nada disto é conferível no front;
+ *  está dito para quem duvidar saber onde olhar.
  *
  *  FORA DE `/api/instituicoes/`, como `declararCadastroDistinto`: o pareamento
  *  escreve `par_semelhante`, e não catálogo. Sob aquele prefixo, cada clique
