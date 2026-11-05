@@ -360,7 +360,14 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               endereço é público, e quem digitar `/compartilhado` sem
               `administra_dicionarios` chega aqui e recebe 403 do backend ao
               tentar salvar. */}
-          {rota.destino === 'compartilhado' ? <PortalDoCadastroCompartilhado /> : null}
+          {rota.destino === 'compartilhado' ? (
+            <PortalDoCadastroCompartilhado
+              /* A MESMA PERMISSÃO QUE A ROTA EXIGE, descendo até a fila de
+                 duplicados: o botão de refazer o pareamento não é oferecido a
+                 quem receberia 403 ao apertá-lo. */
+              administraCadastros={eu?.papel?.administra_dicionarios ?? false}
+            />
+          ) : null}
           {/* FORA DO SCORE, com cartão próprio na Início (20/10/2026) — ver
               `Inicio.tsx`. Só leitura, sem portal: `/api/taxonomia/arvore`
               não exige nenhum papel além de estar logado, e o cartão

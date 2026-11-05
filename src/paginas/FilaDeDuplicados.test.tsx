@@ -39,6 +39,9 @@ vi.mock('@/api/cliente', () => ({
   estadoDaFilaDeDuplicados: vi.fn(),
   fundirCadastro: vi.fn(async () => ({ id: 'v1', nome: 'Valor Econômico' })),
   declararCadastroDistinto: vi.fn(async () => ({ guardado: true })),
+  //: O BOTÃO DO AVISO: refaz o pareamento. A tela mandava "peça ao
+  //: administrador" e não havia caminho nenhum, nem para quem administra.
+  pedirPareamento: vi.fn(async () => ({ pares: 0 })),
 }));
 
 const {
@@ -46,6 +49,7 @@ const {
   estadoDaFilaDeDuplicados,
   fundirCadastro,
   declararCadastroDistinto,
+  pedirPareamento,
 } = await import('@/api/cliente');
 
 //: PAREADA AGORA E EM DIA — o estado em que a tela não tem ressalva nenhuma a
@@ -83,6 +87,10 @@ beforeEach(() => {
   vi.mocked(estadoDaFilaDeDuplicados).mockResolvedValue(PAREADA_E_EM_DIA);
   vi.mocked(fundirCadastro).mockResolvedValue({ id: 'v1', nome: 'Valor Econômico' });
   vi.mocked(declararCadastroDistinto).mockResolvedValue({ guardado: true });
+  //: O MOCK EXISTE AQUI SÓ PARA O IMPORT DA TELA NÃO VIR INDEFINIDO. O botão que
+  //: a chama só aparece com `administraCadastros`, e isso tem arquivo próprio:
+  //: `FilaDeDuplicados.pareamento.test`.
+  vi.mocked(pedirPareamento).mockResolvedValue({ pares: 0 });
 });
 
 it('a fila VAZIA E PAREADA nao ocupa tela', async () => {

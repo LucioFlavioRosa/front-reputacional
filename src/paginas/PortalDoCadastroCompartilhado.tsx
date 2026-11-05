@@ -35,7 +35,11 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'porta_vozes', rotulo: 'Representantes Aegea' },
 ];
 
-export function PortalDoCadastroCompartilhado() {
+export function PortalDoCadastroCompartilhado({
+  administraCadastros = false,
+}: {
+  administraCadastros?: boolean;
+} = {}) {
   const [aba, definirAba] = useState<Aba>('instituicoes');
 
   return (
@@ -110,7 +114,9 @@ export function PortalDoCadastroCompartilhado() {
         {/* MONTADA E DESMONTADA, e não escondida com `display: none`. Cada
             tela carrega a sua lista ao montar; mantida viva atrás da outra
             aba, ela mostraria dados de quando foi aberta. */}
-        {aba === 'instituicoes' ? <CadastroDeInstituicoes /> : null}
+        {aba === 'instituicoes' ? (
+          <CadastroDeInstituicoes administraCadastros={administraCadastros} />
+        ) : null}
         {aba === 'assuntos' ? <CadastroDeAssuntos /> : null}
         {aba === 'porta_vozes' ? <CadastroDePortaVozes /> : null}
       </div>

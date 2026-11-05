@@ -378,6 +378,26 @@ export function estadoDaFilaDeDuplicados(): Promise<EstadoDaFilaDeDuplicados> {
   );
 }
 
+/** Refaz o pareamento da fila. Devolve quantos pares ficaram.
+ *
+ *  POR QUE EXISTE: a tela avisava "peça ao administrador para rodar o
+ *  pareamento" e não havia caminho nenhum — nem para quem lia, nem para o
+ *  administrador. O único jeito era um comando dentro da rede do banco.
+ *
+ *  DEMORA, E ISSO É O CONTRATO: 22,4 s medidos em ~5.800 cadastros ativos, com
+ *  `proxy_read_timeout` de 240 s. A conta é n², então quem chama tem de dizer na
+ *  tela que vai esperar. Acima do teto do servidor ela recusa com 409 e explica,
+ *  em vez de gastar minutos para morrer em 504.
+ *
+ *  FORA DE `/api/instituicoes/`, como `declararCadastroDistinto`: o pareamento
+ *  escreve `par_semelhante`, e não catálogo. Sob aquele prefixo, cada clique
+ *  recarregaria o catálogo inteiro para não mudar nada nele. */
+export function pedirPareamento(): Promise<{ pares: number }> {
+  return requisitar<{ pares: number }>('/api/pareamento-de-duplicados', {
+    method: 'POST',
+  });
+}
+
 /** Funde um cadastro no outro: quem vem no primeiro argumento SAI, com as
  *  menções indo para quem fica.
  *
