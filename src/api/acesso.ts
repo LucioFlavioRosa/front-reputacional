@@ -76,9 +76,12 @@ export function listarAcessos(): Promise<Acesso[]> {
  * papel. Quem avisa a pessoa é quem a cadastra no Entra ID.
  *
  * E NÃO SUBSTITUI O SSO: sem o grupo do Entra não há login, e a linha fica
- * parada. O pré-cadastro adianta o papel, nunca a autenticação. Quem casa os
- * dois é o e-mail VERIFICADO do token — digitado errado aqui, nunca casa, e a
- * linha fica na lista marcada como "aguardando primeiro acesso".
+ * parada. O pré-cadastro adianta o papel, nunca a autenticação.
+ *
+ * QUEM CASA OS DOIS É O E-MAIL QUE O TOKEN DO TENANT AFIRMA — não
+ * `email_verified` do OIDC, e sim `preferred_username`/`email`/`upn` de um
+ * `id_token` validado pelo back. Digitado diferente aqui, nunca casa, e a linha
+ * fica na lista marcada como "nunca entrou".
  */
 export function preCadastrarAcesso(
   email: string,
