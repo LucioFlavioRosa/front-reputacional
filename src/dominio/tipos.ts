@@ -705,6 +705,19 @@ export interface Acesso {
   unidades: string[];
   concedido_por: string | null;
   concedido_em: string | null;
+  /**
+   * PRÉ-CADASTRADA E AINDA SEM ENTRAR: existe, com nível ou sem, e não tem
+   * vínculo com o Entra.
+   *
+   * "COM PAPEL" SERIA IMPRECISO — correção de revisão: a rota aceita o nível
+   * junto, mas esta tela cria sem e deixa quem administra definir no painel ao
+   * lado. As duas coisas são independentes.
+   *
+   * A tela PRECISA mostrar isso. Não é enfeite: um pré-cadastro com e-mail
+   * errado nunca casa com ninguém e fica na lista para sempre — e, com o nível
+   * já definido, parecendo gente com acesso. Esta marca é o que o denuncia.
+   */
+  aguardando_primeiro_acesso: boolean;
 }
 
 /** O que se quer que a pessoa passe a alcançar. Estado completo, não diferença. */

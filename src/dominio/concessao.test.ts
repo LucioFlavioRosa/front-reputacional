@@ -18,6 +18,9 @@ const EXTERNO: Acesso = {
   unidades: ['Prolagos'],
   concedido_por: 'Coordenação',
   concedido_em: '2026-08-01T10:00:00-03:00',
+  //: JÁ ENTROU: este fixture é de quem tem conta, e é o caso que os testes
+  //: abaixo exercitam. O pré-cadastro tem tela própria.
+  aguardando_primeiro_acesso: false,
 };
 
 describe('montarConcessao', () => {

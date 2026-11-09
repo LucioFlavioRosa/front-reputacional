@@ -42,6 +42,7 @@ import {
   historicoDeAcesso,
   listarAcessos,
   listarPapeis,
+  preCadastrarAcesso,
 } from '@/api/cliente';
 import {
   Botao,
@@ -99,6 +100,31 @@ export function GerenciamentoDePerfis({
   const [aDesativar, definirADesativar] = useState<Acesso | null>(null);
   const [aDescartar, definirADescartar] = useState<string | null>(null);
 
+  //: O PRÉ-CADASTRO. Nulo é formulário fechado.
+  //:
+  //: NOME E E-MAIL E NADA MAIS, e o nível se dá no painel da direita, logo
+  //: depois. Pedir o nível aqui exigiria uma segunda cópia do editor de alcance
+  //: — frentes, unidades, prazo, sensível, com as regras que o painel já trata
+  //: com cuidado —, e cópia de formulário é onde mora o campo que divergiu.
+  const [preCadastro, definirPreCadastro] = useState<{
+    nome: string;
+    email: string;
+  } | null>(null);
+  const [erroDoPreCadastro, definirErroDoPreCadastro] = useState<string | null>(null);
+  //: ESTADO PRÓPRIO, E NÃO O `salvando`/`confirmado` DO PAINEL DA DIREITA —
+  //: achado de revisão, e eram dois defeitos:
+  //:
+  //: `salvando` compartilhado desabilitava o "Salvar alteração" do outro painel
+  //: enquanto este gravava, e vice-versa — dois trabalhos sem relação travando
+  //: um ao outro.
+  //:
+  //: E `confirmado` era PIOR: o efeito que recomeça o formulário na troca de
+  //: pessoa faz `definirConfirmado(null)`, e o pré-cadastro seleciona a pessoa
+  //: nova — então a mensagem de sucesso era apagada no mesmo instante em que
+  //: aparecia. Ela nunca foi vista.
+  const [preCadastrando, definirPreCadastrando] = useState(false);
+  const [avisoDoPreCadastro, definirAvisoDoPreCadastro] = useState<string | null>(null);
+
   /** Relê a lista e o catálogo. Devolve a lista, para quem precisa do que veio.
    *
    *  DEVOLVE, e não só guarda no estado: quem acabou de salvar precisa resemear
@@ -129,6 +155,64 @@ export function GerenciamentoDePerfis({
   useEffect(function carregarAoAbrir() {
     void carregar(false);
   }, []);
+
+  /** Grava o pré-cadastro e abre a pessoa para receber o nível.
+   *
+   *  NADA É ENVIADO — não há e-mail, link nem notificação. Grava nome e e-mail;
+   *  quem avisa a pessoa é quem a cadastra no Entra.
+   *
+   *  ABRE A PESSOA EM SEGUIDA, e isso é o desenho: o pré-cadastro nasce SEM
+   *  nível, então deixá-la fechada esconderia a metade que falta. Selecionada, o
+   *  painel da direita já é o editor de alcance que esta tela sempre teve.
+   *
+   *  POR `irPara`, E NÃO POR `definirSelecionada` — achado de revisão. Aquele é
+   *  quem protege alteração PENDENTE: quem estava editando o acesso de outra
+   *  pessoa e pré-cadastra uma nova perderia a edição sem ser perguntado. Com
+   *  `irPara`, a troca passa pelo mesmo diálogo de descartar que o resto da tela.
+   */
+  async function gravarPreCadastro() {
+    if (!preCadastro) return;
+    const nome = preCadastro.nome.trim();
+    const email = preCadastro.email.trim();
+    if (!nome || !email) {
+      definirErroDoPreCadastro('Preencha nome e e-mail.');
+      return;
+    }
+
+    definirPreCadastrando(true);
+    definirErroDoPreCadastro(null);
+    definirAvisoDoPreCadastro(null);
+    try {
+      const { id } = await preCadastrarAcesso(email, nome, {
+        //: SEM NÍVEL: é o passo seguinte, no painel da direita.
+        papel: null,
+        acesso_irrestrito: false,
+        sensivel: false,
+        externo: false,
+        expira_em: null,
+        frentes: [],
+        unidades: [],
+        //: NULO É VERDADE AQUI: a linha nasce nesta requisição, então não há
+        //: versão anterior que alguém possa sobrescrever.
+        versao_vista: null,
+      });
+      definirPreCadastro(null);
+      await carregar();
+      irPara(id);
+      definirAvisoDoPreCadastro(
+        `${nome} pré-cadastrada. Defina o nível no painel ao lado — ela entra ` +
+          'já com ele quando for cadastrada no Entra.',
+      );
+    } catch (falha) {
+      //: O TEXTO DO SERVIDOR, que distingue "já tem conta" de "já tem
+      //: pré-cadastro" — as duas pedem ação diferente de quem administra.
+      definirErroDoPreCadastro(
+        falha instanceof Error ? falha.message : 'Falha ao pré-cadastrar.',
+      );
+    } finally {
+      definirPreCadastrando(false);
+    }
+  }
 
   const pessoa = useMemo(
     () => (pessoas ?? []).find((p) => p.id === selecionada) ?? null,
@@ -407,9 +491,107 @@ export function GerenciamentoDePerfis({
               )}
             </div>
 
+            {/* O RODAPÉ DIZIA O COMPORTAMENTO ANTIGO — "usuários entram pelo
+                SSO, novos acessos aparecem aqui sem nível" —, e isso deixou de
+                ser a única porta: agora dá para cadastrar antes do primeiro
+                login. O texto velho continuaria verdadeiro e incompleto, que é
+                o pior tipo de texto numa tela de permissão. */}
             <div style={rodapeDaLista}>
-              Usuários entram pelo SSO corporativo (Microsoft Entra). Novos
-              acessos aparecem aqui sem nível até serem classificados.
+              {preCadastro ? (
+                /* `<form>` DE VERDADE, e não uma `div` com botão — achado de
+                   revisão: num formulário de dois campos, Enter é como se
+                   envia, e sem o `form` a tecla não fazia nada. */
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void gravarPreCadastro();
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                >
+                  <strong style={{ fontSize: 12 }}>Pré-cadastrar pessoa</strong>
+                  <input
+                    style={estiloDeEntrada}
+                    value={preCadastro.nome}
+                    onChange={(e) =>
+                      definirPreCadastro({ ...preCadastro, nome: e.target.value })
+                    }
+                    placeholder="Nome"
+                    aria-label="Nome da pessoa a pré-cadastrar"
+                    aria-describedby="pre-cadastro-ajuda"
+                    autoComplete="name"
+                    /* O FOCO VEM PARA CÁ AO ABRIR: o botão que abriu o
+                       formulário é removido do DOM, e sem isto o foco de quem
+                       navega por teclado fica perdido. */
+                    autoFocus
+                  />
+                  <input
+                    style={estiloDeEntrada}
+                    value={preCadastro.email}
+                    onChange={(e) =>
+                      definirPreCadastro({ ...preCadastro, email: e.target.value })
+                    }
+                    placeholder="E-mail corporativo"
+                    aria-label="E-mail da pessoa a pré-cadastrar"
+                    aria-describedby="pre-cadastro-ajuda"
+                    type="email"
+                    autoComplete="email"
+                  />
+                  {/* O E-MAIL EXATO É O QUE LIGA OS DOIS, e é o único jeito de
+                      errar isto sem aviso: digitado diferente do Entra, o
+                      pré-cadastro nunca casa e fica na lista como "nunca
+                      entrou". Dizer aqui é mais barato que descobrir depois. */}
+                  <span id="pre-cadastro-ajuda" style={{ color: 'var(--cinza-2)' }}>
+                    Use o mesmo e-mail que será cadastrado no Entra — é ele que
+                    liga os dois. Nada é enviado à pessoa.
+                  </span>
+                  {/* `role="alert"` PORQUE A RECUSA CHEGA DEPOIS DO CLIQUE: sem
+                      isto quem usa leitor de tela aperta, nada é anunciado, e a
+                      pessoa não sabe que o servidor recusou. */}
+                  {erroDoPreCadastro && (
+                    <span role="alert" style={{ color: 'var(--erro-fg)' }}>
+                      {erroDoPreCadastro}
+                    </span>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Botao variante="primario" tipo="submit" desabilitado={preCadastrando}>
+                      {preCadastrando ? 'Gravando…' : 'Pré-cadastrar'}
+                    </Botao>
+                    <Botao
+                      variante="secundario"
+                      desabilitado={preCadastrando}
+                      aoClicar={() => {
+                        definirPreCadastro(null);
+                        definirErroDoPreCadastro(null);
+                      }}
+                    >
+                      Cancelar
+                    </Botao>
+                  </div>
+                </form>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* AQUI, E NÃO EM `confirmado`: aquele é apagado pelo efeito
+                      que recomeça o formulário na troca de pessoa, e o
+                      pré-cadastro troca de pessoa — a mensagem morria no mesmo
+                      instante em que nascia. */}
+                  {avisoDoPreCadastro && (
+                    <span role="status" style={{ color: 'var(--ok-fg)' }}>
+                      {avisoDoPreCadastro}
+                    </span>
+                  )}
+                  <span>
+                    Quem entra pelo SSO corporativo (Microsoft Entra) aparece
+                    aqui sem nível. Dá também para cadastrar antes: a pessoa
+                    entra já com o nível definido.
+                  </span>
+                  <Botao
+                    variante="secundario"
+                    aoClicar={() => definirPreCadastro({ nome: '', email: '' })}
+                  >
+                    Pré-cadastrar pessoa
+                  </Botao>
+                </div>
+              )}
             </div>
           </div>
 
@@ -852,6 +1034,14 @@ function LinhaDaPessoa({
           {pessoa.nome}
           {!pessoa.ativo && (
             <span style={{ fontWeight: 400, color: 'var(--cinza-2)' }}> · desativada</span>
+          )}
+          {/* NUNCA ENTROU: pré-cadastrada e ainda sem vínculo com o Entra.
+              NÃO É ENFEITE — um pré-cadastro com e-mail errado nunca casa com
+              ninguém e fica aqui para sempre parecendo gente com acesso. Esta
+              marca é o que o denuncia, e é a mitigação da conta fantasma que a
+              `0096` do back guardava. */}
+          {pessoa.aguardando_primeiro_acesso && (
+            <span style={{ fontWeight: 400, color: 'var(--cinza-2)' }}> · nunca entrou</span>
           )}
         </span>
         <span style={{ fontSize: 12, color: 'var(--cinza-2)', ...cortaTexto }}>
