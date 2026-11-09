@@ -10,8 +10,12 @@
  *
  *  NADA É ENVIADO, e isto está no teste porque o nome óbvio para a função
  *  ("convite") faria esperar o contrário: não há e-mail, link nem notificação.
- *  Grava-se nome, e-mail e nível; quem avisa a pessoa é quem a cadastra no
- *  Entra ID.
+ *  Grava-se nome e e-mail; quem avisa a pessoa é quem a cadastra no Entra ID.
+ *
+ *  E O NÍVEL NÃO VEM DESTE FORMULÁRIO — correção de revisão, porque este
+ *  cabeçalho dizia "nome, e-mail e nível". A rota aceita o nível junto, mas a
+ *  tela manda `papel: null` e deixa a definição no painel ao lado, que é o
+ *  editor de alcance que ela sempre teve.
  *
  *  O PRIMEIRO TESTE DE COMPONENTE DESTA TELA. Ela tem 61 KB e até aqui só a
  *  lógica pura (`dominio/perfis`, `dominio/concessao`) era coberta. Este arquivo
@@ -113,6 +117,21 @@ it('o formulario grava NOME e E-MAIL e NENHUM nivel', async () => {
    *  uma segunda cópia das regras de frente, unidade, prazo e sensível — e cópia
    *  de formulário é onde mora o campo que divergiu.
    */
+  //: A LISTA PASSA A TER A PESSOA NOVA depois do POST, e isto não é enfeite do
+  //: dublê — achado de revisão: com `listarAcessos` sempre devolvendo a mesma
+  //: lista, o teste passava mesmo que a pessoa recém-criada nunca aparecesse.
+  const CARLA = pessoa({
+    id: 'id-novo',
+    nome: 'Carla Diretora',
+    email: 'carla@aegea.com.br',
+    papel: null,
+    aguardando_primeiro_acesso: true,
+  });
+  vi.mocked(preCadastrarAcesso).mockResolvedValue({ id: 'id-novo' });
+  vi.mocked(listarAcessos)
+    .mockResolvedValueOnce([pessoa({})])
+    .mockResolvedValue([pessoa({}), CARLA]);
+
   render(<GerenciamentoDePerfis euId="eu" />);
 
   await userEvent.click(
@@ -136,6 +155,18 @@ it('o formulario grava NOME e E-MAIL e NENHUM nivel', async () => {
   //: NULO É VERDADE: a linha nasce nesta requisição, então não há versão
   //: anterior que alguém possa sobrescrever sem perceber.
   expect(concessao.versao_vista).toBeNull();
+
+  //: E A PESSOA APARECE NA LISTA. Sem esta parte, "gravou" seria só "chamou a
+  //: API".
+  //:
+  //: PELA MARCA, E NÃO PELO NOME: o nome dela aparece em TRÊS lugares depois de
+  //: gravar — a linha, a confirmação e o cabeçalho do painel da direita —, e
+  //: procurar por ele deu "found multiple elements". A marca só existe na linha
+  //: de quem aguarda, e a outra pessoa do dublê já entrou.
+  expect(await screen.findByText(/nunca entrou/)).toBeTruthy();
+  //: E A CONFIRMAÇÃO SOBREVIVE, que era o segundo defeito: ela ficava em
+  //: `confirmado`, e o efeito que troca de pessoa a apagava no mesmo instante.
+  expect(await screen.findByText(/pré-cadastrada\. Defina o nível/)).toBeTruthy();
 });
 
 it('o formulario RECUSA nome ou e-mail em branco antes de chamar o servidor', async () => {

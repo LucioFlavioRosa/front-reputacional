@@ -111,6 +111,19 @@ export function GerenciamentoDePerfis({
     email: string;
   } | null>(null);
   const [erroDoPreCadastro, definirErroDoPreCadastro] = useState<string | null>(null);
+  //: ESTADO PRÓPRIO, E NÃO O `salvando`/`confirmado` DO PAINEL DA DIREITA —
+  //: achado de revisão, e eram dois defeitos:
+  //:
+  //: `salvando` compartilhado desabilitava o "Salvar alteração" do outro painel
+  //: enquanto este gravava, e vice-versa — dois trabalhos sem relação travando
+  //: um ao outro.
+  //:
+  //: E `confirmado` era PIOR: o efeito que recomeça o formulário na troca de
+  //: pessoa faz `definirConfirmado(null)`, e o pré-cadastro seleciona a pessoa
+  //: nova — então a mensagem de sucesso era apagada no mesmo instante em que
+  //: aparecia. Ela nunca foi vista.
+  const [preCadastrando, definirPreCadastrando] = useState(false);
+  const [avisoDoPreCadastro, definirAvisoDoPreCadastro] = useState<string | null>(null);
 
   /** Relê a lista e o catálogo. Devolve a lista, para quem precisa do que veio.
    *
@@ -151,6 +164,11 @@ export function GerenciamentoDePerfis({
    *  ABRE A PESSOA EM SEGUIDA, e isso é o desenho: o pré-cadastro nasce SEM
    *  nível, então deixá-la fechada esconderia a metade que falta. Selecionada, o
    *  painel da direita já é o editor de alcance que esta tela sempre teve.
+   *
+   *  POR `irPara`, E NÃO POR `definirSelecionada` — achado de revisão. Aquele é
+   *  quem protege alteração PENDENTE: quem estava editando o acesso de outra
+   *  pessoa e pré-cadastra uma nova perderia a edição sem ser perguntado. Com
+   *  `irPara`, a troca passa pelo mesmo diálogo de descartar que o resto da tela.
    */
   async function gravarPreCadastro() {
     if (!preCadastro) return;
@@ -161,8 +179,9 @@ export function GerenciamentoDePerfis({
       return;
     }
 
-    definirSalvando(true);
+    definirPreCadastrando(true);
     definirErroDoPreCadastro(null);
+    definirAvisoDoPreCadastro(null);
     try {
       const { id } = await preCadastrarAcesso(email, nome, {
         //: SEM NÍVEL: é o passo seguinte, no painel da direita.
@@ -179,10 +198,10 @@ export function GerenciamentoDePerfis({
       });
       definirPreCadastro(null);
       await carregar();
-      definirSelecionada(id);
-      definirConfirmado(
-        `${nome} pré-cadastrada. Defina o nível abaixo — ela entra já com ele ` +
-          'quando for cadastrada no Entra.',
+      irPara(id);
+      definirAvisoDoPreCadastro(
+        `${nome} pré-cadastrada. Defina o nível no painel ao lado — ela entra ` +
+          'já com ele quando for cadastrada no Entra.',
       );
     } catch (falha) {
       //: O TEXTO DO SERVIDOR, que distingue "já tem conta" de "já tem
@@ -191,7 +210,7 @@ export function GerenciamentoDePerfis({
         falha instanceof Error ? falha.message : 'Falha ao pré-cadastrar.',
       );
     } finally {
-      definirSalvando(false);
+      definirPreCadastrando(false);
     }
   }
 
@@ -479,7 +498,16 @@ export function GerenciamentoDePerfis({
                 o pior tipo de texto numa tela de permissão. */}
             <div style={rodapeDaLista}>
               {preCadastro ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                /* `<form>` DE VERDADE, e não uma `div` com botão — achado de
+                   revisão: num formulário de dois campos, Enter é como se
+                   envia, e sem o `form` a tecla não fazia nada. */
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void gravarPreCadastro();
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                >
                   <strong style={{ fontSize: 12 }}>Pré-cadastrar pessoa</strong>
                   <input
                     style={estiloDeEntrada}
@@ -489,6 +517,12 @@ export function GerenciamentoDePerfis({
                     }
                     placeholder="Nome"
                     aria-label="Nome da pessoa a pré-cadastrar"
+                    aria-describedby="pre-cadastro-ajuda"
+                    autoComplete="name"
+                    /* O FOCO VEM PARA CÁ AO ABRIR: o botão que abriu o
+                       formulário é removido do DOM, e sem isto o foco de quem
+                       navega por teclado fica perdido. */
+                    autoFocus
                   />
                   <input
                     style={estiloDeEntrada}
@@ -498,29 +532,33 @@ export function GerenciamentoDePerfis({
                     }
                     placeholder="E-mail corporativo"
                     aria-label="E-mail da pessoa a pré-cadastrar"
+                    aria-describedby="pre-cadastro-ajuda"
+                    type="email"
+                    autoComplete="email"
                   />
                   {/* O E-MAIL EXATO É O QUE LIGA OS DOIS, e é o único jeito de
                       errar isto sem aviso: digitado diferente do Entra, o
                       pré-cadastro nunca casa e fica na lista como "nunca
                       entrou". Dizer aqui é mais barato que descobrir depois. */}
-                  <span style={{ color: 'var(--cinza-2)' }}>
+                  <span id="pre-cadastro-ajuda" style={{ color: 'var(--cinza-2)' }}>
                     Use o mesmo e-mail que será cadastrado no Entra — é ele que
                     liga os dois. Nada é enviado à pessoa.
                   </span>
+                  {/* `role="alert"` PORQUE A RECUSA CHEGA DEPOIS DO CLIQUE: sem
+                      isto quem usa leitor de tela aperta, nada é anunciado, e a
+                      pessoa não sabe que o servidor recusou. */}
                   {erroDoPreCadastro && (
-                    <span style={{ color: 'var(--vermelho)' }}>{erroDoPreCadastro}</span>
+                    <span role="alert" style={{ color: 'var(--erro-fg)' }}>
+                      {erroDoPreCadastro}
+                    </span>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Botao
-                      variante="primario"
-                      desabilitado={salvando}
-                      aoClicar={() => void gravarPreCadastro()}
-                    >
-                      {salvando ? 'Gravando…' : 'Pré-cadastrar'}
+                    <Botao variante="primario" tipo="submit" desabilitado={preCadastrando}>
+                      {preCadastrando ? 'Gravando…' : 'Pré-cadastrar'}
                     </Botao>
                     <Botao
                       variante="secundario"
-                      desabilitado={salvando}
+                      desabilitado={preCadastrando}
                       aoClicar={() => {
                         definirPreCadastro(null);
                         definirErroDoPreCadastro(null);
@@ -529,9 +567,18 @@ export function GerenciamentoDePerfis({
                       Cancelar
                     </Botao>
                   </div>
-                </div>
+                </form>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* AQUI, E NÃO EM `confirmado`: aquele é apagado pelo efeito
+                      que recomeça o formulário na troca de pessoa, e o
+                      pré-cadastro troca de pessoa — a mensagem morria no mesmo
+                      instante em que nascia. */}
+                  {avisoDoPreCadastro && (
+                    <span role="status" style={{ color: 'var(--ok-fg)' }}>
+                      {avisoDoPreCadastro}
+                    </span>
+                  )}
                   <span>
                     Quem entra pelo SSO corporativo (Microsoft Entra) aparece
                     aqui sem nível. Dá também para cadastrar antes: a pessoa

@@ -220,6 +220,51 @@ describe('toda escrita de catálogo avisa quem depende do catálogo', () => {
     expect(avisos).toBe(0);
   });
 
+  it('o PRÉ-CADASTRO manda POST em /api/acessos com e-mail e nome, e NÃO avisa', async () => {
+    /** A FORMA HTTP, que o teste de componente não alcança — achado de revisão:
+     *  lá `preCadastrarAcesso` está dublada, então um erro de método, de rota ou
+     *  de serialização passaria verde.
+     *
+     *  E NÃO AVISA O CATÁLOGO: criar pessoa não muda tema, instituição nem
+     *  dicionário. `/api/acessos` não está em `ROTAS_DO_CATALOGO`, e a asserção
+     *  de baixo é o que impede alguém de pôr lá sem perceber o custo — seria uma
+     *  recarga do catálogo inteiro a cada pessoa cadastrada.
+     *
+     *  O CORPO É CAPTURADO AQUI, com um dublê local: o compartilhado guarda só
+     *  método e URL, e alargá-lo mexeria na infraestrutura dos outros testes.
+     */
+    let corpo = '';
+    vi.stubGlobal('fetch', (url: string, opcoes: RequestInit = {}) => {
+      chamadas.push({ url, metodo: (opcoes.method ?? 'GET').toUpperCase() });
+      corpo = String(opcoes.body ?? '');
+      return Promise.resolve(new Response(JSON.stringify({ id: 'id-novo' }), { status: 201 }));
+    });
+
+    await expect(
+      cliente.preCadastrarAcesso('ana@aegea.com.br', 'Ana Diretora', {
+        papel: null,
+        acesso_irrestrito: false,
+        sensivel: false,
+        externo: false,
+        expira_em: null,
+        frentes: [],
+        unidades: [],
+        versao_vista: null,
+      }),
+    ).resolves.toEqual({ id: 'id-novo' });
+
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0].metodo).toBe('POST');
+    expect(chamadas[0].url).toContain('/api/acessos');
+    expect(JSON.parse(corpo)).toMatchObject({
+      email: 'ana@aegea.com.br',
+      nome: 'Ana Diretora',
+      papel: null,
+      versao_vista: null,
+    });
+    expect(avisos).toBe(0);
+  });
+
   it('a recusa do servidor NÃO avisa — nada mudou', async () => {
     respostaPadrao = () =>
       new Response(JSON.stringify({ detalhe: 'Já existe um tema com esse nome.' }), {
