@@ -705,6 +705,14 @@ export interface Acesso {
   unidades: string[];
   concedido_por: string | null;
   concedido_em: string | null;
+  /**
+   * PRÉ-CADASTRADA E AINDA SEM ENTRAR: tem papel, não tem vínculo com o Entra.
+   *
+   * A tela PRECISA mostrar isso. Não é enfeite: um pré-cadastro com e-mail
+   * errado nunca casa com ninguém e fica na lista para sempre, parecendo gente
+   * com acesso. Esta marca é o que o denuncia.
+   */
+  aguardando_primeiro_acesso: boolean;
 }
 
 /** O que se quer que a pessoa passe a alcançar. Estado completo, não diferença. */

@@ -64,6 +64,33 @@ export function listarAcessos(): Promise<Acesso[]> {
   return requisitar<Acesso[]>('/api/acessos');
 }
 
+/**
+ * Cadastra a pessoa e o acesso dela ANTES do primeiro login.
+ *
+ * O QUE ISTO CONSERTA: sem ele a pessoa só passava a existir depois de ser
+ * RECUSADA — entrava pelo SSO, nascia sem papel, o servidor barrava, e só então
+ * aparecia nesta lista para receber acesso. Numa estreia com diretores, isso é
+ * um lote de "seu acesso ainda não foi liberado" antes de alguém poder agir.
+ *
+ * NADA É ENVIADO. Não há e-mail, link nem notificação: grava-se nome, e-mail e
+ * papel. Quem avisa a pessoa é quem a cadastra no Entra ID.
+ *
+ * E NÃO SUBSTITUI O SSO: sem o grupo do Entra não há login, e a linha fica
+ * parada. O pré-cadastro adianta o papel, nunca a autenticação. Quem casa os
+ * dois é o e-mail VERIFICADO do token — digitado errado aqui, nunca casa, e a
+ * linha fica na lista marcada como "aguardando primeiro acesso".
+ */
+export function preCadastrarAcesso(
+  email: string,
+  nome: string,
+  concessao: Concessao,
+): Promise<{ id: string }> {
+  return requisitar<{ id: string }>('/api/acessos', {
+    method: 'POST',
+    body: JSON.stringify({ ...concessao, email, nome }),
+  });
+}
+
 export function listarPapeis(): Promise<PapelDisponivel[]> {
   return requisitar<PapelDisponivel[]>('/api/acessos/papeis');
 }
