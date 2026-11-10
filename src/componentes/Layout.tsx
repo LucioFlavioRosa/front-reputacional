@@ -412,10 +412,16 @@ export function Layout({
             frente e período de AGENDA, e esta tela escolhe período de pregão no
             próprio corpo. Deixá-la aqui ofereceria dois seletores de período
             discordando na mesma tela — e o de cima não faria nada. */}
+        {/* A ADMINISTRAÇÃO (biblioteca de posicionamento, consultas e
+            alegações) TAMBÉM NÃO, pela mesma razão do Cadastro compartilhado:
+            é configuração, não agenda. Achado de revisão, 10/11/2026 — faltava
+            nesta lista, e a barra aparecia por cima da tela de Administração
+            sem filtrar nada ali. */}
         {view !== 'cadastro' &&
         view !== 'score' &&
         view !== 'compartilhado' &&
-        view !== 'mercado' ? (
+        view !== 'mercado' &&
+        view !== 'admin' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
