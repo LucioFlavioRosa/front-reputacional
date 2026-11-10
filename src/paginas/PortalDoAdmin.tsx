@@ -18,13 +18,12 @@
  *  diferente dos três acima, não ganhou casa nova — só parou de aparecer
  *  aqui por enquanto. O componente, a aba e a rota continuam no código.
  *
- *  Duas responsabilidades visíveis, e por isso duas abas:
+ *  CONSULTAS E ALEGAÇÕES TAMBÉM ESTÁ ESCONDIDA (a pedido do Jones,
+ *  10/11/2026), pela mesma razão e do mesmo jeito: só parou de aparecer como
+ *  aba. O componente (`Alegacoes`), o tipo `Aba` e a rota continuam no
+ *  código — só saiu de `ABAS`.
  *
- *    Posicionamento     a biblioteca de referências
- *    Consultas e alegações  o que se apura, e contra qual posicionamento
- *
- *  Posicionamento vem antes, e é a ordem da dependência: apurar uma alegação
- *  é amarrá-la ao posicionamento que responde, e ele precisa existir antes.
+ *  Por isso só Posicionamento aparece hoje — a biblioteca de referências.
  *
  *  Juntas num portal porque quem faz uma faz as outras, e porque a navegação do
  *  painel é sobre o CRM — quatro entradas lá teriam a mesma cara das telas de
@@ -40,17 +39,11 @@ import { Alegacoes } from '@/paginas/Alegacoes';
 import { Dicionarios } from '@/paginas/Dicionarios';
 import { Biblioteca } from '@/paginas/Biblioteca';
 
-//: 'dicionarios' CONTINUA AQUI, sem entrada em `ABAS` — ver o comentário
-//: acima sobre por que ele está escondido, e não removido.
+//: 'dicionarios' E 'alegacoes' CONTINUAM AQUI, sem entrada em `ABAS` — ver o
+//: comentário acima sobre por que estão escondidas, e não removidas.
 type Aba = 'biblioteca' | 'alegacoes' | 'dicionarios';
 
-const ABAS: { id: Aba; rotulo: string }[] = [
-  { id: 'biblioteca', rotulo: 'Posicionamento' },
-  //: Depois de Posicionamento, e é a ordem da dependência: apurar uma
-  //: alegação é amarrá-la ao posicionamento que responde, e ele precisa
-  //: existir antes.
-  { id: 'alegacoes', rotulo: 'Consultas e alegações' },
-];
+const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'biblioteca', rotulo: 'Posicionamento' }];
 
 export function PortalDoAdmin() {
   const [aba, definirAba] = useState<Aba>('biblioteca');
@@ -60,8 +53,7 @@ export function PortalDoAdmin() {
       <div>
         <h1 style={{ fontSize: 26 }}>Administração</h1>
         <p style={{ fontSize: 13, color: 'var(--cinza-2)', marginTop: 4 }}>
-          Configurações do CRM — a biblioteca de posicionamento e as consultas e
-          alegações apuradas contra ela.
+          Configurações do CRM — a biblioteca de posicionamento.
         </p>
       </div>
 
