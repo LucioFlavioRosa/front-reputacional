@@ -28,7 +28,7 @@ const SSO_LIGADO = true;
 const MODULOS = [
   { nome: 'CRM dos Stakeholders', estado: 'Disponível' },
   { nome: 'KPIs Reputacionais', estado: 'Disponível' },
-  { nome: 'Painel de Inteligência de Mercado', estado: 'Em construção' },
+  { nome: 'Painel de Inteligência de Mercado', estado: 'Disponível' },
 ];
 
 /** A rota que a pessoa estava tentando abrir, para o SSO devolvê-la ali.

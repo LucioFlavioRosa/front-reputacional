@@ -203,7 +203,7 @@ export const MODULOS: readonly Modulo[] = [
   {
     id: 'mercado',
     nome: 'Inteligência de Mercado',
-    descricao: 'Em construção — sem acesso até o lançamento.',
+    descricao: 'Cotações de bonds e indicadores de inteligência de mercado.',
   },
   {
     id: 'usuarios',
