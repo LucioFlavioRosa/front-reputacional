@@ -83,6 +83,13 @@ import { areaDe, configuracaoDe } from '@/navegacao/areas';
 //: A `view` continua `acessos` de propósito: é o que o histórico do navegador
 //: guarda, e trocá-la quebraria os links que alguém já tenha.
 
+//: LINK FIXO PARA O FORMS DA AEGEA, no cabeçalho de toda tela interna (fora da
+//: capa). Por enquanto é um link único, igual em todo ambiente — por isso
+//: uma constante aqui, e não uma variável de ambiente (ver `window.__PAINEL__`
+//: em `public/configuracao.js` se um dia precisar variar por ambiente sem
+//: rebuild).
+const URL_DO_FORMULARIO = 'https://forms.cloud.microsoft/r/ZAyEuunqEd';
+
 export function Layout({
   view,
   abaAtiva,
@@ -374,6 +381,31 @@ export function Layout({
                 Nova interação
               </Botao>
             ) : null}
+
+            {/* O FORMS DA AEGEA abre em nova aba, fora da plataforma — por
+                isso é um `<a>` com `rel="noreferrer"`, e não um `Botao`
+                (`Botao` é um `<button>` puro, sem `href`). Mesmo padrão de
+                `Ficha.tsx` para link externo. */}
+            <a
+              href={URL_DO_FORMULARIO}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                height: 36,
+                padding: '0 14px',
+                borderRadius: 'var(--r-btn)',
+                border: '1px solid rgba(255,255,255,0.5)',
+                color: 'var(--branco)',
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Help Desk
+            </a>
 
             {/* Por último, e à direita de tudo: é onde a barra de todo sistema
                 põe a conta, e contrariar isso faria a pessoa procurar. */}
