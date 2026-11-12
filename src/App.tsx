@@ -21,6 +21,7 @@ import { PortalDoCadastroCompartilhado } from '@/paginas/PortalDoCadastroCompart
 import { ArvoreDaTaxonomia } from '@/paginas/ArvoreDaTaxonomia';
 import { ConferirImportacao } from '@/paginas/importacao/ConferirImportacao';
 import { ConfiguracoesDoScore } from '@/paginas/score/ConfiguracoesDoScore';
+import { BaseDoScore } from '@/paginas/score/BaseDoScore';
 import { Login } from '@/paginas/Login';
 import { Inicio } from '@/paginas/Inicio';
 import { Painel } from '@/paginas/Painel';
@@ -267,6 +268,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
               irPara={irParaDestino}
               portais={portaisDe(eu?.papel ?? null)}
               administraCadastros={eu?.papel?.administra_dicionarios ?? false}
+              podeSubirFontes={eu?.papel?.sobe_planilha_do_score ?? false}
             />
           ) : null}
 
@@ -367,6 +369,20 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
                  quem receberia 403 ao apertá-lo. */
               administraCadastros={eu?.papel?.administra_dicionarios ?? false}
             />
+          ) : null}
+          {/* FORA DO SCORE, com cartão próprio na Início — ver `Inicio.tsx`.
+              A TELA também recusa, e não só o cartão: o endereço é público, e
+              quem digitar `/fornecedor` sem a permissão chega aqui e recebe
+              403 do backend ao tentar subir. `BaseDoScore` é a MESMA tela da
+              aba "Importação" do Score — ela já não depende de nada do
+              portal (mês, filtro, índice), só de qual fonte a pessoa escolhe,
+              então reaproveitá-la aqui não precisou de nenhuma tela nova. */}
+          {rota.destino === 'fornecedor' ? (
+            eu?.papel?.sobe_planilha_do_score || eu?.papel?.administra_dicionarios ? (
+              <BaseDoScore />
+            ) : (
+              <SemPermissaoParaSubirPlanilha irPara={irParaDestino} />
+            )
           ) : null}
           {/* FORA DO SCORE, com cartão próprio na Início (20/10/2026) — ver
               `Inicio.tsx`. Só leitura, sem portal: `/api/taxonomia/arvore`
@@ -471,6 +487,33 @@ function SemPermissaoParaCriar({ irPara }: { irPara: (view: Destino) => void }) 
       <div style={{ marginTop: 18 }}>
         <Botao variante="primario" aoClicar={() => irPara('base')}>
           Ver a base de registros
+        </Botao>
+      </div>
+    </Cartao>
+  );
+}
+
+/** O que aparece no lugar da tela de upload para quem não tem a permissão.
+ *
+ *  SEM BOTÃO DE SAÍDA PARA OUTRA TELA: diferente de quem não cria interação
+ *  (que sempre tem a Base para consultar), a conta do Fornecedor de dados não
+ *  abre portal nenhum — não há "outro lugar" para oferecer. Volta para a
+ *  Início, que já tem a tela certa para quem não alcança módulo nenhum.
+ */
+function SemPermissaoParaSubirPlanilha({ irPara }: { irPara: (view: Destino) => void }) {
+  return (
+    <Cartao estilo={{ padding: 28, maxWidth: 520 }}>
+      <div className="kicker" style={{ color: 'var(--cinza-3)' }}>
+        Importação do Score
+      </div>
+      <h1 style={{ fontSize: 20, marginTop: 8 }}>Seu perfil não sobe planilha</h1>
+      <p style={{ fontSize: 14, color: 'var(--cinza-3)', marginTop: 10, lineHeight: 1.6 }}>
+        Esta conta não tem a permissão de subir planilha de fonte. Se você
+        acha que deveria ter, fale com quem administra a plataforma.
+      </p>
+      <div style={{ marginTop: 18 }}>
+        <Botao variante="primario" aoClicar={() => irPara('inicio')}>
+          Voltar ao início
         </Botao>
       </div>
     </Cartao>

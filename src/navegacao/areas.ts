@@ -98,7 +98,17 @@ export function areaDe(view: Destino): ItemDoMenu[] {
   // NEM CRM NEM SCORE: ganhou cartão próprio na Início exatamente para não
   // parecer dono de nenhum dos dois — ver `Inicio.tsx`. A Árvore da
   // taxonomia entrou na mesma regra (20/10/2026): sem portal, sem divisão.
-  if (view === 'plataforma' || view === 'compartilhado' || view === 'taxonomia') return [];
+  // O FORNECEDOR DE DADOS entrou na mesma regra (12/11/2026): sem portal,
+  // sem divisão, sem aba — a tela dele é só o upload, sem barra nenhuma por
+  // cima. Cair no `return DO_CRM` do fim vestiria a conta da Bites com o menu
+  // do CRM, que ela não abre.
+  if (
+    view === 'plataforma' ||
+    view === 'compartilhado' ||
+    view === 'taxonomia' ||
+    view === 'fornecedor'
+  )
+    return [];
   // O PAINEL DE INTELIGÊNCIA DE MERCADO É O TERCEIRO PORTAL, e cair no `return`
   // abaixo o vestia de CRM: o cabeçalho dizia "CRM dos Stakeholders", com o
   // menu, a busca e a engrenagem de outra divisão. Achado de revisão, e era
@@ -125,7 +135,13 @@ export function areaDe(view: Destino): ItemDoMenu[] {
  */
 export function configuracaoDe(view: Destino): Destino | null {
   if (view === 'score' || view === 'config-score') return 'config-score';
-  if (view === 'plataforma' || view === 'compartilhado' || view === 'taxonomia') return null;
+  if (
+    view === 'plataforma' ||
+    view === 'compartilhado' ||
+    view === 'taxonomia' ||
+    view === 'fornecedor'
+  )
+    return null;
   //: O PAINEL DE MERCADO AINDA NÃO TEM CONFIGURAÇÃO, e cair no `admin` abaixo
   //: punha no cabeçalho dele a engrenagem da administração do CRM — uma porta
   //: para outra divisão, oferecida de dentro desta.

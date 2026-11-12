@@ -53,6 +53,7 @@ const PAPEL: PapelDisponivel = {
   pode_editar_proprio: false,
   pode_editar_tudo: false,
   pode_exportar: false,
+  sobe_planilha_do_score: false,
   acessa_crm: true,
   acessa_inteligencia_de_mercado: false,
   acessa_score: false,

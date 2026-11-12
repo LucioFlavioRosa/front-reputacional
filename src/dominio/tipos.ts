@@ -549,7 +549,11 @@ export type Perfil =
    *  O nome é feio e o motivo está na migration 0088: `plataforma_edicao` já é
    *  o papel de administrador, e tomar-lhe o nome significaria tirar
    *  `administra_acessos` de quem o tem hoje em produção. */
-  | 'plataforma_edicao_sem_acessos';
+  | 'plataforma_edicao_sem_acessos'
+  // -- migration 0120 ---------------------------------------------------------
+  /** O Fornecedor de dados (Bites, Clipei, Approach...): só sobe planilha de
+   *  fonte do Score, não abre portal nenhum. */
+  | 'fornecedor_de_dados';
 
 /** As três divisões da plataforma, como a capa as oferece.
  *
@@ -599,6 +603,10 @@ export interface PapelDeAcesso {
   ve_campos_sensiveis: boolean;
   ve_diretorio: boolean;
   pode_exportar: boolean;
+
+  /** Sobe planilha de fonte do Score (Bites, Clipei, Approach...), sem abrir
+   *  portal nenhum — a conta do Fornecedor de dados. Ver migration 0120. */
+  sobe_planilha_do_score: boolean;
 
   /** ONDE a pessoa entra — dimensão separada do que ela faz lá dentro.
    *
@@ -764,6 +772,9 @@ export interface PapelDisponivel {
   pode_editar_proprio: boolean;
   pode_editar_tudo: boolean;
   pode_exportar: boolean;
+  /** Sobe planilha de fonte do Score, sem portal — a conta do Fornecedor de
+   *  dados. Ver migration 0120. */
+  sobe_planilha_do_score: boolean;
   /** ONDE ela entra — é daqui que sai o nível. */
   acessa_crm: boolean;
   acessa_inteligencia_de_mercado: boolean;

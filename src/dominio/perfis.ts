@@ -42,8 +42,13 @@
 import { portaisDe } from '@/dominio/tipos';
 import type { PapelDisponivel, Portal } from '@/dominio/tipos';
 
-/** Os cinco níveis do descritivo, do mais amplo ao mais restrito. */
-export type NivelId = 'admin' | 'exec' | 'crm' | 'kpi' | 'mercado';
+/** Os níveis do descritivo, do mais amplo ao mais restrito.
+ *
+ *  `fornecedor` É DIFERENTE DOS OUTROS CINCO: não é um recorte de portal —
+ *  `sobe_planilha_do_score` não abre `crm`/`score`/`inteligencia_de_mercado`
+ *  nenhum. É a conta do FORNECEDOR DE DADOS (Bites, Clipei, Approach), que só
+ *  alcança a tela de Importação do Score. Ver migration 0120. */
+export type NivelId = 'admin' | 'exec' | 'crm' | 'kpi' | 'mercado' | 'fornecedor';
 
 export interface Nivel {
   id: NivelId;
@@ -99,6 +104,14 @@ export const NIVEIS: readonly Nivel[] = [
     etiqueta: 'Painel 3',
     emConstrucao: true,
   },
+  {
+    id: 'fornecedor',
+    curto: 'Fornecedor',
+    nome: 'Fornecedor de dados',
+    descricao:
+      'Só a tela de Importação do Score — sobe a planilha da fonte dele (Bites, Clipei, Approach...). Não abre nenhum dos três painéis.',
+    etiqueta: 'Upload',
+  },
 ] as const;
 
 export function nivel(id: NivelId): Nivel {
@@ -118,11 +131,14 @@ export function nivel(id: NivelId): Nivel {
  *  alteração de acesso que ninguém pediu.
  *
  *  A ORDEM DOS TESTES IMPORTA. `admin` vem primeiro porque é definido pela
- *  bandeira, e não pelos portais; `exec` vem antes de `crm` porque quem alcança
- *  todos também alcança o CRM.
+ *  bandeira, e não pelos portais; `fornecedor` vem logo depois pelo mesmo
+ *  motivo — `sobe_planilha_do_score` também é bandeira, não portal, e um papel
+ *  com ela nunca abre portal nenhum; `exec` vem antes de `crm` porque quem
+ *  alcança todos também alcança o CRM.
  */
 export function nivelDoPapel(papel: PapelDisponivel): NivelId | null {
   if (papel.administra_acessos) return 'admin';
+  if (papel.sobe_planilha_do_score) return 'fornecedor';
 
   const portais = portaisDe(papel);
   const abre = (p: Portal) => portais.has(p);
@@ -156,7 +172,11 @@ export function papelParaNivel(
   // Administrador não tem a camada de papel: "pode tudo" é o que o nível
   // significa. Pegar o primeiro é correto porque administrar acessos é a
   // bandeira que DEFINE o nível, e não há dois graus disso.
-  if (id === 'admin') return candidatos[0] ?? null;
+  //
+  // O FORNECEDOR DE DADOS também não: ou sobe planilha, ou não tem o nível —
+  // não existe "fornecedor que só lê", então um segundo papel pelo mesmo
+  // motivo do admin não faz sentido aqui.
+  if (id === 'admin' || id === 'fornecedor') return candidatos[0] ?? null;
 
   return candidatos.find((p) => p.pode_criar === editor) ?? null;
 }
@@ -174,7 +194,8 @@ export function niveisConcediveis(
   for (const n of NIVEIS) {
     const temUsuario = papelParaNivel(n.id, false, catalogo);
     const temEditor = papelParaNivel(n.id, true, catalogo);
-    if (n.id === 'admin' ? temUsuario : temUsuario && temEditor) prontos.add(n.id);
+    if (n.id === 'admin' || n.id === 'fornecedor' ? temUsuario : temUsuario && temEditor)
+      prontos.add(n.id);
   }
   return prontos;
 }
@@ -224,6 +245,10 @@ const LIBERA: Record<Exclude<NivelId, 'admin'>, readonly ModuloId[]> = {
   crm: ['crm'],
   kpi: ['kpi'],
   mercado: ['mercado'],
+  //: NENHUM MÓDULO: o Fornecedor de dados não abre painel nenhum dos três, e
+  //: não administra usuários. A tela de Importação que ele alcança não é um
+  //: destes quatro módulos — é sem portal, ver o comentário de `NivelId`.
+  fornecedor: [],
 };
 
 /** Em que estado um módulo fica, para o nível e o papel escolhidos.

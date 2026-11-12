@@ -162,13 +162,15 @@ export function Layout({
         ? 'Cadastro compartilhado'
         : view === 'taxonomia'
           ? 'Árvore da taxonomia'
-          : //: O TERCEIRO PORTAL PRECISA DO PRÓPRIO NOME. Sem esta linha ele caía
-            //: no `'CRM'` do fim e o cabeçalho dizia "CRM dos Stakeholders" sobre
-            //: a tela de bonds — achado de revisão. Mesmo nome que a capa usa no
-            //: cartão dele, ver `Inicio.tsx`.
-            view === 'mercado'
-            ? 'Inteligência de Mercado'
-            : 'CRM';
+          : view === 'fornecedor'
+            ? 'Fornecedor de dados'
+            : //: O TERCEIRO PORTAL PRECISA DO PRÓPRIO NOME. Sem esta linha ele caía
+              //: no `'CRM'` do fim e o cabeçalho dizia "CRM dos Stakeholders" sobre
+              //: a tela de bonds — achado de revisão. Mesmo nome que a capa usa no
+              //: cartão dele, ver `Inicio.tsx`.
+              view === 'mercado'
+              ? 'Inteligência de Mercado'
+              : 'CRM';
   //: A MARCA NO CABEÇALHO DIZ EM QUAL PAINEL SE ESTÁ, não sempre "CRM dos
   //: Stakeholders" — mesmo nome que a capa usa para cada cartão, ver
   //: `Inicio.tsx`. Faltam `admin` e `plataforma` aqui ainda: caem no CRM por
@@ -185,9 +187,11 @@ export function Layout({
         ? 'Cadastro compartilhado'
         : view === 'taxonomia'
           ? 'Árvore da taxonomia'
-          : view === 'mercado'
-            ? 'Inteligência de Mercado'
-            : 'CRM dos Stakeholders';
+          : view === 'fornecedor'
+            ? 'Fornecedor de dados'
+            : view === 'mercado'
+              ? 'Inteligência de Mercado'
+              : 'CRM dos Stakeholders';
 
   //: PUBLICA A ALTURA REAL DO CABEÇALHO em `--altura-cabecalho`, para quem
   //: precisa colar algo embaixo dele num `position: sticky` próprio (a faixa
@@ -449,11 +453,25 @@ export function Layout({
             é configuração, não agenda. Achado de revisão, 10/11/2026 — faltava
             nesta lista, e a barra aparecia por cima da tela de Administração
             sem filtrar nada ali. */}
+        {/* A PLATAFORMA (gerenciamento de perfis, atualização das bases)
+            TAMBÉM NÃO, pelo mesmo motivo — mesmo achado, 12/11/2026, só que
+            nesta tela: ela nasceu depois desta lista existir e ninguém a
+            acrescentou aqui. */}
+        {/* O FORNECEDOR DE DADOS TAMBÉM NÃO: é a tela de upload da Bites/
+            Clipei/Approach, sem portal, sem agenda — o Recorte não tem nada
+            ali para filtrar. */}
+        {/* A ÁRVORE DA TAXONOMIA TAMBÉM NÃO: é consulta ao dado mestre, sem
+            portal e sem agenda — mesmo motivo do Cadastro compartilhado.
+            Achado de revisão, 12/11/2026 — faltava nesta lista desde que a
+            tela ganhou endereço próprio (20/10/2026). */}
         {view !== 'cadastro' &&
         view !== 'score' &&
         view !== 'compartilhado' &&
         view !== 'mercado' &&
-        view !== 'admin' ? (
+        view !== 'admin' &&
+        view !== 'plataforma' &&
+        view !== 'fornecedor' &&
+        view !== 'taxonomia' ? (
           <div
             className="cabecalho__recorte"
             style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px 12px' }}
@@ -490,7 +508,10 @@ export function Layout({
       view !== 'admin' &&
       view !== 'score' &&
       view !== 'compartilhado' &&
-      view !== 'mercado' ? (
+      view !== 'mercado' &&
+      view !== 'plataforma' &&
+      view !== 'fornecedor' &&
+      view !== 'taxonomia' ? (
         // `width: '100%'` NÃO É REDUNDANTE com `maxWidth`: isto é filho direto
         // do `<div>` `flexDirection: column` do topo, e margem `auto` num
         // item flex SEM largura explícita suprime o `stretch` — o bloco
