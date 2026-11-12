@@ -9,9 +9,12 @@
  *  suspensas. Um arquivo guardado teria a lista de instituições do dia em que
  *  foi gerado, e cada nome novo desde então viraria divergência sem motivo.
  *
- *  SÓ APARECE PARA QUEM ADMINISTRA CADASTROS, porque a importação pode criar
- *  instituição e interlocutor em volume — e esconder é conveniência: o servidor
- *  recusa 403 a quem não administra, com ou sem botão na tela.
+ *  SÓ APARECE PARA QUEM EDITA O CRM (revisto em 12/11/2026 — era "quem
+ *  administra cadastros", só o Administrador da plataforma). A importação pode
+ *  criar instituição e interlocutor em volume, mas é a mesma permissão de
+ *  cadastrar uma agenda de cada vez pela tela — a planilha só muda a escala.
+ *  Esconder é conveniência: o servidor recusa 403 a quem só lê, com ou sem
+ *  botão na tela.
  */
 
 import { useRef, useState } from 'react';
