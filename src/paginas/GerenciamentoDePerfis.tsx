@@ -267,12 +267,17 @@ export function GerenciamentoDePerfis({
   const nivelEscolhido = papelDoFormulario ? nivelDoPapel(papelDoFormulario) : null;
   const editorEscolhido = papelDoFormulario?.pode_criar ?? false;
   const ehAdmin = nivelEscolhido === 'admin';
+  //: NEM O FORNECEDOR DE DADOS tem Editor/Usuário ou Informação sensível: ele
+  //: só sobe planilha, não lê registro nenhum — as duas camadas não têm o que
+  //: distinguir, do mesmo jeito que não têm para o Administrador.
+  const ehFornecedor = nivelEscolhido === 'fornecedor';
   const semNivelEscolhido = nivelEscolhido === null;
-  //: As camadas 2 e 3 não se aplicam a administrador (tem tudo) nem a quem não
-  //: tem nível (não há onde aplicá-las).
-  const camadasDesligadas = ehAdmin || semNivelEscolhido;
+  //: As camadas 2 e 3 não se aplicam a administrador (tem tudo), ao fornecedor
+  //: de dados (só sobe planilha) nem a quem não tem nível (não há onde
+  //: aplicá-las).
+  const camadasDesligadas = ehAdmin || ehFornecedor || semNivelEscolhido;
 
-  /** Um papel que o catálogo tem e os cinco níveis não descrevem.
+  /** Um papel que o catálogo tem e os níveis conhecidos não descrevem.
    *
    *  Acontece com os pares da Síntese. Avisar é obrigatório: sem o aviso, a
    *  tela mostraria todos os níveis desmarcados, quem administra concluiria que
@@ -302,9 +307,20 @@ export function GerenciamentoDePerfis({
     //: Administrador zera as camadas 2 e 3 — não por capricho da tela: o banco
     //: as ignora para quem administra, e deixar "sem sensível" marcado na tela
     //: afirmaria uma restrição que não existe.
+    //:
+    //: O FORNECEDOR DE DADOS TAMBÉM NÃO ALCANÇA SENSÍVEL (`ve_campos_
+    //: sensiveis=false`), e sem este `else` o `sensivel` sobrevivia da troca de
+    //: nível anterior — quem vinha de um papel "com sensível" escolhia
+    //: Fornecedor e o `impedimento()` travava o Salvar com "o papel não
+    //: alcança informação sensível", sem a tela explicar por quê (achado ao
+    //: testar em localhost, 12/11/2026).
     ajustar({
       papel: escolhido.codigo,
-      sensivel: escolhido.administra_acessos ? true : (forma?.sensivel ?? false),
+      sensivel: escolhido.administra_acessos
+        ? true
+        : escolhido.ve_campos_sensiveis
+          ? (forma?.sensivel ?? false)
+          : false,
     });
   };
 
@@ -335,6 +351,7 @@ export function GerenciamentoDePerfis({
     if (!papel) return 'Sem nível';
     if (id === null) return papel.nome;
     if (id === 'admin') return 'Administrador · acesso total';
+    if (id === 'fornecedor') return 'Fornecedor de dados · só sobe planilha';
     return [
       nivelPor(id).curto,
       papel.pode_criar ? 'Editor' : 'Usuário',
@@ -626,7 +643,7 @@ export function GerenciamentoDePerfis({
                   mensagem={
                     <span>
                       Esta pessoa tem o papel <strong>{papelForaDosNiveis.nome}</strong>,
-                      que não corresponde a nenhum dos cinco níveis — nenhum deles
+                      que não corresponde a nenhum dos níveis conhecidos — nenhum deles
                       aparece marcado abaixo, e isso <strong>não</strong> quer dizer
                       que ela esteja sem acesso. Escolher um nível vai TROCAR o
                       papel dela.
@@ -685,7 +702,9 @@ export function GerenciamentoDePerfis({
                     ? 'escolha um nível primeiro'
                     : ehAdmin
                       ? 'não se aplica a administradores'
-                      : 'o que a pessoa pode fazer dentro dos painéis liberados'
+                      : ehFornecedor
+                        ? 'não se aplica ao fornecedor de dados'
+                        : 'o que a pessoa pode fazer dentro dos painéis liberados'
                 }
               >
                 <Escolha rotulo="Papel nos painéis">
@@ -722,7 +741,9 @@ export function GerenciamentoDePerfis({
                     ? 'escolha um nível primeiro'
                     : ehAdmin
                       ? 'não se aplica a administradores'
-                      : 'terceira camada: vale para editores e usuários'
+                      : ehFornecedor
+                        ? 'não se aplica ao fornecedor de dados'
+                        : 'terceira camada: vale para editores e usuários'
                 }
               >
                 <Escolha rotulo="Informação sensível">
@@ -963,8 +984,9 @@ function descricaoCurta(
   if (!papel) return { nivel: 'Sem nível', detalhe: '' };
 
   const id = nivelDoPapel(papel);
-  if (id === null) return { nivel: papel.nome, detalhe: 'fora dos cinco níveis' };
+  if (id === null) return { nivel: papel.nome, detalhe: 'fora dos níveis conhecidos' };
   if (id === 'admin') return { nivel: 'Administrador', detalhe: 'acesso total' };
+  if (id === 'fornecedor') return { nivel: 'Fornecedor de dados', detalhe: 'só sobe planilha' };
 
   return {
     nivel: nivelPor(id).curto,

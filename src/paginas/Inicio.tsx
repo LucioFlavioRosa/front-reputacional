@@ -162,6 +162,43 @@ function IconeDeArvore() {
   );
 }
 
+/** O FORNECEDOR DE DADOS — fora de `ONDA_1`, fora do Cadastro compartilhado e
+ *  fora da Árvore, as três de propósito.
+ *
+ *  NÃO É UM QUARTO PAINEL, NEM CADASTRO: é a tela de Importação do Score
+ *  (`BaseDoScore`), reaproveitada sem o resto do portal — ver o comentário em
+ *  `App.tsx`, onde `rota.destino === 'fornecedor'` a monta. A permissão que
+ *  abre este cartão (`sobe_planilha_do_score`) não é portal nenhum, e também
+ *  não é `administra_dicionarios` — ver migration 0120.
+ *
+ *  SÓ APARECE PRA QUEM TEM A PERMISSÃO, ao contrário da Árvore (aberta a
+ *  qualquer logado): a tela de upload é a única razão de a conta da Bites/
+ *  Clipei/Approach existir, então esconder o cartão de quem não tem a
+ *  permissão não esconde nada que a pessoa devesse ver.
+ */
+const FORNECEDOR_DE_DADOS = {
+  view: 'fornecedor' as const,
+  titulo: 'Importação de planilha',
+  descricao:
+    'Suba aqui a planilha mensal da sua fonte — é a única tela que esta conta alcança.',
+};
+
+/** Uma seta entrando numa bandeja — o glifo do upload. Mesma forma simples e
+ *  `currentColor` de `IconeDeCadastro`/`IconeDeArvore`, acima. */
+function IconeDeUpload() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden focusable="false">
+      <path
+        d="M8 10V2M8 2L5 5M8 2l3 3M2.5 11v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 //: A JORNADA INTEIRA, não só a Onda 1 — Onda 1 é o "foundation": estruturar
 //: os dados que sustentam os três painéis executivos acima, o projeto
 //: atual; as próximas cinco descrevem para onde a plataforma vai, uma
@@ -179,12 +216,16 @@ export function Inicio({
   irPara,
   portais,
   administraCadastros,
+  podeSubirFontes,
 }: {
   irPara: (view: Destino) => void;
   /** Os portais que o papel de quem está logado abre. */
   portais: Set<Portal>;
   /** Se administra Instituições e Contatos — não é portal, é `administra_dicionarios`. */
   administraCadastros: boolean;
+  /** Se é a conta do Fornecedor de dados — `sobe_planilha_do_score`, nem
+   *  portal nem `administra_dicionarios`. Ver migration 0120. */
+  podeSubirFontes: boolean;
 }) {
   // Esconder um portal é conveniência de tela, NUNCA controle: quem decide é o
   // backend, que responde 403 a quem forçar a navegação. O que se evita aqui é
@@ -245,7 +286,12 @@ export function Inicio({
         <div className="kicker" style={{ marginBottom: 12 }}>
           MVP · Onda 1 — os três painéis executivos
         </div>
-        {meus.length === 0 ? (
+        {/* NÃO PARA QUEM SOBE PLANILHA: a conta do Fornecedor de dados não
+            abre nenhum dos três painéis de propósito (ver `sobe_planilha_do_
+            score`), e mostrar "acesso ainda não foi liberado" acima do
+            cartão dela seria falso — ela tem, sim, algo liberado, só que fora
+            desta grade. */}
+        {meus.length === 0 && !podeSubirFontes ? (
           <Cartao estilo={{ padding: 24 }}>
             <h2 style={{ fontSize: 17 }}>Seu acesso ainda não foi liberado</h2>
             <p style={{ fontSize: 13, color: 'var(--cinza-3)', marginTop: 8, lineHeight: 1.6 }}>
@@ -453,6 +499,51 @@ export function Inicio({
               </span>
             </Cartao>
           </div>
+
+          {podeSubirFontes ? (
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <div className="kicker" style={{ marginBottom: 10 }}>
+                Fornecedor de dados
+              </div>
+              <Cartao
+                aoClicar={() => irPara(FORNECEDOR_DE_DADOS.view)}
+                estilo={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '13px 18px',
+                  height: '100%',
+                  background: 'var(--cinza-0)',
+                  border: '1px solid var(--borda)',
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 'var(--r-chip)',
+                    background: 'var(--cinza-1)',
+                    color: 'var(--cinza-3)',
+                  }}
+                >
+                  <IconeDeUpload />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 14 }}>{FORNECEDOR_DE_DADOS.titulo}</h2>
+                  <p style={{ fontSize: 12, color: 'var(--cinza-2)', marginTop: 2, lineHeight: 1.5 }}>
+                    {FORNECEDOR_DE_DADOS.descricao}
+                  </p>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--azul-mar)' }}>
+                  Abrir →
+                </span>
+              </Cartao>
+            </div>
+          ) : null}
         </div>
       </section>
 

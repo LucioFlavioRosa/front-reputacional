@@ -22,6 +22,7 @@ function papel(parcial: Partial<PapelDeAcesso>): PapelDeAcesso {
     ve_campos_sensiveis: false,
     ve_diretorio: false,
     pode_exportar: false,
+    sobe_planilha_do_score: false,
     acessa_crm: false,
     acessa_inteligencia_de_mercado: false,
     acessa_score: false,

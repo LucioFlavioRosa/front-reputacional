@@ -34,6 +34,7 @@ function papel(ajustes: Partial<PapelDisponivel> & { codigo: string }): PapelDis
     pode_editar_proprio: false,
     pode_editar_tudo: false,
     pode_exportar: false,
+    sobe_planilha_do_score: false,
     acessa_crm: false,
     acessa_inteligencia_de_mercado: false,
     acessa_score: false,
@@ -95,6 +96,11 @@ const CATALOGO: PapelDisponivel[] = [
     acessa_score: true,
     ve_campos_sensiveis: true,
   }),
+  // -- migration 0120 ---------------------------------------------------------
+  //: SEM PORTAL NENHUM, e é o ponto do nível: `sobe_planilha_do_score` sozinha
+  //: já define o nível `fornecedor`, do mesmo jeito que `administra_acessos`
+  //: sozinha já define `admin` — ver o comentário de `nivelDoPapel`.
+  papel({ codigo: 'fornecedor_de_dados', sobe_planilha_do_score: true }),
 ];
 
 describe('o nível sai das bandeiras, e não do código do papel', () => {
@@ -109,6 +115,7 @@ describe('o nível sai das bandeiras, e não do código do papel', () => {
     //: `sintese_*` É O NÍVEL MERCADO. Ver o comentário do catálogo.
     ['inteligencia_de_mercado_leitura', 'mercado'],
     ['inteligencia_de_mercado_edicao', 'mercado'],
+    ['fornecedor_de_dados', 'fornecedor'],
   ])('%s cai no nível %s', (codigo, esperado) => {
     const p = CATALOGO.find((x) => x.codigo === codigo)!;
     expect(nivelDoPapel(p)).toBe(esperado);
@@ -168,6 +175,10 @@ describe('o papel escolhido para cada nível', () => {
     ['kpi', true, 'score_edicao'],
     ['mercado', false, 'inteligencia_de_mercado_leitura'],
     ['mercado', true, 'inteligencia_de_mercado_edicao'],
+    //: AS DUAS LINHAS DEVOLVEM O MESMO PAPEL: `fornecedor` ignora `editor`, do
+    //: mesmo jeito que `admin` — ver o comentário de `papelParaNivel`.
+    ['fornecedor', false, 'fornecedor_de_dados'],
+    ['fornecedor', true, 'fornecedor_de_dados'],
   ] as const)('%s + editor=%s -> %s', (id, editor, esperado) => {
     expect(papelParaNivel(id, editor, CATALOGO)?.codigo).toBe(esperado);
   });
@@ -197,9 +208,16 @@ describe('o papel escolhido para cada nível', () => {
     expect(niveisConcediveis(semSintese).has('mercado')).toBe(false);
   });
 
-  it('o catálogo semeado concede os cinco níveis', () => {
+  it('o catálogo semeado concede os seis níveis', () => {
     const prontos = niveisConcediveis(CATALOGO);
-    expect([...prontos].sort()).toEqual(['admin', 'crm', 'exec', 'kpi', 'mercado']);
+    expect([...prontos].sort()).toEqual([
+      'admin',
+      'crm',
+      'exec',
+      'fornecedor',
+      'kpi',
+      'mercado',
+    ]);
   });
 });
 
@@ -270,5 +288,13 @@ describe('o que o nível libera, recalculado antes de salvar', () => {
   it('e não dá acesso a quem não tem o nível', () => {
     //: O par do teste acima: lançar o painel não é conceder o painel.
     expect(estadoDoModulo('mercado', 'crm', true, true)).toBe('sem-acesso');
+  });
+
+  it('o Fornecedor de dados não libera módulo nenhum, nem com o painel no ar', () => {
+    //: ELE NÃO É UM RECORTE DE PORTAL: a tela que ele alcança (Importação do
+    //: Score) não é nenhum dos quatro módulos que esta tabela descreve.
+    for (const m of MODULOS) {
+      expect(estadoDoModulo(m.id, 'fornecedor', true, true)).toBe('sem-acesso');
+    }
   });
 });

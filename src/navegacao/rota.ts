@@ -39,7 +39,8 @@ export type Destino =
   | 'taxonomia'
   | 'config-score'
   | 'importacao'
-  | 'plataforma';
+  | 'plataforma'
+  | 'fornecedor';
 
 export interface Rota {
   destino: Destino;
@@ -124,6 +125,11 @@ export function lerCaminho(caminho: string, consulta = ''): Rota {
   // próprio na Início (Instituições e Contatos, Temas, Representantes
   // Aegea), então precisa de endereço próprio também — ver `Inicio.tsx`.
   if (primeira === 'compartilhado') return { destino: 'compartilhado' };
+  // FORA DE QUALQUER PORTAL DE PROPÓSITO, no mesmo molde do Cadastro
+  // compartilhado: é a tela do FORNECEDOR DE DADOS (Bites, Clipei, Approach),
+  // que só sobe a planilha da fonte dela — ver `sobe_planilha_do_score` e o
+  // comentário em `Inicio.tsx`.
+  if (primeira === 'fornecedor') return { destino: 'fornecedor' };
   // FORA DO SCORE DE PROPÓSITO (20/10/2026): a Árvore da taxonomia é só
   // leitura e não exige nenhum portal — ver o comentário em `Inicio.tsx`.
   if (primeira === 'taxonomia') return { destino: 'taxonomia' };
@@ -177,6 +183,8 @@ export function caminhoDe(rota: Rota): string {
       return rota.aba ? `/admin/${rota.aba}` : '/admin';
     case 'compartilhado':
       return '/compartilhado';
+    case 'fornecedor':
+      return '/fornecedor';
     case 'taxonomia':
       return '/taxonomia';
     case 'config-score':
