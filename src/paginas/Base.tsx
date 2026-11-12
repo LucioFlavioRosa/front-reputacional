@@ -149,11 +149,14 @@ export function Base({
   aoImportar = () => {},
 }: {
   aoAbrirFicha: (id: string) => void;
-  /** Se a pessoa administra cadastros — quem importa planilha de agendas.
+  /** Se a pessoa edita o CRM (não é só leitura) — quem importa planilha de
+   *  agendas. Revisto em 12/11/2026: era `administra_dicionarios` (só o
+   *  Administrador da plataforma), virou `pode_criar` — qualquer Editor do
+   *  CRM importa, do mesmo jeito que já cadastra uma agenda de cada vez.
    *
    *  VEM DE CIMA porque só o `App` tem o usuário, e a Base não precisa dele
    *  para mais nada. Esconder o botão é conveniência: o servidor recusa 403 a
-   *  quem não administra, com ou sem botão na tela. */
+   *  quem só lê, com ou sem botão na tela. */
   podeImportar?: boolean;
   /** Abre a conferência da importação que acabou de subir. */
   aoImportar?: (importacaoId: string) => void;

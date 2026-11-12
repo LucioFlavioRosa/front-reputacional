@@ -281,7 +281,7 @@ function Aplicativo({ eu }: { eu: Eu | null }) {
 
           {rota.destino === 'base' ? (
             <Base
-              podeImportar={eu?.papel?.administra_dicionarios ?? false}
+              podeImportar={eu?.papel?.pode_criar ?? false}
               /* O UPLOAD ABRE A CONFERÊNCIA DAQUI, e não de dentro do botão: o
                  hook de navegação guarda o lugar num estado próprio de cada
                  chamador, então navegar lá dentro empurrava a URL sem ninguém
