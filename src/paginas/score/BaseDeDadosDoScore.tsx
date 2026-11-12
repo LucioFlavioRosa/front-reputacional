@@ -117,6 +117,19 @@ export function BaseDeDadosDoScore() {
       .catch(() => definirInterlocutores([]));
   }, []);
 
+  //: LIMPA `lente`/`tema_n3` DA URL ASSIM QUE SÃO LIDOS, e não só quando a
+  //: pessoa tira a etiqueta do subtema: sem isto, quem chega aqui pelo botão
+  //: "Explorar" da Árvore da taxonomia e sai por outro caminho (o menu, por
+  //: exemplo) carrega esses dois para a próxima tela — o roteador leva a
+  //: consulta da URL atual para onde quer que vá a seguir.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('lente') && !url.searchParams.has('tema_n3')) return;
+    url.searchParams.delete('lente');
+    url.searchParams.delete('tema_n3');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, []);
+
   //: O PERÍODO: as datas digitadas vencem o atalho.
   const periodo =
     deManual || ateManual ? { de: deManual || undefined, ate: ateManual || undefined } : periodoDoAtalho(atalho);
