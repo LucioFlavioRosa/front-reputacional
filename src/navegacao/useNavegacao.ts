@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { caminhoDe, lerCaminho } from '@/navegacao/rota';
+import { caminhoDe, consultaDe, lerCaminho, lerRecorte } from '@/navegacao/rota';
 import type { Rota } from '@/navegacao/rota';
 
 interface Lugar {
@@ -43,9 +43,14 @@ export function useNavegacao() {
 
   const irPara = useCallback((rota: Rota, opcoes?: { substituir?: boolean }) => {
     const caminho = caminhoDe(rota);
-    // A CONSULTA VIAJA JUNTO: trocar de tela não pode perder o recorte. Sem
-    // isto, quem abre uma ficha e volta perde o filtro.
-    const consulta = window.location.search;
+    // SÓ O RECORTE VIAJA JUNTO, e não a consulta crua: trocar de tela não pode
+    // perder o filtro do CRM, mas também não pode carregar parâmetro avulso
+    // que alguma tela tenha plantado na URL por fora do recorte (achado: a
+    // Árvore da taxonomia escrevia `lente`/`tema_n3` direto no `history` para
+    // abrir a Base do Score, e esses dois sobravam na URL e vazavam para
+    // qualquer destino alcançado depois por aqui). `lerRecorte` ignora o que
+    // não conhece; `consultaDe` reconstrói só com os campos do recorte.
+    const consulta = consultaDe(lerRecorte(window.location.search));
     const destino = caminho + consulta;
 
     if (opcoes?.substituir) window.history.replaceState(null, '', destino);
