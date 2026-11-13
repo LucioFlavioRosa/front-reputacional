@@ -41,6 +41,7 @@ import {
 } from '@/api/cliente';
 import { Carregando, FaixaDeErro, Modal } from '@/componentes/basicos';
 import { Paginacao } from '@/componentes/Paginacao';
+import { ROTULO_DO_SENTIMENTO } from '@/dominio/filtrosDasLentes';
 import { numero } from '@/dominio/formato';
 
 /** `2026-05-20` como `20/05`. O ano está no cabeçalho da janela; repeti-lo em
@@ -78,14 +79,6 @@ function contagemDoCabecalho(total: number, noQuadro: number): string {
   //: mostra as menções dela de qualquer forma.
   return `${registros}; o quadro conta ${numero(noQuadro)}`;
 }
-
-/** O sentimento como a plataforma o escreve. O código cru (`pos`) aparece na
- *  Base de dados porque lá ele é filtro; aqui é leitura. */
-const ROTULO_DO_SENTIMENTO: Record<string, string> = {
-  pos: 'Propositiva',
-  neg: 'Reativa',
-  neu: 'Neutra',
-};
 
 /** O tier como a plataforma o escreve, e o código cru quando não o conhecemos —
  *  um tier novo aparece na tela no dia em que chega, e não no dia em que alguém
