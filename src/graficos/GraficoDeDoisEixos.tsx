@@ -689,19 +689,27 @@ export function GraficoDeDoisEixos({
           ...series.map((s) => {
             const ponto = pontoMaisPerto(s.trechos.flat(), instante);
             return ponto
-              ? { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: formatarValor(ponto.valor), y: yEsquerda(ponto.valor), ms: ponto.ms }
+              ? { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: formatarValor(ponto.valor), y: yEsquerda(ponto.valor), ms: ponto.ms, real: true }
               : null;
           }),
           ...mensais.map((s) => {
             const valor = valorNoInstante(s.degraus, instante);
             return valor === null
               ? null
-              : { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: String(Math.round(valor)), y: yDireita(valor), ms: instante };
+              : { chave: s.chave, cor: s.cor, nome: s.rotulo, texto: String(Math.round(valor)), y: yDireita(valor), ms: instante, real: false };
           }),
         ].filter(
-          (l): l is { chave: string; cor: string; nome: string; texto: string; y: number; ms: number } =>
+          (l): l is { chave: string; cor: string; nome: string; texto: string; y: number; ms: number; real: boolean } =>
             l !== null,
         );
+  //: A DATA DO CABEÇALHO É A DO PONTO DE VERDADE MAIS PERTO, e não a posição
+  //: contínua do mouse (`instante`): perto da borda direita, com os dois
+  //: últimos pregões a um dia um do outro, o pixel do cursor cai entre os
+  //: dois — o valor já "encaixava" no pregão certo (`pontoMaisPerto`), mas o
+  //: cabeçalho mostrava a data do pixel, arredondada para o dia de antes.
+  //: Achado ao reportar: duas cotações de dias diferentes no tooltip, as duas
+  //: rotuladas com a mesma data.
+  const dataDoTooltip = instante === null ? 0 : (linhasDoTooltip.find((l) => l.real)?.ms ?? instante);
 
   const rotulos = rotulosDoTempo(inicio, fim);
   const pxDoHover = instante === null ? 0 : x(instante);
@@ -1039,7 +1047,7 @@ export function GraficoDeDoisEixos({
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 700 }}>
-            {dataPorExtensoCurto(new Date(instante).toISOString())}
+            {dataPorExtensoCurto(new Date(dataDoTooltip).toISOString())}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
             {linhasDoTooltip.map((linha) => (
