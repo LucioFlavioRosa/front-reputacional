@@ -70,6 +70,7 @@ import { formularioDe, impedimento, listaDe, montarConcessao } from '@/dominio/c
 import type { Formulario } from '@/dominio/concessao';
 import { dataCompleta, diasDesde } from '@/dominio/formato';
 import type { Acesso, PapelDisponivel, TrilhaDeAcesso } from '@/dominio/tipos';
+import { IndicadoresDeUso } from '@/paginas/IndicadoresDeUso';
 
 /** Abaixo disto o prazo aparece em vermelho: é hora de renovar ou encerrar. */
 const DIAS_DE_ALERTA = 30;
@@ -86,6 +87,11 @@ export function GerenciamentoDePerfis({
   const [pessoas, definirPessoas] = useState<Acesso[] | null>(null);
   const [catalogo, definirCatalogo] = useState<PapelDisponivel[]>([]);
   const [erro, definirErro] = useState<string | null>(null);
+
+  //: QUAL METADE DA TELA APARECE — a mesma `Secao`, dois conteúdos. Separar em
+  //: telas distintas duplicaria o cabeçalho ("Gerenciamento de perfis") e o
+  //: gate de administrador, que já vivem aqui.
+  const [aba, definirAba] = useState<'acessos' | 'indicadores'>('acessos');
 
   const [selecionada, definirSelecionada] = useState<string | null>(null);
   const [busca, definirBusca] = useState('');
@@ -433,7 +439,20 @@ export function GerenciamentoDePerfis({
         titulo="Gerenciamento de perfis"
         subtitulo="Quem entra, o que faz lá dentro, e o que enxerga dos registros."
         nivelDoTitulo={1}
+        acao={
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Chip rotulo="Acessos" ativo={aba === 'acessos'} aoClicar={() => definirAba('acessos')} />
+            <Chip
+              rotulo="Indicadores de uso"
+              ativo={aba === 'indicadores'}
+              aoClicar={() => definirAba('indicadores')}
+            />
+          </div>
+        }
       >
+        {aba === 'indicadores' ? (
+          <IndicadoresDeUso />
+        ) : (
         <div style={grade}>
           {/* -- coluna esquerda: as pessoas ---------------------------------- */}
           <div style={cartao}>
@@ -900,6 +919,7 @@ export function GerenciamentoDePerfis({
             </div>
           )}
         </div>
+        )}
       </Secao>
 
       {emHistorico && (

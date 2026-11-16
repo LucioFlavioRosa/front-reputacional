@@ -797,6 +797,54 @@ export interface TrilhaDeAcesso {
   origem: string | null;
 }
 
+/** Login, upload de base e interação criada, por pessoa, num período. */
+export interface IndicadorDeUso {
+  id: string;
+  nome: string;
+  email: string;
+  logins: number;
+  uploads: number;
+  interacoes_criadas: number;
+  ultimo_acesso_em: string | null;
+}
+
+/** Uma carga desta pessoa, no detalhe de uso. */
+export interface CargaNoDetalhe {
+  base: string;
+  arquivo: string | null;
+  linhas: number;
+  concluida_em: string;
+}
+
+/** Uma exportação de CSV da Base desta pessoa, no detalhe de uso. */
+export interface ExportacaoNoDetalhe {
+  filtros: Record<string, unknown>;
+  total_de_registros: number;
+  criado_em: string;
+}
+
+/** Quantas vezes uma pessoa logou num dia — a quebra por trás do total de `AcessoNoDia`. */
+export interface PessoaNoDia {
+  nome: string;
+  logins: number;
+}
+
+/** Quantos logins bem-sucedidos aconteceram num dia (`data` em `AAAA-MM-DD`), e
+ *  de quem — `pessoas` vem vazio no detalhe por pessoa (`DetalheDeUso`), onde
+ *  o dia já está filtrado a uma pessoa só. */
+export interface AcessoNoDia {
+  data: string;
+  logins: number;
+  pessoas: PessoaNoDia[];
+}
+
+/** O drill-down por trás da linha de uma pessoa em `IndicadorDeUso`. */
+export interface DetalheDeUso {
+  cargas: CargaNoDetalhe[];
+  exportacoes: ExportacaoNoDetalhe[];
+  logins_por_dia: AcessoNoDia[];
+}
+
 /** O corpo de `GET /api/eu`. */
 export interface Eu extends Usuario {
   /**

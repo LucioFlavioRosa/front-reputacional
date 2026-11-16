@@ -6,7 +6,16 @@
  *  66 arquivos que o importam precisou mudar.
  */
 
-import type { Acesso, Concessao, Eu, PapelDisponivel, TrilhaDeAcesso } from '@/dominio/tipos';
+import type {
+  Acesso,
+  AcessoNoDia,
+  Concessao,
+  DetalheDeUso,
+  Eu,
+  IndicadorDeUso,
+  PapelDisponivel,
+  TrilhaDeAcesso,
+} from '@/dominio/tipos';
 import { BASE, guardarTokenAntiCsrf, requisitar } from './nucleo';
 
 /**
@@ -131,4 +140,37 @@ export function definirSituacaoDeAcesso(id: string, ativo: boolean): Promise<voi
 
 export function historicoDeAcesso(id: string): Promise<TrilhaDeAcesso[]> {
   return requisitar<TrilhaDeAcesso[]>(`/api/acessos/${id}/historico`);
+}
+
+/** Sem `de`/`ate`, o backend responde com os últimos 30 dias. */
+export function listarIndicadoresDeUso(de?: string, ate?: string): Promise<IndicadorDeUso[]> {
+  const parametros = new URLSearchParams();
+  if (de) parametros.set('de', de);
+  if (ate) parametros.set('ate', ate);
+  const consulta = parametros.toString();
+  return requisitar<IndicadorDeUso[]>(
+    `/api/acessos/indicadores${consulta ? `?${consulta}` : ''}`,
+  );
+}
+
+/** O drill-down de uma pessoa: quais cargas, quais exportações, no período. */
+export function detalheDeUso(id: string, de?: string, ate?: string): Promise<DetalheDeUso> {
+  const parametros = new URLSearchParams();
+  if (de) parametros.set('de', de);
+  if (ate) parametros.set('ate', ate);
+  const consulta = parametros.toString();
+  return requisitar<DetalheDeUso>(
+    `/api/acessos/${id}/indicadores${consulta ? `?${consulta}` : ''}`,
+  );
+}
+
+/** O total de logins (todas as pessoas), por dia, no período. */
+export function listarAcessosPorDia(de?: string, ate?: string): Promise<AcessoNoDia[]> {
+  const parametros = new URLSearchParams();
+  if (de) parametros.set('de', de);
+  if (ate) parametros.set('ate', ate);
+  const consulta = parametros.toString();
+  return requisitar<AcessoNoDia[]>(
+    `/api/acessos/indicadores/por-dia${consulta ? `?${consulta}` : ''}`,
+  );
 }
