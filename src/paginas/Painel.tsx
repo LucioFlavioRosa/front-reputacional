@@ -7,7 +7,6 @@ import { BarraDivergentePorItem } from '@/graficos/BarraDivergentePorItem';
 import { BarrasEmpilhadas, Legenda } from '@/graficos/BarrasEmpilhadas';
 import { GraficoDeArvore } from '@/graficos/GraficoDeArvore';
 import { GraficoDeLinha } from '@/graficos/GraficoDeLinha';
-import { MapaUf } from '@/graficos/MapaUf';
 import { Ranking } from '@/graficos/Ranking';
 import { Rosca } from '@/graficos/Rosca';
 import {
@@ -31,7 +30,7 @@ import {
   campoDeTemaN1,
   campoDeTemaN2,
 } from '@/componentes/PainelDeFiltros';
-import { CampoSuspenso, SetaSuspensa } from '@/componentes/CampoSuspenso';
+import { CampoSuspenso, GatilhoSuspenso } from '@/componentes/CampoSuspenso';
 import { FaixaDeFiltros } from '@/componentes/FaixaDeFiltros';
 import { FiltroDePeriodoArrastavel } from '@/componentes/FiltroDePeriodoArrastavel';
 // `SinteseExecutivaPelaIA` fica sem import por ora — ver o comentário mais
@@ -159,6 +158,10 @@ const NIVEIS_DE_TEMA: { nivel: string; cor: string; rotulo: string }[] = [
 const ESCALA_AZUL_TOP5 = ['#0027BD', '#3352CB', '#667EDA', '#98A9E9', '#CBD4F6'];
 const ESCALA_VERDE_TOP5 = ['#095D53', '#2E8178', '#53A69D', '#78CAC2', '#9DEEE7'];
 
+//: QUANTOS TEMAS O RANKING "Top 5" PEDE DE VERDADE, por trás da rolagem —
+//: ver o comentário onde `temas` é calculado, mais abaixo.
+const LIMITE_DO_RANKING_DE_TEMA = 20;
+
 function comEscalaDeCor<T extends { cor?: string }>(itens: T[], escala: string[]): T[] {
   return itens.map((item, indice) => ({ ...item, cor: escala[indice % escala.length] }));
 }
@@ -208,6 +211,25 @@ function BotaoDeHistorico({ aoClicar }: { aoClicar: () => void }) {
       estilo={{ border: '1px solid var(--borda-input)', whiteSpace: 'nowrap' }}
     >
       Ver histórico
+    </Botao>
+  );
+}
+
+/** "Limpar filtro" só do campo (ou campos) que ESTE bloco define — por pedido
+ *  (18/11/2026): clicar dentro de um gráfico filtra o recorte inteiro, e
+ *  "Limpar todos os filtros" (lá no topo) tira tudo, inclusive Área/Tema/
+ *  Período que a pessoa pode ter escolhido de propósito. Some sozinho quando
+ *  nenhum dos campos do bloco está ativo — um "Limpar" sempre visível
+ *  convidaria a clicar nele sem precisar. */
+function BotaoDeLimparBloco({ visivel, aoClicar }: { visivel: boolean; aoClicar: () => void }) {
+  if (!visivel) return null;
+  return (
+    <Botao
+      variante="fantasma"
+      aoClicar={aoClicar}
+      estilo={{ height: 28, padding: '0 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+    >
+      Limpar filtro
     </Botao>
   );
 }
@@ -351,7 +373,13 @@ export function Painel({
       };
     });
 
-    const temas = temasMaisRecorrentes(interacoes, catalogo, 5, nivelDaDistribuicao);
+    //: O RANKING AO LADO DO TREEMAP MOSTRA MAIS QUE 5, COM ROLAGEM — por
+    //: pedido (18/11/2026): "top 5" continua a moldura visual (card do mesmo
+    //: tamanho), mas descer revela os próximos. `LIMITE_DO_RANKING_DE_TEMA`
+    //: só vale AQUI; o popup de histórico (`HistoricoDoBloco`) continua
+    //: recebendo só os 5 primeiros, por fatiamento na hora de passar adiante
+    //: — mais categorias ali empilhariam demais o gráfico mensal.
+    const temas = temasMaisRecorrentes(interacoes, catalogo, LIMITE_DO_RANKING_DE_TEMA, nivelDaDistribuicao);
     //: "TEMAS NO TEMPO" SÓ EM N1, por pedido: os 7 pilares inteiros, e não um
     //: Top 5 — sete séries ainda se leem lado a lado, e cortar dois pilares
     //: esconderia justamente o que a pergunta "do que se falou" quer ver.
@@ -382,7 +410,15 @@ export function Painel({
     //: "ATRIBUTOS REPUTACIONAIS NO TEMPO" MOSTRA OS 3 MAIS RECORRENTES do
     //: recorte, por pedido — `temasMaisRecorrentes` já vem do maior para o menor.
     const temasN1NoTempo = temasN1.slice(0, 3);
-    const categoriasPublico = categoriasPublicoMaisRecorrentes(interacoes, catalogo, 5);
+    //: MESMO PEDIDO do ranking de temas ao lado: mostrar mais do que 5, com
+    //: rolagem, em vez de esconder quem fica depois do quinto (18/11/2026).
+    //: Aqui cabe pedir TODAS as categorias de público da taxonomia — são
+    //: poucas (dezena), diferente dos temas.
+    const categoriasPublico = categoriasPublicoMaisRecorrentes(
+      interacoes,
+      catalogo,
+      catalogo.dicionarios.categorias_publico.length,
+    );
 
     const geo = distribuicaoPorUf(interacoes);
 
@@ -734,76 +770,26 @@ export function Painel({
           existe enquanto aberto, sobrepondo o conteúdo abaixo (`position:
           absolute`) em vez de empurrá-lo.
 
-          Período virou um segundo cabeçalho retrátil embaixo do primeiro,
-          mesma ideia — fechado por padrão, abre só quando alguém quer
-          arrastar. Referência original: protótipo trazido pelo usuário
-          (faixa turquesa "Filtros:" com caixas + barra clara "Período").
-          A faixa em si é `FaixaDeFiltros`, compartilhada com a Preparar
-          agenda. */}
-      <FaixaDeFiltros
-        rodape={
-          <>
-            {/* PERÍODO — retrátil, mesma lógica de "Filtro avançado"
-                (`PainelDeFiltros.tsx`): fechado por padrão, nasce sem ocupar
-                espaço. Complementa os atalhos de "Filtro avançado" (30/60/90...)
-                para quem quer ajustar no olho — ver `FiltroDePeriodoArrastavel`. */}
-            <button
-              type="button"
-              onClick={() => definirPeriodoAberto((v) => !v)}
-              aria-expanded={periodoAberto}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 6,
-                padding: '6px 16px',
-                background: 'var(--bg-trilho)',
-                border: 'none',
-                borderRadius: periodoAberto ? 0 : '0 0 var(--r-card) var(--r-card)',
-                cursor: 'pointer',
-                fontSize: 11.5,
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: 'var(--cinza-3)',
-              }}
-            >
-              {/* O INTERVALO SELECIONADO aparece aqui só FECHADO — por pedido,
-                  para não repetir a mesma informação que já está por extenso
-                  dentro do painel aberto (`FiltroDePeriodoArrastavel`). */}
-              <span>
-                Período
-                {!periodoAberto && resumoDoPeriodo ? ` · ${resumoDoPeriodo}` : ''}
-              </span>
-              <SetaSuspensa aberto={periodoAberto} />
-            </button>
-            {periodoAberto ? (
-              <div
-                style={{
-                  background: 'var(--branco)',
-                  border: '1px solid var(--borda)',
-                  borderTop: 'none',
-                  borderRadius: '0 0 var(--r-card) var(--r-card)',
-                  padding: '8px 14px 10px',
-                }}
-              >
-                {/* RECOLHE SOZINHO ao soltar qualquer um dos dois cabos — por
-                    pedido. O intervalo escolhido continua visível depois,
-                    escrito ao lado de "Período" (acima). */}
-                <FiltroDePeriodoArrastavel
-                  recorte={recorte}
-                  definirRecorte={definirRecorte}
-                  aoConcluir={() => definirPeriodoAberto(false)}
-                />
-              </div>
-            ) : null}
-          </>
-        }
-      >
+          PERÍODO ENTROU NA MESMA LINHA, por pedido (18/11/2026): era um
+          segundo cabeçalho retrátil embaixo da faixa azul, cinza e discreto —
+          "pouco visível", na palavra do pedido. Agora é mais um gatilho
+          (`GatilhoSuspenso`, a casca que `CampoSuspenso` também usa),
+          CONTROLADO em vez de dono do próprio estado: `FiltroDePeriodoArrastavel`
+          continua fechando o painel sozinho ao soltar qualquer um dos dois
+          cabos (`aoConcluir`), e isso só é possível porque `periodoAberto`
+          mora aqui em cima, não dentro da casca. Referência original:
+          protótipo trazido pelo usuário (faixa turquesa "Filtros:" com caixas
+          + barra clara "Período"). A faixa em si é `FaixaDeFiltros`,
+          compartilhada com a Preparar agenda — que não ganhou Período, então
+          continua sem `rodape`. */}
+      <FaixaDeFiltros>
         <CampoSuspenso
           campo={campoDeAreaPorCategoria(recorte, definirRecorte, catalogo)}
           aoLimpar={() => definirRecorte(limparAreas(recorte))}
+        />
+        <CampoSuspenso
+          campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
         />
         {/* `formato_interacao` (Mídia/Agenda de mercado/Agenda pública/
             Manifestação formal/Evento/Visita/Reunião — `0038_formato_
@@ -815,8 +801,8 @@ export function Painel({
           aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
         />
         <CampoSuspenso
-          campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
-          aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+          campo={campoDeClima(recorte, definirRecorte, catalogo)}
+          aoLimpar={() => definirRecorte(limparClima(recorte))}
         />
         {/* O TEMA VIROU N3 (104 subtemas), e a faixa passou a filtrar pelos
             dois níveis de cima, por pedido: Atributo (N1) e Tema estratégico
@@ -829,10 +815,24 @@ export function Painel({
           campo={campoDeTemaN2(recorte, definirRecorte, catalogo)}
           aoLimpar={() => definirRecorte(limparTemasN2(recorte))}
         />
-        <CampoSuspenso
-          campo={campoDeClima(recorte, definirRecorte, catalogo)}
-          aoLimpar={() => definirRecorte(limparClima(recorte))}
-        />
+        {/* PERÍODO — mesma casca dos filtros acima, mas CONTROLADO (ver o
+            comentário grande antes de `FaixaDeFiltros`): o calendário
+            arrastável se fecha sozinho ao soltar um cabo, sem precisar que a
+            pessoa clique no gatilho de novo. Painel mais largo (480px): a
+            régua arrastável não cabe nos 340px das pílulas. */}
+        <GatilhoSuspenso
+          rotulo="Período"
+          resumo={resumoDoPeriodo ?? undefined}
+          larguraDoPainel={480}
+          aberto={periodoAberto}
+          aoAlternar={definirPeriodoAberto}
+        >
+          <FiltroDePeriodoArrastavel
+            recorte={recorte}
+            definirRecorte={definirRecorte}
+            aoConcluir={() => definirPeriodoAberto(false)}
+          />
+        </GatilhoSuspenso>
       </FaixaDeFiltros>
 
       {semResultado ? (
@@ -1019,7 +1019,15 @@ export function Painel({
             titulo="% Interações por tier e Top instituições"
             subtitulo="Volume de agendas pela relevância da instituição de contato"
             ajuda="A rosca soma as interações do recorte por Tier de relevância da instituição (1 a 4, do dicionário Relevância). O ranking ao lado lista as 5 instituições com mais interações; passe o mouse numa fatia para ver as instituições daquele tier."
-            acao={<BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />}
+            acao={
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <BotaoDeLimparBloco
+                  visivel={recorte.tier != null || recorte.entidade != null}
+                  aoClicar={() => definirRecorte({ ...recorte, tier: undefined, entidade: undefined })}
+                />
+                <BotaoDeHistorico aoClicar={() => definirHistorico('tier')} />
+              </div>
+            }
             estilo={{ height: '100%' }}
           >
             {/* A ROSCA AO LADO DO TOP 5, e não sozinha no meio do cartão: a
@@ -1072,7 +1080,15 @@ export function Painel({
             titulo="Termômetro por Instituições"
             subtitulo="Placar do termômetro das instituições mais presentes no recorte"
             ajuda="Cada barra é (interações propositivas − reativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Lista as instituições com mais interações no recorte, do pior para o melhor placar."
-            acao={<BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />}
+            acao={
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <BotaoDeLimparBloco
+                  visivel={recorte.entidade != null}
+                  aoClicar={() => definirRecorte({ ...recorte, entidade: undefined })}
+                />
+                <BotaoDeHistorico aoClicar={() => definirHistorico('publico')} />
+              </div>
+            }
             estilo={{ height: '100%' }}
           >
             <BarraDivergentePorItem
@@ -1143,27 +1159,36 @@ export function Painel({
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>
               <div className="kicker" style={{ marginBottom: 12 }}>
-                Top 5 · {ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao]}
+                Ranking · {ROTULO_DO_NIVEL_DE_TEMA[nivelDaDistribuicao]}
               </div>
-              <Ranking
-                itens={comEscalaDeCor(derivado.temas, ESCALA_AZUL_TOP5)}
-                ativo={temaAtivoNoNivel(nivelDaDistribuicao)}
-                aoClicar={(chave) => definirRecorte(alternarTemaNoNivel(nivelDaDistribuicao, chave))}
-                vazio="Nenhum tema neste recorte."
-              />
+              {/* JÁ NÃO É "TOP 5" — por pedido (18/11/2026), o rótulo mudou
+                  junto com o limite: chamar de "Top 5" uma lista que mostra
+                  até 20 (com rolagem) enganaria quem lê. ALTURA DE ~5 LINHAS,
+                  com rolagem por dentro pros demais, sem
+                  esconder quem fica depois do quinto lugar. */}
+              <div className="rolagem-interna" style={{ maxHeight: 230 }}>
+                <Ranking
+                  itens={comEscalaDeCor(derivado.temas, ESCALA_AZUL_TOP5)}
+                  ativo={temaAtivoNoNivel(nivelDaDistribuicao)}
+                  aoClicar={(chave) => definirRecorte(alternarTemaNoNivel(nivelDaDistribuicao, chave))}
+                  vazio="Nenhum tema neste recorte."
+                />
+              </div>
             </div>
             <div style={{ flex: '1 1 180px', minWidth: 160 }}>
               <div className="kicker" style={{ marginBottom: 12 }}>
-                Top 5 público
+                Ranking · Público
               </div>
-              <Ranking
-                itens={comEscalaDeCor(derivado.categoriasPublico, ESCALA_VERDE_TOP5)}
-                ativo={
-                  recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
-                }
-                aoClicar={(chave) => definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))}
-                vazio="Nenhuma categoria de público neste recorte."
-              />
+              <div className="rolagem-interna" style={{ maxHeight: 230 }}>
+                <Ranking
+                  itens={comEscalaDeCor(derivado.categoriasPublico, ESCALA_VERDE_TOP5)}
+                  ativo={
+                    recorte.categoriaPublico?.[0] != null ? String(recorte.categoriaPublico[0]) : undefined
+                  }
+                  aoClicar={(chave) => definirRecorte(alternarCategoriaPublico(recorte, Number(chave)))}
+                  vazio="Nenhuma categoria de público neste recorte."
+                />
+              </div>
             </div>
           </div>
         </Secao>
@@ -1236,6 +1261,12 @@ export function Painel({
           titulo="Termômetro das interações no tempo"
           subtitulo="Evolução da classificação do termômetro (Propositivo, Neutro e Reativo) no período"
           ajuda="Cada coluna soma 100% das interações com termômetro registrado naquele período, divididas entre Propositivo, Neutro e Reativo — mostra como a PROPORÇÃO do termômetro muda no tempo, não o volume total de interações."
+          acao={
+            <BotaoDeLimparBloco
+              visivel={recorte.clima != null}
+              aoClicar={() => definirRecorte({ ...recorte, clima: undefined })}
+            />
+          }
         >
           {/* BARRAS DE 100%: toda coluna com registro tem a mesma altura, e o
               que varia é a fatia de cada clima — a pergunta aqui é "como o
@@ -1360,8 +1391,8 @@ export function Painel({
 
       <ComFaixaDoTopo>
       <Secao
-        titulo="Barra divergente por tema"
-        subtitulo={`Desempenho comparativo do termômetro por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
+        titulo="Barra de desempenho por tema"
+        subtitulo={`Comparativo do termômetro por ${ROTULO_DO_NIVEL_DE_TEMA[nivelDaDivergente].toLowerCase()} (do pior ao melhor placar)`}
         ajuda="Cada barra é (interações propositivas − reativas) ÷ total × 100, de −100 a +100, calculado só com interações com termômetro registrado. Comece pelo Atributo (N1) e desça para Tema estratégico (N2) e Subtema (N3) no seletor. Lista os temas com mais interações no recorte, do pior para o melhor placar."
         acao={
           <SeletorDeNivelDeTema
@@ -1443,53 +1474,52 @@ export function Painel({
 
         <ComFaixaDoTopo>
         <Secao
-          titulo="Distribuição geográfica das Interações e Porta-vozes"
-          subtitulo="Concentração de presença física e impacto institucional por Estado (UF)"
-          ajuda="O mapa soma as interações por UF da instituição, com uma bolha à parte para as On-line (sem localização física). O ranking ao lado lista os porta-vozes da Aegea com mais participações no recorte."
-        >
-          <div className="grade grade--mapa" style={{ gap: 24 }}>
-            <MapaUf
-              pontos={derivado.geo}
-              selecionada={recorte.uf}
-              aoClicarUf={(uf) => definirRecorte(alternar(recorte, 'uf', uf))}
-              totalOnline={derivado.totalInteracoesOnline}
+          titulo="Porta-vozes e termômetro"
+          subtitulo="Quem mais falou pela Aegea no recorte, e como foi recebido"
+          ajuda="O ranking lista os porta-vozes da Aegea com mais participações no recorte; passe o mouse num nome para ver os temas que ele mais tratou. O termômetro abaixo soma Reativo, Neutro e Propositivo do recorte inteiro."
+          acao={
+            <BotaoDeLimparBloco
+              visivel={recorte.portaVoz != null || recorte.clima != null}
+              aoClicar={() => definirRecorte({ ...recorte, portaVoz: undefined, clima: undefined })}
             />
-            <div>
-              {/* PORTA-VOZ, e não UF, ao lado do mapa: a UF já está inteira
-                  no mapa (bolha por estado + a de Online); o vão ao lado
-                  responde outra pergunta — QUEM mais falou, e sobre o quê.
-                  Mesma ideia de "Interações por tier" (rosca + Top 5 ao
-                  lado): duas dimensões diferentes, um cartão só. */}
-              <div className="kicker" style={{ marginBottom: 12 }}>
-                Ranking por porta-voz
-              </div>
-              <Ranking
-                itens={derivado.portaVozes}
-                ativo={recorte.portaVoz}
-                aoClicar={(nome) => definirRecorte(alternar(recorte, 'portaVoz', nome))}
-                vazio="Nenhum porta-voz registrado neste recorte."
-                detalheAoPassarMouse={(chave) =>
-                  (derivado.temasPorPortaVoz[chave] ?? []).map((item) => ({
-                    rotulo: item.rotulo,
-                    valor: numero(item.total),
-                  }))
-                }
-              />
-
-              {/* A TEMPERATURA DO RECORTE, por pedido, embaixo do ranking: o
-                  mapa diz onde, o ranking diz quem, e o termômetro diz como
-                  foi — Reativo, Neutro e Propositivo numa barra só, com o
-                  saldo. Clicar numa fatia filtra pelo clima, o mesmo campo
-                  do filtro rápido "Filtrar por Clima". */}
-              <div className="kicker" style={{ margin: '24px 0 12px' }}>
-                Termômetro
-              </div>
-              <TermometroDeClima
-                fatias={derivado.categoriasDeClima}
-                ativo={recorte.clima}
-                aoClicar={(codigo) => definirRecorte(alternar(recorte, 'clima', codigo))}
-              />
+          }
+        >
+          {/* O MAPA SAIU DAQUI (pedido de 18/11/2026): ocupava um espaço
+              grande e não acrescentava sobre o que o ranking de porta-voz já
+              respondia. A distribuição por UF segue calculada em
+              `derivado.geo`/`totalInteracoesOnline` — só não tem mais onde
+              aparecer nesta tela; se precisar de novo, é só repor `<MapaUf>`
+              com os mesmos dados. */}
+          <div>
+            {/* PORTA-VOZ, e não UF: QUEM mais falou, e sobre o quê. */}
+            <div className="kicker" style={{ marginBottom: 12 }}>
+              Ranking por porta-voz
             </div>
+            <Ranking
+              itens={derivado.portaVozes}
+              ativo={recorte.portaVoz}
+              aoClicar={(nome) => definirRecorte(alternar(recorte, 'portaVoz', nome))}
+              vazio="Nenhum porta-voz registrado neste recorte."
+              detalheAoPassarMouse={(chave) =>
+                (derivado.temasPorPortaVoz[chave] ?? []).map((item) => ({
+                  rotulo: item.rotulo,
+                  valor: numero(item.total),
+                }))
+              }
+            />
+
+            {/* A TEMPERATURA DO RECORTE, por pedido, embaixo do ranking —
+                Reativo, Neutro e Propositivo numa barra só, com o saldo.
+                Clicar numa fatia filtra pelo clima, o mesmo campo do filtro
+                rápido "Filtrar por Clima". */}
+            <div className="kicker" style={{ margin: '24px 0 12px' }}>
+              Termômetro
+            </div>
+            <TermometroDeClima
+              fatias={derivado.categoriasDeClima}
+              ativo={recorte.clima}
+              aoClicar={(codigo) => definirRecorte(alternar(recorte, 'clima', codigo))}
+            />
           </div>
         </Secao>
         </ComFaixaDoTopo>
@@ -1500,6 +1530,12 @@ export function Painel({
             titulo="Instituições"
             subtitulo="Principais entidades e parceiras"
             ajuda="Ranking das instituições com mais interações registradas no recorte atual, da maior para a menor."
+            acao={
+              <BotaoDeLimparBloco
+                visivel={recorte.entidade != null}
+                aoClicar={() => definirRecorte({ ...recorte, entidade: undefined })}
+              />
+            }
             estilo={{ height: '100%' }}
           >
             <Ranking
@@ -1526,6 +1562,12 @@ export function Painel({
             titulo="Unidades de negócio"
             subtitulo="Volume por unidade operacional Aegea"
             ajuda="Interações agrupadas pela unidade de negócio operacional da Aegea envolvida no recorte, da maior para a menor."
+            acao={
+              <BotaoDeLimparBloco
+                visivel={recorte.unidade != null}
+                aoClicar={() => definirRecorte({ ...recorte, unidade: undefined })}
+              />
+            }
             estilo={{ height: '100%' }}
           >
             <Ranking
@@ -1547,7 +1589,7 @@ export function Painel({
           interacoes={interacoes}
           catalogo={catalogo}
           porTier={derivado.porTier}
-          porTemas={derivado.temas}
+          porTemas={derivado.temas.slice(0, 5)}
           nivelDosTemas={nivelDaDistribuicao}
           climaPorPublico={derivado.climaPorPublico}
           aoFechar={() => definirHistorico(null)}

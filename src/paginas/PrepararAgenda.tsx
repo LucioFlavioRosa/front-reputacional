@@ -95,8 +95,8 @@ const QUANTAS_AGENDAS = 8;
 const QUANTAS_CONSULTAS_NA_PREPARACAO = 5;
 
 const ABAS_DA_PREPARACAO: readonly Aba<'tema' | 'instituicao'>[] = [
-  { id: 'tema', rotulo: 'Preparação por tema' },
-  { id: 'instituicao', rotulo: 'Consulta dinâmica' },
+  { id: 'tema', rotulo: 'Consulta por tema' },
+  { id: 'instituicao', rotulo: 'Consulta por Instituição' },
 ];
 
 export function PrepararAgenda({ aoAbrirAgenda }: { aoAbrirAgenda: (id: string) => void }) {
@@ -404,7 +404,7 @@ function ConsultaDinamicaDeInstituicao({
             WebkitTextFillColor: 'transparent',
           }}
         >
-          Consulta dinâmica por instituição
+          Consulta por Instituição
         </span>
 
         <span style={{ minWidth: 240 }}>

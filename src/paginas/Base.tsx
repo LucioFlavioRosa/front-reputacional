@@ -1,6 +1,7 @@
 /** Base — a tabela completa do recorte, com cabeçalho fixo e exportação. */
 
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { usePainel } from '@/estado/painel';
 import { BotaoDeImportar } from '@/paginas/importacao/BotaoDeImportar';
 import { temCadeia } from '@/dominio/grafo';
@@ -84,7 +85,7 @@ type AbaDaBase = (typeof ABAS)[number]['id'];
 //: formulário é o tipo (Mídia, Reunião, Evento…) e a(s) área(s). A tabela
 //: mostra o que se gravou, com os mesmos nomes.
 const COLUNAS = [
-  'Cadeia', 'Data', 'Tipo de interação', 'Área(s)', 'Instituição', 'Unidade',
+  'Cadeia', 'Data', 'Instituição', 'Tipo de interação', 'Área(s)', 'Unidade',
   'Interlocutor', 'Pauta', 'UF', 'Relevância', 'Situação', 'Temas',
   // -- o resto do que o cadastro pergunta, escondido por padrão -------------
   //
@@ -189,6 +190,25 @@ export function Base({
   if (erro) return <FaixaDeErro mensagem={erro} />;
   if (carregando || !catalogo) return <Carregando />;
 
+  //: AS TRÊS PRIMEIRAS COLUNAS VISÍVEIS, não as três primeiras POR NOME: se
+  //: alguém esconder "Cadeia" ou "Data" em "Colunas", a lista fixa desliza
+  //: sozinha — é por isso que cada `<td>` abaixo pede o PRÓPRIO índice em
+  //: `visiveis`, em vez de um número fixo por coluna.
+  const limiteDeColunasFixas = Math.min(3, visiveis.length);
+  function estiloDaColunaFixa(coluna: string): CSSProperties {
+    const indice = visiveis.indexOf(coluna);
+    if (indice < 0 || indice >= limiteDeColunasFixas) return {};
+    return {
+      position: 'sticky',
+      left: `var(--largura-antes-da-coluna-${indice}, 0px)`,
+      zIndex: 1,
+      background: 'var(--branco)',
+      // SÓ A ÚLTIMA DO BLOCO GANHA A SOMBRA — é a borda por onde o conteúdo
+      // rolado passa; as fixas antes dela ficam encostadas, sem sombra.
+      ...(indice === limiteDeColunasFixas - 1 ? { boxShadow: '2px 0 4px rgba(0,0,0,0.08)' } : null),
+    };
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* A MESMA FAIXA DO PAINEL/PREPARAR AGENDA, em 24/09/2026 — no lugar do
@@ -210,12 +230,12 @@ export function Base({
             aoLimpar={() => definirRecorte(limparAreas(recorte))}
           />
           <CampoSuspenso
-            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
-            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
-          />
-          <CampoSuspenso
             campo={campoDeCategoriaPublico(recorte, definirRecorte, catalogo)}
             aoLimpar={() => definirRecorte(limparCategoriaPublico(recorte))}
+          />
+          <CampoSuspenso
+            campo={campoDeFormatoInteracao(recorte, definirRecorte, catalogo)}
+            aoLimpar={() => definirRecorte(limparFormatoInteracao(recorte))}
           />
           <CampoSuspenso
             campo={{ ...campoDeTema(recorte, definirRecorte, catalogo), rotulo: 'Filtrar por Tema' }}
@@ -321,6 +341,47 @@ export function Base({
           ordenacao={ordenacao}
           aoOrdenar={(coluna) => definirOrdenacao((atual) => alternarOrdenacao(atual, coluna))}
           chaveDeArmazenamento="base-interacoes"
+          // POR PEDIDO (18/11/2026): ao rolar a tabela pro lado, não se perde
+          // a referência de Cadeia/Data/Instituição — as três primeiras
+          // colunas VISÍVEIS, não necessariamente estas três pelo nome (se
+          // alguém esconder "Data" em "Colunas", a terceira fixa vira "Tipo
+          // de interação", e continua certo: "as três primeiras" é a regra,
+          // não uma lista fixa de nomes).
+          //
+          // `largurasPadrao` AQUI NÃO É SÓ AJUSTE FINO: sem largura própria
+          // para as colunas fixas, `sticky` + texto que quebra linha (nome de
+          // instituição comprido) sobrepõe a coluna vizinha — ver o
+          // comentário grande no topo de `Tabela.tsx`.
+          //
+          // TODAS AS COLUNAS GANHARAM UM NÚMERO, não só as três fixas — por
+          // pedido (18/11/2026). `colunaFixa` já empurra a tabela para
+          // `table-layout: fixed`; NESSE MODO, toda coluna SEM número aqui
+          // divide o espaço que sobrar EM PARTES IGUAIS, sem olhar pro
+          // conteúdo — foi isso que apertou "Temas" (lista de assuntos) no
+          // mesmo tanto que "UF" (duas letras). SÓ "Pauta" fica de fora de
+          // propósito: é o texto mais longo da tabela, e é ela quem deve
+          // absorver o que sobrar depois das outras — o `minWidth: 260` que
+          // a própria célula já tinha segue valendo como piso.
+          colunasFixas={visiveis.slice(0, 3)}
+          largurasPadrao={{
+            Cadeia: 36,
+            Data: 100,
+            Instituição: 170,
+            'Tipo de interação': 150,
+            'Área(s)': 140,
+            Unidade: 120,
+            Interlocutor: 140,
+            UF: 110,
+            Relevância: 85,
+            Situação: 90,
+            Temas: 220,
+            Modalidade: 110,
+            Local: 130,
+            Esfera: 120,
+            Termômetro: 110,
+            Desfecho: 130,
+            Iniciativa: 130,
+          }}
         >
           {linhasOrdenadas.map((linha) => (
             <LinhaDaTabela
@@ -329,7 +390,7 @@ export function Base({
               titulo="Abrir a ficha da interação"
             >
             {!visiveis.includes('Cadeia') ? null : (
-              <td style={{ ...celula, padding: '6px 10px' }}>
+              <td style={{ ...celula, padding: '6px 10px', ...estiloDaColunaFixa('Cadeia') }}>
                 <BotaoDaCadeia
                   linha={linha}
                   aoAbrir={() => aoAbrirCadeia(linha.id)}
@@ -337,18 +398,15 @@ export function Base({
               </td>
             )}
             {!visiveis.includes('Data') ? null : (
-              <td style={{ ...celula, whiteSpace: 'nowrap' }} className="tabular">
+              <td
+                style={{ ...celula, whiteSpace: 'nowrap', ...estiloDaColunaFixa('Data') }}
+                className="tabular"
+              >
                 {dataCompleta(linha.data)}
               </td>
             )}
-            {!visiveis.includes('Tipo de interação') ? null : (
-              <td style={celula}>{linha.tipoDeInteracao}</td>
-            )}
-            {!visiveis.includes('Área(s)') ? null : (
-              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
-            )}
             {!visiveis.includes('Instituição') ? null : (
-              <td style={{ ...celula, fontWeight: 500 }}>
+              <td style={{ ...celula, fontWeight: 500, ...estiloDaColunaFixa('Instituição') }}>
                 {linha.entidade}
                 {/* ONDE SE PROCURA. A Ficha mostra a faixa de atenção a quem já
                     abriu a agenda; esta marca é como alguém ENCONTRA as agendas a
@@ -372,6 +430,12 @@ export function Base({
                   </span>
                 ) : null}
               </td>
+            )}
+            {!visiveis.includes('Tipo de interação') ? null : (
+              <td style={celula}>{linha.tipoDeInteracao}</td>
+            )}
+            {!visiveis.includes('Área(s)') ? null : (
+              <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.areas}</td>
             )}
             {!visiveis.includes('Unidade') ? null : (
               <td style={{ ...celula, color: 'var(--cinza-2)' }}>{linha.unidade}</td>
@@ -542,9 +606,9 @@ function exportarCsv(linhas: Linha[], resumoDoRecorte: string) {
       [
         linha.naCadeia ? descreverCadeia(linha) : '',
         dataCompleta(linha.data),
+        linha.entidade,
         linha.tipoDeInteracao,
         linha.areas,
-        linha.entidade,
         linha.unidade,
         linha.interlocutor,
         linha.pauta,
