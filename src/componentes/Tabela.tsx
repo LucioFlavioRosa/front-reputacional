@@ -16,9 +16,33 @@
  *  clique. Redimensionar não precisa de aviso a quem chama: a largura vive
  *  aqui, num `<colgroup>`, e por isso funciona com `<td>` que a página já
  *  escreve do jeito que sempre escreveu.
+ *
+ *  COLUNAS FIXAS (`colunasFixas`, por pedido de 18/11/2026): um PREFIXO de
+ *  `colunas` (as primeiras N, sempre a partir da esquerda — não qualquer
+ *  subconjunto) que fica visível ao rolar pro lado. A largura de cada uma
+ *  não é um número fixo — vem do arraste da pessoa (`larguras`) ou, sem
+ *  arraste nenhum, do navegador decidindo pelo conteúdo. Por isso o
+ *  deslocamento de cada coluna fixa é MEDIDO no DOM
+ *  (`getBoundingClientRect`), não calculado a partir do estado — e exposto
+ *  como variáveis CSS `--largura-antes-da-coluna-0`, `-1`, `-2`... no
+ *  próprio `<table>` (uma por POSIÇÃO, não por nome — nome de coluna pode
+ *  ter espaço, parêntese, acento, e viraria um nome de variável CSS
+ *  estranho). QUEM CHAMA lê pelo mesmo nome na `<td>` de cada coluna fixa
+ *  (ver `Base.tsx`). A variável é o contrato entre os dois arquivos:
+ *  `Tabela` não escreve a `<td>`, e não tem como aplicar o `sticky` nela
+ *  diretamente.
+ *
+ *  `table-layout: fixed` É OBRIGATÓRIO com coluna fixa, e não só uma
+ *  otimização: `sticky` numa célula de tabela em `auto` (sem
+ *  `largurasPadrao`) é um dos pontos mais inconsistentes entre motores de
+ *  navegador — o texto que quebra linha (um nome de instituição comprido)
+ *  faz a coluna fixa ocupar mais espaço do que a tabela reservou pra ela, e
+ *  ela passa a cobrir parte da coluna vizinha. `largurasPadrao` em cada
+ *  coluna fixa (`Base.tsx` já passa) fecha essa brecha: a largura fica
+ *  exata, do jeito que `<colgroup>` manda, e não "o que o conteúdo pedir".
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Ordenacao } from '@/dominio/ordenacao';
 
@@ -34,6 +58,7 @@ export function Tabela({
   compacta = false,
   largurasPadrao,
   barraDeLargura = false,
+  colunasFixas,
   children,
 }: {
   colunas: string[];
@@ -74,6 +99,14 @@ export function Tabela({
    *  "Restaurar layout" (que só aparece quando alguém mexeu). Para a tabela
    *  que quer o ajuste ao alcance de quem não sabia que ele existia. */
   barraDeLargura?: boolean;
+  /** As primeiras N colunas (de `colunas`, sempre um prefixo a partir da
+   *  esquerda) que devem ficar visíveis ao rolar para o lado — ganham
+   *  `position: sticky` no `<th>`. Quem chama aplica o mesmo em cada `<td>`
+   *  correspondente, lendo `--largura-antes-da-coluna-<posição>` (ver o
+   *  comentário grande no topo do arquivo), e deve passar `largurasPadrao`
+   *  para elas — sem isso, `sticky` + texto que quebra linha sobrepõe a
+   *  coluna vizinha (mesmo comentário). */
+  colunasFixas?: string[];
   children: ReactNode;
 }) {
   const chaveLocal = chaveDeArmazenamento
@@ -177,6 +210,39 @@ export function Tabela({
 
   const ajustadas = Object.keys(larguras).length > 0;
 
+  //: A CASCA (ref) do `<table>` — só pra medir, nunca pra ler conteúdo.
+  const refDaTabela = useRef<HTMLTableElement>(null);
+
+  const quantidadeDeColunasFixas = colunasFixas?.length ?? 0;
+
+  //: MEDE DE NOVO sempre que a lista de colunas, as larguras (arraste) ou a
+  //: quantidade de colunas fixas mudarem — e também quando o NAVEGADOR muda
+  //: alguma largura por conta própria (janela redimensionada), via
+  //: `ResizeObserver` na tabela inteira: sem ele, a coluna fixa ficava presa
+  //: no deslocamento antigo, fora do lugar.
+  useLayoutEffect(() => {
+    const elemento = refDaTabela.current;
+    if (!elemento || !quantidadeDeColunasFixas) return;
+    function medir() {
+      const ths = elemento!.querySelectorAll('thead th');
+      let soma = 0;
+      // UMA VARIÁVEL POR POSIÇÃO (0, 1, 2...), não por nome: a coluna na
+      // posição `i` começa onde a soma das `i` anteriores termina.
+      for (let i = 0; i < quantidadeDeColunasFixas; i++) {
+        elemento!.style.setProperty(`--largura-antes-da-coluna-${i}`, `${soma}px`);
+        soma += ths[i]?.getBoundingClientRect().width ?? 0;
+      }
+    }
+    medir();
+    // SEM `ResizeObserver` (ambiente de teste, navegador muito antigo), a
+    // medida inicial já aconteceu — só não se refaz sozinha num redimensionar
+    // de janela que não passe por `larguras`/`largurasPadrao`.
+    if (typeof ResizeObserver === 'undefined') return;
+    const observador = new ResizeObserver(medir);
+    observador.observe(elemento);
+    return () => observador.disconnect();
+  }, [quantidadeDeColunasFixas, colunas, larguras, largurasPadrao]);
+
   // `table-layout: fixed` entra assim que existir QUALQUER largura definida —
   // do usuário (`larguras`, depois de um arraste) ou de quem chama
   // (`largurasPadrao`, antes de qualquer arraste). Sem nenhuma das duas, a
@@ -196,6 +262,7 @@ export function Tabela({
     //: nenhum — quem ouve a tela já leu o título da `Secao` logo acima.
     <div className="rolagem-interna" style={{ maxHeight: altura }} tabIndex={0}>
       <table
+        ref={refDaTabela}
         style={{
           width: '100%',
           borderCollapse: 'collapse',
@@ -214,13 +281,23 @@ export function Tabela({
             {colunas.map((coluna, indice) => {
               const ordenavel = colunasOrdenaveis.includes(coluna);
               const ativa = ordenacao?.coluna === coluna;
+              const fixa = indice < quantidadeDeColunasFixas;
+              // A ÚLTIMA DO BLOCO FIXO leva a sombra — é a borda por onde o
+              // conteúdo rolado passa por baixo; as fixas antes dela não
+              // precisam, ficam encostadas umas nas outras.
+              const ultimaFixa = fixa && indice === quantidadeDeColunasFixas - 1;
               return (
                 <th
                   key={coluna}
                   style={{
                     position: 'sticky',
                     top: 0,
-                    zIndex: 1,
+                    // A COLUNA FIXA GANHA UM SEGUNDO EIXO DE `sticky` — presa
+                    // no topo E na esquerda ao mesmo tempo, sem conflito: são
+                    // eixos diferentes do mesmo elemento. `zIndex` mais alto
+                    // porque este é o canto onde os dois "grudes" se cruzam.
+                    ...(fixa ? { left: `var(--largura-antes-da-coluna-${indice}, 0px)` } : null),
+                    zIndex: fixa ? 2 : 1,
                     background: 'var(--bg-trilho)',
                     textAlign: 'left',
                     padding: 0,
@@ -234,6 +311,7 @@ export function Tabela({
                     color: 'var(--azul-mar-sombra)',
                     whiteSpace: 'nowrap',
                     borderBottom: '1px solid var(--borda)',
+                    ...(ultimaFixa ? { boxShadow: '2px 0 4px rgba(0,0,0,0.08)' } : null),
                   }}
                 >
                   {ordenavel ? (
