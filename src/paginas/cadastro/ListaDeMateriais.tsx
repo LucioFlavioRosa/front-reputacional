@@ -252,6 +252,49 @@ export function ListaDeMateriais({
                 Trocar
               </Botao>
             </div>
+          ) : material.arquivoPendente ? (
+            // ESCOLHIDO, AINDA NÃO ENVIADO — a interação é nova e não existe
+            // pasta no servidor pra subir o byte agora. `enviar()` em
+            // Cadastro.tsx sobe isto assim que o registro é criado.
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginTop: 10,
+                padding: '8px 11px',
+                background: 'var(--bg-trilho)',
+                borderRadius: 'var(--r-card-int)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {material.arquivoPendente.name}
+              </span>
+              <span
+                style={{ fontSize: 12, color: 'var(--cinza-3)', whiteSpace: 'nowrap' }}
+              >
+                {tamanhoLegivel(material.arquivoPendente.size)}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--cinza-3)', whiteSpace: 'nowrap' }}>
+                Será enviado ao salvar
+              </span>
+              <Botao
+                variante="fantasma"
+                rotuloAcessivel={`Tirar o arquivo escolhido do material ${indice + 1}`}
+                aoClicar={() => trocar(indice, { arquivoPendente: null })}
+              >
+                Trocar
+              </Botao>
+            </div>
           ) : (
             <div
               style={{
@@ -263,22 +306,25 @@ export function ListaDeMateriais({
             >
               <Campo
                 rotulo="Arquivo"
-                dica={
-                  interacaoId
-                    ? 'PDF, Word, Excel, PowerPoint, imagem ou texto. Até 25 MB.'
-                    : 'Salve a interação antes de anexar arquivos.'
-                }
+                dica="PDF, Word, Excel, PowerPoint, imagem ou texto. Até 25 MB."
               >
                 <CampoDeArquivo
                   // SEMPRE `null`: esta escolha é consumida na hora — o
-                  // `onChange` já dispara o upload, não guarda um rascunho
-                  // para revisar depois. Não há "arquivo selecionado" para
-                  // mostrar entre um clique e o outro.
+                  // `onChange` já dispara o upload (agenda existente) ou
+                  // guarda a escolha (agenda nova), não mantém o campo com o
+                  // nome do arquivo depois.
                   valor={null}
                   ariaLabel={`Arquivo do material ${indice + 1}`}
-                  desabilitado={!interacaoId || subindo !== null}
+                  desabilitado={subindo !== null}
                   aoEscolher={(escolhido) => {
-                    if (escolhido) void subir(indice, escolhido);
+                    if (!escolhido) return;
+                    if (interacaoId) {
+                      void subir(indice, escolhido);
+                    } else {
+                      // Agenda ainda não existe: fica guardado nesta linha até
+                      // `enviar()` criar o registro e subir de verdade.
+                      trocar(indice, { arquivoPendente: escolhido });
+                    }
                   }}
                 />
               </Campo>
@@ -381,6 +427,7 @@ export function ListaDeMateriais({
               temas: [...temasDaAgenda],
               arquivo_id: null,
               arquivo: null,
+              arquivoPendente: null,
             },
           ])
         }
