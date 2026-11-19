@@ -21,6 +21,7 @@ import {
   editarInteracao,
   listarInteracoes,
   obterInteracao,
+  subirArquivoDeMaterial,
 } from '@/api/cliente';
 import { usePainel } from '@/estado/painel';
 import {
@@ -653,7 +654,49 @@ export function Cadastro({
         // saber o que veio do servidor, e ela passaria a ter duas verdades.
         await editarInteracao(id, montarCorpo(comATierDaInstituicao, true, ehConsulta));
       } else {
-        await criarInteracao(montarCorpo(comATierDaInstituicao, false, ehConsulta));
+        const nova = await criarInteracao(montarCorpo(comATierDaInstituicao, false, ehConsulta));
+        // ARQUIVOS ESCOLHIDOS ANTES DE A INTERAÇÃO EXISTIR. Agora que ela
+        // nasceu há pasta no servidor para receber o byte — sobe aqui, e um
+        // segundo `PATCH` liga cada arquivo ao material que o backend acabou
+        // de criar. Sem isto, quem anexou um arquivo numa agenda nova veria
+        // "registro salvo" e o arquivo nunca teria saído do navegador.
+        //
+        // Mesmo filtro de `montarCorpo`, para a lista aqui corresponder, item
+        // a item, à que o servidor recebeu e devolveu — é a única amarração
+        // possível antes de o material ganhar um `id`.
+        const enviados = form.materiais.filter(
+          (m) => m.titulo.trim() || m.url.trim() || m.arquivo_id || m.arquivoPendente,
+        );
+        const pendentes = enviados.filter((m) => m.arquivoPendente);
+        if (pendentes.length > 0) {
+          const materiaisCriados = paraFormulario(nova).materiais;
+          for (const pendente of pendentes) {
+            const posicao = enviados.indexOf(pendente);
+            const criado = materiaisCriados[posicao];
+            if (!criado) continue;
+            const subido = await subirArquivoDeMaterial(
+              nova.id,
+              criado.momento,
+              pendente.arquivoPendente as File,
+            );
+            // O TÍTULO VAZIO GANHA O NOME DO ARQUIVO, mesma regra do upload
+            // numa agenda já existente — ver `subir()` em `ListaDeMateriais`.
+            materiaisCriados[posicao] = {
+              ...criado,
+              arquivo_id: subido.id,
+              arquivo: subido,
+              titulo: criado.titulo.trim() || subido.nome,
+            };
+          }
+          await editarInteracao(
+            nova.id,
+            montarCorpo(
+              { ...comATierDaInstituicao, materiais: materiaisCriados },
+              true,
+              ehConsulta,
+            ),
+          );
+        }
         definirForm(VAZIO);
       }
       definirSucesso(true);
@@ -1371,6 +1414,7 @@ export function Cadastro({
             aoFalhar={definirErro}
             temasDaAgenda={form.temas}
             assuntos={catalogo.dicionarios.temas}
+            assuntosInativos={catalogo.dicionarios.temas_inativos}
             aoDispensar={(referenciaId) =>
               definirDispensadas((atual) => new Set(atual).add(referenciaId))
             }

@@ -221,8 +221,10 @@ export function montarCorpo(form: Formulario, paraEdicao = false, ehConsulta = f
       // O ARQUIVO CONTA COMO CONTEÚDO DA LINHA. Sem ele nesta condição, um
       // material que só tem arquivo — título ainda em branco, link vazio —
       // seria descartado aqui em silêncio, e o byte já subido ficaria órfão no
-      // blob sem nada que o alcançasse.
-      .filter((m) => m.titulo.trim() || m.url.trim() || m.arquivo_id)
+      // blob sem nada que o alcançasse. `arquivoPendente` entra pelo mesmo
+      // motivo: numa interação nova o arquivo ainda não subiu, mas a linha já
+      // tem conteúdo e precisa sobreviver ao primeiro salvamento.
+      .filter((m) => m.titulo.trim() || m.url.trim() || m.arquivo_id || m.arquivoPendente)
       .map((m) => ({
         // `id` so quando existe: material novo nao tem, e mandar `undefined`
         // e o que faz o backend criar em vez de procurar.

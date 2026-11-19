@@ -150,6 +150,10 @@ export interface MaterialNoForm {
   arquivo_id: string | null;
   //: Nome, tipo e tamanho, para a tela mostrar sem outra ida ao servidor.
   arquivo: ArquivoDoMaterial | null;
+  //: Arquivo ESCOLHIDO mas ainda NAO enviado — so existe quando a interacao
+  //: em si ainda nao foi salva (sem `interacaoId` nao ha onde subir o byte).
+  //: `enviar()` em Cadastro.tsx sobe isto logo apos criar o registro.
+  arquivoPendente?: File | null;
   //: De qual REFERENCIA da biblioteca esta linha veio. Nula no que a pessoa
   //: escreveu a mao — que continua sendo a maioria.
   //:

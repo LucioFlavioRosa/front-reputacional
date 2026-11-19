@@ -170,6 +170,7 @@ export function DepoisDaReuniao({
             aoFalhar={aoFalhar}
             temasDaAgenda={form.temas}
             assuntos={catalogo.dicionarios.temas}
+            assuntosInativos={catalogo.dicionarios.temas_inativos}
             aoMudar={(atualizar) =>
               definirForm((atual) => ({
                 ...atual,
