@@ -16,6 +16,11 @@ import type { CSSProperties } from 'react';
  */
 export const celula: CSSProperties = {
   padding: '10px 14px',
-  verticalAlign: 'middle',
+  // `top`, e não `middle`: quando uma célula vizinha quebra em várias linhas
+  // (Área(s), Temas), `middle` centraliza as células de uma linha só no meio
+  // da linha alta — o conteúdo flutua longe do topo e parece sobreposto à
+  // linha de cima/baixo da tabela. `top` mantém toda célula alinhada ao
+  // início da linha, não importa a altura da vizinha.
+  verticalAlign: 'top',
   color: 'var(--cinza-3)',
 };

@@ -363,24 +363,33 @@ export function Base({
           // absorver o que sobrar depois das outras — o `minWidth: 260` que
           // a própria célula já tinha segue valendo como piso.
           colunasFixas={visiveis.slice(0, 3)}
+          // LARGURAS GENEROSAS, DE PROPÓSITO (19/11/2026): nem toda coluna
+          // precisa caber na tela de uma vez — a rolagem lateral é o
+          // caminho combinado pra isso, com as 3 primeiras congeladas. Mais
+          // largura aqui significa MENOS quebra de linha por célula, e é
+          // isso que estava deixando a tabela com cara de espremida.
           largurasPadrao={{
             Cadeia: 36,
             Data: 100,
-            Instituição: 170,
-            'Tipo de interação': 150,
-            'Área(s)': 140,
-            Unidade: 120,
-            Interlocutor: 140,
-            UF: 110,
-            Relevância: 85,
-            Situação: 90,
-            Temas: 220,
-            Modalidade: 110,
-            Local: 130,
-            Esfera: 120,
-            Termômetro: 110,
-            Desfecho: 130,
-            Iniciativa: 130,
+            Instituição: 190,
+            'Tipo de interação': 190,
+            'Área(s)': 180,
+            Unidade: 140,
+            Interlocutor: 160,
+            // 150, e não os ~90 que bastariam pra "SP"/"MG": o campo também
+            // guarda "Nacional" e "Internacional" — uma palavra só, sem
+            // espaço pra quebrar — e estreito demais fazia a palavra quebrar
+            // no meio ou vazar pra coluna vizinha (Relevância).
+            UF: 150,
+            Relevância: 100,
+            Situação: 110,
+            Temas: 250,
+            Modalidade: 130,
+            Local: 160,
+            Esfera: 140,
+            Termômetro: 130,
+            Desfecho: 150,
+            Iniciativa: 150,
           }}
         >
           {linhasOrdenadas.map((linha) => (
@@ -446,7 +455,14 @@ export function Base({
             {!visiveis.includes('Pauta') ? null : (
               <td style={{ ...celula, minWidth: 260 }}>{truncar(linha.pauta, 90)}</td>
             )}
-            {!visiveis.includes('UF') ? null : <td style={celula}>{linha.uf}</td>}
+            {!visiveis.includes('UF') ? null : (
+              // `overflowWrap: 'anywhere'`: a coluna é larga o bastante pra
+              // "SP"/"MG", mas o campo também guarda "Nacional" e
+              // "Internacional" — uma palavra só, sem espaço pra quebrar
+              // sozinha, que sem isto vazava visualmente pra dentro da coluna
+              // vizinha (Relevância).
+              <td style={{ ...celula, overflowWrap: 'anywhere' }}>{linha.uf}</td>
+            )}
             {!visiveis.includes('Relevância') ? null : <td style={celula}>{linha.tier}</td>}
             {!visiveis.includes('Situação') ? null : <td style={celula}>{linha.status}</td>}
             {!visiveis.includes('Temas') ? null : (
