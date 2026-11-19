@@ -8,10 +8,12 @@ import { useState } from 'react';
 
 import { Botao, Campo, CampoDeArquivo, estiloDeEntrada } from '@/componentes/basicos';
 import { CampoQueCompleta } from '@/componentes/CampoQueCompleta';
+import { SeletorDeTemas } from '@/componentes/SeletorDeTemas';
 import { subirArquivoDeMaterial, urlDoArquivo } from '@/api/cliente';
 import { tamanhoLegivel } from '@/dominio/formato';
 import { novoUid } from '@/paginas/cadastro/formulario';
 import type { MaterialNoForm } from '@/paginas/cadastro/formulario';
+import type { Tema } from '@/dominio/tipos';
 
 /** Os documentos de um MOMENTO da agenda.
  *
@@ -38,6 +40,7 @@ export function ListaDeMateriais({
   aoDispensar,
   temasDaAgenda,
   assuntos,
+  assuntosInativos = [],
 }: {
   materiais: MaterialNoForm[];
   momentos: { valor: string; rotulo: string }[];
@@ -54,8 +57,10 @@ export function ListaDeMateriais({
   aoFalhar: (mensagem: string) => void;
   /** Os assuntos que uma linha NOVA herda — os da agenda. */
   temasDaAgenda: number[];
-  /** O dicionário de assuntos, para os botões. */
-  assuntos: { id: number; nome: string }[];
+  /** O dicionário de assuntos ativos, para a busca do `SeletorDeTemas`. */
+  assuntos: Tema[];
+  /** Os aposentados — só para exibição, mesmo motivo de `SeletorDeTemas`. */
+  assuntosInativos?: Tema[];
   /** Uma linha vinda da biblioteca foi removida a mao.
    *
    *  Sem este aviso, remove-la e depois mexer em qualquer assunto a traria de
@@ -369,44 +374,29 @@ export function ListaDeMateriais({
                 Quase sempre sao os mesmos — e por isso a linha nova ja nasce
                 com os da agenda —, mas nao sempre: a ata de uma reuniao sobre
                 tarifa pode trazer um trecho sobre regulacao, e e por assunto
-                que alguem vai procurar esse trecho seis meses depois. */}
+                que alguem vai procurar esse trecho seis meses depois.
+
+                MESMO `SeletorDeTemas` DO CAMPO "Temas" DA AGENDA, e nao uma
+                grade com os 104 de uma vez: a grade antiga crescia junto com
+                a taxonomia e virava uma parede de botoes dificil de escanear
+                — aqui dentro, repetida uma vez por material, pior ainda. */}
             <div style={{ marginTop: 10 }}>
               <Campo
                 rotulo="Temas do documento"
                 dica="É por eles que ele aparece na busca da Base."
               >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {assuntos.map((assunto) => {
-                    const marcado = material.temas.includes(assunto.id);
-                    return (
-                      <button
-                        key={assunto.id}
-                        type="button"
-                        aria-pressed={marcado}
-                        onClick={() =>
-                          trocar(indice, {
-                            temas: marcado
-                              ? material.temas.filter((id) => id !== assunto.id)
-                              : [...material.temas, assunto.id],
-                          })
-                        }
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: 999,
-                          border: `1px solid ${marcado ? 'var(--turquesa-rio)' : 'var(--borda)'}`,
-                          background: marcado ? 'var(--turquesa-rio)' : 'transparent',
-                          color: marcado ? 'var(--sobre-turquesa)' : 'var(--cinza-2)',
-                          fontSize: 12,
-                          fontWeight: marcado ? 600 : 400,
-                          cursor: 'pointer',
-                          font: 'inherit',
-                        }}
-                      >
-                        {assunto.nome}
-                      </button>
-                    );
-                  })}
-                </div>
+                <SeletorDeTemas
+                  temas={assuntos}
+                  temasInativos={assuntosInativos}
+                  selecionados={material.temas}
+                  aoAlternar={(idTema) =>
+                    trocar(indice, {
+                      temas: material.temas.includes(idTema)
+                        ? material.temas.filter((id) => id !== idTema)
+                        : [...material.temas, idTema],
+                    })
+                  }
+                />
               </Campo>
             </div>
           </div>

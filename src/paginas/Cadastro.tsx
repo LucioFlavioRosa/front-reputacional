@@ -1414,6 +1414,7 @@ export function Cadastro({
             aoFalhar={definirErro}
             temasDaAgenda={form.temas}
             assuntos={catalogo.dicionarios.temas}
+            assuntosInativos={catalogo.dicionarios.temas_inativos}
             aoDispensar={(referenciaId) =>
               definirDispensadas((atual) => new Set(atual).add(referenciaId))
             }
